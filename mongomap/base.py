@@ -65,6 +65,10 @@ class DocumentMetaclass(type):
     """
 
     def __new__(cls, name, bases, attrs):
+        metaclass = attrs.get('__metaclass__')
+        if metaclass and issubclass(metaclass, DocumentMetaclass):
+            return type.__new__(cls, name, bases, attrs)
+
         doc_fields = {}
 
         # Include all fields present in superclasses
@@ -83,6 +87,31 @@ class DocumentMetaclass(type):
         return type.__new__(cls, name, bases, attrs)
 
 
+class TopLevelDocumentMetaclass(DocumentMetaclass):
+    """Metaclass for top-level documents (i.e. documents that have their own
+    collection in the database.
+    """
+
+    def __new__(cls, name, bases, attrs):
+        # Classes defined in this package are abstract and should not have 
+        # their own metadata with DB collection, etc.
+        if attrs.get('__metaclass__') == TopLevelDocumentMetaclass:
+            return DocumentMetaclass.__new__(cls, name, bases, attrs)
+
+        collection = name.lower()
+        # Subclassed documents inherit collection from superclass
+        for base in bases:
+            if hasattr(base, '_meta') and 'collection' in base._meta:
+                collection = base._meta['collection']
+
+        meta = {
+            'collection': collection,
+        }
+        meta.update(attrs.get('meta', {}))
+        attrs['_meta'] = meta
+        return DocumentMetaclass.__new__(cls, name, bases, attrs)
+
+
 class BaseDocument(object):
 
     def __init__(self, **values):
@@ -99,3 +128,19 @@ class BaseDocument(object):
         # Use _data rather than _fields as iterator only looks at names so
         # values don't need to be converted to Python types
         return iter(self._data)
+
+    def __getitem__(self, name):
+        """Dictionary-style field access, return a field's value if present.
+        """
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            raise KeyError(name)
+
+    def __setitem__(self, name, value):
+        """Dictionary-style field access, set a field's value.
+        """
+            # Ensure that the field exists before settings its value
+        if name not in self._fields:
+            raise KeyError(name)
+        return setattr(self, name, value)

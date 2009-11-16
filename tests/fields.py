@@ -1,7 +1,6 @@
 import unittest
 
-from mongomap.document import Document
-from mongomap.fields import *
+from mongomap import *
 
 
 class FieldTest(unittest.TestCase):

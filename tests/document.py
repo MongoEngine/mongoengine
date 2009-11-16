@@ -1,10 +1,15 @@
 import unittest
 
-from mongomap.document import Document
-from mongomap.fields import StringField, IntField
+from mongomap import Document, StringField, IntField
 
 
 class DocumentTest(unittest.TestCase):
+    
+    def setUp(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+        self.Person = Person
 
     def test_definition(self):
         """Ensure that document may be defined using fields.
@@ -23,31 +28,39 @@ class DocumentTest(unittest.TestCase):
         # Test iteration over fields
         fields = list(Person())
         self.assertTrue('name' in fields and 'age' in fields)
+        # Ensure Document isn't treated like an actual document
+        self.assertFalse(hasattr(Document, '_fields'))
 
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
         """
-        class Person(Document):
-            name = StringField()
-
-        class Employee(Person):
+        class Employee(self.Person):
             salary = IntField()
 
         self.assertTrue('name' in Employee._fields)
         self.assertTrue('salary' in Employee._fields)
         self.assertEqual(Employee._meta['collection'], 
-                         Person._meta['collection'])
+                         self.Person._meta['collection'])
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-        
-        person = Person(name="Test User", age=30)
+        person = self.Person(name="Test User", age=30)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 30)
+
+    def test_dictionary_access(self):
+        """Ensure that dictionary-style field access works properly.
+        """
+        person = self.Person(name='Test User', age=30)
+        self.assertEquals(person['name'], 'Test User')
+
+        self.assertRaises(KeyError, person.__getitem__, 'salary')
+        self.assertRaises(KeyError, person.__setitem__, 'salary', 50)
+
+        person['name'] = 'Another User'
+        self.assertEquals(person['name'], 'Another User')
+
 
 
 if __name__ == '__main__':
