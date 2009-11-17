@@ -4,7 +4,8 @@ from document import EmbeddedDocument
 import re
 
 
-__all__ = ['StringField', 'IntField', 'ValidationError']
+__all__ = ['StringField', 'IntField', 'EmbeddedDocumentField', 
+           'ValidationError']
 
 
 class StringField(BaseField):
@@ -52,7 +53,15 @@ class EmbeddedDocumentField(BaseField):
 
     def __init__(self, document, **kwargs):
         if not issubclass(document, EmbeddedDocument):
-            raise ValidationError('Invalid embedded document provided to an '
-                                  'EmbeddedDocumentField')
+            raise ValidationError('Invalid embedded document class provided '
+                                  'to an EmbeddedDocumentField')
         self.document = document
         super(EmbeddedDocumentField, self).__init__(**kwargs)
+    
+    def _to_python(self, value):
+        return value
+
+    def _validate(self, value):
+        if not isinstance(value, self.document):
+            raise ValidationError('Invalid embedded document instance '
+                                  'provided to an EmbeddedDocumentField')

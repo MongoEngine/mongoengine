@@ -161,3 +161,8 @@ class BaseDocument(object):
         if name not in self._fields:
             raise KeyError(name)
         return setattr(self, name, value)
+
+    def _to_mongo(self):
+        """Return data dictionary ready for use with MongoDB.
+        """
+        return dict((k, v) for k, v in self._data.items() if v is not None)

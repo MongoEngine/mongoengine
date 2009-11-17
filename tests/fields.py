@@ -65,6 +65,28 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.__setattr__, 'age', 120)
         self.assertRaises(ValidationError, person.__setattr__, 'age', 'ten')
 
+    def test_embedded_document_validation(self):
+        """Ensure that invalid embedded documents cannot be assigned to
+        embedded document fields.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class PersonPreferences(EmbeddedDocument):
+            food = StringField()
+            number = IntField()
+
+        class Person(Document):
+            name = StringField()
+            preferences = EmbeddedDocumentField(PersonPreferences)
+
+        person = Person(name='Test User')
+        self.assertRaises(ValidationError, person.__setattr__, 'preferences', 
+                          'My preferences')
+        self.assertRaises(ValidationError, person.__setattr__, 'preferences', 
+                          Comment(content='Nice blog post...'))
+        person.preferences = PersonPreferences(food='Cheese', number=47)
+
 
 if __name__ == '__main__':
     unittest.main()
