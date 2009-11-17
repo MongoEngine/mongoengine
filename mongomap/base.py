@@ -1,4 +1,5 @@
 
+
 class ValidationError(Exception):
     pass
 
@@ -69,7 +70,7 @@ class DocumentMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
-        super_new =  super(DocumentMetaclass, cls).__new__
+        super_new = super(DocumentMetaclass, cls).__new__
         if metaclass and issubclass(metaclass, DocumentMetaclass):
             return super_new(cls, name, bases, attrs)
 
@@ -98,9 +99,12 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     """
 
     def __new__(cls, name, bases, attrs):
+        super_new = super(TopLevelDocumentMetaclass, cls).__new__
         # Classes defined in this package are abstract and should not have 
         # their own metadata with DB collection, etc.
-        super_new =  super(TopLevelDocumentMetaclass, cls).__new__
+        # __metaclass__ is only set on the class with the __metaclass__ 
+        # attribute (i.e. it is not set on subclasses). This differentiates
+        # 'real' documents from the 'Document' class
         if attrs.get('__metaclass__') == TopLevelDocumentMetaclass:
             return super_new(cls, name, bases, attrs)
 

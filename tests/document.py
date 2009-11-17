@@ -1,6 +1,6 @@
 import unittest
 
-from mongomap import Document, StringField, IntField
+from mongomap import *
 
 
 class DocumentTest(unittest.TestCase):
@@ -61,6 +61,14 @@ class DocumentTest(unittest.TestCase):
         person['name'] = 'Another User'
         self.assertEquals(person['name'], 'Another User')
 
+    def test_embedded_document(self):
+        """Ensure that embedded documents are set up correctly.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField()
+        
+        self.assertTrue('content' in Comment._fields)
+        self.assertFalse(hasattr(Comment, '_meta'))
 
 
 if __name__ == '__main__':
