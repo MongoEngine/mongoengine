@@ -17,6 +17,22 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(person._data['age'], 30)
         self.assertEqual(person._data['userid'], 'test')
 
+    def test_required_values(self):
+        """Ensure that required field constraints are enforced.
+        """
+        class Person(Document):
+            name = StringField(object_id=True)
+            age = IntField(required=True)
+            userid = StringField()
+
+        self.assertRaises(ValidationError, Person, name="Test User")
+        self.assertRaises(ValidationError, Person, age=30)
+
+        person = Person(name="Test User", age=30, userid="testuser")
+        self.assertRaises(ValidationError, person.__setattr__, 'name', None)
+        self.assertRaises(ValidationError, person.__setattr__, 'age', None)
+        person.userid = None
+
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """

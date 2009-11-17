@@ -8,8 +8,9 @@ class BaseField(object):
     may be added to subclasses of `Document` to define a document's schema.
     """
     
-    def __init__(self, name=None, default=None):
+    def __init__(self, name=None, required=False, default=None):
         self.name = name
+        self.required = required
         self.default = default
 
     def __get__(self, instance, owner):
@@ -42,6 +43,8 @@ class BaseField(object):
             except ValueError:
                 raise ValidationError('Invalid value for field of type "' +
                                       self.__class__.__name__ + '"')
+        elif self.required:
+            raise ValidationError('Field "%s" is required' % self.name)
         instance._data[self.name] = value
 
     def _to_python(self, value):
@@ -66,8 +69,9 @@ class DocumentMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
+        super_new =  super(DocumentMetaclass, cls).__new__
         if metaclass and issubclass(metaclass, DocumentMetaclass):
-            return type.__new__(cls, name, bases, attrs)
+            return super_new(cls, name, bases, attrs)
 
         doc_fields = {}
 
@@ -77,14 +81,15 @@ class DocumentMetaclass(type):
                 doc_fields.update(base._fields)
 
         # Add the document's fields to the _fields attribute
-        for attr_name, attr_val in attrs.items():
-            if issubclass(attr_val.__class__, BaseField):
-                if not attr_val.name:
-                    attr_val.name = attr_name
-                doc_fields[attr_name] = attr_val
+        for attr_name, attr_value in attrs.items():
+            if issubclass(attr_value.__class__, BaseField):
+                #print attr_value.name
+                if not attr_value.name:
+                    attr_value.name = attr_name
+                doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
 
-        return type.__new__(cls, name, bases, attrs)
+        return super_new(cls, name, bases, attrs)
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
@@ -95,21 +100,31 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     def __new__(cls, name, bases, attrs):
         # Classes defined in this package are abstract and should not have 
         # their own metadata with DB collection, etc.
+        super_new =  super(TopLevelDocumentMetaclass, cls).__new__
         if attrs.get('__metaclass__') == TopLevelDocumentMetaclass:
-            return DocumentMetaclass.__new__(cls, name, bases, attrs)
+            return super_new(cls, name, bases, attrs)
 
         collection = name.lower()
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
                 collection = base._meta['collection']
+        
+        # Get primary key field
+        object_id_field = None
+        for attr_name, attr_value in attrs.items():
+            if issubclass(attr_value.__class__, BaseField):
+                if hasattr(attr_value, 'object_id') and attr_value.object_id:
+                    object_id_field = attr_name
+                    attr_value.required = True
 
         meta = {
             'collection': collection,
+            'object_id_field': object_id_field,
         }
         meta.update(attrs.get('meta', {}))
         attrs['_meta'] = meta
-        return DocumentMetaclass.__new__(cls, name, bases, attrs)
+        return super_new(cls, name, bases, attrs)
 
 
 class BaseDocument(object):
@@ -121,6 +136,8 @@ class BaseDocument(object):
             if attr_name in values:
                 setattr(self, attr_name, values.pop(attr_name))
             else:
+                if attr_value.required:
+                    raise ValidationError('Field "%s" is required' % self.name)
                 # Use default value
                 setattr(self, attr_name, getattr(self, attr_name))
 

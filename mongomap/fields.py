@@ -11,10 +11,11 @@ class StringField(BaseField):
     """A unicode string field.
     """
     
-    def __init__(self, regex=None, max_length=None, **kwargs):
+    def __init__(self, regex=None, max_length=None, object_id=False, **kwargs):
         self.regex = re.compile(regex) if regex else None
+        self.object_id = object_id
         self.max_length = max_length
-        BaseField.__init__(self, **kwargs)
+        super(StringField, self).__init__(**kwargs)
 
     def _validate(self, value):
         if self.max_length is not None and len(value) > self.max_length:
@@ -31,7 +32,7 @@ class IntField(BaseField):
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
-        BaseField.__init__(self, **kwargs)
+        super(IntField, self).__init__(**kwargs)
     
     def _to_python(self, value):
         return int(value)
@@ -48,4 +49,10 @@ class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of 
     EmbeddedDocument. 
     """
-    pass
+
+    def __init__(self, document, **kwargs):
+        if not issubclass(document, EmbeddedDocument):
+            raise ValidationError('Invalid embedded document provided to an '
+                                  'EmbeddedDocumentField')
+        self.document = document
+        super(EmbeddedDocumentField, self).__init__(**kwargs)
