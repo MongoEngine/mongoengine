@@ -24,12 +24,13 @@ class BaseField(object):
 
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
-        if value is not None:
-            value = self._to_python(value)
-        elif self.default is not None:
-            value = self.default
-            if callable(value):
-                value = value()
+        if value is None:
+            if self.default is not None:
+                value = self.default
+                if callable(value):
+                    value = value()
+            else:
+                raise AttributeError(self.name)
         return value
 
     def __set__(self, instance, value):
@@ -40,7 +41,6 @@ class BaseField(object):
             try:
                 value = self._to_python(value)
                 self._validate(value)
-                value = self._to_mongo(value)
             except ValueError:
                 raise ValidationError('Invalid value for field of type "' +
                                       self.__class__.__name__ + '"')
@@ -61,7 +61,7 @@ class BaseField(object):
     def _validate(self, value):
         """Perform validation on a value.
         """
-        return value
+        pass
 
 
 class DocumentMetaclass(type):
@@ -143,7 +143,7 @@ class BaseDocument(object):
                 if attr_value.required:
                     raise ValidationError('Field "%s" is required' % self.name)
                 # Use default value
-                setattr(self, attr_name, getattr(self, attr_name))
+                setattr(self, attr_name, getattr(self, attr_name, None))
 
     def __iter__(self):
         # Use _data rather than _fields as iterator only looks at names so
@@ -161,10 +161,20 @@ class BaseDocument(object):
     def __setitem__(self, name, value):
         """Dictionary-style field access, set a field's value.
         """
-            # Ensure that the field exists before settings its value
+        # Ensure that the field exists before settings its value
         if name not in self._fields:
             raise KeyError(name)
         return setattr(self, name, value)
+
+    def __contains__(self, name):
+        try:
+            getattr(self, name)
+            return True
+        except AttributeError:
+            return False
+
+    def __len__(self):
+        return len(self._data)
 
     def _to_mongo(self):
         """Return data dictionary ready for use with MongoDB.

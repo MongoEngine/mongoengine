@@ -61,6 +61,13 @@ class DocumentTest(unittest.TestCase):
         person['name'] = 'Another User'
         self.assertEquals(person['name'], 'Another User')
 
+        self.assertEquals(len(person), 2)
+
+        self.assertTrue('age' in person)
+        person.age = None
+        self.assertFalse('age' in person)
+        self.assertFalse('nationality' in person)
+
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly.
         """
