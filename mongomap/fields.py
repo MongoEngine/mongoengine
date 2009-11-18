@@ -1,20 +1,20 @@
-from base import BaseField, ValidationError
+from base import BaseField, ObjectIdField, ValidationError
 from document import EmbeddedDocument
  
 import re
+import pymongo
 
 
 __all__ = ['StringField', 'IntField', 'EmbeddedDocumentField', 
-           'ValidationError']
+           'ObjectIdField', 'ValidationError']
 
 
 class StringField(BaseField):
     """A unicode string field.
     """
     
-    def __init__(self, regex=None, max_length=None, object_id=False, **kwargs):
+    def __init__(self, regex=None, max_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
-        self.object_id = object_id
         self.max_length = max_length
         super(StringField, self).__init__(**kwargs)
 

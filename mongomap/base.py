@@ -1,5 +1,7 @@
 from collection import CollectionManager
 
+import pymongo
+
 
 class ValidationError(Exception):
     pass
@@ -65,6 +67,25 @@ class BaseField(object):
         pass
 
 
+class ObjectIdField(BaseField):
+    """An field wrapper around MongoDB's ObjectIds.
+    """
+    
+    def _to_python(self, value):
+        return str(value)
+
+    def _to_mongo(self, value):
+        if not isinstance(value, pymongo.objectid.ObjectId):
+            return pymongo.objectid.ObjectId(value)
+        return value
+
+    def _validate(self, value):
+        try:
+            pymongo.objectid.ObjectId(str(value))
+        except:
+            raise ValidationError('Invalid Object ID')
+
+
 class DocumentMetaclass(type):
     """Metaclass for all documents.
     """
@@ -76,7 +97,6 @@ class DocumentMetaclass(type):
             return super_new(cls, name, bases, attrs)
 
         doc_fields = {}
-
         # Include all fields present in superclasses
         for base in bases:
             if hasattr(base, '_fields'):
@@ -85,7 +105,6 @@ class DocumentMetaclass(type):
         # Add the document's fields to the _fields attribute
         for attr_name, attr_value in attrs.items():
             if issubclass(attr_value.__class__, BaseField):
-                #print attr_value.name
                 if not attr_value.name:
                     attr_value.name = attr_name
                 doc_fields[attr_name] = attr_value
@@ -114,21 +133,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
                 collection = base._meta['collection']
-        
-        # Get primary key field
-        object_id_field = None
-        for attr_name, attr_value in attrs.items():
-            if issubclass(attr_value.__class__, BaseField):
-                if hasattr(attr_value, 'object_id') and attr_value.object_id:
-                    object_id_field = attr_name
-                    attr_value.required = True
 
         meta = {
             'collection': collection,
-            'object_id_field': object_id_field,
         }
         meta.update(attrs.get('meta', {}))
         attrs['_meta'] = meta
+
+        attrs['_id'] = ObjectIdField()
 
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object

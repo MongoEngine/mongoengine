@@ -10,7 +10,6 @@ class CollectionManager(object):
         self._collection_name = document._meta['collection']
         # This will create the collection if it doesn't exist
         self._collection = db[self._collection_name]
-        self._id_field = document._meta['object_id_field']
 
     def _save_document(self, document):
         """Save the provided document to the collection.

@@ -24,7 +24,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that required field constraints are enforced.
         """
         class Person(Document):
-            name = StringField(object_id=True)
+            name = StringField(required=True)
             age = IntField(required=True)
             userid = StringField()
 
@@ -35,6 +35,18 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.__setattr__, 'name', None)
         self.assertRaises(ValidationError, person.__setattr__, 'age', None)
         person.userid = None
+
+    def test_object_id_validation(self):
+        """Ensure that invalid values cannot be assigned to string fields.
+        """
+        class Person(Document):
+            name = StringField()
+        
+        person = Person(name='Test User')
+        self.assertRaises(AttributeError, getattr, person, '_id')
+        self.assertRaises(ValidationError, person.__setattr__, '_id', 47)
+        self.assertRaises(ValidationError, person.__setattr__, '_id', 'abc')
+        person._id = '497ce96f395f2f052a494fd4'
 
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
