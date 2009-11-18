@@ -1,15 +1,21 @@
 import unittest
 
 from mongomap import *
+from mongomap.connection import _get_db
 
 
 class DocumentTest(unittest.TestCase):
     
     def setUp(self):
+        connect(db='mongomaptest')
+
         class Person(Document):
             name = StringField()
             age = IntField()
         self.Person = Person
+
+        self.db = _get_db()
+        self.db.drop_collection(self.Person._meta['collection'])
 
     def test_definition(self):
         """Ensure that document may be defined using fields.
@@ -76,6 +82,45 @@ class DocumentTest(unittest.TestCase):
         
         self.assertTrue('content' in Comment._fields)
         self.assertFalse(hasattr(Comment, '_meta'))
+
+    def test_save(self):
+        """Ensure that a document may be saved in the database.
+        """
+        # Create person object and save it to the database
+        person = self.Person(name='Test User', age=30)
+        person.save()
+        # Ensure that the object is in the database
+        collection = self.db[self.Person._meta['collection']]
+        person_obj = collection.find_one({'name': 'Test User'})
+        self.assertEqual(person_obj['name'], 'Test User')
+        self.assertEqual(person_obj['age'], 30)
+
+    def test_save_embedded_document(self):
+        """Ensure that a document with an embedded document field may be 
+        saved in the database.
+        """
+        class EmployeeDetails(EmbeddedDocument):
+            position = StringField()
+
+        class Employee(self.Person):
+            salary = IntField()
+            details = EmbeddedDocumentField(EmployeeDetails)
+
+        # Create employee object and save it to the database
+        employee = Employee(name='Test Employee', age=50, salary=20000)
+        employee.details = EmployeeDetails(position='Developer')
+        employee.save()
+
+        # Ensure that the object is in the database
+        collection = self.db[self.Person._meta['collection']]
+        employee_obj = collection.find_one({'name': 'Test Employee'})
+        self.assertEqual(employee_obj['name'], 'Test Employee')
+        self.assertEqual(employee_obj['age'], 50)
+        # Ensure that the 'details' embedded object saved correctly
+        self.assertEqual(employee_obj['details']['position'], 'Developer')
+
+    def tearDown(self):
+        self.db.drop_collection(self.Person._meta['collection'])
 
 
 if __name__ == '__main__':

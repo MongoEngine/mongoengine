@@ -61,7 +61,13 @@ class EmbeddedDocumentField(BaseField):
     def _to_python(self, value):
         return value
 
+    def _to_mongo(self, value):
+        return self.document._to_mongo(value)
+
     def _validate(self, value):
+        """Make sure that the document instance is an instance of the 
+        EmbeddedDocument subclass provided when the document was defined.
+        """
         if not isinstance(value, self.document):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')

@@ -1,3 +1,4 @@
+from collection import CollectionManager
 
 
 class ValidationError(Exception):
@@ -128,7 +129,13 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         }
         meta.update(attrs.get('meta', {}))
         attrs['_meta'] = meta
-        return super_new(cls, name, bases, attrs)
+
+        # Set up collection manager, needs the class to have fields so use
+        # DocumentMetaclass before instantiating CollectionManager object
+        new_class = super_new(cls, name, bases, attrs)
+        setattr(new_class, 'collection', CollectionManager(new_class))
+
+        return new_class
 
 
 class BaseDocument(object):
@@ -141,7 +148,7 @@ class BaseDocument(object):
                 setattr(self, attr_name, values.pop(attr_name))
             else:
                 if attr_value.required:
-                    raise ValidationError('Field "%s" is required' % self.name)
+                    raise ValidationError('Field "%s" is required' % attr_name)
                 # Use default value
                 setattr(self, attr_name, getattr(self, attr_name, None))
 
@@ -179,4 +186,9 @@ class BaseDocument(object):
     def _to_mongo(self):
         """Return data dictionary ready for use with MongoDB.
         """
-        return dict((k, v) for k, v in self._data.items() if v is not None)
+        data = {}
+        for field_name, field in self._fields.items():
+            value = getattr(self, field_name, None)
+            if value is not None:
+                data[field_name] = field._to_mongo(value)
+        return data

@@ -5,6 +5,9 @@ from mongomap import *
 
 class FieldTest(unittest.TestCase):
 
+    def setUp(self):
+        connect(db='mongomaptest')
+
     def test_default_values(self):
         """Ensure that default field values are used when creating a document.
         """
