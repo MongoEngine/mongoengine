@@ -89,6 +89,7 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.__setattr__, 'preferences', 
                           Comment(content='Nice blog post...'))
         person.preferences = PersonPreferences(food='Cheese', number=47)
+        self.assertEqual(person.preferences.food, 'Cheese')
 
 
 if __name__ == '__main__':
