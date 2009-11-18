@@ -141,7 +141,7 @@ class BaseDocument(object):
                 setattr(self, attr_name, values.pop(attr_name))
             else:
                 if attr_value.required:
-                    raise ValidationError('Field "%s" is required' % self.name)
+                    raise ValidationError('Field "%s" is required' % attr_name)
                 # Use default value
                 setattr(self, attr_name, getattr(self, attr_name, None))
 
