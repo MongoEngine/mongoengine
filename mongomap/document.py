@@ -14,4 +14,7 @@ class Document(BaseDocument):
     __metaclass__ = TopLevelDocumentMetaclass
 
     def save(self):
-        self.collection._save_document(self._to_mongo())
+        """Save the document to the database. If the document already exists,
+        it will be updated, otherwise it will be created.
+        """
+        self.objects._save_document(self)

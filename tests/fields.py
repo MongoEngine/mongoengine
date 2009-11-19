@@ -103,6 +103,24 @@ class FieldTest(unittest.TestCase):
         person.preferences = PersonPreferences(food='Cheese', number=47)
         self.assertEqual(person.preferences.food, 'Cheese')
 
+    def test_embedded_document_inheritance(self):
+        """Ensure that subclasses of embedded documents may be provided to 
+        EmbeddedDocumentFields of the superclass' type.
+        """
+        class User(EmbeddedDocument):
+            name = StringField()
+
+        class PowerUser(User):
+            power = IntField()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = EmbeddedDocumentField(User)
+        
+        post = BlogPost(content='What I did today...')
+        post.author = User(name='Test User')
+        post.author = PowerUser(name='Test User', power=47)
+
 
 if __name__ == '__main__':
     unittest.main()

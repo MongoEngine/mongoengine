@@ -44,7 +44,7 @@ class BaseField(object):
             try:
                 value = self._to_python(value)
                 self._validate(value)
-            except ValueError:
+            except (ValueError, AttributeError):
                 raise ValidationError('Invalid value for field of type "' +
                                       self.__class__.__name__ + '"')
         elif self.required:
@@ -145,7 +145,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
-        setattr(new_class, 'collection', CollectionManager(new_class))
+        new_class.objects = CollectionManager(new_class)
 
         return new_class
 
@@ -204,3 +204,11 @@ class BaseDocument(object):
             if value is not None:
                 data[field_name] = field._to_mongo(value)
         return data
+    
+    @classmethod
+    def _from_son(cls, son):
+        """Create an instance of a Document (subclass) from a PyMongo SOM.
+        """
+        data = dict((str(key), value) for key, value in son.items())
+        return cls(**data)
+

@@ -59,6 +59,8 @@ class EmbeddedDocumentField(BaseField):
         super(EmbeddedDocumentField, self).__init__(**kwargs)
     
     def _to_python(self, value):
+        if not isinstance(value, self.document):
+            return self.document._from_son(value)
         return value
 
     def _to_mongo(self, value):
@@ -68,6 +70,7 @@ class EmbeddedDocumentField(BaseField):
         """Make sure that the document instance is an instance of the 
         EmbeddedDocument subclass provided when the document was defined.
         """
+        # Using isinstance also works for subclasses of self.document
         if not isinstance(value, self.document):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
