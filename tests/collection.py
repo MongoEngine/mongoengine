@@ -107,6 +107,8 @@ class CollectionManagerTest(unittest.TestCase):
             content = StringField()
             author = EmbeddedDocumentField(User)
 
+        self.db.drop_collection(BlogPost._meta['collection'])
+
         post = BlogPost(content='Had a good coffee today...')
         post.author = User(name='Test User')
         post.save()
@@ -114,6 +116,8 @@ class CollectionManagerTest(unittest.TestCase):
         result = BlogPost.objects.find_one()
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
+        
+        self.db.drop_collection(BlogPost._meta['collection'])
 
 
 if __name__ == '__main__':

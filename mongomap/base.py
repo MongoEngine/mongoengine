@@ -97,10 +97,18 @@ class DocumentMetaclass(type):
             return super_new(cls, name, bases, attrs)
 
         doc_fields = {}
-        # Include all fields present in superclasses
+        class_name = [name]
+        superclasses = {}
         for base in bases:
+            # Include all fields present in superclasses
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
+                class_name.append(base._class_name)
+                # Get superclasses from superclass
+                superclasses[base._class_name] = base
+                superclasses.update(base._superclasses)
+        attrs['_class_name'] = '.'.join(reversed(class_name))
+        attrs['_superclasses'] = superclasses
 
         # Add the document's fields to the _fields attribute
         for attr_name, attr_value in attrs.items():
@@ -164,6 +172,21 @@ class BaseDocument(object):
                 # Use default value
                 setattr(self, attr_name, getattr(self, attr_name, None))
 
+    @classmethod
+    def _get_subclasses(cls):
+        """Return a dictionary of all subclasses (found recursively).
+        """
+        try:
+            subclasses = cls.__subclasses__()
+        except:
+            subclasses = cls.__subclasses__(cls)
+
+        all_subclasses = {}
+        for subclass in subclasses:
+            all_subclasses[subclass._class_name] = subclass
+            all_subclasses.update(subclass._get_subclasses())
+        return all_subclasses
+
     def __iter__(self):
         # Use _data rather than _fields as iterator only looks at names so
         # values don't need to be converted to Python types
@@ -203,12 +226,25 @@ class BaseDocument(object):
             value = getattr(self, field_name, None)
             if value is not None:
                 data[field_name] = field._to_mongo(value)
+        data['_cls'] = self._class_name
+        data['_types'] = self._superclasses.keys() + [self._class_name]
         return data
     
     @classmethod
     def _from_son(cls, son):
         """Create an instance of a Document (subclass) from a PyMongo SOM.
         """
+        class_name = son[u'_cls']
         data = dict((str(key), value) for key, value in son.items())
+        del data['_cls']
+
+        # Return correct subclass for document type
+        if class_name != cls._class_name:
+            subclasses = cls._get_subclasses()
+            if class_name not in subclasses:
+                # Type of document is probably more generic than the class
+                # that has been queried to return this SON
+                return None
+            cls = subclasses[class_name]
         return cls(**data)
 

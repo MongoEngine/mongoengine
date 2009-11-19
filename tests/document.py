@@ -38,6 +38,75 @@ class DocumentTest(unittest.TestCase):
         # Ensure Document isn't treated like an actual document
         self.assertFalse(hasattr(Document, '_fields'))
 
+    def test_get_superclasses(self):
+        """Ensure that the correct list of superclasses is assembled.
+        """
+        class Animal(Document): pass
+        class Fish(Animal): pass
+        class Mammal(Animal): pass
+        class Human(Mammal): pass
+        class Dog(Mammal): pass
+
+        mammal_superclasses = {'Animal': Animal}
+        self.assertEqual(Mammal._superclasses, mammal_superclasses)
+        
+        dog_superclasses = {
+            'Animal': Animal,
+            'Animal.Mammal': Mammal,
+        }
+        self.assertEqual(Dog._superclasses, dog_superclasses)
+
+    def test_get_subclasses(self):
+        """Ensure that the correct list of subclasses is retrieved by the 
+        _get_subclasses method.
+        """
+        class Animal(Document): pass
+        class Fish(Animal): pass
+        class Mammal(Animal): pass
+        class Human(Mammal): pass
+        class Dog(Mammal): pass
+
+        mammal_subclasses = {
+            'Animal.Mammal.Dog': Dog, 
+            'Animal.Mammal.Human': Human
+        }
+        self.assertEqual(Mammal._get_subclasses(), mammal_subclasses)
+        
+        animal_subclasses = {
+            'Animal.Fish': Fish,
+            'Animal.Mammal': Mammal,
+            'Animal.Mammal.Dog': Dog, 
+            'Animal.Mammal.Human': Human
+        }
+        self.assertEqual(Animal._get_subclasses(), animal_subclasses)
+
+    def test_polymorphic_queries(self):
+        """Ensure that the correct subclasses are returned from a query"""
+        class Animal(Document): pass
+        class Fish(Animal): pass
+        class Mammal(Animal): pass
+        class Human(Mammal): pass
+        class Dog(Mammal): pass
+
+        self.db.drop_collection(Animal._meta['collection'])
+
+        Animal().save()
+        Fish().save()
+        Mammal().save()
+        Human().save()
+        Dog().save()
+
+        classes = [obj.__class__ for obj in Animal.objects.find()]
+        self.assertEqual(classes, [Animal, Fish, Mammal, Human, Dog])
+
+        classes = [obj.__class__ for obj in Mammal.objects.find()]
+        self.assertEqual(classes, [Mammal, Human, Dog])
+
+        classes = [obj.__class__ for obj in Human.objects.find()]
+        self.assertEqual(classes, [Human])
+
+        self.db.drop_collection(Animal._meta['collection'])
+
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
         """
@@ -122,6 +191,8 @@ class DocumentTest(unittest.TestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
 
+        self.db.drop_collection(BlogPost._meta['collection'])
+
         post = BlogPost(content='Went for a walk today...')
         post.tags = tags = ['fun', 'leisure']
         comments = [Comment(content='Good for you'), Comment(content='Yay.')]
@@ -133,6 +204,8 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(post_obj['tags'], tags)
         for comment_obj, comment in zip(post_obj['comments'], comments):
             self.assertEqual(comment_obj['content'], comment['content'])
+
+        self.db.drop_collection(BlogPost._meta['collection'])
 
     def test_save_embedded_document(self):
         """Ensure that a document with an embedded document field may be 

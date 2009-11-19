@@ -69,6 +69,7 @@ class EmbeddedDocumentField(BaseField):
     
     def _to_python(self, value):
         if not isinstance(value, self.document):
+            assert(isinstance(value, (dict, pymongo.son.SON)))
             return self.document._from_son(value)
         return value
 
@@ -107,11 +108,6 @@ class ListField(BaseField):
     def _validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
-#        print
-#        print value
-#        print type(value)
-#        print isinstance(value, list)
-#        print
         if not isinstance(value, (list, tuple)):
             raise ValidationError('Only lists and tuples may be used in a '
                                   'list field')

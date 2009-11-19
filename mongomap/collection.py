@@ -76,13 +76,13 @@ class CollectionManager(object):
     def find(self, **query):
         """Query the collection for document matching the provided query.
         """
-        if query:
-            query = self._transform_query(**query)
+        query = self._transform_query(**query)
+        query['_types'] = self._document._class_name
         return QuerySet(self._document, self._collection.find(query))
 
     def find_one(self, **query):
         """Query the collection for document matching the provided query.
         """
-        if query:
-            query = self._transform_query(**query)
+        query = self._transform_query(**query)
+        query['_types'] = self._document._class_name
         return self._document._from_son(self._collection.find_one(query))
