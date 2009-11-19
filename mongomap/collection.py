@@ -1,5 +1,7 @@
 from connection import _get_db
 
+import pymongo
+
 
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
@@ -74,15 +76,26 @@ class CollectionManager(object):
         return mongo_query
 
     def find(self, **query):
-        """Query the collection for document matching the provided query.
+        """Query the collection for documents matching the provided query.
         """
         query = self._transform_query(**query)
         query['_types'] = self._document._class_name
         return QuerySet(self._document, self._collection.find(query))
 
-    def find_one(self, **query):
+    def find_one(self, object_id=None, **query):
         """Query the collection for document matching the provided query.
         """
-        query = self._transform_query(**query)
-        query['_types'] = self._document._class_name
-        return self._document._from_son(self._collection.find_one(query))
+        if object_id:
+            # Use just object_id if provided
+            if not isinstance(object_id, pymongo.objectid.ObjectId):
+                object_id = pymongo.objectid.ObjectId(object_id)
+            query = object_id
+        else:
+            # Otherwise, use the query provided
+            query = self._transform_query(**query)
+            query['_types'] = self._document._class_name
+
+        result = self._collection.find_one(query)
+        if result is not None:
+            result = self._document._from_son(result)
+        return result

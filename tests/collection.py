@@ -96,6 +96,10 @@ class CollectionManagerTest(unittest.TestCase):
 
         person = self.Person.objects.find_one(age__lt=30)
         self.assertEqual(person.name, "User A")
+        
+        # Find a document using just the object id
+        person = self.Person.objects.find_one(person1._id)
+        self.assertEqual(person.name, "User A")
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
