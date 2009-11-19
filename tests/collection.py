@@ -28,6 +28,19 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertTrue(isinstance(self.Person.objects._collection,
                                    pymongo.collection.Collection))
 
+    def test_transform_query(self):
+        """Ensure that the _transform_query function operates correctly.
+        """
+        manager = self.Person().objects
+        self.assertEqual(manager._transform_query(name='test', age=30),
+                         {'name': 'test', 'age': 30})
+        self.assertEqual(manager._transform_query(age__lt=30), 
+                         {'age': {'$lt': 30}})
+        self.assertEqual(manager._transform_query(friend__age__gte=30), 
+                         {'friend.age': {'$gte': 30}})
+        self.assertEqual(manager._transform_query(name__exists=True), 
+                         {'name': {'$exists': True}})
+
     def test_find(self):
         """Ensure that a query returns a valid set of results.
         """
@@ -47,11 +60,21 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertEqual(results[1].age, 30)
 
         # Use a query to filter the people found to just person1
-        people = self.Person.objects.find({'age': 20})
+        people = self.Person.objects.find(age=20)
         self.assertEqual(people.count(), 1)
         person = people.next()
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
+
+        # Test limit
+        people = list(self.Person.objects.find().limit(1))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0].name, 'User A')
+
+        # Test skip
+        people = list(self.Person.objects.find().skip(1))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0].name, 'User B')
 
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
@@ -68,8 +91,11 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertEqual(person.age, 20)
 
         # Use a query to filter the people found to just person2
-        person = self.Person.objects.find_one({'age': 30})
+        person = self.Person.objects.find_one(age=30)
         self.assertEqual(person.name, "User B")
+
+        person = self.Person.objects.find_one(age__lt=30)
+        self.assertEqual(person.name, "User A")
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
