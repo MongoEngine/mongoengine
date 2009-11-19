@@ -111,6 +111,29 @@ class DocumentTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
 
+    def test_save_list(self):
+        """Ensure that a list field may be properly saved.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+            tags = ListField(StringField())
+
+        post = BlogPost(content='Went for a walk today...')
+        post.tags = tags = ['fun', 'leisure']
+        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
+        post.comments = comments
+        post.save()
+
+        collection = self.db[BlogPost._meta['collection']]
+        post_obj = collection.find_one()
+        self.assertEqual(post_obj['tags'], tags)
+        for comment_obj, comment in zip(post_obj['comments'], comments):
+            self.assertEqual(comment_obj['content'], comment['content'])
+
     def test_save_embedded_document(self):
         """Ensure that a document with an embedded document field may be 
         saved in the database.

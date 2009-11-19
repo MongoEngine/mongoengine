@@ -44,7 +44,7 @@ class BaseField(object):
             try:
                 value = self._to_python(value)
                 self._validate(value)
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError, AssertionError):
                 raise ValidationError('Invalid value for field of type "' +
                                       self.__class__.__name__ + '"')
         elif self.required:

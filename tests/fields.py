@@ -56,6 +56,8 @@ class FieldTest(unittest.TestCase):
             userid = StringField(r'[0-9a-z_]+$')
 
         person = Person()
+        self.assertRaises(ValidationError, person.__setattr__, 'name', 34)
+
         # Test regex validation on userid
         self.assertRaises(ValidationError, person.__setattr__, 'userid',
                           'test.User')
@@ -79,6 +81,29 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.__setattr__, 'age', -1)
         self.assertRaises(ValidationError, person.__setattr__, 'age', 120)
         self.assertRaises(ValidationError, person.__setattr__, 'age', 'ten')
+
+    def test_list_validation(self):
+        """Ensure that a list field only accepts lists with valid elements.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+            tags = ListField(StringField())
+
+        post = BlogPost(content='Went for a walk today...')
+        self.assertRaises(ValidationError, post.__setattr__, 'tags', 'fun')
+        self.assertRaises(ValidationError, post.__setattr__, 'tags', [1, 2])
+        post.tags = ['fun', 'leisure']
+        post.tags = ('fun', 'leisure')
+
+        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
+        self.assertRaises(ValidationError, post.__setattr__, 'comments', ['a'])
+        self.assertRaises(ValidationError, post.__setattr__, 'comments', 'Yay')
+        self.assertRaises(ValidationError, post.__setattr__, 'comments', 'Yay')
+        post.comments = comments
 
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
