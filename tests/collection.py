@@ -9,7 +9,7 @@ from mongomap import *
 class CollectionManagerTest(unittest.TestCase):
     
     def setUp(self):
-        connect(db='mongotest')
+        connect(db='mongomaptest')
 
         class Person(Document):
             name = StringField()
@@ -54,6 +54,8 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
+        self.assertTrue(isinstance(results[0]._id, (pymongo.objectid.ObjectId,
+                                                    str, unicode)))
         self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
         self.assertEqual(results[1].name, "User B")

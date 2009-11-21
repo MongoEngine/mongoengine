@@ -231,6 +231,36 @@ class DocumentTest(unittest.TestCase):
         # Ensure that the 'details' embedded object saved correctly
         self.assertEqual(employee_obj['details']['position'], 'Developer')
 
+    def test_save_reference(self):
+        """Ensure that a document reference field may be saved in the database.
+        """
+        
+        class BlogPost(Document):
+            meta = {'collection': 'blogpost_1'}
+            content = StringField()
+            author = ReferenceField(self.Person)
+
+        self.db.drop_collection(BlogPost._meta['collection'])
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        post = BlogPost(content='Watched some TV today... how exciting.')
+        post.author = author
+        post.save()
+
+        post_obj = BlogPost.objects.find_one()
+        self.assertTrue(isinstance(post_obj.author, self.Person))
+        self.assertEqual(post_obj.author.name, 'Test User')
+
+        post_obj.author.age = 25
+        post_obj.author.save()
+
+        author = self.Person.objects.find_one(name='Test User')
+        self.assertEqual(author.age, 25)
+
+        self.db.drop_collection(BlogPost._meta['collection'])
+
     def tearDown(self):
         self.db.drop_collection(self.Person._meta['collection'])
 

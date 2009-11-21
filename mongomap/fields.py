@@ -1,12 +1,13 @@
 from base import BaseField, ObjectIdField, ValidationError
-from document import EmbeddedDocument
+from document import Document, EmbeddedDocument
+from connection import _get_db
  
 import re
 import pymongo
 
 
 __all__ = ['StringField', 'IntField', 'EmbeddedDocumentField', 'ListField',
-           'ObjectIdField', 'ValidationError']
+           'ObjectIdField', 'ReferenceField', 'ValidationError']
 
 
 class StringField(BaseField):
@@ -100,7 +101,7 @@ class ListField(BaseField):
 
     def _to_python(self, value):
         assert(isinstance(value, (list, tuple)))
-        return list(value)
+        return [self.field._to_python(item) for item in value]
 
     def _to_mongo(self, value):
         return [self.field._to_mongo(item) for item in value]
@@ -117,3 +118,53 @@ class ListField(BaseField):
         except:
             raise ValidationError('All items in a list field must be of the '
                                   'specified type')
+
+
+class ReferenceField(BaseField):
+    """A reference to a document that will be automatically dereferenced on
+    access (lazily).
+    """
+
+    def __init__(self, document_type, **kwargs):
+        if not issubclass(document_type, Document):
+            raise ValidationError('Argument to ReferenceField constructor '
+                                  'must be a top level document class')
+        self.document_type = document_type
+        self.document_obj = None
+        super(ReferenceField, self).__init__(**kwargs)
+
+    def __get__(self, instance, owner):
+        """Descriptor to allow lazy dereferencing.
+        """
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        # Get value from document instance if available
+        value = instance._data.get(self.name)
+        # Dereference DBRefs
+        if isinstance(value, (pymongo.dbref.DBRef)):
+            value = _get_db().dereference(value)
+            instance._data[self.name] = self.document_type._from_son(value)
+        
+        return super(ReferenceField, self).__get__(instance, owner)
+
+    def _to_python(self, document):
+        assert(isinstance(document, (self.document_type, pymongo.dbref.DBRef)))
+        return document
+
+    def _to_mongo(self, document):
+        if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
+            _id = document
+        else:
+            try:
+                _id = document._id
+            except:
+                raise ValidationError('You can only reference documents once '
+                                      'they have been saved to the database')
+
+        if not isinstance(_id, pymongo.objectid.ObjectId):
+            _id = pymongo.objectid.ObjectId(_id)
+
+        collection = self.document_type._meta['collection']
+        return pymongo.dbref.DBRef(collection, _id)

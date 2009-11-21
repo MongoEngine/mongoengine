@@ -1,12 +1,14 @@
 import unittest
 
 from mongomap import *
+from mongomap.connection import _get_db
 
 
 class FieldTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongomaptest')
+        self.db = _get_db()
 
     def test_default_values(self):
         """Ensure that default field values are used when creating a document.
@@ -145,6 +147,38 @@ class FieldTest(unittest.TestCase):
         post = BlogPost(content='What I did today...')
         post.author = User(name='Test User')
         post.author = PowerUser(name='Test User', power=47)
+
+    def test_reference_validation(self):
+        """Ensure that invalid embedded documents cannot be assigned to
+        embedded document fields.
+        """
+        class User(Document):
+            name = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(User)
+
+        self.assertRaises(ValidationError, ReferenceField, EmbeddedDocument)
+
+        user = User(name='Test User')
+
+        post1 = BlogPost(content='Chips and gravy taste good.')
+        post1.author = user
+        self.assertRaises(ValidationError, post1.save)
+
+        post2 = BlogPost(content='Chips and chilli taste good.')
+        self.assertRaises(ValidationError, post1.__setattr__, 'author', post2)
+
+        user.save()
+        post1.author = user
+        post1.save()
+
+        post2.save()
+        self.assertRaises(ValidationError, post1.__setattr__, 'author', post2)
+
+        self.db.drop_collection(User._meta['collection'])
+        self.db.drop_collection(BlogPost._meta['collection'])
 
 
 if __name__ == '__main__':
