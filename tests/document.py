@@ -1,4 +1,5 @@
 import unittest
+import pymongo
 
 from mongoengine import *
 from mongoengine.connection import _get_db
@@ -246,13 +247,19 @@ class DocumentTest(unittest.TestCase):
         author.save()
 
         post = BlogPost(content='Watched some TV today... how exciting.')
+        # Should only reference author when saving
         post.author = author
         post.save()
 
         post_obj = BlogPost.objects.find_one()
+
+        # Test laziness
+        self.assertTrue(isinstance(post_obj._data['author'], 
+                                   pymongo.dbref.DBRef))
         self.assertTrue(isinstance(post_obj.author, self.Person))
         self.assertEqual(post_obj.author.name, 'Test User')
 
+        # Ensure that the dereferenced object may be changed and saved
         post_obj.author.age = 25
         post_obj.author.save()
 

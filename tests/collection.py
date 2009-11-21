@@ -1,7 +1,7 @@
 import unittest
 import pymongo
 
-from mongoengine.collection import CollectionManager
+from mongoengine.collection import CollectionManager, QuerySet
 from mongoengine.connection import _get_db
 from mongoengine import *
 
@@ -31,14 +31,13 @@ class CollectionManagerTest(unittest.TestCase):
     def test_transform_query(self):
         """Ensure that the _transform_query function operates correctly.
         """
-        manager = self.Person().objects
-        self.assertEqual(manager._transform_query(name='test', age=30),
+        self.assertEqual(QuerySet._transform_query(name='test', age=30),
                          {'name': 'test', 'age': 30})
-        self.assertEqual(manager._transform_query(age__lt=30), 
+        self.assertEqual(QuerySet._transform_query(age__lt=30), 
                          {'age': {'$lt': 30}})
-        self.assertEqual(manager._transform_query(friend__age__gte=30), 
+        self.assertEqual(QuerySet._transform_query(friend__age__gte=30), 
                          {'friend.age': {'$gte': 30}})
-        self.assertEqual(manager._transform_query(name__exists=True), 
+        self.assertEqual(QuerySet._transform_query(name__exists=True), 
                          {'name': {'$exists': True}})
 
     def test_find(self):
@@ -124,6 +123,21 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertEqual(result.author.name, 'Test User')
         
         self.db.drop_collection(BlogPost._meta['collection'])
+
+    def test_delete(self):
+        """Ensure that documents are properly deleted from the database.
+        """
+        self.Person(name="User A", age=20).save()
+        self.Person(name="User B", age=30).save()
+        self.Person(name="User C", age=40).save()
+
+        self.assertEqual(self.Person.objects.find().count(), 3)
+
+        self.Person.objects.find(age__lt=30).delete()
+        self.assertEqual(self.Person.objects.find().count(), 2)
+
+        self.Person.objects.find().delete()
+        self.assertEqual(self.Person.objects.find().count(), 0)
 
 
 if __name__ == '__main__':

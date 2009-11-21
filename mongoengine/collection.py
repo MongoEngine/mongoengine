@@ -8,10 +8,40 @@ class QuerySet(object):
     providing Document objects as the results.
     """
     
-    def __init__(self, document, cursor):
+    def __init__(self, document, collection, query):
         self._document = document
-        self._cursor = cursor
+        self._collection = collection
+
+        self._query = QuerySet._transform_query(**query)
+        self._query['_types'] = self._document._class_name
+        self._cursor_obj = None
+
+    @property
+    def _cursor(self):
+        if not self._cursor_obj:
+            self._cursor_obj = self._collection.find(self._query)
+        return self._cursor_obj
        
+    @classmethod
+    def _transform_query(cls, **query):
+        """Transform a query from Django-style format to Mongo format.
+        """
+        operators = ['neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
+                     'all', 'size', 'exists']
+
+        mongo_query = {}
+        for key, value in query.items():
+            parts = key.split('__')
+            # Check for an operator and transform to mongo-style if there is
+            if parts[-1] in operators:
+                op = parts.pop()
+                value = {'$' + op: value}
+
+            key = '.'.join(parts)
+            mongo_query[key] = value
+
+        return mongo_query
+
     def next(self):
         """Wrap the result in a Document object.
         """
@@ -35,6 +65,11 @@ class QuerySet(object):
         self._cursor.skip(n)
         return self
 
+    def delete(self):
+        """Delete the documents matched by the query.
+        """
+        self._collection.remove(self._query)
+
     def __iter__(self):
         return self
 
@@ -56,31 +91,10 @@ class CollectionManager(object):
         _id = self._collection.save(document._to_mongo())
         document._id = _id
 
-    def _transform_query(self, **query):
-        """Transform a query from Django-style format to Mongo format.
-        """
-        operators = ['neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                     'all', 'size', 'exists']
-
-        mongo_query = {}
-        for key, value in query.items():
-            parts = key.split('__')
-            # Check for an operator and transform to mongo-style if there is
-            if parts[-1] in operators:
-                op = parts.pop()
-                value = {'$' + op: value}
-
-            key = '.'.join(parts)
-            mongo_query[key] = value
-
-        return mongo_query
-
     def find(self, **query):
         """Query the collection for documents matching the provided query.
         """
-        query = self._transform_query(**query)
-        query['_types'] = self._document._class_name
-        return QuerySet(self._document, self._collection.find(query))
+        return QuerySet(self._document, self._collection, query)
 
     def find_one(self, object_id=None, **query):
         """Query the collection for document matching the provided query.
@@ -92,7 +106,7 @@ class CollectionManager(object):
             query = object_id
         else:
             # Otherwise, use the query provided
-            query = self._transform_query(**query)
+            query = QuerySet._transform_query(**query)
             query['_types'] = self._document._class_name
 
         result = self._collection.find_one(query)
