@@ -177,8 +177,8 @@ class FieldTest(unittest.TestCase):
         post2.save()
         self.assertRaises(ValidationError, post1.__setattr__, 'author', post2)
 
-        self.db.drop_collection(User._meta['collection'])
-        self.db.drop_collection(BlogPost._meta['collection'])
+        User.drop_collection()
+        BlogPost.drop_collection()
 
 
 if __name__ == '__main__':

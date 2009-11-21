@@ -9,14 +9,23 @@ class DocumentTest(unittest.TestCase):
     
     def setUp(self):
         connect(db='mongoenginetest')
+        self.db = _get_db()
 
         class Person(Document):
             name = StringField()
             age = IntField()
         self.Person = Person
 
-        self.db = _get_db()
-        self.db.drop_collection(self.Person._meta['collection'])
+    def test_drop_collection(self):
+        """Ensure that the collection may be dropped from the database.
+        """
+        self.Person(name='Test').save()
+
+        collection = self.Person._meta['collection']
+        self.assertTrue(collection in self.db.collection_names())
+
+        self.Person.drop_collection()
+        self.assertFalse(collection in self.db.collection_names())
 
     def test_definition(self):
         """Ensure that document may be defined using fields.
@@ -89,8 +98,6 @@ class DocumentTest(unittest.TestCase):
         class Human(Mammal): pass
         class Dog(Mammal): pass
 
-        self.db.drop_collection(Animal._meta['collection'])
-
         Animal().save()
         Fish().save()
         Mammal().save()
@@ -106,7 +113,7 @@ class DocumentTest(unittest.TestCase):
         classes = [obj.__class__ for obj in Human.objects.find()]
         self.assertEqual(classes, [Human])
 
-        self.db.drop_collection(Animal._meta['collection'])
+        Animal.drop_collection()
 
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
@@ -192,8 +199,6 @@ class DocumentTest(unittest.TestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
 
-        self.db.drop_collection(BlogPost._meta['collection'])
-
         post = BlogPost(content='Went for a walk today...')
         post.tags = tags = ['fun', 'leisure']
         comments = [Comment(content='Good for you'), Comment(content='Yay.')]
@@ -206,7 +211,7 @@ class DocumentTest(unittest.TestCase):
         for comment_obj, comment in zip(post_obj['comments'], comments):
             self.assertEqual(comment_obj['content'], comment['content'])
 
-        self.db.drop_collection(BlogPost._meta['collection'])
+        BlogPost.drop_collection()
 
     def test_save_embedded_document(self):
         """Ensure that a document with an embedded document field may be 
@@ -241,8 +246,6 @@ class DocumentTest(unittest.TestCase):
             content = StringField()
             author = ReferenceField(self.Person)
 
-        self.db.drop_collection(BlogPost._meta['collection'])
-
         author = self.Person(name='Test User')
         author.save()
 
@@ -266,10 +269,10 @@ class DocumentTest(unittest.TestCase):
         author = self.Person.objects.find_one(name='Test User')
         self.assertEqual(author.age, 25)
 
-        self.db.drop_collection(BlogPost._meta['collection'])
+        BlogPost.drop_collection()
 
     def tearDown(self):
-        self.db.drop_collection(self.Person._meta['collection'])
+        self.Person.drop_collection()
 
 
 if __name__ == '__main__':

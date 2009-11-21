@@ -2,7 +2,6 @@ import unittest
 import pymongo
 
 from mongoengine.collection import CollectionManager, QuerySet
-from mongoengine.connection import _get_db
 from mongoengine import *
 
 
@@ -15,9 +14,6 @@ class CollectionManagerTest(unittest.TestCase):
             name = StringField()
             age = IntField()
         self.Person = Person
-
-        self.db = _get_db()
-        self.db.drop_collection(self.Person._meta['collection'])
 
     def test_initialisation(self):
         """Ensure that CollectionManager is correctly initialised.
@@ -112,8 +108,6 @@ class CollectionManagerTest(unittest.TestCase):
             content = StringField()
             author = EmbeddedDocumentField(User)
 
-        self.db.drop_collection(BlogPost._meta['collection'])
-
         post = BlogPost(content='Had a good coffee today...')
         post.author = User(name='Test User')
         post.save()
@@ -122,7 +116,7 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
         
-        self.db.drop_collection(BlogPost._meta['collection'])
+        BlogPost.drop_collection()
 
     def test_delete(self):
         """Ensure that documents are properly deleted from the database.
@@ -138,6 +132,9 @@ class CollectionManagerTest(unittest.TestCase):
 
         self.Person.objects.find().delete()
         self.assertEqual(self.Person.objects.find().count(), 0)
+
+    def tearDown(self):
+        self.Person.drop_collection()
 
 
 if __name__ == '__main__':

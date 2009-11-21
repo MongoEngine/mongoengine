@@ -1,4 +1,5 @@
 from base import DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument
+from connection import _get_db
 
 
 __all__ = ['Document', 'EmbeddedDocument']
@@ -18,3 +19,11 @@ class Document(BaseDocument):
         it will be updated, otherwise it will be created.
         """
         self.objects._save_document(self)
+
+    @classmethod
+    def drop_collection(cls):
+        """Drops the entire collection associated with this Document type from
+        the database.
+        """
+        db = _get_db()
+        db.drop_collection(cls._meta['collection'])
