@@ -1,15 +1,15 @@
 import unittest
 import pymongo
 
-from mongomap.collection import CollectionManager
-from mongomap.connection import _get_db
-from mongomap import *
+from mongoengine.collection import CollectionManager
+from mongoengine.connection import _get_db
+from mongoengine import *
 
 
 class CollectionManagerTest(unittest.TestCase):
     
     def setUp(self):
-        connect(db='mongomaptest')
+        connect(db='mongoenginetest')
 
         class Person(Document):
             name = StringField()

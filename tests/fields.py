@@ -1,13 +1,13 @@
 import unittest
 
-from mongomap import *
-from mongomap.connection import _get_db
+from mongoengine import *
+from mongoengine.connection import _get_db
 
 
 class FieldTest(unittest.TestCase):
 
     def setUp(self):
-        connect(db='mongomaptest')
+        connect(db='mongoenginetest')
         self.db = _get_db()
 
     def test_default_values(self):
