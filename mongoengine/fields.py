@@ -145,7 +145,8 @@ class ReferenceField(BaseField):
         # Dereference DBRefs
         if isinstance(value, (pymongo.dbref.DBRef)):
             value = _get_db().dereference(value)
-            instance._data[self.name] = self.document_type._from_son(value)
+            if value is not None:
+                instance._data[self.name] = self.document_type._from_son(value)
         
         return super(ReferenceField, self).__get__(instance, owner)
 

@@ -8,13 +8,17 @@ class QuerySet(object):
     providing Document objects as the results.
     """
     
-    def __init__(self, document, collection, query):
+    def __init__(self, document, collection):
         self._document = document
         self._collection = collection
-
-        self._query = QuerySet._transform_query(**query)
-        self._query['_types'] = self._document._class_name
+        self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
+
+    def __call__(self, **query):
+        """Filter the selected documents by calling the queryset with a query.
+        """
+        self._query.update(QuerySet._transform_query(**query))
+        return self
 
     @property
     def _cursor(self):
@@ -41,6 +45,25 @@ class QuerySet(object):
             mongo_query[key] = value
 
         return mongo_query
+
+    def first(self):
+        """Retrieve the first object matching the query.
+        """
+        result = self._collection.find_one(self._query)
+        if result is not None:
+            result = self._document._from_son(result)
+        return result
+
+    def with_id(self, object_id):
+        """Retrieve the object matching the _id provided.
+        """
+        if not isinstance(object_id, pymongo.objectid.ObjectId):
+            object_id = pymongo.objectid.ObjectId(object_id)
+
+        result = self._collection.find_one(object_id)
+        if result is not None:
+            result = self._document._from_son(result)
+        return result
 
     def next(self):
         """Wrap the result in a Document object.
@@ -74,42 +97,22 @@ class QuerySet(object):
         return self
 
 
-class CollectionManager(object):
-    
+class QuerySetManager(object):
+
     def __init__(self, document):
-        """Set up the collection manager for a specific document.
-        """
         db = _get_db()
         self._document = document
         self._collection_name = document._meta['collection']
         # This will create the collection if it doesn't exist
         self._collection = db[self._collection_name]
 
-    def _save_document(self, document):
-        """Save the provided document to the collection.
+    def __get__(self, instance, owner):
+        """Descriptor for instantiating a new QuerySet object when 
+        Document.objects is accessed.
         """
-        _id = self._collection.save(document._to_mongo())
-        document._id = _id
-
-    def find(self, **query):
-        """Query the collection for documents matching the provided query.
-        """
-        return QuerySet(self._document, self._collection, query)
-
-    def find_one(self, object_id=None, **query):
-        """Query the collection for document matching the provided query.
-        """
-        if object_id:
-            # Use just object_id if provided
-            if not isinstance(object_id, pymongo.objectid.ObjectId):
-                object_id = pymongo.objectid.ObjectId(object_id)
-            query = object_id
-        else:
-            # Otherwise, use the query provided
-            query = QuerySet._transform_query(**query)
-            query['_types'] = self._document._class_name
-
-        result = self._collection.find_one(query)
-        if result is not None:
-            result = self._document._from_son(result)
-        return result
+        if instance is not None:
+            # Document class being used rather than a document object
+            return self
+        
+        # self._document should be the same as owner
+        return QuerySet(self._document, self._collection)

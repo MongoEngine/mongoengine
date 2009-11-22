@@ -1,11 +1,11 @@
 import unittest
 import pymongo
 
-from mongoengine.collection import CollectionManager, QuerySet
+from mongoengine.queryset import QuerySet
 from mongoengine import *
 
 
-class CollectionManagerTest(unittest.TestCase):
+class QuerySetTest(unittest.TestCase):
     
     def setUp(self):
         connect(db='mongoenginetest')
@@ -18,8 +18,8 @@ class CollectionManagerTest(unittest.TestCase):
     def test_initialisation(self):
         """Ensure that CollectionManager is correctly initialised.
         """
-        self.assertTrue(isinstance(self.Person.objects, CollectionManager))
-        self.assertEqual(self.Person.objects._collection_name, 
+        self.assertTrue(isinstance(self.Person.objects, QuerySet))
+        self.assertEqual(self.Person.objects._collection.name(), 
                          self.Person._meta['collection'])
         self.assertTrue(isinstance(self.Person.objects._collection,
                                    pymongo.collection.Collection))
@@ -45,7 +45,7 @@ class CollectionManagerTest(unittest.TestCase):
         person2.save()
 
         # Find all people in the collection
-        people = self.Person.objects.find()
+        people = self.Person.objects
         self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
@@ -57,19 +57,19 @@ class CollectionManagerTest(unittest.TestCase):
         self.assertEqual(results[1].age, 30)
 
         # Use a query to filter the people found to just person1
-        people = self.Person.objects.find(age=20)
+        people = self.Person.objects(age=20)
         self.assertEqual(people.count(), 1)
         person = people.next()
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
         # Test limit
-        people = list(self.Person.objects.find().limit(1))
+        people = list(self.Person.objects.limit(1))
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User A')
 
         # Test skip
-        people = list(self.Person.objects.find().skip(1))
+        people = list(self.Person.objects.skip(1))
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
@@ -82,20 +82,20 @@ class CollectionManagerTest(unittest.TestCase):
         person2.save()
 
         # Retrieve the first person from the database
-        person = self.Person.objects.find_one()
+        person = self.Person.objects.first()
         self.assertTrue(isinstance(person, self.Person))
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
         # Use a query to filter the people found to just person2
-        person = self.Person.objects.find_one(age=30)
+        person = self.Person.objects(age=30).first()
         self.assertEqual(person.name, "User B")
 
-        person = self.Person.objects.find_one(age__lt=30)
+        person = self.Person.objects(age__lt=30).first()
         self.assertEqual(person.name, "User A")
         
         # Find a document using just the object id
-        person = self.Person.objects.find_one(person1._id)
+        person = self.Person.objects.with_id(person1._id)
         self.assertEqual(person.name, "User A")
 
     def test_find_embedded(self):
@@ -112,7 +112,7 @@ class CollectionManagerTest(unittest.TestCase):
         post.author = User(name='Test User')
         post.save()
 
-        result = BlogPost.objects.find_one()
+        result = BlogPost.objects.first()
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
         
@@ -125,13 +125,13 @@ class CollectionManagerTest(unittest.TestCase):
         self.Person(name="User B", age=30).save()
         self.Person(name="User C", age=40).save()
 
-        self.assertEqual(self.Person.objects.find().count(), 3)
+        self.assertEqual(self.Person.objects.count(), 3)
 
-        self.Person.objects.find(age__lt=30).delete()
-        self.assertEqual(self.Person.objects.find().count(), 2)
+        self.Person.objects(age__lt=30).delete()
+        self.assertEqual(self.Person.objects.count(), 2)
 
-        self.Person.objects.find().delete()
-        self.assertEqual(self.Person.objects.find().count(), 0)
+        self.Person.objects.delete()
+        self.assertEqual(self.Person.objects.count(), 0)
 
     def tearDown(self):
         self.Person.drop_collection()

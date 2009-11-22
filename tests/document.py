@@ -104,13 +104,13 @@ class DocumentTest(unittest.TestCase):
         Human().save()
         Dog().save()
 
-        classes = [obj.__class__ for obj in Animal.objects.find()]
+        classes = [obj.__class__ for obj in Animal.objects]
         self.assertEqual(classes, [Animal, Fish, Mammal, Human, Dog])
 
-        classes = [obj.__class__ for obj in Mammal.objects.find()]
+        classes = [obj.__class__ for obj in Mammal.objects]
         self.assertEqual(classes, [Mammal, Human, Dog])
 
-        classes = [obj.__class__ for obj in Human.objects.find()]
+        classes = [obj.__class__ for obj in Human.objects]
         self.assertEqual(classes, [Human])
 
         Animal.drop_collection()
@@ -254,7 +254,7 @@ class DocumentTest(unittest.TestCase):
         post.author = author
         post.save()
 
-        post_obj = BlogPost.objects.find_one()
+        post_obj = BlogPost.objects.first()
 
         # Test laziness
         self.assertTrue(isinstance(post_obj._data['author'], 
@@ -266,7 +266,7 @@ class DocumentTest(unittest.TestCase):
         post_obj.author.age = 25
         post_obj.author.save()
 
-        author = self.Person.objects.find_one(name='Test User')
+        author = self.Person.objects(name='Test User').first()
         self.assertEqual(author.age, 25)
 
         BlogPost.drop_collection()
