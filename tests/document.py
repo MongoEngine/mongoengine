@@ -174,7 +174,7 @@ class DocumentTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(str(person_obj['_id']), person._id)
+        self.assertEqual(person_obj['_id'], person._id)
 
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.

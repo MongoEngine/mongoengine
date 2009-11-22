@@ -42,26 +42,25 @@ class BaseField(object):
         """
         if value is not None:
             try:
-                value = self._to_python(value)
-                self._validate(value)
-            except (ValueError, AttributeError, AssertionError):
+                self.validate(value)
+            except (ValueError, AttributeError, AssertionError), e:
                 raise ValidationError('Invalid value for field of type "' +
                                       self.__class__.__name__ + '"')
         elif self.required:
             raise ValidationError('Field "%s" is required' % self.name)
         instance._data[self.name] = value
 
-    def _to_python(self, value):
+    def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
-        return unicode(value)
+        return value
 
-    def _to_mongo(self, value):
+    def to_mongo(self, value):
         """Convert a Python type to a MongoDB-compatible type.
         """
-        return self._to_python(value)
+        return self.to_python(value)
 
-    def _validate(self, value):
+    def validate(self, value):
         """Perform validation on a value.
         """
         pass
@@ -71,15 +70,15 @@ class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
     """
     
-    def _to_python(self, value):
+    def to_python(self, value):
         return str(value)
 
-    def _to_mongo(self, value):
+    def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
             return pymongo.objectid.ObjectId(value)
         return value
 
-    def _validate(self, value):
+    def validate(self, value):
         try:
             pymongo.objectid.ObjectId(str(value))
         except:
@@ -218,14 +217,14 @@ class BaseDocument(object):
     def __len__(self):
         return len(self._data)
 
-    def _to_mongo(self):
+    def to_mongo(self):
         """Return data dictionary ready for use with MongoDB.
         """
         data = {}
         for field_name, field in self._fields.items():
             value = getattr(self, field_name, None)
             if value is not None:
-                data[field_name] = field._to_mongo(value)
+                data[field_name] = field.to_mongo(value)
         data['_cls'] = self._class_name
         data['_types'] = self._superclasses.keys() + [self._class_name]
         return data
@@ -246,5 +245,9 @@ class BaseDocument(object):
                 # that has been queried to return this SON
                 return None
             cls = subclasses[class_name]
-        return cls(**data)
 
+        for field_name, field in cls._fields.items():
+            if field_name in data:
+                data[field_name] = field.to_python(data[field_name])
+
+        return cls(**data)

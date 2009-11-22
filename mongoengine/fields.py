@@ -19,11 +19,10 @@ class StringField(BaseField):
         self.max_length = max_length
         super(StringField, self).__init__(**kwargs)
     
-    def _to_python(self, value):
-        assert(isinstance(value, (str, unicode)))
+    def to_python(self, value):
         return unicode(value)
 
-    def _validate(self, value):
+    def validate(self, value):
         assert(isinstance(value, (str, unicode)))
 
         if self.max_length is not None and len(value) > self.max_length:
@@ -42,12 +41,11 @@ class IntField(BaseField):
         self.min_value, self.max_value = min_value, max_value
         super(IntField, self).__init__(**kwargs)
     
-    def _to_python(self, value):
-        assert(isinstance(value, int))
+    def to_python(self, value):
         return int(value)
 
-    def _validate(self, value):
-        assert(isinstance(value, int))
+    def validate(self, value):
+        assert(isinstance(value, (int, long)))
 
         if self.min_value is not None and value < self.min_value:
             raise ValidationError('Integer value is too small')
@@ -68,16 +66,15 @@ class EmbeddedDocumentField(BaseField):
         self.document = document
         super(EmbeddedDocumentField, self).__init__(**kwargs)
     
-    def _to_python(self, value):
+    def to_python(self, value):
         if not isinstance(value, self.document):
-            assert(isinstance(value, (dict, pymongo.son.SON)))
             return self.document._from_son(value)
         return value
 
-    def _to_mongo(self, value):
-        return self.document._to_mongo(value)
+    def to_mongo(self, value):
+        return self.document.to_mongo(value)
 
-    def _validate(self, value):
+    def validate(self, value):
         """Make sure that the document instance is an instance of the 
         EmbeddedDocument subclass provided when the document was defined.
         """
@@ -99,14 +96,13 @@ class ListField(BaseField):
         self.field = field
         super(ListField, self).__init__(**kwargs)
 
-    def _to_python(self, value):
-        assert(isinstance(value, (list, tuple)))
-        return [self.field._to_python(item) for item in value]
+    def to_python(self, value):
+        return [self.field.to_python(item) for item in value]
 
-    def _to_mongo(self, value):
-        return [self.field._to_mongo(item) for item in value]
+    def to_mongo(self, value):
+        return [self.field.to_mongo(item) for item in value]
 
-    def _validate(self, value):
+    def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
         if not isinstance(value, (list, tuple)):
@@ -114,7 +110,7 @@ class ListField(BaseField):
                                   'list field')
 
         try:
-            [self.field._validate(item) for item in value]
+            [self.field.validate(item) for item in value]
         except:
             raise ValidationError('All items in a list field must be of the '
                                   'specified type')
@@ -150,11 +146,7 @@ class ReferenceField(BaseField):
         
         return super(ReferenceField, self).__get__(instance, owner)
 
-    def _to_python(self, document):
-        assert(isinstance(document, (self.document_type, pymongo.dbref.DBRef)))
-        return document
-
-    def _to_mongo(self, document):
+    def to_mongo(self, document):
         if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
             _id = document
         else:
@@ -169,3 +161,6 @@ class ReferenceField(BaseField):
 
         collection = self.document_type._meta['collection']
         return pymongo.dbref.DBRef(collection, _id)
+
+    def validate(self, value):
+        assert(isinstance(value, (self.document_type, pymongo.dbref.DBRef)))

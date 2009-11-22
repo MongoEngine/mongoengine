@@ -18,7 +18,7 @@ class Document(BaseDocument):
         """Save the document to the database. If the document already exists,
         it will be updated, otherwise it will be created.
         """
-        _id = self.objects._collection.save(self._to_mongo())
+        _id = self.objects._collection.save(self.to_mongo())
         self._id = _id
 
     @classmethod
