@@ -1,4 +1,5 @@
 import unittest
+import datetime
 
 from mongoengine import *
 from mongoengine.connection import _get_db
@@ -83,6 +84,29 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.__setattr__, 'age', -1)
         self.assertRaises(ValidationError, person.__setattr__, 'age', 120)
         self.assertRaises(ValidationError, person.__setattr__, 'age', 'ten')
+
+    def test_float_validation(self):
+        """Ensure that invalid values cannot be assigned to float fields.
+        """
+        class Person(Document):
+            height = FloatField(min_value=0.1, max_value=3.5)
+
+        person = Person()
+        person.height = 1.89
+        self.assertRaises(ValidationError, person.__setattr__, 'height', 2)
+        self.assertRaises(ValidationError, person.__setattr__, 'height', 0.01)
+        self.assertRaises(ValidationError, person.__setattr__, 'height', 4.0)
+
+    def test_datetime_validation(self):
+        """Ensure that invalid values cannot be assigned to datetime fields.
+        """
+        class LogEntry(Document):
+            time = DateTimeField()
+
+        log = LogEntry()
+        self.assertRaises(ValidationError, log.__setattr__, 'time', -1)
+        self.assertRaises(ValidationError, log.__setattr__, 'time', '1pm')
+        log.time = datetime.datetime.now()
 
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.

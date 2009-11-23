@@ -4,10 +4,12 @@ from connection import _get_db
  
 import re
 import pymongo
+import datetime
 
 
-__all__ = ['StringField', 'IntField', 'EmbeddedDocumentField', 'ListField',
-           'ObjectIdField', 'ReferenceField', 'ValidationError']
+__all__ = ['StringField', 'IntField', 'FloatField', 'DateTimeField', 
+           'EmbeddedDocumentField', 'ListField', 'ObjectIdField', 
+           'ReferenceField', 'ValidationError']
 
 
 class StringField(BaseField):
@@ -52,6 +54,35 @@ class IntField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Integer value is too large')
+
+
+class FloatField(BaseField):
+    """An floating point number field.
+    """
+
+    def __init__(self, min_value=None, max_value=None, **kwargs):
+        self.min_value, self.max_value = min_value, max_value
+        super(FloatField, self).__init__(**kwargs)
+    
+    def to_python(self, value):
+        return float(value)
+
+    def validate(self, value):
+        assert(isinstance(value, float))
+
+        if self.min_value is not None and value < self.min_value:
+            raise ValidationError('Float value is too small')
+
+        if self.max_value is not None and value > self.max_value:
+            raise ValidationError('Float value is too large')
+
+
+class DateTimeField(BaseField):
+    """A datetime field.
+    """
+
+    def validate(self, value):
+        assert(isinstance(value, datetime.datetime))
 
 
 class EmbeddedDocumentField(BaseField):
