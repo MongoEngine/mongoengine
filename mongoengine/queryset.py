@@ -37,12 +37,16 @@ class QuerySet(object):
         for key, value in query.items():
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
+            op = None
             if parts[-1] in operators:
                 op = parts.pop()
                 value = {'$' + op: value}
 
             key = '.'.join(parts)
-            mongo_query[key] = value
+            if op is None or key not in mongo_query:
+                mongo_query[key] = value
+            elif key in mongo_query and isinstance(mongo_query[key], dict):
+                mongo_query[key].update(value)
 
         return mongo_query
 

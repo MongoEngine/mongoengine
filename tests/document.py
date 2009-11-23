@@ -246,6 +246,8 @@ class DocumentTest(unittest.TestCase):
             content = StringField()
             author = ReferenceField(self.Person)
 
+        BlogPost.drop_collection()
+
         author = self.Person(name='Test User')
         author.save()
 
