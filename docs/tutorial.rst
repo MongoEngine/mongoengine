@@ -11,9 +11,9 @@ interface.
 
 Connecting to MongoDB
 ---------------------
-Before we start, you should make sure that you have a copy of MongoDB running
-in an accessible location --- running it locally will be easier, but if that is
-not an option then it may be run on a remote server.
+Before we start, make sure that a copy of MongoDB is running in an accessible
+location --- running it locally will be easier, but if that is not an option
+then it may be run on a remote server.
 
 Before we can start using MongoEngine, we need to tell it how to connect to our
 instance of **mongod**. For this we use the :func:`mongoengine.connect`
@@ -24,9 +24,9 @@ database to use::
     
     connect('tumblelog')
 
-This will connect to a mongod instance running locally on the default port. To 
-connect to a mongod instance running elsewhere, we may specify the host and
-port explicitly::
+This will connect to a mongod instance running locally on the default port. To
+connect to a mongod instance running elsewhere, specify the host and port
+explicitly::
 
     connect('tumblelog', host='192.168.1.35', port=12345)
 
@@ -34,20 +34,20 @@ Defining our documents
 ----------------------
 MongoDB is *schemaless*, which means that no schema is enforced by the database
 --- we may add and remove fields however we want and MongoDB won't complain.
-This makes life a lot easier in many regards, especially when it comes to
-migrations. However, defining schemata for our documents can help to iron out
-bugs involving incorrect types or missing fields, and also allow us to define
-utility methods on our documents in the same way that traditional :abbr:`ORMs
-(Object-Relational Mappers)` do.
+This makes life a lot easier in many regards, especially when there is a change
+to the data model. However, defining schemata for our documents can help to
+iron out bugs involving incorrect types or missing fields, and also allow us to
+define utility methods on our documents in the same way that traditional
+:abbr:`ORMs (Object-Relational Mappers)` do.
 
 In our Tumblelog application we need to store several different types of
 information.  We will need to have a collection of **users**, so that we may
 link posts to an individual. We also need to store our different types
-**posts** (text, image and link) in the database. For to aid navigation of our
+**posts** (text, image and link) in the database. To aid navigation of our
 Tumblelog, posts may have **tags** associated with them, so that the list of
-posts shown to the user may be limited to posts that have a specified tag.
-Finally, it would be nice if **comments** could be added to posts. We'll start
-with **users**, as the others are slightly more involved.
+posts shown to the user may be limited to posts that have been assigned a
+specified tag.  Finally, it would be nice if **comments** could be added to
+posts. We'll start with **users**, as the others are slightly more involved.
 
 Users
 ^^^^^
@@ -66,16 +66,15 @@ documents will be stored in a MongoDB *collection* rather than a table.
 
 Posts, Comments and Tags
 ^^^^^^^^^^^^^^^^^^^^^^^^
-Well that wasn't too bad, was it? Now we'll think about how to store the rest
-of the information. If we were using a relational database, we would most
-likely have a table of **posts**, a table of **comments** and a table of
-**tags**.  To associate the comments with individual posts, we would put a
-column in the comments table that contained a foreign key to the posts table.
-We'd also need a link table to provide the many-to-many relationship between
-posts and tags. Then we'd need to address the problem of storing the
-specialised post-types (text, image and link). There are several ways we can
-achieve this, but each of them have their problems --- none of them stand out
-as particularly intuitive solutions.
+Now we'll think about how to store the rest of the information. If we were
+using a relational database, we would most likely have a table of **posts**, a
+table of **comments** and a table of **tags**.  To associate the comments with
+individual posts, we would put a column in the comments table that contained a
+foreign key to the posts table.  We'd also need a link table to provide the
+many-to-many relationship between posts and tags. Then we'd need to address the
+problem of storing the specialised post-types (text, image and link). There are
+several ways we can achieve this, but each of them have their problems --- none
+of them stand out as particularly intuitive solutions.
 
 Posts
 """""
@@ -86,7 +85,7 @@ each post type will just have the fields it needs. If we later want to add
 video posts, we don't have to modify the collection at all, we just *start
 using* the new fields we need to support video posts. This fits with the
 Object-Oriented principle of *inheritance* nicely. We can think of
-:class:`Post` as an base class, and :class:`TextPost`, :class:`ImagePost` and
+:class:`Post` as a base class, and :class:`TextPost`, :class:`ImagePost` and
 :class:`LinkPost` as subclasses of :class:`Post`. In fact, MongoEngine supports
 this kind of modelling out of the box::
 
@@ -112,10 +111,10 @@ Tags
 """"
 Now that we have our Post models figured out, how will we attach tags to them?
 MongoDB allows us to store lists of items natively, so rather than having a
-link table, we can just store a list of tags in each post. Also, for both
+link table, we can just store a list of tags in each post. So, for both
 efficiency and simplicity's sake, we'll store the tags as strings directly
 within the post, rather than storing references to tags in a separate
-collection. Especially as tags are generally very short (often even shorted
+collection. Especially as tags are generally very short (often even shorter
 than a document's id), this denormalisation won't impact very strongly on the 
 size of our database. So let's take a look that the code our modified
 :class:`Post` class::
@@ -138,11 +137,11 @@ database, then query the database again for the comments associated with the
 post. This works, but there is no real reason to be storing the comments
 separately from their associated posts, other than to work around the
 relational model. Using MongoDB we can store the comments as a list of
-*embedded documents* directly on the post document. An embedded document should
+*embedded documents* directly on a post document. An embedded document should
 be treated no differently that a regular document; it just doesn't have its own
-collection. Using MongoEngine, we can define the structure of embedded
-documents, along with utility methods, in exactly the same way we do with
-regular documents::
+collection in the database. Using MongoEngine, we can define the structure of
+embedded documents, along with utility methods, in exactly the same way we do
+with regular documents::
 
     class Comment(EmbeddedDocument):
         content = StringField()
@@ -158,23 +157,22 @@ We can then store a list of comment documents in our post document::
 
 Adding data to our Tumblelog
 ----------------------------
-Now that we've defined how our documents will be structured, lets start adding
+Now that we've defined how our documents will be structured, let's start adding
 some documents to the database. Firstly, we'll need to create a :class:`User`
 object::
 
     john = User(email='jdoe@example.com', first_name='John', last_name='Doe')
     john.save()
 
-Simple, eh? Note that only fields with ``required=True`` need to be specified
-in the constructor, we could have also defined our user using attribute
-syntax::
+Note that only fields with ``required=True`` need to be specified in the
+constructor, we could have also defined our user using attribute syntax::
 
     john = User(email='jdoe@example.com')
     john.first_name = 'John'
     john.last_name = 'Doe'
     john.save()
 
-Now that we've got our user in the database, lets add a couple of posts::
+Now that we've got our user in the database, let's add a couple of posts::
 
     post1 = TextPost(title='Fun with MongoEngine', author=john)
     post1.content = 'Took a look at MongoEngine today, looks pretty cool.'
@@ -194,8 +192,8 @@ Accessing our data
 So now we've got a couple of posts in our database, how do we display them?
 Each document class (i.e. any class that inherits either directly or indirectly
 from :class:`mongoengine.Document`) has an :attr:`objects` attribute, which is
-used to access the documents in the database associated with that class. So
-lets see how we can get our posts' titles::
+used to access the documents in the database collection associated with that
+class. So let's see how we can get our posts' titles::
 
     for post in Post.objects:
         print post.title
@@ -216,12 +214,12 @@ only looks for documents that were created using that subclass or one of its
 subclasses.
 
 So how would we display all of our posts, showing only the information that
-corresponds to each post's specific type? As you might have guessed, there is a
-better way than just using each of the subclasses individually. When we used
-:class:`Post`'s :attr:`objects` attribute earlier, the objects being returned
-weren't actually instances of :class:`Post` --- they were instances of the
-subclass of :class:`Post` that matches the post's type. Lets look at how this
-works in practice::
+corresponds to each post's specific type? There is a better way than just using
+each of the subclasses individually. When we used :class:`Post`'s
+:attr:`objects` attribute earlier, the objects being returned weren't actually
+instances of :class:`Post` --- they were instances of the subclass of
+:class:`Post` that matches the post's type. Let's look at how this works in
+practice::
 
     for post in Post.objects:
         print post.title
@@ -242,8 +240,8 @@ Searching our posts by tag
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 The :attr:`objects` attribute of a :class:`mongoengine.Document` is actually a
 :class:`mongoengine.QuerySet` object. This lazily queries the database only
-when you need the data. It may also be filtered to narrow down your query. Lets
-adjust our query so that only posts with the tag "mongodb" are returned::
+when you need the data. It may also be filtered to narrow down your query.
+Let's adjust our query so that only posts with the tag "mongodb" are returned::
 
     for post in Post.objects(tags='mongodb'):
         print post.title
