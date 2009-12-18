@@ -176,6 +176,15 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person_obj['age'], 30)
         self.assertEqual(person_obj['_id'], person.id)
 
+    def test_delete(self):
+        """Ensure that document may be deleted using the delete method.
+        """
+        person = self.Person(name="Test User", age=30)
+        person.save()
+        self.assertEqual(self.Person.objects.count(), 1)
+        person.delete()
+        self.assertEqual(self.Person.objects.count(), 0)
+
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.
         """

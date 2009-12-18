@@ -21,6 +21,12 @@ class Document(BaseDocument):
         object_id = self.objects._collection.save(self.to_mongo())
         self.id = object_id
 
+    def delete(self):
+        """Delete the document from the database. This will only take effect
+        if the document has been previously saved.
+        """
+        self.objects._collection.remove(self.id)
+
     @classmethod
     def drop_collection(cls):
         """Drops the entire collection associated with this Document type from
