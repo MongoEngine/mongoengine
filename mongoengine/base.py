@@ -147,7 +147,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         meta.update(attrs.get('meta', {}))
         attrs['_meta'] = meta
 
-        attrs['_id'] = ObjectIdField()
+        attrs['id'] = ObjectIdField(name='_id')
 
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
@@ -225,7 +225,7 @@ class BaseDocument(object):
         for field_name, field in self._fields.items():
             value = getattr(self, field_name, None)
             if value is not None:
-                data[field_name] = field.to_mongo(value)
+                data[field.name] = field.to_mongo(value)
         data['_cls'] = self._class_name
         data['_types'] = self._superclasses.keys() + [self._class_name]
         return data
@@ -248,7 +248,7 @@ class BaseDocument(object):
             cls = subclasses[class_name]
 
         for field_name, field in cls._fields.items():
-            if field_name in data:
-                data[field_name] = field.to_python(data[field_name])
+            if field.name in data:
+                data[field_name] = field.to_python(data[field.name])
 
         return cls(**data)

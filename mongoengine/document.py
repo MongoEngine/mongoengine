@@ -18,8 +18,8 @@ class Document(BaseDocument):
         """Save the document to the database. If the document already exists,
         it will be updated, otherwise it will be created.
         """
-        _id = self.objects._collection.save(self.to_mongo())
-        self._id = _id
+        object_id = self.objects._collection.save(self.to_mongo())
+        self.id = object_id
 
     @classmethod
     def drop_collection(cls):

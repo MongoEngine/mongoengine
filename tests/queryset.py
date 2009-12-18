@@ -53,7 +53,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
-        self.assertTrue(isinstance(results[0]._id, (pymongo.objectid.ObjectId,
+        self.assertTrue(isinstance(results[0].id, (pymongo.objectid.ObjectId,
                                                     str, unicode)))
         self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
@@ -99,7 +99,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User A")
         
         # Find a document using just the object id
-        person = self.Person.objects.with_id(person1._id)
+        person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
 
     def test_find_embedded(self):
