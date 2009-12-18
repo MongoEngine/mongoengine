@@ -11,8 +11,22 @@ class QuerySet(object):
     def __init__(self, document, collection):
         self._document = document
         self._collection = collection
-        self._query = {'_types': self._document._class_name}
+        self._query = {}
         self._cursor_obj = None
+        self._ordering = []
+        
+    def ensure_index(self, key_or_list, direction=None):
+        """Ensure that the given indexes are in place.
+        """
+        if isinstance(key_or_list, basestring):
+            # single-field indexes needn't specify a direction
+            if key_or_list.startswith("-"):
+                key_or_list = key_or_list[1:]
+            self._collection.ensure_index(key_or_list)
+        elif isinstance(key_or_list, (list, tuple)):
+            print key_or_list
+            self._collection.ensure_index(key_or_list)
+        return self
 
     def __call__(self, **query):
         """Filter the selected documents by calling the queryset with a query.
@@ -91,7 +105,36 @@ class QuerySet(object):
         """
         self._cursor.skip(n)
         return self
+        
+    def order_by(self, *params):
+        """Apply ordering conditions, Django-style.
+        
+        e.g., ``Model.objects.().order_by("-published_date", "ordering")``
+        will order first by ``published_date DESC``, and then ``ordering ASC``.
+        
+        """
+        if not params:
+            self._ordering = []
+        for param in params:
+            if param.startswith("-"):
+                param = param[1:]
+                sort_dir = pymongo.DESCENDING
+            else:
+                sort_dir = pymongo.ASCENDING
+            sort_rule = (param, sort_dir)
 
+            if not sort_rule in self._ordering:
+                self._ordering.append(sort_rule)
+        self._cursor.sort(self._ordering)
+        return self
+        
+    def explain(self, format=False):
+        plan = self._cursor.explain()
+        if format:
+            import pprint
+            plan = pprint.pformat(plan)
+        return plan
+        
     def delete(self):
         """Delete the documents matched by the query.
         """
