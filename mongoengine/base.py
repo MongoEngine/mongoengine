@@ -166,10 +166,11 @@ class BaseDocument(object):
             if attr_name in values:
                 setattr(self, attr_name, values.pop(attr_name))
             else:
-                if attr_value.required:
+                # Use default value if present
+                value = getattr(self, attr_name, None)
+                if value is None and attr_value.required:
                     raise ValidationError('Field "%s" is required' % attr_name)
-                # Use default value
-                setattr(self, attr_name, getattr(self, attr_name, None))
+                setattr(self, attr_name, value)
 
     @classmethod
     def _get_subclasses(cls):
