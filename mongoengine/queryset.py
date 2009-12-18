@@ -97,6 +97,22 @@ class QuerySet(object):
         """
         self._collection.remove(self._query)
 
+    def sort(self, *keys):
+        """Sort the QuerySet by the keys. The order may be specified by 
+        prepending each of the keys by a + or a -. Ascending order is assumed.
+        """
+        key_list = []
+        for key in keys:
+            direction = pymongo.ASCENDING
+            if key[0] == '-':
+                direction = pymongo.DESCENDING
+            if key[0] in ('-', '+'):
+                key = key[1:]
+            key_list.append((key, direction)) 
+
+        self._cursor.sort(key_list)
+        return self
+
     def __iter__(self):
         return self
 

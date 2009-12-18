@@ -25,7 +25,8 @@ class Document(BaseDocument):
         """Delete the document from the database. This will only take effect
         if the document has been previously saved.
         """
-        self.objects._collection.remove(self.id)
+        object_id = self._fields['id'].to_mongo(self.id)
+        self.__class__.objects(_id=object_id).delete()
 
     @classmethod
     def drop_collection(cls):
