@@ -111,7 +111,8 @@ class DocumentMetaclass(type):
 
         # Add the document's fields to the _fields attribute
         for attr_name, attr_value in attrs.items():
-            if issubclass(attr_value.__class__, BaseField):
+            if hasattr(attr_value, "__class__") and \
+                issubclass(attr_value.__class__, BaseField):
                 if not attr_value.name:
                     attr_value.name = attr_name
                 doc_fields[attr_name] = attr_value
@@ -135,7 +136,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if attrs.get('__metaclass__') == TopLevelDocumentMetaclass:
             return super_new(cls, name, bases, attrs)
 
-        collection = name.lower()
+        collection = attrs.get('__collection__', name.lower())
+        
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
@@ -233,9 +235,14 @@ class BaseDocument(object):
     def _from_son(cls, son):
         """Create an instance of a Document (subclass) from a PyMongo SOM.
         """
-        class_name = son[u'_cls']
+        # get the class name from the document, falling back to the given
+        # class if unavailable
+        class_name = son.get(u'_cls', cls._class_name)
+
         data = dict((str(key), value) for key, value in son.items())
-        del data['_cls']
+
+        if '_cls' in data:
+            del data['_cls']
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
