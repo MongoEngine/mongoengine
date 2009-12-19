@@ -87,7 +87,7 @@ class DateTimeField(BaseField):
 
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of 
-    EmbeddedDocument. 
+    :class:`~mongoengine.EmbeddedDocument`. 
     """
 
     def __init__(self, document, **kwargs):
@@ -179,19 +179,19 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document):
         if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
-            _id = document
+            id_ = document
         else:
             try:
-                _id = document._id
+                id_ = document.id
             except:
                 raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
 
-        if not isinstance(_id, pymongo.objectid.ObjectId):
-            _id = pymongo.objectid.ObjectId(_id)
+        if not isinstance(id_, pymongo.objectid.ObjectId):
+            id_ = pymongo.objectid.ObjectId(id_)
 
         collection = self.document_type._meta['collection']
-        return pymongo.dbref.DBRef(collection, _id)
+        return pymongo.dbref.DBRef(collection, id_)
 
     def validate(self, value):
         assert(isinstance(value, (self.document_type, pymongo.dbref.DBRef)))

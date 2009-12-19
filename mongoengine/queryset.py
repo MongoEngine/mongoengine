@@ -5,15 +5,19 @@ import pymongo
 
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
-    providing Document objects as the results.
+    providing :class:`~mongoengine.Document` objects as the results.
     """
     
     def __init__(self, document, collection):
         self._document = document
         self._collection = collection
         self._query = {}
+
+        # If inheritance is allowed, only return instances and instances of
+        # subclasses of the class being used
+        if document._meta.get('allow_inheritance'):
+            self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
-        self._ordering = []
         
     def ensure_index(self, key_or_list, direction=None):
         """Ensure that the given indexes are in place.
@@ -29,7 +33,8 @@ class QuerySet(object):
         return self
 
     def __call__(self, **query):
-        """Filter the selected documents by calling the queryset with a query.
+        """Filter the selected documents by calling the 
+        :class:`~mongoengine.QuerySet` with a query.
         """
         self._query.update(QuerySet._transform_query(**query))
         return self
@@ -73,7 +78,7 @@ class QuerySet(object):
         return result
 
     def with_id(self, object_id):
-        """Retrieve the object matching the _id provided.
+        """Retrieve the object matching the id provided.
         """
         if not isinstance(object_id, pymongo.objectid.ObjectId):
             object_id = pymongo.objectid.ObjectId(object_id)
@@ -84,7 +89,7 @@ class QuerySet(object):
         return result
 
     def next(self):
-        """Wrap the result in a Document object.
+        """Wrap the result in a :class:`~mongoengine.Document` object.
         """
         return self._document._from_son(self._cursor.next())
 
@@ -94,41 +99,54 @@ class QuerySet(object):
         return self._cursor.count()
 
     def limit(self, n):
-        """Limit the number of returned documents to.
+        """Limit the number of returned documents to `n`. This may also be
+        achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
         """
         self._cursor.limit(n)
         # Return self to allow chaining
         return self
 
     def skip(self, n):
-        """Skip n documents before returning the results.
+        """Skip `n` documents before returning the results. This may also be
+        achieved using array-slicing syntax (e.g. ``User.objects[5:]``).
         """
         self._cursor.skip(n)
         return self
-        
-    def order_by(self, *params):
-        """Apply ordering conditions, Django-style.
-        
-        e.g., ``Model.objects.().order_by("-published_date", "ordering")``
-        will order first by ``published_date DESC``, and then ``ordering ASC``.
-        
-        """
-        if not params:
-            self._ordering = []
-        for param in params:
-            if param.startswith("-"):
-                param = param[1:]
-                sort_dir = pymongo.DESCENDING
-            else:
-                sort_dir = pymongo.ASCENDING
-            sort_rule = (param, sort_dir)
 
-            if not sort_rule in self._ordering:
-                self._ordering.append(sort_rule)
-        self._cursor.sort(self._ordering)
+    def __getitem__(self, key):
+        """Support skip and limit using getitem and slicing syntax.
+        """
+        # Slice provided
+        if isinstance(key, slice):
+            self._cursor_obj = self._cursor[key]
+            # Allow further QuerySet modifications to be performed
+            return self
+        # Integer index provided
+        elif isinstance(key, int):
+            return self._document._from_son(self._cursor[key])
+
+    def order_by(self, *keys):
+        """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
+        order may be specified by prepending each of the keys by a + or a -.
+        Ascending order is assumed.
+        """
+        key_list = []
+        for key in keys:
+            direction = pymongo.ASCENDING
+            if key[0] == '-':
+                direction = pymongo.DESCENDING
+            if key[0] in ('-', '+'):
+                key = key[1:]
+            key_list.append((key, direction)) 
+
+        self._cursor.sort(key_list)
         return self
         
     def explain(self, format=False):
+        """Return an explain plan record for the 
+        :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
+        """
+
         plan = self._cursor.explain()
         if format:
             import pprint

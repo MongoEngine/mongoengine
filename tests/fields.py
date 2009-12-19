@@ -46,10 +46,10 @@ class FieldTest(unittest.TestCase):
             name = StringField()
         
         person = Person(name='Test User')
-        self.assertRaises(AttributeError, getattr, person, '_id')
-        self.assertRaises(ValidationError, person.__setattr__, '_id', 47)
-        self.assertRaises(ValidationError, person.__setattr__, '_id', 'abc')
-        person._id = '497ce96f395f2f052a494fd4'
+        self.assertRaises(AttributeError, getattr, person, 'id')
+        self.assertRaises(ValidationError, person.__setattr__, 'id', 47)
+        self.assertRaises(ValidationError, person.__setattr__, 'id', 'abc')
+        person.id = '497ce96f395f2f052a494fd4'
 
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.

@@ -41,7 +41,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Person._fields['name'], name_field)
         self.assertEqual(Person._fields['age'], age_field)
         self.assertFalse('non_field' in Person._fields)
-        self.assertTrue('_id' in Person._fields)
+        self.assertTrue('id' in Person._fields)
         # Test iteration over fields
         fields = list(Person())
         self.assertTrue('name' in fields and 'age' in fields)
@@ -126,6 +126,36 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Employee._meta['collection'], 
                          self.Person._meta['collection'])
 
+    def test_allow_inheritance(self):
+        """Ensure that inheritance may be disabled on simple classes and that
+        _cls and _types will not be used.
+        """
+        class Animal(Document):
+            meta = {'allow_inheritance': False}
+            name = StringField()
+
+        Animal.drop_collection()
+
+        def create_dog_class():
+            class Dog(Animal):
+                pass
+        self.assertRaises(ValueError, create_dog_class)
+        
+        # Check that _cls etc aren't present on simple documents
+        dog = Animal(name='dog')
+        dog.save()
+        collection = self.db[Animal._meta['collection']]
+        obj = collection.find_one()
+        self.assertFalse('_cls' in obj)
+        self.assertFalse('_types' in obj)
+
+        Animal.drop_collection()
+
+        def create_employee_class():
+            class Employee(self.Person):
+                meta = {'allow_inheritance': False}
+        self.assertRaises(ValueError, create_employee_class)
+
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
@@ -145,7 +175,7 @@ class DocumentTest(unittest.TestCase):
         person['name'] = 'Another User'
         self.assertEquals(person['name'], 'Another User')
 
-        # Length = length(assigned fields + _id)
+        # Length = length(assigned fields + id)
         self.assertEquals(len(person), 3)
 
         self.assertTrue('age' in person)
@@ -160,7 +190,7 @@ class DocumentTest(unittest.TestCase):
             content = StringField()
         
         self.assertTrue('content' in Comment._fields)
-        self.assertFalse('_id' in Comment._fields)
+        self.assertFalse('id' in Comment._fields)
         self.assertFalse(hasattr(Comment, '_meta'))
 
     def test_save(self):
@@ -174,14 +204,23 @@ class DocumentTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(person_obj['_id'], person._id)
+        self.assertEqual(person_obj['_id'], person.id)
+
+    def test_delete(self):
+        """Ensure that document may be deleted using the delete method.
+        """
+        person = self.Person(name="Test User", age=30)
+        person.save()
+        self.assertEqual(self.Person.objects.count(), 1)
+        person.delete()
+        self.assertEqual(self.Person.objects.count(), 0)
 
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.
         """
         # Create person object and save it to the database
         person = self.Person(name='Test User', age=30, 
-                             _id='497ce96f395f2f052a494fd4')
+                             id='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
         collection = self.db[self.Person._meta['collection']]
@@ -268,7 +307,7 @@ class DocumentTest(unittest.TestCase):
         post_obj.author.age = 25
         post_obj.author.save()
 
-        author = self.Person.objects(name='Test User').first()
+        author = list(self.Person.objects(name='Test User'))[-1]
         self.assertEqual(author.age, 25)
 
         BlogPost.drop_collection()

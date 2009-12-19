@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to MongoEngine's documentation!
+MongoEngine User Documentation
 =======================================
 
 Contents:
@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    tutorial.rst
+   apireference.rst
 
 Indices and tables
 ==================
