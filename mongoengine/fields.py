@@ -87,7 +87,7 @@ class DateTimeField(BaseField):
 
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of 
-    EmbeddedDocument. 
+    :class:`~mongoengine.EmbeddedDocument`. 
     """
 
     def __init__(self, document, **kwargs):
