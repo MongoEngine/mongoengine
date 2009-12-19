@@ -98,17 +98,31 @@ class QuerySet(object):
         return self._cursor.count()
 
     def limit(self, n):
-        """Limit the number of returned documents to `n`.
+        """Limit the number of returned documents to `n`. This may also be
+        achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
         """
         self._cursor.limit(n)
         # Return self to allow chaining
         return self
 
     def skip(self, n):
-        """Skip `n` documents before returning the results.
+        """Skip `n` documents before returning the results. This may also be
+        achieved using array-slicing syntax (e.g. ``User.objects[5:]``).
         """
         self._cursor.skip(n)
         return self
+
+    def __getitem__(self, key):
+        """Support skip and limit using getitem and slicing syntax.
+        """
+        # Slice provided
+        if isinstance(key, slice):
+            self._cursor_obj = self._cursor[key]
+            # Allow further QuerySet modifications to be performed
+            return self
+        # Integer index provided
+        elif isinstance(key, int):
+            return self._document._from_son(self._cursor[key])
 
     def order_by(self, *keys):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The

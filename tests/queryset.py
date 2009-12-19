@@ -77,6 +77,26 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
+        person3 = self.Person(name="User C", age=40)
+        person3.save()
+
+        # Test slice limit
+        people = list(self.Person.objects[:2])
+        self.assertEqual(len(people), 2)
+        self.assertEqual(people[0].name, 'User A')
+        self.assertEqual(people[1].name, 'User B')
+
+        # Test slice skip
+        people = list(self.Person.objects[1:])
+        self.assertEqual(len(people), 2)
+        self.assertEqual(people[0].name, 'User B')
+        self.assertEqual(people[1].name, 'User C')
+
+        # Test slice limit and skip
+        people = list(self.Person.objects[1:2])
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0].name, 'User B')
+
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
         """
@@ -97,6 +117,15 @@ class QuerySetTest(unittest.TestCase):
 
         person = self.Person.objects(age__lt=30).first()
         self.assertEqual(person.name, "User A")
+
+        # Use array syntax
+        person = self.Person.objects[0]
+        self.assertEqual(person.name, "User A")
+
+        person = self.Person.objects[1]
+        self.assertEqual(person.name, "User B")
+
+        self.assertRaises(IndexError, self.Person.objects.__getitem__, 2)
         
         # Find a document using just the object id
         person = self.Person.objects.with_id(person1.id)
