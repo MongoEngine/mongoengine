@@ -137,23 +137,23 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects.delete()
         self.assertEqual(self.Person.objects.count(), 0)
 
-    def test_sort(self):
-        """Ensure that QuerySets may be sorted.
+    def test_order_by(self):
+        """Ensure that QuerySets may be ordered.
         """
         self.Person(name="User A", age=20).save()
         self.Person(name="User B", age=40).save()
         self.Person(name="User C", age=30).save()
 
-        names = [p.name for p in self.Person.objects.sort('-age')]
+        names = [p.name for p in self.Person.objects.order_by('-age')]
         self.assertEqual(names, ['User B', 'User C', 'User A'])
 
-        names = [p.name for p in self.Person.objects.sort('+age')]
+        names = [p.name for p in self.Person.objects.order_by('+age')]
         self.assertEqual(names, ['User A', 'User C', 'User B'])
 
-        names = [p.name for p in self.Person.objects.sort('age')]
+        names = [p.name for p in self.Person.objects.order_by('age')]
         self.assertEqual(names, ['User A', 'User C', 'User B'])
         
-        ages = [p.age for p in self.Person.objects.sort('-name')]
+        ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
     def tearDown(self):

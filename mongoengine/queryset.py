@@ -12,8 +12,11 @@ class QuerySet(object):
         self._document = document
         self._collection = collection
         self._query = {}
+        # If inheritance is allowed, only return instances and instances of
+        # subclasses of the class being used
+        if document._meta.get('allow_inheritance'):
+            self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
-        self._ordering = []
         
     def ensure_index(self, key_or_list, direction=None):
         """Ensure that the given indexes are in place.
@@ -105,43 +108,9 @@ class QuerySet(object):
         """
         self._cursor.skip(n)
         return self
-        
-    def order_by(self, *params):
-        """Apply ordering conditions, Django-style.
-        
-        e.g., ``Model.objects.().order_by("-published_date", "ordering")``
-        will order first by ``published_date DESC``, and then ``ordering ASC``.
-        
-        """
-        if not params:
-            self._ordering = []
-        for param in params:
-            if param.startswith("-"):
-                param = param[1:]
-                sort_dir = pymongo.DESCENDING
-            else:
-                sort_dir = pymongo.ASCENDING
-            sort_rule = (param, sort_dir)
 
-            if not sort_rule in self._ordering:
-                self._ordering.append(sort_rule)
-        self._cursor.sort(self._ordering)
-        return self
-        
-    def explain(self, format=False):
-        plan = self._cursor.explain()
-        if format:
-            import pprint
-            plan = pprint.pformat(plan)
-        return plan
-        
-    def delete(self):
-        """Delete the documents matched by the query.
-        """
-        self._collection.remove(self._query)
-
-    def sort(self, *keys):
-        """Sort the QuerySet by the keys. The order may be specified by 
+    def order_by(self, *keys):
+        """Order the QuerySet by the keys. The order may be specified by 
         prepending each of the keys by a + or a -. Ascending order is assumed.
         """
         key_list = []
@@ -155,6 +124,18 @@ class QuerySet(object):
 
         self._cursor.sort(key_list)
         return self
+        
+    def explain(self, format=False):
+        plan = self._cursor.explain()
+        if format:
+            import pprint
+            plan = pprint.pformat(plan)
+        return plan
+        
+    def delete(self):
+        """Delete the documents matched by the query.
+        """
+        self._collection.remove(self._query)
 
     def __iter__(self):
         return self

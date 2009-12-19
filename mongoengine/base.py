@@ -136,17 +136,32 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if attrs.get('__metaclass__') == TopLevelDocumentMetaclass:
             return super_new(cls, name, bases, attrs)
 
-        collection = attrs.get('__collection__', name.lower())
+        collection = name.lower()
         
+        simple_class = True
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
+                # Ensure that the Document class may be subclassed - 
+                # inheritance may be disabled to remove dependency on 
+                # additional fields _cls and _types
+                if base._meta.get('allow_inheritance', True) == False:
+                    raise ValueError('Document %s may not be subclassed' %
+                                     base.__name__)
+                else:
+                    simple_class = False
                 collection = base._meta['collection']
 
         meta = {
             'collection': collection,
+            'allow_inheritance': True,
         }
         meta.update(attrs.get('meta', {}))
+        # Only simple classes - direct subclasses of Document - may set
+        # allow_inheritance to False
+        if not simple_class and not meta['allow_inheritance']:
+            raise ValueError('Only direct subclasses of Document may set '
+                             '"allow_inheritance" to False')
         attrs['_meta'] = meta
 
         attrs['id'] = ObjectIdField(name='_id')
@@ -228,8 +243,11 @@ class BaseDocument(object):
             value = getattr(self, field_name, None)
             if value is not None:
                 data[field.name] = field.to_mongo(value)
-        data['_cls'] = self._class_name
-        data['_types'] = self._superclasses.keys() + [self._class_name]
+        # Only add _cls and _types if allow_inheritance is not False
+        if not (hasattr(self, '_meta') and
+                self._meta.get('allow_inheritance', True) == False):
+            data['_cls'] = self._class_name
+            data['_types'] = self._superclasses.keys() + [self._class_name]
         return data
     
     @classmethod
@@ -241,6 +259,9 @@ class BaseDocument(object):
         class_name = son.get(u'_cls', cls._class_name)
 
         data = dict((str(key), value) for key, value in son.items())
+
+        if '_types' in data:
+            del data['_types']
 
         if '_cls' in data:
             del data['_cls']

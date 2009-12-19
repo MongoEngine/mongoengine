@@ -126,6 +126,36 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Employee._meta['collection'], 
                          self.Person._meta['collection'])
 
+    def test_allow_inheritance(self):
+        """Ensure that inheritance may be disabled on simple classes and that
+        _cls and _types will not be used.
+        """
+        class Animal(Document):
+            meta = {'allow_inheritance': False}
+            name = StringField()
+
+        Animal.drop_collection()
+
+        def create_dog_class():
+            class Dog(Animal):
+                pass
+        self.assertRaises(ValueError, create_dog_class)
+        
+        # Check that _cls etc aren't present on simple documents
+        dog = Animal(name='dog')
+        dog.save()
+        collection = self.db[Animal._meta['collection']]
+        obj = collection.find_one()
+        self.assertFalse('_cls' in obj)
+        self.assertFalse('_types' in obj)
+
+        Animal.drop_collection()
+
+        def create_employee_class():
+            class Employee(self.Person):
+                meta = {'allow_inheritance': False}
+        self.assertRaises(ValueError, create_employee_class)
+
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
