@@ -159,6 +159,26 @@ class QuerySet(object):
     def __iter__(self):
         return self
 
+    def item_frequencies(self, list_field):
+        """Returns a dictionary of all items present in a list field across
+        the whole queried set of documents, and their corresponding frequency.
+        This is useful for generating tag clouds, or searching documents. 
+        """
+        freq_func = """
+            function(collection, query, listField) {
+                var frequencies = {};
+                db[collection].find(query).forEach(function(doc) {
+                    doc[listField].forEach(function(item) {
+                        frequencies[item] = 1 + (frequencies[item] || 0);
+                    });
+                });
+                return frequencies;
+            }
+        """
+        db = _get_db()
+        collection = self._document._meta['collection']
+        return db.eval(freq_func, collection, self._query, list_field)
+
 
 class QuerySetManager(object):
 

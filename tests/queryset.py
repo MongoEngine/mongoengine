@@ -185,6 +185,35 @@ class QuerySetTest(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
+    def test_item_frequencies(self):
+        """Ensure that item frequencies are properly generated from lists.
+        """
+        class BlogPost(Document):
+            hits = IntField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        BlogPost(hits=1, tags=['music', 'film', 'actors']).save()
+        BlogPost(hits=2, tags=['music']).save()
+        BlogPost(hits=3, tags=['music', 'actors']).save()
+
+        f = BlogPost.objects.item_frequencies('tags')
+        f = dict((key, int(val)) for key, val in f.items())
+        self.assertEqual(set(['music', 'film', 'actors']), set(f.keys()))
+        self.assertEqual(f['music'], 3)
+        self.assertEqual(f['actors'], 2)
+        self.assertEqual(f['film'], 1)
+
+        # Ensure query is taken into account
+        f = BlogPost.objects(hits__gt=1).item_frequencies('tags')
+        f = dict((key, int(val)) for key, val in f.items())
+        self.assertEqual(set(['music', 'actors']), set(f.keys()))
+        self.assertEqual(f['music'], 2)
+        self.assertEqual(f['actors'], 1)
+
+        BlogPost.drop_collection()
+
     def tearDown(self):
         self.Person.drop_collection()
 
