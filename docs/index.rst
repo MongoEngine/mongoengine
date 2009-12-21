@@ -6,18 +6,20 @@
 MongoEngine User Documentation
 =======================================
 
-Contents:
+MongoEngine is an Object-Document Mapper, written in Python for working with 
+MongoDB. The source is available on 
+`GitHub <http://github.com/hmarr/mongoengine>`_.
 
 .. toctree::
    :maxdepth: 2
 
    tutorial.rst
+   userguide.rst
    apireference.rst
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 

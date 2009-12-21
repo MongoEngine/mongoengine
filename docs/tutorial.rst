@@ -9,14 +9,14 @@ application. As the purpose of this tutorial is to introduce MongoEngine, we'll
 focus on the data-modelling side of the application, leaving out a user
 interface.
 
-Connecting to MongoDB
----------------------
+Getting started
+---------------
 Before we start, make sure that a copy of MongoDB is running in an accessible
 location --- running it locally will be easier, but if that is not an option
 then it may be run on a remote server.
 
 Before we can start using MongoEngine, we need to tell it how to connect to our
-instance of **mongod**. For this we use the :func:`mongoengine.connect`
+instance of :program:`mongod`. For this we use the :func:`~mongoengine.connect`
 function. The only argument we need to provide is the name of the MongoDB
 database to use::
 
@@ -24,11 +24,7 @@ database to use::
     
     connect('tumblelog')
 
-This will connect to a mongod instance running locally on the default port. To
-connect to a mongod instance running elsewhere, specify the host and port
-explicitly::
-
-    connect('tumblelog', host='192.168.1.35', port=12345)
+For more information about connecting to MongoDB see :ref:`guide-connecting`.
 
 Defining our documents
 ----------------------
