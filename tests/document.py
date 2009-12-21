@@ -156,6 +156,30 @@ class DocumentTest(unittest.TestCase):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
 
+    def test_collection_name(self):
+        """Ensure that a collection with a specified name may be used.
+        """
+        collection = 'personCollTest'
+        if collection in self.db.collection_names():
+            self.db.drop_collection(collection)
+
+        class Person(Document):
+            name = StringField()
+            meta = {'collection': collection}
+        
+        user = Person(name="Test User")
+        user.save()
+        self.assertTrue(collection in self.db.collection_names())
+
+        user_obj = self.db[collection].find_one()
+        self.assertEqual(user_obj['name'], "Test User")
+
+        user_obj = Person.objects[0]
+        self.assertEqual(user_obj.name, "Test User")
+
+        Person.drop_collection()
+        self.assertFalse(collection in self.db.collection_names())
+
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
