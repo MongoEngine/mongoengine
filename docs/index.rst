@@ -13,9 +13,9 @@ MongoDB. The source is available on
 .. toctree::
    :maxdepth: 2
 
-   tutorial.rst
-   userguide.rst
-   apireference.rst
+   tutorial
+   userguide
+   apireference
 
 Indices and tables
 ==================

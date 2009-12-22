@@ -1,3 +1,4 @@
+========
 Tutorial
 ========
 This tutorial introduces **MongoEngine** by means of example --- we will walk
@@ -10,7 +11,7 @@ focus on the data-modelling side of the application, leaving out a user
 interface.
 
 Getting started
----------------
+===============
 Before we start, make sure that a copy of MongoDB is running in an accessible
 location --- running it locally will be easier, but if that is not an option
 then it may be run on a remote server.
@@ -27,7 +28,7 @@ database to use::
 For more information about connecting to MongoDB see :ref:`guide-connecting`.
 
 Defining our documents
-----------------------
+======================
 MongoDB is *schemaless*, which means that no schema is enforced by the database
 --- we may add and remove fields however we want and MongoDB won't complain.
 This makes life a lot easier in many regards, especially when there is a change
@@ -46,7 +47,7 @@ specified tag.  Finally, it would be nice if **comments** could be added to
 posts. We'll start with **users**, as the others are slightly more involved.
 
 Users
-^^^^^
+-----
 Just as if we were using a relational database with an ORM, we need to define
 which fields a :class:`User` may have, and what their types will be::
 
@@ -61,7 +62,7 @@ MongoDB --- this will only be enforced at the application level. Also, the User
 documents will be stored in a MongoDB *collection* rather than a table.
 
 Posts, Comments and Tags
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 Now we'll think about how to store the rest of the information. If we were
 using a relational database, we would most likely have a table of **posts**, a
 table of **comments** and a table of **tags**.  To associate the comments with
@@ -73,7 +74,7 @@ several ways we can achieve this, but each of them have their problems --- none
 of them stand out as particularly intuitive solutions.
 
 Posts
-"""""
+^^^^^
 But MongoDB *isn't* a relational database, so we're not going to do it that
 way. As it turns out, we can use MongoDB's schemaless nature to provide us with
 a much nicer solution. We will store all of the posts in *one collection* ---
@@ -99,12 +100,12 @@ this kind of modelling out of the box::
         link_url = StringField()
 
 We are storing a reference to the author of the posts using a
-:class:`mongoengine.ReferenceField` object. These are similar to foreign key
+:class:`~mongoengine.ReferenceField` object. These are similar to foreign key
 fields in traditional ORMs, and are automatically translated into references
 when they are saved, and dereferenced when they are loaded.
 
 Tags
-""""
+^^^^
 Now that we have our Post models figured out, how will we attach tags to them?
 MongoDB allows us to store lists of items natively, so rather than having a
 link table, we can just store a list of tags in each post. So, for both
@@ -120,13 +121,13 @@ size of our database. So let's take a look that the code our modified
         author = ReferenceField(User)
         tags = ListField(StringField(max_length=30))
 
-The :class:`mongoengine.ListField` object that is used to define a Post's tags
+The :class:`~mongoengine.ListField` object that is used to define a Post's tags
 takes a field object as its first argument --- this means that you can have
 lists of any type of field (including lists). Note that we don't need to
 modify the specialised post types as they all inherit from :class:`Post`.
 
 Comments
-""""""""
+^^^^^^^^
 A comment is typically associated with *one* post. In a relational database, to
 display a post with its comments, we would have to retrieve the post from the
 database, then query the database again for the comments associated with the
@@ -152,7 +153,7 @@ We can then store a list of comment documents in our post document::
         comments = ListField(EmbeddedDocumentField(Comment))
 
 Adding data to our Tumblelog
-----------------------------
+============================
 Now that we've defined how our documents will be structured, let's start adding
 some documents to the database. Firstly, we'll need to create a :class:`User`
 object::
@@ -184,10 +185,10 @@ Note that if you change a field on a object that has already been saved, then
 call :meth:`save` again, the document will be updated.
 
 Accessing our data
-------------------
+==================
 So now we've got a couple of posts in our database, how do we display them?
 Each document class (i.e. any class that inherits either directly or indirectly
-from :class:`mongoengine.Document`) has an :attr:`objects` attribute, which is
+from :class:`~mongoengine.Document`) has an :attr:`objects` attribute, which is
 used to access the documents in the database collection associated with that
 class. So let's see how we can get our posts' titles::
 
@@ -195,7 +196,7 @@ class. So let's see how we can get our posts' titles::
         print post.title
 
 Retrieving type-specific information
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------
 This will print the titles of our posts, one on each line. But What if we want
 to access the type-specific data (link_url, content, etc.)? One way is simply
 to use the :attr:`objects` attribute of a subclass of :class:`Post`::
@@ -205,7 +206,7 @@ to use the :attr:`objects` attribute of a subclass of :class:`Post`::
 
 Using TextPost's :attr:`objects` attribute only returns documents that were
 created using :class:`TextPost`. Actually, there is a more general rule here:
-the :attr:`objects` attribute of any subclass of :class:`mongoengine.Document`
+the :attr:`objects` attribute of any subclass of :class:`~mongoengine.Document`
 only looks for documents that were created using that subclass or one of its
 subclasses.
 
@@ -233,20 +234,21 @@ This would print the title of each post, followed by the content if it was a
 text post, and "Link: <url>" if it was a link post.
 
 Searching our posts by tag
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-The :attr:`objects` attribute of a :class:`mongoengine.Document` is actually a
-:class:`mongoengine.QuerySet` object. This lazily queries the database only
-when you need the data. It may also be filtered to narrow down your query.
-Let's adjust our query so that only posts with the tag "mongodb" are returned::
+--------------------------
+The :attr:`objects` attribute of a :class:`~mongoengine.Document` is actually a
+:class:`~mongoengine.queryset.QuerySet` object. This lazily queries the
+database only when you need the data. It may also be filtered to narrow down
+your query.  Let's adjust our query so that only posts with the tag "mongodb"
+are returned::
 
     for post in Post.objects(tags='mongodb'):
         print post.title
 
-There are also methods available on :class:`mongoengine.QuerySet` objects that
-allow different results to be returned, for example, calling :meth:`first` on
-the :attr:`objects` attribute will return a single document, the first matched
-by the query you provide. Aggregation functions may also be used on
-:class:`mongoengine.QuerySet` objects::
+There are also methods available on :class:`~mongoengine.queryset.QuerySet`
+objects that allow different results to be returned, for example, calling
+:meth:`first` on the :attr:`objects` attribute will return a single document,
+the first matched by the query you provide. Aggregation functions may also be
+used on :class:`~mongoengine.queryset.QuerySet` objects::
 
     num_posts = Post.objects(tags='mongodb').count()
     print 'Found % posts with tag "mongodb"' % num_posts
