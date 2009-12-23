@@ -44,8 +44,8 @@ class Document(BaseDocument):
         document already exists, it will be updated, otherwise it will be
         created.
         """
-        object_id = self.objects._collection.save(self.to_mongo())
-        self.id = object_id
+        object_id = self.__class__.objects._collection.save(self.to_mongo())
+        self.id = self._fields['id'].to_python(object_id)
 
     def delete(self):
         """Delete the :class:`~mongoengine.Document` from the database. This

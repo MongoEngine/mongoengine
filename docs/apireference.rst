@@ -27,6 +27,8 @@ Querying
 .. autoclass:: mongoengine.queryset.QuerySet
    :members:
 
+.. autofunction:: mongoengine.queryset.queryset_manager
+
 Fields
 ======
 

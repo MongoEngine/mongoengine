@@ -214,6 +214,32 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_custom_manager(self):
+        """Ensure that custom QuerySetManager instances work as expected.
+        """
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+            @queryset_manager
+            def music_posts(queryset):
+                return queryset(tags='music')
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(tags=['music', 'film'])
+        post1.save()
+        post2 = BlogPost(tags=['music'])
+        post2.save()
+        post3 = BlogPost(tags=['film', 'actors'])
+        post3.save()
+
+        self.assertEqual([p.id for p in BlogPost.objects],
+                         [post1.id, post2.id, post3.id])
+        self.assertEqual([p.id for p in BlogPost.music_posts],
+                         [post1.id, post2.id])
+
+        BlogPost.drop_collection()
+
     def tearDown(self):
         self.Person.drop_collection()
 

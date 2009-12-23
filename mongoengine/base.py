@@ -169,7 +169,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
-        new_class.objects = QuerySetManager(new_class)
+        new_class.objects = QuerySetManager()
 
         return new_class
 

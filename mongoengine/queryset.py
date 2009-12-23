@@ -3,6 +3,9 @@ from connection import _get_db
 import pymongo
 
 
+__all__ = ['queryset_manager']
+
+
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
     providing :class:`~mongoengine.Document` objects as the results.
@@ -182,12 +185,9 @@ class QuerySet(object):
 
 class QuerySetManager(object):
 
-    def __init__(self, document):
-        db = _get_db()
-        self._document = document
-        self._collection_name = document._meta['collection']
-        # This will create the collection if it doesn't exist
-        self._collection = db[self._collection_name]
+    def __init__(self, manager_func=None):
+        self._manager_func = manager_func
+        self._collection = None
 
     def __get__(self, instance, owner):
         """Descriptor for instantiating a new QuerySet object when 
@@ -196,6 +196,22 @@ class QuerySetManager(object):
         if instance is not None:
             # Document class being used rather than a document object
             return self
+
+        if self._collection is None:
+            db = _get_db()
+            self._collection = db[owner._meta['collection']]
         
-        # self._document should be the same as owner
-        return QuerySet(self._document, self._collection)
+        # owner is the document that contains the QuerySetManager
+        queryset = QuerySet(owner, self._collection)
+        if self._manager_func:
+            queryset = self._manager_func(queryset)
+        return queryset
+
+def queryset_manager(func):
+    """Decorator that allows you to define custom QuerySet managers on 
+    :class:`~mongoengine.Document` classes. The manager must be a function that
+    accepts a :class:`~mongoengine.queryset.QuerySet` as its only argument, and
+    returns a :class:`~mongoengine.queryset.QuerySet`, probably the same one 
+    but modified in some way.
+    """
+    return QuerySetManager(func)
