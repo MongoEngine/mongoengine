@@ -16,3 +16,55 @@ Dependencies
 ============
 - pymongo 1.1+
 - sphinx (optional - for documentation generation)
+
+Examples
+========
+::
+    class BlogPost(Document):
+        title = StringField(required=True, max_length=200)
+        posted = DateTimeField(default=datetime.datetime.now)
+        tags = ListField(StringField(max_length=50))
+
+    class TextPost(BlogPost):
+        content = StringField(required=True)
+
+    class LinkPost(BlogPost):
+        url = StringField(required=True)
+
+    # Create a text-based post
+    >>> post1 = TextPost(title='Using MongoEngine', content='See the tutorial')
+    >>> post1.tags = ['mongodb', 'mongoengine']
+    >>> post1.save()
+
+    # Create a link-based post
+    >>> post2 = LinkPost(title='MongoEngine Docs', url='hmarr.com/mongoengine')
+    >>> post2.tags = ['mongoengine', 'documentation']
+    >>> post2.save()
+
+    # Iterate over all posts using the BlogPost superclass
+    >>> for post in BlogPost.objects:
+    ...     print '===', post.title, '==='
+    ...     if isinstance(post, TextPost):
+    ...         print post.content
+    ...     elif isinstance(post, LinkPost):
+    ...         print 'Link:', post.url
+    ...     print
+    ...
+    === Using MongoEngine ===
+    See the tutorial
+
+    === MongoEngine Docs ===
+    Link: hmarr.com/mongoengine
+
+    >>> BlogPost.objects.count()
+    2
+    >>> HtmlPost.objects.count()
+    1
+    >>> LinkPost.objects.count()
+    1
+
+    # Find tagged posts
+    >>> BlogPost.objects(tags='mongoengine').count()
+    2
+    >>> BlogPost.objects(tags='mongodb').count()
+    1
