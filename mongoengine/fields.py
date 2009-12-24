@@ -181,9 +181,8 @@ class ReferenceField(BaseField):
         if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
             id_ = document
         else:
-            try:
-                id_ = document.id
-            except:
+            id_ = document.id
+            if id_ is None:
                 raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
 

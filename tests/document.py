@@ -228,7 +228,7 @@ class DocumentTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(person_obj['_id'], person.id)
+        self.assertEqual(str(person_obj['_id']), person.id)
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.

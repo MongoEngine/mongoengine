@@ -213,8 +213,6 @@ saved::
 
     >>> page = Page(title="Test Page")
     >>> page.id
-    ...
-    AttributeError('_id')
     >>> page.save()
     >>> page.id
     ObjectId('123456789abcdef000000000')

@@ -46,7 +46,7 @@ class FieldTest(unittest.TestCase):
             name = StringField()
         
         person = Person(name='Test User')
-        self.assertRaises(AttributeError, getattr, person, 'id')
+        self.assertEqual(person.id, None)
         self.assertRaises(ValidationError, person.__setattr__, 'id', 47)
         self.assertRaises(ValidationError, person.__setattr__, 'id', 'abc')
         person.id = '497ce96f395f2f052a494fd4'
@@ -173,8 +173,8 @@ class FieldTest(unittest.TestCase):
         post.author = PowerUser(name='Test User', power=47)
 
     def test_reference_validation(self):
-        """Ensure that invalid embedded documents cannot be assigned to
-        embedded document fields.
+        """Ensure that invalid docment objects cannot be assigned to reference
+        fields.
         """
         class User(Document):
             name = StringField()
@@ -187,10 +187,12 @@ class FieldTest(unittest.TestCase):
 
         user = User(name='Test User')
 
+        # Ensure that the referenced object must have been saved
         post1 = BlogPost(content='Chips and gravy taste good.')
         post1.author = user
         self.assertRaises(ValidationError, post1.save)
 
+        # Check that an invalid object type cannot be used
         post2 = BlogPost(content='Chips and chilli taste good.')
         self.assertRaises(ValidationError, post1.__setattr__, 'author', post2)
 

@@ -28,12 +28,10 @@ class BaseField(object):
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
         if value is None:
-            if self.default is not None:
-                value = self.default
-                if callable(value):
-                    value = value()
-            else:
-                raise AttributeError(self.name)
+            value = self.default
+            # Allow callable default values
+            if callable(value):
+                value = value()
         return value
 
     def __set__(self, instance, value):
@@ -227,8 +225,8 @@ class BaseDocument(object):
 
     def __contains__(self, name):
         try:
-            getattr(self, name)
-            return True
+            val = getattr(self, name)
+            return val is not None
         except AttributeError:
             return False
 
