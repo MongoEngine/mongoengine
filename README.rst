@@ -19,7 +19,8 @@ Dependencies
 
 Examples
 ========
-::
+Some simple examples of what MongoEngine code looks like::
+
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
         posted = DateTimeField(default=datetime.datetime.now)
@@ -56,15 +57,15 @@ Examples
     === MongoEngine Docs ===
     Link: hmarr.com/mongoengine
 
-    >>> BlogPost.objects.count()
+    >>> len(BlogPost.objects)
     2
-    >>> HtmlPost.objects.count()
+    >>> len(HtmlPost.objects)
     1
-    >>> LinkPost.objects.count()
+    >>> len(LinkPost.objects)
     1
 
     # Find tagged posts
-    >>> BlogPost.objects(tags='mongoengine').count()
+    >>> len(BlogPost.objects(tags='mongoengine'))
     2
-    >>> BlogPost.objects(tags='mongodb').count()
+    >>> len(BlogPost.objects(tags='mongodb'))
     1

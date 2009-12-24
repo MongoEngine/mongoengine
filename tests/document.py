@@ -235,9 +235,9 @@ class DocumentTest(unittest.TestCase):
         """
         person = self.Person(name="Test User", age=30)
         person.save()
-        self.assertEqual(self.Person.objects.count(), 1)
+        self.assertEqual(len(self.Person.objects), 1)
         person.delete()
-        self.assertEqual(self.Person.objects.count(), 0)
+        self.assertEqual(len(self.Person.objects), 0)
 
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.

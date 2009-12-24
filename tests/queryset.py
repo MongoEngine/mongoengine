@@ -50,7 +50,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Find all people in the collection
         people = self.Person.objects
-        self.assertEqual(people.count(), 2)
+        self.assertEqual(len(people), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
         self.assertTrue(isinstance(results[0].id, (pymongo.objectid.ObjectId,
@@ -62,7 +62,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20)
-        self.assertEqual(people.count(), 1)
+        self.assertEqual(len(people), 1)
         person = people.next()
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
@@ -158,13 +158,13 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name="User B", age=30).save()
         self.Person(name="User C", age=40).save()
 
-        self.assertEqual(self.Person.objects.count(), 3)
+        self.assertEqual(len(self.Person.objects), 3)
 
         self.Person.objects(age__lt=30).delete()
-        self.assertEqual(self.Person.objects.count(), 2)
+        self.assertEqual(len(self.Person.objects), 2)
 
         self.Person.objects.delete()
-        self.assertEqual(self.Person.objects.count(), 0)
+        self.assertEqual(len(self.Person.objects), 0)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.

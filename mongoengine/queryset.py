@@ -100,6 +100,9 @@ class QuerySet(object):
         """
         return self._cursor.count()
 
+    def __len__(self):
+        return self.count()
+
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
