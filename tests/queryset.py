@@ -240,6 +240,35 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_query_field_name(self):
+        """Ensure that the correct field name is used when querying.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField(name='commentContent')
+
+        class BlogPost(Document):
+            title = StringField(name='postTitle')
+            comments = ListField(EmbeddedDocumentField(Comment),
+                                 name='postComments')
+                                 
+
+        BlogPost.drop_collection()
+
+        data = {'title': 'Post 1', 'comments': [Comment(content='test')]}
+        BlogPost(**data).save()
+
+        self.assertTrue('postTitle' in 
+                        BlogPost.objects(title=data['title'])._query)
+        self.assertFalse('title' in 
+                         BlogPost.objects(title=data['title'])._query)
+        self.assertEqual(len(BlogPost.objects(title=data['title'])), 1)
+
+        self.assertTrue('postComments.commentContent' in 
+                        BlogPost.objects(comments__content='test')._query)
+        self.assertEqual(len(BlogPost.objects(comments__content='test')), 1)
+
+        BlogPost.drop_collection()
+
     def tearDown(self):
         self.Person.drop_collection()
 

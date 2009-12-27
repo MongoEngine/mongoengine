@@ -6,6 +6,10 @@ import pymongo
 __all__ = ['queryset_manager']
 
 
+class InvalidQueryError(Exception):
+    pass
+
+
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
     providing :class:`~mongoengine.Document` objects as the results.
@@ -38,7 +42,8 @@ class QuerySet(object):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.QuerySet` with a query.
         """
-        self._query.update(QuerySet._transform_query(**query))
+        query = QuerySet._transform_query(_doc_cls=self._document, **query)
+        self._query.update(query)
         return self
 
     @property
@@ -48,7 +53,7 @@ class QuerySet(object):
         return self._cursor_obj
        
     @classmethod
-    def _transform_query(cls, **query):
+    def _transform_query(cls, _doc_cls=None, **query):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
@@ -62,6 +67,23 @@ class QuerySet(object):
             if parts[-1] in operators:
                 op = parts.pop()
                 value = {'$' + op: value}
+
+            # Switch field names to proper names [set in Field(name='foo')]
+            if _doc_cls:
+                field_names = []
+                field = None
+                for field_name in parts:
+                    if field is None:
+                        # Look up first field from the document
+                        field = _doc_cls._fields[field_name]
+                    else:
+                        # Look up subfield on the previous field
+                        field = field.lookup_member(field_name)
+                        if field is None:
+                            raise InvalidQueryError('Cannot resolve field "%s"'
+                                                    % field_name)
+                    field_names.append(field.name)
+                parts = field_names
 
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
