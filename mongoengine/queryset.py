@@ -51,6 +51,27 @@ class QuerySet(object):
         if not self._cursor_obj:
             self._cursor_obj = self._collection.find(self._query)
         return self._cursor_obj
+
+    @classmethod
+    def _translate_field_name(cls, document, parts):
+        """Translate a field attribute name to a database field name.
+        """
+        if not isinstance(parts, (list, tuple)):
+            parts = [parts]
+        field_names = []
+        field = None
+        for field_name in parts:
+            if field is None:
+                # Look up first field from the document
+                field = document._fields[field_name]
+            else:
+                # Look up subfield on the previous field
+                field = field.lookup_member(field_name)
+                if field is None:
+                    raise InvalidQueryError('Cannot resolve field "%s"'
+                                            % field_name)
+            field_names.append(field.name)
+        return field_names
        
     @classmethod
     def _transform_query(cls, _doc_cls=None, **query):
@@ -70,20 +91,7 @@ class QuerySet(object):
 
             # Switch field names to proper names [set in Field(name='foo')]
             if _doc_cls:
-                field_names = []
-                field = None
-                for field_name in parts:
-                    if field is None:
-                        # Look up first field from the document
-                        field = _doc_cls._fields[field_name]
-                    else:
-                        # Look up subfield on the previous field
-                        field = field.lookup_member(field_name)
-                        if field is None:
-                            raise InvalidQueryError('Cannot resolve field "%s"'
-                                                    % field_name)
-                    field_names.append(field.name)
-                parts = field_names
+                parts = QuerySet._translate_field_name(_doc_cls, parts)
 
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
@@ -192,6 +200,7 @@ class QuerySet(object):
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents. 
         """
+        list_field = QuerySet._translate_field_name(self._document, list_field)
         freq_func = """
             function(collection, query, listField) {
                 var frequencies = {};

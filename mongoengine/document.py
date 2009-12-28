@@ -52,7 +52,7 @@ class Document(BaseDocument):
         will only take effect if the document has been previously saved.
         """
         object_id = self._fields['id'].to_mongo(self.id)
-        self.__class__.objects(_id=object_id).delete()
+        self.__class__.objects(id=object_id).delete()
 
     @classmethod
     def drop_collection(cls):

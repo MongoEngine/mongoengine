@@ -190,7 +190,7 @@ class QuerySetTest(unittest.TestCase):
         """
         class BlogPost(Document):
             hits = IntField()
-            tags = ListField(StringField())
+            tags = ListField(StringField(), name='blogTags')
 
         BlogPost.drop_collection()
 
