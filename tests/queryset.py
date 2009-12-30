@@ -220,6 +220,19 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_average(self):
+        """Ensure that field can be averaged correctly.
+        """
+        ages = [23, 54, 12, 94, 27]
+        for i, age in enumerate(ages):
+            self.Person(name='test%s' % i, age=age).save()
+
+        avg = float(sum(ages)) / len(ages)
+        self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
+
+        self.Person(name='ageless person').save()
+        self.assertEqual(int(self.Person.objects.average('age')), avg)
+
     def test_sum(self):
         """Ensure that field can be summed over correctly.
         """

@@ -231,6 +231,24 @@ class QuerySet(object):
         """
         return self.exec_js(sum_func, field)
 
+    def average(self, field):
+        """Average over the values of the specified field.
+        """
+        average_func = """
+            function(averageField) {
+                var total = 0.0;
+                var num = 0;
+                db[collection].find(query).forEach(function(doc) {
+                    if (doc[averageField]) {
+                        total += doc[averageField];
+                        num += 1;
+                    }
+                });
+                return total / num;
+            }
+        """
+        return self.exec_js(average_func, field)
+
     def item_frequencies(self, list_field, normalize=False):
         """Returns a dictionary of all items present in a list field across
         the whole queried set of documents, and their corresponding frequency.
