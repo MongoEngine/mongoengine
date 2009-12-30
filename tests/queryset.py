@@ -214,6 +214,15 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_sum(self):
+        """Ensure that field can be summed over correctly.
+        """
+        ages = [23, 54, 12, 94, 27]
+        for i, age in enumerate(ages):
+            self.Person(name='test%s' % i, age=age).save()
+
+        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """

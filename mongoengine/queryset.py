@@ -195,12 +195,37 @@ class QuerySet(object):
     def __iter__(self):
         return self
 
+    def exec_js(self, code, fields):
+        """Execute a Javascript function on the server. Two arguments will be
+        provided by default - the collection name, and the query object. A list
+        of fields may be provided, which will be translated to their correct
+        names and supplied as the remaining arguments to the function.
+        """
+        fields = [QuerySet._translate_field_name(self._document, field) 
+                  for field in fields]
+        db = _get_db()
+        collection = self._document._meta['collection']
+        return db.eval(code, collection, self._query, *fields)
+
+    def sum(self, field):
+        """Sum over the values of the specified field.
+        """
+        sum_func = """
+            function(collection, query, sumField) {
+                var total = 0.0;
+                db[collection].find(query).forEach(function(doc) {
+                    total += doc[sumField] || 0.0;
+                });
+                return total;
+            }
+        """
+        return self.exec_js(sum_func, [field])
+
     def item_frequencies(self, list_field):
         """Returns a dictionary of all items present in a list field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents. 
         """
-        list_field = QuerySet._translate_field_name(self._document, list_field)
         freq_func = """
             function(collection, query, listField) {
                 var frequencies = {};
@@ -212,9 +237,7 @@ class QuerySet(object):
                 return frequencies;
             }
         """
-        db = _get_db()
-        collection = self._document._meta['collection']
-        return db.eval(freq_func, collection, self._query, list_field)
+        return self.exec_js(freq_func, [list_field])
 
 
 class QuerySetManager(object):
