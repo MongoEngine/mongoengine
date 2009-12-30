@@ -212,6 +212,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(f['music'], 2)
         self.assertEqual(f['actors'], 1)
 
+        # Check that normalization works
+        f = BlogPost.objects.item_frequencies('tags', normalize=True)
+        self.assertAlmostEqual(f['music'], 3.0/6.0)
+        self.assertAlmostEqual(f['actors'], 2.0/6.0)
+        self.assertAlmostEqual(f['film'], 1.0/6.0)
+
         BlogPost.drop_collection()
 
     def test_sum(self):
@@ -221,6 +227,9 @@ class QuerySetTest(unittest.TestCase):
         for i, age in enumerate(ages):
             self.Person(name='test%s' % i, age=age).save()
 
+        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+
+        self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
     def test_custom_manager(self):

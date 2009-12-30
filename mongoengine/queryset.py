@@ -195,49 +195,70 @@ class QuerySet(object):
     def __iter__(self):
         return self
 
-    def exec_js(self, code, fields):
-        """Execute a Javascript function on the server. Two arguments will be
-        provided by default - the collection name, and the query object. A list
-        of fields may be provided, which will be translated to their correct
-        names and supplied as the remaining arguments to the function.
+    def exec_js(self, code, *fields, **options):
+        """Execute a Javascript function on the server. A list of fields may be
+        provided, which will be translated to their correct names and supplied
+        as the arguments to the function. A few extra variables are added to
+        the function's scope: ``collection``, which is the name of the 
+        collection in use; ``query``, which is an object representing the 
+        current query; and ``options``, which is an object containing any
+        options specified as keyword arguments.
         """
-        fields = [QuerySet._translate_field_name(self._document, field) 
-                  for field in fields]
-        db = _get_db()
+        fields = [QuerySet._translate_field_name(self._document, f)
+                  for f in fields]
         collection = self._document._meta['collection']
-        return db.eval(code, collection, self._query, *fields)
+        scope = {
+            'collection': collection,
+            'query': self._query,
+            'options': options or {},
+        }
+        code = pymongo.code.Code(code, scope=scope)
+
+        db = _get_db()
+        return db.eval(code, *fields)
 
     def sum(self, field):
         """Sum over the values of the specified field.
         """
         sum_func = """
-            function(collection, query, sumField) {
+            function(sumField) {
                 var total = 0.0;
                 db[collection].find(query).forEach(function(doc) {
-                    total += doc[sumField] || 0.0;
+                    total += (doc[sumField] || 0.0);
                 });
                 return total;
             }
         """
-        return self.exec_js(sum_func, [field])
+        return self.exec_js(sum_func, field)
 
-    def item_frequencies(self, list_field):
+    def item_frequencies(self, list_field, normalize=False):
         """Returns a dictionary of all items present in a list field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents. 
         """
         freq_func = """
-            function(collection, query, listField) {
+            function(listField) {
+                if (options.normalize) {
+                    var total = 0.0;
+                    db[collection].find(query).forEach(function(doc) {
+                        total += doc[listField].length;
+                    });
+                }
+
                 var frequencies = {};
+                var inc = 1.0;
+                if (options.normalize) {
+                    inc /= total;
+                }
                 db[collection].find(query).forEach(function(doc) {
                     doc[listField].forEach(function(item) {
-                        frequencies[item] = 1 + (frequencies[item] || 0);
+                        frequencies[item] = inc + (frequencies[item] || 0);
                     });
                 });
                 return frequencies;
             }
         """
-        return self.exec_js(freq_func, [list_field])
+        return self.exec_js(freq_func, list_field, normalize=normalize)
 
 
 class QuerySetManager(object):
