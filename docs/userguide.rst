@@ -293,9 +293,9 @@ Limiting and skipping results
 -----------------------------
 Just as with traditional ORMs, you may limit the number of results returned, or
 skip a number or results in you query.
-:meth:`mongoengine.queryset.QuerySet.limit` and
-:meth:`mongoengine.queryset.QuerySet.skip` and methods are available on
-:class:`mongoengine.queryset.QuerySet` objects, but the prefered syntax for
+:meth:`~mongoengine.queryset.QuerySet.limit` and
+:meth:`~mongoengine.queryset.QuerySet.skip` and methods are available on
+:class:`~mongoengine.queryset.QuerySet` objects, but the prefered syntax for
 achieving this is using array-slicing syntax::
 
     # Only the first 5 people
@@ -317,8 +317,8 @@ Javascript code that is executed on the database server.
 Counting results
 ^^^^^^^^^^^^^^^^
 Just as with limiting and skipping results, there is a method on
-:class:`mongoengine.queryset.QuerySet` objects -- 
-:meth:`mongoengine.queryset.QuerySet.count`, but there is also a more Pythonic
+:class:`~mongoengine.queryset.QuerySet` objects -- 
+:meth:`~mongoengine.queryset.QuerySet.count`, but there is also a more Pythonic
 way of achieving this::
 
     num_users = len(User.objects)
@@ -326,7 +326,7 @@ way of achieving this::
 Further aggregation
 ^^^^^^^^^^^^^^^^^^^
 You may sum over the values of a specific field on documents using
-:meth:`mongoengine.queryset.QuerySet.sum`::
+:meth:`~mongoengine.queryset.QuerySet.sum`::
 
     yearly_expense = Employee.objects.sum('salary')
 
@@ -335,13 +335,13 @@ You may sum over the values of a specific field on documents using
    the sum.
 
 To get the average (mean) of a field on a collection of documents, use
-:meth:`mongoengine.queryset.QuerySet.average`::
+:meth:`~mongoengine.queryset.QuerySet.average`::
 
     mean_age = User.objects.average('age')
 
 As MongoDB provides native lists, MongoEngine provides a helper method to get a
 dictionary of the frequencies of items in lists across an entire collection --
-:meth:`mongoengine.queryset.QuerySet.item_frequencies`. An example of its use
+:meth:`~mongoengine.queryset.QuerySet.item_frequencies`. An example of its use
 would be generating "tag-clouds"::
 
     class Article(Document):
