@@ -194,8 +194,7 @@ Documents instances
 ===================
 To create a new document object, create an instance of the relevant document
 class, providing values for its fields as its constructor keyword arguments.
-You may provide values for any of the fields on the document, but only
-**required** fields are necessary at this stage::
+You may provide values for any of the fields on the document::
     
     >>> page = Page(title="Test Page")
     >>> page.title

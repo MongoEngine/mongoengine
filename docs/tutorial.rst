@@ -161,8 +161,7 @@ object::
     john = User(email='jdoe@example.com', first_name='John', last_name='Doe')
     john.save()
 
-Note that only fields with ``required=True`` need to be specified in the
-constructor, we could have also defined our user using attribute syntax::
+Note that we could have also defined our user using attribute syntax::
 
     john = User(email='jdoe@example.com')
     john.first_name = 'John'
