@@ -1,4 +1,5 @@
-from base import DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument
+from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
+                  ValidationError)
 from connection import _get_db
 
 
@@ -44,6 +45,7 @@ class Document(BaseDocument):
         document already exists, it will be updated, otherwise it will be
         created.
         """
+        self.validate()
         object_id = self.__class__.objects._collection.save(self.to_mongo())
         self.id = self._fields['id'].to_python(object_id)
 
@@ -53,6 +55,25 @@ class Document(BaseDocument):
         """
         object_id = self._fields['id'].to_mongo(self.id)
         self.__class__.objects(id=object_id).delete()
+
+    def validate(self):
+        """Ensure that all fields' values are valid and that required fields
+        are present.
+        """
+        # Get a list of tuples of field names and their current values
+        fields = [(field, getattr(self, name)) 
+                  for name, field in self._fields.items()]
+
+        # Ensure that each field is matched to a valid value
+        for field, value in fields:
+            if value is not None:
+                try:
+                    field.validate(value)
+                except (ValueError, AttributeError, AssertionError), e:
+                    raise ValidationError('Invalid value for field of type "' +
+                                          field.__class__.__name__ + '"')
+            elif field.required:
+                raise ValidationError('Field "%s" is required' % field.name)
 
     @classmethod
     def drop_collection(cls):

@@ -35,17 +35,8 @@ class BaseField(object):
         return value
 
     def __set__(self, instance, value):
-        """Descriptor for assigning a value to a field in a document. Do any 
-        necessary conversion between Python and MongoDB types.
+        """Descriptor for assigning a value to a field in a document.
         """
-        if value is not None:
-            try:
-                self.validate(value)
-            except (ValueError, AttributeError, AssertionError), e:
-                raise ValidationError('Invalid value for field of type "' +
-                                      self.__class__.__name__ + '"')
-        elif self.required:
-            raise ValidationError('Field "%s" is required' % self.name)
         instance._data[self.name] = value
 
     def to_python(self, value):
@@ -183,8 +174,6 @@ class BaseDocument(object):
             else:
                 # Use default value if present
                 value = getattr(self, attr_name, None)
-                if value is None and attr_value.required:
-                    raise ValidationError('Field "%s" is required' % attr_name)
                 setattr(self, attr_name, value)
 
     @classmethod
