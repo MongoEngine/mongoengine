@@ -4,6 +4,22 @@ User Guide
 
 .. _guide-connecting:
 
+Installing
+==========
+MongoEngine is available on PyPI, so to use it you can use 
+:program:`easy_install`
+    
+.. code-block:: console
+
+    # easy_install mongoengine
+
+Alternatively, if you don't have setuptools installed, `download it from PyPi 
+<http://pypi.python.org/pypi/mongoengine/>`_ and run
+
+.. code-block:: console
+
+    # python setup.py install
+
 Connecting to MongoDB
 =====================
 To connect to a running instance of :program:`mongod`, use the
