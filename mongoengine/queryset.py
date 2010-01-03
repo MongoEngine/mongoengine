@@ -104,9 +104,10 @@ class QuerySet(object):
     def first(self):
         """Retrieve the first object matching the query.
         """
-        result = self._collection.find_one(self._query)
-        if result is not None:
-            result = self._document._from_son(result)
+        try:
+            result = self[0]
+        except IndexError:
+            result = None
         return result
 
     def with_id(self, object_id):
