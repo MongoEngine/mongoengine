@@ -144,6 +144,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         meta = {
             'collection': collection,
             'allow_inheritance': True,
+            'max_documents': None,
+            'max_size': None,
         }
         meta.update(attrs.get('meta', {}))
         # Only simple classes - direct subclasses of Document - may set

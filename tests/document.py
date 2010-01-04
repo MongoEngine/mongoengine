@@ -1,4 +1,5 @@
 import unittest
+import datetime
 import pymongo
 
 from mongoengine import *
@@ -179,6 +180,46 @@ class DocumentTest(unittest.TestCase):
 
         Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
+
+    def test_capped_collection(self):
+        """Ensure that capped collections work properly.
+        """
+        class Log(Document):
+            date = DateTimeField(default=datetime.datetime.now)
+            meta = {
+                'max_documents': 10,
+                'max_size': 90000,
+            }
+
+        Log.drop_collection()
+
+        # Ensure that the collection handles up to its maximum
+        for i in range(10):
+            Log().save()
+
+        self.assertEqual(len(Log.objects), 10)
+
+        # Check that extra documents don't increase the size
+        Log().save()
+        self.assertEqual(len(Log.objects), 10)
+
+        options = Log.objects._collection.options()
+        self.assertEqual(options['capped'], True)
+        self.assertEqual(options['max'], 10)
+        self.assertEqual(options['size'], 90000)
+
+        # Check that the document cannot be redefined with different options
+        def recreate_log_document():
+            class Log(Document):
+                date = DateTimeField(default=datetime.datetime.now)
+                meta = {
+                    'max_documents': 11,
+                }
+            # Create the collection by accessing Document.objects
+            Log.objects
+        self.assertRaises(InvalidCollectionError, recreate_log_document)
+
+        Log.drop_collection()
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.

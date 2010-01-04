@@ -3,7 +3,7 @@ from connection import _get_db
 import pymongo
 
 
-__all__ = ['queryset_manager']
+__all__ = ['queryset_manager', 'InvalidQueryError', 'InvalidCollectionError']
 
 
 class InvalidQueryError(Exception):
@@ -280,6 +280,10 @@ class QuerySet(object):
         return self.exec_js(freq_func, list_field, normalize=normalize)
 
 
+class InvalidCollectionError(Exception):
+    pass
+
+
 class QuerySetManager(object):
 
     def __init__(self, manager_func=None):
@@ -296,7 +300,32 @@ class QuerySetManager(object):
 
         if self._collection is None:
             db = _get_db()
-            self._collection = db[owner._meta['collection']]
+            collection = owner._meta['collection']
+
+            # Create collection as a capped collection if specified
+            if owner._meta['max_size'] or owner._meta['max_documents']:
+                # Get max document limit and max byte size from meta
+                max_size = owner._meta['max_size'] or 10000000 # 10MB default
+                max_documents = owner._meta['max_documents']
+
+                if collection in db.collection_names():
+                    self._collection = db[collection]
+                    # The collection already exists, check if its capped 
+                    # options match the specified capped options
+                    options = self._collection.options()
+                    if options.get('max') != max_documents or \
+                       options.get('size') != max_size:
+                        msg = ('Cannot create collection "%s" as a capped '
+                               'collection as it already exists') % collection
+                        raise InvalidCollectionError(msg)
+                else:
+                    # Create the collection as a capped collection
+                    opts = {'capped': True, 'size': max_size}
+                    if max_documents:
+                        opts['max'] = max_documents
+                    self._collection = db.create_collection(collection, opts)
+            else:
+                self._collection = db[collection]
         
         # owner is the document that contains the QuerySetManager
         queryset = QuerySet(owner, self._collection)

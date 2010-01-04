@@ -36,6 +36,14 @@ class Document(BaseDocument):
     though). To disable this behaviour and remove the dependence on the
     presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
     ``False`` in the :attr:`meta` dictionary.
+
+    A :class:`~mongoengine.Document` may use a **Capped Collection** by 
+    specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
+    dictionary. :attr:`max_documents` is the maximum number of documents that
+    is allowed to be stored in the collection, and :attr:`max_size` is the 
+    maximum size of the collection in bytes. If :attr:`max_size` is not 
+    specified and :attr:`max_documents` is, :attr:`max_size` defaults to 
+    10000000 bytes (10MB).
     """
 
     __metaclass__ = TopLevelDocumentMetaclass
