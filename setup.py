@@ -1,6 +1,6 @@
 from setuptools import setup
 
-VERSION = '0.1'
+VERSION = '0.1.1'
 
 DESCRIPTION = "A Python Document-Object Mapper for working with MongoDB"
 
@@ -32,4 +32,5 @@ setup(name='mongoengine',
       platforms=['any'],
       classifiers=CLASSIFIERS,
       install_requires=['pymongo'],
+      test_suite='tests',
 )

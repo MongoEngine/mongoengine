@@ -12,6 +12,13 @@ a `tutorial <http://hmarr.com/mongoengine/tutorial.html>`_, a `user guide
 <http://hmarr.com/mongoengine/userguide.html>`_ and an `API reference
 <http://hmarr.com/mongoengine/apireference.html>`_.
 
+Installation
+============
+If you have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
+you can use ``easy_install mongoengine``. Otherwise, you can download the
+source from `GitHub <http://github.com/hmarr/mongoengine>`_ and run ``python
+setup.py install``.
+
 Dependencies
 ============
 - pymongo 1.1+
@@ -69,3 +76,14 @@ Some simple examples of what MongoEngine code looks like::
     2
     >>> len(BlogPost.objects(tags='mongodb'))
     1
+
+Tests
+=====
+To run the test suite, ensure you are running a local instance of MongoDB on
+the standard port, and run ``python setup.py test``.
+
+Contributing
+============
+The source is available on `GitHub <http://github.com/hmarr/mongoengine>`_ - to
+contribute to the project, fork it on GitHub and send a pull request, all
+contributions and suggestions are welcome!
