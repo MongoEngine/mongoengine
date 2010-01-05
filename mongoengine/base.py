@@ -147,8 +147,12 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'allow_inheritance': True,
             'max_documents': None,
             'max_size': None,
+            'indexes': [] # indexes to be ensured at runtime
         }
+
+        # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
+        
         # Only simple classes - direct subclasses of Document - may set
         # allow_inheritance to False
         if not simple_class and not meta['allow_inheritance']:
