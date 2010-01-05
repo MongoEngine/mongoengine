@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 VERSION = '0.1.1'
 
@@ -22,11 +22,12 @@ CLASSIFIERS = [
 
 setup(name='mongoengine',
       version=VERSION,
-      packages=['mongoengine'],
+      packages=find_packages(),
       author='Harry Marr',
       author_email='harry.marr@{nospam}gmail.com',
       url='http://hmarr.com/mongoengine/',
       license='MIT',
+      include_package_data=True,
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       platforms=['any'],
