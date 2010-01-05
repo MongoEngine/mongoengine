@@ -34,6 +34,9 @@ class StringField(BaseField):
             message = 'String value did not match validation regex'
             raise ValidationError(message)
 
+    def lookup_member(self, member_name):
+        return None
+
 
 class IntField(BaseField):
     """An integer field.
@@ -114,6 +117,9 @@ class EmbeddedDocumentField(BaseField):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
 
+    def lookup_member(self, member_name):
+        return self.document._fields.get(member_name)
+
 
 class ListField(BaseField):
     """A list field that wraps a standard field, allowing multiple instances
@@ -145,6 +151,9 @@ class ListField(BaseField):
         except:
             raise ValidationError('All items in a list field must be of the '
                                   'specified type')
+
+    def lookup_member(self, member_name):
+        return self.field.lookup_member(member_name)
 
 
 class ReferenceField(BaseField):
@@ -181,9 +190,8 @@ class ReferenceField(BaseField):
         if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
             id_ = document
         else:
-            try:
-                id_ = document.id
-            except:
+            id_ = document.id
+            if id_ is None:
                 raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
 
@@ -195,3 +203,6 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
         assert(isinstance(value, (self.document_type, pymongo.dbref.DBRef)))
+
+    def lookup_member(self, member_name):
+        return self.document_type._fields.get(member_name)

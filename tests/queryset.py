@@ -50,7 +50,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Find all people in the collection
         people = self.Person.objects
-        self.assertEqual(people.count(), 2)
+        self.assertEqual(len(people), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
         self.assertTrue(isinstance(results[0].id, (pymongo.objectid.ObjectId,
@@ -62,7 +62,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20)
-        self.assertEqual(people.count(), 1)
+        self.assertEqual(len(people), 1)
         person = people.next()
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
@@ -158,13 +158,13 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name="User B", age=30).save()
         self.Person(name="User C", age=40).save()
 
-        self.assertEqual(self.Person.objects.count(), 3)
+        self.assertEqual(len(self.Person.objects), 3)
 
         self.Person.objects(age__lt=30).delete()
-        self.assertEqual(self.Person.objects.count(), 2)
+        self.assertEqual(len(self.Person.objects), 2)
 
         self.Person.objects.delete()
-        self.assertEqual(self.Person.objects.count(), 0)
+        self.assertEqual(len(self.Person.objects), 0)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
@@ -184,6 +184,121 @@ class QuerySetTest(unittest.TestCase):
         
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
+
+    def test_item_frequencies(self):
+        """Ensure that item frequencies are properly generated from lists.
+        """
+        class BlogPost(Document):
+            hits = IntField()
+            tags = ListField(StringField(), name='blogTags')
+
+        BlogPost.drop_collection()
+
+        BlogPost(hits=1, tags=['music', 'film', 'actors']).save()
+        BlogPost(hits=2, tags=['music']).save()
+        BlogPost(hits=3, tags=['music', 'actors']).save()
+
+        f = BlogPost.objects.item_frequencies('tags')
+        f = dict((key, int(val)) for key, val in f.items())
+        self.assertEqual(set(['music', 'film', 'actors']), set(f.keys()))
+        self.assertEqual(f['music'], 3)
+        self.assertEqual(f['actors'], 2)
+        self.assertEqual(f['film'], 1)
+
+        # Ensure query is taken into account
+        f = BlogPost.objects(hits__gt=1).item_frequencies('tags')
+        f = dict((key, int(val)) for key, val in f.items())
+        self.assertEqual(set(['music', 'actors']), set(f.keys()))
+        self.assertEqual(f['music'], 2)
+        self.assertEqual(f['actors'], 1)
+
+        # Check that normalization works
+        f = BlogPost.objects.item_frequencies('tags', normalize=True)
+        self.assertAlmostEqual(f['music'], 3.0/6.0)
+        self.assertAlmostEqual(f['actors'], 2.0/6.0)
+        self.assertAlmostEqual(f['film'], 1.0/6.0)
+
+        BlogPost.drop_collection()
+
+    def test_average(self):
+        """Ensure that field can be averaged correctly.
+        """
+        ages = [23, 54, 12, 94, 27]
+        for i, age in enumerate(ages):
+            self.Person(name='test%s' % i, age=age).save()
+
+        avg = float(sum(ages)) / len(ages)
+        self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
+
+        self.Person(name='ageless person').save()
+        self.assertEqual(int(self.Person.objects.average('age')), avg)
+
+    def test_sum(self):
+        """Ensure that field can be summed over correctly.
+        """
+        ages = [23, 54, 12, 94, 27]
+        for i, age in enumerate(ages):
+            self.Person(name='test%s' % i, age=age).save()
+
+        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+
+        self.Person(name='ageless person').save()
+        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+
+    def test_custom_manager(self):
+        """Ensure that custom QuerySetManager instances work as expected.
+        """
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+            @queryset_manager
+            def music_posts(queryset):
+                return queryset(tags='music')
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(tags=['music', 'film'])
+        post1.save()
+        post2 = BlogPost(tags=['music'])
+        post2.save()
+        post3 = BlogPost(tags=['film', 'actors'])
+        post3.save()
+
+        self.assertEqual([p.id for p in BlogPost.objects],
+                         [post1.id, post2.id, post3.id])
+        self.assertEqual([p.id for p in BlogPost.music_posts],
+                         [post1.id, post2.id])
+
+        BlogPost.drop_collection()
+
+    def test_query_field_name(self):
+        """Ensure that the correct field name is used when querying.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField(name='commentContent')
+
+        class BlogPost(Document):
+            title = StringField(name='postTitle')
+            comments = ListField(EmbeddedDocumentField(Comment),
+                                 name='postComments')
+                                 
+
+        BlogPost.drop_collection()
+
+        data = {'title': 'Post 1', 'comments': [Comment(content='test')]}
+        BlogPost(**data).save()
+
+        self.assertTrue('postTitle' in 
+                        BlogPost.objects(title=data['title'])._query)
+        self.assertFalse('title' in 
+                         BlogPost.objects(title=data['title'])._query)
+        self.assertEqual(len(BlogPost.objects(title=data['title'])), 1)
+
+        self.assertTrue('postComments.commentContent' in 
+                        BlogPost.objects(comments__content='test')._query)
+        self.assertEqual(len(BlogPost.objects(comments__content='test')), 1)
+
+        BlogPost.drop_collection()
 
     def tearDown(self):
         self.Person.drop_collection()

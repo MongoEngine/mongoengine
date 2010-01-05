@@ -1,0 +1,6 @@
+include README.rst
+include LICENSE
+recursive-include docs *
+prune docs/_build/*
+recursive-include tests *
+recursive-exclude * *.pyc *.swp

@@ -28,26 +28,15 @@ class BaseField(object):
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
         if value is None:
-            if self.default is not None:
-                value = self.default
-                if callable(value):
-                    value = value()
-            else:
-                raise AttributeError(self.name)
+            value = self.default
+            # Allow callable default values
+            if callable(value):
+                value = value()
         return value
 
     def __set__(self, instance, value):
-        """Descriptor for assigning a value to a field in a document. Do any 
-        necessary conversion between Python and MongoDB types.
+        """Descriptor for assigning a value to a field in a document.
         """
-        if value is not None:
-            try:
-                self.validate(value)
-            except (ValueError, AttributeError, AssertionError), e:
-                raise ValidationError('Invalid value for field of type "' +
-                                      self.__class__.__name__ + '"')
-        elif self.required:
-            raise ValidationError('Field "%s" is required' % self.name)
         instance._data[self.name] = value
 
     def to_python(self, value):
@@ -156,6 +145,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         meta = {
             'collection': collection,
             'allow_inheritance': True,
+            'max_documents': None,
+            'max_size': None,
         }
         meta.update(attrs.get('meta', {}))
         # Only simple classes - direct subclasses of Document - may set
@@ -170,7 +161,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
-        new_class.objects = QuerySetManager(new_class)
+        new_class.objects = QuerySetManager()
 
         return new_class
 
@@ -186,8 +177,6 @@ class BaseDocument(object):
             else:
                 # Use default value if present
                 value = getattr(self, attr_name, None)
-                if value is None and attr_value.required:
-                    raise ValidationError('Field "%s" is required' % attr_name)
                 setattr(self, attr_name, value)
 
     @classmethod
@@ -228,8 +217,8 @@ class BaseDocument(object):
 
     def __contains__(self, name):
         try:
-            getattr(self, name)
-            return True
+            val = getattr(self, name)
+            return val is not None
         except AttributeError:
             return False
 

@@ -1,4 +1,5 @@
 import unittest
+import datetime
 import pymongo
 
 from mongoengine import *
@@ -156,12 +157,94 @@ class DocumentTest(unittest.TestCase):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
 
+    def test_collection_name(self):
+        """Ensure that a collection with a specified name may be used.
+        """
+        collection = 'personCollTest'
+        if collection in self.db.collection_names():
+            self.db.drop_collection(collection)
+
+        class Person(Document):
+            name = StringField()
+            meta = {'collection': collection}
+        
+        user = Person(name="Test User")
+        user.save()
+        self.assertTrue(collection in self.db.collection_names())
+
+        user_obj = self.db[collection].find_one()
+        self.assertEqual(user_obj['name'], "Test User")
+
+        user_obj = Person.objects[0]
+        self.assertEqual(user_obj.name, "Test User")
+
+        Person.drop_collection()
+        self.assertFalse(collection in self.db.collection_names())
+
+    def test_capped_collection(self):
+        """Ensure that capped collections work properly.
+        """
+        class Log(Document):
+            date = DateTimeField(default=datetime.datetime.now)
+            meta = {
+                'max_documents': 10,
+                'max_size': 90000,
+            }
+
+        Log.drop_collection()
+
+        # Ensure that the collection handles up to its maximum
+        for i in range(10):
+            Log().save()
+
+        self.assertEqual(len(Log.objects), 10)
+
+        # Check that extra documents don't increase the size
+        Log().save()
+        self.assertEqual(len(Log.objects), 10)
+
+        options = Log.objects._collection.options()
+        self.assertEqual(options['capped'], True)
+        self.assertEqual(options['max'], 10)
+        self.assertEqual(options['size'], 90000)
+
+        # Check that the document cannot be redefined with different options
+        def recreate_log_document():
+            class Log(Document):
+                date = DateTimeField(default=datetime.datetime.now)
+                meta = {
+                    'max_documents': 11,
+                }
+            # Create the collection by accessing Document.objects
+            Log.objects
+        self.assertRaises(InvalidCollectionError, recreate_log_document)
+
+        Log.drop_collection()
+
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
         person = self.Person(name="Test User", age=30)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 30)
+
+    def test_reload(self):
+        """Ensure that attributes may be reloaded.
+        """
+        person = self.Person(name="Test User", age=20)
+        person.save()
+
+        person_obj = self.Person.objects.first()
+        person_obj.name = "Mr Test User"
+        person_obj.age = 21
+        person_obj.save()
+
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 20)
+
+        person.reload()
+        self.assertEqual(person.name, "Mr Test User")
+        self.assertEqual(person.age, 21)
 
     def test_dictionary_access(self):
         """Ensure that dictionary-style field access works properly.
@@ -204,16 +287,16 @@ class DocumentTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(person_obj['_id'], person.id)
+        self.assertEqual(str(person_obj['_id']), person.id)
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
         """
         person = self.Person(name="Test User", age=30)
         person.save()
-        self.assertEqual(self.Person.objects.count(), 1)
+        self.assertEqual(len(self.Person.objects), 1)
         person.delete()
-        self.assertEqual(self.Person.objects.count(), 0)
+        self.assertEqual(len(self.Person.objects), 0)
 
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.

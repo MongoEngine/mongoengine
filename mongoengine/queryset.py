@@ -3,6 +3,13 @@ from connection import _get_db
 import pymongo
 
 
+__all__ = ['queryset_manager', 'InvalidQueryError', 'InvalidCollectionError']
+
+
+class InvalidQueryError(Exception):
+    pass
+
+
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
     providing :class:`~mongoengine.Document` objects as the results.
@@ -36,7 +43,8 @@ class QuerySet(object):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.QuerySet` with a query.
         """
-        self._query.update(QuerySet._transform_query(**query))
+        query = QuerySet._transform_query(_doc_cls=self._document, **query)
+        self._query.update(query)
         return self
 
     @property
@@ -44,9 +52,30 @@ class QuerySet(object):
         if not self._cursor_obj:
             self._cursor_obj = self._collection.find(self._query)
         return self._cursor_obj
+
+    @classmethod
+    def _translate_field_name(cls, document, parts):
+        """Translate a field attribute name to a database field name.
+        """
+        if not isinstance(parts, (list, tuple)):
+            parts = [parts]
+        field_names = []
+        field = None
+        for field_name in parts:
+            if field is None:
+                # Look up first field from the document
+                field = document._fields[field_name]
+            else:
+                # Look up subfield on the previous field
+                field = field.lookup_member(field_name)
+                if field is None:
+                    raise InvalidQueryError('Cannot resolve field "%s"'
+                                            % field_name)
+            field_names.append(field.name)
+        return field_names
        
     @classmethod
-    def _transform_query(cls, **query):
+    def _transform_query(cls, _doc_cls=None, **query):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
@@ -61,6 +90,10 @@ class QuerySet(object):
                 op = parts.pop()
                 value = {'$' + op: value}
 
+            # Switch field names to proper names [set in Field(name='foo')]
+            if _doc_cls:
+                parts = QuerySet._translate_field_name(_doc_cls, parts)
+
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
                 mongo_query[key] = value
@@ -72,9 +105,10 @@ class QuerySet(object):
     def first(self):
         """Retrieve the first object matching the query.
         """
-        result = self._collection.find_one(self._query)
-        if result is not None:
-            result = self._document._from_son(result)
+        try:
+            result = self[0]
+        except IndexError:
+            result = None
         return result
 
     def with_id(self, object_id):
@@ -97,6 +131,9 @@ class QuerySet(object):
         """Count the selected elements in the query.
         """
         return self._cursor.count()
+
+    def __len__(self):
+        return self.count()
 
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
@@ -161,15 +198,99 @@ class QuerySet(object):
     def __iter__(self):
         return self
 
+    def exec_js(self, code, *fields, **options):
+        """Execute a Javascript function on the server. A list of fields may be
+        provided, which will be translated to their correct names and supplied
+        as the arguments to the function. A few extra variables are added to
+        the function's scope: ``collection``, which is the name of the 
+        collection in use; ``query``, which is an object representing the 
+        current query; and ``options``, which is an object containing any
+        options specified as keyword arguments.
+        """
+        fields = [QuerySet._translate_field_name(self._document, f)
+                  for f in fields]
+        collection = self._document._meta['collection']
+        scope = {
+            'collection': collection,
+            'query': self._query,
+            'options': options or {},
+        }
+        code = pymongo.code.Code(code, scope=scope)
+
+        db = _get_db()
+        return db.eval(code, *fields)
+
+    def sum(self, field):
+        """Sum over the values of the specified field.
+        """
+        sum_func = """
+            function(sumField) {
+                var total = 0.0;
+                db[collection].find(query).forEach(function(doc) {
+                    total += (doc[sumField] || 0.0);
+                });
+                return total;
+            }
+        """
+        return self.exec_js(sum_func, field)
+
+    def average(self, field):
+        """Average over the values of the specified field.
+        """
+        average_func = """
+            function(averageField) {
+                var total = 0.0;
+                var num = 0;
+                db[collection].find(query).forEach(function(doc) {
+                    if (doc[averageField]) {
+                        total += doc[averageField];
+                        num += 1;
+                    }
+                });
+                return total / num;
+            }
+        """
+        return self.exec_js(average_func, field)
+
+    def item_frequencies(self, list_field, normalize=False):
+        """Returns a dictionary of all items present in a list field across
+        the whole queried set of documents, and their corresponding frequency.
+        This is useful for generating tag clouds, or searching documents. 
+        """
+        freq_func = """
+            function(listField) {
+                if (options.normalize) {
+                    var total = 0.0;
+                    db[collection].find(query).forEach(function(doc) {
+                        total += doc[listField].length;
+                    });
+                }
+
+                var frequencies = {};
+                var inc = 1.0;
+                if (options.normalize) {
+                    inc /= total;
+                }
+                db[collection].find(query).forEach(function(doc) {
+                    doc[listField].forEach(function(item) {
+                        frequencies[item] = inc + (frequencies[item] || 0);
+                    });
+                });
+                return frequencies;
+            }
+        """
+        return self.exec_js(freq_func, list_field, normalize=normalize)
+
+
+class InvalidCollectionError(Exception):
+    pass
+
 
 class QuerySetManager(object):
 
-    def __init__(self, document):
-        db = _get_db()
-        self._document = document
-        self._collection_name = document._meta['collection']
-        # This will create the collection if it doesn't exist
-        self._collection = db[self._collection_name]
+    def __init__(self, manager_func=None):
+        self._manager_func = manager_func
+        self._collection = None
 
     def __get__(self, instance, owner):
         """Descriptor for instantiating a new QuerySet object when 
@@ -178,6 +299,47 @@ class QuerySetManager(object):
         if instance is not None:
             # Document class being used rather than a document object
             return self
+
+        if self._collection is None:
+            db = _get_db()
+            collection = owner._meta['collection']
+
+            # Create collection as a capped collection if specified
+            if owner._meta['max_size'] or owner._meta['max_documents']:
+                # Get max document limit and max byte size from meta
+                max_size = owner._meta['max_size'] or 10000000 # 10MB default
+                max_documents = owner._meta['max_documents']
+
+                if collection in db.collection_names():
+                    self._collection = db[collection]
+                    # The collection already exists, check if its capped 
+                    # options match the specified capped options
+                    options = self._collection.options()
+                    if options.get('max') != max_documents or \
+                       options.get('size') != max_size:
+                        msg = ('Cannot create collection "%s" as a capped '
+                               'collection as it already exists') % collection
+                        raise InvalidCollectionError(msg)
+                else:
+                    # Create the collection as a capped collection
+                    opts = {'capped': True, 'size': max_size}
+                    if max_documents:
+                        opts['max'] = max_documents
+                    self._collection = db.create_collection(collection, opts)
+            else:
+                self._collection = db[collection]
         
-        # self._document should be the same as owner
-        return QuerySet(self._document, self._collection)
+        # owner is the document that contains the QuerySetManager
+        queryset = QuerySet(owner, self._collection)
+        if self._manager_func:
+            queryset = self._manager_func(queryset)
+        return queryset
+
+def queryset_manager(func):
+    """Decorator that allows you to define custom QuerySet managers on 
+    :class:`~mongoengine.Document` classes. The manager must be a function that
+    accepts a :class:`~mongoengine.queryset.QuerySet` as its only argument, and
+    returns a :class:`~mongoengine.queryset.QuerySet`, probably the same one 
+    but modified in some way.
+    """
+    return QuerySetManager(func)

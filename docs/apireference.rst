@@ -1,13 +1,14 @@
+=============
 API Reference
 =============
 
 Connecting
-----------
+==========
 
 .. autofunction:: mongoengine.connect
 
 Documents
----------
+=========
 
 .. autoclass:: mongoengine.Document
    :members:
@@ -21,13 +22,15 @@ Documents
    :members:
 
 Querying
---------
+========
 
 .. autoclass:: mongoengine.queryset.QuerySet
    :members:
 
+.. autofunction:: mongoengine.queryset.queryset_manager
+
 Fields
-------
+======
 
 .. autoclass:: mongoengine.StringField
 

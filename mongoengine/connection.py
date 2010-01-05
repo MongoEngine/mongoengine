@@ -29,15 +29,13 @@ def _get_db():
         raise ConnectionError('Not connected to database')
     return _db
 
-def connect(db=None, username=None, password=None, **kwargs):
+def connect(db, username=None, password=None, **kwargs):
     """Connect to the database specified by the 'db' argument. Connection 
     settings may be provided here as well if the database is not running on
     the default port on localhost. If authentication is needed, provide
     username and password arguments as well.
     """
     global _db
-    if db is None:
-        raise TypeError('"db" argument must be provided to connect()')
 
     _connection_settings.update(kwargs)
     connection = _get_connection()
