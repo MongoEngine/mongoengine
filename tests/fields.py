@@ -113,6 +113,21 @@ class FieldTest(unittest.TestCase):
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
+    def test_boolean_validation(self):
+        """Ensure that invalid values cannot be assigned to boolean fields.
+        """
+        class Person(Document):
+            admin = BooleanField()
+
+        person = Person()
+        person.admin = True
+        person.validate()
+
+        person.admin = 2
+        self.assertRaises(ValidationError, person.validate)
+        person.admin = 'Yes'
+        self.assertRaises(ValidationError, person.validate)
+
     def test_datetime_validation(self):
         """Ensure that invalid values cannot be assigned to datetime fields.
         """

@@ -2,8 +2,6 @@
 User Guide
 ==========
 
-.. _guide-connecting:
-
 Installing
 ==========
 MongoEngine is available on PyPI, so to use it you can use 
@@ -19,6 +17,8 @@ Alternatively, if you don't have setuptools installed, `download it from PyPi
 .. code-block:: console
 
     # python setup.py install
+
+.. _guide-connecting:
 
 Connecting to MongoDB
 =====================

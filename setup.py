@@ -1,6 +1,5 @@
 from setuptools import setup, find_packages
-
-VERSION = '0.1.1'
+import os
 
 DESCRIPTION = "A Python Document-Object Mapper for working with MongoDB"
 
@@ -9,6 +8,20 @@ try:
     LONG_DESCRIPTION = open('README.rst').read()
 except:
     pass
+
+def get_version(version_tuple):
+    version = '%s.%s' % (version_tuple[0], version_tuple[1])
+    if version_tuple[2]:
+        version = '%s.%s' % (version, version_tuple[2])
+    return version
+
+# Dirty hack to get version number from monogengine/__init__.py - we can't 
+# import it as it depends on PyMongo and PyMongo isn't installed until this
+# file is read
+init = os.path.join(os.path.dirname(__file__), 'mongoengine', '__init__.py')
+version_line = filter(lambda l: l.startswith('VERSION'), open(init))[0]
+VERSION = get_version(eval(version_line.split('=')[-1]))
+print VERSION
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
