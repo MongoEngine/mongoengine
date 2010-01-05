@@ -202,9 +202,11 @@ class BaseDocument(object):
         """Dictionary-style field access, return a field's value if present.
         """
         try:
-            return getattr(self, name)
+            if name in self._fields:
+                return getattr(self, name)
         except AttributeError:
-            raise KeyError(name)
+            pass
+        raise KeyError(name)
 
     def __setitem__(self, name, value):
         """Dictionary-style field access, set a field's value.
