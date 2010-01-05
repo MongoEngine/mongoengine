@@ -30,18 +30,32 @@ class QuerySet(object):
         """
         if isinstance(key_or_list, basestring):
             # single-field indexes needn't specify a direction
-            if key_or_list.startswith("-"):
+            if key_or_list.startswith("-") or key_or_list.startswith("+"):
                 key_or_list = key_or_list[1:]
             self._collection.ensure_index(key_or_list)
         elif isinstance(key_or_list, (list, tuple)):
-            print key_or_list
-            self._collection.ensure_index(key_or_list)
+            index_list = []
+            for key in key_or_list:
+                if key.startswith("-"):
+                    index_list.append((key[1:], pymongo.DESCENDING))
+                else:
+                    if key.startswith("+"):
+                        key = key[1:]
+                    index_list.append((key, pymongo.ASCENDING))
+            self._collection.ensure_index(index_list)
         return self
 
     def __call__(self, **query):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.QuerySet` with a query.
         """
+        
+        # ensure document-defined indexes are created
+        if self._document._meta['indexes']:
+            for key_or_list in self._document._meta['indexes']:
+                # print "key", key_or_list
+                self.ensure_index(key_or_list)
+        
         query = QuerySet._transform_query(_doc_cls=self._document, **query)
         self._query.update(query)
         return self
