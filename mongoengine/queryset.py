@@ -53,12 +53,13 @@ class QuerySet(object):
         return self._cursor_obj
 
     @classmethod
-    def _translate_field_name(cls, document, parts):
-        """Translate a field attribute name to a database field name.
+    def _lookup_field(cls, document, parts):
+        """Lookup a field based on its attribute and return a list containing
+        the field's parents and the field.
         """
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
-        field_names = []
+        fields = []
         field = None
         for field_name in parts:
             if field is None:
@@ -70,9 +71,15 @@ class QuerySet(object):
                 if field is None:
                     raise InvalidQueryError('Cannot resolve field "%s"'
                                             % field_name)
-            field_names.append(field.name)
-        return field_names
-       
+            fields.append(field)
+        return fields
+
+    @classmethod
+    def _translate_field_name(cls, doc_cls, parts):
+        """Translate a field attribute name to a database field name.
+        """
+        return [field.name for field in QuerySet._lookup_field(doc_cls, parts)]
+
     @classmethod
     def _transform_query(cls, _doc_cls=None, **query):
         """Transform a query from Django-style format to Mongo format.
@@ -87,11 +94,22 @@ class QuerySet(object):
             op = None
             if parts[-1] in operators:
                 op = parts.pop()
-                value = {'$' + op: value}
 
-            # Switch field names to proper names [set in Field(name='foo')]
             if _doc_cls:
-                parts = QuerySet._translate_field_name(_doc_cls, parts)
+                # Switch field names to proper names [set in Field(name='foo')]
+                fields = QuerySet._lookup_field(_doc_cls, parts)
+                parts = [field.name for field in fields]
+
+                # Convert value to proper value
+                field = fields[-1]
+                if op in (None, 'neq', 'gt', 'gte', 'lt', 'lte'):
+                    value = field.prepare_query_value(value)
+                elif op in ('in', 'nin', 'all'):
+                    # 'in', 'nin' and 'all' require a list of values
+                    value = [field.prepare_query_value(v) for v in value]
+
+            if op:
+                value = {'$' + op: value}
 
             key = '.'.join(parts)
             if op is None or key not in mongo_query:

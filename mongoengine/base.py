@@ -49,6 +49,11 @@ class BaseField(object):
         """
         return self.to_python(value)
 
+    def prepare_query_value(self, value):
+        """Prepare a value that is being used in a query for PyMongo.
+        """
+        return value
+
     def validate(self, value):
         """Perform validation on a value.
         """
@@ -66,6 +71,9 @@ class ObjectIdField(BaseField):
         if not isinstance(value, pymongo.objectid.ObjectId):
             return pymongo.objectid.ObjectId(value)
         return value
+
+    def prepare_query_value(self, value):
+        return self.to_mongo(value)
 
     def validate(self, value):
         try:

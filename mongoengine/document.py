@@ -67,8 +67,9 @@ class Document(BaseDocument):
     def reload(self):
         """Reloads all attributes from the database.
         """
-        object_id = self._fields['id'].to_mongo(self.id)
-        obj = self.__class__.objects(id=object_id).first()
+        #object_id = self._fields['id'].to_mongo(self.id)
+        #obj = self.__class__.objects(id=object_id).first()
+        obj = self.__class__.objects(id=self.id).first()
         for field in self._fields:
             setattr(self, field, getattr(obj, field))
 

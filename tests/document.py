@@ -321,6 +321,8 @@ class DocumentTest(unittest.TestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
 
+        BlogPost.drop_collection()
+
         post = BlogPost(content='Went for a walk today...')
         post.tags = tags = ['fun', 'leisure']
         comments = [Comment(content='Good for you'), Comment(content='Yay.')]

@@ -300,6 +300,32 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_query_value_conversion(self):
+        """Ensure that query values are properly converted when necessary.
+        """
+        class BlogPost(Document):
+            author = ReferenceField(self.Person)
+
+        BlogPost.drop_collection()
+
+        person = self.Person(name='test', age=30)
+        person.save()
+
+        post = BlogPost(author=person)
+        post.save()
+
+        # Test that query may be performed by providing a document as a value
+        # while using a ReferenceField's name - the document should be 
+        # converted to an DBRef, which is legal, unlike a Document object
+        post_obj = BlogPost.objects(author=person).first()
+        self.assertEqual(post.id, post_obj.id)
+
+        # Test that lists of values work when using the 'in', 'nin' and 'all'
+        post_obj = BlogPost.objects(author__in=[person]).first()
+        self.assertEqual(post.id, post_obj.id)
+
+        BlogPost.drop_collection()
+
     def tearDown(self):
         self.Person.drop_collection()
 
