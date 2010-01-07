@@ -25,7 +25,7 @@ class QuerySet(object):
             self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
         
-    def ensure_index(self, key_or_list, direction=None):
+    def ensure_index(self, key_or_list):
         """Ensure that the given indexes are in place.
         """
         if isinstance(key_or_list, basestring):
