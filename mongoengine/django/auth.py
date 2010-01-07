@@ -32,6 +32,8 @@ class User(Document):
     last_login = DateTimeField(default=datetime.datetime.now)
 
     def get_full_name(self):
+        """Returns the users first and last names, separated by a space.
+        """
         full_name = u'%s %s' % (self.first_name or '', self.last_name or '')
         return full_name.strip()
 
@@ -42,6 +44,10 @@ class User(Document):
         return True
 
     def set_password(self, raw_password):
+        """Sets the user's password - always use this rather than directly
+        assigning to :attr:`~mongoengine.django.auth.User.password` as the
+        password is hashed before storage.
+        """
         from random import random
         algo = 'sha1'
         salt = get_hexdigest(algo, str(random()), str(random()))[:5]
@@ -49,11 +55,19 @@ class User(Document):
         self.password = '%s$%s$%s' % (algo, salt, hash)
 
     def check_password(self, raw_password):
+        """Checks the user's password against a provided password - always use
+        this rather than directly comparing to
+        :attr:`~mongoengine.django.auth.User.password` as the password is
+        hashed before storage.
+        """
         algo, salt, hash = self.password.split('$')
         return hash == get_hexdigest(algo, salt, raw_password)
 
     @classmethod
     def create_user(cls, username, password, email=None):
+        """Create (and save) a new user with the given username, password and
+        email address.
+        """
         user = User(username=username, email=email)
         user.set_password(password)
         user.save()

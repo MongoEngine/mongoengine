@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Changes is v0.1.3
+=================
+- Added Django authentication backend
+- Added Document.meta support for indexes, which are ensured just before 
+  querying takes place
+- A few minor bugfixes
+
+
 Changes in v0.1.2
 =================
 - Query values may be processed before before being used in queries

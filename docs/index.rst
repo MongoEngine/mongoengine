@@ -16,6 +16,7 @@ The source is available on `GitHub <http://github.com/hmarr/mongoengine>`_.
    tutorial
    userguide
    apireference
+   django
    changelog
 
 Indices and tables
