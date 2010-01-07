@@ -202,9 +202,7 @@ class BaseDocument(object):
         return all_subclasses
 
     def __iter__(self):
-        # Use _data rather than _fields as iterator only looks at names so
-        # values don't need to be converted to Python types
-        return iter(self._data)
+        return iter(self._fields)
 
     def __getitem__(self, name):
         """Dictionary-style field access, return a field's value if present.

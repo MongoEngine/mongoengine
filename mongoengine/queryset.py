@@ -132,7 +132,7 @@ class QuerySet(object):
         """Retrieve the object matching the id provided.
         """
         if not isinstance(object_id, pymongo.objectid.ObjectId):
-            object_id = pymongo.objectid.ObjectId(object_id)
+            object_id = pymongo.objectid.ObjectId(str(object_id))
 
         result = self._collection.find_one(object_id)
         if result is not None:
