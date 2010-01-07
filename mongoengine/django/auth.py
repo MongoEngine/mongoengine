@@ -52,6 +52,13 @@ class User(Document):
         algo, salt, hash = self.password.split('$')
         return hash == get_hexdigest(algo, salt, raw_password)
 
+    @classmethod
+    def create_user(cls, username, password, email=None):
+        user = User(username=username, email=email)
+        user.set_password(password)
+        user.save()
+        return user
+
 
 class MongoEngineBackend(object):
     """Authenticate using MongoEngine and mongoengine.django.auth.User.
