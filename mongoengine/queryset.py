@@ -19,6 +19,7 @@ class QuerySet(object):
         self._document = document
         self._collection = collection
         self._query = {}
+
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
         if document._meta.get('allow_inheritance'):
@@ -29,25 +30,24 @@ class QuerySet(object):
         """Ensure that the given indexes are in place.
         """
         if isinstance(key_or_list, basestring):
-            # single-field indexes needn't specify a direction
-            if key_or_list.startswith(("-", "+")):
-                key_or_list = key_or_list[1:]
+            key_or_list = [key_or_list]
+
+        index_list = []
+        # If _types is being used, prepend it to every specified index
+        if self._document._meta.get('allow_inheritance'):
+            index_list.append(('_types', 1))
+
+        for key in key_or_list:
+            # Get direction from + or -
+            direction = pymongo.ASCENDING
+            if key.startswith("-"):
+                direction = pymongo.DESCENDING
+            if key.startswith(("+", "-")):
+                    key = key[1:]
             # Use real field name
-            key = QuerySet._translate_field_name(self._document, key_or_list)
-            self._collection.ensure_index(key)
-        elif isinstance(key_or_list, (list, tuple)):
-            index_list = []
-            for key in key_or_list:
-                # Get direction from + or -
-                direction = pymongo.ASCENDING
-                if key.startswith("-"):
-                    direction = pymongo.DESCENDING
-                if key.startswith(("+", "-")):
-                        key = key[1:]
-                # Use real field name
-                key = QuerySet._translate_field_name(self._document, key)
-                index_list.append((key, direction))
-            self._collection.ensure_index(index_list)
+            key = QuerySet._translate_field_name(self._document, key)
+            index_list.append((key, direction))
+        self._collection.ensure_index(index_list)
         return self
 
     def __call__(self, **query):
@@ -64,7 +64,6 @@ class QuerySet(object):
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
-                    # print "key", key_or_list
                     self.ensure_index(key_or_list)
 
             # If _types is being used (for polymorphism), it needs an index
@@ -72,7 +71,11 @@ class QuerySet(object):
                 self._collection.ensure_index('_types')
 
             self._cursor_obj = self._collection.find(self._query)
-
+            
+            # apply default ordering
+            if self._document._meta['ordering']:
+                self.order_by(*self._document._meta['ordering'])
+            
         return self._cursor_obj
 
     @classmethod
@@ -225,6 +228,7 @@ class QuerySet(object):
         """Return an explain plan record for the 
         :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
         """
+
         plan = self._cursor.explain()
         if format:
             import pprint

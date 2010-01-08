@@ -131,6 +131,36 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
 
+    def test_ordering(self):
+        """Ensure default ordering is applied and can be overridden.
+        """
+        from datetime import datetime
+
+        class BlogPost(Document):
+            title = StringField()
+            published_date = DateTimeField()
+
+            meta = {
+                'ordering': ['-published_date']
+            }
+
+        blog_post_1 = BlogPost(title="Blog Post #1", published_date=datetime(2010, 1, 5, 0, 0 ,0))
+        blog_post_2 = BlogPost(title="Blog Post #2", published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_3 = BlogPost(title="Blog Post #3", published_date=datetime(2010, 1, 7, 0, 0 ,0))
+
+        blog_post_1.save()
+        blog_post_2.save()
+        blog_post_3.save()
+        
+        # get the "first" BlogPost using default ordering
+        # from BlogPost.meta.ordering
+        latest_post = BlogPost.objects.first() 
+        self.assertEqual(latest_post.title, "Blog Post #3")
+        
+        # override default ordering, order BlogPosts by "published_date"
+        first_post = BlogPost.objects.order_by("+published_date").first()
+        self.assertEqual(first_post.title, "Blog Post #1")
+
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
@@ -331,10 +361,17 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that and index is used when '_types' is being used in a
         query.
         """
+        class BlogPost(Document):
+            date = DateTimeField()
+            meta = {'indexes': ['-date']}
+
         # Indexes are lazy so use list() to perform query
-        list(self.Person.objects)
-        info = self.Person.objects._collection.index_information()
+        list(BlogPost.objects)
+        info = BlogPost.objects._collection.index_information()
         self.assertTrue([('_types', 1)] in info.values())
+        self.assertTrue([('_types', 1), ('date', -1)] in info.values())
+
+        BlogPost.drop_collection()
 
         class BlogPost(Document):
             title = StringField()

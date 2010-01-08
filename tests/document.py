@@ -242,9 +242,9 @@ class DocumentTest(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
-        self.assertTrue([('category', 1), ('addDate', -1)] in info.values())
-        # Even though descending order was specified, single-key indexes use 1
-        self.assertTrue([('addDate', 1)] in info.values())
+        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
+                        in info.values())
+        self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
 
         BlogPost.drop_collection()
 
