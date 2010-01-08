@@ -59,7 +59,6 @@ class QuerySet(object):
         # ensure document-defined indexes are created
         if self._document._meta['indexes']:
             for key_or_list in self._document._meta['indexes']:
-                # print "key", key_or_list
                 self.ensure_index(key_or_list)
         
         query = QuerySet._transform_query(_doc_cls=self._document, **query)
@@ -70,6 +69,11 @@ class QuerySet(object):
     def _cursor(self):
         if not self._cursor_obj:
             self._cursor_obj = self._collection.find(self._query)
+            
+            # apply default ordering
+            if self._document._meta['ordering']:
+                self.order_by(*self._document._meta['ordering'])
+            
         return self._cursor_obj
 
     @classmethod

@@ -155,6 +155,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'allow_inheritance': True,
             'max_documents': None,
             'max_size': None,
+            'ordering': [], # default ordering applied at runtime
             'indexes': [] # indexes to be ensured at runtime
         }
 

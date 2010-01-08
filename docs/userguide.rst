@@ -183,6 +183,41 @@ sign. Note that direction only matters on multi-field indexes. ::
         meta = {
             'indexes': ['title', ('title', '-rating')]
         }
+        
+Ordering
+--------
+
+A default ordering can be specified for your :class:`~mongoengine.queryset.QuerySet`
+using the :attr:`ordering` attributeof :attr:`~Document.meta`. 
+Ordering will be applied when the ``QuerySet`` is created, and can be 
+overridden by subsequent calls to :meth:`~mongoengine.QuerySet.order_by`. ::
+
+    from datetime import datetime
+
+    class BlogPost(Document):
+        title = StringField()
+        published_date = DateTimeField()
+
+        meta = {
+            'ordering': ['-published_date']
+        }
+
+    blog_post_1 = BlogPost(title="Blog Post #1", published_date=datetime(2010, 1, 5, 0, 0 ,0))
+    blog_post_2 = BlogPost(title="Blog Post #2", published_date=datetime(2010, 1, 6, 0, 0 ,0))
+    blog_post_3 = BlogPost(title="Blog Post #3", published_date=datetime(2010, 1, 7, 0, 0 ,0))
+
+    blog_post_1.save()
+    blog_post_2.save()
+    blog_post_3.save()
+
+    # get the "first" BlogPost using default ordering
+    # from BlogPost.meta.ordering
+    latest_post = BlogPost.objects.first() 
+    self.assertEqual(latest_post.title, "Blog Post #3")
+
+    # override default ordering, order BlogPosts by "published_date"
+    first_post = BlogPost.objects.order_by("+published_date").first()
+    self.assertEqual(first_post.title, "Blog Post #1")
 
 Document inheritance
 --------------------
