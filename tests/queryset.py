@@ -326,6 +326,27 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+
+    def test_types_index(self):
+        """Ensure that and index is used when '_types' is being used in a
+        query.
+        """
+        # Indexes are lazy so use list() to perform query
+        list(self.Person.objects)
+        info = self.Person.objects._collection.index_information()
+        self.assertTrue([('_types', 1)] in info.values())
+
+        class BlogPost(Document):
+            title = StringField()
+            meta = {'allow_inheritance': False}
+
+        # _types is not used on objects where allow_inheritance is False
+        list(BlogPost.objects)
+        info = BlogPost.objects._collection.index_information()
+        self.assertFalse([('_types', 1)] in info.values())
+
+        BlogPost.drop_collection()
+
     def tearDown(self):
         self.Person.drop_collection()
 

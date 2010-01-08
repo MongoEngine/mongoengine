@@ -54,13 +54,6 @@ class QuerySet(object):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.QuerySet` with a query.
         """
-        
-        # ensure document-defined indexes are created
-        if self._document._meta['indexes']:
-            for key_or_list in self._document._meta['indexes']:
-                # print "key", key_or_list
-                self.ensure_index(key_or_list)
-        
         query = QuerySet._transform_query(_doc_cls=self._document, **query)
         self._query.update(query)
         return self
@@ -68,7 +61,18 @@ class QuerySet(object):
     @property
     def _cursor(self):
         if not self._cursor_obj:
+            # Ensure document-defined indexes are created
+            if self._document._meta['indexes']:
+                for key_or_list in self._document._meta['indexes']:
+                    # print "key", key_or_list
+                    self.ensure_index(key_or_list)
+
+            # If _types is being used (for polymorphism), it needs an index
+            if '_types' in self._query:
+                self._collection.ensure_index('_types')
+
             self._cursor_obj = self._collection.find(self._query)
+
         return self._cursor_obj
 
     @classmethod
