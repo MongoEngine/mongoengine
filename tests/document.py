@@ -225,7 +225,7 @@ class DocumentTest(unittest.TestCase):
         """Ensure that indexes are used when meta[indexes] is specified.
         """
         class BlogPost(Document):
-            date = DateTimeField(default=datetime.datetime.now)
+            date = DateTimeField(name='addDate', default=datetime.datetime.now)
             category = StringField()
             meta = {
                 'indexes': [
@@ -241,9 +241,9 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.objects()
         info = BlogPost.objects._collection.index_information()
-        self.assertTrue([('category', 1), ('date', -1)] in info.values())
+        self.assertTrue([('category', 1), ('addDate', -1)] in info.values())
         # Even though descending order was specified, single-key indexes use 1
-        self.assertTrue([('date', 1)] in info.values())
+        self.assertTrue([('addDate', 1)] in info.values())
 
         BlogPost.drop_collection()
 

@@ -30,18 +30,23 @@ class QuerySet(object):
         """
         if isinstance(key_or_list, basestring):
             # single-field indexes needn't specify a direction
-            if key_or_list.startswith("-") or key_or_list.startswith("+"):
+            if key_or_list.startswith(("-", "+")):
                 key_or_list = key_or_list[1:]
-            self._collection.ensure_index(key_or_list)
+            # Use real field name
+            key = QuerySet._translate_field_name(self._document, key_or_list)
+            self._collection.ensure_index(key)
         elif isinstance(key_or_list, (list, tuple)):
             index_list = []
             for key in key_or_list:
+                # Get direction from + or -
+                direction = pymongo.ASCENDING
                 if key.startswith("-"):
-                    index_list.append((key[1:], pymongo.DESCENDING))
-                else:
-                    if key.startswith("+"):
+                    direction = pymongo.DESCENDING
+                if key.startswith(("+", "-")):
                         key = key[1:]
-                    index_list.append((key, pymongo.ASCENDING))
+                # Use real field name
+                key = QuerySet._translate_field_name(self._document, key)
+                index_list.append((key, direction))
             self._collection.ensure_index(index_list)
         return self
 
@@ -89,10 +94,12 @@ class QuerySet(object):
         return fields
 
     @classmethod
-    def _translate_field_name(cls, doc_cls, parts):
+    def _translate_field_name(cls, doc_cls, field, sep='.'):
         """Translate a field attribute name to a database field name.
         """
-        return [field.name for field in QuerySet._lookup_field(doc_cls, parts)]
+        parts = field.split(sep)
+        parts = [f.name for f in QuerySet._lookup_field(doc_cls, parts)]
+        return '.'.join(parts)
 
     @classmethod
     def _transform_query(cls, _doc_cls=None, **query):
