@@ -49,6 +49,11 @@ class BaseField(object):
         """
         return self.to_python(value)
 
+    def prepare_query_value(self, value):
+        """Prepare a value that is being used in a query for PyMongo.
+        """
+        return value
+
     def validate(self, value):
         """Perform validation on a value.
         """
@@ -66,6 +71,9 @@ class ObjectIdField(BaseField):
         if not isinstance(value, pymongo.objectid.ObjectId):
             return pymongo.objectid.ObjectId(value)
         return value
+
+    def prepare_query_value(self, value):
+        return self.to_mongo(value)
 
     def validate(self, value):
         try:
@@ -199,17 +207,17 @@ class BaseDocument(object):
         return all_subclasses
 
     def __iter__(self):
-        # Use _data rather than _fields as iterator only looks at names so
-        # values don't need to be converted to Python types
-        return iter(self._data)
+        return iter(self._fields)
 
     def __getitem__(self, name):
         """Dictionary-style field access, return a field's value if present.
         """
         try:
-            return getattr(self, name)
+            if name in self._fields:
+                return getattr(self, name)
         except AttributeError:
-            raise KeyError(name)
+            pass
+        raise KeyError(name)
 
     def __setitem__(self, name, value):
         """Dictionary-style field access, set a field's value.

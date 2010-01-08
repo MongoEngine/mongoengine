@@ -221,6 +221,32 @@ class DocumentTest(unittest.TestCase):
 
         Log.drop_collection()
 
+    def test_indexes(self):
+        """Ensure that indexes are used when meta[indexes] is specified.
+        """
+        class BlogPost(Document):
+            date = DateTimeField(name='addDate', default=datetime.datetime.now)
+            category = StringField()
+            meta = {
+                'indexes': [
+                    '-date', 
+                    ('category', '-date')
+                ],
+            }
+
+        BlogPost.drop_collection()
+
+        info = BlogPost.objects._collection.index_information()
+        self.assertEqual(len(info), 0)
+
+        BlogPost.objects()
+        info = BlogPost.objects._collection.index_information()
+        self.assertTrue([('category', 1), ('addDate', -1)] in info.values())
+        # Even though descending order was specified, single-key indexes use 1
+        self.assertTrue([('addDate', 1)] in info.values())
+
+        BlogPost.drop_collection()
+
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
@@ -320,6 +346,8 @@ class DocumentTest(unittest.TestCase):
             content = StringField()
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
+
+        BlogPost.drop_collection()
 
         post = BlogPost(content='Went for a walk today...')
         post.tags = tags = ['fun', 'leisure']

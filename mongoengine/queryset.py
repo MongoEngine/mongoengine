@@ -26,23 +26,28 @@ class QuerySet(object):
             self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
         
-    def ensure_index(self, key_or_list, direction=None):
+    def ensure_index(self, key_or_list):
         """Ensure that the given indexes are in place.
         """
         if isinstance(key_or_list, basestring):
             # single-field indexes needn't specify a direction
-            if key_or_list.startswith("-") or key_or_list.startswith("+"):
+            if key_or_list.startswith(("-", "+")):
                 key_or_list = key_or_list[1:]
-            self._collection.ensure_index(key_or_list)
+            # Use real field name
+            key = QuerySet._translate_field_name(self._document, key_or_list)
+            self._collection.ensure_index(key)
         elif isinstance(key_or_list, (list, tuple)):
             index_list = []
             for key in key_or_list:
+                # Get direction from + or -
+                direction = pymongo.ASCENDING
                 if key.startswith("-"):
-                    index_list.append((key[1:], pymongo.DESCENDING))
-                else:
-                    if key.startswith("+"):
+                    direction = pymongo.DESCENDING
+                if key.startswith(("+", "-")):
                         key = key[1:]
-                    index_list.append((key, pymongo.ASCENDING))
+                # Use real field name
+                key = QuerySet._translate_field_name(self._document, key)
+                index_list.append((key, direction))
             self._collection.ensure_index(index_list)
         return self
 
@@ -68,12 +73,13 @@ class QuerySet(object):
         return self._cursor_obj
 
     @classmethod
-    def _translate_field_name(cls, document, parts):
-        """Translate a field attribute name to a database field name.
+    def _lookup_field(cls, document, parts):
+        """Lookup a field based on its attribute and return a list containing
+        the field's parents and the field.
         """
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
-        field_names = []
+        fields = []
         field = None
         for field_name in parts:
             if field is None:
@@ -85,9 +91,17 @@ class QuerySet(object):
                 if field is None:
                     raise InvalidQueryError('Cannot resolve field "%s"'
                                             % field_name)
-            field_names.append(field.name)
-        return field_names
-       
+            fields.append(field)
+        return fields
+
+    @classmethod
+    def _translate_field_name(cls, doc_cls, field, sep='.'):
+        """Translate a field attribute name to a database field name.
+        """
+        parts = field.split(sep)
+        parts = [f.name for f in QuerySet._lookup_field(doc_cls, parts)]
+        return '.'.join(parts)
+
     @classmethod
     def _transform_query(cls, _doc_cls=None, **query):
         """Transform a query from Django-style format to Mongo format.
@@ -102,11 +116,22 @@ class QuerySet(object):
             op = None
             if parts[-1] in operators:
                 op = parts.pop()
-                value = {'$' + op: value}
 
-            # Switch field names to proper names [set in Field(name='foo')]
             if _doc_cls:
-                parts = QuerySet._translate_field_name(_doc_cls, parts)
+                # Switch field names to proper names [set in Field(name='foo')]
+                fields = QuerySet._lookup_field(_doc_cls, parts)
+                parts = [field.name for field in fields]
+
+                # Convert value to proper value
+                field = fields[-1]
+                if op in (None, 'neq', 'gt', 'gte', 'lt', 'lte'):
+                    value = field.prepare_query_value(value)
+                elif op in ('in', 'nin', 'all'):
+                    # 'in', 'nin' and 'all' require a list of values
+                    value = [field.prepare_query_value(v) for v in value]
+
+            if op:
+                value = {'$' + op: value}
 
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
@@ -129,7 +154,7 @@ class QuerySet(object):
         """Retrieve the object matching the id provided.
         """
         if not isinstance(object_id, pymongo.objectid.ObjectId):
-            object_id = pymongo.objectid.ObjectId(object_id)
+            object_id = pymongo.objectid.ObjectId(str(object_id))
 
         result = self._collection.find_one(object_id)
         if result is not None:

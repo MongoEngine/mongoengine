@@ -44,6 +44,11 @@ class Document(BaseDocument):
     maximum size of the collection in bytes. If :attr:`max_size` is not 
     specified and :attr:`max_documents` is, :attr:`max_size` defaults to 
     10000000 bytes (10MB).
+
+    Indexes may be created by specifying :attr:`indexes` in the :attr:`meta`
+    dictionary. The value should be a list of field names or tuples of field 
+    names. Index direction may be specified by prefixing the field names with
+    a **+** or **-** sign.
     """
 
     __metaclass__ = TopLevelDocumentMetaclass
@@ -67,8 +72,7 @@ class Document(BaseDocument):
     def reload(self):
         """Reloads all attributes from the database.
         """
-        object_id = self._fields['id'].to_mongo(self.id)
-        obj = self.__class__.objects(id=object_id).first()
+        obj = self.__class__.objects(id=self.id).first()
         for field in self._fields:
             setattr(self, field, getattr(obj, field))
 

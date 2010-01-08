@@ -38,6 +38,8 @@ Fields
 
 .. autoclass:: mongoengine.FloatField
 
+.. autoclass:: mongoengine.BooleanField
+
 .. autoclass:: mongoengine.DateTimeField
 
 .. autoclass:: mongoengine.EmbeddedDocumentField

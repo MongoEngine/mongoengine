@@ -2,8 +2,6 @@
 User Guide
 ==========
 
-.. _guide-connecting:
-
 Installing
 ==========
 MongoEngine is available on PyPI, so to use it you can use 
@@ -19,6 +17,8 @@ Alternatively, if you don't have setuptools installed, `download it from PyPi
 .. code-block:: console
 
     # python setup.py install
+
+.. _guide-connecting:
 
 Connecting to MongoDB
 =====================
@@ -167,6 +167,22 @@ The following example shows a :class:`Log` document that will be limited to
     class Log(Document):
         ip_address = StringField()
         meta = {'max_documents': 1000, 'max_size': 2000000}
+
+Indexes
+-------
+You can specify indexes on collections to make querying faster. This is done
+by creating a list of index specifications called :attr:`indexes` in the
+:attr:`~Document.meta` dictionary, where an index specification may either be
+a single field name, or a tuple containing multiple field names. A direction
+may be specified on fields by prefixing the field name with a **+** or a **-**
+sign. Note that direction only matters on multi-field indexes. ::
+
+    class Page(Document):
+        title = StringField()
+        rating = StringField()
+        meta = {
+            'indexes': ['title', ('title', '-rating')]
+        }
 
 Document inheritance
 --------------------

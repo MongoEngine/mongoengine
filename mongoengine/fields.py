@@ -7,9 +7,9 @@ import pymongo
 import datetime
 
 
-__all__ = ['StringField', 'IntField', 'FloatField', 'DateTimeField', 
-           'EmbeddedDocumentField', 'ListField', 'ObjectIdField', 
-           'ReferenceField', 'ValidationError']
+__all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
+           'DateTimeField', 'EmbeddedDocumentField', 'ListField', 
+           'ObjectIdField', 'ReferenceField', 'ValidationError']
 
 
 class StringField(BaseField):
@@ -25,7 +25,7 @@ class StringField(BaseField):
         return unicode(value)
 
     def validate(self, value):
-        assert(isinstance(value, (str, unicode)))
+        assert isinstance(value, (str, unicode))
 
         if self.max_length is not None and len(value) > self.max_length:
             raise ValidationError('String value is too long')
@@ -50,7 +50,7 @@ class IntField(BaseField):
         return int(value)
 
     def validate(self, value):
-        assert(isinstance(value, (int, long)))
+        assert isinstance(value, (int, long))
 
         if self.min_value is not None and value < self.min_value:
             raise ValidationError('Integer value is too small')
@@ -71,7 +71,7 @@ class FloatField(BaseField):
         return float(value)
 
     def validate(self, value):
-        assert(isinstance(value, float))
+        assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
             raise ValidationError('Float value is too small')
@@ -80,12 +80,23 @@ class FloatField(BaseField):
             raise ValidationError('Float value is too large')
 
 
+class BooleanField(BaseField):
+    """A boolean field type.
+    """
+    
+    def to_python(self, value):
+        return bool(value)
+
+    def validate(self, value):
+        assert isinstance(value, bool)
+
+
 class DateTimeField(BaseField):
     """A datetime field.
     """
 
     def validate(self, value):
-        assert(isinstance(value, datetime.datetime))
+        assert isinstance(value, datetime.datetime)
 
 
 class EmbeddedDocumentField(BaseField):
@@ -188,21 +199,27 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document):
         if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
+            # document may already be an object id
             id_ = document
         else:
+            # We need the id from the saved object to create the DBRef
             id_ = document.id
             if id_ is None:
                 raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
 
+        # id may be a string rather than an ObjectID object
         if not isinstance(id_, pymongo.objectid.ObjectId):
             id_ = pymongo.objectid.ObjectId(id_)
 
         collection = self.document_type._meta['collection']
         return pymongo.dbref.DBRef(collection, id_)
+    
+    def prepare_query_value(self, value):
+        return self.to_mongo(value)
 
     def validate(self, value):
-        assert(isinstance(value, (self.document_type, pymongo.dbref.DBRef)))
+        assert isinstance(value, (self.document_type, pymongo.dbref.DBRef))
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
