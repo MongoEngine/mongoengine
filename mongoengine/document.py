@@ -1,11 +1,12 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
+from queryset import OperationError
 from connection import _get_db
 
 import pymongo
 
 
-__all__ = ['Document', 'EmbeddedDocument', 'ValidationError']
+__all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
 
 
 class EmbeddedDocument(BaseDocument):
@@ -65,7 +66,7 @@ class Document(BaseDocument):
         try:
             object_id = self.__class__.objects._collection.save(doc, safe=safe)
         except pymongo.errors.OperationFailure, err:
-            raise ValidationError('Tried to safe duplicate unique keys (%s)'
+            raise OperationError('Tried to save duplicate unique keys (%s)'
                                   % str(err))
         self.id = self._fields['id'].to_python(object_id)
 
@@ -81,7 +82,7 @@ class Document(BaseDocument):
         """
         obj = self.__class__.objects(id=self.id).first()
         for field in self._fields:
-            setattr(self, field, getattr(obj, field))
+            setattr(self, field, obj[field])
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields

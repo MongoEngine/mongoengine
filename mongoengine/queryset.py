@@ -10,6 +10,10 @@ class InvalidQueryError(Exception):
     pass
 
 
+class OperationError(Exception):
+    pass
+
+
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
     providing :class:`~mongoengine.Document` objects as the results.
@@ -253,6 +257,86 @@ class QuerySet(object):
         """Delete the documents matched by the query.
         """
         self._collection.remove(self._query)
+
+    @classmethod
+    def _transform_update(cls, _doc_cls=None, **update):
+        """Transform an update spec from Django-style format to Mongo format.
+        """
+        operators = ['set', 'unset', 'inc', 'dec', 'push', 'push_all', 'pull', 
+                     'pull_all']
+
+        mongo_update = {}
+        for key, value in update.items():
+            parts = key.split('__')
+            # Check for an operator and transform to mongo-style if there is
+            op = None
+            if parts[0] in operators:
+                op = parts.pop(0)
+                # Convert Pythonic names to Mongo equivalents
+                if op in ('push_all', 'pull_all'):
+                    op = op.replace('_all', 'All')
+                elif op == 'dec':
+                    # Support decrement by flipping a positive value's sign
+                    # and using 'inc'
+                    op = 'inc'
+                    if value > 0:
+                        value = -value
+
+            if _doc_cls:
+                # Switch field names to proper names [set in Field(name='foo')]
+                fields = QuerySet._lookup_field(_doc_cls, parts)
+                parts = [field.name for field in fields]
+
+                # Convert value to proper value
+                field = fields[-1]
+                if op in (None, 'set', 'unset', 'push', 'pull'):
+                    value = field.prepare_query_value(value)
+                elif op in ('pushAll', 'pullAll'):
+                    value = [field.prepare_query_value(v) for v in value]
+
+            key = '.'.join(parts)
+
+            if op:
+                value = {key: value}
+                key = '$' + op
+
+            if op is None or key not in mongo_update:
+                mongo_update[key] = value
+            elif key in mongo_update and isinstance(mongo_update[key], dict):
+                mongo_update[key].update(value)
+
+        return mongo_update
+
+    def update(self, safe_update=True, **update):
+        """Perform an atomic update on the fields matched by the query.
+        """
+        if pymongo.version < '1.1.1':
+            raise OperationError('update() method requires PyMongo 1.1.1+')
+
+        update = QuerySet._transform_update(self._document, **update)
+        try:
+            self._collection.update(self._query, update, safe=safe_update, 
+                                    multi=True)
+        except pymongo.errors.OperationFailure, err:
+            if str(err) == 'multi not coded yet':
+                raise OperationError('update() method requires MongoDB 1.1.3+')
+            raise OperationError('Update failed (%s)' % str(err))
+
+    def update_one(self, safe_update=True, **update):
+        """Perform an atomic update on first field matched by the query.
+        """
+        update = QuerySet._transform_update(self._document, **update)
+        try:
+            # Explicitly provide 'multi=False' to newer versions of PyMongo
+            # as the default may change to 'True'
+            if pymongo.version >= '1.1.1':
+                self._collection.update(self._query, update, safe=safe_update, 
+                                        multi=False)
+            else:
+                # Older versions of PyMongo don't support 'multi'
+                self._collection.update(self._query, update, safe=safe_update)
+        except pymongo.errors.OperationFailure, e:
+            raise OperationError('Update failed [%s]' % str(e))
 
     def __iter__(self):
         return self

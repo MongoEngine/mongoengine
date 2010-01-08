@@ -201,6 +201,41 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects.delete()
         self.assertEqual(len(self.Person.objects), 0)
 
+    def test_update(self):
+        """Ensure that atomic updates work properly.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            hits = IntField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(name="Test Post", hits=5, tags=['test'])
+        post.save()
+
+        BlogPost.objects.update(set__hits=10)
+        post.reload()
+        self.assertEqual(post.hits, 10)
+
+        BlogPost.objects.update_one(inc__hits=1)
+        post.reload()
+        self.assertEqual(post.hits, 11)
+
+        BlogPost.objects.update_one(dec__hits=1)
+        post.reload()
+        self.assertEqual(post.hits, 10)
+
+        BlogPost.objects.update(push__tags='mongo')
+        post.reload()
+        self.assertTrue('mongo' in post.tags)
+
+        BlogPost.objects.update_one(push_all__tags=['db', 'nosql'])
+        post.reload()
+        self.assertTrue('db' in post.tags and 'nosql' in post.tags)
+
+        BlogPost.drop_collection()
+
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
         """

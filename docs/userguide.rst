@@ -144,7 +144,7 @@ MongoEngine allows you to specify that a field should be unique across a
 collection by providing ``unique=True`` to a :class:`~mongoengine.Field`\ 's
 constructor. If you try to save a document that has the same value for a unique
 field as a document that is already in the database, a 
-:class:`~mongoengine.ValidationError` will be raised. You may also specify
+:class:`~mongoengine.OperationError` will be raised. You may also specify
 multi-field uniqueness constraints by using :attr:`unique_with`, which may be
 either a single field name, or a list or tuple of field names::
 
@@ -453,4 +453,39 @@ would be generating "tag-clouds"::
 
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
+
+Atomic updates
+--------------
+Documents may be updated atomically by using the
+:meth:`~mongoengine.queryset.QuerySet.update_one` and
+:meth:`~mongoengine.queryset.QuerySet.update` methods on a 
+:meth:`~mongoengine.queryset.QuerySet`. There are several different "modifiers"
+that you may use with these methods:
+
+* ``set`` -- set a particular value
+* ``unset`` -- delete a particular value (since MongoDB v1.3+)
+* ``inc`` -- increment a value by a given amount
+* ``dec`` -- decrement a value by a given amount
+* ``push`` -- append a value to a list
+* ``push_all`` -- append several values to a list
+* ``pull`` -- remove a value from a list
+* ``pull_all`` -- remove several values from a list
+
+The syntax for atomic updates is similar to the querying syntax, but the 
+modifier comes before the field, not after it::
+    
+    >>> post = BlogPost(title='Test', page_views=0, tags=['database'])
+    >>> post.save()
+    >>> BlogPost.objects(id=post.id).update_one(inc__page_views=1)
+    >>> post.reload()  # the document has been changed, so we need to reload it
+    >>> post.page_views
+    1
+    >>> BlogPost.objects(id=post.id).update_one(set__title='Example Post')
+    >>> post.reload()
+    >>> post.title
+    'Example Post'
+    >>> BlogPost.objects(id=post.id).update_one(push__tags='nosql')
+    >>> post.reload()
+    >>> post.tags
+    ['database', 'nosql']
 

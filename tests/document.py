@@ -262,7 +262,7 @@ class DocumentTest(unittest.TestCase):
 
         # Two posts with the same slug is not allowed
         post2 = BlogPost(title='test2', slug='test')
-        self.assertRaises(ValidationError, post2.save)
+        self.assertRaises(OperationError, post2.save)
 
         class Date(EmbeddedDocument):
             year = IntField(name='yr')
@@ -283,7 +283,7 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same slug and the same day: fail
         post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
-        self.assertRaises(ValidationError, post3.save)
+        self.assertRaises(OperationError, post3.save)
 
         BlogPost.drop_collection()
 
