@@ -1,4 +1,4 @@
-from queryset import QuerySetManager
+from queryset import QuerySet, QuerySetManager
 
 import pymongo
 
@@ -12,10 +12,13 @@ class BaseField(object):
     may be added to subclasses of `Document` to define a document's schema.
     """
     
-    def __init__(self, name=None, required=False, default=None):
+    def __init__(self, name=None, required=False, default=None, unique=False,
+                 unique_with=None):
         self.name = name
         self.required = required
         self.default = default
+        self.unique = bool(unique or unique_with)
+        self.unique_with = unique_with
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -175,6 +178,35 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
         new_class.objects = QuerySetManager()
+
+        # Generate a list of indexes needed by uniqueness constraints
+        unique_indexes = []
+        for field_name, field in new_class._fields.items():
+            if field.unique:
+                field.required = True
+                unique_fields = [field_name]
+
+                # Add any unique_with fields to the back of the index spec
+                if field.unique_with:
+                    if isinstance(field.unique_with, basestring):
+                        field.unique_with = [field.unique_with]
+
+                    # Convert unique_with field names to real field names
+                    unique_with = []
+                    for other_name in field.unique_with:
+                        parts = other_name.split('.')
+                        # Lookup real name
+                        parts = QuerySet._lookup_field(new_class, parts)
+                        name_parts = [part.name for part in parts]
+                        unique_with.append('.'.join(name_parts))
+                        # Unique field should be required
+                        parts[-1].required = True
+                    unique_fields += unique_with
+
+                # Add the new index to the list
+                index = [(field, pymongo.ASCENDING) for field in unique_fields]
+                unique_indexes.append(index)
+        new_class._meta['unique_indexes'] = unique_indexes
 
         return new_class
 

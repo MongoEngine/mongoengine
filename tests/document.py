@@ -237,7 +237,7 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
-        self.assertEqual(len(info), 0)
+        self.assertEqual(len(info), 4) # _id, types, '-date', ('cat', 'date')
 
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
@@ -245,6 +245,45 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
                         in info.values())
         self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
+
+        BlogPost.drop_collection()
+
+    def test_unique(self):
+        """Ensure that uniqueness constraints are applied to fields.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            slug = StringField(unique=True)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', slug='test')
+        post1.save()
+
+        # Two posts with the same slug is not allowed
+        post2 = BlogPost(title='test2', slug='test')
+        self.assertRaises(ValidationError, post2.save)
+
+        class Date(EmbeddedDocument):
+            year = IntField(name='yr')
+
+        class BlogPost(Document):
+            title = StringField()
+            date = EmbeddedDocumentField(Date)
+            slug = StringField(unique_with='date.year')
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', date=Date(year=2009), slug='test')
+        post1.save()
+
+        # day is different so won't raise exception
+        post2 = BlogPost(title='test2', date=Date(year=2010), slug='test')
+        post2.save()
+
+        # Now there will be two docs with the same slug and the same day: fail
+        post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
+        self.assertRaises(ValidationError, post3.save)
 
         BlogPost.drop_collection()
 

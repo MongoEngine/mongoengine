@@ -144,9 +144,12 @@ class QuerySetTest(unittest.TestCase):
                 'ordering': ['-published_date']
             }
 
-        blog_post_1 = BlogPost(title="Blog Post #1", published_date=datetime(2010, 1, 5, 0, 0 ,0))
-        blog_post_2 = BlogPost(title="Blog Post #2", published_date=datetime(2010, 1, 6, 0, 0 ,0))
-        blog_post_3 = BlogPost(title="Blog Post #3", published_date=datetime(2010, 1, 7, 0, 0 ,0))
+        blog_post_1 = BlogPost(title="Blog Post #1", 
+                               published_date=datetime(2010, 1, 5, 0, 0 ,0))
+        blog_post_2 = BlogPost(title="Blog Post #2", 
+                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_3 = BlogPost(title="Blog Post #3", 
+                               published_date=datetime(2010, 1, 7, 0, 0 ,0))
 
         blog_post_1.save()
         blog_post_2.save()
@@ -160,6 +163,8 @@ class QuerySetTest(unittest.TestCase):
         # override default ordering, order BlogPosts by "published_date"
         first_post = BlogPost.objects.order_by("+published_date").first()
         self.assertEqual(first_post.title, "Blog Post #1")
+
+        BlogPost.drop_collection()
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.

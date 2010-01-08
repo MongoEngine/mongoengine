@@ -17,7 +17,8 @@ class QuerySet(object):
     
     def __init__(self, document, collection):
         self._document = document
-        self._collection = collection
+        self._collection_obj = collection
+        self._accessed_collection = False
         self._query = {}
 
         # If inheritance is allowed, only return instances and instances of
@@ -59,17 +60,30 @@ class QuerySet(object):
         return self
 
     @property
-    def _cursor(self):
-        if not self._cursor_obj:
+    def _collection(self):
+        """Property that returns the collection object. This allows us to
+        perform operations only if the collection is accessed.
+        """
+        if not self._accessed_collection:
+            self._accessed_collection = True
+
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
                     self.ensure_index(key_or_list)
 
+            # Ensure indexes created by uniqueness constraints
+            for index in self._document._meta['unique_indexes']:
+                self._collection.ensure_index(index, unique=True)
+
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
                 self._collection.ensure_index('_types')
+        return self._collection_obj
 
+    @property
+    def _cursor(self):
+        if not self._cursor_obj:
             self._cursor_obj = self._collection.find(self._query)
             
             # apply default ordering

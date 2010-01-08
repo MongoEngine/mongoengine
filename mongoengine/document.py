@@ -2,8 +2,10 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
 from connection import _get_db
 
+import pymongo
 
-__all__ = ['Document', 'EmbeddedDocument']
+
+__all__ = ['Document', 'EmbeddedDocument', 'ValidationError']
 
 
 class EmbeddedDocument(BaseDocument):
@@ -53,13 +55,18 @@ class Document(BaseDocument):
 
     __metaclass__ = TopLevelDocumentMetaclass
 
-    def save(self):
+    def save(self, safe=True):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
         """
         self.validate()
-        object_id = self.__class__.objects._collection.save(self.to_mongo())
+        doc = self.to_mongo()
+        try:
+            object_id = self.__class__.objects._collection.save(doc, safe=safe)
+        except pymongo.errors.OperationFailure, err:
+            raise ValidationError('Tried to safe duplicate unique keys (%s)'
+                                  % str(err))
         self.id = self._fields['id'].to_python(object_id)
 
     def delete(self):

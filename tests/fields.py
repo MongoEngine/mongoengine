@@ -231,6 +231,9 @@ class FieldTest(unittest.TestCase):
             content = StringField()
             author = ReferenceField(User)
 
+        User.drop_collection()
+        BlogPost.drop_collection()
+
         self.assertRaises(ValidationError, ReferenceField, EmbeddedDocument)
 
         user = User(name='Test User')

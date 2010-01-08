@@ -138,6 +138,21 @@ field::
 The :class:`User` object is automatically turned into a reference behind the
 scenes, and dereferenced when the :class:`Page` object is retrieved.
 
+Uniqueness constraints
+^^^^^^^^^^^^^^^^^^^^^^
+MongoEngine allows you to specify that a field should be unique across a
+collection by providing ``unique=True`` to a :class:`~mongoengine.Field`\ 's
+constructor. If you try to save a document that has the same value for a unique
+field as a document that is already in the database, a 
+:class:`~mongoengine.ValidationError` will be raised. You may also specify
+multi-field uniqueness constraints by using :attr:`unique_with`, which may be
+either a single field name, or a list or tuple of field names::
+
+    class User(Document):
+        username = StringField(unique=True)
+        first_name = StringField()
+        last_name = StringField(unique_with='last_name')
+
 Document collections
 --------------------
 Document classes that inherit **directly** from :class:`~mongoengine.Document`
@@ -172,10 +187,10 @@ Indexes
 -------
 You can specify indexes on collections to make querying faster. This is done
 by creating a list of index specifications called :attr:`indexes` in the
-:attr:`~Document.meta` dictionary, where an index specification may either be
-a single field name, or a tuple containing multiple field names. A direction
-may be specified on fields by prefixing the field name with a **+** or a **-**
-sign. Note that direction only matters on multi-field indexes. ::
+:attr:`~mongoengine.Document.meta` dictionary, where an index specification may
+either be a single field name, or a tuple containing multiple field names. A
+direction may be specified on fields by prefixing the field name with a **+**
+or a **-** sign. Note that direction only matters on multi-field indexes. ::
 
     class Page(Document):
         title = StringField()
@@ -186,11 +201,11 @@ sign. Note that direction only matters on multi-field indexes. ::
         
 Ordering
 --------
-
-A default ordering can be specified for your :class:`~mongoengine.queryset.QuerySet`
-using the :attr:`ordering` attributeof :attr:`~Document.meta`. 
-Ordering will be applied when the ``QuerySet`` is created, and can be 
-overridden by subsequent calls to :meth:`~mongoengine.QuerySet.order_by`. ::
+A default ordering can be specified for your
+:class:`~mongoengine.queryset.QuerySet` using the :attr:`ordering` attribute of
+:attr:`~mongoengine.Document.meta`.  Ordering will be applied when the
+:class:`~mongoengine.queryset.QuerySet` is created, and can be overridden by
+subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
 
     from datetime import datetime
 
@@ -202,9 +217,14 @@ overridden by subsequent calls to :meth:`~mongoengine.QuerySet.order_by`. ::
             'ordering': ['-published_date']
         }
 
-    blog_post_1 = BlogPost(title="Blog Post #1", published_date=datetime(2010, 1, 5, 0, 0 ,0))
-    blog_post_2 = BlogPost(title="Blog Post #2", published_date=datetime(2010, 1, 6, 0, 0 ,0))
-    blog_post_3 = BlogPost(title="Blog Post #3", published_date=datetime(2010, 1, 7, 0, 0 ,0))
+    blog_post_1 = BlogPost(title="Blog Post #1")
+    blog_post_1.published_date = datetime(2010, 1, 5, 0, 0 ,0))
+
+    blog_post_2 = BlogPost(title="Blog Post #2") 
+    blog_post_2.published_date = datetime(2010, 1, 6, 0, 0 ,0))
+
+    blog_post_3 = BlogPost(title="Blog Post #3")
+    blog_post_3.published_date = datetime(2010, 1, 7, 0, 0 ,0))
 
     blog_post_1.save()
     blog_post_2.save()
