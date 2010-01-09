@@ -1,9 +1,11 @@
 from connection import _get_db
 
 import pymongo
+import copy
 
 
-__all__ = ['queryset_manager', 'InvalidQueryError', 'InvalidCollectionError']
+__all__ = ['queryset_manager', 'Q', 'InvalidQueryError', 
+           'InvalidCollectionError']
 
 
 class InvalidQueryError(Exception):
@@ -12,6 +14,88 @@ class InvalidQueryError(Exception):
 
 class OperationError(Exception):
     pass
+
+
+class Q(object):
+    
+    OR = '||'
+    AND = '&&'
+    OPERATORS = {
+        'eq': 'this.%(field)s == %(value)s',
+        'neq': 'this.%(field)s != %(value)s',
+        'gt': 'this.%(field)s > %(value)s',
+        'gte': 'this.%(field)s >= %(value)s',
+        'lt': 'this.%(field)s < %(value)s',
+        'lte': 'this.%(field)s <= %(value)s',
+        'lte': 'this.%(field)s <= %(value)s',
+        'in': 'this.%(field)s.indexOf(%(value)s) != -1',
+        'nin': 'this.%(field)s.indexOf(%(value)s) == -1',
+        'mod': '%(field)s %% %(value)s',
+        'all': ('%(value)s.every(function(a){'
+                'return this.%(field)s.indexOf(a) != -1 })'),
+        'size': 'this.%(field)s.length == %(value)s',
+        'exists': 'this.%(field)s != null',
+    }
+    
+    def __init__(self, **query):
+        self.query = [query]
+
+    def _combine(self, other, op):
+        obj = Q()
+        obj.query = ['('] + copy.deepcopy(self.query) + [op]
+        obj.query += copy.deepcopy(other.query) + [')']
+        return obj
+
+    def __or__(self, other):
+        return self._combine(other, self.OR)
+
+    def __and__(self, other):
+        return self._combine(other, self.AND)
+
+    def as_js(self, document):
+        js = []
+        js_scope = {}
+        for i, item in enumerate(self.query):
+            if isinstance(item, dict):
+                item_query = QuerySet._transform_query(document, **item)
+                # item_query will values will either be a value or a dict
+                js.append(self._item_query_as_js(item_query, js_scope, i))
+            else:
+                js.append(item)
+        return pymongo.code.Code(' '.join(js), js_scope)
+
+    def _item_query_as_js(self, item_query, js_scope, item_num):
+        # item_query will be in one of the following forms
+        #    {'age': 25, 'name': 'Test'}
+        #    {'age': {'$lt': 25}, 'name': {'$in': ['Test', 'Example']}
+        #    {'age': {'$lt': 25, '$gt': 18}}
+        js = []
+        for i, (key, value) in enumerate(item_query.items()):
+            op = 'eq'
+            # Construct a variable name for the value in the JS
+            value_name = 'i%sf%s' % (item_num, i)
+            if isinstance(value, dict):
+                # Multiple operators for this field
+                for j, (op, value) in enumerate(value.items()):
+                    # Create a custom variable name for this operator
+                    op_value_name = '%so%s' % (value_name, j)
+                    # Update the js scope with the value for this op
+                    js_scope[op_value_name] = value
+                    # Construct the JS that uses this op
+                    operation_js = Q.OPERATORS[op.strip('$')] % {
+                        'field': key, 
+                        'value': op_value_name
+                    }
+                    js.append(operation_js)
+            else:
+                js_scope[value_name] = value
+                # Construct the JS for this field
+                field_js = Q.OPERATORS[op.strip('$')] % {
+                    'field': key, 
+                    'value': value_name
+                }
+                js.append(field_js)
+        return ' && '.join(js)
 
 
 class QuerySet(object):
@@ -24,6 +108,7 @@ class QuerySet(object):
         self._collection_obj = collection
         self._accessed_collection = False
         self._query = {}
+        self._where_clauses = []
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -55,10 +140,12 @@ class QuerySet(object):
         self._collection.ensure_index(index_list)
         return self
 
-    def __call__(self, **query):
+    def __call__(self, *q_objs, **query):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.QuerySet` with a query.
         """
+        for q in q_objs:
+            self._where_clauses.append(q.as_js(self._document))
         query = QuerySet._transform_query(_doc_cls=self._document, **query)
         self._query.update(query)
         return self
@@ -89,6 +176,9 @@ class QuerySet(object):
     def _cursor(self):
         if not self._cursor_obj:
             self._cursor_obj = self._collection.find(self._query)
+            # Apply where clauses to cursor
+            for js in self._where_clauses:
+                self._cursor_obj.where(js)
             
             # apply default ordering
             if self._document._meta['ordering']:

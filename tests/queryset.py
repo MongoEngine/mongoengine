@@ -1,5 +1,6 @@
 import unittest
 import pymongo
+from datetime import datetime
 
 from mongoengine.queryset import QuerySet
 from mongoengine import *
@@ -16,7 +17,7 @@ class QuerySetTest(unittest.TestCase):
         self.Person = Person
 
     def test_initialisation(self):
-        """Ensure that CollectionManager is correctly initialised.
+        """Ensure that a QuerySet is correctly initialised by QuerySetManager.
         """
         self.assertTrue(isinstance(self.Person.objects, QuerySet))
         self.assertEqual(self.Person.objects._collection.name(), 
@@ -47,6 +48,9 @@ class QuerySetTest(unittest.TestCase):
         person1.save()
         person2 = self.Person(name="User B", age=30)
         person2.save()
+
+        q1 = Q(name='test')
+        q2 = Q(age__gte=18)
 
         # Find all people in the collection
         people = self.Person.objects
@@ -134,8 +138,6 @@ class QuerySetTest(unittest.TestCase):
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """
-        from datetime import datetime
-
         class BlogPost(Document):
             title = StringField()
             published_date = DateTimeField()
@@ -143,6 +145,8 @@ class QuerySetTest(unittest.TestCase):
             meta = {
                 'ordering': ['-published_date']
             }
+
+        BlogPost.drop_collection()
 
         blog_post_1 = BlogPost(title="Blog Post #1", 
                                published_date=datetime(2010, 1, 5, 0, 0 ,0))
@@ -176,6 +180,8 @@ class QuerySetTest(unittest.TestCase):
             content = StringField()
             author = EmbeddedDocumentField(User)
 
+        BlogPost.drop_collection()
+
         post = BlogPost(content='Had a good coffee today...')
         post.author = User(name='Test User')
         post.save()
@@ -184,6 +190,42 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
         
+        BlogPost.drop_collection()
+
+    def test_q(self):
+        class BlogPost(Document):
+            publish_date = DateTimeField()
+            published = BooleanField()
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(publish_date=datetime(2010, 1, 8), published=False)
+        post1.save()
+
+        post2 = BlogPost(publish_date=datetime(2010, 1, 15), published=True)
+        post2.save()
+
+        post3 = BlogPost(published=True)
+        post3.save()
+
+        post4 = BlogPost(publish_date=datetime(2010, 1, 8))
+        post4.save()
+
+        post5 = BlogPost(publish_date=datetime(2010, 1, 15))
+        post5.save()
+
+        post6 = BlogPost(published=False)
+        post6.save()
+
+        date = datetime(2010, 1, 10)
+        q = BlogPost.objects(Q(publish_date__lte=date) | Q(published=True))
+        posts = [post.id for post in q]
+
+        published_posts = (post1, post2, post3, post4)
+        self.assertTrue(all(obj.id in posts for obj in published_posts))
+
+        self.assertFalse(any(obj.id in posts for obj in [post5, post6]))
+
         BlogPost.drop_collection()
 
     def test_delete(self):
@@ -427,6 +469,38 @@ class QuerySetTest(unittest.TestCase):
     def tearDown(self):
         self.Person.drop_collection()
 
+
+class QTest(unittest.TestCase):
+    
+    def test_or_and(self):
+        q1 = Q(name='test')
+        q2 = Q(age__gte=18)
+
+        query = ['(', {'name': 'test'}, '||', {'age__gte': 18}, ')']
+        self.assertEqual((q1 | q2).query, query)
+
+        query = ['(', {'name': 'test'}, '&&', {'age__gte': 18}, ')']
+        self.assertEqual((q1 & q2).query, query)
+
+        query = ['(', '(', {'name': 'test'}, '&&', {'age__gte': 18}, ')', '||',
+                 {'name': 'example'}, ')']
+        self.assertEqual((q1 & q2 | Q(name='example')).query, query)
+
+    def test_item_query_as_js(self):
+        """Ensure that the _item_query_as_js utilitiy method works properly.
+        """
+        q = Q()
+        examples = [
+            ({'name': 'test'}, 'this.name == i0f0', {'i0f0': 'test'}),
+            ({'age': {'$gt': 18}}, 'this.age > i0f0o0', {'i0f0o0': 18}),
+            ({'name': 'test', 'age': {'$gt': 18, '$lte': 65}}, 
+             'this.age <= i0f0o0 && this.age > i0f0o1 && this.name == i0f1', 
+             {'i0f0o0': 65, 'i0f0o1': 18, 'i0f1': 'test'}),
+        ]
+        for item, js, scope in examples:
+            test_scope = {}
+            self.assertEqual(q._item_query_as_js(item, test_scope, 0), js)
+            self.assertEqual(scope, test_scope)
 
 if __name__ == '__main__':
     unittest.main()

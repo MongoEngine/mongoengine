@@ -454,6 +454,32 @@ would be generating "tag-clouds"::
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
 
+Advanced queries
+----------------
+Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
+arguments can't fully express the query you want to use -- for example if you
+need to combine a number of constraints using *and* and *or*. This is made 
+possible in MongoEngine through the :class:`~mongoengine.queryset.Q` class.
+A :class:`~mongoengine.queryset.Q` object represents part of a query, and
+can be initialised using the same keyword-argument syntax you use to query
+documents. To build a complex query, you may combine 
+:class:`~mongoengine.queryset.Q` objects using the ``&`` (and) and ``|`` (or)
+operators. To use :class:`~mongoengine.queryset.Q` objects, pass them in
+as positional arguments to :attr:`Document.objects` when you filter it by
+calling it with keyword arguments::
+
+    # Get published posts
+    Post.objects(Q(published=True) | Q(publish_date__lte=datetime.now()))
+
+    # Get top posts
+    Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
+
+.. warning::
+   Only use these advanced queries if absolutely necessary as they will execute
+   significantly slower than regular queries. This is because they are not
+   natively supported by MongoDB -- they are compiled to Javascript and sent
+   to the server for execution.
+
 Atomic updates
 --------------
 Documents may be updated atomically by using the
