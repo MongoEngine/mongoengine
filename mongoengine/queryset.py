@@ -5,6 +5,9 @@ import pymongo
 
 __all__ = ['queryset_manager', 'InvalidQueryError', 'InvalidCollectionError']
 
+# The maximum number of items to display in a QuerySet.__repr__
+REPR_OUTPUT_SIZE = 20
+
 
 class InvalidQueryError(Exception):
     pass
@@ -424,6 +427,11 @@ class QuerySet(object):
         """
         return self.exec_js(freq_func, list_field, normalize=normalize)
 
+    def __repr__(self):
+        data = list(self[:REPR_OUTPUT_SIZE + 1])
+        if len(data) > REPR_OUTPUT_SIZE:
+            data[-1] = "...(remaining elements truncated)..."
+        return repr(data)
 
 class InvalidCollectionError(Exception):
     pass
