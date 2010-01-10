@@ -287,6 +287,39 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_custom_id_field(self):
+        """Ensure that documents may be created with custom primary keys.
+        """
+        class User(Document):
+            username = StringField(primary_key=True)
+            name = StringField()
+
+        User.drop_collection()
+
+        self.assertEqual(User._fields['username'].name, '_id')
+        self.assertEqual(User._meta['id_field'], 'username')
+
+        def create_invalid_user():
+            User(name='test').save() # no primary key field
+        self.assertRaises(ValidationError, create_invalid_user)
+
+        def define_invalid_user():
+            class EmailUser(User):
+                email = StringField(primary_key=True)
+        self.assertRaises(ValueError, define_invalid_user)
+        
+        user = User(username='test', name='test user')
+        user.save()
+
+        user_obj = User.objects.first()
+        self.assertEqual(user_obj.id, 'test')
+
+        user_son = User.objects._collection.find_one()
+        self.assertEqual(user_son['_id'], 'test')
+        self.assertTrue('username' not in user_son['_id'])
+        
+        User.drop_collection()
+
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """

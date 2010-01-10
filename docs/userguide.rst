@@ -318,8 +318,25 @@ saved::
     >>> page.id
     ObjectId('123456789abcdef000000000')
 
-Alternatively, you may explicitly set the :attr:`id` before you save the
-document, but the id must be a valid PyMongo :class:`ObjectId`.
+Alternatively, you may define one of your own fields to be the document's
+"primary key" by providing ``primary_key=True`` as a keyword argument to a
+field's constructor. Under the hood, MongoEngine will use this field as the
+:attr:`id`; in fact :attr:`id` is actually aliased to your primary key field so
+you may still use :attr:`id` to access the primary key if you want::
+
+    >>> class User(Document):
+    ...     email = StringField(primary_key=True)
+    ...     name = StringField()
+    ...
+    >>> bob = User(email='bob@example.com', name='Bob')
+    >>> bob.save()
+    >>> bob.id == bob.email == 'bob@example.com'
+    True
+
+.. note::
+   If you define your own primary key field, the field implicitly becomes
+   required, so a :class:`ValidationError` will be thrown if you don't provide
+   it.
 
 Querying the database
 =====================

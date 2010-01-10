@@ -2,7 +2,15 @@
 Changelog
 =========
 
-Changes is v0.1.3
+Changes in v0.2
+===============
+- Added Q class for building advanced queries
+- Added QuerySet methods for atomic updates to documents
+- Fields may now specify ``unique=True`` to enforce uniqueness across a collection
+- Added option for default document ordering
+- Fixed bug in index definitions
+
+Changes in v0.1.3
 =================
 - Added Django authentication backend
 - Added Document.meta support for indexes, which are ensured just before 

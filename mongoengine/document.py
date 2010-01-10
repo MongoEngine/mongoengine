@@ -68,19 +68,22 @@ class Document(BaseDocument):
         except pymongo.errors.OperationFailure, err:
             raise OperationError('Tried to save duplicate unique keys (%s)'
                                   % str(err))
-        self.id = self._fields['id'].to_python(object_id)
+        id_field = self._meta['id_field']
+        self[id_field] = self._fields[id_field].to_python(object_id)
 
     def delete(self):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
         """
-        object_id = self._fields['id'].to_mongo(self.id)
-        self.__class__.objects(id=object_id).delete()
+        id_field = self._meta['id_field']
+        object_id = self._fields[id_field].to_mongo(self[id_field])
+        self.__class__.objects(**{id_field: object_id}).delete()
 
     def reload(self):
         """Reloads all attributes from the database.
         """
-        obj = self.__class__.objects(id=self.id).first()
+        id_field = self._meta['id_field']
+        obj = self.__class__.objects(**{id_field: self[id_field]}).first()
         for field in self._fields:
             setattr(self, field, obj[field])
 

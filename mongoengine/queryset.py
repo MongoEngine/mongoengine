@@ -270,10 +270,10 @@ class QuerySet(object):
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.
         """
-        if not isinstance(object_id, pymongo.objectid.ObjectId):
-            object_id = pymongo.objectid.ObjectId(str(object_id))
+        id_field = self._document._meta['id_field']
+        object_id = self._document._fields[id_field].to_mongo(object_id)
 
-        result = self._collection.find_one(object_id)
+        result = self._collection.find_one({'_id': object_id})
         if result is not None:
             result = self._document._from_son(result)
         return result
