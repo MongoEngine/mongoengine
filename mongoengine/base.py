@@ -141,6 +141,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         
         simple_class = True
         id_field = None
+        base_indexes = []
 
         # Subclassed documents inherit collection from superclass
         for base in bases:
@@ -156,6 +157,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 collection = base._meta['collection']
 
                 id_field = id_field or base._meta.get('id_field')
+                base_indexes += base._meta.get('indexes', [])
 
         meta = {
             'collection': collection,
@@ -169,6 +171,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
+
+        meta['indexes'] += base_indexes
         
         # Only simple classes - direct subclasses of Document - may set
         # allow_inheritance to False

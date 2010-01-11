@@ -56,31 +56,51 @@ class Document(BaseDocument):
 
     __metaclass__ = TopLevelDocumentMetaclass
 
-    def save(self, safe=True):
+    def save(self, safe=True, force_insert=False):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
+
+        If ``safe=True`` and the operation is unsuccessful, an 
+        :class:`~mongoengine.OperationError` will be raised.
+
+        :param safe: check if the operation succeeded before returning
+        :param force_insert: only try to create a new document, don't allow 
+            updates of existing documents
         """
         self.validate()
         doc = self.to_mongo()
         try:
-            object_id = self.__class__.objects._collection.save(doc, safe=safe)
+            collection = self.__class__.objects._collection
+            if force_insert:
+                object_id = collection.insert(doc, safe=safe)
+            else:
+                object_id = collection.save(doc, safe=safe)
         except pymongo.errors.OperationFailure, err:
-            raise OperationError('Tried to save duplicate unique keys (%s)'
-                                  % str(err))
+            message = 'Could not save document (%s)'
+            if 'duplicate key' in str(err):
+                message = 'Tried to save duplicate unique keys (%s)'
+            raise OperationError(message % str(err))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
-    def delete(self):
+    def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
+
+        :param safe: check if the operation succeeded before returning
         """
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
-        self.__class__.objects(**{id_field: object_id}).delete()
+        try:
+            self.__class__.objects(**{id_field: object_id}).delete(safe=safe)
+        except pymongo.errors.OperationFailure, err:
+            raise OperationError('Could not delete document (%s)' % str(err))
 
     def reload(self):
         """Reloads all attributes from the database.
+
+        .. versionadded:: 0.1.2
         """
         id_field = self._meta['id_field']
         obj = self.__class__.objects(**{id_field: self[id_field]}).first()

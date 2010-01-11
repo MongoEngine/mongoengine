@@ -121,6 +121,10 @@ class QuerySet(object):
         
     def ensure_index(self, key_or_list):
         """Ensure that the given indexes are in place.
+
+        :param key_or_list: a single index key or a list of index keys (to
+            construct a multi-field index); keys may be prefixed with a **+**
+            or a **-** to determine the index ordering
         """
         if isinstance(key_or_list, basestring):
             key_or_list = [key_or_list]
@@ -146,6 +150,9 @@ class QuerySet(object):
     def __call__(self, *q_objs, **query):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.QuerySet` with a query.
+
+        :param q_objs: :class:`~mongoengine.Q` objects to be used in the query
+        :param query: Django-style query keyword arguments
         """
         for q in q_objs:
             self._where_clauses.append(q.as_js(self._document))
@@ -269,6 +276,8 @@ class QuerySet(object):
 
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.
+
+        :param object_id: the value for the id of the document to look up
         """
         id_field = self._document._meta['id_field']
         object_id = self._document._fields[id_field].to_mongo(object_id)
@@ -294,6 +303,8 @@ class QuerySet(object):
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
+
+        :param n: the maximum number of objects to return
         """
         self._cursor.limit(n)
         # Return self to allow chaining
@@ -302,6 +313,8 @@ class QuerySet(object):
     def skip(self, n):
         """Skip `n` documents before returning the results. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[5:]``).
+
+        :param n: the number of objects to skip before returning results
         """
         self._cursor.skip(n)
         return self
@@ -322,6 +335,9 @@ class QuerySet(object):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
         order may be specified by prepending each of the keys by a + or a -.
         Ascending order is assumed.
+
+        :param keys: fields to order the query results by; keys may be
+            prefixed with **+** or **-** to determine the ordering direction
         """
         key_list = []
         for key in keys:
@@ -338,6 +354,8 @@ class QuerySet(object):
     def explain(self, format=False):
         """Return an explain plan record for the 
         :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
+
+        :param format: format the plan before returning it
         """
 
         plan = self._cursor.explain()
@@ -346,10 +364,12 @@ class QuerySet(object):
             plan = pprint.pformat(plan)
         return plan
         
-    def delete(self):
+    def delete(self, safe=False):
         """Delete the documents matched by the query.
+
+        :param safe: check if the operation succeeded before returning
         """
-        self._collection.remove(self._query)
+        self._collection.remove(self._query, safe=safe)
 
     @classmethod
     def _transform_update(cls, _doc_cls=None, **update):
@@ -402,6 +422,11 @@ class QuerySet(object):
 
     def update(self, safe_update=True, **update):
         """Perform an atomic update on the fields matched by the query.
+
+        :param safe: check if the operation succeeded before returning
+        :param update: Django-style update keyword arguments
+
+        .. versionadded:: 0.2
         """
         if pymongo.version < '1.1.1':
             raise OperationError('update() method requires PyMongo 1.1.1+')
@@ -417,6 +442,11 @@ class QuerySet(object):
 
     def update_one(self, safe_update=True, **update):
         """Perform an atomic update on first field matched by the query.
+
+        :param safe: check if the operation succeeded before returning
+        :param update: Django-style update keyword arguments
+
+        .. versionadded:: 0.2
         """
         update = QuerySet._transform_update(self._document, **update)
         try:
@@ -442,6 +472,12 @@ class QuerySet(object):
         collection in use; ``query``, which is an object representing the 
         current query; and ``options``, which is an object containing any
         options specified as keyword arguments.
+
+        :param code: a string of Javascript code to execute
+        :param fields: fields that you will be using in your function, which
+            will be passed in to your function as arguments
+        :param options: options that you want available to the function 
+            (accessed in Javascript through the ``options`` object)
         """
         fields = [QuerySet._translate_field_name(self._document, f)
                   for f in fields]
@@ -458,6 +494,9 @@ class QuerySet(object):
 
     def sum(self, field):
         """Sum over the values of the specified field.
+
+        :param field: the field to sum over; use dot-notation to refer to
+            embedded document fields
         """
         sum_func = """
             function(sumField) {
@@ -472,6 +511,9 @@ class QuerySet(object):
 
     def average(self, field):
         """Average over the values of the specified field.
+
+        :param field: the field to average over; use dot-notation to refer to
+            embedded document fields
         """
         average_func = """
             function(averageField) {
@@ -492,6 +534,9 @@ class QuerySet(object):
         """Returns a dictionary of all items present in a list field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents. 
+
+        :param list_field: the list field to use
+        :param normalize: normalize the results so they add to 1.0
         """
         freq_func = """
             function(listField) {

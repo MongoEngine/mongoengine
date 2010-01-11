@@ -245,6 +245,19 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
                         in info.values())
         self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
+        
+        class ExtendedBlogPost(BlogPost):
+            title = StringField()
+            meta = {'indexes': ['title']}
+
+        BlogPost.drop_collection()
+
+        list(ExtendedBlogPost.objects)
+        info = ExtendedBlogPost.objects._collection.index_information()
+        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
+                        in info.values())
+        self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
+        self.assertTrue([('_types', 1), ('title', 1)] in info.values())
 
         BlogPost.drop_collection()
 

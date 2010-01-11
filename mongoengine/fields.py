@@ -82,6 +82,8 @@ class FloatField(BaseField):
 
 class BooleanField(BaseField):
     """A boolean field type.
+
+    .. versionadded:: 0.1.2
     """
     
     def to_python(self, value):
