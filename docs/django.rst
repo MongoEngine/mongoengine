@@ -27,3 +27,16 @@ file::
 The :mod:`~mongoengine.django.auth` module also contains a 
 :func:`~mongoengine.django.auth.get_user` helper function, that takes a user's
 :attr:`id` and returns a :class:`~mongoengine.django.auth.User` object.
+
+Sessions
+========
+Django allows the use of different backend stores for its sessions. MongoEngine
+provides a MongoDB-based session backend for Django, which allows you to use
+sessions in you Django application with just MongoDB. To enable the MongoEngine
+session backend, ensure that your settings module has
+``'django.contrib.sessions.middleware.SessionMiddleware'`` in the
+``MIDDLEWARE_CLASSES`` field  and ``'django.contrib.sessions'`` in your
+``INSTALLED_APPS``. From there, all you need to do is add the following line
+into you settings module::
+
+    SESSION_ENGINE = 'mongoengine.django.sessions'
