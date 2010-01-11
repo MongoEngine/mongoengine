@@ -2,6 +2,13 @@
 Changelog
 =========
 
+Changes in v0.2.1
+=================
+- Added a MongoEngine backend for Django sessions
+- Added force_insert to Document.save()
+- Improved querying syntax for ListField and EmbeddedDocumentField
+- Added support for user-defined primary keys (_ids in MongoDB)
+
 Changes in v0.2
 ===============
 - Added Q class for building advanced queries
