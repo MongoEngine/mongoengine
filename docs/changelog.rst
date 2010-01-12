@@ -2,7 +2,22 @@
 Changelog
 =========
 
-Changes is v0.1.3
+Changes in v0.2.1
+=================
+- Added a MongoEngine backend for Django sessions
+- Added force_insert to Document.save()
+- Improved querying syntax for ListField and EmbeddedDocumentField
+- Added support for user-defined primary keys (_ids in MongoDB)
+
+Changes in v0.2
+===============
+- Added Q class for building advanced queries
+- Added QuerySet methods for atomic updates to documents
+- Fields may now specify ``unique=True`` to enforce uniqueness across a collection
+- Added option for default document ordering
+- Fixed bug in index definitions
+
+Changes in v0.1.3
 =================
 - Added Django authentication backend
 - Added Document.meta support for indexes, which are ensured just before 

@@ -318,8 +318,25 @@ saved::
     >>> page.id
     ObjectId('123456789abcdef000000000')
 
-Alternatively, you may explicitly set the :attr:`id` before you save the
-document, but the id must be a valid PyMongo :class:`ObjectId`.
+Alternatively, you may define one of your own fields to be the document's
+"primary key" by providing ``primary_key=True`` as a keyword argument to a
+field's constructor. Under the hood, MongoEngine will use this field as the
+:attr:`id`; in fact :attr:`id` is actually aliased to your primary key field so
+you may still use :attr:`id` to access the primary key if you want::
+
+    >>> class User(Document):
+    ...     email = StringField(primary_key=True)
+    ...     name = StringField()
+    ...
+    >>> bob = User(email='bob@example.com', name='Bob')
+    >>> bob.save()
+    >>> bob.id == bob.email == 'bob@example.com'
+    True
+
+.. note::
+   If you define your own primary key field, the field implicitly becomes
+   required, so a :class:`ValidationError` will be thrown if you don't provide
+   it.
 
 Querying the database
 =====================
@@ -453,6 +470,32 @@ would be generating "tag-clouds"::
 
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
+
+Advanced queries
+----------------
+Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
+arguments can't fully express the query you want to use -- for example if you
+need to combine a number of constraints using *and* and *or*. This is made 
+possible in MongoEngine through the :class:`~mongoengine.queryset.Q` class.
+A :class:`~mongoengine.queryset.Q` object represents part of a query, and
+can be initialised using the same keyword-argument syntax you use to query
+documents. To build a complex query, you may combine 
+:class:`~mongoengine.queryset.Q` objects using the ``&`` (and) and ``|`` (or)
+operators. To use :class:`~mongoengine.queryset.Q` objects, pass them in
+as positional arguments to :attr:`Document.objects` when you filter it by
+calling it with keyword arguments::
+
+    # Get published posts
+    Post.objects(Q(published=True) | Q(publish_date__lte=datetime.now()))
+
+    # Get top posts
+    Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
+
+.. warning::
+   Only use these advanced queries if absolutely necessary as they will execute
+   significantly slower than regular queries. This is because they are not
+   natively supported by MongoDB -- they are compiled to Javascript and sent
+   to the server for execution.
 
 Atomic updates
 --------------

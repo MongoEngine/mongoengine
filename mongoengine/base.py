@@ -13,13 +13,13 @@ class BaseField(object):
     """
     
     def __init__(self, name=None, required=False, default=None, unique=False,
-                 unique_with=None):
-        self.name = name
-        self.required = required
+                 unique_with=None, primary_key=False):
+        self.name = name if not primary_key else '_id'
+        self.required = required or primary_key
         self.default = default
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
-        self._loaded = []
+        self.primary_key = primary_key
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -73,7 +73,7 @@ class ObjectIdField(BaseField):
 
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
-            return pymongo.objectid.ObjectId(value)
+            return pymongo.objectid.ObjectId(str(value))
         return value
 
     def prepare_query_value(self, value):
@@ -140,6 +140,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         collection = name.lower()
         
         simple_class = True
+        id_field = None
+        base_indexes = []
 
         # Subclassed documents inherit collection from superclass
         for base in bases:
@@ -154,17 +156,23 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     simple_class = False
                 collection = base._meta['collection']
 
+                id_field = id_field or base._meta.get('id_field')
+                base_indexes += base._meta.get('indexes', [])
+
         meta = {
             'collection': collection,
             'allow_inheritance': True,
             'max_documents': None,
             'max_size': None,
             'ordering': [], # default ordering applied at runtime
-            'indexes': [] # indexes to be ensured at runtime
+            'indexes': [], # indexes to be ensured at runtime
+            'id_field': id_field,
         }
 
         # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
+
+        meta['indexes'] += base_indexes
         
         # Only simple classes - direct subclasses of Document - may set
         # allow_inheritance to False
@@ -173,16 +181,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                              '"allow_inheritance" to False')
         attrs['_meta'] = meta
 
-        attrs['id'] = ObjectIdField(name='_id')
-
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
         new_class.objects = QuerySetManager()
 
-        # Generate a list of indexes needed by uniqueness constraints
         unique_indexes = []
         for field_name, field in new_class._fields.items():
+            # Generate a list of indexes needed by uniqueness constraints
             if field.unique:
                 field.required = True
                 unique_fields = [field_name]
@@ -205,9 +211,24 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     unique_fields += unique_with
 
                 # Add the new index to the list
-                index = [(field, pymongo.ASCENDING) for field in unique_fields]
+                index = [(f, pymongo.ASCENDING) for f in unique_fields]
                 unique_indexes.append(index)
+
+            # Check for custom primary key
+            if field.primary_key:
+                if not new_class._meta['id_field']:
+                    new_class._meta['id_field'] = field_name
+                    # Make 'Document.id' an alias to the real primary key field
+                    new_class.id = field
+                    #new_class._fields['id'] = field
+                else:
+                    raise ValueError('Cannot override primary key field')
+
         new_class._meta['unique_indexes'] = unique_indexes
+
+        if not new_class._meta['id_field']:
+            new_class._meta['id_field'] = 'id'
+            new_class.id = new_class._fields['id'] = ObjectIdField(name='_id')
 
         return new_class
 
@@ -270,6 +291,18 @@ class BaseDocument(object):
 
     def __len__(self):
         return len(self._data)
+
+    def __repr__(self):
+        try:
+            u = unicode(self)
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            u = '[Bad Unicode data]'
+        return u'<%s: %s>' % (self.__class__.__name__, u)
+
+    def __str__(self):
+        if hasattr(self, '__unicode__'):
+            return unicode(self).encode('utf-8')
+        return '%s object' % self.__class__.__name__
 
     def to_mongo(self):
         """Return data dictionary ready for use with MongoDB.

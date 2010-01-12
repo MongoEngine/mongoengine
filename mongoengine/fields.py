@@ -82,6 +82,8 @@ class FloatField(BaseField):
 
 class BooleanField(BaseField):
     """A boolean field type.
+
+    .. versionadded:: 0.1.2
     """
     
     def to_python(self, value):
@@ -131,6 +133,9 @@ class EmbeddedDocumentField(BaseField):
     def lookup_member(self, member_name):
         return self.document._fields.get(member_name)
 
+    def prepare_query_value(self, value):
+        return self.to_mongo(value)
+
 
 class ListField(BaseField):
     """A list field that wraps a standard field, allowing multiple instances
@@ -162,6 +167,9 @@ class ListField(BaseField):
         except:
             raise ValidationError('All items in a list field must be of the '
                                   'specified type')
+
+    def prepare_query_value(self, value):
+        return self.field.to_mongo(value)
 
     def lookup_member(self, member_name):
         return self.field.lookup_member(member_name)
