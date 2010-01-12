@@ -62,6 +62,9 @@ class QuerySet(object):
         query = QuerySet._transform_query(_doc_cls=self._document, **query)
         self._query.update(query)
         return self
+        
+    def filter(self, **query):
+        return self.__call__(**query)
 
     @property
     def _collection(self):

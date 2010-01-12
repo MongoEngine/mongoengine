@@ -19,6 +19,7 @@ class BaseField(object):
         self.default = default
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
+        self._loaded = []
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -68,7 +69,7 @@ class ObjectIdField(BaseField):
     """
     
     def to_python(self, value):
-        return str(value)
+        return unicode(value)
 
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):

@@ -131,6 +131,42 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
 
+    def test_filter_chaining(self):
+        """Ensure filters can be chained together.
+        """
+        from datetime import datetime
+        
+        class BlogPost(Document):
+            title = StringField()
+            is_published = BooleanField()
+            published_date = DateTimeField()
+            
+            @queryset_manager
+            def published(queryset):
+                return queryset(is_published=True)
+                
+        blog_post_1 = BlogPost(title="Blog Post #1", 
+                               is_published = True,
+                               published_date=datetime(2010, 1, 5, 0, 0 ,0))
+        blog_post_2 = BlogPost(title="Blog Post #2", 
+                               is_published = True,
+                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_3 = BlogPost(title="Blog Post #3", 
+                               is_published = True,
+                               published_date=datetime(2010, 1, 7, 0, 0 ,0))
+
+        blog_post_1.save()
+        blog_post_2.save()
+        blog_post_3.save()
+        
+        # find all published blog posts before 2010-01-07
+        published_posts = BlogPost.published()
+        published_posts = published_posts.filter(
+            published_date__lt=datetime(2010, 1, 7, 0, 0 ,0))
+        self.assertEqual(published_posts.count(), 2)
+        
+        BlogPost.drop_collection()
+
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """
