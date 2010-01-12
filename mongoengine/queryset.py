@@ -160,7 +160,7 @@ class QuerySet(object):
         self._query.update(query)
         return self
         
-    def filter(self, **query):
+    def filter(self, *q_objs, **query):
         return self.__call__(**query)
 
     @property
