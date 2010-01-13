@@ -28,6 +28,8 @@ The :mod:`~mongoengine.django.auth` module also contains a
 :func:`~mongoengine.django.auth.get_user` helper function, that takes a user's
 :attr:`id` and returns a :class:`~mongoengine.django.auth.User` object.
 
+.. versionadded:: 0.1.3
+
 Sessions
 ========
 Django allows the use of different backend stores for its sessions. MongoEngine
@@ -40,3 +42,5 @@ session backend, ensure that your settings module has
 into you settings module::
 
     SESSION_ENGINE = 'mongoengine.django.sessions'
+
+.. versionadded:: 0.2.1
