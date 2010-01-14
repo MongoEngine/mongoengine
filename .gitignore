@@ -2,3 +2,6 @@
 .*.swp
 docs/.build
 docs/_build
+build/
+dist/
+mongoengine.egg-info/

@@ -150,9 +150,10 @@ class QuerySet(object):
 
     def __call__(self, *q_objs, **query):
         """Filter the selected documents by calling the 
-        :class:`~mongoengine.QuerySet` with a query.
+        :class:`~mongoengine.queryset.QuerySet` with a query.
 
-        :param q_objs: :class:`~mongoengine.Q` objects to be used in the query
+        :param q_objs: :class:`~mongoengine.queryset.Q` objects to be used in
+            the query 
         :param query: Django-style query keyword arguments
         """
         for q in q_objs:
@@ -162,7 +163,9 @@ class QuerySet(object):
         return self
         
     def filter(self, *q_objs, **query):
-        return self.__call__(**query)
+        """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
+        """
+        return self.__call__(*q_objs, **query)
 
     @property
     def _collection(self):
@@ -333,7 +336,16 @@ class QuerySet(object):
         """
         # Slice provided
         if isinstance(key, slice):
-            self._cursor_obj = self._cursor[key]
+            try:
+                self._cursor_obj = self._cursor[key]
+            except IndexError, err:
+                # PyMongo raises an error if key.start == key.stop, catch it,
+                # bin it, kill it. 
+                if key.start >=0 and key.stop >= 0 and key.step is None:
+                    if key.start == key.stop:
+                        self.limit(0)
+                        return self
+                raise err
             # Allow further QuerySet modifications to be performed
             return self
         # Integer index provided

@@ -69,7 +69,8 @@ class ObjectIdField(BaseField):
     """
     
     def to_python(self, value):
-        return unicode(value)
+        return value
+        # return unicode(value)
 
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
@@ -245,6 +246,25 @@ class BaseDocument(object):
                 # Use default value if present
                 value = getattr(self, attr_name, None)
                 setattr(self, attr_name, value)
+
+    def validate(self):
+        """Ensure that all fields' values are valid and that required fields
+        are present.
+        """
+        # Get a list of tuples of field names and their current values
+        fields = [(field, getattr(self, name)) 
+                  for name, field in self._fields.items()]
+
+        # Ensure that each field is matched to a valid value
+        for field, value in fields:
+            if value is not None:
+                try:
+                    field.validate(value)
+                except (ValueError, AttributeError, AssertionError), e:
+                    raise ValidationError('Invalid value for field of type "' +
+                                          field.__class__.__name__ + '"')
+            elif field.required:
+                raise ValidationError('Field "%s" is required' % field.name)
 
     @classmethod
     def _get_subclasses(cls):

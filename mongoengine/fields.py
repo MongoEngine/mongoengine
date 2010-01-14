@@ -1,26 +1,37 @@
 from base import BaseField, ObjectIdField, ValidationError
 from document import Document, EmbeddedDocument
 from connection import _get_db
- 
+
 import re
 import pymongo
 import datetime
+import decimal
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
-           'DateTimeField', 'EmbeddedDocumentField', 'ListField', 
-           'ObjectIdField', 'ReferenceField', 'ValidationError']
+           'DateTimeField', 'EmbeddedDocumentField', 'ListField',
+           'ObjectIdField', 'ReferenceField', 'ValidationError',
+           'URLField', 'DecimalField']
+
+
+URL_REGEX = re.compile(
+  r'^https?://'
+  r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
+  r'localhost|'
+  r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+  r'(?::\d+)?'
+  r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
 
 class StringField(BaseField):
     """A unicode string field.
     """
-    
+
     def __init__(self, regex=None, max_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
         self.max_length = max_length
         super(StringField, self).__init__(**kwargs)
-    
+
     def to_python(self, value):
         return unicode(value)
 
@@ -38,6 +49,25 @@ class StringField(BaseField):
         return None
 
 
+class URLField(BaseField):
+    """A field that validates input as a URL.
+    """
+
+    def __init__(self, verify_exists=True, **kwargs):
+        self.verify_exists = verify_exists
+        super(URLField, self).__init__(**kwargs)
+
+    def validate(self, value):
+        import urllib2
+
+        if self.verify_exists:
+            try:
+                request = urllib2.Request(value)
+                response = urllib2.urlopen(request)
+            except Exception, e:
+                raise ValidationError('This URL appears to be invalid: %s' % e)
+
+
 class IntField(BaseField):
     """An integer field.
     """
@@ -45,12 +75,15 @@ class IntField(BaseField):
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
         super(IntField, self).__init__(**kwargs)
-    
+
     def to_python(self, value):
         return int(value)
 
     def validate(self, value):
-        assert isinstance(value, (int, long))
+        try:
+            value = int(value)
+        except:
+            raise ValidationError('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
             raise ValidationError('Integer value is too small')
@@ -66,7 +99,7 @@ class FloatField(BaseField):
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
         super(FloatField, self).__init__(**kwargs)
-    
+
     def to_python(self, value):
         return float(value)
 
@@ -80,12 +113,41 @@ class FloatField(BaseField):
             raise ValidationError('Float value is too large')
 
 
+class DecimalField(BaseField):
+    """A fixed-point decimal number field.
+    """
+
+    def __init__(self, min_value=None, max_value=None, **kwargs):
+        self.min_value, self.max_value = min_value, max_value
+        super(DecimalField, self).__init__(**kwargs)
+
+    def to_python(self, value):
+        if not isinstance(value, basestring):
+            value = unicode(value)
+        return decimal.Decimal(value)
+
+    def validate(self, value):
+        if not isinstance(value, decimal.Decimal):
+            if not isinstance(value, basestring):
+                value = str(value)
+            try:
+                value = decimal.Decimal(value)
+            except Exception, exc:
+                raise ValidationError('Could not convert to decimal: %s' % exc)
+
+        if self.min_value is not None and value < self.min_value:
+            raise ValidationError('Decimal value is too small')
+
+        if self.max_value is not None and vale > self.max_value:
+            raise ValidationError('Decimal value is too large')
+
+
 class BooleanField(BaseField):
     """A boolean field type.
 
     .. versionadded:: 0.1.2
     """
-    
+
     def to_python(self, value):
         return bool(value)
 
@@ -102,8 +164,8 @@ class DateTimeField(BaseField):
 
 
 class EmbeddedDocumentField(BaseField):
-    """An embedded document field. Only valid values are subclasses of 
-    :class:`~mongoengine.EmbeddedDocument`. 
+    """An embedded document field. Only valid values are subclasses of
+    :class:`~mongoengine.EmbeddedDocument`.
     """
 
     def __init__(self, document, **kwargs):
@@ -112,7 +174,7 @@ class EmbeddedDocumentField(BaseField):
                                   'to an EmbeddedDocumentField')
         self.document = document
         super(EmbeddedDocumentField, self).__init__(**kwargs)
-    
+
     def to_python(self, value):
         if not isinstance(value, self.document):
             return self.document._from_son(value)
@@ -122,7 +184,7 @@ class EmbeddedDocumentField(BaseField):
         return self.document.to_mongo(value)
 
     def validate(self, value):
-        """Make sure that the document instance is an instance of the 
+        """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
         # Using isinstance also works for subclasses of self.document
@@ -202,7 +264,7 @@ class ReferenceField(BaseField):
             value = _get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
-        
+
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document):
@@ -222,7 +284,7 @@ class ReferenceField(BaseField):
 
         collection = self.document_type._meta['collection']
         return pymongo.dbref.DBRef(collection, id_)
-    
+
     def prepare_query_value(self, value):
         return self.to_mongo(value)
 
