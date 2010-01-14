@@ -171,6 +171,30 @@ class QuerySetTest(unittest.TestCase):
         
         BlogPost.drop_collection()
 
+    def test_field_subsets(self):
+        """Ensure that a call to ``only`` loads only selected fields.
+        """
+        
+        class DinerReview(Document):
+            title = StringField()
+            abstract = StringField()
+            content = StringField()
+            
+        review = DinerReview(title="Lorraine's Diner")
+        review.abstract = "Dirty dishes, great food."
+        review.content = """
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+            Mauris eu felis risus, eget congue ante. Mauris consectetur 
+            dignissim velit, quis dictum risus tincidunt ac. 
+            Phasellus condimentum imperdiet laoreet.
+        """
+        review.save()
+        
+        review = DinerReview.objects.only("title").first()
+        self.assertEqual(review.content, None)
+        
+        DinerReview.drop_collection()
+
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """

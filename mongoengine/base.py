@@ -344,8 +344,12 @@ class BaseDocument(object):
                 return None
             cls = subclasses[class_name]
 
+        present_fields = data.keys()
+
         for field_name, field in cls._fields.items():
             if field.name in data:
                 data[field_name] = field.to_python(data[field.name])
 
-        return cls(**data)
+        obj = cls(**data)
+        obj._present_fields = present_fields
+        return obj
