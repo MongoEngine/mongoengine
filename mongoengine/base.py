@@ -69,7 +69,8 @@ class ObjectIdField(BaseField):
     """
     
     def to_python(self, value):
-        return unicode(value)
+        return value
+        # return unicode(value)
 
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
