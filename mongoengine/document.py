@@ -107,25 +107,6 @@ class Document(BaseDocument):
         for field in self._fields:
             setattr(self, field, obj[field])
 
-    def validate(self):
-        """Ensure that all fields' values are valid and that required fields
-        are present.
-        """
-        # Get a list of tuples of field names and their current values
-        fields = [(field, getattr(self, name)) 
-                  for name, field in self._fields.items()]
-
-        # Ensure that each field is matched to a valid value
-        for field, value in fields:
-            if value is not None:
-                try:
-                    field.validate(value)
-                except (ValueError, AttributeError, AssertionError), e:
-                    raise ValidationError('Invalid value for field of type "' +
-                                          field.__class__.__name__ + '"')
-            elif field.required:
-                raise ValidationError('Field "%s" is required' % field.name)
-
     @classmethod
     def drop_collection(cls):
         """Drops the entire collection associated with this

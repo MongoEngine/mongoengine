@@ -387,6 +387,25 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
         self.assertFalse(hasattr(Comment, '_meta'))
+    
+    def test_embedded_document_validation(self):
+        """Ensure that embedded documents may be validated.
+        """
+        class Comment(EmbeddedDocument):
+            date = DateTimeField()
+            content = StringField(required=True)
+        
+        comment = Comment()
+        self.assertRaises(ValidationError, comment.validate)
+
+        comment.content = 'test'
+        comment.validate()
+
+        comment.date = 4
+        self.assertRaises(ValidationError, comment.validate)
+
+        comment.date = datetime.datetime.now()
+        comment.validate()
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
