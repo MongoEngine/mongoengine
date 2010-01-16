@@ -2,25 +2,32 @@
 Changelog
 =========
 
+Changes in v0.2.2
+=================
+- Fixed bug that prevented indexes from being used on ``ListField``\ s
+- ``Document.filter()`` added as an alias to ``Document.__call__()``
+- ``validate()`` may now be used on ``EmbeddedDocument``\ s
+
 Changes in v0.2.1
 =================
 - Added a MongoEngine backend for Django sessions
-- Added force_insert to Document.save()
-- Improved querying syntax for ListField and EmbeddedDocumentField
-- Added support for user-defined primary keys (_ids in MongoDB)
+- Added ``force_insert`` to ``Document.save()``
+- Improved querying syntax for ``ListField`` and ``EmbeddedDocumentField``
+- Added support for user-defined primary keys (``_id`` in MongoDB)
 
 Changes in v0.2
 ===============
-- Added Q class for building advanced queries
-- Added QuerySet methods for atomic updates to documents
-- Fields may now specify ``unique=True`` to enforce uniqueness across a collection
+- Added ``Q`` class for building advanced queries
+- Added ``QuerySet`` methods for atomic updates to documents
+- Fields may now specify ``unique=True`` to enforce uniqueness across a 
+  collection
 - Added option for default document ordering
 - Fixed bug in index definitions
 
 Changes in v0.1.3
 =================
 - Added Django authentication backend
-- Added Document.meta support for indexes, which are ensured just before 
+- Added ``Document.meta`` support for indexes, which are ensured just before 
   querying takes place
 - A few minor bugfixes
 
@@ -30,8 +37,8 @@ Changes in v0.1.2
 - Query values may be processed before before being used in queries
 - Made connections lazy
 - Fixed bug in Document dictionary-style access
-- Added BooleanField
-- Added Document.reload method
+- Added ``BooleanField``
+- Added ``Document.reload()`` method
 
 
 Changes in v0.1.1
