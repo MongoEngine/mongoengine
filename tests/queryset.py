@@ -2,7 +2,7 @@ import unittest
 import pymongo
 from datetime import datetime
 
-from mongoengine.queryset import QuerySet
+from mongoengine.queryset import QuerySet, MultipleObjectsReturned, DoesNotExist
 from mongoengine import *
 
 
@@ -133,6 +133,27 @@ class QuerySetTest(unittest.TestCase):
         
         # Find a document using just the object id
         person = self.Person.objects.with_id(person1.id)
+        self.assertEqual(person.name, "User A")
+
+    def test_find_only_one(self):
+        """Ensure that a query using find_one returns a valid result.
+        """
+        # Try retrieving when no objects exists
+        self.assertRaises(DoesNotExist, self.Person.objects.get)
+
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Retrieve the first person from the database
+        self.assertRaises(MultipleObjectsReturned, self.Person.objects.get)
+
+        # Use a query to filter the people found to just person2
+        person = self.Person.objects.get(age=30)
+        self.assertEqual(person.name, "User B")
+
+        person = self.Person.objects.get(age__lt=30)
         self.assertEqual(person.name, "User A")
 
     def test_filter_chaining(self):

@@ -14,7 +14,6 @@ REPR_OUTPUT_SIZE = 20
 class InvalidQueryError(Exception):
     pass
 
-
 class OperationError(Exception):
     pass
 
