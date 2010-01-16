@@ -142,6 +142,9 @@ class ListField(BaseField):
     of the field to be used as a list in the database.
     """
 
+    # ListFields cannot be indexed with _types - MongoDB doesn't support this
+    _index_with_types = False
+
     def __init__(self, field, **kwargs):
         if not isinstance(field, BaseField):
             raise ValidationError('Argument to ListField constructor must be '

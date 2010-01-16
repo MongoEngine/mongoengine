@@ -227,9 +227,11 @@ class DocumentTest(unittest.TestCase):
         class BlogPost(Document):
             date = DateTimeField(name='addDate', default=datetime.datetime.now)
             category = StringField()
+            tags = ListField(StringField())
             meta = {
                 'indexes': [
                     '-date', 
+                    'tags',
                     ('category', '-date')
                 ],
             }
@@ -237,7 +239,8 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
-        self.assertEqual(len(info), 4) # _id, types, '-date', ('cat', 'date')
+        # _id, types, '-date', 'tags', ('cat', 'date')
+        self.assertEqual(len(info), 5) 
 
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
@@ -245,6 +248,8 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
                         in info.values())
         self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
+        # tags is a list field so it shouldn't have _types in the index
+        self.assertTrue([('tags', 1)] in info.values())
         
         class ExtendedBlogPost(BlogPost):
             title = StringField()

@@ -11,6 +11,9 @@ class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
     """
+
+    # Fields may have _types inserted into indexes by default 
+    _index_with_types = True
     
     def __init__(self, name=None, required=False, default=None, unique=False,
                  unique_with=None, primary_key=False):
@@ -172,8 +175,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
 
-        meta['indexes'] += base_indexes
-        
         # Only simple classes - direct subclasses of Document - may set
         # allow_inheritance to False
         if not simple_class and not meta['allow_inheritance']:
@@ -186,6 +187,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         new_class = super_new(cls, name, bases, attrs)
         new_class.objects = QuerySetManager()
 
+        user_indexes = [QuerySet._build_index_spec(new_class, spec)
+                        for spec in meta['indexes']] + base_indexes
+        new_class._meta['indexes'] = user_indexes
+        
         unique_indexes = []
         for field_name, field in new_class._fields.items():
             # Generate a list of indexes needed by uniqueness constraints
