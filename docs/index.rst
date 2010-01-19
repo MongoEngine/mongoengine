@@ -1,5 +1,6 @@
+==============================
 MongoEngine User Documentation
-=======================================
+==============================
 
 MongoEngine is an Object-Document Mapper, written in Python for working with 
 MongoDB. To install it, simply run
@@ -14,7 +15,7 @@ The source is available on `GitHub <http://github.com/hmarr/mongoengine>`_.
    :maxdepth: 2
 
    tutorial
-   userguide
+   guide/index
    apireference
    django
    changelog

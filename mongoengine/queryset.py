@@ -127,14 +127,19 @@ class QuerySet(object):
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
         """
+        index_list = QuerySet._build_index_spec(self._document, key_or_list)
+        self._collection.ensure_index(index_list)
+        return self
+
+    @classmethod
+    def _build_index_spec(cls, doc_cls, key_or_list):
+        """Build a PyMongo index spec from a MongoEngine index spec.
+        """
         if isinstance(key_or_list, basestring):
             key_or_list = [key_or_list]
 
         index_list = []
-        # If _types is being used, prepend it to every specified index
-        if self._document._meta.get('allow_inheritance'):
-            index_list.append(('_types', 1))
-
+        use_types = doc_cls._meta.get('allow_inheritance', True)
         for key in key_or_list:
             # Get direction from + or -
             direction = pymongo.ASCENDING
@@ -142,11 +147,24 @@ class QuerySet(object):
                 direction = pymongo.DESCENDING
             if key.startswith(("+", "-")):
                     key = key[1:]
-            # Use real field name
-            key = QuerySet._translate_field_name(self._document, key)
+
+            # Use real field name, do it manually because we need field
+            # objects for the next part (list field checking)
+            parts = key.split('.')
+            fields = QuerySet._lookup_field(doc_cls, parts)
+            parts = [field.name for field in fields]
+            key = '.'.join(parts)
             index_list.append((key, direction))
-        self._collection.ensure_index(index_list)
-        return self
+
+            # Check if a list field is being used, don't use _types if it is
+            if use_types and not all(f._index_with_types for f in fields):
+                use_types = False
+
+        # If _types is being used, prepend it to every specified index
+        if doc_cls._meta.get('allow_inheritance') and use_types:
+            index_list.insert(0, ('_types', 1))
+
+        return index_list
 
     def __call__(self, *q_objs, **query):
         """Filter the selected documents by calling the 
@@ -178,7 +196,8 @@ class QuerySet(object):
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
-                    self.ensure_index(key_or_list)
+                    #self.ensure_index(key_or_list)
+                    self._collection.ensure_index(key_or_list)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
