@@ -264,6 +264,50 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_exec_js_query(self):
+        """Ensure that queries are properly formed for use in exec_js.
+        """
+        class BlogPost(Document):
+            hits = IntField()
+            published = BooleanField()
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(hits=1, published=False)
+        post1.save()
+
+        post2 = BlogPost(hits=1, published=True)
+        post2.save()
+
+        post3 = BlogPost(hits=1, published=True)
+        post3.save()
+
+        js_func = """
+            function(hitsField) {
+                var count = 0;
+                db[collection].find(query).forEach(function(doc) {
+                    count += doc[hitsField];
+                });
+                return count;
+            }
+        """
+
+        # Ensure that normal queries work
+        c = BlogPost.objects(published=True).exec_js(js_func, 'hits')
+        self.assertEqual(c, 2)
+
+        c = BlogPost.objects(published=False).exec_js(js_func, 'hits')
+        self.assertEqual(c, 1)
+
+        # Ensure that Q object queries work
+        c = BlogPost.objects(Q(published=True)).exec_js(js_func, 'hits')
+        self.assertEqual(c, 2)
+
+        c = BlogPost.objects(Q(published=False)).exec_js(js_func, 'hits')
+        self.assertEqual(c, 1)
+
+        BlogPost.drop_collection()
+
     def test_delete(self):
         """Ensure that documents are properly deleted from the database.
         """

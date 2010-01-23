@@ -240,7 +240,7 @@ class DocumentTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         # _id, types, '-date', 'tags', ('cat', 'date')
-        self.assertEqual(len(info), 5) 
+        self.assertEqual(len(info), 5)
 
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
