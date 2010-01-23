@@ -112,7 +112,6 @@ class QuerySet(object):
         self._accessed_collection = False
         self._query = {}
         self._where_clauses = []
-        self._field_subset = []
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -211,12 +210,7 @@ class QuerySet(object):
     @property
     def _cursor(self):
         if not self._cursor_obj:
-            query_kwargs = {}
-            if self._field_subset:
-                # load only a subset of fields
-                query_kwargs['fields'] = self._field_subset
-            self._cursor_obj = self._collection.find(self._query, **query_kwargs)
-
+            self._cursor_obj = self._collection.find(self._query)
             # Apply where clauses to cursor
             for js in self._where_clauses:
                 self._cursor_obj.where(js)
@@ -370,14 +364,6 @@ class QuerySet(object):
         # Integer index provided
         elif isinstance(key, int):
             return self._document._from_son(self._cursor[key])
-
-    def only(self, *fields):
-        """Allow only a subset of fields to be loaded. Invalid fields
-        are silently ignored.
-        """
-        fields = list(fields)
-        self._field_subset = fields
-        return self
 
     def order_by(self, *keys):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
