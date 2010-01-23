@@ -14,7 +14,7 @@ fetch documents from the database::
         print user.name
 
 Filtering queries
------------------
+=================
 The query may be filtered by calling the
 :class:`~mongoengine.queryset.QuerySet` object with field lookup keyword 
 arguments. The keys in the keyword arguments correspond to fields on the
@@ -33,7 +33,7 @@ syntax::
     uk_pages = Page.objects(author__country='uk')
 
 Querying lists
-^^^^^^^^^^^^^^
+--------------
 On most fields, this syntax will look up documents where the field specified
 matches the given value exactly, but when the field refers to a
 :class:`~mongoengine.ListField`, a single item may be provided, in which case
@@ -47,7 +47,7 @@ lists that contain that item will be matched::
     Page.objects(tags='coding')
 
 Query operators
----------------
+===============
 Operators other than equality may also be used in queries; just attach the
 operator name to a key with a double-underscore::
     
@@ -69,7 +69,7 @@ Available operators are as follows:
 * ``exists`` -- value for field exists
 
 Limiting and skipping results
------------------------------
+=============================
 Just as with traditional ORMs, you may limit the number of results returned, or
 skip a number or results in you query.
 :meth:`~mongoengine.queryset.QuerySet.limit` and
@@ -86,15 +86,54 @@ achieving this is using array-slicing syntax::
     # 5 users, starting from the 10th user found
     users = User.objects[10:15]
 
+Default Document queries
+========================
+By default, the objects :attr:`~mongoengine.Document.objects` attribute on a
+document returns a :class:`~mongoengine.queryset.QuerySet` that doesn't filter
+the collection -- it returns all objects. This may be changed by defining a
+method on a document that modifies a queryset. The method should accept two
+arguments -- :attr:`doc_cls` and :attr:`queryset`. The first argument is the
+:class:`~mongoengine.Document` class that the method is defined on (in this
+sense, the method is more like a :func:`classmethod` than a regular method),
+and the second argument is the initial queryset. The method needs to be
+decorated with :func:`~mongoengine.queryset.queryset_manager` in order for it
+to be recognised. ::
+
+    class BlogPost(Document):
+        title = StringField()
+        date = DateTimeField()
+
+        @queryset_manager
+        def objects(doc_cls, queryset):
+            # This may actually also be done by defining a default ordering for
+            # the document, but this illustrates the use of manager methods
+            return queryset.order_by('-date')
+
+You don't need to call your method :attr:`objects` -- you may define as many
+custom manager methods as you like::
+
+    class BlogPost(Document):
+        title = StringField()
+        published = BooleanField()
+
+        @queryset_manager
+        def live_posts(doc_cls, queryset):
+            return queryset.order_by('-date')
+
+    BlogPost(title='test1', published=False).save()
+    BlogPost(title='test2', published=True).save()
+    assert len(BlogPost.objects) == 2
+    assert len(BlogPost.live_posts) == 1
+
 Aggregation
------------
+===========
 MongoDB provides some aggregation methods out of the box, but there are not as
 many as you typically get with an RDBMS. MongoEngine provides a wrapper around
 the built-in methods and provides some of its own, which are implemented as
 Javascript code that is executed on the database server.
 
 Counting results
-^^^^^^^^^^^^^^^^
+----------------
 Just as with limiting and skipping results, there is a method on
 :class:`~mongoengine.queryset.QuerySet` objects -- 
 :meth:`~mongoengine.queryset.QuerySet.count`, but there is also a more Pythonic
@@ -103,7 +142,7 @@ way of achieving this::
     num_users = len(User.objects)
 
 Further aggregation
-^^^^^^^^^^^^^^^^^^^
+-------------------
 You may sum over the values of a specific field on documents using
 :meth:`~mongoengine.queryset.QuerySet.sum`::
 
@@ -133,7 +172,7 @@ would be generating "tag-clouds"::
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
 
 Advanced queries
-----------------
+================
 Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
 arguments can't fully express the query you want to use -- for example if you
 need to combine a number of constraints using *and* and *or*. This is made 
@@ -161,7 +200,7 @@ calling it with keyword arguments::
 .. _guide-atomic-updates:
 
 Atomic updates
---------------
+==============
 Documents may be updated atomically by using the
 :meth:`~mongoengine.queryset.QuerySet.update_one` and
 :meth:`~mongoengine.queryset.QuerySet.update` methods on a 

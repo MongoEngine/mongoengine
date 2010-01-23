@@ -146,7 +146,7 @@ class QuerySetTest(unittest.TestCase):
             published_date = DateTimeField()
             
             @queryset_manager
-            def published(queryset):
+            def published(doc_cls, queryset):
                 return queryset(is_published=True)
                 
         blog_post_1 = BlogPost(title="Blog Post #1", 
@@ -444,7 +444,7 @@ class QuerySetTest(unittest.TestCase):
             tags = ListField(StringField())
 
             @queryset_manager
-            def music_posts(queryset):
+            def music_posts(doc_cls, queryset):
                 return queryset(tags='music')
 
         BlogPost.drop_collection()

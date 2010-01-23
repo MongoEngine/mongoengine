@@ -660,14 +660,15 @@ class QuerySetManager(object):
         # owner is the document that contains the QuerySetManager
         queryset = QuerySet(owner, self._collection)
         if self._manager_func:
-            queryset = self._manager_func(queryset)
+            queryset = self._manager_func(owner, queryset)
         return queryset
 
 def queryset_manager(func):
-    """Decorator that allows you to define custom QuerySet managers on 
+    """Decorator that allows you to define custom QuerySet managers on
     :class:`~mongoengine.Document` classes. The manager must be a function that
-    accepts a :class:`~mongoengine.queryset.QuerySet` as its only argument, and
-    returns a :class:`~mongoengine.queryset.QuerySet`, probably the same one 
-    but modified in some way.
+    accepts a :class:`~mongoengine.Document` class as its first argument, and a
+    :class:`~mongoengine.queryset.QuerySet` as its second argument. The method
+    function should return a :class:`~mongoengine.queryset.QuerySet`, probably
+    the same one that was passed in, but modified in some way.
     """
     return QuerySetManager(func)

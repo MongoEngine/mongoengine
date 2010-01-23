@@ -44,7 +44,7 @@ are as follows:
 * :class:`~mongoengine.ReferenceField`
 
 List fields
-^^^^^^^^^^^
+-----------
 MongoDB allows the storage of lists of items. To add a list of items to a
 :class:`~mongoengine.Document`, use the :class:`~mongoengine.ListField` field
 type. :class:`~mongoengine.ListField` takes another field object as its first
@@ -54,7 +54,7 @@ argument, which specifies which type elements may be stored within the list::
         tags = ListField(StringField(max_length=50))
 
 Embedded documents
-^^^^^^^^^^^^^^^^^^
+------------------
 MongoDB has the ability to embed documents within other documents. Schemata may
 be defined for these embedded documents, just as they may be for regular
 documents. To create an embedded document, just define a document as usual, but
@@ -76,7 +76,7 @@ document class as the first argument::
     page = Page(comments=[comment1, comment2])
 
 Reference fields
-^^^^^^^^^^^^^^^^
+----------------
 References may be stored to other documents in the database using the
 :class:`~mongoengine.ReferenceField`. Pass in another document class as the
 first argument to the constructor, then simply assign document objects to the
@@ -100,7 +100,7 @@ The :class:`User` object is automatically turned into a reference behind the
 scenes, and dereferenced when the :class:`Page` object is retrieved.
 
 Uniqueness constraints
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 MongoEngine allows you to specify that a field should be unique across a
 collection by providing ``unique=True`` to a :class:`~mongoengine.Field`\ 's
 constructor. If you try to save a document that has the same value for a unique
@@ -130,7 +130,7 @@ document class to use::
         meta = {'collection': 'cmsPage'}
 
 Capped collections
-^^^^^^^^^^^^^^^^^^
+------------------
 A :class:`~mongoengine.Document` may use a **Capped Collection** by specifying
 :attr:`max_documents` and :attr:`max_size` in the :attr:`meta` dictionary.
 :attr:`max_documents` is the maximum number of documents that is allowed to be
@@ -179,13 +179,13 @@ subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
         }
 
     blog_post_1 = BlogPost(title="Blog Post #1")
-    blog_post_1.published_date = datetime(2010, 1, 5, 0, 0 ,0))
+    blog_post_1.published_date = datetime(2010, 1, 5, 0, 0 ,0)
 
     blog_post_2 = BlogPost(title="Blog Post #2") 
-    blog_post_2.published_date = datetime(2010, 1, 6, 0, 0 ,0))
+    blog_post_2.published_date = datetime(2010, 1, 6, 0, 0 ,0)
 
     blog_post_3 = BlogPost(title="Blog Post #3")
-    blog_post_3.published_date = datetime(2010, 1, 7, 0, 0 ,0))
+    blog_post_3.published_date = datetime(2010, 1, 7, 0, 0 ,0)
 
     blog_post_1.save()
     blog_post_2.save()
@@ -194,11 +194,11 @@ subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
     # get the "first" BlogPost using default ordering
     # from BlogPost.meta.ordering
     latest_post = BlogPost.objects.first() 
-    self.assertEqual(latest_post.title, "Blog Post #3")
+    assert latest_post.title == "Blog Post #3"
 
     # override default ordering, order BlogPosts by "published_date"
     first_post = BlogPost.objects.order_by("+published_date").first()
-    self.assertEqual(first_post.title, "Blog Post #1")
+    assert first_post.title == "Blog Post #1"
 
 Document inheritance
 ====================
@@ -218,7 +218,7 @@ convenient and efficient retrieval of related documents::
         date = DateTimeField()
 
 Working with existing data
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 To enable correct retrieval of documents involved in this kind of heirarchy,
 two extra attributes are stored on each document in the database: :attr:`_cls`
 and :attr:`_types`. These are hidden from the user through the MongoEngine
