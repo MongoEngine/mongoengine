@@ -142,8 +142,8 @@ A :class:`~mongoengine.queryset.Q` object represents part of a query, and
 can be initialised using the same keyword-argument syntax you use to query
 documents. To build a complex query, you may combine 
 :class:`~mongoengine.queryset.Q` objects using the ``&`` (and) and ``|`` (or)
-operators. To use :class:`~mongoengine.queryset.Q` objects, pass them in
-as positional arguments to :attr:`Document.objects` when you filter it by
+operators. To use a :class:`~mongoengine.queryset.Q` object, pass it in as the
+first positional argument to :attr:`Document.objects` when you filter it by
 calling it with keyword arguments::
 
     # Get published posts

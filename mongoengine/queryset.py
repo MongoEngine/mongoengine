@@ -111,7 +111,7 @@ class QuerySet(object):
         self._collection_obj = collection
         self._accessed_collection = False
         self._query = {}
-        self._where_clauses = []
+        self._where_clause = None
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -165,16 +165,18 @@ class QuerySet(object):
 
         return index_list
 
-    def __call__(self, *q_objs, **query):
+    def __call__(self, q_obj=None, **query):
         """Filter the selected documents by calling the 
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
-        :param q_objs: :class:`~mongoengine.queryset.Q` objects to be used in
-            the query 
+        :param q_obj: a :class:`~mongoengine.queryset.Q` object to be used in
+            the query; the :class:`~mongoengine.queryset.QuerySet` is filtered
+            multiple times with different :class:`~mongoengine.queryset.Q`
+            objects, only the last one will be used
         :param query: Django-style query keyword arguments
         """
-        for q in q_objs:
-            self._where_clauses.append(q.as_js(self._document))
+        if q_obj:
+            self._where_clause = q_obj.as_js(self._document)
         query = QuerySet._transform_query(_doc_cls=self._document, **query)
         self._query.update(query)
         return self
@@ -209,11 +211,11 @@ class QuerySet(object):
 
     @property
     def _cursor(self):
-        if not self._cursor_obj:
+        if self._cursor_obj is None:
             self._cursor_obj = self._collection.find(self._query)
             # Apply where clauses to cursor
-            for js in self._where_clauses:
-                self._cursor_obj.where(js)
+            if self._where_clause:
+                self._cursor_obj.where(self._where_clause)
             
             # apply default ordering
             if self._document._meta['ordering']:
@@ -516,11 +518,17 @@ class QuerySet(object):
         fields = [QuerySet._translate_field_name(self._document, f)
                   for f in fields]
         collection = self._document._meta['collection']
+
         scope = {
             'collection': collection,
-            'query': self._query,
             'options': options or {},
         }
+
+        query = self._query
+        if self._where_clause:
+            query['$where'] = self._where_clause
+        
+        scope['query'] = query
         code = pymongo.code.Code(code, scope=scope)
 
         db = _get_db()
