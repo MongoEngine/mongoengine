@@ -345,19 +345,15 @@ class BaseDocument(object):
             if value is not None:
                 data[field.name] = field.to_mongo(value)
         # Only add _cls and _types if allow_inheritance is not False
-        #if not (hasattr(self, '_meta') and
-        #        self._meta.get('allow_inheritance', True) == False):
-        ah = True
-        if hasattr(self, '_meta'):
-            ah = self._meta.get('allow_inheritance', True)
-        if ah:
+        if not (hasattr(self, '_meta') and
+                self._meta.get('allow_inheritance', True) == False):
             data['_cls'] = self._class_name
             data['_types'] = self._superclasses.keys() + [self._class_name]
         return data
     
     @classmethod
     def _from_son(cls, son):
-        """Create an instance of a Document (subclass) from a PyMongo SOM.
+        """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         # get the class name from the document, falling back to the given
         # class if unavailable
