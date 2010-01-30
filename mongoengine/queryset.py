@@ -296,14 +296,16 @@ class QuerySet(object):
         return mongo_query
 
     def get_or_create(self, **kwargs):
-        """Retreive unique object or create with paras, if it doesn't exist
+        """Retreive unique object or create, if it doesn't exist
         """
+        defaults = kwargs.get('defaults', {})
+        if kwargs.has_key('defaults'):
+            del kwargs['defaults']
+        
         dataset = self.filter(**kwargs)
         cnt = dataset.count()
         if cnt == 0:
-            if kwargs.has_key('defaults'):
-                kwargs.update(kwargs.get('defaults'))
-                del kwargs['defaults']
+            kwargs.update(defaults)
             doc = self._document(**kwargs)
             doc.save()
             return doc
