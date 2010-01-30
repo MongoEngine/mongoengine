@@ -10,6 +10,9 @@ __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
 
+class MultipleObjectsReturned(Exception):
+    pass
+
 
 class InvalidQueryError(Exception):
     pass
@@ -292,6 +295,23 @@ class QuerySet(object):
 
         return mongo_query
 
+    def get_or_create(self, **kwargs):
+        """Retreive unique object or create with paras, if it doesn't exist
+        """
+        dataset = self.filter(**kwargs)
+        cnt = dataset.count()
+        if cnt == 0:
+            if kwargs.has_key('defaults'):
+                kwargs.update(kwargs.get('defaults'))
+                del kwargs['defaults']
+            doc = self._document(**kwargs)
+            doc.save()
+            return doc
+        elif cnt == 1:
+            return dataset.first()
+        else:
+            raise MultipleObjectsReturned(u'%d items returned, instead of 1' % cnt)
+    
     def first(self):
         """Retrieve the first object matching the query.
         """
