@@ -14,10 +14,14 @@ REPR_OUTPUT_SIZE = 20
 class InvalidQueryError(Exception):
     pass
 
-
 class OperationError(Exception):
     pass
 
+class MultipleObjectsReturned(Exception):
+    pass
+
+class DoesNotExist(Exception):
+    pass
 
 class Q(object):
     
@@ -291,6 +295,21 @@ class QuerySet(object):
                 mongo_query[key].update(value)
 
         return mongo_query
+
+    def get(self, *q_objs, **query):
+        """Retrieve the the matching object raising 
+        'MultipleObjectsReturned' or 'DoesNotExist' exceptions
+        if multiple or no results are found.
+        """
+        self.__call__(*q_objs, **query)
+        count = self.count()
+        if count == 1:
+            return self[0]
+        elif count > 1:
+            raise MultipleObjectsReturned
+        else:
+            raise DoesNotExist
+
 
     def first(self):
         """Retrieve the first object matching the query.
