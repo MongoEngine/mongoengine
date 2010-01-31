@@ -316,15 +316,17 @@ class QuerySet(object):
         elif cnt == 1:
             return dataset.first()
         else:
-            raise MultipleObjectsReturned(u'%d items returned, instead of 1' % cnt)
+            raise MultipleObjectsReturned(u'%d items returned, expected exactly one' % cnt)
 
     def get(self, **kwargs):
+        """Retreive exactly one document. Raise DoesNotExist if it's not found.
+        """
         dataset = self.filter(**kwargs)
         cnt = dataset.count()
         if cnt == 1:
             return dataset.first()
         elif cnt > 1:
-            raise MultipleObjectsReturned(u'%d items returned, instead of 1' % cnt)
+            raise MultipleObjectsReturned(u'%d items returned, expected exactly one' % cnt)
         else:
             raise DoesNotExist('Document not found')
 
