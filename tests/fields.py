@@ -259,6 +259,40 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         BlogPost.drop_collection()
 
+    def test_reference_query_conversion(self):
+        """Ensure that ReferenceFields can be queried using objects and values
+        of the type of the primary key of the referenced object.
+        """
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = ReferenceField(Member)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1.id).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2.id).first()
+        self.assertEqual(post.id, post2.id)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
 
 if __name__ == '__main__':
     unittest.main()

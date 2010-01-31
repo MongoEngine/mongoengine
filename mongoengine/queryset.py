@@ -10,6 +10,13 @@ __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
 
+class DoesNotExist(Exception):
+	pass
+
+
+class MultipleObjectsReturned(Exception):
+    pass
+
 
 class InvalidQueryError(Exception):
     pass
@@ -298,18 +305,43 @@ class QuerySet(object):
 
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising 
-        'MultipleObjectsReturned' or 'DoesNotExist' exceptions
-        if multiple or no results are found.
+        :class:`~mongoengine.queryset.MultipleObjectsReturned` or 
+        :class:`~mongoengine.queryset.DoesNotExist` exceptions if multiple or
+        no results are found.
         """
         self.__call__(*q_objs, **query)
         count = self.count()
         if count == 1:
             return self[0]
         elif count > 1:
-            raise MultipleObjectsReturned
+            message = u'%d items returned, instead of 1' % count
+            raise MultipleObjectsReturned(message)
         else:
-            raise DoesNotExist
+            raise DoesNotExist('Document not found')
 
+    def get_or_create(self, *q_objs, **query):
+        """Retreive unique object or create, if it doesn't exist. Raises
+        :class:`~mongoengine.queryset.MultipleObjectsReturned` if multiple 
+        results are found. A new document will be created if the document 
+        doesn't exists; a dictionary of default values for the new document
+        may be provided as a keyword argument called :attr:`defaults`.
+        """
+        defaults = query.get('defaults', {})
+        if query.has_key('defaults'):
+            del query['defaults']
+        
+        self.__call__(*q_objs, **query)
+        count = self.count()
+        if count == 0:
+            query.update(defaults)
+            doc = self._document(**query)
+            doc.save()
+            return doc
+        elif count == 1:
+            return self.first()
+        else:
+            message = u'%d items returned, instead of 1' % count
+            raise MultipleObjectsReturned(message)
 
     def first(self):
         """Retrieve the first object matching the query.

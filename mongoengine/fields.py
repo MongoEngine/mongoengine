@@ -209,20 +209,19 @@ class ReferenceField(BaseField):
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document):
-        if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
-            # document may already be an object id
-            id_ = document
-        else:
+        id_field_name = self.document_type._meta['id_field']
+        id_field = self.document_type._fields[id_field_name]
+
+        if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.id
             if id_ is None:
                 raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
+        else:
+            id_ = document
 
-        # id may be a string rather than an ObjectID object
-        if not isinstance(id_, pymongo.objectid.ObjectId):
-            id_ = pymongo.objectid.ObjectId(id_)
-
+        id_ = id_field.to_mongo(id_)
         collection = self.document_type._meta['collection']
         return pymongo.dbref.DBRef(collection, id_)
     
