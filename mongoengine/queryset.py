@@ -10,6 +10,10 @@ __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
 
+class DoesNotExist(Exception):
+	pass
+
+
 class MultipleObjectsReturned(Exception):
     pass
 
@@ -313,7 +317,17 @@ class QuerySet(object):
             return dataset.first()
         else:
             raise MultipleObjectsReturned(u'%d items returned, instead of 1' % cnt)
-    
+
+    def get(self, **kwargs):
+        dataset = self.filter(**kwargs)
+        cnt = dataset.count()
+        if cnt == 1:
+            return dataset.first()
+        elif cnt > 1:
+            raise MultipleObjectsReturned(u'%d items returned, instead of 1' % cnt)
+        else:
+            raise DoesNotExist('Document not found')
+
     def first(self):
         """Retrieve the first object matching the query.
         """

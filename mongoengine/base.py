@@ -6,7 +6,6 @@ import pymongo
 class ValidationError(Exception):
     pass
 
-
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
@@ -76,7 +75,10 @@ class ObjectIdField(BaseField):
 
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
-            return pymongo.objectid.ObjectId(str(value))
+            try:
+                return pymongo.objectid.ObjectId(str(value))
+            except Exception, e:
+                raise ValidationError(e.message)
         return value
 
     def prepare_query_value(self, value):
