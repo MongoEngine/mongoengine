@@ -1,8 +1,7 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
-from queryset import OperationError, QuerySet
+from queryset import OperationError
 from connection import _get_db
-
 
 import pymongo
 
@@ -76,34 +75,12 @@ class Document(BaseDocument):
             if force_insert:
                 object_id = collection.insert(doc, safe=safe)
             else:
-                if getattr(self, 'id', None) == None:
-                    # new document
-                    object_id = collection.save(doc, safe=safe)
-                else:
-                    # update document
-                    modified_fields = map(lambda obj: obj[0], filter(lambda obj: obj[1].modified, self._fields.items()))
-                    modified_doc = dict(filter(lambda k: k[0] in modified_fields, doc.items()))                
-                    try:
-                        # 
-                        # WORK IN PROGRESS
-                        # - EmbeddedDocuments still aren't tracked
-                        #
-                        id_field = self._meta['id_field']
-                        idObj = self._fields[id_field].to_mongo(self['id'])
-                        collection.update({'_id': idObj}, {'$set': modified_doc}, safe=safe)
-                    except pymongo.errors.OperationFailure, err:
-                        if str(err) == 'multi not coded yet':
-                            raise OperationError('update() method requires MongoDB 1.1.3+')
-                        raise OperationError('Update failed (%s)' % str(err))
-                    object_id = self['id']
-
-            for field in self._fields.values(): field.modified = False
+                object_id = collection.save(doc, safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if 'duplicate key' in str(err):
                 message = 'Tried to save duplicate unique keys (%s)'
             raise OperationError(message % str(err))
-
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
@@ -129,7 +106,6 @@ class Document(BaseDocument):
         obj = self.__class__.objects(**{id_field: self[id_field]}).first()
         for field in self._fields:
             setattr(self, field, obj[field])
-            obj.modified = False
 
     @classmethod
     def drop_collection(cls):
