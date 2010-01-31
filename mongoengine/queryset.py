@@ -10,6 +10,7 @@ __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
 
+
 class DoesNotExist(Exception):
 	pass
 
@@ -21,14 +22,10 @@ class MultipleObjectsReturned(Exception):
 class InvalidQueryError(Exception):
     pass
 
+
 class OperationError(Exception):
     pass
 
-class MultipleObjectsReturned(Exception):
-    pass
-
-class DoesNotExist(Exception):
-    pass
 
 class Q(object):
     

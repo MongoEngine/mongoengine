@@ -86,6 +86,41 @@ achieving this is using array-slicing syntax::
     # 5 users, starting from the 10th user found
     users = User.objects[10:15]
 
+You may also index the query to retrieve a single result. If an item at that
+index does not exists, an :class:`IndexError` will be raised. A shortcut for
+retrieving the first result and returning :attr:`None` if no result exists is
+provided (:meth:`~mongoengine.queryset.QuerySet.first`)::
+    
+    >>> # Make sure there are no users
+    >>> User.drop_collection()
+    >>> User.objects[0]
+    IndexError: list index out of range
+    >>> User.objects.first() == None
+    True
+    >>> User(name='Test User').save()
+    >>> User.objects[0] == User.objects.first()
+    True
+
+Retrieving unique results
+-------------------------
+To retrieve a result that should be unique in the collection, use
+:meth:`~mongoengine.queryset.QuerySet.get`. This will raise
+:class:`~mongoengine.queryset.DoesNotExist` if no document matches the query,
+and :class:`~mongoengine.queryset.MultipleObjectsReturned` if more than one
+document matched the query.
+
+A variation of this method exists, 
+:meth:`~mongoengine.queryset.Queryset.get_or_create`, that will create a new
+document with the query arguments if no documents match the query. An 
+additional keyword argument, :attr:`defaults` may be provided, which will be
+used as default values for the new document, in the case that it should need
+to be created::
+
+    >>> a = User.objects.get_or_create(name='User A', defaults={'age': 30})
+    >>> b = User.objects.get_or_create(name='User A', defaults={'age': 40})
+    >>> a.name == b.name and a.age == b.age
+    True
+
 Default Document queries
 ========================
 By default, the objects :attr:`~mongoengine.Document.objects` attribute on a
