@@ -71,6 +71,7 @@ class FloatField(BaseField):
         return float(value)
 
     def validate(self, value):
+        if isinstance(value, int): value = float(value)
         assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
