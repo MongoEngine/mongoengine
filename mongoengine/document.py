@@ -84,6 +84,10 @@ class Document(BaseDocument):
                     modified_fields = map(lambda obj: obj[0], filter(lambda obj: obj[1].modified, self._fields.items()))
                     modified_doc = dict(filter(lambda k: k[0] in modified_fields, doc.items()))                
                     try:
+                        # 
+                        # WORK IN PROGRESS
+                        # - EmbeddedDocuments still aren't tracked
+                        #
                         id_field = self._meta['id_field']
                         idObj = self._fields[id_field].to_mongo(self['id'])
                         collection.update({'_id': idObj}, {'$set': modified_doc}, safe=safe)
