@@ -520,9 +520,9 @@ class QuerySet(object):
             self._collection.update(self._query, update, safe=safe_update, 
                                     multi=True)
         except pymongo.errors.OperationFailure, err:
-            if str(err) == 'multi not coded yet':
-                raise OperationError('update() method requires MongoDB 1.1.3+')
-            raise OperationError('Update failed (%s)' % str(err))
+            if err.message == u'multi not coded yet':
+                raise OperationError(u'update() method requires MongoDB 1.1.3+')
+            raise OperationError(u'Update failed (%s)' % err.message)
 
     def update_one(self, safe_update=True, **update):
         """Perform an atomic update on first field matched by the query.
