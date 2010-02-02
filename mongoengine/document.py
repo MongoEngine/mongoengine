@@ -78,9 +78,9 @@ class Document(BaseDocument):
                 object_id = collection.save(doc, safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
-            if 'duplicate key' in str(err):
-                message = 'Tried to save duplicate unique keys (%s)'
-            raise OperationError(message % str(err))
+            if u'duplicate key' in err.message:
+                message = u'Tried to save duplicate unique keys (%s)'
+            raise OperationError(message % err.message)
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
@@ -95,7 +95,7 @@ class Document(BaseDocument):
         try:
             self.__class__.objects(**{id_field: object_id}).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
-            raise OperationError('Could not delete document (%s)' % str(err))
+            raise OperationError(u'Could not delete document (%s)' % err.message)
 
     def reload(self):
         """Reloads all attributes from the database.
