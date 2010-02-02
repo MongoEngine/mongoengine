@@ -129,6 +129,7 @@ class EmbeddedDocumentField(BaseField):
         if not isinstance(value, self.document):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
+        self.document.validate(value)
 
     def lookup_member(self, member_name):
         return self.document._fields.get(member_name)

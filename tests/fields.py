@@ -184,7 +184,7 @@ class FieldTest(unittest.TestCase):
             content = StringField()
 
         class PersonPreferences(EmbeddedDocument):
-            food = StringField()
+            food = StringField(required=True)
             number = IntField()
 
         class Person(Document):
@@ -195,7 +195,12 @@ class FieldTest(unittest.TestCase):
         person.preferences = 'My Preferences'
         self.assertRaises(ValidationError, person.validate)
 
+        # Check that only the right embedded doc works
         person.preferences = Comment(content='Nice blog post...')
+        self.assertRaises(ValidationError, person.validate)
+
+        # Check that the embedded doc is valid
+        person.preferences = PersonPreferences()
         self.assertRaises(ValidationError, person.validate)
 
         person.preferences = PersonPreferences(food='Cheese', number=47)
