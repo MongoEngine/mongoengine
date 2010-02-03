@@ -176,6 +176,28 @@ class FieldTest(unittest.TestCase):
         post.comments = 'yay'
         self.assertRaises(ValidationError, post.validate)
 
+    def test_dict_validation(self):
+        """Ensure that dict types work as expected.
+        """
+        class BlogPost(Document):
+            info = DictField()
+
+        post = BlogPost()
+        post.info = 'my post'
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = ['test', 'test']
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'$title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'the.title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'title': 'test'}
+        post.validate()
+
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.
