@@ -277,6 +277,22 @@ class QuerySetTest(unittest.TestCase):
         
         BlogPost.drop_collection()
 
+    def test_find_dict_item(self):
+        """Ensure that DictField items may be found.
+        """
+        class BlogPost(Document):
+            info = DictField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(info={'title': 'test'})
+        post.save()
+
+        post_obj = BlogPost.objects(info__title='test').first()
+        self.assertEqual(post_obj.id, post.id)
+
+        BlogPost.drop_collection()
+
     def test_q(self):
         class BlogPost(Document):
             publish_date = DateTimeField()

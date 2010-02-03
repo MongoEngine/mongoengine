@@ -46,6 +46,8 @@ Fields
 
 .. autoclass:: mongoengine.EmbeddedDocumentField
 
+.. autoclass:: mongoengine.DictField
+
 .. autoclass:: mongoengine.ListField
 
 .. autoclass:: mongoengine.ObjectIdField

@@ -39,6 +39,7 @@ are as follows:
 * :class:`~mongoengine.FloatField`
 * :class:`~mongoengine.DateTimeField`
 * :class:`~mongoengine.ListField`
+* :class:`~mongoengine.DictField`
 * :class:`~mongoengine.ObjectIdField`
 * :class:`~mongoengine.EmbeddedDocumentField`
 * :class:`~mongoengine.ReferenceField`
@@ -74,6 +75,23 @@ document class as the first argument::
     comment1 = Comment('Good work!')
     comment2 = Comment('Nice article!')
     page = Page(comments=[comment1, comment2])
+
+Dictionary Fields
+-----------------
+Often, an embedded document may be used instead of a dictionary -- generally
+this is recommended as dictionaries don't support validation or custom field
+types. However, sometimes you will not know the structure of what you want to
+store; in this situation a :class:`~mongoengine.DictField` is appropriate::
+    
+    class SurveyResponse(Document):
+        date = DateTimeField()
+        user = ReferenceField(User)
+        answers = DictField()
+
+    survey_response = SurveyResponse(date=datetime.now(), user=request.user)
+    response_form = ResponseForm(request.POST)
+    survey_response.answers = response_form.cleaned_data()   
+    survey_response.save()
 
 Reference fields
 ----------------
