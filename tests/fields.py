@@ -106,7 +106,7 @@ class FieldTest(unittest.TestCase):
         person.height = 1.89
         person.validate()
 
-        person.height = 2
+        person.height = '2.0'
         self.assertRaises(ValidationError, person.validate)
         person.height = 0.01
         self.assertRaises(ValidationError, person.validate)
