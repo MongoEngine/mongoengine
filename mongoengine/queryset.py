@@ -17,6 +17,10 @@ class InvalidQueryError(Exception):
 
 class OperationError(Exception):
     pass
+    
+    
+class NotImplementedError(Exception):
+    pass
 
 
 class Q(object):
@@ -112,6 +116,7 @@ class QuerySet(object):
         self._accessed_collection = False
         self._query = {}
         self._where_clause = None
+        self._ordering = []
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -327,6 +332,72 @@ class QuerySet(object):
     def __len__(self):
         return self.count()
 
+    def map_reduce(self, map_f, reduce_f, scope=None, keep_temp=False):
+        """Perform a map/reduce query using the current query spec 
+        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining, 
+        it must be the last call made, as it does not return a maleable 
+        ``QuerySet``. 
+        
+        Example: map/reduce operation is given a ``QuerySet`` 
+        of all posts by "mattdennewitz", ordered by most recent "pub_date". ::
+        
+            map_f = function() { ... }
+            reduce_f = function(key, values) { ... }
+        
+            posts = BlogPost(author="mattdennewitz").order_by("-pub_date")
+            tag_counts = posts.map_reduce(map_f, reduce_f)
+            
+        See the :meth:`~mongoengine.tests.QuerySetTest.test_map_reduce_simple` 
+        unit test for more usage examples.
+    
+        :param map_f: map function, as :class:`~pymongo.code.Code` or string
+        :param reduce_f: reduce function, as 
+                         :class:`~pymongo.code.Code` or string
+        :param scope: values to insert into map/reduce global scope. Optional.
+        :param keep_temp: keep temporary table (boolean, default ``True``)
+        
+        Returns a list of :class:`~mongoengine.document.MapReduceDocument`.
+        
+        .. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
+           :meth:`~pymongo.collection.Collection.map_reduce` helper requires
+           PyMongo version **>= 1.2**.
+           
+        .. versionadded:: 0.2.2
+        
+        .. todo:: Implement limits
+
+        """
+        from document import MapReduceDocument
+        
+        if not hasattr(self._collection, "map_reduce"):
+            raise NotImplementedError("Requires MongoDB >= 1.1.1")
+        
+        if not isinstance(map_f, pymongo.code.Code):
+            map_f = pymongo.code.Code(map_f)
+        if not isinstance(reduce_f, pymongo.code.Code):
+            reduce_f = pymongo.code.Code(reduce_f)
+        
+        mr_args = {'query': self._query, 'keeptemp': keep_temp}
+
+        if scope:
+            mr_args['scope'] = scope
+        if limit:
+            mr_args['limit'] = limit
+
+        docs = []
+
+        results = self._collection.map_reduce(map_f, reduce_f, **mr_args)
+        results = results.find()
+
+        if self._ordering:
+            results = results.sort(self._ordering)
+        
+        for doc in results:
+            mrd = MapReduceDocument(self._collection, doc['_id'], doc['value'])
+            docs.append(mrd)
+        
+        return docs
+
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
@@ -384,6 +455,7 @@ class QuerySet(object):
                 key = key[1:]
             key_list.append((key, direction)) 
 
+        self._ordering = key_list
         self._cursor.sort(key_list)
         return self
         
@@ -610,6 +682,7 @@ class QuerySet(object):
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)
 
+
 class InvalidCollectionError(Exception):
     pass
 
@@ -662,6 +735,7 @@ class QuerySetManager(object):
         if self._manager_func:
             queryset = self._manager_func(queryset)
         return queryset
+
 
 def queryset_manager(func):
     """Decorator that allows you to define custom QuerySet managers on 
