@@ -33,14 +33,14 @@ class Q(object):
     AND = '&&'
     OPERATORS = {
         'eq': 'this.%(field)s == %(value)s',
-        'neq': 'this.%(field)s != %(value)s',
+        'ne': 'this.%(field)s != %(value)s',
         'gt': 'this.%(field)s > %(value)s',
         'gte': 'this.%(field)s >= %(value)s',
         'lt': 'this.%(field)s < %(value)s',
         'lte': 'this.%(field)s <= %(value)s',
         'lte': 'this.%(field)s <= %(value)s',
-        'in': 'this.%(field)s.indexOf(%(value)s) != -1',
-        'nin': 'this.%(field)s.indexOf(%(value)s) == -1',
+        'in': '%(value)s.indexOf(this.%(field)s) != -1',
+        'nin': '%(value)s.indexOf(this.%(field)s) == -1',
         'mod': '%(field)s %% %(value)s',
         'all': ('%(value)s.every(function(a){'
                 'return this.%(field)s.indexOf(a) != -1 })'),
@@ -265,7 +265,7 @@ class QuerySet(object):
     def _transform_query(cls, _doc_cls=None, **query):
         """Transform a query from Django-style format to Mongo format.
         """
-        operators = ['neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
+        operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists']
 
         mongo_query = {}
@@ -283,7 +283,7 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'neq', 'gt', 'gte', 'lt', 'lte'):
+                if op in (None, 'ne', 'gt', 'gte', 'lt', 'lte'):
                     value = field.prepare_query_value(value)
                 elif op in ('in', 'nin', 'all'):
                     # 'in', 'nin' and 'all' require a list of values

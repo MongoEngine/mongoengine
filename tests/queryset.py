@@ -331,6 +331,15 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        # Check the 'in' operator
+        self.Person(name='user1', age=20).save()
+        self.Person(name='user2', age=20).save()
+        self.Person(name='user3', age=30).save()
+        self.Person(name='user4', age=40).save()
+        
+        self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
+        self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
+
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
         """
