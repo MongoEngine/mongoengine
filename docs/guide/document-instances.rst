@@ -17,7 +17,7 @@ attribute syntax::
     'Example Page'
 
 Saving and deleting documents
------------------------------
+=============================
 To save the document to the database, call the
 :meth:`~mongoengine.Document.save` method. If the document does not exist in
 the database, it will be created. If it does already exist, it will be
@@ -31,7 +31,7 @@ valide :attr:`id`.
     :ref:`guide-atomic-updates`
 
 Document IDs
-------------
+============
 Each document in the database has a unique id. This may be accessed through the
 :attr:`id` attribute on :class:`~mongoengine.Document` objects. Usually, the id
 will be generated automatically by the database server when the object is save,

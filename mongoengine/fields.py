@@ -9,18 +9,8 @@ import decimal
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
-           'DateTimeField', 'EmbeddedDocumentField', 'ListField',
-           'ObjectIdField', 'ReferenceField', 'ValidationError',
-           'URLField', 'DecimalField']
-
-
-URL_REGEX = re.compile(
-  r'^https?://'
-  r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
-  r'localhost|'
-  r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
-  r'(?::\d+)?'
-  r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+           'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
+           'ObjectIdField', 'ReferenceField', 'ValidationError']
 
 
 class StringField(BaseField):
@@ -104,6 +94,8 @@ class FloatField(BaseField):
         return float(value)
 
     def validate(self, value):
+        if isinstance(value, int):
+            value = float(value)
         assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
@@ -191,6 +183,7 @@ class EmbeddedDocumentField(BaseField):
         if not isinstance(value, self.document):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
+        self.document.validate(value)
 
     def lookup_member(self, member_name):
         return self.document._fields.get(member_name)
@@ -240,6 +233,28 @@ class ListField(BaseField):
         return self.field.lookup_member(member_name)
 
 
+class DictField(BaseField):
+    """A dictionary field that wraps a standard Python dictionary. This is
+    similar to an embedded document, but the structure is not defined.
+
+    .. versionadded:: 0.2.3
+    """
+
+    def validate(self, value):
+        """Make sure that a list of valid fields is being used.
+        """
+        if not isinstance(value, dict):
+            raise ValidationError('Only dictionaries may be used in a '
+                                  'DictField') 
+
+        if any(('.' in k or '$' in k) for k in value):
+            raise ValidationError('Invalid dictionary key name - keys may not ' 
+                                  'contain "." or "$" characters')
+
+    def lookup_member(self, member_name):
+        return BaseField(name=member_name)
+
+
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
@@ -271,20 +286,19 @@ class ReferenceField(BaseField):
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document):
-        if isinstance(document, (str, unicode, pymongo.objectid.ObjectId)):
-            # document may already be an object id
-            id_ = document
-        else:
+        id_field_name = self.document_type._meta['id_field']
+        id_field = self.document_type._fields[id_field_name]
+
+        if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.id
             if id_ is None:
                 raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
+        else:
+            id_ = document
 
-        # id may be a string rather than an ObjectID object
-        if not isinstance(id_, pymongo.objectid.ObjectId):
-            id_ = pymongo.objectid.ObjectId(id_)
-
+        id_ = id_field.to_mongo(id_)
         collection = self.document_type._meta['collection']
         return pymongo.dbref.DBRef(collection, id_)
 

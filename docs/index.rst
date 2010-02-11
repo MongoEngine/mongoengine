@@ -11,6 +11,11 @@ MongoDB. To install it, simply run
 
 The source is available on `GitHub <http://github.com/hmarr/mongoengine>`_.
 
+If you are interested in contributing, join the developers' `mailing list 
+<http://groups.google.com/group/mongoengine-dev>`_. Some of us also like to
+hang out at `#mongoengine IRC channel <irc://irc.freenode.net/mongoengine>`_.
+
+
 .. toctree::
    :maxdepth: 2
 

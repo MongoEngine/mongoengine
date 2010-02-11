@@ -2,7 +2,8 @@ import unittest
 import pymongo
 from datetime import datetime
 
-from mongoengine.queryset import QuerySet
+from mongoengine.queryset import (QuerySet, MultipleObjectsReturned, 
+                                  DoesNotExist)
 from mongoengine import *
 
 
@@ -20,7 +21,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager.
         """
         self.assertTrue(isinstance(self.Person.objects, QuerySet))
-        self.assertEqual(self.Person.objects._collection.name(), 
+        self.assertEqual(self.Person.objects._collection.name, 
                          self.Person._meta['collection'])
         self.assertTrue(isinstance(self.Person.objects._collection,
                                    pymongo.collection.Collection))
@@ -135,6 +136,54 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
 
+    def test_find_only_one(self):
+        """Ensure that a query using ``get`` returns at most one result.
+        """
+        # Try retrieving when no objects exists
+        self.assertRaises(DoesNotExist, self.Person.objects.get)
+
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Retrieve the first person from the database
+        self.assertRaises(MultipleObjectsReturned, self.Person.objects.get)
+
+        # Use a query to filter the people found to just person2
+        person = self.Person.objects.get(age=30)
+        self.assertEqual(person.name, "User B")
+
+        person = self.Person.objects.get(age__lt=30)
+        self.assertEqual(person.name, "User A")
+
+    def test_get_or_create(self):
+        """Ensure that ``get_or_create`` returns one result or creates a new
+        document.
+        """
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Retrieve the first person from the database
+        self.assertRaises(MultipleObjectsReturned, 
+                          self.Person.objects.get_or_create)
+
+        # Use a query to filter the people found to just person2
+        person = self.Person.objects.get_or_create(age=30)
+        self.assertEqual(person.name, "User B")
+
+        person = self.Person.objects.get_or_create(age__lt=30)
+        self.assertEqual(person.name, "User A")
+
+        # Try retrieving when no objects exists - new doc should be created
+        self.Person.objects.get_or_create(age=50, defaults={'name': 'User C'})
+
+        person = self.Person.objects.get(age=50)
+        self.assertEqual(person.name, "User C")
+
+
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """
@@ -146,7 +195,7 @@ class QuerySetTest(unittest.TestCase):
             published_date = DateTimeField()
             
             @queryset_manager
-            def published(queryset):
+            def published(doc_cls, queryset):
                 return queryset(is_published=True)
                 
         blog_post_1 = BlogPost(title="Blog Post #1", 
@@ -252,7 +301,25 @@ class QuerySetTest(unittest.TestCase):
         
         BlogPost.drop_collection()
 
+    def test_find_dict_item(self):
+        """Ensure that DictField items may be found.
+        """
+        class BlogPost(Document):
+            info = DictField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(info={'title': 'test'})
+        post.save()
+
+        post_obj = BlogPost.objects(info__title='test').first()
+        self.assertEqual(post_obj.id, post.id)
+
+        BlogPost.drop_collection()
+
     def test_q(self):
+        """Ensure that Q objects may be used to query for documents.
+        """
         class BlogPost(Document):
             publish_date = DateTimeField()
             published = BooleanField()
@@ -287,6 +354,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertFalse(any(obj.id in posts for obj in [post5, post6]))
 
         BlogPost.drop_collection()
+
+        # Check the 'in' operator
+        self.Person(name='user1', age=20).save()
+        self.Person(name='user2', age=20).save()
+        self.Person(name='user3', age=30).save()
+        self.Person(name='user4', age=40).save()
+        
+        self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
+        self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
 
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
@@ -468,7 +544,7 @@ class QuerySetTest(unittest.TestCase):
             tags = ListField(StringField())
 
             @queryset_manager
-            def music_posts(queryset):
+            def music_posts(doc_cls, queryset):
                 return queryset(tags='music')
 
         BlogPost.drop_collection()
@@ -577,6 +653,8 @@ class QuerySetTest(unittest.TestCase):
 class QTest(unittest.TestCase):
     
     def test_or_and(self):
+        """Ensure that Q objects may be combined correctly.
+        """
         q1 = Q(name='test')
         q2 = Q(age__gte=18)
 
