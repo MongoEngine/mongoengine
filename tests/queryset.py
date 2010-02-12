@@ -601,7 +601,10 @@ class QuerySetTest(unittest.TestCase):
         results = results.map_reduce(map_f, reduce_f, finalize_f=finalize_f)
         results = list(results)
         
+        # assert troublesome Buzz article is ranked 1st
         self.assertTrue(results[0].object.title.startswith("Google Buzz"))
+        
+        # assert laser vision is ranked last
         self.assertTrue(results[-1].object.title.startswith("How to see"))
 
         Link.drop_collection()

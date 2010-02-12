@@ -387,36 +387,29 @@ class QuerySet(object):
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining, 
         it must be the last call made, as it does not return a maleable 
         ``QuerySet``. 
-        
-        Example: map/reduce operation is given a ``QuerySet`` 
-        of all posts by "mattdennewitz", ordered by most recent "pub_date". ::
-        
-            map_f = function() { ... }
-            reduce_f = function(key, values) { ... }
-        
-            posts = BlogPost(author="mattdennewitz").order_by("-pub_date")
-            tag_counts = posts.map_reduce(map_f, reduce_f)
             
-        See the :meth:`~mongoengine.tests.QuerySetTest.test_map_reduce_simple` 
-        unit test for more usage examples.
+        See the :meth:`~mongoengine.tests.QuerySetTest.test_map_reduce` 
+        and :meth:`~mongoengine.tests.QuerySetTest.test_map_advanced`
+        tests in ``tests.queryset.QuerySetTest`` for usage examples.
     
         :param map_f: map function, as :class:`~pymongo.code.Code` or string
         :param reduce_f: reduce function, as 
                          :class:`~pymongo.code.Code` or string
+        :param finalize_f: finalize function, an optional function that
+                           performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
         :param limit: number of objects from current query to provide
                       to map/reduce method
         :param keep_temp: keep temporary table (boolean, default ``True``)
         
-        Returns a list of :class:`~mongoengine.document.MapReduceDocument`.
+        Returns an iterator yielding 
+        :class:`~mongoengine.document.MapReduceDocument`.
         
         .. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
            PyMongo version **>= 1.2**.
            
         .. versionadded:: 0.2.2
-        
-        .. todo:: Implement limits
 
         """
         from document import MapReduceDocument
