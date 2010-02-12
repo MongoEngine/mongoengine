@@ -505,8 +505,8 @@ class QuerySetTest(unittest.TestCase):
         Song.drop_collection()
         
     def test_map_reduce_finalize(self):
-        """Ensure scope and finalize are working correctly by simulating
-        "hotness" ranking with Reddit algorithm.
+        """Ensure finalize is running by simulating "hotness" 
+        ranking with Reddit algorithm.
         """
         from time import mktime
         
@@ -521,7 +521,8 @@ class QuerySetTest(unittest.TestCase):
         now = datetime.utcnow()
 
         # Note: Test data taken from a custom Reddit homepage on
-        #       Fri, 12 Feb 2010 14:36:00 -0600.
+        # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should 
+        # reflect order of insertion below.
         
         Link(title = "Google Buzz auto-followed a woman's abusive ex ...", 
              up_votes = 1079,
@@ -588,12 +589,10 @@ class QuerySetTest(unittest.TestCase):
         
         finalize_f = """
             function(key, value) {
-            
                 // f(sec_since_epoch,y,z) = log10(z) + ((y*sec_since_epoch) / 45000)
                 z_10 = Math.log(value.z) / Math.log(10);
                 weight = z_10 + ((value.y * value.t_s) / 45000);
                 return weight;
-
             }
         """
 
