@@ -156,6 +156,20 @@ class DocumentTest(unittest.TestCase):
             class Employee(self.Person):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
+        
+        # Test the same for embedded documents
+        class Comment(EmbeddedDocument):
+            content = StringField()
+            meta = {'allow_inheritance': False}
+
+        def create_special_comment():
+            class SpecialComment(Comment):
+                pass
+        self.assertRaises(ValueError, create_special_comment)
+
+        comment = Comment(content='test')
+        self.assertFalse('_cls' in comment.to_mongo())
+        self.assertFalse('_types' in comment.to_mongo())
 
     def test_collection_name(self):
         """Ensure that a collection with a specified name may be used.
@@ -391,7 +405,7 @@ class DocumentTest(unittest.TestCase):
         
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
-        self.assertFalse(hasattr(Comment, '_meta'))
+        self.assertFalse('collection' in Comment._meta)
     
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.

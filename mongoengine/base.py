@@ -6,7 +6,6 @@ import pymongo
 class ValidationError(Exception):
     pass
 
-
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
@@ -77,7 +76,10 @@ class ObjectIdField(BaseField):
 
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
-            return pymongo.objectid.ObjectId(str(value))
+            try:
+                return pymongo.objectid.ObjectId(str(value))
+            except Exception, e:
+                raise ValidationError(e.message)
         return value
 
     def prepare_query_value(self, value):
@@ -103,6 +105,7 @@ class DocumentMetaclass(type):
         doc_fields = {}
         class_name = [name]
         superclasses = {}
+        simple_class = True
         for base in bases:
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
@@ -111,6 +114,29 @@ class DocumentMetaclass(type):
                 # Get superclasses from superclass
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
+                
+            if hasattr(base, '_meta'):
+                # Ensure that the Document class may be subclassed - 
+                # inheritance may be disabled to remove dependency on 
+                # additional fields _cls and _types
+                if base._meta.get('allow_inheritance', True) == False:
+                    raise ValueError('Document %s may not be subclassed' %
+                                     base.__name__)
+                else:
+                    simple_class = False
+
+        meta = attrs.get('_meta', attrs.get('meta', {}))
+
+        if 'allow_inheritance' not in meta:
+            meta['allow_inheritance'] = True
+
+        # Only simple classes - direct subclasses of Document - may set
+        # allow_inheritance to False
+        if not simple_class and not meta['allow_inheritance']:
+            raise ValueError('Only direct subclasses of Document may set '
+                             '"allow_inheritance" to False')
+        attrs['_meta'] = meta
+
         attrs['_class_name'] = '.'.join(reversed(class_name))
         attrs['_superclasses'] = superclasses
 
@@ -143,21 +169,12 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         collection = name.lower()
         
-        simple_class = True
         id_field = None
         base_indexes = []
 
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
-                # Ensure that the Document class may be subclassed - 
-                # inheritance may be disabled to remove dependency on 
-                # additional fields _cls and _types
-                if base._meta.get('allow_inheritance', True) == False:
-                    raise ValueError('Document %s may not be subclassed' %
-                                     base.__name__)
-                else:
-                    simple_class = False
                 collection = base._meta['collection']
 
                 id_field = id_field or base._meta.get('id_field')
@@ -165,7 +182,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         meta = {
             'collection': collection,
-            'allow_inheritance': True,
             'max_documents': None,
             'max_size': None,
             'ordering': [], # default ordering applied at runtime
@@ -175,12 +191,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
-
-        # Only simple classes - direct subclasses of Document - may set
-        # allow_inheritance to False
-        if not simple_class and not meta['allow_inheritance']:
-            raise ValueError('Only direct subclasses of Document may set '
-                             '"allow_inheritance" to False')
         attrs['_meta'] = meta
 
         # Set up collection manager, needs the class to have fields so use
@@ -346,7 +356,7 @@ class BaseDocument(object):
     
     @classmethod
     def _from_son(cls, son):
-        """Create an instance of a Document (subclass) from a PyMongo SOM.
+        """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         # get the class name from the document, falling back to the given
         # class if unavailable

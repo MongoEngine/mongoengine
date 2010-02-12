@@ -80,23 +80,6 @@ class FieldTest(unittest.TestCase):
         person.name = 'Shorter name'
         person.validate()
         
-    def test_url_validation(self):
-        """Ensure that invalid URLs cannot be assigned to URL fields.
-        """
-        class Person(Document):
-            name = StringField()
-            personal_blog = URLField()
-            
-        person = Person()
-        person.name = "Guido van Rossum"
-        person.personal_blog = "pep8 or bust!"
-
-        self.assertRaises(ValidationError, person.validate)
-        
-        # swap in a real URL
-        person.personal_blog = "http://neopythonic.blogspot.com/"
-        person.validate()
-
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
@@ -124,31 +107,13 @@ class FieldTest(unittest.TestCase):
         person.height = 1.89
         person.validate()
 
-        person.height = 2
+        person.height = '2.0'
         self.assertRaises(ValidationError, person.validate)
         person.height = 0.01
         self.assertRaises(ValidationError, person.validate)
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
         
-    def test_decimal_validation(self):
-        """Ensure that invalid values cannot be assigned to decimal fields.
-        """
-        class AlbumReview(Document):
-            score = DecimalField()
-            
-        review = AlbumReview()
-        review.score = "8.7"
-        review.validate()
-        review.score = Decimal("10.0")
-        review.validate()
-        # implicit conversion from float to string
-        review.score = 3.14
-        review.validate()
-        
-        review.score = "it stinks!"
-        self.assertRaises(ValidationError, review.validate)
-
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.
         """
@@ -212,6 +177,28 @@ class FieldTest(unittest.TestCase):
         post.comments = 'yay'
         self.assertRaises(ValidationError, post.validate)
 
+    def test_dict_validation(self):
+        """Ensure that dict types work as expected.
+        """
+        class BlogPost(Document):
+            info = DictField()
+
+        post = BlogPost()
+        post.info = 'my post'
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = ['test', 'test']
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'$title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'the.title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'title': 'test'}
+        post.validate()
+
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.
@@ -220,7 +207,7 @@ class FieldTest(unittest.TestCase):
             content = StringField()
 
         class PersonPreferences(EmbeddedDocument):
-            food = StringField()
+            food = StringField(required=True)
             number = IntField()
 
         class Person(Document):
@@ -231,7 +218,12 @@ class FieldTest(unittest.TestCase):
         person.preferences = 'My Preferences'
         self.assertRaises(ValidationError, person.validate)
 
+        # Check that only the right embedded doc works
         person.preferences = Comment(content='Nice blog post...')
+        self.assertRaises(ValidationError, person.validate)
+
+        # Check that the embedded doc is valid
+        person.preferences = PersonPreferences()
         self.assertRaises(ValidationError, person.validate)
 
         person.preferences = PersonPreferences(food='Cheese', number=47)
@@ -293,6 +285,40 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, post1.validate)
 
         User.drop_collection()
+        BlogPost.drop_collection()
+
+    def test_reference_query_conversion(self):
+        """Ensure that ReferenceFields can be queried using objects and values
+        of the type of the primary key of the referenced object.
+        """
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = ReferenceField(Member)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1.id).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2.id).first()
+        self.assertEqual(post.id, post2.id)
+
+        Member.drop_collection()
         BlogPost.drop_collection()
 
 

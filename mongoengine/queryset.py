@@ -11,6 +11,14 @@ __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
 REPR_OUTPUT_SIZE = 20
 
 
+class DoesNotExist(Exception):
+	pass
+
+
+class MultipleObjectsReturned(Exception):
+    pass
+
+
 class InvalidQueryError(Exception):
     pass
 
@@ -29,14 +37,14 @@ class Q(object):
     AND = '&&'
     OPERATORS = {
         'eq': 'this.%(field)s == %(value)s',
-        'neq': 'this.%(field)s != %(value)s',
+        'ne': 'this.%(field)s != %(value)s',
         'gt': 'this.%(field)s > %(value)s',
         'gte': 'this.%(field)s >= %(value)s',
         'lt': 'this.%(field)s < %(value)s',
         'lte': 'this.%(field)s <= %(value)s',
         'lte': 'this.%(field)s <= %(value)s',
-        'in': 'this.%(field)s.indexOf(%(value)s) != -1',
-        'nin': 'this.%(field)s.indexOf(%(value)s) == -1',
+        'in': '%(value)s.indexOf(this.%(field)s) != -1',
+        'nin': '%(value)s.indexOf(this.%(field)s) == -1',
         'mod': '%(field)s %% %(value)s',
         'all': ('%(value)s.every(function(a){'
                 'return this.%(field)s.indexOf(a) != -1 })'),
@@ -262,7 +270,7 @@ class QuerySet(object):
     def _transform_query(cls, _doc_cls=None, **query):
         """Transform a query from Django-style format to Mongo format.
         """
-        operators = ['neq', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
+        operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists']
 
         mongo_query = {}
@@ -280,7 +288,7 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'neq', 'gt', 'gte', 'lt', 'lte'):
+                if op in (None, 'ne', 'gt', 'gte', 'lt', 'lte'):
                     value = field.prepare_query_value(value)
                 elif op in ('in', 'nin', 'all'):
                     # 'in', 'nin' and 'all' require a list of values
@@ -296,6 +304,46 @@ class QuerySet(object):
                 mongo_query[key].update(value)
 
         return mongo_query
+
+    def get(self, *q_objs, **query):
+        """Retrieve the the matching object raising 
+        :class:`~mongoengine.queryset.MultipleObjectsReturned` or 
+        :class:`~mongoengine.queryset.DoesNotExist` exceptions if multiple or
+        no results are found.
+        """
+        self.__call__(*q_objs, **query)
+        count = self.count()
+        if count == 1:
+            return self[0]
+        elif count > 1:
+            message = u'%d items returned, instead of 1' % count
+            raise MultipleObjectsReturned(message)
+        else:
+            raise DoesNotExist('Document not found')
+
+    def get_or_create(self, *q_objs, **query):
+        """Retreive unique object or create, if it doesn't exist. Raises
+        :class:`~mongoengine.queryset.MultipleObjectsReturned` if multiple 
+        results are found. A new document will be created if the document 
+        doesn't exists; a dictionary of default values for the new document
+        may be provided as a keyword argument called :attr:`defaults`.
+        """
+        defaults = query.get('defaults', {})
+        if query.has_key('defaults'):
+            del query['defaults']
+        
+        self.__call__(*q_objs, **query)
+        count = self.count()
+        if count == 0:
+            query.update(defaults)
+            doc = self._document(**query)
+            doc.save()
+            return doc
+        elif count == 1:
+            return self.first()
+        else:
+            message = u'%d items returned, instead of 1' % count
+            raise MultipleObjectsReturned(message)
 
     def first(self):
         """Retrieve the first object matching the query.
@@ -544,9 +592,10 @@ class QuerySet(object):
             self._collection.update(self._query, update, safe=safe_update, 
                                     multi=True)
         except pymongo.errors.OperationFailure, err:
-            if str(err) == 'multi not coded yet':
-                raise OperationError('update() method requires MongoDB 1.1.3+')
-            raise OperationError('Update failed (%s)' % str(err))
+            if unicode(err) == u'multi not coded yet':
+                message = u'update() method requires MongoDB 1.1.3+'
+                raise OperationError(message)
+            raise OperationError(u'Update failed (%s)' % unicode(err))
 
     def update_one(self, safe_update=True, **update):
         """Perform an atomic update on first field matched by the query.
@@ -733,15 +782,16 @@ class QuerySetManager(object):
         # owner is the document that contains the QuerySetManager
         queryset = QuerySet(owner, self._collection)
         if self._manager_func:
-            queryset = self._manager_func(queryset)
+            queryset = self._manager_func(owner, queryset)
         return queryset
 
 
 def queryset_manager(func):
-    """Decorator that allows you to define custom QuerySet managers on 
+    """Decorator that allows you to define custom QuerySet managers on
     :class:`~mongoengine.Document` classes. The manager must be a function that
-    accepts a :class:`~mongoengine.queryset.QuerySet` as its only argument, and
-    returns a :class:`~mongoengine.queryset.QuerySet`, probably the same one 
-    but modified in some way.
+    accepts a :class:`~mongoengine.Document` class as its first argument, and a
+    :class:`~mongoengine.queryset.QuerySet` as its second argument. The method
+    function should return a :class:`~mongoengine.queryset.QuerySet`, probably
+    the same one that was passed in, but modified in some way.
     """
     return QuerySetManager(func)

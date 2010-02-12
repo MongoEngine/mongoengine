@@ -7,7 +7,6 @@ __all__ = ['ConnectionError', 'connect']
 _connection_settings = {
     'host': 'localhost',
     'port': 27017,
-    'pool_size': 1,
 }
 _connection = None
 
