@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
+
+
 import unittest
 import pymongo
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from mongoengine.queryset import (QuerySet, MultipleObjectsReturned, 
                                   DoesNotExist)
@@ -489,15 +492,120 @@ class QuerySetTest(unittest.TestCase):
         
         # ensure both artists are found
         results = Song.objects.map_reduce(map_f, reduce_f)
+        results = list(results)
         self.assertEqual(len(results), 2)
         
         # query for a count of Songs per artist, ordered by -count.
         # Patti Smith has 3 song credits, and should therefore be first.
         results = Song.objects.order_by("-value").map_reduce(map_f, reduce_f)
+        results = list(results)
         self.assertEqual(results[0].key, "Patti Smith")
         self.assertEqual(results[0].value, 3.0)
         
         Song.drop_collection()
+        
+    def test_map_reduce_finalize(self):
+        """Ensure scope and finalize are working correctly by simulating
+        "hotness" ranking with Reddit algorithm.
+        """
+        from time import mktime
+        
+        class Link(Document):
+            title = StringField()
+            up_votes = IntField()
+            down_votes = IntField()
+            submitted = DateTimeField()
+
+        Link.drop_collection()
+
+        now = datetime.utcnow()
+
+        # Note: Test data taken from a custom Reddit homepage on
+        #       Fri, 12 Feb 2010 14:36:00 -0600.
+        
+        Link(title = "Google Buzz auto-followed a woman's abusive ex ...", 
+             up_votes = 1079,
+             down_votes = 553,
+             submitted = now-timedelta(hours=4)).save()
+        Link(title = "We did it! Barbie is a computer engineer.",
+             up_votes = 481,
+             down_votes = 124,
+             submitted = now-timedelta(hours=2)).save()
+        Link(title = "This Is A Mosquito Getting Killed By A Laser", 
+             up_votes = 1446,
+             down_votes = 530,
+             submitted=now-timedelta(hours=13)).save()
+        Link(title = "Arabic flashcards land physics student in jail.",
+             up_votes = 215, 
+             down_votes = 105,
+             submitted = now-timedelta(hours=6)).save()
+        Link(title = "The Burger Lab: Presenting, the Flood Burger",
+             up_votes = 48,
+             down_votes = 17,
+             submitted = now-timedelta(hours=5)).save()
+        Link(title="How to see polarization with the naked eye",
+             up_votes = 74,
+             down_votes = 13,
+             submitted = now-timedelta(hours=10)).save()
+
+        map_f = """
+            function() {
+                emit(this._id, {up_delta: this.up_votes - this.down_votes,
+                                reddit_epoch: new Date(2005, 12, 8, 7, 46, 43, 0).getTime(),
+                                sub_date: this.submitted.getTime()})
+            }
+        """
+
+        reduce_f = """
+            function(key, values) {
+                data = values[0];
+                                
+                x = data.up_delta;
+                
+                // calculate time diff between reddit epoch and submission
+                sec_since_epoch = data.sub_date - data.reddit_epoch;
+                sec_since_epoch /= 1000;
+                
+                // calculate 'Y'
+                if(x > 0) {
+                    y = 1;
+                } else if (x = 0) {
+                    y = 0;
+                } else {
+                    y = -1;
+                }
+                
+                // calculate 'Z', the maximal value
+                if(Math.abs(x) >= 1) {
+                    z = Math.abs(x);
+                } else {
+                    z = 1;
+                }
+                
+                return {x: x, y: y, z: z, t_s: sec_since_epoch};
+            }
+        """
+        
+        finalize_f = """
+            function(key, value) {
+            
+                // f(sec_since_epoch,y,z) = log10(z) + ((y*sec_since_epoch) / 45000)
+                z_10 = Math.log(value.z) / Math.log(10);
+                weight = z_10 + ((value.y * value.t_s) / 45000);
+                return weight;
+
+            }
+        """
+
+        # ensure both artists are found
+        results = Link.objects.order_by("-value")
+        results = results.map_reduce(map_f, reduce_f, finalize_f=finalize_f)
+        results = list(results)
+        
+        self.assertTrue(results[0].object.title.startswith("Google Buzz"))
+        self.assertTrue(results[-1].object.title.startswith("How to see"))
+
+        Link.drop_collection()
         
     def test_item_frequencies(self):
         """Ensure that item frequencies are properly generated from lists.

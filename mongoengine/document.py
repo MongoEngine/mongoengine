@@ -124,34 +124,31 @@ class MapReduceDocument(object):
     :param key: Document/result key, often an instance of 
                 :class:`~pymongo.objectid.ObjectId`. If supplied as 
                 an ``ObjectId`` found in the given ``collection``, 
-                the object can be accessed via the ``key_object`` property.
-    :param value: The result(s) for this key. If given as a dictionary,
-                  each key in the dictionary will be available as
-                  an instance attribute.
+                the object can be accessed via the ``object`` property.
+    :param value: The result(s) for this key.
     
     .. versionadded:: 0.2.2
  
     """
     
-    def __init__(self, collection, key, value):
+    def __init__(self, document, collection, key, value):
+        self._document = document
         self._collection = collection
         self.key = key
         self.value = value
-        
-        if isinstance(value, dict):
-            # create attributes for each named result
-            for k, v in value.iteritems():
-                setattr(self, k, v)
     
     @property
     def object(self):
         """Lazy-load the object referenced by ``self.key``. If ``self.key``
         is not an ``ObjectId``, simply return ``self.key``.
         """
-        if not isinstance(self.key, pymongo.objectid.ObjectId):
-            return self.key
+        if not isinstance(self.key, (pymongo.objectid.ObjectId)):
+            try:
+                self.key = pymongo.objectid.ObjectId(self.key)
+            except:
+                return self.key
         if not hasattr(self, "_key_object"):
-            self._key_object = self._collection.find_one(self.key)
+            self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
         return self._key_object
 

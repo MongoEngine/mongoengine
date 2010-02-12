@@ -125,6 +125,7 @@ class QuerySet(object):
         self._query = {}
         self._where_clause = None
         self._ordering = []
+        self._limit = None
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -380,7 +381,8 @@ class QuerySet(object):
     def __len__(self):
         return self.count()
 
-    def map_reduce(self, map_f, reduce_f, scope=None, keep_temp=False):
+    def map_reduce(self, map_f, reduce_f, finalize_f=None, limit=None,
+                   scope=None, keep_temp=False):
         """Perform a map/reduce query using the current query spec 
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining, 
         it must be the last call made, as it does not return a maleable 
@@ -402,6 +404,8 @@ class QuerySet(object):
         :param reduce_f: reduce function, as 
                          :class:`~pymongo.code.Code` or string
         :param scope: values to insert into map/reduce global scope. Optional.
+        :param limit: number of objects from current query to provide
+                      to map/reduce method
         :param keep_temp: keep temporary table (boolean, default ``True``)
         
         Returns a list of :class:`~mongoengine.document.MapReduceDocument`.
@@ -427,12 +431,15 @@ class QuerySet(object):
         
         mr_args = {'query': self._query, 'keeptemp': keep_temp}
 
+        if finalize_f:
+            if not isinstance(finalize_f, pymongo.code.Code):
+                finalize_f = pymongo.code.Code(finalize_f)
+            mr_args['finalize'] = finalize_f
+            
         if scope:
             mr_args['scope'] = scope
         if limit:
             mr_args['limit'] = limit
-
-        docs = []
 
         results = self._collection.map_reduce(map_f, reduce_f, **mr_args)
         results = results.find()
@@ -441,10 +448,8 @@ class QuerySet(object):
             results = results.sort(self._ordering)
         
         for doc in results:
-            mrd = MapReduceDocument(self._collection, doc['_id'], doc['value'])
-            docs.append(mrd)
-        
-        return docs
+            yield MapReduceDocument(self._document, self._collection, 
+                                    doc['_id'], doc['value'])
 
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
@@ -452,6 +457,7 @@ class QuerySet(object):
 
         :param n: the maximum number of objects to return
         """
+        self._limit = n
         self._cursor.limit(n)
         # Return self to allow chaining
         return self
