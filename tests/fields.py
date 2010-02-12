@@ -80,23 +80,6 @@ class FieldTest(unittest.TestCase):
         person.name = 'Shorter name'
         person.validate()
         
-    def test_url_validation(self):
-        """Ensure that invalid URLs cannot be assigned to URL fields.
-        """
-        class Person(Document):
-            name = StringField()
-            personal_blog = URLField()
-            
-        person = Person()
-        person.name = "Guido van Rossum"
-        person.personal_blog = "pep8 or bust!"
-
-        self.assertRaises(ValidationError, person.validate)
-        
-        # swap in a real URL
-        person.personal_blog = "http://neopythonic.blogspot.com/"
-        person.validate()
-
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
@@ -131,24 +114,6 @@ class FieldTest(unittest.TestCase):
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
         
-    def test_decimal_validation(self):
-        """Ensure that invalid values cannot be assigned to decimal fields.
-        """
-        class AlbumReview(Document):
-            score = DecimalField()
-            
-        review = AlbumReview()
-        review.score = "8.7"
-        review.validate()
-        review.score = Decimal("10.0")
-        review.validate()
-        # implicit conversion from float to string
-        review.score = 3.14
-        review.validate()
-        
-        review.score = "it stinks!"
-        self.assertRaises(ValidationError, review.validate)
-
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.
         """
