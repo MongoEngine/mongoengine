@@ -155,6 +155,29 @@ class ListField(BaseField):
         self.field = field
         super(ListField, self).__init__(**kwargs)
 
+    def __get__(self, instance, owner):
+        """Descriptor to automatically dereference references.
+        """
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        if isinstance(self.field, ReferenceField):
+            referenced_type = self.field.document_type
+            # Get value from document instance if available
+            value_list = instance._data.get(self.name)
+            deref_list = []
+            for value in value_list:
+                # Dereference DBRefs
+                if isinstance(value, (pymongo.dbref.DBRef)):
+                    value = _get_db().dereference(value)
+                    deref_list.append(referenced_type._from_son(value))
+                else:
+                    deref_list.append(value)
+            instance._data[self.name] = deref_list
+        
+        return super(ListField, self).__get__(instance, owner)
+
     def to_python(self, value):
         return [self.field.to_python(item) for item in value]
 
