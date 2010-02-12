@@ -594,6 +594,30 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_update_value_conversion(self):
+        """Ensure that values used in updates are converted before use.
+        """
+        class Group(Document):
+            members = ListField(ReferenceField(self.Person))
+
+        Group.drop_collection()
+
+        user1 = self.Person(name='user1')
+        user1.save()
+        user2 = self.Person(name='user2')
+        user2.save()
+
+        group = Group()
+        group.save()
+
+        Group.objects(id=group.id).update(set__members=[user1, user2])
+        group.reload()
+
+        self.assertTrue(len(group.members) == 2)
+        self.assertEqual(group.members[0].name, user1.name)
+        self.assertEqual(group.members[1].name, user2.name)
+
+        Group.drop_collection()
 
     def test_types_index(self):
         """Ensure that and index is used when '_types' is being used in a

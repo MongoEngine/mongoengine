@@ -136,7 +136,7 @@ class EmbeddedDocumentField(BaseField):
     def lookup_member(self, member_name):
         return self.document._fields.get(member_name)
 
-    def prepare_query_value(self, value):
+    def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
 
@@ -166,15 +166,16 @@ class ListField(BaseField):
             referenced_type = self.field.document_type
             # Get value from document instance if available
             value_list = instance._data.get(self.name)
-            deref_list = []
-            for value in value_list:
-                # Dereference DBRefs
-                if isinstance(value, (pymongo.dbref.DBRef)):
-                    value = _get_db().dereference(value)
-                    deref_list.append(referenced_type._from_son(value))
-                else:
-                    deref_list.append(value)
-            instance._data[self.name] = deref_list
+            if value_list:
+                deref_list = []
+                for value in value_list:
+                    # Dereference DBRefs
+                    if isinstance(value, (pymongo.dbref.DBRef)):
+                        value = _get_db().dereference(value)
+                        deref_list.append(referenced_type._from_son(value))
+                    else:
+                        deref_list.append(value)
+                instance._data[self.name] = deref_list
         
         return super(ListField, self).__get__(instance, owner)
 
@@ -197,7 +198,9 @@ class ListField(BaseField):
             raise ValidationError('All items in a list field must be of the '
                                   'specified type')
 
-    def prepare_query_value(self, value):
+    def prepare_query_value(self, op, value):
+        if op in ('set', 'unset'):
+            return [self.field.to_mongo(v) for v in value]
         return self.field.to_mongo(value)
 
     def lookup_member(self, member_name):
@@ -273,7 +276,7 @@ class ReferenceField(BaseField):
         collection = self.document_type._meta['collection']
         return pymongo.dbref.DBRef(collection, id_)
     
-    def prepare_query_value(self, value):
+    def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
     def validate(self, value):

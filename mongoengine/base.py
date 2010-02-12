@@ -55,7 +55,7 @@ class BaseField(object):
         """
         return self.to_python(value)
 
-    def prepare_query_value(self, value):
+    def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo.
         """
         return value
@@ -81,7 +81,7 @@ class ObjectIdField(BaseField):
                 raise ValidationError(e.message)
         return value
 
-    def prepare_query_value(self, value):
+    def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
     def validate(self, value):

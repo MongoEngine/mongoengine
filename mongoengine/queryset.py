@@ -284,10 +284,10 @@ class QuerySet(object):
                 # Convert value to proper value
                 field = fields[-1]
                 if op in (None, 'ne', 'gt', 'gte', 'lt', 'lte'):
-                    value = field.prepare_query_value(value)
+                    value = field.prepare_query_value(op, value)
                 elif op in ('in', 'nin', 'all'):
                     # 'in', 'nin' and 'all' require a list of values
-                    value = [field.prepare_query_value(v) for v in value]
+                    value = [field.prepare_query_value(op, v) for v in value]
 
             if op:
                 value = {'$' + op: value}
@@ -487,9 +487,9 @@ class QuerySet(object):
                 # Convert value to proper value
                 field = fields[-1]
                 if op in (None, 'set', 'unset', 'push', 'pull'):
-                    value = field.prepare_query_value(value)
+                    value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
-                    value = [field.prepare_query_value(v) for v in value]
+                    value = [field.prepare_query_value(op, v) for v in value]
 
             key = '.'.join(parts)
 
