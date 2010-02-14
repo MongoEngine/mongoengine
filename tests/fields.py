@@ -286,6 +286,34 @@ class FieldTest(unittest.TestCase):
 
         User.drop_collection()
         BlogPost.drop_collection()
+    
+    def test_list_item_dereference(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            members = ListField(ReferenceField(User))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user1 = User(name='user1')
+        user1.save()
+        user2 = User(name='user2')
+        user2.save()
+
+        group = Group(members=[user1, user2])
+        group.save()
+
+        group_obj = Group.objects.first()
+
+        self.assertEqual(group_obj.members[0].name, user1.name)
+        self.assertEqual(group_obj.members[1].name, user2.name)
+
+        User.drop_collection()
+        Group.drop_collection()
 
     def test_reference_query_conversion(self):
         """Ensure that ReferenceFields can be queried using objects and values

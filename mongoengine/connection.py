@@ -59,3 +59,4 @@ def connect(db, username=None, password=None, **kwargs):
     _db_name = db
     _db_username = username
     _db_password = password
+    return _get_db()
