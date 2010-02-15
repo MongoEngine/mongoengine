@@ -8,9 +8,10 @@ import datetime
 import decimal
 
 
-__all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
+__all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField', 
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
-           'ObjectIdField', 'ReferenceField', 'ValidationError']
+           'ObjectIdField', 'ReferenceField', 'ValidationError',
+           'DecimalField', 'URLField']
 
 
 class StringField(BaseField):
