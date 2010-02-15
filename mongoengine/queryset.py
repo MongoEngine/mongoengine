@@ -362,6 +362,21 @@ class QuerySet(object):
             result = self._document._from_son(result)
         return result
 
+    def in_bulk(self, object_ids):
+        """Retrieve a set of documents by their ids.
+        
+        :param object_ids: a list or tuple of ``ObjectId``s
+        :rtype: dict of ObjectIds as keys and collection-specific
+                Document subclasses as values.
+        """
+        doc_map = {}
+
+        docs = self._collection.find({'_id': {'$in': object_ids}})
+        for doc in docs:
+            doc_map[doc['_id']] = self._document._from_son(doc)
+ 
+        return doc_map
+
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """

@@ -645,6 +645,41 @@ class QuerySetTest(unittest.TestCase):
         self.assertFalse([('_types', 1)] in info.values())
 
         BlogPost.drop_collection()
+        
+    def test_bulk(self):
+        """Ensure bulk querying by object id returns a proper dict.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            
+        BlogPost.drop_collection()
+
+        post_1 = BlogPost(title="Post #1")
+        post_2 = BlogPost(title="Post #2")
+        post_3 = BlogPost(title="Post #3")
+        post_4 = BlogPost(title="Post #4")
+        post_5 = BlogPost(title="Post #5")
+
+        post_1.save()
+        post_2.save()
+        post_3.save()
+        post_4.save()
+        post_5.save()
+        
+        ids = [post_1.id, post_2.id, post_5.id]
+        objects = BlogPost.objects.in_bulk(ids)
+        
+        self.assertEqual(len(objects), 3)
+
+        self.assertTrue(post_1.id in objects)
+        self.assertTrue(post_2.id in objects)
+        self.assertTrue(post_5.id in objects)
+        
+        self.assertTrue(objects[post_1.id].title == post_1.title)
+        self.assertTrue(objects[post_2.id].title == post_2.title)
+        self.assertTrue(objects[post_3.id].title == post_3.title)        
+        
+        BlogPost.drop_collection()
 
     def tearDown(self):
         self.Person.drop_collection()
