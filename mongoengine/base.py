@@ -388,3 +388,9 @@ class BaseDocument(object):
         obj = cls(**data)
         obj._present_fields = present_fields
         return obj
+    
+    def __eq__(self, other):
+        assert hasattr(other, 'id'), "You cannot compare two objects of different type."
+        if self.id == other.id:
+            return True
+        return False
