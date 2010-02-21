@@ -53,6 +53,8 @@ class User(Document):
         salt = get_hexdigest(algo, str(random()), str(random()))[:5]
         hash = get_hexdigest(algo, salt, raw_password)
         self.password = '%s$%s$%s' % (algo, salt, hash)
+        self.save()
+        return self
 
     def check_password(self, raw_password):
         """Checks the user's password against a provided password - always use
@@ -72,6 +74,9 @@ class User(Document):
         user.set_password(password)
         user.save()
         return user
+    
+    def get_and_delete_messages(self):
+        return []
 
 
 class MongoEngineBackend(object):
