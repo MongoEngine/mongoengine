@@ -724,7 +724,10 @@ class QuerySetManager(object):
         # owner is the document that contains the QuerySetManager
         queryset = QuerySet(owner, self._collection)
         if self._manager_func:
-            queryset = self._manager_func(owner, queryset)
+            if self._manager_func.func_code.co_argcount == 1:
+                queryset = self._manager_func(queryset)
+            else:
+                queryset = self._manager_func(owner, queryset)
         return queryset
 
 def queryset_manager(func):
@@ -735,4 +738,8 @@ def queryset_manager(func):
     function should return a :class:`~mongoengine.queryset.QuerySet`, probably
     the same one that was passed in, but modified in some way.
     """
+    if func.func_code.co_argcount == 1:
+        import warnings
+        msg = 'Methods decorated with queryset_manager should take 2 arguments'
+        warnings.warn(msg, DeprecationWarning)
     return QuerySetManager(func)
