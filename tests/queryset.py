@@ -677,7 +677,7 @@ class QuerySetTest(unittest.TestCase):
         
         self.assertTrue(objects[post_1.id].title == post_1.title)
         self.assertTrue(objects[post_2.id].title == post_2.title)
-        self.assertTrue(objects[post_3.id].title == post_3.title)        
+        self.assertTrue(objects[post_5.id].title == post_5.title)        
         
         BlogPost.drop_collection()
 
