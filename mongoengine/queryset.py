@@ -126,7 +126,8 @@ class QuerySet(object):
         if document._meta.get('allow_inheritance'):
             self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
-        self._zero_limit = False
+        self._limit = None
+        self._skip = None
         
     def ensure_index(self, key_or_list):
         """Ensure that the given indexes are in place.
@@ -381,16 +382,16 @@ class QuerySet(object):
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
-        if self._zero_limit:
+        if self._limit == 0:
             raise StopIteration
         return self._document._from_son(self._cursor.next())
 
     def count(self):
         """Count the selected elements in the query.
         """
-        if self._zero_limit:
+        if self._limit == 0:
             return 0
-        return self._cursor.count()
+        return self._cursor.count(with_limit_and_skip=True)
 
     def __len__(self):
         return self.count()
@@ -402,11 +403,10 @@ class QuerySet(object):
         :param n: the maximum number of objects to return
         """
         if n == 0:
-            self._zero_limit = True
             self._cursor.limit(1)
         else:
-            self._zero_limit = False
             self._cursor.limit(n)
+        self._limit = n
         # Return self to allow chaining
         return self
 
@@ -417,6 +417,7 @@ class QuerySet(object):
         :param n: the number of objects to skip before returning results
         """
         self._cursor.skip(n)
+        self._skip = n
         return self
 
     def __getitem__(self, key):
@@ -426,12 +427,15 @@ class QuerySet(object):
         if isinstance(key, slice):
             try:
                 self._cursor_obj = self._cursor[key]
+                self._skip, self._limit = key.start, key.stop
             except IndexError, err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it. 
-                if key.start >= 0 and key.stop >= 0 and key.step is None:
-                    if key.start == key.stop:
+                start = key.start or 0
+                if start >= 0 and key.stop >= 0 and key.step is None:
+                    if start == key.stop:
                         self.limit(0)
+                        self._skip, self._limit = key.start, key.stop - start
                         return self
                 raise err
             # Allow further QuerySet modifications to be performed
@@ -679,10 +683,14 @@ class QuerySet(object):
         return self.exec_js(freq_func, list_field, normalize=normalize)
 
     def __repr__(self):
-        data = list(self[:REPR_OUTPUT_SIZE + 1])
+        limit = REPR_OUTPUT_SIZE + 1
+        if self._limit is not None and self._limit < limit:
+            limit = self._limit
+        data = list(self[self._skip:limit])
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)
+
 
 class InvalidCollectionError(Exception):
     pass
