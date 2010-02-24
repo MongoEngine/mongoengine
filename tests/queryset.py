@@ -102,6 +102,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
+        people = list(self.Person.objects[1:1])
+        self.assertEqual(len(people), 0)
+
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
         """

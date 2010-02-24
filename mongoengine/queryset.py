@@ -126,6 +126,7 @@ class QuerySet(object):
         if document._meta.get('allow_inheritance'):
             self._query = {'_types': self._document._class_name}
         self._cursor_obj = None
+        self._zero_limit = False
         
     def ensure_index(self, key_or_list):
         """Ensure that the given indexes are in place.
@@ -380,11 +381,15 @@ class QuerySet(object):
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
+        if self._zero_limit:
+            raise StopIteration
         return self._document._from_son(self._cursor.next())
 
     def count(self):
         """Count the selected elements in the query.
         """
+        if self._zero_limit:
+            return 0
         return self._cursor.count()
 
     def __len__(self):
@@ -396,7 +401,12 @@ class QuerySet(object):
 
         :param n: the maximum number of objects to return
         """
-        self._cursor.limit(n)
+        if n == 0:
+            self._zero_limit = True
+            self._cursor.limit(1)
+        else:
+            self._zero_limit = False
+            self._cursor.limit(n)
         # Return self to allow chaining
         return self
 
@@ -419,7 +429,7 @@ class QuerySet(object):
             except IndexError, err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it. 
-                if key.start >=0 and key.stop >= 0 and key.step is None:
+                if key.start >= 0 and key.stop >= 0 and key.step is None:
                     if key.start == key.stop:
                         self.limit(0)
                         return self
