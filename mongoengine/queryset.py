@@ -436,6 +436,12 @@ class QuerySet(object):
             return self._document._from_son(self._cursor[key])
 
     def only(self, *fields):
+        """Load only a subset of this document's fields. ::
+        
+            post = BlogPost.objects(...).only("title")
+        
+        :param *fields: fields to include
+        """
         self._loaded_fields = list(fields)
         return self
 
