@@ -387,6 +387,58 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_exec_js_field_sub(self):
+        """Ensure that field substitutions occur properly in exec_js functions.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField(name='body')
+
+        class BlogPost(Document):
+            name = StringField(name='doc-name')
+            comments = ListField(EmbeddedDocumentField(Comment), name='cmnts')
+
+        BlogPost.drop_collection()
+
+        comments1 = [Comment(content='cool'), Comment(content='yay')]
+        post1 = BlogPost(name='post1', comments=comments1)
+        post1.save()
+
+        comments2 = [Comment(content='nice stuff')]
+        post2 = BlogPost(name='post2', comments=comments2)
+        post2.save()
+
+        code = """
+        function getComments() {
+            var comments = [];
+            db[collection].find(query).forEach(function(doc) {
+                var docComments = doc[~comments];
+                for (var i = 0; i < docComments.length; i++) {
+                    comments.push({
+                        'document': doc[~name],
+                        'comment': doc[~comments][i][~comments.content]
+                    });
+                }
+            });
+            return comments;
+        }
+        """
+        
+        sub_code = BlogPost.objects._sub_js_fields(code)
+        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],', 
+                       'doc["cmnts"][i]["body"]']
+        for chunk in code_chunks:
+            self.assertTrue(chunk in sub_code)
+
+        results = BlogPost.objects.exec_js(code)
+        expected_results = [
+            {u'comment': u'cool', u'document': u'post1'}, 
+            {u'comment': u'yay', u'document': u'post1'}, 
+            {u'comment': u'nice stuff', u'document': u'post2'},
+        ]
+        self.assertEqual(results, expected_results)
+
+        BlogPost.drop_collection()
+
     def test_delete(self):
         """Ensure that documents are properly deleted from the database.
         """

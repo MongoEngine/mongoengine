@@ -1,6 +1,7 @@
 from connection import _get_db
 
 import pymongo
+import re
 import copy
 
 
@@ -593,6 +594,21 @@ class QuerySet(object):
     def __iter__(self):
         return self
 
+    def _sub_js_fields(self, code):
+        """When fields are specified with [~fieldname] syntax, where 
+        *fieldname* is the Python name of a field, *fieldname* will be 
+        substituted for the MongoDB name of the field (specified using the
+        :attr:`name` keyword argument in a field's constructor).
+        """
+        def field_sub(match):
+            # Extract just the field name, and look up the field objects
+            field_name = match.group(1).split('.')
+            fields = QuerySet._lookup_field(self._document, field_name)
+            # Substitute the correct name for the field into the javascript
+            return '["%s"]' % fields[-1].name
+
+        return re.sub('\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+
     def exec_js(self, code, *fields, **options):
         """Execute a Javascript function on the server. A list of fields may be
         provided, which will be translated to their correct names and supplied
@@ -608,6 +624,8 @@ class QuerySet(object):
         :param options: options that you want available to the function 
             (accessed in Javascript through the ``options`` object)
         """
+        code = self._sub_js_fields(code)
+
         fields = [QuerySet._translate_field_name(self._document, f)
                   for f in fields]
         collection = self._document._meta['collection']
