@@ -68,6 +68,16 @@ Available operators are as follows:
 * ``size`` -- the size of the array is 
 * ``exists`` -- value for field exists
 
+The following operators are available as shortcuts to querying with regular
+expressions:
+
+* ``contains`` -- string field contains value
+* ``icontains`` -- string field contains value (case insensitive)
+* ``startswith`` -- string field starts with value
+* ``istartswith`` -- string field starts with value (case insensitive)
+* ``endswith`` -- string field ends with value
+* ``iendswith`` -- string field ends with value (case insensitive)
+
 Limiting and skipping results
 =============================
 Just as with traditional ORMs, you may limit the number of results returned, or
