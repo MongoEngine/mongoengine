@@ -186,6 +186,41 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.get(age=50)
         self.assertEqual(person.name, "User C")
 
+    def test_regex_query_shortcuts(self):
+        """Ensure that contains, startswith, endswith, etc work.
+        """
+        person = self.Person(name='Guido van Rossum')
+        person.save()
+
+        # Test contains
+        obj = self.Person.objects(name__contains='van').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__contains='Van').first()
+        self.assertEqual(obj, None)
+
+        # Test icontains
+        obj = self.Person.objects(name__icontains='Van').first()
+        self.assertEqual(obj, person)
+
+        # Test startswith
+        obj = self.Person.objects(name__startswith='Guido').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__startswith='guido').first()
+        self.assertEqual(obj, None)
+
+        # Test istartswith
+        obj = self.Person.objects(name__istartswith='guido').first()
+        self.assertEqual(obj, person)
+
+        # Test endswith
+        obj = self.Person.objects(name__endswith='Rossum').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__endswith='rossuM').first()
+        self.assertEqual(obj, None)
+
+        # Test iendswith
+        obj = self.Person.objects(name__iendswith='rossuM').first()
+        self.assertEqual(obj, person)
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.

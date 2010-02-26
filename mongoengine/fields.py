@@ -39,8 +39,25 @@ class StringField(BaseField):
     def lookup_member(self, member_name):
         return None
 
+    def prepare_query_value(self, op, value):
+        if not isinstance(op, basestring):
+            return value
 
-class URLField(BaseField):
+        if op.lstrip('i') in ('startswith', 'endswith', 'contains'):
+            flags = 0
+            if op.startswith('i'):
+                flags = re.IGNORECASE
+                op = op.lstrip('i')
+
+            regex = r'%s'
+            if op == 'startswith':
+                regex = r'^%s'
+            elif op == 'endswith':
+                regex = r'%s$'
+            value = re.compile(regex % value, flags)
+        return value
+
+class URLField(StringField):
     """A field that validates input as a URL.
     """
 

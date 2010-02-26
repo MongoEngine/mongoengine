@@ -275,13 +275,15 @@ class QuerySet(object):
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists']
+        match_operators = ['contains', 'icontains', 'startswith', 
+                           'istartswith', 'endswith', 'iendswith']
 
         mongo_query = {}
         for key, value in query.items():
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
-            if parts[-1] in operators:
+            if parts[-1] in operators + match_operators:
                 op = parts.pop()
 
             if _doc_cls:
@@ -291,13 +293,15 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'ne', 'gt', 'gte', 'lt', 'lte'):
+                singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte']
+                singular_ops += match_operators
+                if op in singular_ops:
                     value = field.prepare_query_value(op, value)
                 elif op in ('in', 'nin', 'all'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
 
-            if op:
+            if op and op not in match_operators:
                 value = {'$' + op: value}
 
             key = '.'.join(parts)
