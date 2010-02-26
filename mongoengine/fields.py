@@ -211,13 +211,15 @@ class ListField(BaseField):
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
         """
+        global _model_registry
+        
         if instance is None:
             # Document class being used rather than a document object
             return self
 
-        if isinstance(self.field, (ReferenceField, GenericReferenceField)):
+        if isinstance(self.field, ReferenceField):
             referenced_type = self.field.document_type
-            # Get value from document instance if available
+            # Get value from document instance if available 
             value_list = instance._data.get(self.name)
             if value_list:
                 deref_list = []
@@ -230,19 +232,19 @@ class ListField(BaseField):
                         deref_list.append(value)
                 instance._data[self.name] = deref_list
 
-        # if isinstance(self.field, GenericReferenceField):
-        #     value_list = instance._data.get(self.name)
-        #     if value_list:
-        #         deref_list = []
-        #         for value in value_list:
-        #             # Dereference DBRefs
-        #             if isinstance(value, pymongo.dbref.DBRef):
-        #                 value = _get_db().dereference(value)
-        #                 referenced_type = value.
-        #                 deref_list.append()
-        #             else:
-        #                 deref_list.append(value)
-        #         instance._data[self.name] = deref_list
+        if isinstance(self.field, GenericReferenceField):
+            value_list = instance._data.get(self.name)
+            if value_list:
+                deref_list = []
+                for value in value_list:
+                    # Dereference DBRefs
+                    if isinstance(value, pymongo.dbref.DBRef):
+                        value = _get_db().dereference(value)
+                        referenced_type = _model_registry[value['_cls']]
+                        deref_list.append(referenced_type._from_son(value))
+                    else:
+                        deref_list.append(value)
+                instance._data[self.name] = deref_list
 
         return super(ListField, self).__get__(instance, owner)
 

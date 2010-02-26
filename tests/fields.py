@@ -392,55 +392,40 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         Bookmark.drop_collection()
 
-    # def test_generic_reference_list(self):
-    #     """Ensure that a ListField properly dereferences 
-    #     relationships to *any* model via GenericReferenceField.
-    #     """
-    #     class Link(Document):
-    #         title = StringField()
-    # 
-    #     class Post(Document):
-    #         title = StringField()
-    # 
-    #     class User(Document):
-    #         bookmarks = ListField(GenericReferenceField())
-    # 
-    #     Link.drop_collection()
-    #     Post.drop_collection()
-    #     User.drop_collection()
-    # 
-    #     link_1 = Link(title="Pitchfork")
-    #     link_1.save()
-    # 
-    #     post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
-    #     post_1.save()
-    # 
-    #     user = User(bookmarks=[post_1, link_1])
-    #     user.save()
-    #     
-    #     del user
-    # 
-    #     user = User.objects().first()
-    #     print user.bookmarks
-    #     
-    #     # print dir(user)
-    #     
-    #     # self.assertEqual(bm.bookmark_object, post_1)
-    #     # self.assertEqual(bm._data['bookmark_object'].__class__, 
-    #     #                  pymongo.dbref.DBRef)
-    #     # 
-    #     # bm.bookmark_object = link_1
-    #     # bm.save()
-    #     # 
-    #     # bm.reload()
-    #     # 
-    #     # self.assertEqual(bm.bookmark_object, link_1)
-    #     # self.assertEqual(bm._data['bookmark_object'].__class__, 
-    #     #                  pymongo.dbref.DBRef)
-    # 
-    #     Link.drop_collection()
-    #     Post.drop_collection()
-    #     User.drop_collection()
+    def test_generic_reference_list(self):
+        """Ensure that a ListField properly dereferences 
+        relationships to *any* model via GenericReferenceField.
+        """
+        class Link(Document):
+            title = StringField()
+    
+        class Post(Document):
+            title = StringField()
+    
+        class User(Document):
+            bookmarks = ListField(GenericReferenceField())
+    
+        Link.drop_collection()
+        Post.drop_collection()
+        User.drop_collection()
+    
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+    
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+    
+        user = User(bookmarks=[post_1, link_1])
+        user.save()
+        
+        user.reload()
+        
+        self.assertEqual(user.bookmarks[0], post_1)
+        self.assertEqual(user.bookmarks[1], link_1)
+        
+        Link.drop_collection()
+        Post.drop_collection()
+        User.drop_collection()
 
 
 if __name__ == '__main__':
