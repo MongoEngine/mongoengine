@@ -456,7 +456,18 @@ class QuerySet(object):
         
         :param *fields: fields to include
         """
-        self._loaded_fields = list(fields)
+        self._loaded_fields = []
+        for field in fields:
+            if '.' in field:
+                raise InvalidQueryError('Subfields cannot be used as '
+                                        'arguments to QuerySet.only')
+            # Translate field name
+            field_name = QuerySet._lookup_field(self._document, field)[-1].name
+            self._loaded_fields.append(field_name)
+
+        # _cls is needed for polymorphism
+        if self._document._meta.get('allow_inheritance'):
+            self._loaded_fields += ['_cls']
         return self
 
     def order_by(self, *keys):
