@@ -197,9 +197,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj, person)
         obj = self.Person.objects(name__contains='Van').first()
         self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__contains='van')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__contains='Van')).first()
+        self.assertEqual(obj, None)
 
         # Test icontains
         obj = self.Person.objects(name__icontains='Van').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__icontains='Van')).first()
         self.assertEqual(obj, person)
 
         # Test startswith
@@ -207,9 +213,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj, person)
         obj = self.Person.objects(name__startswith='guido').first()
         self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__startswith='Guido')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__startswith='guido')).first()
+        self.assertEqual(obj, None)
 
         # Test istartswith
         obj = self.Person.objects(name__istartswith='guido').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__istartswith='guido')).first()
         self.assertEqual(obj, person)
 
         # Test endswith
@@ -217,9 +229,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj, person)
         obj = self.Person.objects(name__endswith='rossuM').first()
         self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__endswith='Rossum')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__endswith='rossuM')).first()
+        self.assertEqual(obj, None)
 
         # Test iendswith
         obj = self.Person.objects(name__iendswith='rossuM').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__iendswith='rossuM')).first()
         self.assertEqual(obj, person)
 
     def test_filter_chaining(self):
@@ -377,6 +395,26 @@ class QuerySetTest(unittest.TestCase):
         
         self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
         self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
+
+    def test_q_regex(self):
+        """Ensure that Q objects can be queried using regexes.
+        """
+        person = self.Person(name='Guido van Rossum')
+        person.save()
+
+        import re
+        obj = self.Person.objects(Q(name=re.compile('^Gui'))).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name=re.compile('^gui'))).first()
+        self.assertEqual(obj, None)
+
+        obj = self.Person.objects(Q(name=re.compile('^gui', re.I))).first()
+        self.assertEqual(obj, person)
+
+        obj = self.Person.objects(Q(name__ne=re.compile('^bob'))).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__ne=re.compile('^Gui'))).first()
+        self.assertEqual(obj, None)
 
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.

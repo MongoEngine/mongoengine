@@ -28,6 +28,8 @@ class OperationError(Exception):
     pass
 
 
+RE_TYPE = type(re.compile(''))
+
 class Q(object):
     
     OR = '||'
@@ -47,6 +49,8 @@ class Q(object):
                 'return this.%(field)s.indexOf(a) != -1 })'),
         'size': 'this.%(field)s.length == %(value)s',
         'exists': 'this.%(field)s != null',
+        'regex_eq': '%(value)s.test(this.%(field)s)',
+        'regex_ne': '!%(value)s.test(this.%(field)s)',
     }
     
     def __init__(self, **query):
@@ -91,24 +95,36 @@ class Q(object):
                 for j, (op, value) in enumerate(value.items()):
                     # Create a custom variable name for this operator
                     op_value_name = '%so%s' % (value_name, j)
+                    # Construct the JS that uses this op
+                    operation_js = self._build_op_js(op, key, value,
+                                                     op_value_name)
                     # Update the js scope with the value for this op
                     js_scope[op_value_name] = value
-                    # Construct the JS that uses this op
-                    operation_js = Q.OPERATORS[op.strip('$')] % {
-                        'field': key, 
-                        'value': op_value_name
-                    }
                     js.append(operation_js)
             else:
-                js_scope[value_name] = value
                 # Construct the JS for this field
-                field_js = Q.OPERATORS[op.strip('$')] % {
-                    'field': key, 
-                    'value': value_name
-                }
+                field_js = self._build_op_js(op, key, value, value_name)
+                js_scope[value_name] = value
                 js.append(field_js)
         return ' && '.join(js)
 
+    def _build_op_js(self, op, key, value, value_name):
+        """Substitute the values in to the correct chunk of Javascript.
+        """
+        if isinstance(value, RE_TYPE):
+            # Regexes are handled specially
+            if op.strip('$') == 'ne':
+                op_js = Q.OPERATORS['regex_ne']
+            else:
+                op_js = Q.OPERATORS['regex_eq']
+        else:
+            op_js = Q.OPERATORS[op.strip('$')]
+        # Perform the substitution
+        operation_js = op_js % {
+            'field': key, 
+            'value': value_name
+        }
+        return operation_js
 
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
