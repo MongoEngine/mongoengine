@@ -373,7 +373,7 @@ class QuerySet(object):
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
         
-        :param object_ids: a list or tuple of ``ObjectId``s
+        :param object_ids: a list or tuple of ``ObjectId``\ s
         :rtype: dict of ObjectIds as keys and collection-specific
                 Document subclasses as values.
         """
@@ -455,7 +455,7 @@ class QuerySet(object):
         
             post = BlogPost.objects(...).only("title")
         
-        :param *fields: fields to include
+        :param fields: fields to include
         """
         self._loaded_fields = list(fields)
         return self
@@ -617,6 +617,13 @@ class QuerySet(object):
         collection in use; ``query``, which is an object representing the 
         current query; and ``options``, which is an object containing any
         options specified as keyword arguments.
+
+        As fields in MongoEngine may use different names in the database (set
+        using the :attr:`name` keyword argument to a :class:`Field` 
+        constructor), a mechanism exists for replacing MongoEngine field names
+        with the database field names in Javascript code. When accessing a 
+        field, use square-bracket notation, and prefix the MongoEngine field
+        name with a tilde (~).
 
         :param code: a string of Javascript code to execute
         :param fields: fields that you will be using in your function, which
