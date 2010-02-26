@@ -96,14 +96,14 @@ class Q(object):
                     # Create a custom variable name for this operator
                     op_value_name = '%so%s' % (value_name, j)
                     # Construct the JS that uses this op
-                    operation_js = self._build_op_js(op, key, value,
-                                                     op_value_name)
+                    value, operation_js = self._build_op_js(op, key, value,
+                                                            op_value_name)
                     # Update the js scope with the value for this op
                     js_scope[op_value_name] = value
                     js.append(operation_js)
             else:
                 # Construct the JS for this field
-                field_js = self._build_op_js(op, key, value, value_name)
+                value, field_js = self._build_op_js(op, key, value, value_name)
                 js_scope[value_name] = value
                 js.append(field_js)
         return ' && '.join(js)
@@ -119,12 +119,17 @@ class Q(object):
                 op_js = Q.OPERATORS['regex_eq']
         else:
             op_js = Q.OPERATORS[op.strip('$')]
+
+        # Comparing two ObjectIds in Javascript doesn't work..
+        if isinstance(value, pymongo.objectid.ObjectId):
+            value = str(value)
+
         # Perform the substitution
         operation_js = op_js % {
             'field': key, 
             'value': value_name
         }
-        return operation_js
+        return value, operation_js
 
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 

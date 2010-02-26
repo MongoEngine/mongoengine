@@ -376,6 +376,11 @@ class QuerySetTest(unittest.TestCase):
         post6 = BlogPost(published=False)
         post6.save()
 
+        # Check ObjectId lookup works
+        obj = BlogPost.objects(id=post1.id).first()
+        self.assertEqual(obj, post1)
+
+        # Check Q object combination
         date = datetime(2010, 1, 10)
         q = BlogPost.objects(Q(publish_date__lte=date) | Q(published=True))
         posts = [post.id for post in q]
