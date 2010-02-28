@@ -3,8 +3,12 @@ from queryset import QuerySet, QuerySetManager
 import pymongo
 
 
+_model_registry = {}
+
+
 class ValidationError(Exception):
     pass
+
 
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
@@ -158,6 +162,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     """
 
     def __new__(cls, name, bases, attrs):
+        global _model_registry
+
         super_new = super(TopLevelDocumentMetaclass, cls).__new__
         # Classes defined in this package are abstract and should not have 
         # their own metadata with DB collection, etc.
@@ -245,6 +251,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if not new_class._meta['id_field']:
             new_class._meta['id_field'] = 'id'
             new_class.id = new_class._fields['id'] = ObjectIdField(name='_id')
+
+        _model_registry[name] = new_class
 
         return new_class
 
