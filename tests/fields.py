@@ -350,6 +350,40 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
+    def test_recursive_reference(self):
+        """Ensure that ReferenceFields can reference their own documents.
+        """
+        class Employee(Document):
+            name = StringField()
+            boss = ReferenceField('self')
+
+        bill = Employee(name='Bill Lumbergh')
+        bill.save()
+        peter = Employee(name='Peter Gibbons', boss=bill)
+        peter.save()
+
+        peter = Employee.objects.with_id(peter.id)
+        self.assertEqual(peter.boss, bill)
+
+    def test_undefined_reference(self):
+        """Ensure that ReferenceFields may reference undefined Documents.
+        """
+        class Product(Document):
+            name = StringField()
+            company = ReferenceField('Company')
+
+        class Company(Document):
+            name = StringField()
+
+        ten_gen = Company(name='10gen')
+        ten_gen.save()
+        mongodb = Product(name='MongoDB', company=ten_gen)
+        mongodb.save()
+
+        obj = Product.objects(company=ten_gen).first()
+        self.assertEqual(obj, mongodb)
+        self.assertEqual(obj.company, ten_gen)
+
     def test_reference_query_conversion(self):
         """Ensure that ReferenceFields can be queried using objects and values
         of the type of the primary key of the referenced object.

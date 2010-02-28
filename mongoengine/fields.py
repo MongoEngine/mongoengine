@@ -13,6 +13,8 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField']
 
+RECURSIVE_REFERENCE_CONSTANT = 'self'
+
 
 class StringField(BaseField):
     """A unicode string field.
@@ -334,9 +336,18 @@ class ReferenceField(BaseField):
             if not issubclass(document_type, (Document, basestring)):
                 raise ValidationError('Argument to ReferenceField constructor '
                                       'must be a document class or a string')
-        self.document_type = document_type
+        self.document_type_obj = document_type
         self.document_obj = None
         super(ReferenceField, self).__init__(**kwargs)
+
+    @property
+    def document_type(self):
+        if isinstance(self.document_type_obj, basestring):
+            if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
+                self.document_type_obj = self.owner_document
+            else:
+                self.document_type_obj = get_document(self.document_type_obj)
+        return self.document_type_obj
 
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing.
