@@ -216,6 +216,35 @@ would be generating "tag-clouds"::
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
 
+Retrieving a subset of fields
+=============================
+Sometimes a subset of fields on a :class:`~mongoengine.Document` is required,
+and for efficiency only these should be retrieved from the database. This issue
+is especially important for MongoDB, as fields may often be extremely large
+(e.g. a :class:`~mongoengine.ListField` of
+:class:`~mongoengine.EmbeddedDocument`\ s, which represent the comments on a
+blog post. To select only a subset of fields, use
+:meth:`~mongoengine.queryset.QuerySet.only`, specifying the fields you want to
+retrieve as its arguments. Note that if fields that are not downloaded are
+accessed, their default value (or :attr:`None` if no default value is provided)
+will be given::
+
+    >>> class Film(Document):
+    ...     title = StringField()
+    ...     year = IntField()
+    ...     rating = IntField(default=3)
+    ...
+    >>> Film(title='The Shawshank Redemption', year=1994, rating=5).save()
+    >>> f = Film.objects.only('title').first()
+    >>> f.title
+    'The Shawshank Redemption'
+    >>> f.year   # None
+    >>> f.rating # default value
+    3
+
+If you later need the missing fields, just call
+:meth:`~mongoengine.Document.reload` on your document.
+
 Advanced queries
 ================
 Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
