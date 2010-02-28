@@ -62,6 +62,8 @@ class StringField(BaseField):
 
 class URLField(StringField):
     """A field that validates input as a URL.
+
+    .. versionadded:: 0.3
     """
 
     URL_REGEX = re.compile(
@@ -140,6 +142,8 @@ class FloatField(BaseField):
 
 class DecimalField(BaseField):
     """A fixed-point decimal number field.
+
+    .. versionadded:: 0.3
     """
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
@@ -308,7 +312,7 @@ class DictField(BaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
-    .. versionadded:: 0.2.3
+    .. versionadded:: 0.3
     """
 
     def validate(self, value):
@@ -396,6 +400,8 @@ class ReferenceField(BaseField):
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
+
+    .. versionadded:: 0.3
     """
 
     def __get__(self, instance, owner):

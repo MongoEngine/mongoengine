@@ -120,6 +120,20 @@ field::
 The :class:`User` object is automatically turned into a reference behind the
 scenes, and dereferenced when the :class:`Page` object is retrieved.
 
+To add a :class:`~mongoengine.ReferenceField` that references the document
+being defined, use the string ``'self'`` in place of the document class as the
+argument to :class:`~mongoengine.ReferenceField`'s constructor. To reference a
+document that has not yet been defined, use the name of the undefined document
+as the constructor's argument::
+
+    class Employee(Document):
+        name = StringField()
+        boss = ReferenceField('self')
+        profile_page = ReferenceField('ProfilePage')
+
+    class ProfilePage(Document):
+        content = StringField()
+
 Generic reference fields
 ''''''''''''''''''''''''
 A second kind of reference field also exists,
@@ -144,6 +158,12 @@ kind of :class:`~mongoengine.Document`, and hence doesn't take a
 
     Bookmark(bookmark_object=link).save()
     Bookmark(bookmark_object=post).save()
+
+.. note::
+   Using :class:`~mongoengine.GenericReferenceField`\ s is slightly less
+   efficient than the standard :class:`~mongoengine.ReferenceField`\ s, so if
+   you will only be referencing one document type, prefer the standard 
+   :class:`~mongoengine.ReferenceField`.
 
 Uniqueness constraints
 ----------------------
