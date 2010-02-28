@@ -322,6 +322,9 @@ class QuerySet(object):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
 
+                if field.__class__.__name__ == 'GenericReferenceField':
+                    parts.append('_ref')
+
             if op and op not in match_operators:
                 value = {'$' + op: value}
 

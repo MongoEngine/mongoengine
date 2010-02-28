@@ -3,7 +3,10 @@ from queryset import QuerySet, QuerySetManager
 import pymongo
 
 
-_model_registry = {}
+_document_registry = {}
+
+def get_document(name):
+    return _document_registry[name]
 
 
 class ValidationError(Exception):
@@ -153,7 +156,11 @@ class DocumentMetaclass(type):
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
 
-        return super_new(cls, name, bases, attrs)
+        new_class = super_new(cls, name, bases, attrs)
+        for field in new_class._fields.values():
+            field.owner_document = new_class
+
+        return new_class
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
@@ -162,7 +169,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     """
 
     def __new__(cls, name, bases, attrs):
-        global _model_registry
+        global _document_registry
 
         super_new = super(TopLevelDocumentMetaclass, cls).__new__
         # Classes defined in this package are abstract and should not have 
@@ -252,7 +259,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['id_field'] = 'id'
             new_class.id = new_class._fields['id'] = ObjectIdField(name='_id')
 
-        _model_registry[name] = new_class
+        _document_registry[name] = new_class
 
         return new_class
 

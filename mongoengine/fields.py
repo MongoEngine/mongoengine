@@ -1,4 +1,4 @@
-from base import BaseField, ObjectIdField, ValidationError, _model_registry
+from base import BaseField, ObjectIdField, ValidationError, get_document
 from document import Document, EmbeddedDocument
 from connection import _get_db
 
@@ -241,8 +241,6 @@ class ListField(BaseField):
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
         """
-        global _model_registry
-        
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -268,10 +266,8 @@ class ListField(BaseField):
                 deref_list = []
                 for value in value_list:
                     # Dereference DBRefs
-                    if isinstance(value, pymongo.dbref.DBRef):
-                        value = _get_db().dereference(value)
-                        referenced_type = _model_registry[value['_cls']]
-                        deref_list.append(referenced_type._from_son(value))
+                    if isinstance(value, (dict, pymongo.son.SON)):
+                        deref_list.append(self.field.dereference(value))
                     else:
                         deref_list.append(value)
                 instance._data[self.name] = deref_list
@@ -334,9 +330,10 @@ class ReferenceField(BaseField):
     """
 
     def __init__(self, document_type, **kwargs):
-        if not issubclass(document_type, Document):
-            raise ValidationError('Argument to ReferenceField constructor '
-                                  'must be a top level document class')
+        if not isinstance(document_type, basestring):
+            if not issubclass(document_type, (Document, basestring)):
+                raise ValidationError('Argument to ReferenceField constructor '
+                                      'must be a document class or a string')
         self.document_type = document_type
         self.document_obj = None
         super(ReferenceField, self).__init__(**kwargs)
@@ -391,19 +388,22 @@ class GenericReferenceField(BaseField):
     """
 
     def __get__(self, instance, owner):
-        global _model_registry
-
         if instance is None:
             return self
 
         value = instance._data.get(self.name)
-        if isinstance(value, pymongo.dbref.DBRef):
-            value = _get_db().dereference(value)
-            if value is not None:
-                model = _model_registry[value['_cls']]
-                instance._data[self.name] = model._from_son(value)
+        if isinstance(value, (dict, pymongo.son.SON)):
+            instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
+
+    def dereference(self, value):
+        doc_cls = get_document(value['_cls'])
+        reference = value['_ref']
+        doc = _get_db().dereference(reference)
+        if doc is not None:
+            doc = doc_cls._from_son(doc)
+        return doc
 
     def to_mongo(self, document):
         id_field_name = document.__class__._meta['id_field']
@@ -420,4 +420,8 @@ class GenericReferenceField(BaseField):
 
         id_ = id_field.to_mongo(id_)
         collection = document._meta['collection']
-        return pymongo.dbref.DBRef(collection, id_)
+        ref = pymongo.dbref.DBRef(collection, id_)
+        return {'_cls': document.__class__.__name__, '_ref': ref}
+
+    def prepare_query_value(self, op, value):
+        return self.to_mongo(value)['_ref']

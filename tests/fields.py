@@ -375,21 +375,21 @@ class FieldTest(unittest.TestCase):
         post2 = BlogPost(title='post 2', author=m2)
         post2.save()
 
-        post = BlogPost.objects(author=m1.id).first()
+        post = BlogPost.objects(author=m1).first()
         self.assertEqual(post.id, post1.id)
 
-        post = BlogPost.objects(author=m2.id).first()
+        post = BlogPost.objects(author=m2).first()
         self.assertEqual(post.id, post2.id)
 
         Member.drop_collection()
         BlogPost.drop_collection()
         
     def test_generic_reference(self):
-        """Ensure that a GenericReferenceField properly dereferences 
-        relationships to *any* model.
+        """Ensure that a GenericReferenceField properly dereferences items.
         """
         class Link(Document):
             title = StringField()
+            meta = {'allow_inheritance': False}
             
         class Post(Document):
             title = StringField()
@@ -410,7 +410,7 @@ class FieldTest(unittest.TestCase):
         bm = Bookmark(bookmark_object=post_1)
         bm.save()
         
-        bm.reload()
+        bm = Bookmark.objects(bookmark_object=post_1).first()
         
         self.assertEqual(bm.bookmark_object, post_1)
         self.assertTrue(isinstance(bm.bookmark_object, Post))
@@ -418,7 +418,7 @@ class FieldTest(unittest.TestCase):
         bm.bookmark_object = link_1
         bm.save()
         
-        bm.reload()
+        bm = Bookmark.objects(bookmark_object=link_1).first()
         
         self.assertEqual(bm.bookmark_object, link_1)
         self.assertTrue(isinstance(bm.bookmark_object, Link))
@@ -428,8 +428,7 @@ class FieldTest(unittest.TestCase):
         Bookmark.drop_collection()
 
     def test_generic_reference_list(self):
-        """Ensure that a ListField properly dereferences 
-        relationships to *any* model via GenericReferenceField.
+        """Ensure that a ListField properly dereferences generic references.
         """
         class Link(Document):
             title = StringField()
@@ -453,7 +452,7 @@ class FieldTest(unittest.TestCase):
         user = User(bookmarks=[post_1, link_1])
         user.save()
         
-        user.reload()
+        user = User.objects(bookmarks__all=[post_1, link_1]).first()
         
         self.assertEqual(user.bookmarks[0], post_1)
         self.assertEqual(user.bookmarks[1], link_1)
