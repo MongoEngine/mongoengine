@@ -186,6 +186,59 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.get(age=50)
         self.assertEqual(person.name, "User C")
 
+    def test_regex_query_shortcuts(self):
+        """Ensure that contains, startswith, endswith, etc work.
+        """
+        person = self.Person(name='Guido van Rossum')
+        person.save()
+
+        # Test contains
+        obj = self.Person.objects(name__contains='van').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__contains='Van').first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__contains='van')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__contains='Van')).first()
+        self.assertEqual(obj, None)
+
+        # Test icontains
+        obj = self.Person.objects(name__icontains='Van').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__icontains='Van')).first()
+        self.assertEqual(obj, person)
+
+        # Test startswith
+        obj = self.Person.objects(name__startswith='Guido').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__startswith='guido').first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__startswith='Guido')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__startswith='guido')).first()
+        self.assertEqual(obj, None)
+
+        # Test istartswith
+        obj = self.Person.objects(name__istartswith='guido').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__istartswith='guido')).first()
+        self.assertEqual(obj, person)
+
+        # Test endswith
+        obj = self.Person.objects(name__endswith='Rossum').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__endswith='rossuM').first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__endswith='Rossum')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__endswith='rossuM')).first()
+        self.assertEqual(obj, None)
+
+        # Test iendswith
+        obj = self.Person.objects(name__iendswith='rossuM').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__iendswith='rossuM')).first()
+        self.assertEqual(obj, person)
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
@@ -356,6 +409,11 @@ class QuerySetTest(unittest.TestCase):
         post6 = BlogPost(published=False)
         post6.save()
 
+        # Check ObjectId lookup works
+        obj = BlogPost.objects(id=post1.id).first()
+        self.assertEqual(obj, post1)
+
+        # Check Q object combination
         date = datetime(2010, 1, 10)
         q = BlogPost.objects(Q(publish_date__lte=date) | Q(published=True))
         posts = [post.id for post in q]
@@ -375,6 +433,26 @@ class QuerySetTest(unittest.TestCase):
         
         self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
         self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
+
+    def test_q_regex(self):
+        """Ensure that Q objects can be queried using regexes.
+        """
+        person = self.Person(name='Guido van Rossum')
+        person.save()
+
+        import re
+        obj = self.Person.objects(Q(name=re.compile('^Gui'))).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name=re.compile('^gui'))).first()
+        self.assertEqual(obj, None)
+
+        obj = self.Person.objects(Q(name=re.compile('^gui', re.I))).first()
+        self.assertEqual(obj, person)
+
+        obj = self.Person.objects(Q(name__ne=re.compile('^bob'))).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__ne=re.compile('^Gui'))).first()
+        self.assertEqual(obj, None)
 
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
@@ -417,6 +495,58 @@ class QuerySetTest(unittest.TestCase):
 
         c = BlogPost.objects(Q(published=False)).exec_js(js_func, 'hits')
         self.assertEqual(c, 1)
+
+        BlogPost.drop_collection()
+
+    def test_exec_js_field_sub(self):
+        """Ensure that field substitutions occur properly in exec_js functions.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField(name='body')
+
+        class BlogPost(Document):
+            name = StringField(name='doc-name')
+            comments = ListField(EmbeddedDocumentField(Comment), name='cmnts')
+
+        BlogPost.drop_collection()
+
+        comments1 = [Comment(content='cool'), Comment(content='yay')]
+        post1 = BlogPost(name='post1', comments=comments1)
+        post1.save()
+
+        comments2 = [Comment(content='nice stuff')]
+        post2 = BlogPost(name='post2', comments=comments2)
+        post2.save()
+
+        code = """
+        function getComments() {
+            var comments = [];
+            db[collection].find(query).forEach(function(doc) {
+                var docComments = doc[~comments];
+                for (var i = 0; i < docComments.length; i++) {
+                    comments.push({
+                        'document': doc[~name],
+                        'comment': doc[~comments][i][~comments.content]
+                    });
+                }
+            });
+            return comments;
+        }
+        """
+        
+        sub_code = BlogPost.objects._sub_js_fields(code)
+        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],', 
+                       'doc["cmnts"][i]["body"]']
+        for chunk in code_chunks:
+            self.assertTrue(chunk in sub_code)
+
+        results = BlogPost.objects.exec_js(code)
+        expected_results = [
+            {u'comment': u'cool', u'document': u'post1'}, 
+            {u'comment': u'yay', u'document': u'post1'}, 
+            {u'comment': u'nice stuff', u'document': u'post2'},
+        ]
+        self.assertEqual(results, expected_results)
 
         BlogPost.drop_collection()
 

@@ -1,6 +1,7 @@
 from connection import _get_db
 
 import pymongo
+import re
 import copy
 
 
@@ -27,6 +28,8 @@ class OperationError(Exception):
     pass
 
 
+RE_TYPE = type(re.compile(''))
+
 class Q(object):
     
     OR = '||'
@@ -46,6 +49,8 @@ class Q(object):
                 'return this.%(field)s.indexOf(a) != -1 })'),
         'size': 'this.%(field)s.length == %(value)s',
         'exists': 'this.%(field)s != null',
+        'regex_eq': '%(value)s.test(this.%(field)s)',
+        'regex_ne': '!%(value)s.test(this.%(field)s)',
     }
     
     def __init__(self, **query):
@@ -90,24 +95,41 @@ class Q(object):
                 for j, (op, value) in enumerate(value.items()):
                     # Create a custom variable name for this operator
                     op_value_name = '%so%s' % (value_name, j)
+                    # Construct the JS that uses this op
+                    value, operation_js = self._build_op_js(op, key, value,
+                                                            op_value_name)
                     # Update the js scope with the value for this op
                     js_scope[op_value_name] = value
-                    # Construct the JS that uses this op
-                    operation_js = Q.OPERATORS[op.strip('$')] % {
-                        'field': key, 
-                        'value': op_value_name
-                    }
                     js.append(operation_js)
             else:
-                js_scope[value_name] = value
                 # Construct the JS for this field
-                field_js = Q.OPERATORS[op.strip('$')] % {
-                    'field': key, 
-                    'value': value_name
-                }
+                value, field_js = self._build_op_js(op, key, value, value_name)
+                js_scope[value_name] = value
                 js.append(field_js)
         return ' && '.join(js)
 
+    def _build_op_js(self, op, key, value, value_name):
+        """Substitute the values in to the correct chunk of Javascript.
+        """
+        if isinstance(value, RE_TYPE):
+            # Regexes are handled specially
+            if op.strip('$') == 'ne':
+                op_js = Q.OPERATORS['regex_ne']
+            else:
+                op_js = Q.OPERATORS['regex_eq']
+        else:
+            op_js = Q.OPERATORS[op.strip('$')]
+
+        # Comparing two ObjectIds in Javascript doesn't work..
+        if isinstance(value, pymongo.objectid.ObjectId):
+            value = str(value)
+
+        # Perform the substitution
+        operation_js = op_js % {
+            'field': key, 
+            'value': value_name
+        }
+        return value, operation_js
 
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor, 
@@ -274,13 +296,15 @@ class QuerySet(object):
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists']
+        match_operators = ['contains', 'icontains', 'startswith', 
+                           'istartswith', 'endswith', 'iendswith']
 
         mongo_query = {}
         for key, value in query.items():
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
-            if parts[-1] in operators:
+            if parts[-1] in operators + match_operators:
                 op = parts.pop()
 
             if _doc_cls:
@@ -290,13 +314,15 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'ne', 'gt', 'gte', 'lt', 'lte'):
+                singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte']
+                singular_ops += match_operators
+                if op in singular_ops:
                     value = field.prepare_query_value(op, value)
                 elif op in ('in', 'nin', 'all'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
 
-            if op:
+            if op and op not in match_operators:
                 value = {'$' + op: value}
 
             key = '.'.join(parts)
@@ -372,7 +398,7 @@ class QuerySet(object):
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
         
-        :param object_ids: a list or tuple of ``ObjectId``s
+        :param object_ids: a list or tuple of ``ObjectId``\ s
         :rtype: dict of ObjectIds as keys and collection-specific
                 Document subclasses as values.
         """
@@ -454,7 +480,7 @@ class QuerySet(object):
         
             post = BlogPost.objects(...).only("title")
         
-        :param *fields: fields to include
+        :param fields: fields to include
         """
         self._loaded_fields = []
         for field in fields:
@@ -604,6 +630,21 @@ class QuerySet(object):
     def __iter__(self):
         return self
 
+    def _sub_js_fields(self, code):
+        """When fields are specified with [~fieldname] syntax, where 
+        *fieldname* is the Python name of a field, *fieldname* will be 
+        substituted for the MongoDB name of the field (specified using the
+        :attr:`name` keyword argument in a field's constructor).
+        """
+        def field_sub(match):
+            # Extract just the field name, and look up the field objects
+            field_name = match.group(1).split('.')
+            fields = QuerySet._lookup_field(self._document, field_name)
+            # Substitute the correct name for the field into the javascript
+            return '["%s"]' % fields[-1].name
+
+        return re.sub('\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+
     def exec_js(self, code, *fields, **options):
         """Execute a Javascript function on the server. A list of fields may be
         provided, which will be translated to their correct names and supplied
@@ -613,12 +654,21 @@ class QuerySet(object):
         current query; and ``options``, which is an object containing any
         options specified as keyword arguments.
 
+        As fields in MongoEngine may use different names in the database (set
+        using the :attr:`name` keyword argument to a :class:`Field` 
+        constructor), a mechanism exists for replacing MongoEngine field names
+        with the database field names in Javascript code. When accessing a 
+        field, use square-bracket notation, and prefix the MongoEngine field
+        name with a tilde (~).
+
         :param code: a string of Javascript code to execute
         :param fields: fields that you will be using in your function, which
             will be passed in to your function as arguments
         :param options: options that you want available to the function 
             (accessed in Javascript through the ``options`` object)
         """
+        code = self._sub_js_fields(code)
+
         fields = [QuerySet._translate_field_name(self._document, f)
                   for f in fields]
         collection = self._document._meta['collection']
