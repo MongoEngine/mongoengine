@@ -57,23 +57,36 @@ class StringField(BaseField):
             value = re.compile(regex % value, flags)
         return value
 
+
 class URLField(StringField):
     """A field that validates input as a URL.
     """
 
-    def __init__(self, verify_exists=True, **kwargs):
+    URL_REGEX = re.compile(
+        r'^https?://'
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
+        r'localhost|'
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+        r'(?::\d+)?'
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE
+    )
+
+    def __init__(self, verify_exists=False, **kwargs):
         self.verify_exists = verify_exists
         super(URLField, self).__init__(**kwargs)
 
     def validate(self, value):
-        import urllib2
+        if not URLField.URL_REGEX.match(value):
+            raise ValidationError('Invalid URL: %s' % value)
 
         if self.verify_exists:
+            import urllib2
             try:
                 request = urllib2.Request(value)
                 response = urllib2.urlopen(request)
             except Exception, e:
-                raise ValidationError('This URL appears to be invalid: %s' % e)
+                message = 'This URL appears to be a broken link: %s' % e
+                raise ValidationError(message)
 
 
 class IntField(BaseField):
@@ -148,7 +161,7 @@ class DecimalField(BaseField):
         if self.min_value is not None and value < self.min_value:
             raise ValidationError('Decimal value is too small')
 
-        if self.max_value is not None and vale > self.max_value:
+        if self.max_value is not None and value > self.max_value:
             raise ValidationError('Decimal value is too large')
 
 
