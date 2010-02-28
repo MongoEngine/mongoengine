@@ -398,7 +398,7 @@ class BaseDocument(object):
         return obj
     
     def __eq__(self, other):
-        assert hasattr(other, 'id'), "You cannot compare two objects of different type."
-        if self.id == other.id:
-            return True
+        if isinstance(other, self.__class__) and hasattr(other, 'id'):
+            if self.id == other.id:
+                return True
         return False

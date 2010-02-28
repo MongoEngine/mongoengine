@@ -35,14 +35,17 @@ to retrieve the value (such as in the above example). The field types available
 are as follows:
 
 * :class:`~mongoengine.StringField`
+* :class:`~mongoengine.URLField`
 * :class:`~mongoengine.IntField`
 * :class:`~mongoengine.FloatField`
+* :class:`~mongoengine.DecimalField`
 * :class:`~mongoengine.DateTimeField`
 * :class:`~mongoengine.ListField`
 * :class:`~mongoengine.DictField`
 * :class:`~mongoengine.ObjectIdField`
 * :class:`~mongoengine.EmbeddedDocumentField`
 * :class:`~mongoengine.ReferenceField`
+* :class:`~mongoengine.GenericReferenceField`
 
 List fields
 -----------
@@ -116,6 +119,31 @@ field::
 
 The :class:`User` object is automatically turned into a reference behind the
 scenes, and dereferenced when the :class:`Page` object is retrieved.
+
+Generic reference fields
+''''''''''''''''''''''''
+A second kind of reference field also exists,
+:class:`~mongoengine.GenericReferenceField`. This allows you to reference any
+kind of :class:`~mongoengine.Document`, and hence doesn't take a 
+:class:`~mongoengine.Document` subclass as a constructor argument::
+
+    class Link(Document):
+        url = StringField()
+        
+    class Post(Document):
+        title = StringField()
+        
+    class Bookmark(Document):
+        bookmark_object = GenericReferenceField()
+
+    link = Link(url='http://hmarr.com/mongoengine/')
+    link.save()
+
+    post = Post(title='Using MongoEngine')
+    post.save()
+
+    Bookmark(bookmark_object=link).save()
+    Bookmark(bookmark_object=post).save()
 
 Uniqueness constraints
 ----------------------

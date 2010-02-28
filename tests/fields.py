@@ -413,6 +413,7 @@ class FieldTest(unittest.TestCase):
         bm.reload()
         
         self.assertEqual(bm.bookmark_object, post_1)
+        self.assertTrue(isinstance(bm.bookmark_object, Post))
         
         bm.bookmark_object = link_1
         bm.save()
@@ -420,6 +421,7 @@ class FieldTest(unittest.TestCase):
         bm.reload()
         
         self.assertEqual(bm.bookmark_object, link_1)
+        self.assertTrue(isinstance(bm.bookmark_object, Link))
     
         Link.drop_collection()
         Post.drop_collection()
