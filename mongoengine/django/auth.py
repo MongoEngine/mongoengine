@@ -30,6 +30,7 @@ class User(Document):
     is_active = BooleanField(default=True)
     is_superuser = BooleanField(default=False)
     last_login = DateTimeField(default=datetime.datetime.now)
+    date_joined = DateTimeField(default=datetime.datetime.now)
 
     def get_full_name(self):
         """Returns the users first and last names, separated by a space.
@@ -70,7 +71,20 @@ class User(Document):
         """Create (and save) a new user with the given username, password and
         email address.
         """
-        user = User(username=username, email=email)
+        now = datetime.datetime.now()
+        
+        # Normalize the address by lowercasing the domain part of the email
+        # address.
+        # Not sure why we'r allowing null email when its not allowed in django
+        if email is not None:
+            try:
+                email_name, domain_part = email.strip().split('@', 1)
+            except ValueError:
+                pass
+            else:
+                email = '@'.join([email_name, domain_part.lower()])
+            
+        user = User(username=username, email=email, date_joined=now)
         user.set_password(password)
         user.save()
         return user
