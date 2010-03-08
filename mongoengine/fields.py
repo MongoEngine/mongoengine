@@ -448,7 +448,8 @@ class BinaryField(BaseField):
     """A binary data field.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, max_bytes=None, **kwargs):
+        self.max_bytes = max_bytes
         super(BinaryField, self).__init__(**kwargs)
 
     def to_mongo(self, value):
@@ -456,3 +457,9 @@ class BinaryField(BaseField):
 
     def to_python(self, value):
         return str(value)
+
+    def validate(self, value):
+        assert isinstance(value, str)
+
+        if self.max_bytes is not None and len(value) > self.max_bytes:
+            raise ValidationError('Binary value is too long')
