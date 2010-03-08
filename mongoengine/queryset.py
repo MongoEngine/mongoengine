@@ -416,9 +416,18 @@ class QuerySet(object):
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
-        if self._limit == 0:
-            raise StopIteration
-        return self._document._from_son(self._cursor.next())
+        try:
+            if self._limit == 0:
+                raise StopIteration
+            return self._document._from_son(self._cursor.next())
+        except StopIteration, e:
+            self.rewind()
+            raise e
+
+    def rewind(self):
+        """Rewind the cursor to its unevaluated state.
+        """
+        self._cursor.rewind()
 
     def count(self):
         """Count the selected elements in the query.
