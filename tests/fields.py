@@ -495,6 +495,24 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+    def test_binary_fields(self):
+        """Ensure that binary fields can be stored and retrieved.
+        """
+        class Attachment(Document):
+            content_type = StringField()
+            blob = BinaryField()
+
+        BLOB = '\xe6\x00\xc4\xff\x07'
+        MIME_TYPE = 'application/octet-stream'
+
+        Attachment.drop_collection()
+
+        attachment = Attachment(content_type=MIME_TYPE, blob=BLOB)
+        attachment.save()
+
+        attachment_1 = Attachment.objects().first()
+        self.assertEqual(MIME_TYPE, attachment_1.content_type)
+        self.assertEqual(BLOB, attachment_1.blob)
 
 if __name__ == '__main__':
     unittest.main()

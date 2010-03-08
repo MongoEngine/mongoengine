@@ -11,7 +11,8 @@ import decimal
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
-           'DecimalField', 'URLField', 'GenericReferenceField']
+           'DecimalField', 'URLField', 'GenericReferenceField',
+           'BinaryField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -442,3 +443,16 @@ class GenericReferenceField(BaseField):
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)['_ref']
+
+class BinaryField(BaseField):
+    """A binary data field.
+    """
+
+    def __init__(self, **kwargs):
+        super(BinaryField, self).__init__(**kwargs)
+
+    def to_mongo(self, value):
+        return pymongo.binary.Binary(value)
+
+    def to_python(self, value):
+        return str(value)
