@@ -514,5 +514,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(MIME_TYPE, attachment_1.content_type)
         self.assertEqual(BLOB, attachment_1.blob)
 
+        Attachment.drop_collection()
+
 if __name__ == '__main__':
     unittest.main()
