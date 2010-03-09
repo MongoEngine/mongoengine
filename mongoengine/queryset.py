@@ -104,7 +104,7 @@ class Q(object):
                     js.append(operation_js)
             else:
                 # Construct the JS for this field
-                (op, key, value, value_name)
+                value, field_js = self._build_op_js(op, key, value, value_name)
                 js_scope[value_name] = value
                 js.append(field_js)
         return ' && '.join(js)
