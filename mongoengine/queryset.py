@@ -144,6 +144,7 @@ class QuerySet(object):
         self._query = {}
         self._where_clause = None
         self._loaded_fields = []
+        self._ordering = []
         
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
