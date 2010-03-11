@@ -10,12 +10,7 @@ def get_document(name):
 
 
 class ValidationError(Exception):
-    def _get_message(self, message): 
-        return self._message
-    def _set_message(self, message): 
-        self._message = message
-    message = property(_get_message, _set_message)
-
+    pass
 
 
 class BaseField(object):
@@ -91,7 +86,8 @@ class ObjectIdField(BaseField):
             try:
                 return pymongo.objectid.ObjectId(str(value))
             except Exception, e:
-                raise ValidationError(e.message)
+                #e.message attribute has been deprecated since Python 2.6
+                raise ValidationError(str(e))
         return value
 
     def prepare_query_value(self, op, value):
