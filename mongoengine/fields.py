@@ -296,9 +296,8 @@ class ListField(BaseField):
 
         try:
             [self.field.validate(item) for item in value]
-        except:
-            raise ValidationError('All items in a list field must be of the '
-                                  'specified type')
+        except Exception, err:
+            raise ValidationError('Invalid ListField item (%s)' % str(err))
 
     def prepare_query_value(self, op, value):
         if op in ('set', 'unset'):
