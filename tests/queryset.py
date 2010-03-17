@@ -1,14 +1,17 @@
+# -*- coding: utf-8 -*-
+
+
 import unittest
 import pymongo
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from mongoengine.queryset import (QuerySet, MultipleObjectsReturned, 
+from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
                                   DoesNotExist)
 from mongoengine import *
 
 
 class QuerySetTest(unittest.TestCase):
-    
+
     def setUp(self):
         connect(db='mongoenginetest')
 
@@ -16,12 +19,12 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
             age = IntField()
         self.Person = Person
-        
+
     def test_initialisation(self):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager.
         """
         self.assertTrue(isinstance(self.Person.objects, QuerySet))
-        self.assertEqual(self.Person.objects._collection.name, 
+        self.assertEqual(self.Person.objects._collection.name,
                          self.Person._meta['collection'])
         self.assertTrue(isinstance(self.Person.objects._collection,
                                    pymongo.collection.Collection))
@@ -31,15 +34,15 @@ class QuerySetTest(unittest.TestCase):
         """
         self.assertEqual(QuerySet._transform_query(name='test', age=30),
                          {'name': 'test', 'age': 30})
-        self.assertEqual(QuerySet._transform_query(age__lt=30), 
+        self.assertEqual(QuerySet._transform_query(age__lt=30),
                          {'age': {'$lt': 30}})
         self.assertEqual(QuerySet._transform_query(age__gt=20, age__lt=50),
                          {'age': {'$gt': 20, '$lt': 50}})
         self.assertEqual(QuerySet._transform_query(age=20, age__gt=50),
                          {'age': 20})
-        self.assertEqual(QuerySet._transform_query(friend__age__gte=30), 
+        self.assertEqual(QuerySet._transform_query(friend__age__gte=30),
                          {'friend.age': {'$gte': 30}})
-        self.assertEqual(QuerySet._transform_query(name__exists=True), 
+        self.assertEqual(QuerySet._transform_query(name__exists=True),
                          {'name': {'$exists': True}})
 
     def test_find(self):
@@ -134,7 +137,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User B")
 
         self.assertRaises(IndexError, self.Person.objects.__getitem__, 2)
-        
+
         # Find a document using just the object id
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
@@ -170,7 +173,7 @@ class QuerySetTest(unittest.TestCase):
         person2.save()
 
         # Retrieve the first person from the database
-        self.assertRaises(MultipleObjectsReturned, 
+        self.assertRaises(MultipleObjectsReturned,
                           self.Person.objects.get_or_create)
 
         # Use a query to filter the people found to just person2
@@ -256,36 +259,36 @@ class QuerySetTest(unittest.TestCase):
         """Ensure filters can be chained together.
         """
         from datetime import datetime
-        
+
         class BlogPost(Document):
             title = StringField()
             is_published = BooleanField()
             published_date = DateTimeField()
-            
+
             @queryset_manager
             def published(doc_cls, queryset):
                 return queryset(is_published=True)
-                
-        blog_post_1 = BlogPost(title="Blog Post #1", 
+
+        blog_post_1 = BlogPost(title="Blog Post #1",
                                is_published = True,
                                published_date=datetime(2010, 1, 5, 0, 0 ,0))
-        blog_post_2 = BlogPost(title="Blog Post #2", 
+        blog_post_2 = BlogPost(title="Blog Post #2",
                                is_published = True,
                                published_date=datetime(2010, 1, 6, 0, 0 ,0))
-        blog_post_3 = BlogPost(title="Blog Post #3", 
+        blog_post_3 = BlogPost(title="Blog Post #3",
                                is_published = True,
                                published_date=datetime(2010, 1, 7, 0, 0 ,0))
 
         blog_post_1.save()
         blog_post_2.save()
         blog_post_3.save()
-        
+
         # find all published blog posts before 2010-01-07
         published_posts = BlogPost.published()
         published_posts = published_posts.filter(
             published_date__lt=datetime(2010, 1, 7, 0, 0 ,0))
         self.assertEqual(published_posts.count(), 2)
-        
+
         BlogPost.drop_collection()
 
     def test_ordering(self):
@@ -301,22 +304,22 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        blog_post_1 = BlogPost(title="Blog Post #1", 
+        blog_post_1 = BlogPost(title="Blog Post #1",
                                published_date=datetime(2010, 1, 5, 0, 0 ,0))
-        blog_post_2 = BlogPost(title="Blog Post #2", 
+        blog_post_2 = BlogPost(title="Blog Post #2",
                                published_date=datetime(2010, 1, 6, 0, 0 ,0))
-        blog_post_3 = BlogPost(title="Blog Post #3", 
+        blog_post_3 = BlogPost(title="Blog Post #3",
                                published_date=datetime(2010, 1, 7, 0, 0 ,0))
 
         blog_post_1.save()
         blog_post_2.save()
         blog_post_3.save()
-        
+
         # get the "first" BlogPost using default ordering
         # from BlogPost.meta.ordering
-        latest_post = BlogPost.objects.first() 
+        latest_post = BlogPost.objects.first()
         self.assertEqual(latest_post.title, "Blog Post #3")
-        
+
         # override default ordering, order BlogPosts by "published_date"
         first_post = BlogPost.objects.order_by("+published_date").first()
         self.assertEqual(first_post.title, "Blog Post #1")
@@ -375,7 +378,7 @@ class QuerySetTest(unittest.TestCase):
         result = BlogPost.objects.first()
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
-        
+
         BlogPost.drop_collection()
 
     def test_find_dict_item(self):
@@ -442,7 +445,7 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name='user2', age=20).save()
         self.Person(name='user3', age=30).save()
         self.Person(name='user4', age=40).save()
-        
+
         self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
         self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
 
@@ -545,17 +548,17 @@ class QuerySetTest(unittest.TestCase):
             return comments;
         }
         """
-        
+
         sub_code = BlogPost.objects._sub_js_fields(code)
-        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],', 
+        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],',
                        'doc["cmnts"][i]["body"]']
         for chunk in code_chunks:
             self.assertTrue(chunk in sub_code)
 
         results = BlogPost.objects.exec_js(code)
         expected_results = [
-            {u'comment': u'cool', u'document': u'post1'}, 
-            {u'comment': u'yay', u'document': u'post1'}, 
+            {u'comment': u'cool', u'document': u'post1'},
+            {u'comment': u'yay', u'document': u'post1'},
             {u'comment': u'nice stuff', u'document': u'post2'},
         ]
         self.assertEqual(results, expected_results)
@@ -627,9 +630,166 @@ class QuerySetTest(unittest.TestCase):
 
         names = [p.name for p in self.Person.objects.order_by('age')]
         self.assertEqual(names, ['User A', 'User C', 'User B'])
-        
+
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
+
+    def test_map_reduce(self):
+        """Ensure map/reduce is both mapping and reducing.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        BlogPost(title="Post #1", tags=['music', 'film', 'print']).save()
+        BlogPost(title="Post #2", tags=['music', 'film']).save()
+        BlogPost(title="Post #3", tags=['film', 'photography']).save()
+
+        map_f = """
+            function() {
+                this.tags.forEach(function(tag) {
+                    emit(tag, 1);
+                });
+            }
+        """
+
+        reduce_f = """
+            function(key, values) {
+                var total = 0;
+                for(var i=0; i<values.length; i++) {
+                    total += values[i];
+                }
+                return total;
+            }
+        """
+
+        # run a map/reduce operation spanning all posts
+        results = BlogPost.objects.map_reduce(map_f, reduce_f)
+        results = list(results)
+        self.assertEqual(len(results), 4)
+
+        music = filter(lambda r: r.key == "music", results)[0]
+        self.assertEqual(music.value, 2)
+
+        film = filter(lambda r: r.key == "film", results)[0]
+        self.assertEqual(film.value, 3)
+
+        BlogPost.drop_collection()
+
+    def test_map_reduce_finalize(self):
+        """Ensure that map, reduce, and finalize run and introduce "scope"
+        by simulating "hotness" ranking with Reddit algorithm.
+        """
+        from time import mktime
+
+        class Link(Document):
+            title = StringField()
+            up_votes = IntField()
+            down_votes = IntField()
+            submitted = DateTimeField()
+
+        Link.drop_collection()
+
+        now = datetime.utcnow()
+
+        # Note: Test data taken from a custom Reddit homepage on
+        # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
+        # reflect order of insertion below, but is not influenced
+        # by insertion order.
+        Link(title = "Google Buzz auto-followed a woman's abusive ex ...",
+             up_votes = 1079,
+             down_votes = 553,
+             submitted = now-timedelta(hours=4)).save()
+        Link(title = "We did it! Barbie is a computer engineer.",
+             up_votes = 481,
+             down_votes = 124,
+             submitted = now-timedelta(hours=2)).save()
+        Link(title = "This Is A Mosquito Getting Killed By A Laser",
+             up_votes = 1446,
+             down_votes = 530,
+             submitted=now-timedelta(hours=13)).save()
+        Link(title = "Arabic flashcards land physics student in jail.",
+             up_votes = 215,
+             down_votes = 105,
+             submitted = now-timedelta(hours=6)).save()
+        Link(title = "The Burger Lab: Presenting, the Flood Burger",
+             up_votes = 48,
+             down_votes = 17,
+             submitted = now-timedelta(hours=5)).save()
+        Link(title="How to see polarization with the naked eye",
+             up_votes = 74,
+             down_votes = 13,
+             submitted = now-timedelta(hours=10)).save()
+
+        map_f = """
+            function() {
+                emit(this._id, {up_delta: this.up_votes - this.down_votes,
+                                sub_date: this.submitted.getTime() / 1000})
+            }
+        """
+
+        reduce_f = """
+            function(key, values) {
+                data = values[0];
+
+                x = data.up_delta;
+
+                // calculate time diff between reddit epoch and submission
+                sec_since_epoch = data.sub_date - reddit_epoch;
+
+                // calculate 'Y'
+                if(x > 0) {
+                    y = 1;
+                } else if (x = 0) {
+                    y = 0;
+                } else {
+                    y = -1;
+                }
+
+                // calculate 'Z', the maximal value
+                if(Math.abs(x) >= 1) {
+                    z = Math.abs(x);
+                } else {
+                    z = 1;
+                }
+
+                return {x: x, y: y, z: z, t_s: sec_since_epoch};
+            }
+        """
+
+        finalize_f = """
+            function(key, value) {
+                // f(sec_since_epoch,y,z) = log10(z) + ((y*sec_since_epoch) / 45000)
+                z_10 = Math.log(value.z) / Math.log(10);
+                weight = z_10 + ((value.y * value.t_s) / 45000);
+                return weight;
+            }
+        """
+
+        # provide the reddit epoch (used for ranking) as a variable available
+        # to all phases of the map/reduce operation: map, reduce, and finalize.
+        reddit_epoch = mktime(datetime(2005, 12, 8, 7, 46, 43).timetuple())
+        scope = {'reddit_epoch': reddit_epoch}
+
+        # run a map/reduce operation across all links. ordering is set
+        # to "-value", which orders the "weight" value returned from
+        # "finalize_f" in descending order.
+        results = Link.objects.order_by("-value")
+        results = results.map_reduce(map_f,
+                                     reduce_f,
+                                     finalize_f=finalize_f,
+                                     scope=scope)
+        results = list(results)
+
+        # assert troublesome Buzz article is ranked 1st
+        self.assertTrue(results[0].object.title.startswith("Google Buzz"))
+
+        # assert laser vision is ranked last
+        self.assertTrue(results[-1].object.title.startswith("How to see"))
+
+        Link.drop_collection()
 
     def test_item_frequencies(self):
         """Ensure that item frequencies are properly generated from lists.
@@ -727,20 +887,20 @@ class QuerySetTest(unittest.TestCase):
             title = StringField(name='postTitle')
             comments = ListField(EmbeddedDocumentField(Comment),
                                  name='postComments')
-                                 
+
 
         BlogPost.drop_collection()
 
         data = {'title': 'Post 1', 'comments': [Comment(content='test')]}
         BlogPost(**data).save()
 
-        self.assertTrue('postTitle' in 
+        self.assertTrue('postTitle' in
                         BlogPost.objects(title=data['title'])._query)
-        self.assertFalse('title' in 
+        self.assertFalse('title' in
                          BlogPost.objects(title=data['title'])._query)
         self.assertEqual(len(BlogPost.objects(title=data['title'])), 1)
 
-        self.assertTrue('postComments.commentContent' in 
+        self.assertTrue('postComments.commentContent' in
                         BlogPost.objects(comments__content='test')._query)
         self.assertEqual(len(BlogPost.objects(comments__content='test')), 1)
 
@@ -761,7 +921,7 @@ class QuerySetTest(unittest.TestCase):
         post.save()
 
         # Test that query may be performed by providing a document as a value
-        # while using a ReferenceField's name - the document should be 
+        # while using a ReferenceField's name - the document should be
         # converted to an DBRef, which is legal, unlike a Document object
         post_obj = BlogPost.objects(author=person).first()
         self.assertEqual(post.id, post_obj.id)
@@ -823,13 +983,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertFalse([('_types', 1)] in info.values())
 
         BlogPost.drop_collection()
-        
+
     def test_bulk(self):
         """Ensure bulk querying by object id returns a proper dict.
         """
         class BlogPost(Document):
             title = StringField()
-            
+
         BlogPost.drop_collection()
 
         post_1 = BlogPost(title="Post #1")
@@ -843,20 +1003,20 @@ class QuerySetTest(unittest.TestCase):
         post_3.save()
         post_4.save()
         post_5.save()
-        
+
         ids = [post_1.id, post_2.id, post_5.id]
         objects = BlogPost.objects.in_bulk(ids)
-        
+
         self.assertEqual(len(objects), 3)
 
         self.assertTrue(post_1.id in objects)
         self.assertTrue(post_2.id in objects)
         self.assertTrue(post_5.id in objects)
-        
+
         self.assertTrue(objects[post_1.id].title == post_1.title)
         self.assertTrue(objects[post_2.id].title == post_2.title)
-        self.assertTrue(objects[post_5.id].title == post_5.title)        
-        
+        self.assertTrue(objects[post_5.id].title == post_5.title)
+
         BlogPost.drop_collection()
 
     def tearDown(self):
@@ -864,7 +1024,7 @@ class QuerySetTest(unittest.TestCase):
 
 
 class QTest(unittest.TestCase):
-    
+
     def test_or_and(self):
         """Ensure that Q objects may be combined correctly.
         """
@@ -888,8 +1048,8 @@ class QTest(unittest.TestCase):
         examples = [
             ({'name': 'test'}, 'this.name == i0f0', {'i0f0': 'test'}),
             ({'age': {'$gt': 18}}, 'this.age > i0f0o0', {'i0f0o0': 18}),
-            ({'name': 'test', 'age': {'$gt': 18, '$lte': 65}}, 
-             'this.age <= i0f0o0 && this.age > i0f0o1 && this.name == i0f1', 
+            ({'name': 'test', 'age': {'$gt': 18, '$lte': 65}},
+             'this.age <= i0f0o0 && this.age > i0f0o1 && this.name == i0f1',
              {'i0f0o0': 65, 'i0f0o1': 18, 'i0f1': 'test'}),
         ]
         for item, js, scope in examples:
