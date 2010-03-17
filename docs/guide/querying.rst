@@ -13,6 +13,13 @@ fetch documents from the database::
     for user in User.objects:
         print user.name
 
+.. note::
+   Once the iteration finishes (when :class:`StopIteration` is raised),
+   :meth:`~mongoengine.queryset.QuerySet.rewind` will be called so that the
+   :class:`~mongoengine.queryset.QuerySet` may be iterated over again. The
+   results of the first iteration are *not* cached, so the database will be hit
+   each time the :class:`~mongoengine.queryset.QuerySet` is iterated over.
+
 Filtering queries
 =================
 The query may be filtered by calling the

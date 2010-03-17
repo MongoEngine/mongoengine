@@ -54,6 +54,8 @@ Fields
 
 .. autoclass:: mongoengine.ListField
 
+.. autoclass:: mongoengine.BinaryField
+
 .. autoclass:: mongoengine.ObjectIdField
 
 .. autoclass:: mongoengine.ReferenceField

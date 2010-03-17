@@ -189,6 +189,18 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.get(age=50)
         self.assertEqual(person.name, "User C")
 
+    def test_repeated_iteration(self):
+        """Ensure that QuerySet rewinds itself one iteration finishes.
+        """
+        self.Person(name='Person 1').save()
+        self.Person(name='Person 2').save()
+
+        queryset = self.Person.objects
+        people1 = [person for person in queryset]
+        people2 = [person for person in queryset]
+
+        self.assertEqual(people1, people2)
+
     def test_regex_query_shortcuts(self):
         """Ensure that contains, startswith, endswith, etc work.
         """
