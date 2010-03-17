@@ -495,6 +495,61 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+    def test_binary_fields(self):
+        """Ensure that binary fields can be stored and retrieved.
+        """
+        class Attachment(Document):
+            content_type = StringField()
+            blob = BinaryField()
+
+        BLOB = '\xe6\x00\xc4\xff\x07'
+        MIME_TYPE = 'application/octet-stream'
+
+        Attachment.drop_collection()
+
+        attachment = Attachment(content_type=MIME_TYPE, blob=BLOB)
+        attachment.save()
+
+        attachment_1 = Attachment.objects().first()
+        self.assertEqual(MIME_TYPE, attachment_1.content_type)
+        self.assertEqual(BLOB, attachment_1.blob)
+
+        Attachment.drop_collection()
+
+    def test_binary_validation(self):
+        """Ensure that invalid values cannot be assigned to binary fields.
+        """
+        class Attachment(Document):
+            blob = BinaryField()
+
+        class AttachmentRequired(Document):
+            blob = BinaryField(required=True)
+
+        class AttachmentSizeLimit(Document):
+            blob = BinaryField(max_bytes=4)
+
+        Attachment.drop_collection()
+        AttachmentRequired.drop_collection()
+        AttachmentSizeLimit.drop_collection()
+
+        attachment = Attachment()
+        attachment.validate()
+        attachment.blob = 2
+        self.assertRaises(ValidationError, attachment.validate)
+
+        attachment_required = AttachmentRequired()
+        self.assertRaises(ValidationError, attachment_required.validate)
+        attachment_required.blob = '\xe6\x00\xc4\xff\x07'
+        attachment_required.validate()
+
+        attachment_size_limit = AttachmentSizeLimit(blob='\xe6\x00\xc4\xff\x07')
+        self.assertRaises(ValidationError, attachment_size_limit.validate)
+        attachment_size_limit.blob = '\xe6\x00\xc4\xff'
+        attachment_size_limit.validate()
+
+        Attachment.drop_collection()
+        AttachmentRequired.drop_collection()
+        AttachmentSizeLimit.drop_collection()
 
 if __name__ == '__main__':
     unittest.main()

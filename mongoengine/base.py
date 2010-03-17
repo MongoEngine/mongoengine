@@ -86,7 +86,8 @@ class ObjectIdField(BaseField):
             try:
                 return pymongo.objectid.ObjectId(str(value))
             except Exception, e:
-                raise ValidationError(e.message)
+                #e.message attribute has been deprecated since Python 2.6
+                raise ValidationError(str(e))
         return value
 
     def prepare_query_value(self, op, value):
