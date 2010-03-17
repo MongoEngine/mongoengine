@@ -469,7 +469,7 @@ class QuerySet(object):
            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
            PyMongo version **>= 1.2**.
 
-        .. versionadded:: 0.2.2
+        .. versionadded:: 0.3
 
         """
         from document import MapReduceDocument

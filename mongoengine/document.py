@@ -127,7 +127,7 @@ class MapReduceDocument(object):
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.
     
-    .. versionadded:: 0.2.2
+    .. versionadded:: 0.3
  
     """
     
@@ -151,5 +151,3 @@ class MapReduceDocument(object):
             self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
         return self._key_object
-
-        
