@@ -637,23 +637,20 @@ class QuerySetTest(unittest.TestCase):
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
         """
-        class Song(Document):
-            artists = ListField(StringField())
+        class BlogPost(Document):
             title = StringField()
-            is_cover = BooleanField()
+            tags = ListField(StringField())
 
-        Song.drop_collection()
+        BlogPost.drop_collection()
 
-        Song(title="Gloria", is_cover=True, artists=['Patti Smith']).save()
-        Song(title="Redondo beach", is_cover=False,
-             artists=['Patti Smith']).save()
-        Song(title="My Generation", is_cover=True,
-             artists=['Patti Smith', 'John Cale']).save()
+        BlogPost(title="Post #1", tags=['music', 'film', 'print']).save()
+        BlogPost(title="Post #2", tags=['music', 'film']).save()
+        BlogPost(title="Post #3", tags=['film', 'photography']).save()
 
         map_f = """
             function() {
-                this.artists.forEach(function(artist) {
-                    emit(artist, 1);
+                this.tags.forEach(function(tag) {
+                    emit(tag, 1);
                 });
             }
         """
@@ -668,19 +665,18 @@ class QuerySetTest(unittest.TestCase):
             }
         """
 
-        # ensure both artists are found
-        results = Song.objects.map_reduce(map_f, reduce_f)
+        # run a map/reduce operation spanning all posts
+        results = BlogPost.objects.map_reduce(map_f, reduce_f)
         results = list(results)
-        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results), 4)
+        
+        music = filter(lambda r: r.key == "music", results)[0]
+        self.assertEqual(music.value, 2)
+        
+        film = filter(lambda r: r.key == "film", results)[0]
+        self.assertEqual(film.value, 3)
 
-        # query for a count of Songs per artist, ordered by -count.
-        # Patti Smith has 3 song credits, and should therefore be first.
-        results = Song.objects.order_by("-value").map_reduce(map_f, reduce_f)
-        results = list(results)
-        self.assertEqual(results[0].key, "Patti Smith")
-        self.assertEqual(results[0].value, 3.0)
-
-        Song.drop_collection()
+        BlogPost.drop_collection()
 
     def test_map_reduce_finalize(self):
         """Ensure that map, reduce, and finalize run and introduce "scope"
