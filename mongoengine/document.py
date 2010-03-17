@@ -128,7 +128,6 @@ class MapReduceDocument(object):
     :param value: The result(s) for this key.
     
     .. versionadded:: 0.3
- 
     """
     
     def __init__(self, document, collection, key, value):
@@ -139,14 +138,19 @@ class MapReduceDocument(object):
     
     @property
     def object(self):
-        """Lazy-load the object referenced by ``self.key``. If ``self.key``
-        is not an ``ObjectId``, simply return ``self.key``.
+        """Lazy-load the object referenced by ``self.key``. ``self.key`` 
+        should be the ``primary_key``.
         """
-        if not isinstance(self.key, (pymongo.objectid.ObjectId)):
+        id_field = self._document()._meta['id_field']
+        id_field_type = type(id_field)
+        
+        if not isinstance(self.key, id_field_type):
             try:
-                self.key = pymongo.objectid.ObjectId(self.key)
+                self.key = id_field_type(self.key)
             except:
-                return self.key
+                raise Exception("Could not cast key as %s" % \
+                                id_field_type.__name__)
+
         if not hasattr(self, "_key_object"):
             self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
