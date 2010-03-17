@@ -336,7 +336,7 @@ example)::
         return document.objects.exec_js(code, field_name, **options)
 
 As fields in MongoEngine may use different names in the database (set using the
-:attr:`name` keyword argument to a :class:`Field` constructor), a mechanism
+:attr:`db_field` keyword argument to a :class:`Field` constructor), a mechanism
 exists for replacing MongoEngine field names with the database field names in
 Javascript code. When accessing a field on a collection object, use
 square-bracket notation, and prefix the MongoEngine field name with a tilde.
@@ -347,10 +347,10 @@ should be used before the name of the field on the embedded document. The
 following example shows how the substitutions are made::
 
     class Comment(EmbeddedDocument):
-        content = StringField(name='body')
+        content = StringField(db_field='body')
 
     class BlogPost(Document):
-        title = StringField(name='doctitle')
+        title = StringField(db_field='doctitle')
         comments = ListField(EmbeddedDocumentField(Comment), name='cs')
 
     # Returns a list of dictionaries. Each dictionary contains a value named

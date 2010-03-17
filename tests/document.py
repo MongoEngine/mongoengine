@@ -1,5 +1,5 @@
 import unittest
-import datetime
+from datetime import datetime
 import pymongo
 
 from mongoengine import *
@@ -199,7 +199,7 @@ class DocumentTest(unittest.TestCase):
         """Ensure that capped collections work properly.
         """
         class Log(Document):
-            date = DateTimeField(default=datetime.datetime.now)
+            date = DateTimeField(default=datetime.now)
             meta = {
                 'max_documents': 10,
                 'max_size': 90000,
@@ -225,7 +225,7 @@ class DocumentTest(unittest.TestCase):
         # Check that the document cannot be redefined with different options
         def recreate_log_document():
             class Log(Document):
-                date = DateTimeField(default=datetime.datetime.now)
+                date = DateTimeField(default=datetime.now)
                 meta = {
                     'max_documents': 11,
                 }
@@ -239,7 +239,7 @@ class DocumentTest(unittest.TestCase):
         """Ensure that indexes are used when meta[indexes] is specified.
         """
         class BlogPost(Document):
-            date = DateTimeField(name='addDate', default=datetime.datetime.now)
+            date = DateTimeField(db_field='addDate', default=datetime.now)
             category = StringField()
             tags = ListField(StringField())
             meta = {
@@ -297,7 +297,7 @@ class DocumentTest(unittest.TestCase):
         self.assertRaises(OperationError, post2.save)
 
         class Date(EmbeddedDocument):
-            year = IntField(name='yr')
+            year = IntField(db_field='yr')
 
         class BlogPost(Document):
             title = StringField()
@@ -328,7 +328,7 @@ class DocumentTest(unittest.TestCase):
 
         User.drop_collection()
 
-        self.assertEqual(User._fields['username'].name, '_id')
+        self.assertEqual(User._fields['username'].db_field, '_id')
         self.assertEqual(User._meta['id_field'], 'username')
 
         def create_invalid_user():
@@ -423,7 +423,7 @@ class DocumentTest(unittest.TestCase):
         comment.date = 4
         self.assertRaises(ValidationError, comment.validate)
 
-        comment.date = datetime.datetime.now()
+        comment.date = datetime.now()
         comment.validate()
 
     def test_save(self):

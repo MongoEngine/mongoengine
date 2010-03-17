@@ -186,7 +186,7 @@ class QuerySet(object):
             # objects for the next part (list field checking)
             parts = key.split('.')
             fields = QuerySet._lookup_field(doc_cls, parts)
-            parts = [field.name for field in fields]
+            parts = [field.db_field for field in fields]
             key = '.'.join(parts)
             index_list.append((key, direction))
 
@@ -289,7 +289,7 @@ class QuerySet(object):
         """Translate a field attribute name to a database field name.
         """
         parts = field.split(sep)
-        parts = [f.name for f in QuerySet._lookup_field(doc_cls, parts)]
+        parts = [f.db_field for f in QuerySet._lookup_field(doc_cls, parts)]
         return '.'.join(parts)
 
     @classmethod
@@ -312,7 +312,7 @@ class QuerySet(object):
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
-                parts = [field.name for field in fields]
+                parts = [field.db_field for field in fields]
 
                 # Convert value to proper value
                 field = fields[-1]
@@ -567,8 +567,8 @@ class QuerySet(object):
                 raise InvalidQueryError('Subfields cannot be used as '
                                         'arguments to QuerySet.only')
             # Translate field name
-            field_name = QuerySet._lookup_field(self._document, field)[-1].name
-            self._loaded_fields.append(field_name)
+            field = QuerySet._lookup_field(self._document, field)[-1].db_field
+            self._loaded_fields.append(field)
 
         # _cls is needed for polymorphism
         if self._document._meta.get('allow_inheritance'):
@@ -643,7 +643,7 @@ class QuerySet(object):
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
-                parts = [field.name for field in fields]
+                parts = [field.db_field for field in fields]
 
                 # Convert value to proper value
                 field = fields[-1]
@@ -721,7 +721,7 @@ class QuerySet(object):
             field_name = match.group(1).split('.')
             fields = QuerySet._lookup_field(self._document, field_name)
             # Substitute the correct name for the field into the javascript
-            return '["%s"]' % fields[-1].name
+            return '["%s"]' % fields[-1].db_field
 
         return re.sub('\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
 
@@ -735,7 +735,7 @@ class QuerySet(object):
         options specified as keyword arguments.
 
         As fields in MongoEngine may use different names in the database (set
-        using the :attr:`name` keyword argument to a :class:`Field` 
+        using the :attr:`db_field` keyword argument to a :class:`Field` 
         constructor), a mechanism exists for replacing MongoEngine field names
         with the database field names in Javascript code. When accessing a 
         field, use square-bracket notation, and prefix the MongoEngine field

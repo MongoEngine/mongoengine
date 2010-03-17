@@ -328,7 +328,7 @@ class DictField(BaseField):
                                   'contain "." or "$" characters')
 
     def lookup_member(self, member_name):
-        return BaseField(name=member_name)
+        return BaseField(db_field=member_name)
 
 
 class ReferenceField(BaseField):

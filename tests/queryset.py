@@ -62,7 +62,7 @@ class QuerySetTest(unittest.TestCase):
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
         self.assertTrue(isinstance(results[0].id, (pymongo.objectid.ObjectId,
-                                                    str, unicode)))
+                                                   str, unicode)))
         self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
         self.assertEqual(results[1].name, "User B")
@@ -346,7 +346,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Check polymorphism still works
         class Employee(self.Person):
-            salary = IntField(name='wage')
+            salary = IntField(db_field='wage')
 
         employee = Employee(name='test employee', age=40, salary=30000)
         employee.save()
@@ -517,11 +517,12 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that field substitutions occur properly in exec_js functions.
         """
         class Comment(EmbeddedDocument):
-            content = StringField(name='body')
+            content = StringField(db_field='body')
 
         class BlogPost(Document):
-            name = StringField(name='doc-name')
-            comments = ListField(EmbeddedDocumentField(Comment), name='cmnts')
+            name = StringField(db_field='doc-name')
+            comments = ListField(EmbeddedDocumentField(Comment), 
+                                 db_field='cmnts')
 
         BlogPost.drop_collection()
 
@@ -796,7 +797,7 @@ class QuerySetTest(unittest.TestCase):
         """
         class BlogPost(Document):
             hits = IntField()
-            tags = ListField(StringField(), name='blogTags')
+            tags = ListField(StringField(), db_field='blogTags')
 
         BlogPost.drop_collection()
 
@@ -881,12 +882,12 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that the correct field name is used when querying.
         """
         class Comment(EmbeddedDocument):
-            content = StringField(name='commentContent')
+            content = StringField(db_field='commentContent')
 
         class BlogPost(Document):
-            title = StringField(name='postTitle')
+            title = StringField(db_field='postTitle')
             comments = ListField(EmbeddedDocumentField(Comment),
-                                 name='postComments')
+                                 db_field='postComments')
 
 
         BlogPost.drop_collection()

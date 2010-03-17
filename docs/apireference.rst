@@ -21,7 +21,7 @@ Documents
 .. autoclass:: mongoengine.EmbeddedDocument
    :members:
    
-.. autoclass:: mongoengine.MapReduceDocument
+.. autoclass:: mongoengine.document.MapReduceDocument
   :members:
 
 Querying

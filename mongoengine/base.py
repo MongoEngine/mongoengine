@@ -21,9 +21,14 @@ class BaseField(object):
     # Fields may have _types inserted into indexes by default 
     _index_with_types = True
     
-    def __init__(self, name=None, required=False, default=None, unique=False,
-                 unique_with=None, primary_key=False):
-        self.name = name if not primary_key else '_id'
+    def __init__(self, db_field=None, name=None, required=False, default=None, 
+                 unique=False, unique_with=None, primary_key=False):
+        self.db_field = (db_field or name) if not primary_key else '_id'
+        if name:
+            import warnings
+            msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
+            warnings.warn(msg, DeprecationWarning)
+        self.name = None
         self.required = required or primary_key
         self.default = default
         self.unique = bool(unique or unique_with)
@@ -151,9 +156,10 @@ class DocumentMetaclass(type):
         # Add the document's fields to the _fields attribute
         for attr_name, attr_value in attrs.items():
             if hasattr(attr_value, "__class__") and \
-                issubclass(attr_value.__class__, BaseField):
-                if not attr_value.name:
-                    attr_value.name = attr_name
+               issubclass(attr_value.__class__, BaseField):
+                attr_value.name = attr_name
+                if not attr_value.db_field:
+                    attr_value.db_field = attr_name
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
 
@@ -234,7 +240,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                         parts = other_name.split('.')
                         # Lookup real name
                         parts = QuerySet._lookup_field(new_class, parts)
-                        name_parts = [part.name for part in parts]
+                        name_parts = [part.db_field for part in parts]
                         unique_with.append('.'.join(name_parts))
                         # Unique field should be required
                         parts[-1].required = True
@@ -258,7 +264,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         if not new_class._meta['id_field']:
             new_class._meta['id_field'] = 'id'
-            new_class.id = new_class._fields['id'] = ObjectIdField(name='_id')
+            new_class._fields['id'] = ObjectIdField(db_field='_id')
+            new_class.id = new_class._fields['id']
 
         _document_registry[name] = new_class
 
@@ -362,7 +369,7 @@ class BaseDocument(object):
         for field_name, field in self._fields.items():
             value = getattr(self, field_name, None)
             if value is not None:
-                data[field.name] = field.to_mongo(value)
+                data[field.db_field] = field.to_mongo(value)
         # Only add _cls and _types if allow_inheritance is not False
         if not (hasattr(self, '_meta') and
                 self._meta.get('allow_inheritance', True) == False):
@@ -398,8 +405,8 @@ class BaseDocument(object):
         present_fields = data.keys()
 
         for field_name, field in cls._fields.items():
-            if field.name in data:
-                data[field_name] = field.to_python(data[field.name])
+            if field.db_field in data:
+                data[field_name] = field.to_python(data[field.db_field])
 
         obj = cls(**data)
         obj._present_fields = present_fields
