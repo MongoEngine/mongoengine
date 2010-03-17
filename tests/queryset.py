@@ -548,17 +548,17 @@ class QuerySetTest(unittest.TestCase):
             return comments;
         }
         """
-        
+
         sub_code = BlogPost.objects._sub_js_fields(code)
-        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],', 
+        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],',
                        'doc["cmnts"][i]["body"]']
         for chunk in code_chunks:
             self.assertTrue(chunk in sub_code)
 
         results = BlogPost.objects.exec_js(code)
         expected_results = [
-            {u'comment': u'cool', u'document': u'post1'}, 
-            {u'comment': u'yay', u'document': u'post1'}, 
+            {u'comment': u'cool', u'document': u'post1'},
+            {u'comment': u'yay', u'document': u'post1'},
             {u'comment': u'nice stuff', u'document': u'post2'},
         ]
         self.assertEqual(results, expected_results)
@@ -669,10 +669,10 @@ class QuerySetTest(unittest.TestCase):
         results = BlogPost.objects.map_reduce(map_f, reduce_f)
         results = list(results)
         self.assertEqual(len(results), 4)
-        
+
         music = filter(lambda r: r.key == "music", results)[0]
         self.assertEqual(music.value, 2)
-        
+
         film = filter(lambda r: r.key == "film", results)[0]
         self.assertEqual(film.value, 3)
 
@@ -696,8 +696,8 @@ class QuerySetTest(unittest.TestCase):
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
-        # reflect order of insertion below.
-
+        # reflect order of insertion below, but is not influenced
+        # by insertion order.
         Link(title = "Google Buzz auto-followed a woman's abusive ex ...",
              up_votes = 1079,
              down_votes = 553,
@@ -768,10 +768,14 @@ class QuerySetTest(unittest.TestCase):
             }
         """
 
+        # provide the reddit epoch (used for ranking) as a variable available
+        # to all phases of the map/reduce operation: map, reduce, and finalize.
         reddit_epoch = mktime(datetime(2005, 12, 8, 7, 46, 43).timetuple())
         scope = {'reddit_epoch': reddit_epoch}
 
-        # ensure both artists are found
+        # run a map/reduce operation across all links. ordering is set
+        # to "-value", which orders the "weight" value returned from
+        # "finalize_f" in descending order.
         results = Link.objects.order_by("-value")
         results = results.map_reduce(map_f,
                                      reduce_f,
@@ -979,13 +983,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertFalse([('_types', 1)] in info.values())
 
         BlogPost.drop_collection()
-        
+
     def test_bulk(self):
         """Ensure bulk querying by object id returns a proper dict.
         """
         class BlogPost(Document):
             title = StringField()
-            
+
         BlogPost.drop_collection()
 
         post_1 = BlogPost(title="Post #1")
@@ -999,20 +1003,20 @@ class QuerySetTest(unittest.TestCase):
         post_3.save()
         post_4.save()
         post_5.save()
-        
+
         ids = [post_1.id, post_2.id, post_5.id]
         objects = BlogPost.objects.in_bulk(ids)
-        
+
         self.assertEqual(len(objects), 3)
 
         self.assertTrue(post_1.id in objects)
         self.assertTrue(post_2.id in objects)
         self.assertTrue(post_5.id in objects)
-        
+
         self.assertTrue(objects[post_1.id].title == post_1.title)
         self.assertTrue(objects[post_2.id].title == post_2.title)
-        self.assertTrue(objects[post_5.id].title == post_5.title)        
-        
+        self.assertTrue(objects[post_5.id].title == post_5.title)
+
         BlogPost.drop_collection()
 
     def tearDown(self):
