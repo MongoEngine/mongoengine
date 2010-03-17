@@ -678,6 +678,52 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(film.value, 3)
 
         BlogPost.drop_collection()
+        
+    def test_map_reduce_with_custom_object_ids(self):
+        """Ensure that QuerySet.map_reduce works properly with custom
+        primary keys.
+        """
+
+        class BlogPost(Document):
+            title = StringField(primary_key=True)
+            tags = ListField(StringField())
+        
+        post1 = BlogPost(title="Post #1", tags=["mongodb", "mongoengine"])
+        post2 = BlogPost(title="Post #2", tags=["django", "mongodb"])
+        post3 = BlogPost(title="Post #3", tags=["hitchcock films"])
+        
+        post1.save()
+        post2.save()
+        post3.save()
+        
+        self.assertEqual(BlogPost._fields['title'].name, '_id')
+        self.assertEqual(BlogPost._meta['id_field'], 'title')
+        
+        map_f = """
+            function() {
+                emit(this._id, 1);
+            }
+        """
+        
+        # reduce to a list of tag ids and counts
+        reduce_f = """
+            function(key, values) {
+                var total = 0;
+                for(var i=0; i<values.length; i++) {
+                    total += values[i];
+                }
+                return total;
+            }
+        """
+        
+        results = BlogPost.objects.map_reduce(map_f, reduce_f)
+        results = list(results)
+        
+        self.assertEqual(results[0].object, post1)
+        self.assertEqual(results[1].object, post2)
+        self.assertEqual(results[2].object, post3)
+
+        BlogPost.drop_collection()
 
     def test_map_reduce_finalize(self):
         """Ensure that map, reduce, and finalize run and introduce "scope"
