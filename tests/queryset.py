@@ -640,7 +640,7 @@ class QuerySetTest(unittest.TestCase):
         """
         class BlogPost(Document):
             title = StringField()
-            tags = ListField(StringField())
+            tags = ListField(StringField(), db_field='post-tag-list')
 
         BlogPost.drop_collection()
 
@@ -650,7 +650,7 @@ class QuerySetTest(unittest.TestCase):
 
         map_f = """
             function() {
-                this.tags.forEach(function(tag) {
+                this[~tags].forEach(function(tag) {
                     emit(tag, 1);
                 });
             }
@@ -686,10 +686,10 @@ class QuerySetTest(unittest.TestCase):
         from time import mktime
 
         class Link(Document):
-            title = StringField()
+            title = StringField(db_field='bpTitle')
             up_votes = IntField()
             down_votes = IntField()
-            submitted = DateTimeField()
+            submitted = DateTimeField(db_field='sTime')
 
         Link.drop_collection()
 
@@ -726,8 +726,8 @@ class QuerySetTest(unittest.TestCase):
 
         map_f = """
             function() {
-                emit(this._id, {up_delta: this.up_votes - this.down_votes,
-                                sub_date: this.submitted.getTime() / 1000})
+                emit(this[~id], {up_delta: this[~up_votes] - this[~down_votes],
+                                sub_date: this[~submitted].getTime() / 1000})
             }
         """
 
@@ -762,7 +762,8 @@ class QuerySetTest(unittest.TestCase):
 
         finalize_f = """
             function(key, value) {
-                // f(sec_since_epoch,y,z) = log10(z) + ((y*sec_since_epoch) / 45000)
+                // f(sec_since_epoch,y,z) = 
+                //                    log10(z) + ((y*sec_since_epoch) / 45000)
                 z_10 = Math.log(value.z) / Math.log(10);
                 weight = z_10 + ((value.y * value.t_s) / 45000);
                 return weight;

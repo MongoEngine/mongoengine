@@ -477,16 +477,28 @@ class QuerySet(object):
         if not hasattr(self._collection, "map_reduce"):
             raise NotImplementedError("Requires MongoDB >= 1.1.1")
 
-        if not isinstance(map_f, pymongo.code.Code):
-            map_f = pymongo.code.Code(map_f)
-        if not isinstance(reduce_f, pymongo.code.Code):
-            reduce_f = pymongo.code.Code(reduce_f)
+        map_f_scope = {}
+        if isinstance(map_f, pymongo.code.Code):
+            map_f_scope = map_f.scope
+            map_f = str(map_f)
+        map_f = pymongo.code.Code(self._sub_js_fields(map_f), map_f_scope)
+
+        reduce_f_scope = {}
+        if isinstance(reduce_f, pymongo.code.Code):
+            reduce_f_scope = reduce_f.scope
+            reduce_f = str(reduce_f)
+        reduce_f_code = self._sub_js_fields(reduce_f)
+        reduce_f = pymongo.code.Code(reduce_f_code, reduce_f_scope)
 
         mr_args = {'query': self._query, 'keeptemp': keep_temp}
 
         if finalize_f:
-            if not isinstance(finalize_f, pymongo.code.Code):
-                finalize_f = pymongo.code.Code(finalize_f)
+            finalize_f_scope = {}
+            if isinstance(finalize_f, pymongo.code.Code):
+                finalize_f_scope = finalize_f.scope
+                finalize_f = str(finalize_f)
+            finalize_f_code = self._sub_js_fields(finalize_f)
+            finalize_f = pymongo.code.Code(finalize_f_code, finalize_f_scope)
             mr_args['finalize'] = finalize_f
 
         if scope:
