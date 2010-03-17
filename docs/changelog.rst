@@ -2,6 +2,40 @@
 Changelog
 =========
 
+Changes in v0.3
+===============
+- Added MapReduce support
+- Added ``contains``, ``startswith`` and ``endswith`` query operators (and
+  case-insensitive versions that are prefixed with 'i') 
+- Deprecated fields' ``name`` parameter, replaced with ``db_field``
+- Added ``QuerySet.only`` for only retrieving specific fields
+- Added ``QuerySet.in_bulk()`` for bulk querying using ids
+- ``QuerySet``\ s now have a ``rewind()`` method, which is called automatically
+  when the iterator is exhausted, allowing ``QuerySet``\ s to be reused
+- Added ``DictField``
+- Added ``URLField``
+- Added ``DecimalField``
+- Added ``BinaryField``
+- Added ``GenericReferenceField``
+- Added ``get()`` and ``get_or_create()`` methods to ``QuerySet``
+- ``ReferenceField``\ s may now reference the document they are defined on
+  (recursive references) and documents that have not yet been defined
+- ``Document`` objects may now be compared for equality (equal if _ids are
+  equal and documents are of same type)
+- ``QuerySet`` update methods now have an ``upsert`` parameter
+- Added field name substitution for Javascript code (allows the user to use the
+  Python names for fields in JS, which are later substituted for the real field
+  names)
+- ``Q`` objects now support regex querying
+- Fixed bug where referenced documents within lists weren't properly
+  dereferenced
+- ``ReferenceField``\ s may now be queried using their _id
+- Fixed bug where ``EmbeddedDocuments`` couldn't be non-polymorphic
+- ``queryset_manager`` functions now accept two arguments -- the document class
+  as the first and the queryset as the second
+- Fixed bug where ``QuerySet.exec_js`` ignored ``Q`` objects
+- Other minor fixes
+
 Changes in v0.2.2
 =================
 - Fixed bug that prevented indexes from being used on ``ListField``\ s

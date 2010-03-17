@@ -696,7 +696,7 @@ class QuerySetTest(unittest.TestCase):
         post2.save()
         post3.save()
         
-        self.assertEqual(BlogPost._fields['title'].name, '_id')
+        self.assertEqual(BlogPost._fields['title'].db_field, '_id')
         self.assertEqual(BlogPost._meta['id_field'], 'title')
         
         map_f = """

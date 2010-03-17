@@ -343,6 +343,8 @@ class QuerySet(object):
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         :class:`~mongoengine.queryset.DoesNotExist` exceptions if multiple or
         no results are found.
+
+        .. versionadded:: 0.3
         """
         self.__call__(*q_objs, **query)
         count = self.count()
@@ -360,6 +362,8 @@ class QuerySet(object):
         results are found. A new document will be created if the document
         doesn't exists; a dictionary of default values for the new document
         may be provided as a keyword argument called :attr:`defaults`.
+
+        .. versionadded:: 0.3
         """
         defaults = query.get('defaults', {})
         if 'defaults' in query:
@@ -406,6 +410,8 @@ class QuerySet(object):
         :param object_ids: a list or tuple of ``ObjectId``\ s
         :rtype: dict of ObjectIds as keys and collection-specific
                 Document subclasses as values.
+
+        .. versionadded:: 0.3
         """
         doc_map = {}
 
@@ -428,6 +434,8 @@ class QuerySet(object):
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
+
+        .. versionadded:: 0.3
         """
         self._cursor.rewind()
 
@@ -470,7 +478,6 @@ class QuerySet(object):
            PyMongo version **>= 1.2**.
 
         .. versionadded:: 0.3
-
         """
         from document import MapReduceDocument
 
@@ -572,6 +579,8 @@ class QuerySet(object):
             post = BlogPost.objects(...).only("title")
         
         :param fields: fields to include
+
+        .. versionadded:: 0.3
         """
         self._loaded_fields = []
         for field in fields:

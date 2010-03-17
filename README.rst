@@ -15,7 +15,7 @@ a `tutorial <http://hmarr.com/mongoengine/tutorial.html>`_, a `user guide
 Installation
 ============
 If you have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
-you can use ``easy_install mongoengine``. Otherwise, you can download the
+you can use ``easy_install -U mongoengine``. Otherwise, you can download the
 source from `GitHub <http://github.com/hmarr/mongoengine>`_ and run ``python
 setup.py install``.
 
@@ -81,6 +81,14 @@ Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
 the standard port, and run ``python setup.py test``.
+
+Community
+=========
+- `MongoEngine Users mailing list 
+  <http://groups.google.com/group/mongoengine-users>`_
+- `MongoEngine Developers mailing list 
+  <http://groups.google.com/group/mongoengine-dev>`_
+- `#mongoengine IRC channel <irc://irc.freenode.net/mongoengine>`_
 
 Contributing
 ============

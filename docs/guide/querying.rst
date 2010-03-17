@@ -85,6 +85,8 @@ expressions:
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
 
+.. versionadded:: 0.3
+
 Limiting and skipping results
 =============================
 Just as with traditional ORMs, you may limit the number of results returned, or
