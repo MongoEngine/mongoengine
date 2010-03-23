@@ -1070,11 +1070,12 @@ class QuerySetTest(unittest.TestCase):
     def tearDown(self):
         self.Person.drop_collection()
 
-    def test_near(self):
-        """Ensure that "near" queries work with and without radii.
+    def test_geospatial_operators(self):
+        """Ensure that geospatial queries are working.
         """
         class Event(Document):
             title = StringField()
+            date = DateTimeField()
             location = GeoPointField()
             
             def __unicode__(self):
@@ -1085,10 +1086,13 @@ class QuerySetTest(unittest.TestCase):
         Event.drop_collection()
         
         event1 = Event(title="Coltrane Motion @ Double Door",
+                       date=datetime.now() - timedelta(days=1),
                        location=[41.909889, -87.677137])
         event2 = Event(title="Coltrane Motion @ Bottom of the Hill",
+                       date=datetime.now() - timedelta(days=10),
                        location=[37.7749295, -122.4194155])
         event3 = Event(title="Coltrane Motion @ Empty Bottle",
+                       date=datetime.now(),
                        location=[41.900474, -87.686638])
                        
         event1.save()
@@ -1111,6 +1115,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(event1 in events)
         self.assertTrue(event3 in events)
         
+        # ensure ordering is respected by "near"
+        events = Event.objects(location__near=[41.9120459, -87.67892])
+        events = events.order_by("-date")
+        self.assertEqual(events.count(), 3)
+        self.assertEqual(list(events), [event3, event1, event2])
+        
         # find events around san francisco
         point_and_distance = [[37.7566023, -122.415579], 10]
         events = Event.objects(location__within_distance=point_and_distance)
@@ -1121,6 +1131,13 @@ class QuerySetTest(unittest.TestCase):
         point_and_distance = [[40.7237134, -73.9509714], 1]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 0)
+        
+        # ensure ordering is respected by "within_distance"
+        point_and_distance = [[41.9120459, -87.67892], 10]
+        events = Event.objects(location__within_distance=point_and_distance)
+        events = events.order_by("-date")
+        self.assertEqual(events.count(), 2)
+        self.assertEqual(events[0], event3)
         
         Event.drop_collection()
 
