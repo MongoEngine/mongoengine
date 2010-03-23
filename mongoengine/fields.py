@@ -12,7 +12,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField',
-           'BinaryField']
+           'BinaryField', 'GeoPointField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -443,6 +443,7 @@ class GenericReferenceField(BaseField):
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)['_ref']
 
+
 class BinaryField(BaseField):
     """A binary data field.
     """
@@ -462,3 +463,17 @@ class BinaryField(BaseField):
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
+
+
+class GeoPointField(BaseField):
+    """A list storing a latitude and longitude.
+    """
+
+    def validate(self, value):
+        assert isinstance(value, (list, tuple))
+        
+        if not len(value) == 2:
+            raise ValidationError('Value must be a two-dimensional point.')
+        if not isinstance(value[0], (float, int)) and \
+           not isinstance(value[1], (float, int)):
+            raise ValidationError('Both values in point must be float or int.')

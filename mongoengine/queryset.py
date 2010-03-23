@@ -232,12 +232,17 @@ class QuerySet(object):
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
-                    #self.ensure_index(key_or_list)
                     self._collection.ensure_index(key_or_list)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
                 self._collection.ensure_index(index, unique=True)
+                
+            if self._document._meta['geo_indexes'] and \
+               pymongo.version >= "1.5.1":
+                from pymongo import GEO2D
+                for index in self._document._meta['geo_indexes']:
+                    self._collection.ensure_index([(index, GEO2D)])
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
@@ -298,6 +303,7 @@ class QuerySet(object):
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists']
+        geo_operators = ['within_distance', 'within_box', 'near']
         match_operators = ['contains', 'icontains', 'startswith', 
                            'istartswith', 'endswith', 'iendswith']
 
@@ -306,7 +312,7 @@ class QuerySet(object):
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
-            if parts[-1] in operators + match_operators:
+            if parts[-1] in operators + match_operators + geo_operators:
                 op = parts.pop()
 
             if _doc_cls:
@@ -320,15 +326,25 @@ class QuerySet(object):
                 singular_ops += match_operators
                 if op in singular_ops:
                     value = field.prepare_query_value(op, value)
-                elif op in ('in', 'nin', 'all'):
+                elif op in ('in', 'nin', 'all', 'near'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
 
                 if field.__class__.__name__ == 'GenericReferenceField':
                     parts.append('_ref')
 
-            if op and op not in match_operators:
-                value = {'$' + op: value}
+            # if op and op not in match_operators:
+            if op:
+                if op in geo_operators:
+                    if op == "within_distance":
+                        value = {'$within': {'$center': value}}
+                    elif op == "near":
+                        value = {'$near': value}
+                    else:
+                        raise NotImplmenetedError, \
+                              "Geo method has been implemented"
+                elif op not in match_operators:
+                    value = {'$' + op: value}
 
             key = '.'.join(parts)
             if op is None or key not in mongo_query:

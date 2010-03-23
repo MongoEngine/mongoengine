@@ -206,6 +206,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'max_size': None,
             'ordering': [], # default ordering applied at runtime
             'indexes': [], # indexes to be ensured at runtime
+            'geo_indexes': [],
             'id_field': id_field,
         }
 
