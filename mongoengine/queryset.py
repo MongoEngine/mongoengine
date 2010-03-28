@@ -352,9 +352,10 @@ class QuerySet(object):
             return self[0]
         elif count > 1:
             message = u'%d items returned, instead of 1' % count
-            raise MultipleObjectsReturned(message)
+            raise self._document.MultipleObjectsReturned(message)
         else:
-            raise DoesNotExist('Document not found')
+            raise self._document.DoesNotExist("%s matching query does not exist."
+                                              % self._document._class_name)
 
     def get_or_create(self, *q_objs, **query):
         """Retreive unique object or create, if it doesn't exist. Raises
@@ -380,7 +381,7 @@ class QuerySet(object):
             return self.first()
         else:
             message = u'%d items returned, instead of 1' % count
-            raise MultipleObjectsReturned(message)
+            raise self._document.MultipleObjectsReturned(message)
 
     def first(self):
         """Retrieve the first object matching the query.

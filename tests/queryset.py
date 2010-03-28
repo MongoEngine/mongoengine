@@ -147,6 +147,7 @@ class QuerySetTest(unittest.TestCase):
         """
         # Try retrieving when no objects exists
         self.assertRaises(DoesNotExist, self.Person.objects.get)
+        self.assertRaises(self.Person.DoesNotExist, self.Person.objects.get)
 
         person1 = self.Person(name="User A", age=20)
         person1.save()
@@ -155,6 +156,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         self.assertRaises(MultipleObjectsReturned, self.Person.objects.get)
+        self.assertRaises(self.Person.MultipleObjectsReturned, self.Person.objects.get)
 
         # Use a query to filter the people found to just person2
         person = self.Person.objects.get(age=30)
@@ -162,6 +164,9 @@ class QuerySetTest(unittest.TestCase):
 
         person = self.Person.objects.get(age__lt=30)
         self.assertEqual(person.name, "User A")
+        
+        
+        
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
@@ -174,6 +179,8 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         self.assertRaises(MultipleObjectsReturned,
+                          self.Person.objects.get_or_create)
+        self.assertRaises(self.Person.MultipleObjectsReturned,
                           self.Person.objects.get_or_create)
 
         # Use a query to filter the people found to just person2

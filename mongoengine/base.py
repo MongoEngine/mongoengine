@@ -1,6 +1,8 @@
-from queryset import QuerySet, QuerySetManager
-
+import sys
 import pymongo
+
+from queryset import QuerySet, QuerySetManager
+from queryset import DoesNotExist, MultipleObjectsReturned
 
 
 _document_registry = {}
@@ -167,7 +169,22 @@ class DocumentMetaclass(type):
         for field in new_class._fields.values():
             field.owner_document = new_class
 
+        module = attrs.pop('__module__')
+        
+        new_class.add_to_class('DoesNotExist', subclass_exception('DoesNotExist',
+                            tuple(x.DoesNotExist
+                                  for k,x in superclasses.items())
+                            or (DoesNotExist,), module))
+        
+        new_class.add_to_class('MultipleObjectsReturned', subclass_exception('MultipleObjectsReturned',
+                            tuple(x.MultipleObjectsReturned
+                                  for k,x in superclasses.items())
+                            or (MultipleObjectsReturned,), module))
         return new_class
+    
+        
+    def add_to_class(self, name, value):
+        setattr(self, name, value)
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
@@ -417,3 +434,11 @@ class BaseDocument(object):
             if self.id == other.id:
                 return True
         return False
+
+if sys.version_info < (2, 5):
+    # Prior to Python 2.5, Exception was an old-style class
+    def subclass_exception(name, parents, unused):
+        return types.ClassType(name, parents, {})
+else:
+    def subclass_exception(name, parents, module):
+        return type(name, parents, {'__module__': module})
