@@ -1,8 +1,8 @@
-import sys
-import pymongo
-
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
+
+import sys
+import pymongo
 
 
 _document_registry = {}
