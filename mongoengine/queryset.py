@@ -4,7 +4,6 @@ import pymongo
 import re
 import copy
 
-
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError']
 
@@ -228,7 +227,7 @@ class QuerySet(object):
         """
         if not self._accessed_collection:
             self._accessed_collection = True
-
+            
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
@@ -242,6 +241,11 @@ class QuerySet(object):
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
                 self._collection.ensure_index('_types')
+            
+            # Ensure all needed field indexes are created
+            for field_name, field_instance in self._document._fields.iteritems():
+                if field_instance.__class__.__name__ == 'GeoLocationField':
+                    self._collection.ensure_index([(field_name, pymongo.GEO2D),])
         return self._collection_obj
 
     @property
@@ -297,7 +301,7 @@ class QuerySet(object):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                     'all', 'size', 'exists']
+                     'all', 'size', 'exists', 'near']
         match_operators = ['contains', 'icontains', 'startswith', 
                            'istartswith', 'endswith', 'iendswith']
 
@@ -308,7 +312,7 @@ class QuerySet(object):
             op = None
             if parts[-1] in operators + match_operators:
                 op = parts.pop()
-
+            
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)

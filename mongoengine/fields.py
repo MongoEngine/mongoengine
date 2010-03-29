@@ -12,7 +12,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField',
-           'BinaryField', 'EmailField']
+           'BinaryField', 'EmailField', 'GeoLocationField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -342,6 +342,23 @@ class DictField(BaseField):
     def lookup_member(self, member_name):
         return BaseField(db_field=member_name)
 
+class GeoLocationField(DictField):
+    """Supports geobased fields"""
+    
+    def validate(self, value):
+        """Make sure that a geo-value is of type (x, y)
+        """
+        if not isinstance(value, tuple) and not isinstance(value, list):
+            raise ValidationError('GeoLocationField can only hold tuples or lists of (x, y)')
+        
+        if len(value) <> 2:
+            raise ValidationError('GeoLocationField must have exactly two elements (x, y)')
+    
+    def to_mongo(self, value):
+        return {'x': value[0], 'y': value[1]}
+    
+    def to_python(self, value):
+        return value.keys()
 
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
