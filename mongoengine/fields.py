@@ -12,7 +12,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField',
-           'BinaryField']
+           'BinaryField', 'EmailField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -62,7 +62,7 @@ class StringField(BaseField):
 
 
 class URLField(StringField):
-    """A field that validates input as a URL.
+    """A field that validates input as an URL.
 
     .. versionadded:: 0.3
     """
@@ -93,6 +93,19 @@ class URLField(StringField):
                 message = 'This URL appears to be a broken link: %s' % e
                 raise ValidationError(message)
 
+class EmailField(StringField):
+    """A field that validates input as an E-Mail-Address.
+    """
+
+    EMAIL_REGEX = re.compile(
+        r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
+        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"' # quoted-string
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE # domain
+    )
+    
+    def validate(self, value):
+        if not EmailField.EMAIL_REGEX.match(value):
+            raise ValidationError('Invalid Mail-address: %s' % value)
 
 class IntField(BaseField):
     """An integer field.
