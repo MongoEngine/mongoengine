@@ -15,7 +15,6 @@ REPR_OUTPUT_SIZE = 20
 class DoesNotExist(Exception):
     pass
 
-
 class MultipleObjectsReturned(Exception):
     pass
 
@@ -27,6 +26,8 @@ class InvalidQueryError(Exception):
 class OperationError(Exception):
     pass
 
+class InvalidCollectionError(Exception):
+    pass
 
 RE_TYPE = type(re.compile(''))
 
@@ -341,8 +342,9 @@ class QuerySet(object):
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
-        :class:`~mongoengine.queryset.DoesNotExist` exceptions if multiple or
-        no results are found.
+        `DocumentName.MultipleObjectsReturned` exception if multiple results and
+        :class:`~mongoengine.queryset.DoesNotExist` or `DocumentName.DoesNotExist`
+        if no results are found.
 
         .. versionadded:: 0.3
         """
@@ -359,10 +361,11 @@ class QuerySet(object):
 
     def get_or_create(self, *q_objs, **query):
         """Retreive unique object or create, if it doesn't exist. Raises
-        :class:`~mongoengine.queryset.MultipleObjectsReturned` if multiple
-        results are found. A new document will be created if the document
-        doesn't exists; a dictionary of default values for the new document
-        may be provided as a keyword argument called :attr:`defaults`.
+        :class:`~mongoengine.queryset.MultipleObjectsReturned` or
+        `DocumentName.MultipleObjectsReturned` if multiple results are found.
+        A new document will be created if the document doesn't exists; a
+        dictionary of default values for the new document may be provided as a
+        keyword argument called :attr:`defaults`.
 
         .. versionadded:: 0.3
         """
@@ -868,10 +871,6 @@ class QuerySet(object):
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)
-
-
-class InvalidCollectionError(Exception):
-    pass
 
 
 class QuerySetManager(object):
