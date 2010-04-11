@@ -184,15 +184,18 @@ class QuerySetTest(unittest.TestCase):
                           self.Person.objects.get_or_create)
 
         # Use a query to filter the people found to just person2
-        person = self.Person.objects.get_or_create(age=30)
+        person, created = self.Person.objects.get_or_create(age=30)
         self.assertEqual(person.name, "User B")
-
-        person = self.Person.objects.get_or_create(age__lt=30)
+        self.assertEqual(created, False)
+        
+        person, created = self.Person.objects.get_or_create(age__lt=30)
         self.assertEqual(person.name, "User A")
-
+        self.assertEqual(created, False)
+        
         # Try retrieving when no objects exists - new doc should be created
-        self.Person.objects.get_or_create(age=50, defaults={'name': 'User C'})
-
+        person, created = self.Person.objects.get_or_create(age=50, defaults={'name': 'User C'})
+        self.assertEqual(created, True)
+        
         person = self.Person.objects.get(age=50)
         self.assertEqual(person.name, "User C")
 

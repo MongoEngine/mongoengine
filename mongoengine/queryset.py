@@ -360,7 +360,9 @@ class QuerySet(object):
                                               % self._document._class_name)
 
     def get_or_create(self, *q_objs, **query):
-        """Retreive unique object or create, if it doesn't exist. Raises
+        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of 
+        ``(object, created)``, where ``object`` is the retrieved or created object 
+        and ``created`` is a boolean specifying whether a new object was created. Raises
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` if multiple results are found.
         A new document will be created if the document doesn't exists; a
@@ -379,9 +381,9 @@ class QuerySet(object):
             query.update(defaults)
             doc = self._document(**query)
             doc.save()
-            return doc
+            return doc, True
         elif count == 1:
-            return self.first()
+            return self.first(), False
         else:
             message = u'%d items returned, instead of 1' % count
             raise self._document.MultipleObjectsReturned(message)
