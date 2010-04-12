@@ -136,18 +136,24 @@ class FieldTest(unittest.TestCase):
             height = DecimalField(min_value=Decimal('0.1'), 
                                   max_value=Decimal('3.5'))
 
+        Person.drop_collection()
+
         person = Person()
         person.height = Decimal('1.89')
-        person.validate()
+        person.save()
+        person.reload()
+        self.assertEqual(person.height, Decimal('1.89'))
 
         person.height = '2.0'
-        person.validate()
+        person.save()
         person.height = 0.01
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('0.01')
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('4.0')
         self.assertRaises(ValidationError, person.validate)
+
+        Person.drop_collection()
 
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.

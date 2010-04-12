@@ -155,6 +155,9 @@ class DecimalField(BaseField):
         if not isinstance(value, basestring):
             value = unicode(value)
         return decimal.Decimal(value)
+    
+    def to_mongo(self, value):
+        return unicode(value)
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
