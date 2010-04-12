@@ -1,6 +1,7 @@
 from base import BaseField, ObjectIdField, ValidationError, get_document
 from document import Document, EmbeddedDocument
 from connection import _get_db
+from operator import itemgetter
 
 import re
 import pymongo
@@ -12,7 +13,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField',
-           'BinaryField']
+           'BinaryField', 'SortedListField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -310,6 +311,23 @@ class ListField(BaseField):
     def lookup_member(self, member_name):
         return self.field.lookup_member(member_name)
 
+class SortedListField(ListField):
+    """A ListField that sorts the contents of its list before writing to
+    the database in order to ensure that a sorted list is always
+    retrieved.
+    """
+
+    _ordering = None
+
+    def __init__(self, field, **kwargs):
+        if 'ordering' in kwargs.keys():
+            self._ordering = kwargs.pop('ordering')
+        super(SortedListField, self).__init__(field, **kwargs)
+
+    def to_mongo(self, value):
+        if self._ordering is not None:
+            return sorted([self.field.to_mongo(item) for item in value], key=itemgetter(self._ordering))
+        return sorted([self.field.to_mongo(item) for item in value])
 
 class DictField(BaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
