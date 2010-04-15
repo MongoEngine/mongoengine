@@ -147,6 +147,7 @@ class QuerySetTest(unittest.TestCase):
         """
         # Try retrieving when no objects exists
         self.assertRaises(DoesNotExist, self.Person.objects.get)
+        self.assertRaises(self.Person.DoesNotExist, self.Person.objects.get)
 
         person1 = self.Person(name="User A", age=20)
         person1.save()
@@ -155,6 +156,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         self.assertRaises(MultipleObjectsReturned, self.Person.objects.get)
+        self.assertRaises(self.Person.MultipleObjectsReturned, self.Person.objects.get)
 
         # Use a query to filter the people found to just person2
         person = self.Person.objects.get(age=30)
@@ -162,6 +164,9 @@ class QuerySetTest(unittest.TestCase):
 
         person = self.Person.objects.get(age__lt=30)
         self.assertEqual(person.name, "User A")
+        
+        
+        
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
@@ -175,17 +180,22 @@ class QuerySetTest(unittest.TestCase):
         # Retrieve the first person from the database
         self.assertRaises(MultipleObjectsReturned,
                           self.Person.objects.get_or_create)
+        self.assertRaises(self.Person.MultipleObjectsReturned,
+                          self.Person.objects.get_or_create)
 
         # Use a query to filter the people found to just person2
-        person = self.Person.objects.get_or_create(age=30)
+        person, created = self.Person.objects.get_or_create(age=30)
         self.assertEqual(person.name, "User B")
-
-        person = self.Person.objects.get_or_create(age__lt=30)
+        self.assertEqual(created, False)
+        
+        person, created = self.Person.objects.get_or_create(age__lt=30)
         self.assertEqual(person.name, "User A")
-
+        self.assertEqual(created, False)
+        
         # Try retrieving when no objects exists - new doc should be created
-        self.Person.objects.get_or_create(age=50, defaults={'name': 'User C'})
-
+        person, created = self.Person.objects.get_or_create(age=50, defaults={'name': 'User C'})
+        self.assertEqual(created, True)
+        
         person = self.Person.objects.get(age=50)
         self.assertEqual(person.name, "User C")
 
@@ -615,6 +625,27 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue('db' in post.tags and 'nosql' in post.tags)
 
         BlogPost.drop_collection()
+
+    def test_update_pull(self):
+        """Ensure that the 'pull' update operation works correctly.
+        """
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class BlogPost(Document):
+            slug = StringField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        comment1 = Comment(content="test1")
+        comment2 = Comment(content="test2")
+
+        post = BlogPost(slug="test", comments=[comment1, comment2])
+        post.save()
+        self.assertTrue(comment2 in post.comments)
+
+        BlogPost.objects(slug="test").update(pull__comments__content="test2")
+        post.reload()
+        self.assertTrue(comment2 not in post.comments)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.

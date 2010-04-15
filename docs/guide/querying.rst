@@ -135,8 +135,8 @@ additional keyword argument, :attr:`defaults` may be provided, which will be
 used as default values for the new document, in the case that it should need
 to be created::
 
-    >>> a = User.objects.get_or_create(name='User A', defaults={'age': 30})
-    >>> b = User.objects.get_or_create(name='User A', defaults={'age': 40})
+    >>> a, created = User.objects.get_or_create(name='User A', defaults={'age': 30})
+    >>> b, created = User.objects.get_or_create(name='User A', defaults={'age': 40})
     >>> a.name == b.name and a.age == b.age
     True
 
@@ -172,7 +172,7 @@ custom manager methods as you like::
 
         @queryset_manager
         def live_posts(doc_cls, queryset):
-            return queryset.order_by('-date')
+            return queryset.filter(published=True)
 
     BlogPost(title='test1', published=False).save()
     BlogPost(title='test2', published=True).save()

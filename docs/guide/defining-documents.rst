@@ -178,7 +178,7 @@ either a single field name, or a list or tuple of field names::
     class User(Document):
         username = StringField(unique=True)
         first_name = StringField()
-        last_name = StringField(unique_with='last_name')
+        last_name = StringField(unique_with='first_name')
 
 Document collections
 ====================

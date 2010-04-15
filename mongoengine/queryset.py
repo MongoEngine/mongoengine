@@ -14,7 +14,6 @@ REPR_OUTPUT_SIZE = 20
 class DoesNotExist(Exception):
     pass
 
-
 class MultipleObjectsReturned(Exception):
     pass
 
@@ -26,6 +25,8 @@ class InvalidQueryError(Exception):
 class OperationError(Exception):
     pass
 
+class InvalidCollectionError(Exception):
+    pass
 
 RE_TYPE = type(re.compile(''))
 
@@ -345,8 +346,9 @@ class QuerySet(object):
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
-        :class:`~mongoengine.queryset.DoesNotExist` exceptions if multiple or
-        no results are found.
+        `DocumentName.MultipleObjectsReturned` exception if multiple results and
+        :class:`~mongoengine.queryset.DoesNotExist` or `DocumentName.DoesNotExist`
+        if no results are found.
 
         .. versionadded:: 0.3
         """
@@ -356,16 +358,20 @@ class QuerySet(object):
             return self[0]
         elif count > 1:
             message = u'%d items returned, instead of 1' % count
-            raise MultipleObjectsReturned(message)
+            raise self._document.MultipleObjectsReturned(message)
         else:
-            raise DoesNotExist('Document not found')
+            raise self._document.DoesNotExist("%s matching query does not exist."
+                                              % self._document._class_name)
 
     def get_or_create(self, *q_objs, **query):
-        """Retreive unique object or create, if it doesn't exist. Raises
-        :class:`~mongoengine.queryset.MultipleObjectsReturned` if multiple
-        results are found. A new document will be created if the document
-        doesn't exists; a dictionary of default values for the new document
-        may be provided as a keyword argument called :attr:`defaults`.
+        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of 
+        ``(object, created)``, where ``object`` is the retrieved or created object 
+        and ``created`` is a boolean specifying whether a new object was created. Raises
+        :class:`~mongoengine.queryset.MultipleObjectsReturned` or
+        `DocumentName.MultipleObjectsReturned` if multiple results are found.
+        A new document will be created if the document doesn't exists; a
+        dictionary of default values for the new document may be provided as a
+        keyword argument called :attr:`defaults`.
 
         .. versionadded:: 0.3
         """
@@ -379,12 +385,12 @@ class QuerySet(object):
             query.update(defaults)
             doc = self._document(**query)
             doc.save()
-            return doc
+            return doc, True
         elif count == 1:
-            return self.first()
+            return self.first(), False
         else:
             message = u'%d items returned, instead of 1' % count
-            raise MultipleObjectsReturned(message)
+            raise self._document.MultipleObjectsReturned(message)
 
     def first(self):
         """Retrieve the first object matching the query.
@@ -871,10 +877,6 @@ class QuerySet(object):
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)
-
-
-class InvalidCollectionError(Exception):
-    pass
 
 
 class QuerySetManager(object):

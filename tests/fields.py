@@ -136,18 +136,24 @@ class FieldTest(unittest.TestCase):
             height = DecimalField(min_value=Decimal('0.1'), 
                                   max_value=Decimal('3.5'))
 
+        Person.drop_collection()
+
         person = Person()
         person.height = Decimal('1.89')
-        person.validate()
+        person.save()
+        person.reload()
+        self.assertEqual(person.height, Decimal('1.89'))
 
         person.height = '2.0'
-        person.validate()
+        person.save()
         person.height = 0.01
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('0.01')
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('4.0')
         self.assertRaises(ValidationError, person.validate)
+
+        Person.drop_collection()
 
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.
@@ -211,6 +217,37 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, post.validate)
         post.comments = 'yay'
         self.assertRaises(ValidationError, post.validate)
+
+    def test_sorted_list_sorting(self):
+        """Ensure that a sorted list field properly sorts values.
+        """
+        class Comment(EmbeddedDocument):
+            order = IntField()
+            content = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            comments = SortedListField(EmbeddedDocumentField(Comment), ordering='order')
+            tags = SortedListField(StringField())
+
+        post = BlogPost(content='Went for a walk today...')
+        post.save()
+
+        post.tags = ['leisure', 'fun']
+        post.save()
+        post.reload()
+        self.assertEqual(post.tags, ['fun', 'leisure'])
+        
+        comment1 = Comment(content='Good for you', order=1)
+        comment2 = Comment(content='Yay.', order=0)
+        comments = [comment1, comment2]
+        post.comments = comments
+        post.save()
+        post.reload()
+        self.assertEqual(post.comments[0].content, comment2.content)
+        self.assertEqual(post.comments[1].content, comment1.content)
+
+        BlogPost.drop_collection()
 
     def test_dict_validation(self):
         """Ensure that dict types work as expected.
