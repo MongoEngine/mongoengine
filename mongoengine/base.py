@@ -24,7 +24,8 @@ class BaseField(object):
     _index_with_types = True
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
-                 unique=False, unique_with=None, primary_key=False):
+                 unique=False, unique_with=None, primary_key=False,
+                 choices=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -36,6 +37,7 @@ class BaseField(object):
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
         self.primary_key = primary_key
+        self.choices = choices
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -78,6 +80,12 @@ class BaseField(object):
         """Perform validation on a value.
         """
         pass
+
+    def _validate(self, value):
+        if self.choices is not None:
+            if value not in self.choices:
+                raise ValidationError("Value must be one of %s."%unicode(self.choices))
+        self.validate(value)
 
 
 class ObjectIdField(BaseField):
@@ -314,7 +322,7 @@ class BaseDocument(object):
         for field, value in fields:
             if value is not None:
                 try:
-                    field.validate(value)
+                    field._validate(value)
                 except (ValueError, AttributeError, AssertionError), e:
                     raise ValidationError('Invalid value for field of type "' +
                                           field.__class__.__name__ + '"')

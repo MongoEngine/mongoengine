@@ -588,5 +588,26 @@ class FieldTest(unittest.TestCase):
         AttachmentRequired.drop_collection()
         AttachmentSizeLimit.drop_collection()
 
+    def test_choices_validation(self):
+        """Ensure that value is in a container of allowed values.
+        """
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=('S','M','L','XL','XXL'))
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+        shirt.validate()
+
+        shirt.size = "S"
+        shirt.validate()
+
+        shirt.size = "XS"
+        self.assertRaises(ValidationError, shirt.validate)
+
+        Shirt.drop_collection()
+
+
+
 if __name__ == '__main__':
     unittest.main()
