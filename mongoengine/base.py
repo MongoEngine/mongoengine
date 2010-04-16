@@ -24,7 +24,7 @@ class BaseField(object):
     _index_with_types = True
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
-                 unique=False, unique_with=None, primary_key=False):
+                 unique=False, unique_with=None, primary_key=False, validation=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -36,6 +36,7 @@ class BaseField(object):
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
         self.primary_key = primary_key
+        self.validation = validation
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -77,8 +78,8 @@ class BaseField(object):
     def validate(self, value):
         """Perform validation on a value.
         """
-        pass
-
+        if self.validation is not None and not self.validation(value):
+            raise ValidationError('Value does not match custom validation method.')
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
@@ -91,10 +92,10 @@ class ObjectIdField(BaseField):
     def to_mongo(self, value):
         if not isinstance(value, pymongo.objectid.ObjectId):
             try:
-                return pymongo.objectid.ObjectId(str(value))
+                return pymongo.objectid.ObjectId(unicode(value))
             except Exception, e:
                 #e.message attribute has been deprecated since Python 2.6
-                raise ValidationError(str(e))
+                raise ValidationError(unicode(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -102,7 +103,7 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            pymongo.objectid.ObjectId(str(value))
+            pymongo.objectid.ObjectId(unicode(value))
         except:
             raise ValidationError('Invalid Object ID')
 
@@ -402,7 +403,7 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get(u'_cls', cls._class_name)
 
-        data = dict((str(key), value) for key, value in son.items())
+        data = dict((unicode(key), value) for key, value in son.items())
 
         if '_types' in data:
             del data['_types']
