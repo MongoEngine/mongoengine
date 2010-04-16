@@ -78,8 +78,11 @@ class BaseField(object):
     def validate(self, value):
         """Perform validation on a value.
         """
-        if self.validation is not None and not self.validation(value):
-            raise ValidationError('Value does not match custom validation method.')
+        if self.validation is not None:
+            if isinstance(self.validation, list):
+                raise ValidationError('Value not in validation list.')
+            elif callable(self.validation) and not self.validation(value):
+                raise ValidationError('Value does not match custom validation method.')
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
