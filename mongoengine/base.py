@@ -79,7 +79,7 @@ class BaseField(object):
         """Perform validation on a value.
         """
         if self.validation is not None:
-            if isinstance(self.validation, list):
+            if isinstance(self.validation, list) and value not in self.validation:
                 raise ValidationError('Value not in validation list.')
             elif callable(self.validation) and not self.validation(value):
                 raise ValidationError('Value does not match custom validation method.')
