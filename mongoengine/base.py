@@ -24,7 +24,8 @@ class BaseField(object):
     _index_with_types = True
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
-                 unique=False, unique_with=None, primary_key=False, validation=None):
+                 unique=False, unique_with=None, primary_key=False, validation=None,
+                 create_default=False):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -37,6 +38,7 @@ class BaseField(object):
         self.unique_with = unique_with
         self.primary_key = primary_key
         self.validation = validation
+        self.create_default = create_default
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -53,6 +55,10 @@ class BaseField(object):
             # Allow callable default values
             if callable(value):
                 value = value()
+            
+            # Check whether we should auto-create a default document
+            if self.create_default and hasattr(self, 'document'):
+                value = self.document()
         return value
 
     def __set__(self, instance, value):
