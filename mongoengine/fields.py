@@ -43,8 +43,6 @@ class StringField(BaseField):
         if self.regex is not None and self.regex.match(value) is None:
             message = 'String value did not match validation regex'
             raise ValidationError(message)
-        
-        super(StringField, self).validate(value)
 
     def lookup_member(self, member_name):
         return None
@@ -99,8 +97,6 @@ class URLField(StringField):
             except Exception, e:
                 message = 'This URL appears to be a broken link: %s' % e
                 raise ValidationError(message)
-        
-        super(URLField, self).validate(value)
 
 class EmailField(StringField):
     """A field that validates input as an E-Mail-Address.
@@ -138,8 +134,6 @@ class IntField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Integer value is too large')
-        
-        super(IntField, self).validate(value)
 
 class FloatField(BaseField):
     """An floating point number field.
@@ -162,9 +156,6 @@ class FloatField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Float value is too large')
-        
-        super(FloatField, self).validate(value)
-
 
 class DecimalField(BaseField):
     """A fixed-point decimal number field.
@@ -198,9 +189,6 @@ class DecimalField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Decimal value is too large')
-        
-        super(DecimalField, self).validate(value)
-
 
 class BooleanField(BaseField):
     """A boolean field type.
@@ -213,9 +201,6 @@ class BooleanField(BaseField):
 
     def validate(self, value):
         assert isinstance(value, bool)
-        
-        super(BooleanField, self).validate(value)
-
 
 class DateTimeField(BaseField):
     """A datetime field.
@@ -223,9 +208,6 @@ class DateTimeField(BaseField):
 
     def validate(self, value):
         assert isinstance(value, datetime.datetime)
-        
-        super(DateTimeField, self).validate(value)
-
 
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of
@@ -256,8 +238,6 @@ class EmbeddedDocumentField(BaseField):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
         self.document.validate(value)
-        
-        super(EmbeddedDocumentField, self).validate(value)
 
     def lookup_member(self, member_name):
         return self.document._fields.get(member_name)
@@ -334,8 +314,6 @@ class ListField(BaseField):
             [self.field.validate(item) for item in value]
         except Exception, err:
             raise ValidationError('Invalid ListField item (%s)' % str(err))
-        
-        super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
         if op in ('set', 'unset'):
@@ -380,8 +358,6 @@ class DictField(BaseField):
         if any(('.' in k or '$' in k) for k in value):
             raise ValidationError('Invalid dictionary key name - keys may not '
                                   'contain "." or "$" characters')
-        
-        super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
         return BaseField(db_field=member_name)
@@ -397,8 +373,6 @@ class GeoLocationField(DictField):
         
         if len(value) <> 2:
             raise ValidationError('GeoLocationField must have exactly two elements (x, y)')
-        
-        super(GeoLocationField, self).validate(value)
     
     def to_mongo(self, value):
         return {'x': value[0], 'y': value[1]}
@@ -468,8 +442,6 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
         assert isinstance(value, (self.document_type, pymongo.dbref.DBRef))
-        
-        super(ReferenceField, self).validate(value)
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -540,5 +512,3 @@ class BinaryField(BaseField):
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
-        
-        super(BinaryField, self).validate(value)

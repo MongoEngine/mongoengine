@@ -25,7 +25,7 @@ class BaseField(object):
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
                  unique=False, unique_with=None, primary_key=False, validation=None,
-                 create_default=False):
+                 create_default=False, choices=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -39,6 +39,7 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.create_default = create_default
+        self.choices = choices
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do 
@@ -84,11 +85,23 @@ class BaseField(object):
     def validate(self, value):
         """Perform validation on a value.
         """
+        pass
+
+    def _validate(self, value):
+        # check choices
+        if self.choices is not None:
+            if value not in self.choices:
+                raise ValidationError("Value must be one of %s."%unicode(self.choices))
+        
+        # check validation argument
         if self.validation is not None:
-            if (isinstance(self.validation, list) or isinstance(self.validation, tuple)) and value not in self.validation:
-                raise ValidationError('Value not in validation list.')
-            elif callable(self.validation) and not self.validation(value):
-                raise ValidationError('Value does not match custom validation method.')
+            if callable(self.validation):
+                if not self.validation(value):
+                    raise ValidationError('Value does not match custom validation method.')
+            else:
+                raise ValueError('validation argument must be a callable.')
+    
+        self.validate(value)
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
@@ -324,7 +337,7 @@ class BaseDocument(object):
         for field, value in fields:
             if value is not None:
                 try:
-                    field.validate(value)
+                    field._validate(value)
                 except (ValueError, AttributeError, AssertionError), e:
                     raise ValidationError('Invalid value for field of type "' +
                                           field.__class__.__name__ + '"')

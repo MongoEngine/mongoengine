@@ -47,6 +47,40 @@ are as follows:
 * :class:`~mongoengine.ReferenceField`
 * :class:`~mongoengine.GenericReferenceField`
 
+Field arguments
+---------------
+Each field type can be customized by keyword arguments.  The following keyword 
+arguments can be set on all fields:
+
+:attr:`db_field` (Default: None)
+    The MongoDB field name.
+
+:attr:`name` (Default: None)
+    The mongoengine field name.
+
+:attr:`required` (Default: False)
+    If set to True and the field is not set on the document instance, a
+    :class:`~mongoengine.base.ValidationError` will be raised when the document is
+    validated.
+
+:attr:`default` (Default: None)
+    A value to use when no value is set for this field.
+
+:attr:`unique` (Default: False)
+    When True, no documents in the collection will have the same value for this
+    field.
+
+:attr:`unique_with` (Default: None)
+    A field name (or list of field names) that when taken together with this
+    field, will not have two documents in the collection with the same value.
+
+:attr:`primary_key` (Default: False)
+    When True, use this field as a primary key for the collection.
+
+:attr:`choices` (Default: None)
+    An iterable of choices to which the value of this field should be limited.
+    
+
 List fields
 -----------
 MongoDB allows the storage of lists of items. To add a list of items to a
