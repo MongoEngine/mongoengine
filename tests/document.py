@@ -127,6 +127,11 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Employee._meta['collection'], 
                          self.Person._meta['collection'])
 
+        # Ensure that MRO error is not raised
+        class A(Document): pass
+        class B(A): pass
+        class C(B): pass
+
     def test_allow_inheritance(self):
         """Ensure that inheritance may be disabled on simple classes and that
         _cls and _types will not be used.

@@ -187,19 +187,20 @@ class DocumentMetaclass(type):
         for field in new_class._fields.values():
             field.owner_document = new_class
 
-        module = attrs.pop('__module__')
+        module = attrs.get('__module__')
         
-        new_class.add_to_class('DoesNotExist', subclass_exception('DoesNotExist',
-                            tuple(x.DoesNotExist
-                                  for k,x in superclasses.items())
-                            or (DoesNotExist,), module))
+        base_excs = tuple(base.DoesNotExist for base in bases 
+                          if hasattr(base, 'DoesNotExist')) or (DoesNotExist,)
+        exc = subclass_exception('DoesNotExist', base_excs, module)
+        new_class.add_to_class('DoesNotExist', exc)
         
-        new_class.add_to_class('MultipleObjectsReturned', subclass_exception('MultipleObjectsReturned',
-                            tuple(x.MultipleObjectsReturned
-                                  for k,x in superclasses.items())
-                            or (MultipleObjectsReturned,), module))
-        return new_class
+        base_excs = tuple(base.MultipleObjectsReturned for base in bases 
+                          if hasattr(base, 'MultipleObjectsReturned'))
+        base_excs = base_excs or (MultipleObjectsReturned,)
+        exc = subclass_exception('MultipleObjectsReturned', base_excs, module)
+        new_class.add_to_class('MultipleObjectsReturned', exc)
     
+        return new_class
         
     def add_to_class(self, name, value):
         setattr(self, name, value)
