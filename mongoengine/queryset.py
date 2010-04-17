@@ -918,7 +918,7 @@ class QuerySetManager(object):
                     opts = {'capped': True, 'size': max_size}
                     if max_documents:
                         opts['max'] = max_documents
-                    self._collection = db.create_collection(collection, opts)
+                    self._collection = db.create_collection(collection, **opts)
             else:
                 self._collection = db[collection]
 

@@ -505,7 +505,8 @@ class BinaryField(BaseField):
         return pymongo.binary.Binary(value)
 
     def to_python(self, value):
-        return unicode(value)
+        # Returns str not unicode as this is binary data
+        return str(value)
 
     def validate(self, value):
         assert isinstance(value, str)
