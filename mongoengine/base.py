@@ -421,7 +421,7 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get(u'_cls', cls._class_name)
 
-        data = dict((unicode(key), value) for key, value in son.items())
+        data = dict((str(key), value) for key, value in son.items())
 
         if '_types' in data:
             del data['_types']
