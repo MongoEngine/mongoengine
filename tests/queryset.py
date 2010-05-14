@@ -1160,17 +1160,19 @@ class QTest(unittest.TestCase):
             self.assertEqual(scope, test_scope)
 
     def test_empty_q(self):
-        """Ensure that starting with an empty Q object won't hurt.
+        """Ensure that empty Q objects won't hurt.
         """
         q1 = Q()
         q2 = Q(age__gte=18)
-        q3 = Q(name='test')
+        q3 = Q()
+        q4 = Q(name='test')
+        q5 = Q()
 
         query = ['(', {'age__gte': 18}, '||', {'name': 'test'}, ')']
-        self.assertEqual((q1 | q2 | q3).query, query)
+        self.assertEqual((q1 | q2 | q3 | q4 | q5).query, query)
 
         query = ['(', {'age__gte': 18}, '&&', {'name': 'test'}, ')']
-        self.assertEqual((q1 & q2 & q3).query, query)
+        self.assertEqual((q1 & q2 & q3 & q4 & q5).query, query)
 
 if __name__ == '__main__':
     unittest.main()

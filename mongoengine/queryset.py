@@ -59,6 +59,8 @@ class Q(object):
 
     def _combine(self, other, op):
         obj = Q()
+        if not other.query[0]:
+            return self
         if self.query[0]:
             obj.query = ['('] + copy.deepcopy(self.query) + [op] + copy.deepcopy(other.query) + [')']
         else:
