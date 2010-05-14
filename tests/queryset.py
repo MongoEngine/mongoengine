@@ -1136,5 +1136,18 @@ class QTest(unittest.TestCase):
             self.assertEqual(q._item_query_as_js(item, test_scope, 0), js)
             self.assertEqual(scope, test_scope)
 
+    def test_empty_q(self):
+        """Ensure that starting with an empty Q object won't hurt.
+        """
+        q1 = Q()
+        q2 = Q(age__gte=18)
+        q3 = Q(name='test')
+
+        query = ['(', {'age__gte': 18}, '||', {'name': 'test'}, ')']
+        self.assertEqual((q1 | q2 | q3).query, query)
+
+        query = ['(', {'age__gte': 18}, '&&', {'name': 'test'}, ')']
+        self.assertEqual((q1 & q2 & q3).query, query)
+
 if __name__ == '__main__':
     unittest.main()
