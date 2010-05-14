@@ -348,6 +348,11 @@ class DictField(BaseField):
     .. versionadded:: 0.3
     """
 
+    def __init__(self, basecls=None, *args, **kwargs):
+        self.basecls = basecls or BaseField
+        assert issubclass(self.basecls, BaseField)
+        super(DictField, self).__init__(*args, **kwargs)
+
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
@@ -360,7 +365,7 @@ class DictField(BaseField):
                                   'contain "." or "$" characters')
 
     def lookup_member(self, member_name):
-        return BaseField(db_field=member_name)
+        return self.basecls(db_field=member_name)
 
 class GeoLocationField(DictField):
     """Supports geobased fields"""

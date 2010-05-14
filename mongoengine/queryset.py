@@ -313,7 +313,7 @@ class QuerySet(object):
             op = None
             if parts[-1] in operators + match_operators:
                 op = parts.pop()
-            
+
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
