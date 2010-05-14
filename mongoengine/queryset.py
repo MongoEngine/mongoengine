@@ -59,8 +59,10 @@ class Q(object):
 
     def _combine(self, other, op):
         obj = Q()
-        obj.query = ['('] + copy.deepcopy(self.query) + [op]
-        obj.query += copy.deepcopy(other.query) + [')']
+        if self.query[0]:
+            obj.query = ['('] + copy.deepcopy(self.query) + [op] + copy.deepcopy(other.query) + [')']
+        else:
+            obj.query = copy.deepcopy(other.query)
         return obj
 
     def __or__(self, other):
