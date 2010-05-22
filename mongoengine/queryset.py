@@ -59,8 +59,12 @@ class Q(object):
 
     def _combine(self, other, op):
         obj = Q()
-        obj.query = ['('] + copy.deepcopy(self.query) + [op]
-        obj.query += copy.deepcopy(other.query) + [')']
+        if not other.query[0]:
+            return self
+        if self.query[0]:
+            obj.query = ['('] + copy.deepcopy(self.query) + [op] + copy.deepcopy(other.query) + [')']
+        else:
+            obj.query = copy.deepcopy(other.query)
         return obj
 
     def __or__(self, other):
@@ -313,7 +317,7 @@ class QuerySet(object):
             op = None
             if parts[-1] in operators + match_operators:
                 op = parts.pop()
-            
+
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)

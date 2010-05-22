@@ -1063,6 +1063,29 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_dict_with_custom_baseclass(self):
+        """Ensure DictField working with custom base clases.
+        """
+        class Test(Document):
+            testdict = DictField()
+
+        t = Test(testdict={'f': 'Value'})
+        t.save()
+
+        self.assertEqual(len(Test.objects(testdict__f__startswith='Val')), 0)
+        self.assertEqual(len(Test.objects(testdict__f='Value')), 1)
+        Test.drop_collection()
+
+        class Test(Document):
+            testdict = DictField(basecls=StringField)
+
+        t = Test(testdict={'f': 'Value'})
+        t.save()
+
+        self.assertEqual(len(Test.objects(testdict__f='Value')), 1)
+        self.assertEqual(len(Test.objects(testdict__f__startswith='Val')), 1)
+        Test.drop_collection()
+
     def test_bulk(self):
         """Ensure bulk querying by object id returns a proper dict.
         """
@@ -1135,6 +1158,21 @@ class QTest(unittest.TestCase):
             test_scope = {}
             self.assertEqual(q._item_query_as_js(item, test_scope, 0), js)
             self.assertEqual(scope, test_scope)
+
+    def test_empty_q(self):
+        """Ensure that empty Q objects won't hurt.
+        """
+        q1 = Q()
+        q2 = Q(age__gte=18)
+        q3 = Q()
+        q4 = Q(name='test')
+        q5 = Q()
+
+        query = ['(', {'age__gte': 18}, '||', {'name': 'test'}, ')']
+        self.assertEqual((q1 | q2 | q3 | q4 | q5).query, query)
+
+        query = ['(', {'age__gte': 18}, '&&', {'name': 'test'}, ')']
+        self.assertEqual((q1 & q2 & q3 & q4 & q5).query, query)
 
 if __name__ == '__main__':
     unittest.main()
