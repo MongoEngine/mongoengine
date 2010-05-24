@@ -288,13 +288,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
             # Check for custom primary key
             if field.primary_key:
-                if not new_class._meta['id_field']:
+                current_pk = new_class._meta['id_field']
+                if current_pk and current_pk != field_name:
+                    raise ValueError('Cannot override primary key field')
+
+                if not current_pk:
                     new_class._meta['id_field'] = field_name
                     # Make 'Document.id' an alias to the real primary key field
                     new_class.id = field
-                    #new_class._fields['id'] = field
-                else:
-                    raise ValueError('Cannot override primary key field')
 
         new_class._meta['unique_indexes'] = unique_indexes
 

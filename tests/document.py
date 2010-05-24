@@ -344,6 +344,9 @@ class DocumentTest(unittest.TestCase):
             class EmailUser(User):
                 email = StringField(primary_key=True)
         self.assertRaises(ValueError, define_invalid_user)
+
+        class EmailUser(User):
+            email = StringField()
         
         user = User(username='test', name='test user')
         user.save()
