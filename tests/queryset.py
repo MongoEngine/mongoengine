@@ -265,6 +265,30 @@ class QuerySetTest(unittest.TestCase):
         obj = self.Person.objects(Q(name__iendswith='rossuM')).first()
         self.assertEqual(obj, person)
 
+        # Test exact
+        obj = self.Person.objects(name__exact='Guido van Rossum').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__exact='Guido van rossum').first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(name__exact='Guido van Rossu').first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__exact='Guido van Rossum')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__exact='Guido van rossum')).first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__exact='Guido van Rossu')).first()
+        self.assertEqual(obj, None)
+
+        # Test iexact
+        obj = self.Person.objects(name__iexact='gUIDO VAN rOSSUM').first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(name__iexact='gUIDO VAN rOSSU').first()
+        self.assertEqual(obj, None)
+        obj = self.Person.objects(Q(name__iexact='gUIDO VAN rOSSUM')).first()
+        self.assertEqual(obj, person)
+        obj = self.Person.objects(Q(name__iexact='gUIDO VAN rOSSU')).first()
+        self.assertEqual(obj, None)
+
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """

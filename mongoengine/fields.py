@@ -51,7 +51,7 @@ class StringField(BaseField):
         if not isinstance(op, basestring):
             return value
 
-        if op.lstrip('i') in ('startswith', 'endswith', 'contains'):
+        if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
             flags = 0
             if op.startswith('i'):
                 flags = re.IGNORECASE
@@ -62,6 +62,8 @@ class StringField(BaseField):
                 regex = r'^%s'
             elif op == 'endswith':
                 regex = r'%s$'
+            elif op == 'exact':
+                regex = r'^%s$'
             value = re.compile(regex % value, flags)
         return value
 
