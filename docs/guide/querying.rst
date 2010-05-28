@@ -63,7 +63,7 @@ operator name to a key with a double-underscore::
 
 Available operators are as follows:
 
-* ``neq`` -- not equal to
+* ``ne`` -- not equal to
 * ``lt`` -- less than
 * ``lte`` -- less than or equal to
 * ``gt`` -- greater than
