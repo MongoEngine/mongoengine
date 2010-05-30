@@ -78,6 +78,8 @@ Available operators are as follows:
 The following operators are available as shortcuts to querying with regular
 expressions:
 
+* ``exact`` -- string field exactly matches value
+* ``iexact`` -- string field exactly matches value (case insensitive)
 * ``contains`` -- string field contains value
 * ``icontains`` -- string field contains value (case insensitive)
 * ``startswith`` -- string field starts with value
