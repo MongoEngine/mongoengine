@@ -503,6 +503,22 @@ class QuerySetTest(unittest.TestCase):
         obj = self.Person.objects(Q(name__ne=re.compile('^Gui'))).first()
         self.assertEqual(obj, None)
 
+    def test_q_lists(self):
+        """Ensure that Q objects query ListFields correctly.
+        """
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        BlogPost(tags=['python', 'mongo']).save()
+        BlogPost(tags=['python']).save()
+
+        self.assertEqual(len(BlogPost.objects(Q(tags='mongo'))), 1)
+        self.assertEqual(len(BlogPost.objects(Q(tags='python'))), 2)
+
+        BlogPost.drop_collection()
+
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
         """
@@ -1172,10 +1188,15 @@ class QTest(unittest.TestCase):
         """
         q = Q()
         examples = [
-            ({'name': 'test'}, 'this.name == i0f0', {'i0f0': 'test'}),
+            
+            ({'name': 'test'}, ('((this.name instanceof Array) &&   '
+             'this.name.indexOf(i0f0) != -1) || this.name == i0f0'), 
+             {'i0f0': 'test'}),
             ({'age': {'$gt': 18}}, 'this.age > i0f0o0', {'i0f0o0': 18}),
             ({'name': 'test', 'age': {'$gt': 18, '$lte': 65}},
-             'this.age <= i0f0o0 && this.age > i0f0o1 && this.name == i0f1',
+              ('this.age <= i0f0o0 && this.age > i0f0o1 && '
+               '((this.name instanceof Array) &&   '
+               'this.name.indexOf(i0f1) != -1) || this.name == i0f1'),
              {'i0f0o0': 65, 'i0f0o1': 18, 'i0f1': 'test'}),
         ]
         for item, js, scope in examples:

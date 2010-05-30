@@ -36,7 +36,9 @@ class Q(object):
     OR = '||'
     AND = '&&'
     OPERATORS = {
-        'eq': 'this.%(field)s == %(value)s',
+        'eq': ('((this.%(field)s instanceof Array) && '
+               '  this.%(field)s.indexOf(%(value)s) != -1) ||'
+               ' this.%(field)s == %(value)s'),
         'ne': 'this.%(field)s != %(value)s',
         'gt': 'this.%(field)s > %(value)s',
         'gte': 'this.%(field)s >= %(value)s',
@@ -62,7 +64,8 @@ class Q(object):
         if not other.query[0]:
             return self
         if self.query[0]:
-            obj.query = ['('] + copy.deepcopy(self.query) + [op] + copy.deepcopy(other.query) + [')']
+            obj.query = (['('] + copy.deepcopy(self.query) + [op] +
+                         copy.deepcopy(other.query) + [')'])
         else:
             obj.query = copy.deepcopy(other.query)
         return obj
@@ -111,11 +114,13 @@ class Q(object):
                 value, field_js = self._build_op_js(op, key, value, value_name)
                 js_scope[value_name] = value
                 js.append(field_js)
+        print ' && '.join(js)
         return ' && '.join(js)
 
     def _build_op_js(self, op, key, value, value_name):
         """Substitute the values in to the correct chunk of Javascript.
         """
+        print op, key, value, value_name
         if isinstance(value, RE_TYPE):
             # Regexes are handled specially
             if op.strip('$') == 'ne':
