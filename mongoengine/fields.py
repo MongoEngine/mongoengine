@@ -7,12 +7,15 @@ import re
 import pymongo
 import datetime
 import decimal
+import gridfs
+import warnings
+import types
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
-           'DecimalField', 'URLField', 'GenericReferenceField',
+           'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
            'BinaryField', 'SortedListField', 'EmailField', 'GeoLocationField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -520,3 +523,87 @@ class BinaryField(BaseField):
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
+
+class GridFSProxy(object):
+    """Proxy object to handle writing and reading of files to and from GridFS
+    """
+
+    def __init__(self):
+        self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
+        self.newfile = None                # Used for partial writes
+        self.grid_id = None                 # Store GridFS id for file
+
+    def __getattr__(self, name):
+        obj = self.fs.get(self.grid_id)
+        if name in dir(obj):
+            return getattr(obj, name)
+
+    def __get__(self, instance, value):
+        return self
+
+    def new_file(self, **kwargs):
+        self.newfile = self.fs.new_file(**kwargs)
+        self.grid_id = self.newfile._id
+
+    def put(self, file, **kwargs):
+        self.grid_id = self.fs.put(file, **kwargs)
+
+    def write(self, string):
+        if not self.newfile:
+            self.new_file()
+            self.grid_id = self.newfile._id
+        self.newfile.write(string)
+
+    def writelines(self, lines):
+        if not self.newfile:
+            self.new_file()
+            self.grid_id = self.newfile._id
+        self.newfile.writelines(lines) 
+
+    def read(self):
+        return self.fs.get(self.grid_id).read()
+
+    def delete(self):
+        # Delete file from GridFS
+        self.fs.delete(self.grid_id)
+
+    def close(self):
+        if self.newfile:
+            self.newfile.close()
+        else:
+            msg = "The close() method is only necessary after calling write()"
+            warnings.warn(msg)
+
+class FileField(BaseField):
+    """A GridFS storage field.
+    """
+
+    def __init__(self, **kwargs):
+        self.gridfs = GridFSProxy()
+        super(FileField, self).__init__(**kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        return self.gridfs
+
+    def __set__(self, instance, value):
+        if isinstance(value, file) or isinstance(value, str):
+            # using "FileField() = file/string" notation
+            self.gridfs.put(value)
+        else:
+            instance._data[self.name] = value
+
+    def to_mongo(self, value):
+        # Store the GridFS file id in MongoDB
+        return self.gridfs.grid_id
+
+    def to_python(self, value):
+        # Use stored value (id) to lookup file in GridFS
+        return self.gridfs.fs.get(value)
+
+    def validate(self, value):
+        assert isinstance(value, GridFSProxy)
+        assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+
