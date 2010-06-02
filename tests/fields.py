@@ -3,6 +3,7 @@ import datetime
 from decimal import Decimal
 
 import pymongo
+import gridfs
 
 from mongoengine import *
 from mongoengine.connection import _get_db
@@ -607,6 +608,61 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_file_fields(self):
+        """Ensure that file fields can be written to and their data retrieved
+        """
+        class PutFile(Document):
+            file = FileField()
+
+        class StreamFile(Document):
+            file = FileField()
+
+        class SetFile(Document):
+            file = FileField()
+
+        text = 'Hello, World!'
+        more_text = 'Foo Bar'
+        content_type = 'text/plain'
+
+        PutFile.drop_collection()
+        StreamFile.drop_collection()
+        SetFile.drop_collection()
+
+        putfile = PutFile()
+        putfile.file.put(text, content_type=content_type)
+        putfile.save()
+        putfile.validate()
+        result = PutFile.objects.first()
+        self.assertTrue(putfile == result)
+        self.assertEquals(result.file.read(), text)
+        self.assertEquals(result.file.content_type, content_type)
+        result.file.delete() # Remove file from GridFS
+
+        streamfile = StreamFile()
+        streamfile.file.new_file(content_type=content_type)
+        streamfile.file.write(text)
+        streamfile.file.write(more_text)
+        streamfile.file.close()
+        streamfile.save()
+        streamfile.validate()
+        result = StreamFile.objects.first()
+        self.assertTrue(streamfile == result)
+        self.assertEquals(result.file.read(), text + more_text)
+        self.assertEquals(result.file.content_type, content_type)
+        result.file.delete() # Remove file from GridFS
+
+        setfile = SetFile()
+        setfile.file = text
+        setfile.save()
+        setfile.validate()
+        result = SetFile.objects.first()
+        self.assertTrue(setfile == result)
+        self.assertEquals(result.file.read(), text)
+        result.file.delete() # Remove file from GridFS
+
+        PutFile.drop_collection()
+        StreamFile.drop_collection()
+        SetFile.drop_collection()
 
 
 if __name__ == '__main__':
