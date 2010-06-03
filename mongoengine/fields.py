@@ -530,16 +530,20 @@ class GridFSProxy(object):
 
     def __init__(self):
         self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
-        self.newfile = None                # Used for partial writes
+        self.newfile = None                 # Used for partial writes
         self.grid_id = None                 # Store GridFS id for file
 
     def __getattr__(self, name):
-        obj = self.fs.get(self.grid_id)
+        obj = self.get()
         if name in dir(obj):
             return getattr(obj, name)
 
     def __get__(self, instance, value):
         return self
+
+    def get(self, id=None):
+        try: return self.fs.get(id or self.grid_id)
+        except: return None # File has been deleted
 
     def new_file(self, **kwargs):
         self.newfile = self.fs.new_file(**kwargs)
@@ -561,11 +565,17 @@ class GridFSProxy(object):
         self.newfile.writelines(lines) 
 
     def read(self):
-        return self.fs.get(self.grid_id).read()
+        try: return self.get().read()
+        except: return None
 
     def delete(self):
-        # Delete file from GridFS
+        # Delete file from GridFS, FileField still remains
         self.fs.delete(self.grid_id)
+        self.grid_id = None
+
+    def replace(self, file, **kwargs):
+        self.delete()
+        self.put(file, **kwargs)
 
     def close(self):
         if self.newfile:
@@ -601,7 +611,7 @@ class FileField(BaseField):
 
     def to_python(self, value):
         # Use stored value (id) to lookup file in GridFS
-        return self.gridfs.fs.get(value)
+        return self.gridfs.get()
 
     def validate(self, value):
         assert isinstance(value, GridFSProxy)
