@@ -46,6 +46,12 @@ are as follows:
 * :class:`~mongoengine.EmbeddedDocumentField`
 * :class:`~mongoengine.ReferenceField`
 * :class:`~mongoengine.GenericReferenceField`
+* :class:`~mongoengine.BooleanField`
+* :class:`~mongoengine.GeoLocationField`
+* :class:`~mongoengine.FileField`
+* :class:`~mongoengine.EmailField`
+* :class:`~mongoengine.SortedListField`
+* :class:`~mongoengine.BinaryField`
 
 Field arguments
 ---------------

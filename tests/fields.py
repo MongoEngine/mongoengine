@@ -649,7 +649,10 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(streamfile == result)
         self.assertEquals(result.file.read(), text + more_text)
         self.assertEquals(result.file.content_type, content_type)
-        result.file.delete() # Remove file from GridFS
+        result.file.delete()
+
+        # Ensure deleted file returns None
+        self.assertTrue(result.file.read() == None)
 
         setfile = SetFile()
         setfile.file = text
@@ -658,7 +661,15 @@ class FieldTest(unittest.TestCase):
         result = SetFile.objects.first()
         self.assertTrue(setfile == result)
         self.assertEquals(result.file.read(), text)
-        result.file.delete() # Remove file from GridFS
+
+        # Try replacing file with new one
+        result.file.replace(more_text)
+        result.save()
+        result.validate()
+        result = SetFile.objects.first()
+        self.assertTrue(setfile == result)
+        self.assertEquals(result.file.read(), more_text)
+        result.file.delete() 
 
         PutFile.drop_collection()
         StreamFile.drop_collection()
