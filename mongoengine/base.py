@@ -407,11 +407,15 @@ class BaseDocument(object):
             value = getattr(self, field_name, None)
             if value is not None:
                 data[field.db_field] = field.to_mongo(value)
+            else:
+                data[field.db_field] = None
         # Only add _cls and _types if allow_inheritance is not False
         if not (hasattr(self, '_meta') and
                 self._meta.get('allow_inheritance', True) == False):
             data['_cls'] = self._class_name
             data['_types'] = self._superclasses.keys() + [self._class_name]
+        if hasattr(self, '_id') and not data['_id']:
+            del data['_id']
         return data
     
     @classmethod
