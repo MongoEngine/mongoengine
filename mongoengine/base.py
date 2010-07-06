@@ -414,8 +414,11 @@ class BaseDocument(object):
                 self._meta.get('allow_inheritance', True) == False):
             data['_cls'] = self._class_name
             data['_types'] = self._superclasses.keys() + [self._class_name]
-        if hasattr(self, '_id') and not data['_id']:
-            del data['_id']
+        try:
+            if not data['_id']:
+                del data['_id']
+        except KeyError:
+            pass
         return data
     
     @classmethod
