@@ -450,7 +450,8 @@ class BaseDocument(object):
 
         for field_name, field in cls._fields.items():
             if field.db_field in data:
-                data[field_name] = field.to_python(data[field.db_field])
+                value = data[field.db_field]
+                data[field_name] = value if value is None else field.to_python(value)                 
 
         obj = cls(**data)
         obj._present_fields = present_fields
