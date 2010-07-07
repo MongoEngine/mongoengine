@@ -22,6 +22,7 @@ class BaseField(object):
 
     # Fields may have _types inserted into indexes by default 
     _index_with_types = True
+    _geo_index = False
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
                  unique=False, unique_with=None, primary_key=False, validation=None,
