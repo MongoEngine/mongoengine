@@ -1175,8 +1175,6 @@ class QuerySetTest(unittest.TestCase):
             def __unicode__(self):
                 return self.title
             
-            meta = {'geo_indexes': ["location"]}
-        
         Event.drop_collection()
         
         event1 = Event(title="Coltrane Motion @ Double Door",

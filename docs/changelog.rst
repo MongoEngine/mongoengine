@@ -6,7 +6,7 @@ Changes in v0.4
 ===============
 - Added ``SortedListField``
 - Added ``EmailField``
-- Added ``GeoLocationField``
+- Added ``GeoPointField``
 - Added ``exact`` and ``iexact`` match operators to ``QuerySet``
 - Added ``get_document_or_404`` and ``get_list_or_404`` Django shortcuts
 - Fixed bug in Q-objects
