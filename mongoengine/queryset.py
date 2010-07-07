@@ -351,6 +351,8 @@ class QuerySet(object):
                         value = {'$within': {'$center': value}}
                     elif op == "near":
                         value = {'$near': value}
+                    elif op == 'within_box':
+                        value = {'$within': {'$box': value}}
                     else:
                         raise NotImplementedError("Geo method '%s' has not "
                                                   "been implemented" % op)

@@ -1232,6 +1232,12 @@ class QuerySetTest(unittest.TestCase):
         events = events.order_by("-date")
         self.assertEqual(events.count(), 2)
         self.assertEqual(events[0], event3)
+
+        # check that within_box works
+        box = [(35.0, -125.0), (40.0, -100.0)]
+        events = Event.objects(location__within_box=box)
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0].id, event2.id)
         
         Event.drop_collection()
 
