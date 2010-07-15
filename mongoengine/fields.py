@@ -263,6 +263,7 @@ class ListField(BaseField):
             raise ValidationError('Argument to ListField constructor must be '
                                   'a valid field')
         self.field = field
+        kwargs.setdefault("default", [])
         super(ListField, self).__init__(**kwargs)
 
     def __get__(self, instance, owner):
