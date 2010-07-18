@@ -1087,8 +1087,9 @@ class QuerySetTest(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
-        self.assertTrue([('_types', 1)] in info.values())
-        self.assertTrue([('_types', 1), ('date', -1)] in info.values())
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('_types', 1)] in info)
+        self.assertTrue([('_types', 1), ('date', -1)] in info)
 
         BlogPost.drop_collection()
 

@@ -689,7 +689,7 @@ class FieldTest(unittest.TestCase):
 
         info = Event.objects._collection.index_information()
         self.assertTrue(u'location_2d' in info)
-        self.assertTrue(info[u'location_2d'] == [(u'location', u'2d')])
+        self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
 
         Event.drop_collection()
 
