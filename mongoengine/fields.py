@@ -523,6 +523,7 @@ class GridFSProxy(object):
         return self
 
     def get(self, id=None):
+        if id: self.grid_id = id
         try: return self.fs.get(id or self.grid_id)
         except: return None # File has been deleted
 
@@ -592,7 +593,7 @@ class FileField(BaseField):
 
     def to_python(self, value):
         # Use stored value (id) to lookup file in GridFS
-        return self.gridfs.get()
+        return self.gridfs.get(id=value)
 
     def validate(self, value):
         assert isinstance(value, GridFSProxy)
