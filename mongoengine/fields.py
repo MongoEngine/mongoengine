@@ -16,10 +16,9 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
-           'BinaryField', 'SortedListField', 'EmailField', 'GeoLocationField']
+           'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
-
 
 class StringField(BaseField):
     """A unicode string field.
@@ -372,24 +371,6 @@ class DictField(BaseField):
     def lookup_member(self, member_name):
         return self.basecls(db_field=member_name)
 
-class GeoLocationField(DictField):
-    """Supports geobased fields"""
-    
-    def validate(self, value):
-        """Make sure that a geo-value is of type (x, y)
-        """
-        if not isinstance(value, tuple) and not isinstance(value, list):
-            raise ValidationError('GeoLocationField can only hold tuples or lists of (x, y)')
-        
-        if len(value) <> 2:
-            raise ValidationError('GeoLocationField must have exactly two elements (x, y)')
-    
-    def to_mongo(self, value):
-        return {'x': value[0], 'y': value[1]}
-    
-    def to_python(self, value):
-        return (value['x'], value['y'])
-
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
@@ -456,7 +437,6 @@ class ReferenceField(BaseField):
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
-
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
@@ -502,6 +482,7 @@ class GenericReferenceField(BaseField):
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)['_ref']
+
 
 class BinaryField(BaseField):
     """A binary data field.
@@ -617,3 +598,21 @@ class FileField(BaseField):
         assert isinstance(value, GridFSProxy)
         assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
 
+class GeoPointField(BaseField):
+    """A list storing a latitude and longitude.
+    """
+
+    _geo_index = True
+
+    def validate(self, value):
+        """Make sure that a geo-value is of type (x, y)
+        """
+        if not isinstance(value, (list, tuple)):
+            raise ValidationError('GeoPointField can only accept tuples or '
+                                  'lists of (x, y)')
+        
+        if not len(value) == 2:
+            raise ValidationError('Value must be a two-dimensional point.')
+        if (not isinstance(value[0], (float, int)) and
+            not isinstance(value[1], (float, int))):
+            raise ValidationError('Both values in point must be float or int.')

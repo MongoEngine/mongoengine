@@ -674,7 +674,24 @@ class FieldTest(unittest.TestCase):
         PutFile.drop_collection()
         StreamFile.drop_collection()
         SetFile.drop_collection()
+        
+    def test_geo_indexes(self):
+        """Ensure that indexes are created automatically for GeoPointFields.
+        """
+        class Event(Document):
+            title = StringField()
+            location = GeoPointField()
 
+        Event.drop_collection()
+        event = Event(title="Coltrane Motion @ Double Door",
+                      location=[41.909889, -87.677137])
+        event.save()
+
+        info = Event.objects._collection.index_information()
+        self.assertTrue(u'location_2d' in info)
+        self.assertTrue(info[u'location_2d'] == [(u'location', u'2d')])
+
+        Event.drop_collection()
 
 if __name__ == '__main__':
     unittest.main()

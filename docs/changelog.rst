@@ -2,6 +2,20 @@
 Changelog
 =========
 
+Changes in v0.4
+===============
+- Added ``SortedListField``
+- Added ``EmailField``
+- Added ``GeoPointField``
+- Added ``exact`` and ``iexact`` match operators to ``QuerySet``
+- Added ``get_document_or_404`` and ``get_list_or_404`` Django shortcuts
+- Fixed bug in Q-objects
+- Fixed document inheritance primary key issue
+- Base class can now be defined for ``DictField``
+- Fixed MRO error that occured on document inheritance
+- Introduced ``min_length`` for ``StringField``
+- Other minor fixes
+
 Changes in v0.3
 ===============
 - Added MapReduce support
