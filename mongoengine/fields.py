@@ -263,7 +263,7 @@ class ListField(BaseField):
             raise ValidationError('Argument to ListField constructor must be '
                                   'a valid field')
         self.field = field
-        kwargs.setdefault("default", [])
+        kwargs.setdefault('default', [])
         super(ListField, self).__init__(**kwargs)
 
     def __get__(self, instance, owner):
@@ -356,6 +356,7 @@ class DictField(BaseField):
     def __init__(self, basecls=None, *args, **kwargs):
         self.basecls = basecls or BaseField
         assert issubclass(self.basecls, BaseField)
+        kwargs.setdefault('default', {})
         super(DictField, self).__init__(*args, **kwargs)
 
     def validate(self, value):
