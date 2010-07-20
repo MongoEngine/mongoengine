@@ -591,15 +591,20 @@ class FileField(BaseField):
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
-        return self.gridfs.grid_id
+        if self.gridfs.grid_id is not None:
+            return self.gridfs.grid_id
+        return None
 
     def to_python(self, value):
         # Use stored value (id) to lookup file in GridFS
-        return self.gridfs.get(id=value)
+        if self.gridfs.grid_id is not None:
+            return self.gridfs.get(id=value)
+        return None
 
     def validate(self, value):
-        assert isinstance(value, GridFSProxy)
-        assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+        if value.grid_id is not None:
+            assert isinstance(value, GridFSProxy)
+            assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
 
 class GeoPointField(BaseField):
     """A list storing a latitude and longitude.
