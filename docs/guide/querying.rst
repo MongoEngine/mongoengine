@@ -174,7 +174,7 @@ custom manager methods as you like::
 
         @queryset_manager
         def live_posts(doc_cls, queryset):
-            return queryset(published=True).filter(published=True)
+            return queryset.filter(published=True)
 
     BlogPost(title='test1', published=False).save()
     BlogPost(title='test2', published=True).save()

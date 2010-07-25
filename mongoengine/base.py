@@ -25,8 +25,8 @@ class BaseField(object):
     _geo_index = False
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
-                 unique=False, unique_with=None, primary_key=False, validation=None,
-                 choices=None):
+                 unique=False, unique_with=None, primary_key=False,
+                 validation=None, choices=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -87,13 +87,15 @@ class BaseField(object):
         # check choices
         if self.choices is not None:
             if value not in self.choices:
-                raise ValidationError("Value must be one of %s."%unicode(self.choices))
+                raise ValidationError("Value must be one of %s."
+                    % unicode(self.choices))
         
         # check validation argument
         if self.validation is not None:
             if callable(self.validation):
                 if not self.validation(value):
-                    raise ValidationError('Value does not match custom validation method.')
+                    raise ValidationError('Value does not match custom' \
+                                          'validation method.')
             else:
                 raise ValueError('validation argument must be a callable.')
     
@@ -337,8 +339,8 @@ class BaseDocument(object):
                 try:
                     field._validate(value)
                 except (ValueError, AttributeError, AssertionError), e:
-                    raise ValidationError('Invalid value for field of type "' +
-                                          field.__class__.__name__ + '"')
+                    raise ValidationError('Invalid value for field of type "%s": %s'
+                                          % (field.__class__.__name__, value))
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
 

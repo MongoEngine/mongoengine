@@ -7,16 +7,18 @@ import re
 import pymongo
 import datetime
 import decimal
+import gridfs
+import warnings
+import types
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
-           'DecimalField', 'URLField', 'GenericReferenceField',
+           'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
            'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
-
 
 class StringField(BaseField):
     """A unicode string field.
@@ -261,6 +263,7 @@ class ListField(BaseField):
             raise ValidationError('Argument to ListField constructor must be '
                                   'a valid field')
         self.field = field
+        kwargs.setdefault('default', [])
         super(ListField, self).__init__(**kwargs)
 
     def __get__(self, instance, owner):
@@ -353,6 +356,7 @@ class DictField(BaseField):
     def __init__(self, basecls=None, *args, **kwargs):
         self.basecls = basecls or BaseField
         assert issubclass(self.basecls, BaseField)
+        kwargs.setdefault('default', {})
         super(DictField, self).__init__(*args, **kwargs)
 
     def validate(self, value):
@@ -368,7 +372,6 @@ class DictField(BaseField):
 
     def lookup_member(self, member_name):
         return self.basecls(db_field=member_name)
-
 
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
@@ -435,7 +438,6 @@ class ReferenceField(BaseField):
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
-
 
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
@@ -505,6 +507,104 @@ class BinaryField(BaseField):
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
 
+class GridFSProxy(object):
+    """Proxy object to handle writing and reading of files to and from GridFS
+    """
+
+    def __init__(self):
+        self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
+        self.newfile = None                 # Used for partial writes
+        self.grid_id = None                 # Store GridFS id for file
+
+    def __getattr__(self, name):
+        obj = self.get()
+        if name in dir(obj):
+            return getattr(obj, name)
+
+    def __get__(self, instance, value):
+        return self
+
+    def get(self, id=None):
+        if id: self.grid_id = id
+        try: return self.fs.get(id or self.grid_id)
+        except: return None # File has been deleted
+
+    def new_file(self, **kwargs):
+        self.newfile = self.fs.new_file(**kwargs)
+        self.grid_id = self.newfile._id
+
+    def put(self, file, **kwargs):
+        self.grid_id = self.fs.put(file, **kwargs)
+
+    def write(self, string):
+        if not self.newfile:
+            self.new_file()
+            self.grid_id = self.newfile._id
+        self.newfile.write(string)
+
+    def writelines(self, lines):
+        if not self.newfile:
+            self.new_file()
+            self.grid_id = self.newfile._id
+        self.newfile.writelines(lines) 
+
+    def read(self):
+        try: return self.get().read()
+        except: return None
+
+    def delete(self):
+        # Delete file from GridFS, FileField still remains
+        self.fs.delete(self.grid_id)
+        self.grid_id = None
+
+    def replace(self, file, **kwargs):
+        self.delete()
+        self.put(file, **kwargs)
+
+    def close(self):
+        if self.newfile:
+            self.newfile.close()
+        else:
+            msg = "The close() method is only necessary after calling write()"
+            warnings.warn(msg)
+
+class FileField(BaseField):
+    """A GridFS storage field.
+    """
+
+    def __init__(self, **kwargs):
+        self.gridfs = GridFSProxy()
+        super(FileField, self).__init__(**kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        return self.gridfs
+
+    def __set__(self, instance, value):
+        if isinstance(value, file) or isinstance(value, str):
+            # using "FileField() = file/string" notation
+            self.gridfs.put(value)
+        else:
+            instance._data[self.name] = value
+
+    def to_mongo(self, value):
+        # Store the GridFS file id in MongoDB
+        if self.gridfs.grid_id is not None:
+            return self.gridfs.grid_id
+        return None
+
+    def to_python(self, value):
+        # Use stored value (id) to lookup file in GridFS
+        if self.gridfs.grid_id is not None:
+            return self.gridfs.get(id=value)
+        return None
+
+    def validate(self, value):
+        if value.grid_id is not None:
+            assert isinstance(value, GridFSProxy)
+            assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
 
 class GeoPointField(BaseField):
     """A list storing a latitude and longitude.
@@ -524,4 +624,3 @@ class GeoPointField(BaseField):
         if (not isinstance(value[0], (float, int)) and
             not isinstance(value[1], (float, int))):
             raise ValidationError('Both values in point must be float or int.')
-
