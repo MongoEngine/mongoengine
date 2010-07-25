@@ -694,7 +694,7 @@ class FieldTest(unittest.TestCase):
         Event.drop_collection()
 
     def test_ensure_unique_default_instances(self):
-        """Ensure that every document has it's own unique default instance."""
+        """Ensure that every field has it's own unique default instance."""
         class D(Document):
             data = DictField()
             data2 = DictField(default=lambda: {})
