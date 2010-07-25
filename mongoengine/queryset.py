@@ -1,5 +1,6 @@
 from connection import _get_db
 
+import pprint
 import pymongo
 import re
 import copy
@@ -414,6 +415,14 @@ class QuerySet(object):
             message = u'%d items returned, instead of 1' % count
             raise self._document.MultipleObjectsReturned(message)
 
+    def create(self, **kwargs):
+        """Create new object. Returns the saved object instance.
+        .. versionadded:: 0.4
+        """
+        doc = self._document(**kwargs)
+        doc.save()
+        return doc
+
     def first(self):
         """Retrieve the first object matching the query.
         """
@@ -667,7 +676,6 @@ class QuerySet(object):
 
         plan = self._cursor.explain()
         if format:
-            import pprint
             plan = pprint.pformat(plan)
         return plan
 
