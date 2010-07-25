@@ -970,6 +970,16 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
+    def test_distinct(self):
+        """Ensure that the QuerySet.distinct method works.
+        """
+        self.Person(name='Mr Orange', age=20).save()
+        self.Person(name='Mr White', age=20).save()
+        self.Person(name='Mr Orange', age=30).save()
+        self.assertEqual(self.Person.objects.distinct('name'), 
+                         ['Mr Orange', 'Mr White'])
+        self.assertEqual(self.Person.objects.distinct('age'), [20, 30])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """

@@ -604,6 +604,15 @@ class QuerySet(object):
         # Integer index provided
         elif isinstance(key, int):
             return self._document._from_son(self._cursor[key])
+    
+    def distinct(self, field):
+        """Return a list of distinct values for a given field.
+
+        :param field: the field to select distinct values from
+
+        .. versionadded:: 0.4
+        """
+        return self._collection.distinct(field)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
