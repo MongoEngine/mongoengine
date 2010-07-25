@@ -52,7 +52,10 @@ class BaseField(object):
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
         if value is None:
-            value = self.default
+            if callable(self.default): # fixes #46
+                value = self.default()
+            else:
+                value = self.default
             # Allow callable default values
             if callable(value):
                 value = value()
