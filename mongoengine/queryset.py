@@ -133,6 +133,17 @@ class Q(object):
         if isinstance(value, pymongo.objectid.ObjectId):
             value = unicode(value)
 
+        # Handle DBRef
+        if isinstance(value, pymongo.dbref.DBRef):
+            # this.created_user.$id == "4c4c56f8cc1831418c000000"
+            op_js = '(this.%(field)s.$id == "%(id)s" &&'\
+                    ' this.%(field)s.$ref == "%(ref)s")' % {
+                        'field': key,
+                        'id': unicode(value.id),
+                        'ref': unicode(value.collection)
+                    }
+            value = None
+
         # Perform the substitution
         operation_js = op_js % {
             'field': key, 

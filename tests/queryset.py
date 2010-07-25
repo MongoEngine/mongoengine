@@ -1304,6 +1304,20 @@ class QTest(unittest.TestCase):
 
         query = ['(', {'age__gte': 18}, '&&', {'name': 'test'}, ')']
         self.assertEqual((q1 & q2 & q3 & q4 & q5).query, query)
+    
+    def test_q_with_dbref(self):
+        """Ensure Q objects handle DBRefs correctly"""
+        class User(Document):
+            pass
+
+        class Post(Document):
+            created_user = ReferenceField(User)
+
+        user = User.objects.create()
+        Post.objects.create(created_user=user)
+
+        self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
+        self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
 
 if __name__ == '__main__':
     unittest.main()
