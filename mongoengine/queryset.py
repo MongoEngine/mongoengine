@@ -238,6 +238,10 @@ class QuerySet(object):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
         return self.__call__(*q_objs, **query)
+    
+    def all(self):
+        """Returns all documents."""
+        return self.__call__()
 
     @property
     def _collection(self):

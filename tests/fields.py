@@ -674,7 +674,12 @@ class FieldTest(unittest.TestCase):
         PutFile.drop_collection()
         StreamFile.drop_collection()
         SetFile.drop_collection()
-        
+
+        # Make sure FileField is optional and not required
+        class DemoFile(Document):
+            file = FileField()
+        d = DemoFile.objects.create()
+
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
