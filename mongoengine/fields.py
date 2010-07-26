@@ -66,7 +66,7 @@ class StringField(BaseField):
                 regex = r'%s$'
             elif op == 'exact':
                 regex = r'^%s$'
-            
+
             # escape unsafe characters which could lead to a re.error
             value = re.escape(value)
             value = re.compile(regex % value, flags)
