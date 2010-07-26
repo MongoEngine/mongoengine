@@ -288,6 +288,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj, person)
         obj = self.Person.objects(Q(name__iexact='gUIDO VAN rOSSU')).first()
         self.assertEqual(obj, None)
+        
+        # Test unsafe expressions
+        person = self.Person(name='Guido van Rossum [.\'Geek\']')
+        person.save()
+
+        obj = self.Person.objects(Q(name__icontains='[.\'Geek')).first()
+        self.assertEqual(obj, person)
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
