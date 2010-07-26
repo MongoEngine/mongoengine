@@ -670,11 +670,13 @@ class QuerySet(object):
         """
         key_list = []
         for key in keys:
+            if not key: continue
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING
             if key[0] in ('-', '+'):
                 key = key[1:]
+            key = key.replace('__', '.')
             key_list.append((key, direction))
 
         self._ordering = key_list
