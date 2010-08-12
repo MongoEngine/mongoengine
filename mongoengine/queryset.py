@@ -318,6 +318,11 @@ class QuerySet(object):
 
         mongo_query = {}
         for key, value in query.items():
+
+            if key == "__raw__":
+                mongo_query.update(value)
+                return mongo_query
+
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
