@@ -321,40 +321,39 @@ class QuerySet(object):
 
             if key == "__raw__":
                 mongo_query.update(value)
-                return mongo_query
+            else:
+                parts = key.split('__')
+                # Check for an operator and transform to mongo-style if there is
+                op = None
+                if parts[-1] in operators + match_operators:
+                    op = parts.pop()
 
-            parts = key.split('__')
-            # Check for an operator and transform to mongo-style if there is
-            op = None
-            if parts[-1] in operators + match_operators:
-                op = parts.pop()
+                if _doc_cls:
+                    # Switch field names to proper names [set in Field(name='foo')]
+                    fields = QuerySet._lookup_field(_doc_cls, parts)
+                    parts = [field.db_field for field in fields]
 
-            if _doc_cls:
-                # Switch field names to proper names [set in Field(name='foo')]
-                fields = QuerySet._lookup_field(_doc_cls, parts)
-                parts = [field.db_field for field in fields]
+                    # Convert value to proper value
+                    field = fields[-1]
+                    singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte']
+                    singular_ops += match_operators
+                    if op in singular_ops:
+                        value = field.prepare_query_value(op, value)
+                    elif op in ('in', 'nin', 'all'):
+                        # 'in', 'nin' and 'all' require a list of values
+                        value = [field.prepare_query_value(op, v) for v in value]
 
-                # Convert value to proper value
-                field = fields[-1]
-                singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte']
-                singular_ops += match_operators
-                if op in singular_ops:
-                    value = field.prepare_query_value(op, value)
-                elif op in ('in', 'nin', 'all'):
-                    # 'in', 'nin' and 'all' require a list of values
-                    value = [field.prepare_query_value(op, v) for v in value]
+                    if field.__class__.__name__ == 'GenericReferenceField':
+                        parts.append('_ref')
 
-                if field.__class__.__name__ == 'GenericReferenceField':
-                    parts.append('_ref')
+                if op and op not in match_operators:
+                    value = {'$' + op: value}
 
-            if op and op not in match_operators:
-                value = {'$' + op: value}
-
-            key = '.'.join(parts)
-            if op is None or key not in mongo_query:
-                mongo_query[key] = value
-            elif key in mongo_query and isinstance(mongo_query[key], dict):
-                mongo_query[key].update(value)
+                key = '.'.join(parts)
+                if op is None or key not in mongo_query:
+                    mongo_query[key] = value
+                elif key in mongo_query and isinstance(mongo_query[key], dict):
+                    mongo_query[key].update(value)
 
         return mongo_query
 
