@@ -269,7 +269,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             # Generate a list of indexes needed by uniqueness constraints
             if field.unique:
                 field.required = True
-                unique_fields = [field_name]
+                unique_fields = [field.db_field]
 
                 # Add any unique_with fields to the back of the index spec
                 if field.unique_with:
