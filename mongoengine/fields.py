@@ -600,7 +600,7 @@ class FileField(BaseField):
 
     def to_python(self, value):
         # Use stored value (id) to lookup file in GridFS
-        if self.gridfs.grid_id is not None:
+        if value is not None:
             return self.gridfs.get(id=value)
         return None
 
