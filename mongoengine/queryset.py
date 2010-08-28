@@ -172,7 +172,8 @@ class QuerySet(object):
         self._limit = None
         self._skip = None
 
-    def ensure_index(self, key_or_list):
+    def ensure_index(self, key_or_list, drop_dups=False, background=False,
+        **kwargs):
         """Ensure that the given indexes are in place.
 
         :param key_or_list: a single index key or a list of index keys (to
@@ -180,7 +181,8 @@ class QuerySet(object):
             or a **-** to determine the index ordering
         """
         index_list = QuerySet._build_index_spec(self._document, key_or_list)
-        self._collection.ensure_index(index_list)
+        self._collection.ensure_index(index_list, drop_dups=drop_dups,
+            background=background)
         return self
 
     @classmethod
@@ -250,25 +252,33 @@ class QuerySet(object):
         """
         if not self._accessed_collection:
             self._accessed_collection = True
+
+            background = self._document._meta.get('index_background', False)
+            drop_dups = self._document._meta.get('index_drop_dups', False)
+            index_opts = self._document._meta.get('index_options', {})
             
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
-                    self._collection.ensure_index(key_or_list)
+                    self._collection.ensure_index(key_or_list,
+                        background=background, **index_opts)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
-                self._collection.ensure_index(index, unique=True)
+                self._collection.ensure_index(index, unique=True,
+                    background=background, drop_dups=drop_dups, **index_opts)
                 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
-                self._collection.ensure_index('_types')
+                self._collection.ensure_index('_types',
+                    background=background, **index_opts)
             
             # Ensure all needed field indexes are created
             for field in self._document._fields.values():
                 if field.__class__._geo_index:
                     index_spec = [(field.db_field, pymongo.GEO2D)]
-                    self._collection.ensure_index(index_spec)
+                    self._collection.ensure_index(index_spec,
+                        background=background, **index_opts)
 
         return self._collection_obj
 
