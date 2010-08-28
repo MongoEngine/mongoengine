@@ -399,6 +399,7 @@ that you may use with these methods:
 * ``unset`` -- delete a particular value (since MongoDB v1.3+)
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
+* ``pop`` -- remove the last item from a list
 * ``push`` -- append a value to a list
 * ``push_all`` -- append several values to a list
 * ``pull`` -- remove a value from a list
