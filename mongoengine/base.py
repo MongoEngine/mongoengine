@@ -230,11 +230,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         
         id_field = None
         base_indexes = []
+        base_meta = {}
 
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
                 collection = base._meta['collection']
+
+                # Propagate index options.
+                for key in ('index_background', 'index_drop_dups', 'index_opts'):
+                   if key in base._meta:
+                      base_meta[key] = base._meta[key]
 
                 id_field = id_field or base._meta.get('id_field')
                 base_indexes += base._meta.get('indexes', [])
@@ -246,7 +252,11 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'ordering': [], # default ordering applied at runtime
             'indexes': [], # indexes to be ensured at runtime
             'id_field': id_field,
+            'index_background': False,
+            'index_drop_dups': False,
+            'index_opts': {},
         }
+        meta.update(base_meta)
 
         # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
