@@ -681,23 +681,17 @@ class QuerySetTest(unittest.TestCase):
     def test_update_pull(self):
         """Ensure that the 'pull' update operation works correctly.
         """
-        class Comment(EmbeddedDocument):
-            content = StringField()
-
         class BlogPost(Document):
             slug = StringField()
-            comments = ListField(EmbeddedDocumentField(Comment))
+            tags = ListField(StringField())
 
-        comment1 = Comment(content="test1")
-        comment2 = Comment(content="test2")
-
-        post = BlogPost(slug="test", comments=[comment1, comment2])
+        post = BlogPost(slug="test", tags=['code', 'mongodb', 'code'])
         post.save()
-        self.assertTrue(comment2 in post.comments)
 
-        BlogPost.objects(slug="test").update(pull__comments__content="test2")
+        BlogPost.objects(slug="test").update(pull__tags="code")
         post.reload()
-        self.assertTrue(comment2 not in post.comments)
+        self.assertTrue('code' not in post.tags)
+        self.assertEqual(len(post.tags), 1)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
