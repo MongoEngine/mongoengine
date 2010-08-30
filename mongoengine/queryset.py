@@ -892,7 +892,7 @@ class QuerySet(object):
                 var total = 0.0;
                 var num = 0;
                 db[collection].find(query).forEach(function(doc) {
-                    if (doc[averageField]) {
+                    if (doc[averageField] !== undefined) {
                         total += doc[averageField];
                         num += 1;
                     }

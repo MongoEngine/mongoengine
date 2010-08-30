@@ -960,11 +960,14 @@ class QuerySetTest(unittest.TestCase):
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """
+        self.Person(name='person', age=0).save()
+        self.assertEqual(int(self.Person.objects.average('age')), 0)
+
         ages = [23, 54, 12, 94, 27]
         for i, age in enumerate(ages):
             self.Person(name='test%s' % i, age=age).save()
 
-        avg = float(sum(ages)) / len(ages)
+        avg = float(sum(ages)) / (len(ages) + 1) # take into account the 0
         self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
 
         self.Person(name='ageless person').save()
@@ -1339,6 +1342,7 @@ class QTest(unittest.TestCase):
 
         self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
         self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
+
 
 if __name__ == '__main__':
     unittest.main()
