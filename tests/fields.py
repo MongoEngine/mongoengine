@@ -693,5 +693,18 @@ class FieldTest(unittest.TestCase):
 
         Event.drop_collection()
 
+    def test_ensure_unique_default_instances(self):
+        """Ensure that every document has it's own unique default instance."""
+        class D(Document):
+            data = DictField()
+            data2 = DictField(default=lambda: {})
+
+        d1 = D()
+        d1.data['foo'] = 'bar'
+        d1.data2['foo'] = 'bar'
+        d2 = D()
+        self.assertEqual(d2.data, {})
+        self.assertEqual(d2.data2, {})
+
 if __name__ == '__main__':
     unittest.main()
