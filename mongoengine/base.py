@@ -52,10 +52,7 @@ class BaseField(object):
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
         if value is None:
-            if callable(self.default): # fixes #46
-                value = self.default()
-            else:
-                value = self.default
+            value = self.default
             # Allow callable default values
             if callable(value):
                 value = value()
@@ -418,6 +415,11 @@ class BaseDocument(object):
                 self._meta.get('allow_inheritance', True) == False):
             data['_cls'] = self._class_name
             data['_types'] = self._superclasses.keys() + [self._class_name]
+        try:
+            if not data['_id']:
+                del data['_id']
+        except KeyError:
+            pass
         return data
     
     @classmethod
@@ -449,7 +451,9 @@ class BaseDocument(object):
 
         for field_name, field in cls._fields.items():
             if field.db_field in data:
-                data[field_name] = field.to_python(data[field.db_field])
+                value = data[field.db_field]
+                data[field_name] = (value if value is None
+                                    else field.to_python(value))
 
         obj = cls(**data)
         obj._present_fields = present_fields
