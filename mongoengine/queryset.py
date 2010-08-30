@@ -135,7 +135,6 @@ class Q(object):
 
         # Handle DBRef
         if isinstance(value, pymongo.dbref.DBRef):
-            # this.created_user.$id == "4c4c56f8cc1831418c000000"
             op_js = '(this.%(field)s.$id == "%(id)s" &&'\
                     ' this.%(field)s.$ref == "%(ref)s")' % {
                         'field': key,
@@ -239,6 +238,10 @@ class QuerySet(object):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
         return self.__call__(*q_objs, **query)
+    
+    def all(self):
+        """Returns all documents."""
+        return self.__call__()
 
     @property
     def _collection(self):
@@ -667,11 +670,13 @@ class QuerySet(object):
         """
         key_list = []
         for key in keys:
+            if not key: continue
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING
             if key[0] in ('-', '+'):
                 key = key[1:]
+            key = key.replace('__', '.')
             key_list.append((key, direction))
 
         self._ordering = key_list
