@@ -32,6 +32,9 @@ class User(Document):
     last_login = DateTimeField(default=datetime.datetime.now)
     date_joined = DateTimeField(default=datetime.datetime.now)
 
+    def __unicode__(self):
+        return self.username
+
     def get_full_name(self):
         """Returns the users first and last names, separated by a space.
         """

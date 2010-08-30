@@ -1,5 +1,6 @@
 from connection import _get_db
 
+import pprint
 import pymongo
 import re
 import copy
@@ -114,13 +115,11 @@ class Q(object):
                 value, field_js = self._build_op_js(op, key, value, value_name)
                 js_scope[value_name] = value
                 js.append(field_js)
-        print ' && '.join(js)
         return ' && '.join(js)
 
     def _build_op_js(self, op, key, value, value_name):
         """Substitute the values in to the correct chunk of Javascript.
         """
-        print op, key, value, value_name
         if isinstance(value, RE_TYPE):
             # Regexes are handled specially
             if op.strip('$') == 'ne':
@@ -133,6 +132,16 @@ class Q(object):
         # Comparing two ObjectIds in Javascript doesn't work..
         if isinstance(value, pymongo.objectid.ObjectId):
             value = unicode(value)
+
+        # Handle DBRef
+        if isinstance(value, pymongo.dbref.DBRef):
+            op_js = '(this.%(field)s.$id == "%(id)s" &&'\
+                    ' this.%(field)s.$ref == "%(ref)s")' % {
+                        'field': key,
+                        'id': unicode(value.id),
+                        'ref': unicode(value.collection)
+                    }
+            value = None
 
         # Perform the substitution
         operation_js = op_js % {
@@ -163,7 +172,8 @@ class QuerySet(object):
         self._limit = None
         self._skip = None
 
-    def ensure_index(self, key_or_list):
+    def ensure_index(self, key_or_list, drop_dups=False, background=False,
+        **kwargs):
         """Ensure that the given indexes are in place.
 
         :param key_or_list: a single index key or a list of index keys (to
@@ -171,7 +181,8 @@ class QuerySet(object):
             or a **-** to determine the index ordering
         """
         index_list = QuerySet._build_index_spec(self._document, key_or_list)
-        self._collection.ensure_index(index_list)
+        self._collection.ensure_index(index_list, drop_dups=drop_dups,
+            background=background)
         return self
 
     @classmethod
@@ -229,6 +240,10 @@ class QuerySet(object):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
         return self.__call__(*q_objs, **query)
+    
+    def all(self):
+        """Returns all documents."""
+        return self.__call__()
 
     @property
     def _collection(self):
@@ -237,25 +252,34 @@ class QuerySet(object):
         """
         if not self._accessed_collection:
             self._accessed_collection = True
+
+            background = self._document._meta.get('index_background', False)
+            drop_dups = self._document._meta.get('index_drop_dups', False)
+            index_opts = self._document._meta.get('index_options', {})
             
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
-                    #self.ensure_index(key_or_list)
-                    self._collection.ensure_index(key_or_list)
+                    self._collection.ensure_index(key_or_list,
+                        background=background, **index_opts)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
-                self._collection.ensure_index(index, unique=True)
-
+                self._collection.ensure_index(index, unique=True,
+                    background=background, drop_dups=drop_dups, **index_opts)
+                
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
-                self._collection.ensure_index('_types')
+                self._collection.ensure_index('_types',
+                    background=background, **index_opts)
             
             # Ensure all needed field indexes are created
-            for field_name, field_instance in self._document._fields.iteritems():
-                if field_instance.__class__.__name__ == 'GeoLocationField':
-                    self._collection.ensure_index([(field_name, pymongo.GEO2D),])
+            for field in self._document._fields.values():
+                if field.__class__._geo_index:
+                    index_spec = [(field.db_field, pymongo.GEO2D)]
+                    self._collection.ensure_index(index_spec,
+                        background=background, **index_opts)
+
         return self._collection_obj
 
     @property
@@ -311,9 +335,10 @@ class QuerySet(object):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                     'all', 'size', 'exists', 'near']
-        match_operators = ['contains', 'icontains', 'startswith',
-                           'istartswith', 'endswith', 'iendswith',
+                     'all', 'size', 'exists']
+        geo_operators = ['within_distance', 'within_box', 'near']
+        match_operators = ['contains', 'icontains', 'startswith', 
+                           'istartswith', 'endswith', 'iendswith', 
                            'exact', 'iexact']
 
         mongo_query = {}
@@ -321,7 +346,7 @@ class QuerySet(object):
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
-            if parts[-1] in operators + match_operators:
+            if parts[-1] in operators + match_operators + geo_operators:
                 op = parts.pop()
 
             if _doc_cls:
@@ -335,15 +360,27 @@ class QuerySet(object):
                 singular_ops += match_operators
                 if op in singular_ops:
                     value = field.prepare_query_value(op, value)
-                elif op in ('in', 'nin', 'all'):
+                elif op in ('in', 'nin', 'all', 'near'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
 
                 if field.__class__.__name__ == 'GenericReferenceField':
                     parts.append('_ref')
 
-            if op and op not in match_operators:
-                value = {'$' + op: value}
+            # if op and op not in match_operators:
+            if op:
+                if op in geo_operators:
+                    if op == "within_distance":
+                        value = {'$within': {'$center': value}}
+                    elif op == "near":
+                        value = {'$near': value}
+                    elif op == 'within_box':
+                        value = {'$within': {'$box': value}}
+                    else:
+                        raise NotImplementedError("Geo method '%s' has not "
+                                                  "been implemented" % op)
+                elif op not in match_operators:
+                    value = {'$' + op: value}
 
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
@@ -401,6 +438,14 @@ class QuerySet(object):
         else:
             message = u'%d items returned, instead of 1' % count
             raise self._document.MultipleObjectsReturned(message)
+
+    def create(self, **kwargs):
+        """Create new object. Returns the saved object instance.
+        .. versionadded:: 0.4
+        """
+        doc = self._document(**kwargs)
+        doc.save()
+        return doc
 
     def first(self):
         """Retrieve the first object matching the query.
@@ -592,6 +637,15 @@ class QuerySet(object):
         # Integer index provided
         elif isinstance(key, int):
             return self._document._from_son(self._cursor[key])
+    
+    def distinct(self, field):
+        """Return a list of distinct values for a given field.
+
+        :param field: the field to select distinct values from
+
+        .. versionadded:: 0.4
+        """
+        return self._collection.distinct(field)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -626,11 +680,13 @@ class QuerySet(object):
         """
         key_list = []
         for key in keys:
+            if not key: continue
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING
             if key[0] in ('-', '+'):
                 key = key[1:]
+            key = key.replace('__', '.')
             key_list.append((key, direction))
 
         self._ordering = key_list
@@ -646,7 +702,6 @@ class QuerySet(object):
 
         plan = self._cursor.explain()
         if format:
-            import pprint
             plan = pprint.pformat(plan)
         return plan
 
@@ -661,8 +716,8 @@ class QuerySet(object):
     def _transform_update(cls, _doc_cls=None, **update):
         """Transform an update spec from Django-style format to Mongo format.
         """
-        operators = ['set', 'unset', 'inc', 'dec', 'push', 'push_all', 'pull',
-                     'pull_all']
+        operators = ['set', 'unset', 'inc', 'dec', 'pop', 'push', 'push_all',
+                     'pull', 'pull_all']
 
         mongo_update = {}
         for key, value in update.items():
@@ -688,7 +743,7 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'set', 'unset', 'push', 'pull'):
+                if op in (None, 'set', 'unset', 'pop', 'push', 'pull'):
                     value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
                     value = [field.prepare_query_value(op, v) for v in value]
@@ -837,7 +892,7 @@ class QuerySet(object):
                 var total = 0.0;
                 var num = 0;
                 db[collection].find(query).forEach(function(doc) {
-                    if (doc[averageField]) {
+                    if (doc[averageField] !== undefined) {
                         total += doc[averageField];
                         num += 1;
                     }

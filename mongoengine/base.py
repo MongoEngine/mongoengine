@@ -22,6 +22,7 @@ class BaseField(object):
 
     # Fields may have _types inserted into indexes by default 
     _index_with_types = True
+    _geo_index = False
     
     def __init__(self, db_field=None, name=None, required=False, default=None, 
                  unique=False, unique_with=None, primary_key=False,
@@ -229,11 +230,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         
         id_field = None
         base_indexes = []
+        base_meta = {}
 
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta') and 'collection' in base._meta:
                 collection = base._meta['collection']
+
+                # Propagate index options.
+                for key in ('index_background', 'index_drop_dups', 'index_opts'):
+                   if key in base._meta:
+                      base_meta[key] = base._meta[key]
 
                 id_field = id_field or base._meta.get('id_field')
                 base_indexes += base._meta.get('indexes', [])
@@ -245,7 +252,11 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'ordering': [], # default ordering applied at runtime
             'indexes': [], # indexes to be ensured at runtime
             'id_field': id_field,
+            'index_background': False,
+            'index_drop_dups': False,
+            'index_opts': {},
         }
+        meta.update(base_meta)
 
         # Apply document-defined meta options
         meta.update(attrs.get('meta', {}))
@@ -254,7 +265,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
-        new_class.objects = QuerySetManager()
+        
+        # Provide a default queryset unless one has been manually provided
+        if not hasattr(new_class, 'objects'):
+            new_class.objects = QuerySetManager()
 
         user_indexes = [QuerySet._build_index_spec(new_class, spec)
                         for spec in meta['indexes']] + base_indexes
@@ -265,7 +279,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             # Generate a list of indexes needed by uniqueness constraints
             if field.unique:
                 field.required = True
-                unique_fields = [field_name]
+                unique_fields = [field.db_field]
 
                 # Add any unique_with fields to the back of the index spec
                 if field.unique_with:
@@ -338,8 +352,8 @@ class BaseDocument(object):
                 try:
                     field._validate(value)
                 except (ValueError, AttributeError, AssertionError), e:
-                    raise ValidationError('Invalid value for field of type "' +
-                                          field.__class__.__name__ + '"')
+                    raise ValidationError('Invalid value for field of type "%s": %s'
+                                          % (field.__class__.__name__, value))
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
 
@@ -414,6 +428,8 @@ class BaseDocument(object):
                 self._meta.get('allow_inheritance', True) == False):
             data['_cls'] = self._class_name
             data['_types'] = self._superclasses.keys() + [self._class_name]
+        if data.has_key('_id') and not data['_id']:
+            del data['_id']
         return data
     
     @classmethod
@@ -445,7 +461,9 @@ class BaseDocument(object):
 
         for field_name, field in cls._fields.items():
             if field.db_field in data:
-                data[field_name] = field.to_python(data[field.db_field])
+                value = data[field.db_field]
+                data[field_name] = (value if value is None
+                                    else field.to_python(value))
 
         obj = cls(**data)
         obj._present_fields = present_fields

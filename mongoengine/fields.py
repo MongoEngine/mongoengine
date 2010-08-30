@@ -16,10 +16,13 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
+<<<<<<< HEAD
            'BinaryField', 'SortedListField', 'EmailField', 'GeoLocationField']
+=======
+           'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField']
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
-
 
 class StringField(BaseField):
     """A unicode string field.
@@ -67,6 +70,9 @@ class StringField(BaseField):
                 regex = r'%s$'
             elif op == 'exact':
                 regex = r'^%s$'
+
+            # escape unsafe characters which could lead to a re.error
+            value = re.escape(value)
             value = re.compile(regex % value, flags)
         return value
 
@@ -264,6 +270,7 @@ class ListField(BaseField):
             raise ValidationError('Argument to ListField constructor must be '
                                   'a valid field')
         self.field = field
+        kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
 
     def __get__(self, instance, owner):
@@ -356,6 +363,7 @@ class DictField(BaseField):
     def __init__(self, basecls=None, *args, **kwargs):
         self.basecls = basecls or BaseField
         assert issubclass(self.basecls, BaseField)
+        kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
 
     def validate(self, value):
@@ -371,24 +379,6 @@ class DictField(BaseField):
 
     def lookup_member(self, member_name):
         return self.basecls(db_field=member_name)
-
-class GeoLocationField(DictField):
-    """Supports geobased fields"""
-    
-    def validate(self, value):
-        """Make sure that a geo-value is of type (x, y)
-        """
-        if not isinstance(value, tuple) and not isinstance(value, list):
-            raise ValidationError('GeoLocationField can only hold tuples or lists of (x, y)')
-        
-        if len(value) <> 2:
-            raise ValidationError('GeoLocationField must have exactly two elements (x, y)')
-    
-    def to_mongo(self, value):
-        return {'x': value[0], 'y': value[1]}
-    
-    def to_python(self, value):
-        return value.keys()
 
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
@@ -456,7 +446,6 @@ class ReferenceField(BaseField):
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
-
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
@@ -503,6 +492,7 @@ class GenericReferenceField(BaseField):
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)['_ref']
 
+
 class BinaryField(BaseField):
     """A binary data field.
     """
@@ -524,14 +514,25 @@ class BinaryField(BaseField):
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 class GridFSProxy(object):
     """Proxy object to handle writing and reading of files to and from GridFS
     """
 
+<<<<<<< HEAD
     def __init__(self):
         self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = None                 # Store GridFS id for file
+=======
+    def __init__(self, grid_id=None):
+        self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
+        self.newfile = None                 # Used for partial writes
+        self.grid_id = grid_id              # Store GridFS id for file
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 
     def __getattr__(self, name):
         obj = self.get()
@@ -542,8 +543,17 @@ class GridFSProxy(object):
         return self
 
     def get(self, id=None):
+<<<<<<< HEAD
         try: return self.fs.get(id or self.grid_id)
         except: return None # File has been deleted
+=======
+        if id:
+            self.grid_id = id
+        try:
+            return self.fs.get(id or self.grid_id)
+        except:
+            return None # File has been deleted
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 
     def new_file(self, **kwargs):
         self.newfile = self.fs.new_file(**kwargs)
@@ -565,8 +575,15 @@ class GridFSProxy(object):
         self.newfile.writelines(lines) 
 
     def read(self):
+<<<<<<< HEAD
         try: return self.get().read()
         except: return None
+=======
+        try:
+            return self.get().read()
+        except:
+            return None
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 
     def delete(self):
         # Delete file from GridFS, FileField still remains
@@ -584,29 +601,61 @@ class GridFSProxy(object):
             msg = "The close() method is only necessary after calling write()"
             warnings.warn(msg)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 class FileField(BaseField):
     """A GridFS storage field.
     """
 
     def __init__(self, **kwargs):
+<<<<<<< HEAD
         self.gridfs = GridFSProxy()
+=======
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
         super(FileField, self).__init__(**kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
             return self
 
+<<<<<<< HEAD
         return self.gridfs
+=======
+        # Check if a file already exists for this model
+        grid_file = instance._data.get(self.name)
+        if grid_file:
+            return grid_file
+        return GridFSProxy()
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
 
     def __set__(self, instance, value):
         if isinstance(value, file) or isinstance(value, str):
             # using "FileField() = file/string" notation
+<<<<<<< HEAD
             self.gridfs.put(value)
+=======
+            grid_file = instance._data.get(self.name)
+            # If a file already exists, delete it
+            if grid_file:
+                try:
+                    grid_file.delete()
+                except:
+                    pass
+                # Create a new file with the new data
+                grid_file.put(value)
+            else:
+                # Create a new proxy object as we don't already have one
+                instance._data[self.name] = GridFSProxy()
+                instance._data[self.name].put(value)
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f
         else:
             instance._data[self.name] = value
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
+<<<<<<< HEAD
         return self.gridfs.grid_id
 
     def to_python(self, value):
@@ -617,3 +666,36 @@ class FileField(BaseField):
         assert isinstance(value, GridFSProxy)
         assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
 
+=======
+        if isinstance(value, GridFSProxy) and value.grid_id is not None:
+            return value.grid_id
+        return None
+
+    def to_python(self, value):
+        if value is not None:
+            return GridFSProxy(value)
+
+    def validate(self, value):
+        if value.grid_id is not None:
+            assert isinstance(value, GridFSProxy)
+            assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+
+class GeoPointField(BaseField):
+    """A list storing a latitude and longitude.
+    """
+
+    _geo_index = True
+
+    def validate(self, value):
+        """Make sure that a geo-value is of type (x, y)
+        """
+        if not isinstance(value, (list, tuple)):
+            raise ValidationError('GeoPointField can only accept tuples or '
+                                  'lists of (x, y)')
+        
+        if not len(value) == 2:
+            raise ValidationError('Value must be a two-dimensional point.')
+        if (not isinstance(value[0], (float, int)) and
+            not isinstance(value[1], (float, int))):
+            raise ValidationError('Both values in point must be float or int.')
+>>>>>>> 32e66b29f44f3015be099851201241caee92054f

@@ -288,6 +288,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj, person)
         obj = self.Person.objects(Q(name__iexact='gUIDO VAN rOSSU')).first()
         self.assertEqual(obj, None)
+        
+        # Test unsafe expressions
+        person = self.Person(name='Guido van Rossum [.\'Geek\']')
+        person.save()
+
+        obj = self.Person.objects(Q(name__icontains='[.\'Geek')).first()
+        self.assertEqual(obj, person)
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
@@ -664,28 +671,27 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertTrue('db' in post.tags and 'nosql' in post.tags)
 
+        tags = post.tags[:-1]
+        BlogPost.objects.update(pop__tags=1)
+        post.reload()
+        self.assertEqual(post.tags, tags)
+
         BlogPost.drop_collection()
 
     def test_update_pull(self):
         """Ensure that the 'pull' update operation works correctly.
         """
-        class Comment(EmbeddedDocument):
-            content = StringField()
-
         class BlogPost(Document):
             slug = StringField()
-            comments = ListField(EmbeddedDocumentField(Comment))
+            tags = ListField(StringField())
 
-        comment1 = Comment(content="test1")
-        comment2 = Comment(content="test2")
-
-        post = BlogPost(slug="test", comments=[comment1, comment2])
+        post = BlogPost(slug="test", tags=['code', 'mongodb', 'code'])
         post.save()
-        self.assertTrue(comment2 in post.comments)
 
-        BlogPost.objects(slug="test").update(pull__comments__content="test2")
+        BlogPost.objects(slug="test").update(pull__tags="code")
         post.reload()
-        self.assertTrue(comment2 not in post.comments)
+        self.assertTrue('code' not in post.tags)
+        self.assertEqual(len(post.tags), 1)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
@@ -948,11 +954,14 @@ class QuerySetTest(unittest.TestCase):
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """
+        self.Person(name='person', age=0).save()
+        self.assertEqual(int(self.Person.objects.average('age')), 0)
+
         ages = [23, 54, 12, 94, 27]
         for i, age in enumerate(ages):
             self.Person(name='test%s' % i, age=age).save()
 
-        avg = float(sum(ages)) / len(ages)
+        avg = float(sum(ages)) / (len(ages) + 1) # take into account the 0
         self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
 
         self.Person(name='ageless person').save()
@@ -970,15 +979,30 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
+    def test_distinct(self):
+        """Ensure that the QuerySet.distinct method works.
+        """
+        self.Person(name='Mr Orange', age=20).save()
+        self.Person(name='Mr White', age=20).save()
+        self.Person(name='Mr Orange', age=30).save()
+        self.assertEqual(self.Person.objects.distinct('name'), 
+                         ['Mr Orange', 'Mr White'])
+        self.assertEqual(self.Person.objects.distinct('age'), [20, 30])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
         class BlogPost(Document):
             tags = ListField(StringField())
+            deleted = BooleanField(default=False)
+
+            @queryset_manager
+            def objects(doc_cls, queryset):
+                return queryset(deleted=False)
 
             @queryset_manager
             def music_posts(doc_cls, queryset):
-                return queryset(tags='music')
+                return queryset(tags='music', deleted=False)
 
         BlogPost.drop_collection()
 
@@ -988,6 +1012,8 @@ class QuerySetTest(unittest.TestCase):
         post2.save()
         post3 = BlogPost(tags=['film', 'actors'])
         post3.save()
+        post4 = BlogPost(tags=['film', 'actors'], deleted=True)
+        post4.save()
 
         self.assertEqual([p.id for p in BlogPost.objects],
                          [post1.id, post2.id, post3.id])
@@ -1087,8 +1113,9 @@ class QuerySetTest(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
-        self.assertTrue([('_types', 1)] in info.values())
-        self.assertTrue([('_types', 1), ('date', -1)] in info.values())
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('_types', 1)] in info)
+        self.assertTrue([('_types', 1), ('date', -1)] in info)
 
         BlogPost.drop_collection()
 
@@ -1164,6 +1191,81 @@ class QuerySetTest(unittest.TestCase):
     def tearDown(self):
         self.Person.drop_collection()
 
+    def test_geospatial_operators(self):
+        """Ensure that geospatial queries are working.
+        """
+        class Event(Document):
+            title = StringField()
+            date = DateTimeField()
+            location = GeoPointField()
+            
+            def __unicode__(self):
+                return self.title
+            
+        Event.drop_collection()
+        
+        event1 = Event(title="Coltrane Motion @ Double Door",
+                       date=datetime.now() - timedelta(days=1),
+                       location=[41.909889, -87.677137])
+        event2 = Event(title="Coltrane Motion @ Bottom of the Hill",
+                       date=datetime.now() - timedelta(days=10),
+                       location=[37.7749295, -122.4194155])
+        event3 = Event(title="Coltrane Motion @ Empty Bottle",
+                       date=datetime.now(),
+                       location=[41.900474, -87.686638])
+                       
+        event1.save()
+        event2.save()
+        event3.save()
+
+        # find all events "near" pitchfork office, chicago.
+        # note that "near" will show the san francisco event, too,
+        # although it sorts to last.
+        events = Event.objects(location__near=[41.9120459, -87.67892])
+        self.assertEqual(events.count(), 3)
+        self.assertEqual(list(events), [event1, event3, event2])
+
+        # find events within 5 miles of pitchfork office, chicago
+        point_and_distance = [[41.9120459, -87.67892], 5]
+        events = Event.objects(location__within_distance=point_and_distance)
+        self.assertEqual(events.count(), 2)
+        events = list(events)
+        self.assertTrue(event2 not in events)
+        self.assertTrue(event1 in events)
+        self.assertTrue(event3 in events)
+        
+        # ensure ordering is respected by "near"
+        events = Event.objects(location__near=[41.9120459, -87.67892])
+        events = events.order_by("-date")
+        self.assertEqual(events.count(), 3)
+        self.assertEqual(list(events), [event3, event1, event2])
+        
+        # find events around san francisco
+        point_and_distance = [[37.7566023, -122.415579], 10]
+        events = Event.objects(location__within_distance=point_and_distance)
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0], event2)
+        
+        # find events within 1 mile of greenpoint, broolyn, nyc, ny
+        point_and_distance = [[40.7237134, -73.9509714], 1]
+        events = Event.objects(location__within_distance=point_and_distance)
+        self.assertEqual(events.count(), 0)
+        
+        # ensure ordering is respected by "within_distance"
+        point_and_distance = [[41.9120459, -87.67892], 10]
+        events = Event.objects(location__within_distance=point_and_distance)
+        events = events.order_by("-date")
+        self.assertEqual(events.count(), 2)
+        self.assertEqual(events[0], event3)
+
+        # check that within_box works
+        box = [(35.0, -125.0), (40.0, -100.0)]
+        events = Event.objects(location__within_box=box)
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0].id, event2.id)
+        
+        Event.drop_collection()
+
 
 class QTest(unittest.TestCase):
 
@@ -1218,6 +1320,23 @@ class QTest(unittest.TestCase):
 
         query = ['(', {'age__gte': 18}, '&&', {'name': 'test'}, ')']
         self.assertEqual((q1 & q2 & q3 & q4 & q5).query, query)
+    
+    def test_q_with_dbref(self):
+        """Ensure Q objects handle DBRefs correctly"""
+        connect(db='mongoenginetest')
+
+        class User(Document):
+            pass
+
+        class Post(Document):
+            created_user = ReferenceField(User)
+
+        user = User.objects.create()
+        Post.objects.create(created_user=user)
+
+        self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
+        self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
+
 
 if __name__ == '__main__':
     unittest.main()

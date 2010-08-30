@@ -264,11 +264,12 @@ class DocumentTest(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
-                        in info.values())
-        self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
+                        in info)
+        self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         # tags is a list field so it shouldn't have _types in the index
-        self.assertTrue([('tags', 1)] in info.values())
+        self.assertTrue([('tags', 1)] in info)
         
         class ExtendedBlogPost(BlogPost):
             title = StringField()
@@ -278,10 +279,11 @@ class DocumentTest(unittest.TestCase):
 
         list(ExtendedBlogPost.objects)
         info = ExtendedBlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
-                        in info.values())
-        self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
-        self.assertTrue([('_types', 1), ('title', 1)] in info.values())
+                        in info)
+        self.assertTrue([('_types', 1), ('addDate', -1)] in info)
+        self.assertTrue([('_types', 1), ('title', 1)] in info)
 
         BlogPost.drop_collection()
 
