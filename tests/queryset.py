@@ -165,8 +165,49 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.get(age__lt=30)
         self.assertEqual(person.name, "User A")
         
+    def test_find_array_position(self):
+        """Ensure that query by array position works.
+        """
+        class Comment(EmbeddedDocument):
+            name = StringField()
+
+        class Post(EmbeddedDocument):
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        class Blog(Document):
+            tags = ListField(StringField())
+            posts = ListField(EmbeddedDocumentField(Post))
+
+        Blog.drop_collection()
         
-        
+        Blog.objects.create(tags=['a', 'b'])
+        self.assertEqual(len(Blog.objects(tags__0='a')), 1)
+        self.assertEqual(len(Blog.objects(tags__0='b')), 0)
+        self.assertEqual(len(Blog.objects(tags__1='a')), 0)
+        self.assertEqual(len(Blog.objects(tags__1='b')), 1)
+
+        Blog.drop_collection()
+
+        comment1 = Comment(name='testa')
+        comment2 = Comment(name='testb')
+        post1 = Post(comments=[comment1, comment2])
+        post2 = Post(comments=[comment2, comment2])
+        blog1 = Blog.objects.create(posts=[post1, post2])
+        blog2 = Blog.objects.create(posts=[post2, post1])
+
+        blog = Blog.objects(posts__0__comments__0__name='testa').get()
+        self.assertEqual(blog, blog1)
+
+        query = Blog.objects(posts__1__comments__1__name='testb')
+        self.assertEqual(len(query), 2)
+
+        query = Blog.objects(posts__1__comments__1__name='testa')
+        self.assertEqual(len(query), 0)
+
+        query = Blog.objects(posts__0__comments__1__name='testa')
+        self.assertEqual(len(query), 0)
+
+        Blog.drop_collection()
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new

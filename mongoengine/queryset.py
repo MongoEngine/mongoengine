@@ -344,6 +344,8 @@ class QuerySet(object):
         mongo_query = {}
         for key, value in query.items():
             parts = key.split('__')
+            indices = [(i, p) for i, p in enumerate(parts) if p.isdigit()]
+            parts = [part for part in parts if not part.isdigit()]
             # Check for an operator and transform to mongo-style if there is
             op = None
             if parts[-1] in operators + match_operators + geo_operators:
@@ -381,7 +383,9 @@ class QuerySet(object):
                                                   "been implemented" % op)
                 elif op not in match_operators:
                     value = {'$' + op: value}
-
+            
+            for i, part in indices:
+                parts.insert(i, part)
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
                 mongo_query[key] = value
