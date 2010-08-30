@@ -1314,6 +1314,8 @@ class QTest(unittest.TestCase):
     
     def test_q_with_dbref(self):
         """Ensure Q objects handle DBRefs correctly"""
+        connect(db='mongoenginetest')
+
         class User(Document):
             pass
 
