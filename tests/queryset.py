@@ -671,6 +671,11 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertTrue('db' in post.tags and 'nosql' in post.tags)
 
+        tags = post.tags[:-1]
+        BlogPost.objects.update(pop__tags=1)
+        post.reload()
+        self.assertEqual(post.tags, tags)
+
         BlogPost.drop_collection()
 
     def test_update_pull(self):
