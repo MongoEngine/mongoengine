@@ -71,7 +71,7 @@ Available operators are as follows:
 * ``in`` -- value is in list (a list of values should be provided)
 * ``nin`` -- value is not in list (a list of values should be provided)
 * ``mod`` -- ``value % x == y``, where ``x`` and ``y`` are two provided values
-* ``all`` -- every item in array is in list of values provided
+* ``all`` -- every item in list of values provided is in array
 * ``size`` -- the size of the array is 
 * ``exists`` -- value for field exists
 
