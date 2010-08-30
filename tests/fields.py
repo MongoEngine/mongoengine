@@ -680,6 +680,28 @@ class FieldTest(unittest.TestCase):
             file = FileField()
         d = DemoFile.objects.create()
 
+    def test_file_uniqueness(self):
+        """Ensure that each instance of a FileField is unique
+        """
+        class TestFile(Document):
+            name = StringField()
+            file = FileField()
+
+        # First instance
+        testfile = TestFile()
+        testfile.name = "Hello, World!"
+        testfile.file.put('Hello, World!')
+        testfile.save()
+        
+        # Second instance
+        testfiledupe = TestFile()
+        data = testfiledupe.file.read() # Should be None
+
+        self.assertTrue(testfile.name != testfiledupe.name)
+        self.assertTrue(testfile.file.read() != data)
+
+        TestFile.drop_collection()
+
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """

@@ -510,14 +510,15 @@ class BinaryField(BaseField):
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
 
+
 class GridFSProxy(object):
     """Proxy object to handle writing and reading of files to and from GridFS
     """
 
-    def __init__(self):
+    def __init__(self, grid_id=None):
         self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
         self.newfile = None                 # Used for partial writes
-        self.grid_id = None                 # Store GridFS id for file
+        self.grid_id = grid_id              # Store GridFS id for file
 
     def __getattr__(self, name):
         obj = self.get()
@@ -528,9 +529,12 @@ class GridFSProxy(object):
         return self
 
     def get(self, id=None):
-        if id: self.grid_id = id
-        try: return self.fs.get(id or self.grid_id)
-        except: return None # File has been deleted
+        if id:
+            self.grid_id = id
+        try:
+            return self.fs.get(id or self.grid_id)
+        except:
+            return None # File has been deleted
 
     def new_file(self, **kwargs):
         self.newfile = self.fs.new_file(**kwargs)
@@ -552,8 +556,10 @@ class GridFSProxy(object):
         self.newfile.writelines(lines) 
 
     def read(self):
-        try: return self.get().read()
-        except: return None
+        try:
+            return self.get().read()
+        except:
+            return None
 
     def delete(self):
         # Delete file from GridFS, FileField still remains
@@ -571,38 +577,52 @@ class GridFSProxy(object):
             msg = "The close() method is only necessary after calling write()"
             warnings.warn(msg)
 
+
 class FileField(BaseField):
     """A GridFS storage field.
     """
 
     def __init__(self, **kwargs):
-        self.gridfs = GridFSProxy()
         super(FileField, self).__init__(**kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
             return self
 
-        return self.gridfs
+        # Check if a file already exists for this model
+        grid_file = instance._data.get(self.name)
+        if grid_file:
+            return grid_file
+        return GridFSProxy()
 
     def __set__(self, instance, value):
         if isinstance(value, file) or isinstance(value, str):
             # using "FileField() = file/string" notation
-            self.gridfs.put(value)
+            grid_file = instance._data.get(self.name)
+            # If a file already exists, delete it
+            if grid_file:
+                try:
+                    grid_file.delete()
+                except:
+                    pass
+                # Create a new file with the new data
+                grid_file.put(value)
+            else:
+                # Create a new proxy object as we don't already have one
+                instance._data[self.name] = GridFSProxy()
+                instance._data[self.name].put(value)
         else:
             instance._data[self.name] = value
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
-        if self.gridfs.grid_id is not None:
-            return self.gridfs.grid_id
+        if isinstance(value, GridFSProxy) and value.grid_id is not None:
+            return value.grid_id
         return None
 
     def to_python(self, value):
-        # Use stored value (id) to lookup file in GridFS
         if value is not None:
-            return self.gridfs.get(id=value)
-        return None
+            return GridFSProxy(value)
 
     def validate(self, value):
         if value.grid_id is not None:
