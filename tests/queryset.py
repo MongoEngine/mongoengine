@@ -992,10 +992,15 @@ class QuerySetTest(unittest.TestCase):
         """
         class BlogPost(Document):
             tags = ListField(StringField())
+            deleted = BooleanField(default=False)
+
+            @queryset_manager
+            def objects(doc_cls, queryset):
+                return queryset(deleted=False)
 
             @queryset_manager
             def music_posts(doc_cls, queryset):
-                return queryset(tags='music')
+                return queryset(tags='music', deleted=False)
 
         BlogPost.drop_collection()
 
@@ -1005,6 +1010,8 @@ class QuerySetTest(unittest.TestCase):
         post2.save()
         post3 = BlogPost(tags=['film', 'actors'])
         post3.save()
+        post4 = BlogPost(tags=['film', 'actors'], deleted=True)
+        post4.save()
 
         self.assertEqual([p.id for p in BlogPost.objects],
                          [post1.id, post2.id, post3.id])
