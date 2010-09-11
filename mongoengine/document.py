@@ -56,7 +56,7 @@ class Document(BaseDocument):
 
     __metaclass__ = TopLevelDocumentMetaclass
 
-    def save(self, safe=True, force_insert=False):
+    def save(self, safe=True, force_insert=False, validate=True):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -67,8 +67,10 @@ class Document(BaseDocument):
         :param safe: check if the operation succeeded before returning
         :param force_insert: only try to create a new document, don't allow 
             updates of existing documents
+        :param validate: validates the document; set to ``False`` for skiping
         """
-        self.validate()
+        if validate:
+            self.validate()
         doc = self.to_mongo()
         try:
             collection = self.__class__.objects._collection
