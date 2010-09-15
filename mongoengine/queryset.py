@@ -992,7 +992,8 @@ class QuerySetManager(object):
                 self._collection = db[collection]
 
         # owner is the document that contains the QuerySetManager
-        queryset = QuerySet(owner, self._collection)
+        queryset_class = owner._meta['queryset_class'] or QuerySet
+        queryset = queryset_class(owner, self._collection)
         if self._manager_func:
             if self._manager_func.func_code.co_argcount == 1:
                 queryset = self._manager_func(queryset)
