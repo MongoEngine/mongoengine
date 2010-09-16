@@ -71,7 +71,7 @@ Available operators are as follows:
 * ``in`` -- value is in list (a list of values should be provided)
 * ``nin`` -- value is not in list (a list of values should be provided)
 * ``mod`` -- ``value % x == y``, where ``x`` and ``y`` are two provided values
-* ``all`` -- every item in array is in list of values provided
+* ``all`` -- every item in list of values provided is in array
 * ``size`` -- the size of the array is 
 * ``exists`` -- value for field exists
 
@@ -399,6 +399,7 @@ that you may use with these methods:
 * ``unset`` -- delete a particular value (since MongoDB v1.3+)
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
+* ``pop`` -- remove the last item from a list
 * ``push`` -- append a value to a list
 * ``push_all`` -- append several values to a list
 * ``pull`` -- remove a value from a list

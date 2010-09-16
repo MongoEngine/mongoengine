@@ -165,8 +165,49 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.get(age__lt=30)
         self.assertEqual(person.name, "User A")
         
+    def test_find_array_position(self):
+        """Ensure that query by array position works.
+        """
+        class Comment(EmbeddedDocument):
+            name = StringField()
+
+        class Post(EmbeddedDocument):
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        class Blog(Document):
+            tags = ListField(StringField())
+            posts = ListField(EmbeddedDocumentField(Post))
+
+        Blog.drop_collection()
         
-        
+        Blog.objects.create(tags=['a', 'b'])
+        self.assertEqual(len(Blog.objects(tags__0='a')), 1)
+        self.assertEqual(len(Blog.objects(tags__0='b')), 0)
+        self.assertEqual(len(Blog.objects(tags__1='a')), 0)
+        self.assertEqual(len(Blog.objects(tags__1='b')), 1)
+
+        Blog.drop_collection()
+
+        comment1 = Comment(name='testa')
+        comment2 = Comment(name='testb')
+        post1 = Post(comments=[comment1, comment2])
+        post2 = Post(comments=[comment2, comment2])
+        blog1 = Blog.objects.create(posts=[post1, post2])
+        blog2 = Blog.objects.create(posts=[post2, post1])
+
+        blog = Blog.objects(posts__0__comments__0__name='testa').get()
+        self.assertEqual(blog, blog1)
+
+        query = Blog.objects(posts__1__comments__1__name='testb')
+        self.assertEqual(len(query), 2)
+
+        query = Blog.objects(posts__1__comments__1__name='testa')
+        self.assertEqual(len(query), 0)
+
+        query = Blog.objects(posts__0__comments__1__name='testa')
+        self.assertEqual(len(query), 0)
+
+        Blog.drop_collection()
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
@@ -288,6 +329,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj, person)
         obj = self.Person.objects(Q(name__iexact='gUIDO VAN rOSSU')).first()
         self.assertEqual(obj, None)
+        
+        # Test unsafe expressions
+        person = self.Person(name='Guido van Rossum [.\'Geek\']')
+        person.save()
+
+        obj = self.Person.objects(Q(name__icontains='[.\'Geek')).first()
+        self.assertEqual(obj, person)
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
@@ -664,28 +712,27 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertTrue('db' in post.tags and 'nosql' in post.tags)
 
+        tags = post.tags[:-1]
+        BlogPost.objects.update(pop__tags=1)
+        post.reload()
+        self.assertEqual(post.tags, tags)
+
         BlogPost.drop_collection()
 
     def test_update_pull(self):
         """Ensure that the 'pull' update operation works correctly.
         """
-        class Comment(EmbeddedDocument):
-            content = StringField()
-
         class BlogPost(Document):
             slug = StringField()
-            comments = ListField(EmbeddedDocumentField(Comment))
+            tags = ListField(StringField())
 
-        comment1 = Comment(content="test1")
-        comment2 = Comment(content="test2")
-
-        post = BlogPost(slug="test", comments=[comment1, comment2])
+        post = BlogPost(slug="test", tags=['code', 'mongodb', 'code'])
         post.save()
-        self.assertTrue(comment2 in post.comments)
 
-        BlogPost.objects(slug="test").update(pull__comments__content="test2")
+        BlogPost.objects(slug="test").update(pull__tags="code")
         post.reload()
-        self.assertTrue(comment2 not in post.comments)
+        self.assertTrue('code' not in post.tags)
+        self.assertEqual(len(post.tags), 1)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
@@ -948,11 +995,14 @@ class QuerySetTest(unittest.TestCase):
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """
+        self.Person(name='person', age=0).save()
+        self.assertEqual(int(self.Person.objects.average('age')), 0)
+
         ages = [23, 54, 12, 94, 27]
         for i, age in enumerate(ages):
             self.Person(name='test%s' % i, age=age).save()
 
-        avg = float(sum(ages)) / len(ages)
+        avg = float(sum(ages)) / (len(ages) + 1) # take into account the 0
         self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
 
         self.Person(name='ageless person').save()
@@ -985,10 +1035,15 @@ class QuerySetTest(unittest.TestCase):
         """
         class BlogPost(Document):
             tags = ListField(StringField())
+            deleted = BooleanField(default=False)
+
+            @queryset_manager
+            def objects(doc_cls, queryset):
+                return queryset(deleted=False)
 
             @queryset_manager
             def music_posts(doc_cls, queryset):
-                return queryset(tags='music')
+                return queryset(tags='music', deleted=False)
 
         BlogPost.drop_collection()
 
@@ -998,6 +1053,8 @@ class QuerySetTest(unittest.TestCase):
         post2.save()
         post3 = BlogPost(tags=['film', 'actors'])
         post3.save()
+        post4 = BlogPost(tags=['film', 'actors'], deleted=True)
+        post4.save()
 
         self.assertEqual([p.id for p in BlogPost.objects],
                          [post1.id, post2.id, post3.id])
@@ -1307,6 +1364,8 @@ class QTest(unittest.TestCase):
     
     def test_q_with_dbref(self):
         """Ensure Q objects handle DBRefs correctly"""
+        connect(db='mongoenginetest')
+
         class User(Document):
             pass
 
@@ -1318,6 +1377,27 @@ class QTest(unittest.TestCase):
 
         self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
         self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
+
+    def test_custom_querysets(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+        class CustomQuerySet(QuerySet):
+            def not_empty(self):
+                return len(self) > 0
+
+        class Post(Document):
+            meta = {'queryset_class': CustomQuerySet}
+
+        Post.drop_collection()
+
+        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertFalse(Post.objects.not_empty())
+
+        Post().save()
+        self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
 
 if __name__ == '__main__':
     unittest.main()
