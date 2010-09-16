@@ -64,7 +64,7 @@ class StringField(BaseField):
                 regex = r'%s$'
             elif op == 'exact':
                 regex = r'^%s$'
-            value = re.compile(regex % value, flags)
+            value = re.compile(regex % re.escape(value), flags)
         return value
 
 
