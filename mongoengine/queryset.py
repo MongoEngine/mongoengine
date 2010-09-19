@@ -766,7 +766,8 @@ class QuerySet(object):
         return mongo_update
 
     def update(self, safe_update=True, upsert=False, **update):
-        """Perform an atomic update on the fields matched by the query.
+        """Perform an atomic update on the fields matched by the query. When 
+        ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe: check if the operation succeeded before returning
         :param update: Django-style update keyword arguments
@@ -778,8 +779,10 @@ class QuerySet(object):
 
         update = QuerySet._transform_update(self._document, **update)
         try:
-            self._collection.update(self._query, update, safe=safe_update, 
-                                    upsert=upsert, multi=True)
+            ret = self._collection.update(self._query, update, multi=True,
+                                          upsert=upsert, safe=safe_update)
+            if ret is not None and 'n' in ret:
+                return ret['n']
         except pymongo.errors.OperationFailure, err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
@@ -787,7 +790,8 @@ class QuerySet(object):
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
     def update_one(self, safe_update=True, upsert=False, **update):
-        """Perform an atomic update on first field matched by the query.
+        """Perform an atomic update on first field matched by the query. When 
+        ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe: check if the operation succeeded before returning
         :param update: Django-style update keyword arguments
@@ -799,11 +803,14 @@ class QuerySet(object):
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
             if pymongo.version >= '1.1.1':
-                self._collection.update(self._query, update, safe=safe_update, 
-                                        upsert=upsert, multi=False)
+                ret = self._collection.update(self._query, update, multi=False,
+                                              upsert=upsert, safe=safe_update)
             else:
                 # Older versions of PyMongo don't support 'multi'
-                self._collection.update(self._query, update, safe=safe_update)
+                ret = self._collection.update(self._query, update,
+                                              safe=safe_update)
+            if ret is not None and 'n' in ret:
+                return ret['n']
         except pymongo.errors.OperationFailure, e:
             raise OperationError(u'Update failed [%s]' % unicode(e))
 
