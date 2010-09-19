@@ -1307,6 +1307,26 @@ class QuerySetTest(unittest.TestCase):
         
         Event.drop_collection()
 
+    def test_custom_querysets(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+        class CustomQuerySet(QuerySet):
+            def not_empty(self):
+                return len(self) > 0
+
+        class Post(Document):
+            meta = {'queryset_class': CustomQuerySet}
+
+        Post.drop_collection()
+
+        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertFalse(Post.objects.not_empty())
+
+        Post().save()
+        self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
 
 class QTest(unittest.TestCase):
 
@@ -1377,26 +1397,6 @@ class QTest(unittest.TestCase):
 
         self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
         self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
-
-    def test_custom_querysets(self):
-        """Ensure that custom QuerySet classes may be used.
-        """
-        class CustomQuerySet(QuerySet):
-            def not_empty(self):
-                return len(self) > 0
-
-        class Post(Document):
-            meta = {'queryset_class': CustomQuerySet}
-
-        Post.drop_collection()
-
-        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
-        self.assertFalse(Post.objects.not_empty())
-
-        Post().save()
-        self.assertTrue(Post.objects.not_empty())
-
-        Post.drop_collection()
 
 
 if __name__ == '__main__':
