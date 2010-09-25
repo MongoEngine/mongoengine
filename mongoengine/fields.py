@@ -528,6 +528,7 @@ class GridFSProxy(object):
         obj = self.get()
         if name in dir(obj):
             return getattr(obj, name)
+        raise AttributeError
 
     def __get__(self, instance, value):
         return self
