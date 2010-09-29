@@ -448,6 +448,16 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
         self.assertEqual(person_obj['_id'], person.id)
+        # Test skipping validation on save
+        class Recipient(Document):
+            email = EmailField(required=True)
+        
+        recipient = Recipient(email='root@localhost')
+        self.assertRaises(ValidationError, recipient.save)
+        try:
+            recipient.save(validate=False)
+        except ValidationError:
+            fail()
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.

@@ -512,6 +512,10 @@ class BinaryField(BaseField):
             raise ValidationError('Binary value is too long')
 
 
+class GridFSError(Exception):
+    pass
+
+
 class GridFSProxy(object):
     """Proxy object to handle writing and reading of files to and from GridFS
 
@@ -527,6 +531,7 @@ class GridFSProxy(object):
         obj = self.get()
         if name in dir(obj):
             return getattr(obj, name)
+        raise AttributeError
 
     def __get__(self, instance, value):
         return self
@@ -545,12 +550,18 @@ class GridFSProxy(object):
         self.grid_id = self.newfile._id
 
     def put(self, file, **kwargs):
+        if self.grid_id:
+            raise GridFSError('This document alreay has a file. Either delete '
+                              'it or call replace to overwrite it')
         self.grid_id = self.fs.put(file, **kwargs)
 
     def write(self, string):
-        if not self.newfile:
+        if self.grid_id:
+            if not self.newfile:
+                raise GridFSError('This document alreay has a file. Either '
+                                  'delete it or call replace to overwrite it')
+        else:
             self.new_file()
-            self.grid_id = self.newfile._id
         self.newfile.write(string)
 
     def writelines(self, lines):
