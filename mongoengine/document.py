@@ -15,7 +15,7 @@ class EmbeddedDocument(BaseDocument):
     fields on :class:`~mongoengine.Document`\ s through the
     :class:`~mongoengine.EmbeddedDocumentField` field type.
     """
-    
+
     __metaclass__ = DocumentMetaclass
 
 
@@ -119,23 +119,23 @@ class Document(BaseDocument):
 
 class MapReduceDocument(object):
     """A document returned from a map/reduce query.
-    
+
     :param collection: An instance of :class:`~pymongo.Collection`
     :param key: Document/result key, often an instance of 
                 :class:`~pymongo.objectid.ObjectId`. If supplied as 
                 an ``ObjectId`` found in the given ``collection``, 
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.
-    
+
     .. versionadded:: 0.3
     """
-    
+
     def __init__(self, document, collection, key, value):
         self._document = document
         self._collection = collection
         self.key = key
         self.value = value
-    
+
     @property
     def object(self):
         """Lazy-load the object referenced by ``self.key``. ``self.key`` 
@@ -143,7 +143,7 @@ class MapReduceDocument(object):
         """
         id_field = self._document()._meta['id_field']
         id_field_type = type(id_field)
-        
+
         if not isinstance(self.key, id_field_type):
             try:
                 self.key = id_field_type(self.key)

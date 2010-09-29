@@ -163,7 +163,7 @@ class QuerySet(object):
         self._where_clause = None
         self._loaded_fields = []
         self._ordering = []
-        
+
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
         if document._meta.get('allow_inheritance'):
@@ -240,7 +240,7 @@ class QuerySet(object):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
         return self.__call__(*q_objs, **query)
-    
+
     def all(self):
         """Returns all documents."""
         return self.__call__()
@@ -256,7 +256,7 @@ class QuerySet(object):
             background = self._document._meta.get('index_background', False)
             drop_dups = self._document._meta.get('index_drop_dups', False)
             index_opts = self._document._meta.get('index_options', {})
-            
+
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
@@ -267,12 +267,12 @@ class QuerySet(object):
             for index in self._document._meta['unique_indexes']:
                 self._collection.ensure_index(index, unique=True,
                     background=background, drop_dups=drop_dups, **index_opts)
-                
+
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
                 self._collection.ensure_index('_types',
                     background=background, **index_opts)
-            
+
             # Ensure all needed field indexes are created
             for field in self._document._fields.values():
                 if field.__class__._geo_index:
@@ -471,7 +471,7 @@ class QuerySet(object):
 
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
-        
+
         :param object_ids: a list or tuple of ``ObjectId``\ s
         :rtype: dict of ObjectIds as keys and collection-specific
                 Document subclasses as values.
@@ -483,7 +483,7 @@ class QuerySet(object):
         docs = self._collection.find({'_id': {'$in': object_ids}})
         for doc in docs:
             doc_map[doc['_id']] = self._document._from_son(doc)
- 
+
         return doc_map
 
     def next(self):
@@ -637,7 +637,7 @@ class QuerySet(object):
         # Integer index provided
         elif isinstance(key, int):
             return self._document._from_son(self._cursor[key])
-    
+
     def distinct(self, field):
         """Return a list of distinct values for a given field.
 
@@ -649,9 +649,9 @@ class QuerySet(object):
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
-        
+
             post = BlogPost.objects(...).only("title")
-        
+
         :param fields: fields to include
 
         .. versionadded:: 0.3

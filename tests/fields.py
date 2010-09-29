@@ -693,7 +693,7 @@ class FieldTest(unittest.TestCase):
         testfile.name = "Hello, World!"
         testfile.file.put('Hello, World!')
         testfile.save()
-        
+
         # Second instance
         testfiledupe = TestFile()
         data = testfiledupe.file.read() # Should be None

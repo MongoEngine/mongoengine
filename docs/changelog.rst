@@ -4,6 +4,8 @@ Changelog
 
 Changes in v0.4
 ===============
+- Added ``GridFSStorage`` Django storage backend
+- Added ``FileField`` for GridFS support
 - Added ``SortedListField``
 - Added ``EmailField``
 - Added ``GeoPointField``
