@@ -662,7 +662,7 @@ class QuerySet(object):
         """Transform an update spec from Django-style format to Mongo format.
         """
         operators = ['set', 'unset', 'inc', 'dec', 'push', 'push_all', 'pull',
-                     'pull_all']
+                     'pull_all', 'add_to_set']
 
         mongo_update = {}
         for key, value in update.items():
@@ -680,7 +680,9 @@ class QuerySet(object):
                     op = 'inc'
                     if value > 0:
                         value = -value
-
+                elif op == 'add_to_set':
+                    op = op.replace('_to_set', 'ToSet')
+                    
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
@@ -688,7 +690,7 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'set', 'unset', 'push', 'pull'):
+                if op in (None, 'set', 'unset', 'push', 'pull', 'addToSet'):
                     value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
                     value = [field.prepare_query_value(op, v) for v in value]
