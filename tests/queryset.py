@@ -1417,6 +1417,7 @@ class NewQTest(unittest.TestCase):
     def test_and_combination(self):
         class TestDoc(Document):
             x = IntField()
+            y = StringField()
 
         # Check than an error is raised when conflicting queries are anded
         def invalid_combination():
@@ -1431,6 +1432,15 @@ class NewQTest(unittest.TestCase):
         q2 = NewQ(x__gt=3)
         query = (q1 & q2).to_query(TestDoc)
         self.assertEqual(query, {'x': {'$lt': 7, '$gt': 3}})
+
+        # More complex nested example
+        query = NewQ(x__lt=100) & NewQ(y__ne='NotMyString')
+        query &= NewQ(y__in=['a', 'b', 'c']) & NewQ(x__gt=-100)
+        mongo_query = {
+            'x': {'$lt': 100, '$gt': -100}, 
+            'y': {'$ne': 'NotMyString', '$in': ['a', 'b', 'c']},
+        }
+        self.assertEqual(query.to_query(TestDoc), mongo_query)
 
     def test_or_combination(self):
         class TestDoc(Document):

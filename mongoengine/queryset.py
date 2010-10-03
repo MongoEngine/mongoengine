@@ -158,7 +158,7 @@ class QCombination(QNode):
 
     @property
     def empty(self):
-        return not bool(self.query)
+        return not bool(self.children)
 
 
 class NewQ(QNode):
