@@ -43,6 +43,20 @@ class QNodeVisitor(object):
     def visit_query(self, query):
         return query
 
+    def _query_conjunction(self, queries):
+        query_ops = set()
+        combined_query = {}
+        for query in queries:
+            ops = set(query.keys())
+            intersection = ops.intersection(query_ops)
+            if intersection:
+                msg = 'Duplicate query contitions: '
+                raise InvalidQueryError(msg + ', '.join(intersection))
+
+            query_ops.update(ops)
+            combined_query.update(copy.deepcopy(query))
+        return combined_query
+
 
 class SimplificationVisitor(QNodeVisitor):
 
@@ -53,18 +67,8 @@ class SimplificationVisitor(QNodeVisitor):
         if any(not isinstance(node, NewQ) for node in combination.children):
             return combination
 
-        query_ops = set()
-        query = {}
-        for node in combination.children:
-            ops = set(node.query.keys())
-            intersection = ops.intersection(query_ops)
-            if intersection:
-                msg = 'Duplicate query contitions: '
-                raise InvalidQueryError(msg + ', '.join(intersection))
-
-            query_ops.update(ops)
-            query.update(copy.deepcopy(node.query))
-        return NewQ(**query)
+        queries = [node.query for node in combination.children]
+        return NewQ(**self._query_conjunction(queries))
 
 
 class QueryCompilerVisitor(QNodeVisitor):
@@ -74,7 +78,9 @@ class QueryCompilerVisitor(QNodeVisitor):
 
     def visit_combination(self, combination):
         if combination.operation == combination.OR:
-            return combination
+            return {'$or': combination.children}
+        elif combination.operation == combination.AND:
+            return self._query_conjunction(combination.children)
         return combination
 
     def visit_query(self, query):
