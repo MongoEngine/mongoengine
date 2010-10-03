@@ -36,18 +36,28 @@ RE_TYPE = type(re.compile(''))
 
 
 class QNodeVisitor(object):
+    """Base visitor class for visiting Q-object nodes in a query tree.
+    """
 
     def visit_combination(self, combination):
+        """Called by QCombination objects.
+        """
         return combination
 
     def visit_query(self, query):
+        """Called by (New)Q objects.
+        """
         return query
 
     def _query_conjunction(self, queries):
+        """Merges two query dicts - effectively &ing them together.
+        """
         query_ops = set()
         combined_query = {}
         for query in queries:
             ops = set(query.keys())
+            # Make sure that the same operation isn't applied more than once
+            # to a single field
             intersection = ops.intersection(query_ops)
             if intersection:
                 msg = 'Duplicate query contitions: '
@@ -59,11 +69,15 @@ class QNodeVisitor(object):
 
 
 class SimplificationVisitor(QNodeVisitor):
+    """Simplifies query trees by combinging unnecessary 'and' connection nodes
+    into a single Q-object.
+    """
 
     def visit_combination(self, combination):
         if combination.operation != combination.AND:
             return combination
 
+        # The simplification only applies to 'simple' queries
         if any(not isinstance(node, NewQ) for node in combination.children):
             return combination
 
@@ -72,6 +86,9 @@ class SimplificationVisitor(QNodeVisitor):
 
 
 class QueryCompilerVisitor(QNodeVisitor):
+    """Compiles the nodes in a query tree to a PyMongo-compatible query
+    dictionary.
+    """
 
     def __init__(self, document):
         self.document = document
@@ -88,6 +105,8 @@ class QueryCompilerVisitor(QNodeVisitor):
 
 
 class QNode(object):
+    """Base class for nodes in query trees.
+    """
 
     AND = 0
     OR = 1
@@ -101,6 +120,8 @@ class QNode(object):
         raise NotImplementedError
 
     def _combine(self, other, operation):
+        """Combine this node with another node into a QCombination object.
+        """
         if other.empty:
             return self
 
@@ -121,6 +142,9 @@ class QNode(object):
 
 
 class QCombination(QNode):
+    """Represents the combination of several conditions by a given logical
+    operator.
+    """
 
     def __init__(self, operation, children):
         self.operation = operation
@@ -138,6 +162,9 @@ class QCombination(QNode):
 
 
 class NewQ(QNode):
+    """A simple query object, used in a query tree to build up more complex
+    query structures.
+    """
 
     def __init__(self, **query):
         self.query = query
