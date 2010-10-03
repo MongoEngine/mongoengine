@@ -649,7 +649,7 @@ class QuerySet(object):
 
         .. versionadded:: 0.4
         """
-        return self._collection.distinct(field)
+        return self._cursor.distinct(field)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
