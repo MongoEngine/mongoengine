@@ -394,14 +394,24 @@ class FieldTest(unittest.TestCase):
         class Employee(Document):
             name = StringField()
             boss = ReferenceField('self')
+            friends = ListField(ReferenceField('self'))
 
         bill = Employee(name='Bill Lumbergh')
         bill.save()
-        peter = Employee(name='Peter Gibbons', boss=bill)
+
+        michael = Employee(name='Michael Bolton')
+        michael.save()
+
+        samir = Employee(name='Samir Nagheenanajar')
+        samir.save()
+
+        friends = [michael, samir]
+        peter = Employee(name='Peter Gibbons', boss=bill, friends=friends)
         peter.save()
 
         peter = Employee.objects.with_id(peter.id)
         self.assertEqual(peter.boss, bill)
+        self.assertEqual(peter.friends, friends)
 
     def test_undefined_reference(self):
         """Ensure that ReferenceFields may reference undefined Documents.

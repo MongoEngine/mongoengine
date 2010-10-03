@@ -20,6 +20,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
+
 class StringField(BaseField):
     """A unicode string field.
     """
@@ -105,6 +106,7 @@ class URLField(StringField):
                 message = 'This URL appears to be a broken link: %s' % e
                 raise ValidationError(message)
 
+
 class EmailField(StringField):
     """A field that validates input as an E-Mail-Address.
     """
@@ -118,6 +120,7 @@ class EmailField(StringField):
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
             raise ValidationError('Invalid Mail-address: %s' % value)
+
 
 class IntField(BaseField):
     """An integer field.
@@ -141,6 +144,7 @@ class IntField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Integer value is too large')
+
 
 class FloatField(BaseField):
     """An floating point number field.
@@ -197,6 +201,7 @@ class DecimalField(BaseField):
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Decimal value is too large')
 
+
 class BooleanField(BaseField):
     """A boolean field type.
 
@@ -209,12 +214,14 @@ class BooleanField(BaseField):
     def validate(self, value):
         assert isinstance(value, bool)
 
+
 class DateTimeField(BaseField):
     """A datetime field.
     """
 
     def validate(self, value):
         assert isinstance(value, datetime.datetime)
+
 
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of
@@ -331,6 +338,16 @@ class ListField(BaseField):
     def lookup_member(self, member_name):
         return self.field.lookup_member(member_name)
 
+    def _set_owner_document(self, owner_document):
+        self.field.owner_document = owner_document
+        self._owner_document = owner_document
+
+    def _get_owner_document(self, owner_document):
+        self._owner_document = owner_document
+
+    owner_document = property(_get_owner_document, _set_owner_document)
+
+
 class SortedListField(ListField):
     """A ListField that sorts the contents of its list before writing to
     the database in order to ensure that a sorted list is always
@@ -346,8 +363,10 @@ class SortedListField(ListField):
 
     def to_mongo(self, value):
         if self._ordering is not None:
-            return sorted([self.field.to_mongo(item) for item in value], key=itemgetter(self._ordering))
+            return sorted([self.field.to_mongo(item) for item in value],
+                          key=itemgetter(self._ordering))
         return sorted([self.field.to_mongo(item) for item in value])
+
 
 class DictField(BaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
@@ -441,6 +460,7 @@ class ReferenceField(BaseField):
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
+
 
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
@@ -639,6 +659,7 @@ class FileField(BaseField):
         if value.grid_id is not None:
             assert isinstance(value, GridFSProxy)
             assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+
 
 class GeoPointField(BaseField):
     """A list storing a latitude and longitude.
