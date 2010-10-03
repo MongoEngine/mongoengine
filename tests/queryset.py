@@ -717,6 +717,11 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, tags)
 
+        BlogPost.objects.update_one(add_to_set__tags='unique')
+        BlogPost.objects.update_one(add_to_set__tags='unique')
+        post.reload()
+        self.assertEqual(post.tags.count('unique'), 1)
+        
         BlogPost.drop_collection()
 
     def test_update_pull(self):
