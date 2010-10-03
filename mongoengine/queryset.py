@@ -15,6 +15,7 @@ REPR_OUTPUT_SIZE = 20
 class DoesNotExist(Exception):
     pass
 
+
 class MultipleObjectsReturned(Exception):
     pass
 
@@ -26,10 +27,121 @@ class InvalidQueryError(Exception):
 class OperationError(Exception):
     pass
 
+
 class InvalidCollectionError(Exception):
     pass
 
+
 RE_TYPE = type(re.compile(''))
+
+
+class QNodeVisitor(object):
+
+    def visit_combination(self, combination):
+        return combination
+
+    def visit_query(self, query):
+        return query
+
+
+class SimplificationVisitor(QNodeVisitor):
+
+    def visit_combination(self, combination):
+        if combination.operation != combination.AND:
+            return combination
+
+        if any(not isinstance(node, NewQ) for node in combination.children):
+            return combination
+
+        query_ops = set()
+        query = {}
+        for node in combination.children:
+            ops = set(node.query.keys())
+            intersection = ops.intersection(query_ops)
+            if intersection:
+                msg = 'Duplicate query contitions: '
+                raise InvalidQueryError(msg + ', '.join(intersection))
+
+            query_ops.update(ops)
+            query.update(copy.deepcopy(node.query))
+        return NewQ(**query)
+
+
+class QueryCompilerVisitor(QNodeVisitor):
+
+    def __init__(self, document):
+        self.document = document
+
+    def visit_combination(self, combination):
+        if combination.operation == combination.OR:
+            return combination
+        return combination
+
+    def visit_query(self, query):
+        return QuerySet._transform_query(self.document, **query.query)
+
+
+class QNode(object):
+
+    AND = 0
+    OR = 1
+
+    def to_query(self, document):
+        query = self.accept(SimplificationVisitor())
+        query = query.accept(QueryCompilerVisitor(document))
+        return query
+
+    def accept(self, visitor):
+        raise NotImplementedError
+
+    def _combine(self, other, operation):
+        if other.empty:
+            return self
+
+        if self.empty:
+            return other
+
+        return QCombination(operation, [self, other])
+
+    @property
+    def empty(self):
+        return False
+
+    def __or__(self, other):
+        return self._combine(other, self.OR)
+
+    def __and__(self, other):
+        return self._combine(other, self.AND)
+
+
+class QCombination(QNode):
+
+    def __init__(self, operation, children):
+        self.operation = operation
+        self.children = children
+
+    def accept(self, visitor):
+        for i in range(len(self.children)):
+            self.children[i] = self.children[i].accept(visitor)
+
+        return visitor.visit_combination(self)
+
+    @property
+    def empty(self):
+        return not bool(self.query)
+
+
+class NewQ(QNode):
+
+    def __init__(self, **query):
+        self.query = query
+
+    def accept(self, visitor):
+        return visitor.visit_query(self)
+
+    @property
+    def empty(self):
+        return not bool(self.query)
 
 
 class Q(object):

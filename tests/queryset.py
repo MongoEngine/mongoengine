@@ -6,7 +6,7 @@ import pymongo
 from datetime import datetime, timedelta
 
 from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
-                                  DoesNotExist)
+                                  DoesNotExist, NewQ)
 from mongoengine import *
 
 
@@ -52,9 +52,6 @@ class QuerySetTest(unittest.TestCase):
         person1.save()
         person2 = self.Person(name="User B", age=30)
         person2.save()
-
-        q1 = Q(name='test')
-        q2 = Q(age__gte=18)
 
         # Find all people in the collection
         people = self.Person.objects
@@ -1414,6 +1411,26 @@ class QTest(unittest.TestCase):
         self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
         self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
 
+
+class NewQTest(unittest.TestCase):
+
+    def test_and_combination(self):
+        class TestDoc(Document):
+            x = IntField()
+
+        # Check than an error is raised when conflicting queries are anded
+        def invalid_combination():
+            query = NewQ(x__lt=7) & NewQ(x__lt=3)
+            query.to_query(TestDoc)
+        self.assertRaises(InvalidQueryError, invalid_combination)
+
+        # Check normal cases work without an error
+        query = NewQ(x__lt=7) & NewQ(x__gt=3)
+
+        q1 = NewQ(x__lt=7)
+        q2 = NewQ(x__gt=3)
+        query = (q1 & q2).to_query(TestDoc)
+        self.assertEqual(query, {'x': {'$lt': 7, '$gt': 3}})
 
 if __name__ == '__main__':
     unittest.main()
