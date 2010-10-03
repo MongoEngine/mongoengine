@@ -1456,5 +1456,19 @@ class NewQTest(unittest.TestCase):
             ]
         })
 
+    def test_and_or_combination(self):
+        class TestDoc(Document):
+            x = IntField()
+
+        query = NewQ(x__gt=0) | NewQ(x__exists=False)
+        query &= NewQ(x__lt=100) | NewQ(x__in=[100, 200, 3000])
+        print query.to_query(TestDoc)
+#        self.assertEqual(query.to_query(TestDoc, {
+#            '$or': [
+#                {'x': {'$lt': 3}},
+#                {'x': {'$gt': 7}},
+#            ]
+#        })
+
 if __name__ == '__main__':
     unittest.main()

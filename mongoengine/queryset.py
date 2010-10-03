@@ -85,6 +85,44 @@ class SimplificationVisitor(QNodeVisitor):
         return NewQ(**self._query_conjunction(queries))
 
 
+class QueryTreeTransformerVisitor(QNodeVisitor):
+    """Transforms the query tree in to a form that may be used with MongoDB.
+    """
+
+    def visit_combination(self, combination):
+        if combination.operation == combination.AND:
+            # MongoDB doesn't allow us to have too many $or operations in our
+            # queries, so the aim is to move the ORs up the tree to one
+            # 'master' $or. Firstly, we must find all the necessary parts (part
+            # of an AND combination or just standard Q object), and store them
+            # separately from the OR parts.
+            or_parts = []
+            and_parts = []
+            for node in combination.children:
+                if isinstance(node, QCombination):
+                    if node.operation == node.OR:
+                        # Any of the children in an $or component may cause
+                        # the query to succeed
+                        or_parts += node.children
+                    elif node.operation == node.AND:
+                        and_parts.append(node)
+                elif isinstance(node, NewQ):
+                    and_parts.append(node)
+
+            # Now we combine the parts into a usable query. AND together all of
+            # the necessary parts. Then for each $or part, create a new query
+            # that ANDs the necessary part with the $or part.
+            clauses = []
+            for or_part in or_parts:
+                q_object = reduce(lambda a, b: a & b, and_parts, NewQ())
+                clauses.append(q_object & or_part)
+
+            # Finally, $or the generated clauses in to one query. Each of the
+            # clauses is sufficient for the query to succeed.
+            return reduce(lambda a, b: a | b, clauses, NewQ())
+        return combination
+
+
 class QueryCompilerVisitor(QNodeVisitor):
     """Compiles the nodes in a query tree to a PyMongo-compatible query
     dictionary.
@@ -113,6 +151,7 @@ class QNode(object):
 
     def to_query(self, document):
         query = self.accept(SimplificationVisitor())
+        query = query.accept(QueryTreeTransformerVisitor())
         query = query.accept(QueryCompilerVisitor(document))
         return query
 
