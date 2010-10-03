@@ -1094,7 +1094,8 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         data = {'title': 'Post 1', 'comments': [Comment(content='test')]}
-        BlogPost(**data).save()
+        post = BlogPost(**data)
+        post.save()
 
         self.assertTrue('postTitle' in
                         BlogPost.objects(title=data['title'])._query)
@@ -1102,9 +1103,30 @@ class QuerySetTest(unittest.TestCase):
                          BlogPost.objects(title=data['title'])._query)
         self.assertEqual(len(BlogPost.objects(title=data['title'])), 1)
 
+        self.assertTrue('_id' in BlogPost.objects(pk=post.id)._query)
+        self.assertEqual(len(BlogPost.objects(pk=post.id)), 1)
+
         self.assertTrue('postComments.commentContent' in
                         BlogPost.objects(comments__content='test')._query)
         self.assertEqual(len(BlogPost.objects(comments__content='test')), 1)
+
+        BlogPost.drop_collection()
+
+    def test_query_pk_field_name(self):
+        """Ensure that the correct "primary key" field name is used when querying
+        """
+        class BlogPost(Document):
+            title = StringField(primary_key=True, db_field='postTitle')
+
+        BlogPost.drop_collection()
+
+        data = { 'title':'Post 1' }
+        post = BlogPost(**data)
+        post.save()
+
+        self.assertTrue('_id' in BlogPost.objects(pk=data['title'])._query)
+        self.assertTrue('_id' in BlogPost.objects(title=data['title'])._query)
+        self.assertEqual(len(BlogPost.objects(pk=data['title'])), 1)
 
         BlogPost.drop_collection()
 

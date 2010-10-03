@@ -312,6 +312,9 @@ class QuerySet(object):
         for field_name in parts:
             if field is None:
                 # Look up first field from the document
+                if field_name == 'pk':
+                    # Deal with "primary key" alias
+                    field_name = document._meta['id_field']
                 field = document._fields[field_name]
             else:
                 # Look up subfield on the previous field
