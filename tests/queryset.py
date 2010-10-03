@@ -973,7 +973,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost(hits=1, tags=['music', 'film', 'actors']).save()
         BlogPost(hits=2, tags=['music']).save()
-        BlogPost(hits=3, tags=['music', 'actors']).save()
+        BlogPost(hits=2, tags=['music', 'actors']).save()
 
         f = BlogPost.objects.item_frequencies('tags')
         f = dict((key, int(val)) for key, val in f.items())
@@ -994,6 +994,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertAlmostEqual(f['music'], 3.0/6.0)
         self.assertAlmostEqual(f['actors'], 2.0/6.0)
         self.assertAlmostEqual(f['film'], 1.0/6.0)
+
+        # Check item_frequencies works for non-list fields
+        f = BlogPost.objects.item_frequencies('hits')
+        f = dict((key, int(val)) for key, val in f.items())
+        self.assertEqual(set(['1', '2']), set(f.keys()))
+        self.assertEqual(f['1'], 1)
+        self.assertEqual(f['2'], 2)
 
         BlogPost.drop_collection()
 

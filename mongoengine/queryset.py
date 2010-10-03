@@ -916,20 +916,27 @@ class QuerySet(object):
         """
         return self.exec_js(average_func, field)
 
-    def item_frequencies(self, list_field, normalize=False):
-        """Returns a dictionary of all items present in a list field across
+    def item_frequencies(self, field, normalize=False):
+        """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents.
 
-        :param list_field: the list field to use
+        If the field is a :class:`~mongoengine.ListField`, the items within
+        each list will be counted individually.
+
+        :param field: the field to use
         :param normalize: normalize the results so they add to 1.0
         """
         freq_func = """
-            function(listField) {
+            function(field) {
                 if (options.normalize) {
                     var total = 0.0;
                     db[collection].find(query).forEach(function(doc) {
-                        total += doc[listField].length;
+                        if (doc[field].constructor == Array) {
+                            total += doc[field].length;
+                        } else {
+                            total++;
+                        }
                     });
                 }
 
@@ -939,14 +946,19 @@ class QuerySet(object):
                     inc /= total;
                 }
                 db[collection].find(query).forEach(function(doc) {
-                    doc[listField].forEach(function(item) {
+                    if (doc[field].constructor == Array) {
+                        doc[field].forEach(function(item) {
+                            frequencies[item] = inc + (frequencies[item] || 0);
+                        });
+                    } else {
+                        var item = doc[field];
                         frequencies[item] = inc + (frequencies[item] || 0);
-                    });
+                    }
                 });
                 return frequencies;
             }
         """
-        return self.exec_js(freq_func, list_field, normalize=normalize)
+        return self.exec_js(freq_func, field, normalize=normalize)
 
     def __repr__(self):
         limit = REPR_OUTPUT_SIZE + 1
