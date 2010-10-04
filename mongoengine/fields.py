@@ -5,6 +5,9 @@ from operator import itemgetter
 
 import re
 import pymongo
+import pymongo.dbref
+import pymongo.son
+import pymongo.binary
 import datetime
 import decimal
 import gridfs

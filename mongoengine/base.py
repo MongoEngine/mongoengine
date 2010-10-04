@@ -3,6 +3,7 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 
 import sys
 import pymongo
+import pymongo.objectid
 
 
 _document_registry = {}
