@@ -59,9 +59,9 @@ class SimplificationVisitor(QNodeVisitor):
     def visit_combination(self, combination):
         if combination.operation == combination.AND:
             # The simplification only applies to 'simple' queries
-            if all(isinstance(node, NewQ) for node in combination.children):
+            if all(isinstance(node, Q) for node in combination.children):
                 queries = [node.query for node in combination.children]
-                return NewQ(**self._query_conjunction(queries))
+                return Q(**self._query_conjunction(queries))
         return combination
 
     def _query_conjunction(self, queries):
@@ -104,7 +104,7 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
                         or_groups.append(node.children)
                     elif node.operation == node.AND:
                         and_parts.append(node)
-                elif isinstance(node, NewQ):
+                elif isinstance(node, Q):
                     and_parts.append(node)
 
             # Now we combine the parts into a usable query. AND together all of
@@ -112,13 +112,13 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
             # that ANDs the necessary part with the $or part.
             clauses = []
             for or_group in itertools.product(*or_groups):
-                q_object = reduce(lambda a, b: a & b, and_parts, NewQ())
+                q_object = reduce(lambda a, b: a & b, and_parts, Q())
                 q_object = reduce(lambda a, b: a & b, or_group, q_object)
                 clauses.append(q_object)
 
             # Finally, $or the generated clauses in to one query. Each of the
             # clauses is sufficient for the query to succeed.
-            return reduce(lambda a, b: a | b, clauses, NewQ())
+            return reduce(lambda a, b: a | b, clauses, Q())
 
         if combination.operation == combination.OR:
             children = []
@@ -249,7 +249,7 @@ class QCombination(QNode):
         return not bool(self.children)
 
 
-class NewQ(QNode):
+class Q(QNode):
     """A simple query object, used in a query tree to build up more complex
     query structures.
     """
@@ -265,124 +265,6 @@ class NewQ(QNode):
         return not bool(self.query)
 
 
-class Q(object):
-
-    OR = '||'
-    AND = '&&'
-    OPERATORS = {
-        'eq': ('((this.%(field)s instanceof Array) && '
-               '  this.%(field)s.indexOf(%(value)s) != -1) ||'
-               ' this.%(field)s == %(value)s'),
-        'ne': 'this.%(field)s != %(value)s',
-        'gt': 'this.%(field)s > %(value)s',
-        'gte': 'this.%(field)s >= %(value)s',
-        'lt': 'this.%(field)s < %(value)s',
-        'lte': 'this.%(field)s <= %(value)s',
-        'lte': 'this.%(field)s <= %(value)s',
-        'in': '%(value)s.indexOf(this.%(field)s) != -1',
-        'nin': '%(value)s.indexOf(this.%(field)s) == -1',
-        'mod': '%(field)s %% %(value)s',
-        'all': ('%(value)s.every(function(a){'
-                'return this.%(field)s.indexOf(a) != -1 })'),
-        'size': 'this.%(field)s.length == %(value)s',
-        'exists': 'this.%(field)s != null',
-        'regex_eq': '%(value)s.test(this.%(field)s)',
-        'regex_ne': '!%(value)s.test(this.%(field)s)',
-    }
-
-    def __init__(self, **query):
-        self.query = [query]
-
-    def _combine(self, other, op):
-        obj = Q()
-        if not other.query[0]:
-            return self
-        if self.query[0]:
-            obj.query = (['('] + copy.deepcopy(self.query) + [op] +
-                         copy.deepcopy(other.query) + [')'])
-        else:
-            obj.query = copy.deepcopy(other.query)
-        return obj
-
-    def __or__(self, other):
-        return self._combine(other, self.OR)
-
-    def __and__(self, other):
-        return self._combine(other, self.AND)
-
-    def as_js(self, document):
-        js = []
-        js_scope = {}
-        for i, item in enumerate(self.query):
-            if isinstance(item, dict):
-                item_query = QuerySet._transform_query(document, **item)
-                # item_query will values will either be a value or a dict
-                js.append(self._item_query_as_js(item_query, js_scope, i))
-            else:
-                js.append(item)
-        return pymongo.code.Code(' '.join(js), js_scope)
-
-    def _item_query_as_js(self, item_query, js_scope, item_num):
-        # item_query will be in one of the following forms
-        #    {'age': 25, 'name': 'Test'}
-        #    {'age': {'$lt': 25}, 'name': {'$in': ['Test', 'Example']}
-        #    {'age': {'$lt': 25, '$gt': 18}}
-        js = []
-        for i, (key, value) in enumerate(item_query.items()):
-            op = 'eq'
-            # Construct a variable name for the value in the JS
-            value_name = 'i%sf%s' % (item_num, i)
-            if isinstance(value, dict):
-                # Multiple operators for this field
-                for j, (op, value) in enumerate(value.items()):
-                    # Create a custom variable name for this operator
-                    op_value_name = '%so%s' % (value_name, j)
-                    # Construct the JS that uses this op
-                    value, operation_js = self._build_op_js(op, key, value,
-                                                            op_value_name)
-                    # Update the js scope with the value for this op
-                    js_scope[op_value_name] = value
-                    js.append(operation_js)
-            else:
-                # Construct the JS for this field
-                value, field_js = self._build_op_js(op, key, value, value_name)
-                js_scope[value_name] = value
-                js.append(field_js)
-        return ' && '.join(js)
-
-    def _build_op_js(self, op, key, value, value_name):
-        """Substitute the values in to the correct chunk of Javascript.
-        """
-        if isinstance(value, RE_TYPE):
-            # Regexes are handled specially
-            if op.strip('$') == 'ne':
-                op_js = Q.OPERATORS['regex_ne']
-            else:
-                op_js = Q.OPERATORS['regex_eq']
-        else:
-            op_js = Q.OPERATORS[op.strip('$')]
-
-        # Comparing two ObjectIds in Javascript doesn't work..
-        if isinstance(value, pymongo.objectid.ObjectId):
-            value = unicode(value)
-
-        # Handle DBRef
-        if isinstance(value, pymongo.dbref.DBRef):
-            op_js = '(this.%(field)s.$id == "%(id)s" &&'\
-                    ' this.%(field)s.$ref == "%(ref)s")' % {
-                        'field': key,
-                        'id': unicode(value.id),
-                        'ref': unicode(value.collection)
-                    }
-            value = None
-
-        # Perform the substitution
-        operation_js = op_js % {
-            'field': key, 
-            'value': value_name
-        }
-        return value, operation_js
-
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
@@ -392,7 +274,9 @@ class QuerySet(object):
         self._document = document
         self._collection_obj = collection
         self._accessed_collection = False
-        self._query = {}
+        self._mongo_query = None
+        self._query_obj = Q()
+        self._initial_query = {}
         self._where_clause = None
         self._loaded_fields = []
         self._ordering = []
@@ -400,10 +284,17 @@ class QuerySet(object):
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
         if document._meta.get('allow_inheritance'):
-            self._query = {'_types': self._document._class_name}
+            self._initial_query = {'_types': self._document._class_name}
         self._cursor_obj = None
         self._limit = None
         self._skip = None
+
+    @property
+    def _query(self):
+        if self._mongo_query is None:
+            self._mongo_query = self._query_obj.to_query(self._document)
+            self._mongo_query.update(self._initial_query)
+        return self._mongo_query
 
     def ensure_index(self, key_or_list, drop_dups=False, background=False,
         **kwargs):
@@ -463,10 +354,13 @@ class QuerySet(object):
             objects, only the last one will be used
         :param query: Django-style query keyword arguments
         """
+        #if q_obj:
+            #self._where_clause = q_obj.as_js(self._document)
+        query = Q(**query)
         if q_obj:
-            self._where_clause = q_obj.as_js(self._document)
-        query = QuerySet._transform_query(_doc_cls=self._document, **query)
-        self._query.update(query)
+            query &= q_obj
+        self._query_obj &= query
+        self._mongo_query = None
         return self
 
     def filter(self, *q_objs, **query):
@@ -616,7 +510,7 @@ class QuerySet(object):
                                                   "been implemented" % op)
                 elif op not in match_operators:
                     value = {'$' + op: value}
-            
+
             for i, part in indices:
                 parts.insert(i, part)
             key = '.'.join(parts)

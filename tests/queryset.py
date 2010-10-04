@@ -6,7 +6,7 @@ import pymongo
 from datetime import datetime, timedelta
 
 from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
-                                  DoesNotExist, NewQ)
+                                  DoesNotExist)
 from mongoengine import *
 
 
@@ -153,7 +153,8 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         self.assertRaises(MultipleObjectsReturned, self.Person.objects.get)
-        self.assertRaises(self.Person.MultipleObjectsReturned, self.Person.objects.get)
+        self.assertRaises(self.Person.MultipleObjectsReturned,
+                          self.Person.objects.get)
 
         # Use a query to filter the people found to just person2
         person = self.Person.objects.get(age=30)
@@ -231,7 +232,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(created, False)
         
         # Try retrieving when no objects exists - new doc should be created
-        person, created = self.Person.objects.get_or_create(age=50, defaults={'name': 'User C'})
+        kwargs = dict(age=50, defaults={'name': 'User C'})
+        person, created = self.Person.objects.get_or_create(**kwargs)
         self.assertEqual(created, True)
         
         person = self.Person.objects.get(age=50)
@@ -545,6 +547,7 @@ class QuerySetTest(unittest.TestCase):
 
         obj = self.Person.objects(Q(name__ne=re.compile('^bob'))).first()
         self.assertEqual(obj, person)
+        
         obj = self.Person.objects(Q(name__ne=re.compile('^Gui'))).first()
         self.assertEqual(obj, None)
 
@@ -1343,43 +1346,6 @@ class QuerySetTest(unittest.TestCase):
 
 class QTest(unittest.TestCase):
 
-    def test_or_and(self):
-        """Ensure that Q objects may be combined correctly.
-        """
-        q1 = Q(name='test')
-        q2 = Q(age__gte=18)
-
-        query = ['(', {'name': 'test'}, '||', {'age__gte': 18}, ')']
-        self.assertEqual((q1 | q2).query, query)
-
-        query = ['(', {'name': 'test'}, '&&', {'age__gte': 18}, ')']
-        self.assertEqual((q1 & q2).query, query)
-
-        query = ['(', '(', {'name': 'test'}, '&&', {'age__gte': 18}, ')', '||',
-                 {'name': 'example'}, ')']
-        self.assertEqual((q1 & q2 | Q(name='example')).query, query)
-
-    def test_item_query_as_js(self):
-        """Ensure that the _item_query_as_js utilitiy method works properly.
-        """
-        q = Q()
-        examples = [
-            
-            ({'name': 'test'}, ('((this.name instanceof Array) &&   '
-             'this.name.indexOf(i0f0) != -1) || this.name == i0f0'), 
-             {'i0f0': 'test'}),
-            ({'age': {'$gt': 18}}, 'this.age > i0f0o0', {'i0f0o0': 18}),
-            ({'name': 'test', 'age': {'$gt': 18, '$lte': 65}},
-              ('this.age <= i0f0o0 && this.age > i0f0o1 && '
-               '((this.name instanceof Array) &&   '
-               'this.name.indexOf(i0f1) != -1) || this.name == i0f1'),
-             {'i0f0o0': 65, 'i0f0o1': 18, 'i0f1': 'test'}),
-        ]
-        for item, js, scope in examples:
-            test_scope = {}
-            self.assertEqual(q._item_query_as_js(item, test_scope, 0), js)
-            self.assertEqual(scope, test_scope)
-
     def test_empty_q(self):
         """Ensure that empty Q objects won't hurt.
         """
@@ -1389,11 +1355,15 @@ class QTest(unittest.TestCase):
         q4 = Q(name='test')
         q5 = Q()
 
-        query = ['(', {'age__gte': 18}, '||', {'name': 'test'}, ')']
-        self.assertEqual((q1 | q2 | q3 | q4 | q5).query, query)
+        class Person(Document):
+            name = StringField()
+            age = IntField()
 
-        query = ['(', {'age__gte': 18}, '&&', {'name': 'test'}, ')']
-        self.assertEqual((q1 & q2 & q3 & q4 & q5).query, query)
+        query = {'$or': [{'age': {'$gte': 18}}, {'name': 'test'}]}
+        self.assertEqual((q1 | q2 | q3 | q4 | q5).to_query(Person), query)
+
+        query = {'age': {'$gte': 18}, 'name': 'test'}
+        self.assertEqual((q1 & q2 & q3 & q4 & q5).to_query(Person), query)
     
     def test_q_with_dbref(self):
         """Ensure Q objects handle DBRefs correctly"""
@@ -1423,21 +1393,21 @@ class NewQTest(unittest.TestCase):
 
         # Check than an error is raised when conflicting queries are anded
         def invalid_combination():
-            query = NewQ(x__lt=7) & NewQ(x__lt=3)
+            query = Q(x__lt=7) & Q(x__lt=3)
             query.to_query(TestDoc)
         self.assertRaises(InvalidQueryError, invalid_combination)
 
         # Check normal cases work without an error
-        query = NewQ(x__lt=7) & NewQ(x__gt=3)
+        query = Q(x__lt=7) & Q(x__gt=3)
 
-        q1 = NewQ(x__lt=7)
-        q2 = NewQ(x__gt=3)
+        q1 = Q(x__lt=7)
+        q2 = Q(x__gt=3)
         query = (q1 & q2).to_query(TestDoc)
         self.assertEqual(query, {'x': {'$lt': 7, '$gt': 3}})
 
         # More complex nested example
-        query = NewQ(x__lt=100) & NewQ(y__ne='NotMyString')
-        query &= NewQ(y__in=['a', 'b', 'c']) & NewQ(x__gt=-100)
+        query = Q(x__lt=100) & Q(y__ne='NotMyString')
+        query &= Q(y__in=['a', 'b', 'c']) & Q(x__gt=-100)
         mongo_query = {
             'x': {'$lt': 100, '$gt': -100}, 
             'y': {'$ne': 'NotMyString', '$in': ['a', 'b', 'c']},
@@ -1450,8 +1420,8 @@ class NewQTest(unittest.TestCase):
         class TestDoc(Document):
             x = IntField()
 
-        q1 = NewQ(x__lt=3)
-        q2 = NewQ(x__gt=7)
+        q1 = Q(x__lt=3)
+        q2 = Q(x__gt=7)
         query = (q1 | q2).to_query(TestDoc)
         self.assertEqual(query, {
             '$or': [
@@ -1467,8 +1437,8 @@ class NewQTest(unittest.TestCase):
             x = IntField()
             y = BooleanField()
 
-        query = (NewQ(x__gt=0) | NewQ(x__exists=False))
-        query &= NewQ(x__lt=100)
+        query = (Q(x__gt=0) | Q(x__exists=False))
+        query &= Q(x__lt=100)
         self.assertEqual(query.to_query(TestDoc), {
             '$or': [
                 {'x': {'$lt': 100, '$gt': 0}},
@@ -1476,8 +1446,8 @@ class NewQTest(unittest.TestCase):
             ]
         })
 
-        q1 = (NewQ(x__gt=0) | NewQ(x__exists=False))
-        q2 = (NewQ(x__lt=100) | NewQ(y=True))
+        q1 = (Q(x__gt=0) | Q(x__exists=False))
+        q2 = (Q(x__lt=100) | Q(y=True))
         query = (q1 & q2).to_query(TestDoc)
 
         self.assertEqual(['$or'], query.keys())
@@ -1498,8 +1468,8 @@ class NewQTest(unittest.TestCase):
             x = IntField()
             y = BooleanField()
 
-        q1 = (NewQ(x__gt=0) & (NewQ(y=True) | NewQ(y__exists=False)))
-        q2 = (NewQ(x__lt=100) & (NewQ(y=False) | NewQ(y__exists=False)))
+        q1 = (Q(x__gt=0) & (Q(y=True) | Q(y__exists=False)))
+        q2 = (Q(x__lt=100) & (Q(y=False) | Q(y__exists=False)))
         query = (q1 | q2).to_query(TestDoc)
 
         self.assertEqual(['$or'], query.keys())
