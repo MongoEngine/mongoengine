@@ -479,6 +479,7 @@ class QuerySet(object):
             query &= q_obj
         self._query_obj &= query
         self._mongo_query = None
+        self._cursor_obj = None
         return self
 
     def filter(self, *q_objs, **query):
