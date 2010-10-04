@@ -336,6 +336,18 @@ class QuerySetTest(unittest.TestCase):
         obj = self.Person.objects(Q(name__icontains='[.\'Geek')).first()
         self.assertEqual(obj, person)
 
+    def test_not(self):
+        """Ensure that the __not operator works as expected.
+        """
+        alice = self.Person(name='Alice', age=25)
+        alice.save()
+
+        obj = self.Person.objects(name__iexact='alice').first()
+        self.assertEqual(obj, alice)
+
+        obj = self.Person.objects(name__not__iexact='alice').first()
+        self.assertEqual(obj, None)
+
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """
@@ -545,10 +557,10 @@ class QuerySetTest(unittest.TestCase):
         obj = self.Person.objects(Q(name=re.compile('^gui', re.I))).first()
         self.assertEqual(obj, person)
 
-        obj = self.Person.objects(Q(name__ne=re.compile('^bob'))).first()
+        obj = self.Person.objects(Q(name__not=re.compile('^bob'))).first()
         self.assertEqual(obj, person)
         
-        obj = self.Person.objects(Q(name__ne=re.compile('^Gui'))).first()
+        obj = self.Person.objects(Q(name__not=re.compile('^Gui'))).first()
         self.assertEqual(obj, None)
 
     def test_q_lists(self):
