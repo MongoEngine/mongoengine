@@ -1,6 +1,9 @@
 from connection import _get_db
 
 import pymongo
+import pymongo.code
+import pymongo.dbref
+import pymongo.objectid
 import re
 import copy
 
