@@ -4,6 +4,7 @@ import pprint
 import pymongo
 import re
 import copy
+import itertools
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError']
@@ -49,8 +50,22 @@ class QNodeVisitor(object):
         """
         return query
 
+
+class SimplificationVisitor(QNodeVisitor):
+    """Simplifies query trees by combinging unnecessary 'and' connection nodes
+    into a single Q-object.
+    """
+
+    def visit_combination(self, combination):
+        if combination.operation == combination.AND:
+            # The simplification only applies to 'simple' queries
+            if all(isinstance(node, NewQ) for node in combination.children):
+                queries = [node.query for node in combination.children]
+                return NewQ(**self._query_conjunction(queries))
+        return combination
+
     def _query_conjunction(self, queries):
-        """Merges two query dicts - effectively &ing them together.
+        """Merges query dicts - effectively &ing them together.
         """
         query_ops = set()
         combined_query = {}
@@ -68,23 +83,6 @@ class QNodeVisitor(object):
         return combined_query
 
 
-class SimplificationVisitor(QNodeVisitor):
-    """Simplifies query trees by combinging unnecessary 'and' connection nodes
-    into a single Q-object.
-    """
-
-    def visit_combination(self, combination):
-        if combination.operation != combination.AND:
-            return combination
-
-        # The simplification only applies to 'simple' queries
-        if any(not isinstance(node, NewQ) for node in combination.children):
-            return combination
-
-        queries = [node.query for node in combination.children]
-        return NewQ(**self._query_conjunction(queries))
-
-
 class QueryTreeTransformerVisitor(QNodeVisitor):
     """Transforms the query tree in to a form that may be used with MongoDB.
     """
@@ -96,14 +94,14 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
             # 'master' $or. Firstly, we must find all the necessary parts (part
             # of an AND combination or just standard Q object), and store them
             # separately from the OR parts.
-            or_parts = []
+            or_groups = []
             and_parts = []
             for node in combination.children:
                 if isinstance(node, QCombination):
                     if node.operation == node.OR:
                         # Any of the children in an $or component may cause
                         # the query to succeed
-                        or_parts += node.children
+                        or_groups.append(node.children)
                     elif node.operation == node.AND:
                         and_parts.append(node)
                 elif isinstance(node, NewQ):
@@ -113,13 +111,27 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
             # the necessary parts. Then for each $or part, create a new query
             # that ANDs the necessary part with the $or part.
             clauses = []
-            for or_part in or_parts:
+            for or_group in itertools.product(*or_groups):
                 q_object = reduce(lambda a, b: a & b, and_parts, NewQ())
-                clauses.append(q_object & or_part)
+                q_object = reduce(lambda a, b: a & b, or_group, q_object)
+                clauses.append(q_object)
 
             # Finally, $or the generated clauses in to one query. Each of the
             # clauses is sufficient for the query to succeed.
             return reduce(lambda a, b: a | b, clauses, NewQ())
+
+        if combination.operation == combination.OR:
+            children = []
+            # Crush any nested ORs in to this combination as MongoDB doesn't
+            # support nested $or operations
+            for node in combination.children:
+                if (isinstance(node, QCombination) and
+                    node.operation == combination.OR):
+                    children += node.children
+                else:
+                    children.append(node)
+            combination.children = children
+
         return combination
 
 
@@ -135,11 +147,41 @@ class QueryCompilerVisitor(QNodeVisitor):
         if combination.operation == combination.OR:
             return {'$or': combination.children}
         elif combination.operation == combination.AND:
-            return self._query_conjunction(combination.children)
+            return self._mongo_query_conjunction(combination.children)
         return combination
 
     def visit_query(self, query):
         return QuerySet._transform_query(self.document, **query.query)
+
+    def _mongo_query_conjunction(self, queries):
+        """Merges Mongo query dicts - effectively &ing them together.
+        """
+        combined_query = {}
+        for query in queries:
+            for field, ops in query.items():
+                if field not in combined_query:
+                    combined_query[field] = ops
+                else:
+                    # The field is already present in the query the only way
+                    # we can merge is if both the existing value and the new
+                    # value are operation dicts, reject anything else
+                    if (not isinstance(combined_query[field], dict) or
+                        not isinstance(ops, dict)):
+                        message = 'Conflicting values for ' + field
+                        raise InvalidQueryError(message)
+
+                    current_ops = set(combined_query[field].keys())
+                    new_ops = set(ops.keys())
+                    # Make sure that the same operation isn't applied more than
+                    # once to a single field
+                    intersection = current_ops.intersection(new_ops)
+                    if intersection:
+                        msg = 'Duplicate query contitions: '
+                        raise InvalidQueryError(msg + ', '.join(intersection))
+
+                    # Right! We've got two non-overlapping dicts of operations!
+                    combined_query[field].update(copy.deepcopy(ops))
+        return combined_query
 
 
 class QNode(object):
@@ -187,7 +229,14 @@ class QCombination(QNode):
 
     def __init__(self, operation, children):
         self.operation = operation
-        self.children = children
+        self.children = []
+        for node in children:
+            # If the child is a combination of the same type, we can merge its
+            # children directly into this combinations children
+            if isinstance(node, QCombination) and node.operation == operation:
+                self.children += node.children
+            else:
+                self.children.append(node)
 
     def accept(self, visitor):
         for i in range(len(self.children)):

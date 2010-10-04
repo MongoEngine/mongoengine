@@ -1415,6 +1415,8 @@ class QTest(unittest.TestCase):
 class NewQTest(unittest.TestCase):
 
     def test_and_combination(self):
+        """Ensure that Q-objects correctly AND together.
+        """
         class TestDoc(Document):
             x = IntField()
             y = StringField()
@@ -1443,6 +1445,8 @@ class NewQTest(unittest.TestCase):
         self.assertEqual(query.to_query(TestDoc), mongo_query)
 
     def test_or_combination(self):
+        """Ensure that Q-objects correctly OR together.
+        """
         class TestDoc(Document):
             x = IntField()
 
@@ -1457,18 +1461,58 @@ class NewQTest(unittest.TestCase):
         })
 
     def test_and_or_combination(self):
+        """Ensure that Q-objects handle ANDing ORed components.
+        """
         class TestDoc(Document):
             x = IntField()
+            y = BooleanField()
 
-        query = NewQ(x__gt=0) | NewQ(x__exists=False)
-        query &= NewQ(x__lt=100) | NewQ(x__in=[100, 200, 3000])
-        print query.to_query(TestDoc)
-#        self.assertEqual(query.to_query(TestDoc, {
-#            '$or': [
-#                {'x': {'$lt': 3}},
-#                {'x': {'$gt': 7}},
-#            ]
-#        })
+        query = (NewQ(x__gt=0) | NewQ(x__exists=False))
+        query &= NewQ(x__lt=100)
+        self.assertEqual(query.to_query(TestDoc), {
+            '$or': [
+                {'x': {'$lt': 100, '$gt': 0}},
+                {'x': {'$lt': 100, '$exists': False}},
+            ]
+        })
+
+        q1 = (NewQ(x__gt=0) | NewQ(x__exists=False))
+        q2 = (NewQ(x__lt=100) | NewQ(y=True))
+        query = (q1 & q2).to_query(TestDoc)
+
+        self.assertEqual(['$or'], query.keys())
+        conditions = [
+            {'x': {'$lt': 100, '$gt': 0}},
+            {'x': {'$lt': 100, '$exists': False}},
+            {'x': {'$gt': 0}, 'y': True},
+            {'x': {'$exists': False}, 'y': True},
+        ]
+        self.assertEqual(len(conditions), len(query['$or']))
+        for condition in conditions:
+            self.assertTrue(condition in query['$or'])
+
+    def test_or_and_or_combination(self):
+        """Ensure that Q-objects handle ORing ANDed ORed components. :)
+        """
+        class TestDoc(Document):
+            x = IntField()
+            y = BooleanField()
+
+        q1 = (NewQ(x__gt=0) & (NewQ(y=True) | NewQ(y__exists=False)))
+        q2 = (NewQ(x__lt=100) & (NewQ(y=False) | NewQ(y__exists=False)))
+        query = (q1 | q2).to_query(TestDoc)
+
+        self.assertEqual(['$or'], query.keys())
+        conditions = [
+            {'x': {'$gt': 0}, 'y': True},
+            {'x': {'$gt': 0}, 'y': {'$exists': False}},
+            {'x': {'$lt': 100}, 'y':False},
+            {'x': {'$lt': 100}, 'y': {'$exists': False}},
+        ]
+        self.assertEqual(len(conditions), len(query['$or']))
+        for condition in conditions:
+            self.assertTrue(condition in query['$or'])
+
 
 if __name__ == '__main__':
     unittest.main()
