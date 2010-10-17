@@ -331,12 +331,12 @@ class ListField(BaseField):
         try:
             [self.field.validate(item) for item in value]
         except Exception, err:
-            raise ValidationError('Invalid ListField item (%s)' % str(err))
+            raise ValidationError('Invalid ListField item (%s)' % str(item))
 
     def prepare_query_value(self, op, value):
         if op in ('set', 'unset'):
-            return [self.field.to_mongo(v) for v in value]
-        return self.field.to_mongo(value)
+            return [self.field.prepare_query_value(op, v) for v in value]
+        return self.field.prepare_query_value(op, value)
 
     def lookup_member(self, member_name):
         return self.field.lookup_member(member_name)

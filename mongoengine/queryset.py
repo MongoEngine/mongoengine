@@ -592,6 +592,10 @@ class QuerySet(object):
 
         mongo_query = {}
         for key, value in query.items():
+            if key == "__raw__":
+                mongo_query.update(value)
+                continue
+
             parts = key.split('__')
             indices = [(i, p) for i, p in enumerate(parts) if p.isdigit()]
             parts = [part for part in parts if not part.isdigit()]
