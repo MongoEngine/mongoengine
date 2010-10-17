@@ -20,6 +20,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
+
 class StringField(BaseField):
     """A unicode string field.
     """

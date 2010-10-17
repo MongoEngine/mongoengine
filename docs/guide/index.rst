@@ -10,3 +10,4 @@ User Guide
    defining-documents
    document-instances
    querying
+   gridfs
