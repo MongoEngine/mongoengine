@@ -401,6 +401,8 @@ class QuerySet(object):
         self._where_clause = None
         self._loaded_fields = []
         self._ordering = []
+        self._snapshot = False
+        self._timeout = True
         
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -534,9 +536,12 @@ class QuerySet(object):
     @property
     def _cursor(self):
         if self._cursor_obj is None:
-            cursor_args = {}
+            cursor_args = {
+                'snapshot': self._snapshot,
+                'timeout': self._timeout,
+            }
             if self._loaded_fields:
-                cursor_args = {'fields': self._loaded_fields}
+                cursor_args['fields'] = self._loaded_fields
             self._cursor_obj = self._collection.find(self._query, 
                                                      **cursor_args)
             # Apply where clauses to cursor
@@ -966,6 +971,20 @@ class QuerySet(object):
         if format:
             plan = pprint.pformat(plan)
         return plan
+
+    def snapshot(self, enabled):
+        """Enable or disable snapshot mode when querying.
+
+        :param enabled: whether or not snapshot mode is enabled
+        """
+        self._snapshot = enabled
+
+    def timeout(self, enabled):
+        """Enable or disable the default mongod timeout when querying.
+
+        :param enabled: whether or not the timeout is used
+        """
+        self._timeout = enabled
 
     def delete(self, safe=False):
         """Delete the documents matched by the query.
