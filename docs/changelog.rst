@@ -14,6 +14,7 @@ Changes in v0.4
 - Added ``not`` query operator
 - Added new update operators: ``pop`` and ``add_to_set``
 - Added ``__raw__`` query parameter
+- Added support for custom querysets
 - Fixed document inheritance primary key issue
 - Added support for querying by array element position
 - Base class can now be defined for ``DictField``
