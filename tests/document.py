@@ -200,6 +200,37 @@ class DocumentTest(unittest.TestCase):
         Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
 
+    def test_inherited_collections(self):
+        """Ensure that subclassed documents don't override parents' collections.
+        """
+        class Drink(Document):
+            name = StringField()
+
+        class AlcoholicDrink(Drink):
+            meta = {'collection': 'booze'}
+
+        class Drinker(Document):
+            drink = GenericReferenceField()
+
+        Drink.drop_collection()
+        AlcoholicDrink.drop_collection()
+        Drinker.drop_collection()
+
+        red_bull = Drink(name='Red Bull')
+        red_bull.save()
+
+        programmer = Drinker(drink=red_bull)
+        programmer.save()
+
+        beer = AlcoholicDrink(name='Beer')
+        beer.save()
+
+        real_person = Drinker(drink=beer)
+        real_person.save()
+
+        self.assertEqual(Drinker.objects[0].drink.name, red_bull.name)
+        self.assertEqual(Drinker.objects[1].drink.name, beer.name)
+
     def test_capped_collection(self):
         """Ensure that capped collections work properly.
         """
