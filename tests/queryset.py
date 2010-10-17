@@ -1393,9 +1393,6 @@ class QTest(unittest.TestCase):
         self.assertEqual(Post.objects.filter(created_user=user).count(), 1)
         self.assertEqual(Post.objects.filter(Q(created_user=user)).count(), 1)
 
-
-class NewQTest(unittest.TestCase):
-
     def test_and_combination(self):
         """Ensure that Q-objects correctly AND together.
         """
