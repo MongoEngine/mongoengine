@@ -3,6 +3,7 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 
 import sys
 import pymongo
+import pymongo.objectid
 
 
 _document_registry = {}
@@ -203,6 +204,9 @@ class DocumentMetaclass(type):
         exc = subclass_exception('MultipleObjectsReturned', base_excs, module)
         new_class.add_to_class('MultipleObjectsReturned', exc)
 
+        global _document_registry
+        _document_registry[name] = new_class
+
         return new_class
 
     def add_to_class(self, name, value):
@@ -215,8 +219,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     """
 
     def __new__(cls, name, bases, attrs):
-        global _document_registry
-
         super_new = super(TopLevelDocumentMetaclass, cls).__new__
         # Classes defined in this package are abstract and should not have 
         # their own metadata with DB collection, etc.
@@ -320,8 +322,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class.id = new_class._fields['id']
-
-        _document_registry[name] = new_class
 
         return new_class
 

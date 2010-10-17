@@ -189,6 +189,9 @@ class FieldTest(unittest.TestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.
         """
+        class User(Document):
+            pass
+
         class Comment(EmbeddedDocument):
             content = StringField()
 
@@ -196,6 +199,7 @@ class FieldTest(unittest.TestCase):
             content = StringField()
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
+            authors = ListField(ReferenceField(User))
 
         post = BlogPost(content='Went for a walk today...')
         post.validate()
@@ -210,14 +214,20 @@ class FieldTest(unittest.TestCase):
         post.tags = ('fun', 'leisure')
         post.validate()
 
-        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
-        post.comments = comments
-        post.validate()
-
         post.comments = ['a']
         self.assertRaises(ValidationError, post.validate)
         post.comments = 'yay'
         self.assertRaises(ValidationError, post.validate)
+
+        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
+        post.comments = comments
+        post.validate()
+
+        post.authors = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.authors = [User()]
+        post.validate()
 
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
@@ -395,14 +405,54 @@ class FieldTest(unittest.TestCase):
         class Employee(Document):
             name = StringField()
             boss = ReferenceField('self')
+            friends = ListField(ReferenceField('self'))
 
         bill = Employee(name='Bill Lumbergh')
         bill.save()
-        peter = Employee(name='Peter Gibbons', boss=bill)
+
+        michael = Employee(name='Michael Bolton')
+        michael.save()
+
+        samir = Employee(name='Samir Nagheenanajar')
+        samir.save()
+
+        friends = [michael, samir]
+        peter = Employee(name='Peter Gibbons', boss=bill, friends=friends)
         peter.save()
 
         peter = Employee.objects.with_id(peter.id)
         self.assertEqual(peter.boss, bill)
+        self.assertEqual(peter.friends, friends)
+
+    def test_recursive_embedding(self):
+        """Ensure that EmbeddedDocumentFields can contain their own documents.
+        """
+        class Tree(Document):
+            name = StringField()
+            children = ListField(EmbeddedDocumentField('TreeNode'))
+
+        class TreeNode(EmbeddedDocument):
+            name = StringField()
+            children = ListField(EmbeddedDocumentField('self'))
+        
+        tree = Tree(name="Tree")
+
+        first_child = TreeNode(name="Child 1")
+        tree.children.append(first_child)
+
+        second_child = TreeNode(name="Child 2")
+        first_child.children.append(second_child)
+        
+        third_child = TreeNode(name="Child 3")
+        first_child.children.append(third_child)
+
+        tree.save()
+
+        tree_obj = Tree.objects.first()
+        self.assertEqual(len(tree.children), 1)
+        self.assertEqual(tree.children[0].name, first_child.name)
+        self.assertEqual(tree.children[0].children[0].name, second_child.name)
+        self.assertEqual(tree.children[0].children[1].name, third_child.name)
 
     def test_undefined_reference(self):
         """Ensure that ReferenceFields may reference undefined Documents.

@@ -5,6 +5,9 @@ from operator import itemgetter
 
 import re
 import pymongo
+import pymongo.dbref
+import pymongo.son
+import pymongo.binary
 import datetime
 import decimal
 import gridfs
@@ -106,8 +109,11 @@ class URLField(StringField):
                 message = 'This URL appears to be a broken link: %s' % e
                 raise ValidationError(message)
 
+
 class EmailField(StringField):
     """A field that validates input as an E-Mail-Address.
+
+    .. versionadded:: 0.4
     """
 
     EMAIL_REGEX = re.compile(
@@ -115,10 +121,11 @@ class EmailField(StringField):
         r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"' # quoted-string
         r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE # domain
     )
-    
+
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
             raise ValidationError('Invalid Mail-address: %s' % value)
+
 
 class IntField(BaseField):
     """An integer field.
@@ -142,6 +149,7 @@ class IntField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Integer value is too large')
+
 
 class FloatField(BaseField):
     """An floating point number field.
@@ -179,7 +187,7 @@ class DecimalField(BaseField):
         if not isinstance(value, basestring):
             value = unicode(value)
         return decimal.Decimal(value)
-    
+
     def to_mongo(self, value):
         return unicode(value)
 
@@ -198,6 +206,7 @@ class DecimalField(BaseField):
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Decimal value is too large')
 
+
 class BooleanField(BaseField):
     """A boolean field type.
 
@@ -210,6 +219,7 @@ class BooleanField(BaseField):
     def validate(self, value):
         assert isinstance(value, bool)
 
+
 class DateTimeField(BaseField):
     """A datetime field.
     """
@@ -217,38 +227,49 @@ class DateTimeField(BaseField):
     def validate(self, value):
         assert isinstance(value, datetime.datetime)
 
+
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of
     :class:`~mongoengine.EmbeddedDocument`.
     """
 
-    def __init__(self, document, **kwargs):
-        if not issubclass(document, EmbeddedDocument):
-            raise ValidationError('Invalid embedded document class provided '
-                                  'to an EmbeddedDocumentField')
-        self.document = document
+    def __init__(self, document_type, **kwargs):
+        if not isinstance(document_type, basestring):
+            if not issubclass(document_type, EmbeddedDocument):
+                raise ValidationError('Invalid embedded document class '
+                                      'provided to an EmbeddedDocumentField')
+        self.document_type_obj = document_type
         super(EmbeddedDocumentField, self).__init__(**kwargs)
 
+    @property
+    def document_type(self):
+        if isinstance(self.document_type_obj, basestring):
+            if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
+                self.document_type_obj = self.owner_document
+            else:
+                self.document_type_obj = get_document(self.document_type_obj)
+        return self.document_type_obj
+
     def to_python(self, value):
-        if not isinstance(value, self.document):
-            return self.document._from_son(value)
+        if not isinstance(value, self.document_type):
+            return self.document_type._from_son(value)
         return value
 
     def to_mongo(self, value):
-        return self.document.to_mongo(value)
+        return self.document_type.to_mongo(value)
 
     def validate(self, value):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
         # Using isinstance also works for subclasses of self.document
-        if not isinstance(value, self.document):
+        if not isinstance(value, self.document_type):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
-        self.document.validate(value)
+        self.document_type.validate(value)
 
     def lookup_member(self, member_name):
-        return self.document._fields.get(member_name)
+        return self.document_type._fields.get(member_name)
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
@@ -322,20 +343,32 @@ class ListField(BaseField):
         try:
             [self.field.validate(item) for item in value]
         except Exception, err:
-            raise ValidationError('Invalid ListField item (%s)' % str(err))
+            raise ValidationError('Invalid ListField item (%s)' % str(item))
 
     def prepare_query_value(self, op, value):
         if op in ('set', 'unset'):
-            return [self.field.to_mongo(v) for v in value]
-        return self.field.to_mongo(value)
+            return [self.field.prepare_query_value(op, v) for v in value]
+        return self.field.prepare_query_value(op, value)
 
     def lookup_member(self, member_name):
         return self.field.lookup_member(member_name)
+
+    def _set_owner_document(self, owner_document):
+        self.field.owner_document = owner_document
+        self._owner_document = owner_document
+
+    def _get_owner_document(self, owner_document):
+        self._owner_document = owner_document
+
+    owner_document = property(_get_owner_document, _set_owner_document)
+
 
 class SortedListField(ListField):
     """A ListField that sorts the contents of its list before writing to
     the database in order to ensure that a sorted list is always
     retrieved.
+
+    .. versionadded:: 0.4
     """
 
     _ordering = None
@@ -350,6 +383,7 @@ class SortedListField(ListField):
             return sorted([self.field.to_mongo(item) for item in value],
                           key=itemgetter(self._ordering))
         return sorted([self.field.to_mongo(item) for item in value])
+
 
 class DictField(BaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
@@ -389,7 +423,6 @@ class ReferenceField(BaseField):
                 raise ValidationError('Argument to ReferenceField constructor '
                                       'must be a document class or a string')
         self.document_type_obj = document_type
-        self.document_obj = None
         super(ReferenceField, self).__init__(**kwargs)
 
     @property
@@ -444,6 +477,7 @@ class ReferenceField(BaseField):
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
+
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
@@ -488,7 +522,7 @@ class GenericReferenceField(BaseField):
         return {'_cls': document.__class__.__name__, '_ref': ref}
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)['_ref']
+        return self.to_mongo(value)
 
 
 class BinaryField(BaseField):
@@ -655,6 +689,8 @@ class FileField(BaseField):
 
 class GeoPointField(BaseField):
     """A list storing a latitude and longitude.
+
+    .. versionadded:: 0.4
     """
 
     _geo_index = True

@@ -66,3 +66,5 @@ Fields
 .. autoclass:: mongoengine.GenericReferenceField
 
 .. autoclass:: mongoengine.FileField
+
+.. autoclass:: mongoengine.GeoPointField

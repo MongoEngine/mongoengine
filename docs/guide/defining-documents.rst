@@ -47,11 +47,11 @@ are as follows:
 * :class:`~mongoengine.ReferenceField`
 * :class:`~mongoengine.GenericReferenceField`
 * :class:`~mongoengine.BooleanField`
-* :class:`~mongoengine.GeoLocationField`
 * :class:`~mongoengine.FileField`
 * :class:`~mongoengine.EmailField`
 * :class:`~mongoengine.SortedListField`
 * :class:`~mongoengine.BinaryField`
+* :class:`~mongoengine.GeoPointField`
 
 Field arguments
 ---------------
@@ -71,6 +71,25 @@ arguments can be set on all fields:
 
 :attr:`default` (Default: None)
     A value to use when no value is set for this field.
+
+    The definion of default parameters follow `the general rules on Python
+    <http://docs.python.org/reference/compound_stmts.html#function-definitions>`__,
+    which means that some care should be taken when dealing with default mutable objects 
+    (like in :class:`~mongoengine.ListField` or :class:`~mongoengine.DictField`)::
+
+        class ExampleFirst(Document):
+            # Default an empty list
+            values = ListField(IntField(), default=list)
+
+        class ExampleSecond(Document):
+            # Default a set of values
+            values = ListField(IntField(), default=lambda: [1,2,3])
+
+        class ExampleDangerous(Document):
+            # This can make an .append call to  add values to the default (and all the following objects),
+            # instead to just an object
+            values = ListField(IntField(), default=[1,2,3])
+    
 
 :attr:`unique` (Default: False)
     When True, no documents in the collection will have the same value for this
@@ -279,6 +298,10 @@ or a **-** sign. Note that direction only matters on multi-field indexes. ::
         meta = {
             'indexes': ['title', ('title', '-rating')]
         }
+
+.. note::
+   Geospatial indexes will be automatically created for all 
+   :class:`~mongoengine.GeoPointField`\ s
         
 Ordering
 ========
