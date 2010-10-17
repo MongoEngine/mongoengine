@@ -34,7 +34,7 @@ arguments. The keys in the keyword arguments correspond to fields on the
 Fields on embedded documents may also be referred to using field lookup syntax
 by using a double-underscore in place of the dot in object attribute access
 syntax::
-    
+
     # This will return a QuerySet that will only iterate over pages that have
     # been written by a user whose 'country' field is set to 'uk'
     uk_pages = Page.objects(author__country='uk')
@@ -67,7 +67,7 @@ Query operators
 ===============
 Operators other than equality may also be used in queries; just attach the
 operator name to a key with a double-underscore::
-    
+
     # Only find users whose age is 18 or less
     young_users = Users.objects(age__lte=18)
 
@@ -144,7 +144,7 @@ You may also index the query to retrieve a single result. If an item at that
 index does not exists, an :class:`IndexError` will be raised. A shortcut for
 retrieving the first result and returning :attr:`None` if no result exists is
 provided (:meth:`~mongoengine.queryset.QuerySet.first`)::
-    
+
     >>> # Make sure there are no users
     >>> User.drop_collection()
     >>> User.objects[0]
@@ -458,7 +458,7 @@ that you may use with these methods:
 
 The syntax for atomic updates is similar to the querying syntax, but the 
 modifier comes before the field, not after it::
-    
+
     >>> post = BlogPost(title='Test', page_views=0, tags=['database'])
     >>> post.save()
     >>> BlogPost.objects(id=post.id).update_one(inc__page_views=1)

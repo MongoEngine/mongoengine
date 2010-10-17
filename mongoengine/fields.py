@@ -586,14 +586,14 @@ class GridFSProxy(object):
 
     def put(self, file, **kwargs):
         if self.grid_id:
-            raise GridFSError('This document alreay has a file. Either delete '
+            raise GridFSError('This document already has a file. Either delete '
                               'it or call replace to overwrite it')
         self.grid_id = self.fs.put(file, **kwargs)
 
     def write(self, string):
         if self.grid_id:
             if not self.newfile:
-                raise GridFSError('This document alreay has a file. Either '
+                raise GridFSError('This document already has a file. Either '
                                   'delete it or call replace to overwrite it')
         else:
             self.new_file()
@@ -622,6 +622,7 @@ class GridFSProxy(object):
 
     def replace(self, file, **kwargs):
         self.delete()
+        self.grid_id = None
         self.put(file, **kwargs)
 
     def close(self):

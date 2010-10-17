@@ -47,9 +47,10 @@ into you settings module::
 
 Storage
 =======
-With MongoEngine's support for GridFS via the FileField, it is useful to have a
-Django file storage backend that wraps this. The new storage module is called
-GridFSStorage. Using it is very similar to using the default FileSystemStorage.::
+With MongoEngine's support for GridFS via the :class:`~mongoengine.FileField`,
+it is useful to have a Django file storage backend that wraps this. The new
+storage module is called :class:`~mongoengine.django.GridFSStorage`. Using it
+is very similar to using the default FileSystemStorage.::
 
     fs = mongoengine.django.GridFSStorage()
 
@@ -57,29 +58,30 @@ GridFSStorage. Using it is very similar to using the default FileSystemStorage.:
 
 All of the `Django Storage API methods
 <http://docs.djangoproject.com/en/dev/ref/files/storage/>`_ have been
-implemented except ``path()``. If the filename provided already exists, an
+implemented except :func:`path`. If the filename provided already exists, an
 underscore and a number (before # the file extension, if one exists) will be
 appended to the filename until the generated filename doesn't exist. The
-``save()`` method will return the new filename.::
+:func:`save` method will return the new filename.::
 
-    > fs.exists('hello.txt')
+    >>> fs.exists('hello.txt')
     True
-    > fs.open('hello.txt').read()
+    >>> fs.open('hello.txt').read()
     'Hello, World!'
-    > fs.size('hello.txt')
+    >>> fs.size('hello.txt')
     13
-    > fs.url('hello.txt')
+    >>> fs.url('hello.txt')
     'http://your_media_url/hello.txt'
-    > fs.open('hello.txt').name
+    >>> fs.open('hello.txt').name
     'hello.txt'
-    > fs.listdir()
+    >>> fs.listdir()
     ([], [u'hello.txt'])
 
-All files will be saved and retrieved in GridFS via the ``FileDocument`` document,
-allowing easy access to the files without the GridFSStorage backend.::
+All files will be saved and retrieved in GridFS via the :class::`FileDocument`
+document, allowing easy access to the files without the GridFSStorage
+backend.::
 
-    > from mongoengine.django.storage import FileDocument
-    > FileDocument.objects()
+    >>> from mongoengine.django.storage import FileDocument
+    >>> FileDocument.objects()
     [<FileDocument: FileDocument object>]
 
 .. versionadded:: 0.4
