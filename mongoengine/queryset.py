@@ -787,6 +787,7 @@ class QuerySet(object):
         # Integer index provided
         elif isinstance(key, int):
             return self._document._from_son(self._cursor[key])
+        raise AttributeError
     
     def distinct(self, field):
         """Return a list of distinct values for a given field.
