@@ -189,6 +189,9 @@ class FieldTest(unittest.TestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.
         """
+        class User(Document):
+            pass
+
         class Comment(EmbeddedDocument):
             content = StringField()
 
@@ -196,6 +199,7 @@ class FieldTest(unittest.TestCase):
             content = StringField()
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
+            authors = ListField(ReferenceField(User))
 
         post = BlogPost(content='Went for a walk today...')
         post.validate()
@@ -210,14 +214,20 @@ class FieldTest(unittest.TestCase):
         post.tags = ('fun', 'leisure')
         post.validate()
 
-        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
-        post.comments = comments
-        post.validate()
-
         post.comments = ['a']
         self.assertRaises(ValidationError, post.validate)
         post.comments = 'yay'
         self.assertRaises(ValidationError, post.validate)
+
+        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
+        post.comments = comments
+        post.validate()
+
+        post.authors = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.authors = [User()]
+        post.validate()
 
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
