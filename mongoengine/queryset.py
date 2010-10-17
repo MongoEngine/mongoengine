@@ -7,6 +7,7 @@ import pymongo.dbref
 import pymongo.objectid
 import re
 import copy
+import itertools
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError']
@@ -17,6 +18,7 @@ REPR_OUTPUT_SIZE = 20
 
 class DoesNotExist(Exception):
     pass
+
 
 class MultipleObjectsReturned(Exception):
     pass
@@ -29,13 +31,244 @@ class InvalidQueryError(Exception):
 class OperationError(Exception):
     pass
 
+
 class InvalidCollectionError(Exception):
     pass
+
 
 RE_TYPE = type(re.compile(''))
 
 
-class Q(object):
+class QNodeVisitor(object):
+    """Base visitor class for visiting Q-object nodes in a query tree.
+    """
+
+    def visit_combination(self, combination):
+        """Called by QCombination objects.
+        """
+        return combination
+
+    def visit_query(self, query):
+        """Called by (New)Q objects.
+        """
+        return query
+
+
+class SimplificationVisitor(QNodeVisitor):
+    """Simplifies query trees by combinging unnecessary 'and' connection nodes
+    into a single Q-object.
+    """
+
+    def visit_combination(self, combination):
+        if combination.operation == combination.AND:
+            # The simplification only applies to 'simple' queries
+            if all(isinstance(node, Q) for node in combination.children):
+                queries = [node.query for node in combination.children]
+                return Q(**self._query_conjunction(queries))
+        return combination
+
+    def _query_conjunction(self, queries):
+        """Merges query dicts - effectively &ing them together.
+        """
+        query_ops = set()
+        combined_query = {}
+        for query in queries:
+            ops = set(query.keys())
+            # Make sure that the same operation isn't applied more than once
+            # to a single field
+            intersection = ops.intersection(query_ops)
+            if intersection:
+                msg = 'Duplicate query contitions: '
+                raise InvalidQueryError(msg + ', '.join(intersection))
+
+            query_ops.update(ops)
+            combined_query.update(copy.deepcopy(query))
+        return combined_query
+
+
+class QueryTreeTransformerVisitor(QNodeVisitor):
+    """Transforms the query tree in to a form that may be used with MongoDB.
+    """
+
+    def visit_combination(self, combination):
+        if combination.operation == combination.AND:
+            # MongoDB doesn't allow us to have too many $or operations in our
+            # queries, so the aim is to move the ORs up the tree to one
+            # 'master' $or. Firstly, we must find all the necessary parts (part
+            # of an AND combination or just standard Q object), and store them
+            # separately from the OR parts.
+            or_groups = []
+            and_parts = []
+            for node in combination.children:
+                if isinstance(node, QCombination):
+                    if node.operation == node.OR:
+                        # Any of the children in an $or component may cause
+                        # the query to succeed
+                        or_groups.append(node.children)
+                    elif node.operation == node.AND:
+                        and_parts.append(node)
+                elif isinstance(node, Q):
+                    and_parts.append(node)
+
+            # Now we combine the parts into a usable query. AND together all of
+            # the necessary parts. Then for each $or part, create a new query
+            # that ANDs the necessary part with the $or part.
+            clauses = []
+            for or_group in itertools.product(*or_groups):
+                q_object = reduce(lambda a, b: a & b, and_parts, Q())
+                q_object = reduce(lambda a, b: a & b, or_group, q_object)
+                clauses.append(q_object)
+
+            # Finally, $or the generated clauses in to one query. Each of the
+            # clauses is sufficient for the query to succeed.
+            return reduce(lambda a, b: a | b, clauses, Q())
+
+        if combination.operation == combination.OR:
+            children = []
+            # Crush any nested ORs in to this combination as MongoDB doesn't
+            # support nested $or operations
+            for node in combination.children:
+                if (isinstance(node, QCombination) and
+                    node.operation == combination.OR):
+                    children += node.children
+                else:
+                    children.append(node)
+            combination.children = children
+
+        return combination
+
+
+class QueryCompilerVisitor(QNodeVisitor):
+    """Compiles the nodes in a query tree to a PyMongo-compatible query
+    dictionary.
+    """
+
+    def __init__(self, document):
+        self.document = document
+
+    def visit_combination(self, combination):
+        if combination.operation == combination.OR:
+            return {'$or': combination.children}
+        elif combination.operation == combination.AND:
+            return self._mongo_query_conjunction(combination.children)
+        return combination
+
+    def visit_query(self, query):
+        return QuerySet._transform_query(self.document, **query.query)
+
+    def _mongo_query_conjunction(self, queries):
+        """Merges Mongo query dicts - effectively &ing them together.
+        """
+        combined_query = {}
+        for query in queries:
+            for field, ops in query.items():
+                if field not in combined_query:
+                    combined_query[field] = ops
+                else:
+                    # The field is already present in the query the only way
+                    # we can merge is if both the existing value and the new
+                    # value are operation dicts, reject anything else
+                    if (not isinstance(combined_query[field], dict) or
+                        not isinstance(ops, dict)):
+                        message = 'Conflicting values for ' + field
+                        raise InvalidQueryError(message)
+
+                    current_ops = set(combined_query[field].keys())
+                    new_ops = set(ops.keys())
+                    # Make sure that the same operation isn't applied more than
+                    # once to a single field
+                    intersection = current_ops.intersection(new_ops)
+                    if intersection:
+                        msg = 'Duplicate query contitions: '
+                        raise InvalidQueryError(msg + ', '.join(intersection))
+
+                    # Right! We've got two non-overlapping dicts of operations!
+                    combined_query[field].update(copy.deepcopy(ops))
+        return combined_query
+
+
+class QNode(object):
+    """Base class for nodes in query trees.
+    """
+
+    AND = 0
+    OR = 1
+
+    def to_query(self, document):
+        query = self.accept(SimplificationVisitor())
+        query = query.accept(QueryTreeTransformerVisitor())
+        query = query.accept(QueryCompilerVisitor(document))
+        return query
+
+    def accept(self, visitor):
+        raise NotImplementedError
+
+    def _combine(self, other, operation):
+        """Combine this node with another node into a QCombination object.
+        """
+        if other.empty:
+            return self
+
+        if self.empty:
+            return other
+
+        return QCombination(operation, [self, other])
+
+    @property
+    def empty(self):
+        return False
+
+    def __or__(self, other):
+        return self._combine(other, self.OR)
+
+    def __and__(self, other):
+        return self._combine(other, self.AND)
+
+
+class QCombination(QNode):
+    """Represents the combination of several conditions by a given logical
+    operator.
+    """
+
+    def __init__(self, operation, children):
+        self.operation = operation
+        self.children = []
+        for node in children:
+            # If the child is a combination of the same type, we can merge its
+            # children directly into this combinations children
+            if isinstance(node, QCombination) and node.operation == operation:
+                self.children += node.children
+            else:
+                self.children.append(node)
+
+    def accept(self, visitor):
+        for i in range(len(self.children)):
+            self.children[i] = self.children[i].accept(visitor)
+
+        return visitor.visit_combination(self)
+
+    @property
+    def empty(self):
+        return not bool(self.children)
+
+
+class Q(QNode):
+    """A simple query object, used in a query tree to build up more complex
+    query structures.
+    """
+
+    def __init__(self, **query):
+        self.query = query
+
+    def accept(self, visitor):
+        return visitor.visit_query(self)
+
+    @property
+    def empty(self):
+        return not bool(self.query)
+
+
+class OldQ(object):
 
     OR = '||'
     AND = '&&'
@@ -162,7 +395,9 @@ class QuerySet(object):
         self._document = document
         self._collection_obj = collection
         self._accessed_collection = False
-        self._query = {}
+        self._mongo_query = None
+        self._query_obj = Q()
+        self._initial_query = {}
         self._where_clause = None
         self._loaded_fields = []
         self._ordering = []
@@ -170,10 +405,17 @@ class QuerySet(object):
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
         if document._meta.get('allow_inheritance'):
-            self._query = {'_types': self._document._class_name}
+            self._initial_query = {'_types': self._document._class_name}
         self._cursor_obj = None
         self._limit = None
         self._skip = None
+
+    @property
+    def _query(self):
+        if self._mongo_query is None:
+            self._mongo_query = self._query_obj.to_query(self._document)
+            self._mongo_query.update(self._initial_query)
+        return self._mongo_query
 
     def ensure_index(self, key_or_list, drop_dups=False, background=False,
         **kwargs):
@@ -233,10 +475,14 @@ class QuerySet(object):
             objects, only the last one will be used
         :param query: Django-style query keyword arguments
         """
+        #if q_obj:
+            #self._where_clause = q_obj.as_js(self._document)
+        query = Q(**query)
         if q_obj:
-            self._where_clause = q_obj.as_js(self._document)
-        query = QuerySet._transform_query(_doc_cls=self._document, **query)
-        self._query.update(query)
+            query &= q_obj
+        self._query_obj &= query
+        self._mongo_query = None
+        self._cursor_obj = None
         return self
 
     def filter(self, *q_objs, **query):
@@ -338,7 +584,7 @@ class QuerySet(object):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                     'all', 'size', 'exists']
+                     'all', 'size', 'exists', 'not']
         geo_operators = ['within_distance', 'within_box', 'near']
         match_operators = ['contains', 'icontains', 'startswith', 
                            'istartswith', 'endswith', 'iendswith', 
@@ -354,6 +600,11 @@ class QuerySet(object):
             if parts[-1] in operators + match_operators + geo_operators:
                 op = parts.pop()
 
+            negate = False
+            if parts[-1] == 'not':
+                parts.pop()
+                negate = True
+
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
@@ -361,7 +612,7 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte']
+                singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte', 'not']
                 singular_ops += match_operators
                 if op in singular_ops:
                     value = field.prepare_query_value(op, value)
@@ -386,6 +637,9 @@ class QuerySet(object):
                                                   "been implemented" % op)
                 elif op not in match_operators:
                     value = {'$' + op: value}
+
+            if negate:
+                value = {'$not': value}
             
             for i, part in indices:
                 parts.insert(i, part)
