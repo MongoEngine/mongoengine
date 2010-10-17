@@ -112,6 +112,8 @@ class URLField(StringField):
 
 class EmailField(StringField):
     """A field that validates input as an E-Mail-Address.
+
+    .. versionadded:: 0.4
     """
 
     EMAIL_REGEX = re.compile(
@@ -355,6 +357,8 @@ class SortedListField(ListField):
     """A ListField that sorts the contents of its list before writing to
     the database in order to ensure that a sorted list is always
     retrieved.
+
+    .. versionadded:: 0.4
     """
 
     _ordering = None
@@ -666,6 +670,8 @@ class FileField(BaseField):
 
 class GeoPointField(BaseField):
     """A list storing a latitude and longitude.
+
+    .. versionadded:: 0.4
     """
 
     _geo_index = True

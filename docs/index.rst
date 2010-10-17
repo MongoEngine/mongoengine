@@ -7,7 +7,7 @@ MongoDB. To install it, simply run
 
 .. code-block:: console
 
-    # easy_install -U mongoengine
+    # pip install -U mongoengine
 
 The source is available on `GitHub <http://github.com/hmarr/mongoengine>`_.
 

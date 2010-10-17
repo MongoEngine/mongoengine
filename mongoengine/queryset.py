@@ -590,6 +590,7 @@ class QuerySet(object):
 
     def create(self, **kwargs):
         """Create new object. Returns the saved object instance.
+
         .. versionadded:: 0.4
         """
         doc = self._document(**kwargs)

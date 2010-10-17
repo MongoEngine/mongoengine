@@ -47,11 +47,11 @@ are as follows:
 * :class:`~mongoengine.ReferenceField`
 * :class:`~mongoengine.GenericReferenceField`
 * :class:`~mongoengine.BooleanField`
-* :class:`~mongoengine.GeoLocationField`
 * :class:`~mongoengine.FileField`
 * :class:`~mongoengine.EmailField`
 * :class:`~mongoengine.SortedListField`
 * :class:`~mongoengine.BinaryField`
+* :class:`~mongoengine.GeoPointField`
 
 Field arguments
 ---------------
@@ -298,6 +298,10 @@ or a **-** sign. Note that direction only matters on multi-field indexes. ::
         meta = {
             'indexes': ['title', ('title', '-rating')]
         }
+
+.. note::
+   Geospatial indexes will be automatically created for all 
+   :class:`~mongoengine.GeoPointField`\ s
         
 Ordering
 ========
