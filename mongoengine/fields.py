@@ -509,7 +509,7 @@ class GenericReferenceField(BaseField):
         return {'_cls': document.__class__.__name__, '_ref': ref}
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)['_ref']
+        return self.to_mongo(value)
 
 
 class BinaryField(BaseField):

@@ -545,7 +545,6 @@ class FieldTest(unittest.TestCase):
         user.save()
         
         user = User.objects(bookmarks__all=[post_1, link_1]).first()
-        print User.objects(bookmarks__all=[post_1, link_1]).explain()
         
         self.assertEqual(user.bookmarks[0], post_1)
         self.assertEqual(user.bookmarks[1], link_1)
