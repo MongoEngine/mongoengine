@@ -233,33 +233,43 @@ class EmbeddedDocumentField(BaseField):
     :class:`~mongoengine.EmbeddedDocument`.
     """
 
-    def __init__(self, document, **kwargs):
-        if not issubclass(document, EmbeddedDocument):
-            raise ValidationError('Invalid embedded document class provided '
-                                  'to an EmbeddedDocumentField')
-        self.document = document
+    def __init__(self, document_type, **kwargs):
+        if not isinstance(document_type, basestring):
+            if not issubclass(document_type, EmbeddedDocument):
+                raise ValidationError('Invalid embedded document class '
+                                      'provided to an EmbeddedDocumentField')
+        self.document_type_obj = document_type
         super(EmbeddedDocumentField, self).__init__(**kwargs)
 
+    @property
+    def document_type(self):
+        if isinstance(self.document_type_obj, basestring):
+            if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
+                self.document_type_obj = self.owner_document
+            else:
+                self.document_type_obj = get_document(self.document_type_obj)
+        return self.document_type_obj
+
     def to_python(self, value):
-        if not isinstance(value, self.document):
-            return self.document._from_son(value)
+        if not isinstance(value, self.document_type):
+            return self.document_type._from_son(value)
         return value
 
     def to_mongo(self, value):
-        return self.document.to_mongo(value)
+        return self.document_type.to_mongo(value)
 
     def validate(self, value):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
         # Using isinstance also works for subclasses of self.document
-        if not isinstance(value, self.document):
+        if not isinstance(value, self.document_type):
             raise ValidationError('Invalid embedded document instance '
                                   'provided to an EmbeddedDocumentField')
-        self.document.validate(value)
+        self.document_type.validate(value)
 
     def lookup_member(self, member_name):
-        return self.document._fields.get(member_name)
+        return self.document_type._fields.get(member_name)
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
@@ -413,7 +423,6 @@ class ReferenceField(BaseField):
                 raise ValidationError('Argument to ReferenceField constructor '
                                       'must be a document class or a string')
         self.document_type_obj = document_type
-        self.document_obj = None
         super(ReferenceField, self).__init__(**kwargs)
 
     @property
