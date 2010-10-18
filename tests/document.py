@@ -200,6 +200,37 @@ class DocumentTest(unittest.TestCase):
         Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
 
+    def test_inherited_collections(self):
+        """Ensure that subclassed documents don't override parents' collections.
+        """
+        class Drink(Document):
+            name = StringField()
+
+        class AlcoholicDrink(Drink):
+            meta = {'collection': 'booze'}
+
+        class Drinker(Document):
+            drink = GenericReferenceField()
+
+        Drink.drop_collection()
+        AlcoholicDrink.drop_collection()
+        Drinker.drop_collection()
+
+        red_bull = Drink(name='Red Bull')
+        red_bull.save()
+
+        programmer = Drinker(drink=red_bull)
+        programmer.save()
+
+        beer = AlcoholicDrink(name='Beer')
+        beer.save()
+
+        real_person = Drinker(drink=beer)
+        real_person.save()
+
+        self.assertEqual(Drinker.objects[0].drink.name, red_bull.name)
+        self.assertEqual(Drinker.objects[1].drink.name, beer.name)
+
     def test_capped_collection(self):
         """Ensure that capped collections work properly.
         """
@@ -264,11 +295,12 @@ class DocumentTest(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
-                        in info.values())
-        self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
+                        in info)
+        self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         # tags is a list field so it shouldn't have _types in the index
-        self.assertTrue([('tags', 1)] in info.values())
+        self.assertTrue([('tags', 1)] in info)
         
         class ExtendedBlogPost(BlogPost):
             title = StringField()
@@ -278,10 +310,11 @@ class DocumentTest(unittest.TestCase):
 
         list(ExtendedBlogPost.objects)
         info = ExtendedBlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
-                        in info.values())
-        self.assertTrue([('_types', 1), ('addDate', -1)] in info.values())
-        self.assertTrue([('_types', 1), ('title', 1)] in info.values())
+                        in info)
+        self.assertTrue([('_types', 1), ('addDate', -1)] in info)
+        self.assertTrue([('_types', 1), ('title', 1)] in info)
 
         BlogPost.drop_collection()
 
@@ -353,9 +386,23 @@ class DocumentTest(unittest.TestCase):
 
         user_obj = User.objects.first()
         self.assertEqual(user_obj.id, 'test')
+        self.assertEqual(user_obj.pk, 'test')
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'test')
+        self.assertTrue('username' not in user_son['_id'])
+        
+        User.drop_collection()
+        
+        user = User(pk='mongo', name='mongo user')
+        user.save()
+        
+        user_obj = User.objects.first()
+        self.assertEqual(user_obj.id, 'mongo')
+        self.assertEqual(user_obj.pk, 'mongo')
+        
+        user_son = User.objects._collection.find_one()
+        self.assertEqual(user_son['_id'], 'mongo')
         self.assertTrue('username' not in user_son['_id'])
         
         User.drop_collection()
@@ -446,6 +493,16 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
         self.assertEqual(person_obj['_id'], person.id)
+        # Test skipping validation on save
+        class Recipient(Document):
+            email = EmailField(required=True)
+        
+        recipient = Recipient(email='root@localhost')
+        self.assertRaises(ValidationError, recipient.save)
+        try:
+            recipient.save(validate=False)
+        except ValidationError:
+            fail()
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
@@ -462,6 +519,18 @@ class DocumentTest(unittest.TestCase):
         # Create person object and save it to the database
         person = self.Person(name='Test User', age=30, 
                              id='497ce96f395f2f052a494fd4')
+        person.save()
+        # Ensure that the object is in the database with the correct _id
+        collection = self.db[self.Person._meta['collection']]
+        person_obj = collection.find_one({'name': 'Test User'})
+        self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
+        
+    def test_save_custom_pk(self):
+        """Ensure that a document may be saved with a custom _id using pk alias.
+        """
+        # Create person object and save it to the database
+        person = self.Person(name='Test User', age=30, 
+                             pk='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
         collection = self.db[self.Person._meta['collection']]

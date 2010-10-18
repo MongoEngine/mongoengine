@@ -2,6 +2,32 @@
 Changelog
 =========
 
+Changes in v0.4
+===============
+- Added ``GridFSStorage`` Django storage backend
+- Added ``FileField`` for GridFS support
+- New Q-object implementation, which is no longer based on Javascript
+- Added ``SortedListField``
+- Added ``EmailField``
+- Added ``GeoPointField``
+- Added ``exact`` and ``iexact`` match operators to ``QuerySet``
+- Added ``get_document_or_404`` and ``get_list_or_404`` Django shortcuts
+- Added new query operators for Geo queries
+- Added ``not`` query operator
+- Added new update operators: ``pop`` and ``add_to_set``
+- Added ``__raw__`` query parameter
+- Added support for custom querysets
+- Fixed document inheritance primary key issue
+- Added support for querying by array element position
+- Base class can now be defined for ``DictField``
+- Fixed MRO error that occured on document inheritance
+- Added ``QuerySet.distinct``, ``QuerySet.create``, ``QuerySet.snapshot``,
+  ``QuerySet.timeout`` and ``QuerySet.all``
+- Subsequent calls to ``connect()`` now work
+- Introduced ``min_length`` for ``StringField``
+- Fixed multi-process connection issue
+- Other minor fixes
+
 Changes in v0.3
 ===============
 - Added MapReduce support

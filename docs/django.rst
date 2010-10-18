@@ -19,7 +19,7 @@ MongoDB but still use many of the Django authentication infrastucture (such as
 the :func:`login_required` decorator and the :func:`authenticate` function). To
 enable the MongoEngine auth backend, add the following to you **settings.py**
 file::
-    
+
     AUTHENTICATION_BACKENDS = (
         'mongoengine.django.auth.MongoEngineBackend',
     )
@@ -44,3 +44,44 @@ into you settings module::
     SESSION_ENGINE = 'mongoengine.django.sessions'
 
 .. versionadded:: 0.2.1
+
+Storage
+=======
+With MongoEngine's support for GridFS via the :class:`~mongoengine.FileField`,
+it is useful to have a Django file storage backend that wraps this. The new
+storage module is called :class:`~mongoengine.django.GridFSStorage`. Using it
+is very similar to using the default FileSystemStorage.::
+
+    fs = mongoengine.django.GridFSStorage()
+
+    filename = fs.save('hello.txt', 'Hello, World!')
+
+All of the `Django Storage API methods
+<http://docs.djangoproject.com/en/dev/ref/files/storage/>`_ have been
+implemented except :func:`path`. If the filename provided already exists, an
+underscore and a number (before # the file extension, if one exists) will be
+appended to the filename until the generated filename doesn't exist. The
+:func:`save` method will return the new filename.::
+
+    >>> fs.exists('hello.txt')
+    True
+    >>> fs.open('hello.txt').read()
+    'Hello, World!'
+    >>> fs.size('hello.txt')
+    13
+    >>> fs.url('hello.txt')
+    'http://your_media_url/hello.txt'
+    >>> fs.open('hello.txt').name
+    'hello.txt'
+    >>> fs.listdir()
+    ([], [u'hello.txt'])
+
+All files will be saved and retrieved in GridFS via the :class::`FileDocument`
+document, allowing easy access to the files without the GridFSStorage
+backend.::
+
+    >>> from mongoengine.django.storage import FileDocument
+    >>> FileDocument.objects()
+    [<FileDocument: FileDocument object>]
+
+.. versionadded:: 0.4
