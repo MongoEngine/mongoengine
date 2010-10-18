@@ -614,15 +614,10 @@ class GridFSProxy(object):
     def delete(self):
         # Delete file from GridFS, FileField still remains
         self.fs.delete(self.grid_id)
-
-        #self.grid_id = None
-        # Doesn't make a difference because will be put back in when
-        # reinstantiated We should delete all the metadata stored with the
-        # file too
+        self.grid_id = None
 
     def replace(self, file, **kwargs):
         self.delete()
-        self.grid_id = None
         self.put(file, **kwargs)
 
     def close(self):

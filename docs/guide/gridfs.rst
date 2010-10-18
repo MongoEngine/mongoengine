@@ -21,7 +21,7 @@ a document is created to store details about animals, including a photo::
     marmot = Animal('Marmota', 'Sciuridae')
 
     marmot_photo = open('marmot.jpg', 'r')      # Retrieve a photo from disk
-    marmot.photo = marmot_photo                 # Store the photo in the document
+    marmot.photo = marmot_photo                 # Store photo in the document
     marmot.photo.content_type = 'image/jpeg'    # Store metadata
 
     marmot.save()
@@ -40,7 +40,7 @@ Retrieval
 So using the :class:`~mongoengine.FileField` is just like using any other
 field. The file can also be retrieved just as easily::
 
-    marmot = Animal.objects('Marmota').first()
+    marmot = Animal.objects(genus='Marmota').first()
     photo = marmot.photo.read()
     content_type = marmot.photo.content_type
 
