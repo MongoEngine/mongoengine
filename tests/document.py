@@ -386,9 +386,23 @@ class DocumentTest(unittest.TestCase):
 
         user_obj = User.objects.first()
         self.assertEqual(user_obj.id, 'test')
+        self.assertEqual(user_obj.pk, 'test')
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'test')
+        self.assertTrue('username' not in user_son['_id'])
+        
+        User.drop_collection()
+        
+        user = User(pk='mongo', name='mongo user')
+        user.save()
+        
+        user_obj = User.objects.first()
+        self.assertEqual(user_obj.id, 'mongo')
+        self.assertEqual(user_obj.pk, 'mongo')
+        
+        user_son = User.objects._collection.find_one()
+        self.assertEqual(user_son['_id'], 'mongo')
         self.assertTrue('username' not in user_son['_id'])
         
         User.drop_collection()
@@ -505,6 +519,18 @@ class DocumentTest(unittest.TestCase):
         # Create person object and save it to the database
         person = self.Person(name='Test User', age=30, 
                              id='497ce96f395f2f052a494fd4')
+        person.save()
+        # Ensure that the object is in the database with the correct _id
+        collection = self.db[self.Person._meta['collection']]
+        person_obj = collection.find_one({'name': 'Test User'})
+        self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
+        
+    def test_save_custom_pk(self):
+        """Ensure that a document may be saved with a custom _id using pk alias.
+        """
+        # Create person object and save it to the database
+        person = self.Person(name='Test User', age=30, 
+                             pk='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
         collection = self.db[self.Person._meta['collection']]

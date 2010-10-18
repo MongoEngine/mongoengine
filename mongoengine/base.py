@@ -330,14 +330,17 @@ class BaseDocument(object):
 
     def __init__(self, **values):
         self._data = {}
+        # Assign default values to instance
+        for attr_name in self._fields.keys():
+            # Use default value if present
+            value = getattr(self, attr_name, None)
+            setattr(self, attr_name, value)
         # Assign initial values to instance
-        for attr_name, attr_value in self._fields.items():
-            if attr_name in values:
+        for attr_name in values.keys():
+            try:
                 setattr(self, attr_name, values.pop(attr_name))
-            else:
-                # Use default value if present
-                value = getattr(self, attr_name, None)
-                setattr(self, attr_name, value)
+            except AttributeError:
+                pass
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
@@ -372,6 +375,16 @@ class BaseDocument(object):
             all_subclasses[subclass._class_name] = subclass
             all_subclasses.update(subclass._get_subclasses())
         return all_subclasses
+
+    @apply
+    def pk():
+        """Primary key alias
+        """
+        def fget(self):
+            return getattr(self, self._meta['id_field'])
+        def fset(self, value):
+            return setattr(self, self._meta['id_field'], value)
+        return property(fget, fset)
 
     def __iter__(self):
         return iter(self._fields)

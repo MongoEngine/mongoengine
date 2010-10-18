@@ -59,6 +59,13 @@ you may still use :attr:`id` to access the primary key if you want::
     >>> bob.id == bob.email == 'bob@example.com'
     True
 
+You can also access the document's "primary key" using the :attr:`pk` field; in
+is an alias to :attr:`id`::
+
+    >>> page = Page(title="Another Test Page")
+    >>> page.save()
+    >>> page.id == page.pk
+
 .. note::
    If you define your own primary key field, the field implicitly becomes
    required, so a :class:`ValidationError` will be thrown if you don't provide
