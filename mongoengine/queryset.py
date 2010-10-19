@@ -434,6 +434,12 @@ class QuerySet(object):
             if self._document._meta['ordering']:
                 self.order_by(*self._document._meta['ordering'])
 
+            if self._limit is not None:
+                self._cursor_obj.limit(self._limit)
+
+            if self._skip is not None:
+                self._cursor_obj.skip(self._skip)
+
         return self._cursor_obj
 
     @classmethod
