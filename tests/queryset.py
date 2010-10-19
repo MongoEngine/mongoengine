@@ -1377,6 +1377,23 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
+    def test_call_after_limits_set(self):
+        """Ensure that re-filtering after slicing works
+        """
+        class Post(Document):
+            title = StringField()
+
+        Post.drop_collection()
+
+        post1 = Post(title="Post 1")
+        post1.save()
+        post2 = Post(title="Post 2")
+        post2.save()
+
+        posts = Post.objects.all()[0:1]
+        self.assertEqual(len(list(posts())), 1)
+
+        Post.drop_collection()
 
 class QTest(unittest.TestCase):
 
