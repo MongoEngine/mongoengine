@@ -325,12 +325,6 @@ calling it with keyword arguments::
     # Get top posts
     Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
 
-.. warning::
-   Only use these advanced queries if absolutely necessary as they will execute
-   significantly slower than regular queries. This is because they are not
-   natively supported by MongoDB -- they are compiled to Javascript and sent
-   to the server for execution.
-
 Server-side javascript execution
 ================================
 Javascript functions may be written and sent to the server for execution. The
