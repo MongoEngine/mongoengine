@@ -7,3 +7,5 @@ build/
 dist/
 mongoengine.egg-info/
 env/
+.project
+.pydevproject
