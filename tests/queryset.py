@@ -452,6 +452,51 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj.salary, employee.salary)
         self.assertEqual(obj.name, None)
 
+    def test_only_with_subfields(self):
+        class User(EmbeddedDocument):
+            name = StringField()
+            email = StringField()
+
+        class Comment(EmbeddedDocument):
+            title = StringField()
+            text = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = EmbeddedDocumentField(User)
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(content='Had a good coffee today...')
+        post.author = User(name='Test User')
+        post.comments = [Comment(title='I aggree', text='Great post!'), Comment(title='Coffee', text='I hate coffee')]
+        post.save()
+
+        obj = BlogPost.objects.only('author.name',).get()
+        self.assertEqual(obj.content, None)
+        self.assertEqual(obj.author.email, None)
+        self.assertEqual(obj.author.name, 'Test User')
+        self.assertEqual(obj.comments, [])
+
+        obj = BlogPost.objects.only('content', 'comments.title',).get()
+        self.assertEqual(obj.content, 'Had a good coffee today...')
+        self.assertEqual(obj.author, None)
+        self.assertEqual(obj.comments[0].title, 'I aggree')
+        self.assertEqual(obj.comments[1].title, 'Coffee')
+        self.assertEqual(obj.comments[0].text, None)
+        self.assertEqual(obj.comments[1].text, None)
+
+        obj = BlogPost.objects.only('comments',).get()
+        self.assertEqual(obj.content, None)
+        self.assertEqual(obj.author, None)
+        self.assertEqual(obj.comments[0].title, 'I aggree')
+        self.assertEqual(obj.comments[1].title, 'Coffee')
+        self.assertEqual(obj.comments[0].text, 'Great post!')
+        self.assertEqual(obj.comments[1].text, 'I hate coffee')
+
+        BlogPost.drop_collection()
+
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
