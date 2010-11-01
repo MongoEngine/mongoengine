@@ -12,7 +12,6 @@ import datetime
 import decimal
 import gridfs
 import warnings
-import types
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',

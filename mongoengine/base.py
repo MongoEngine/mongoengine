@@ -100,9 +100,9 @@ class BaseField(object):
     def _validate(self, value):
         # check choices
         if self.choices is not None:
-            if value not in self.choices:
-                raise ValidationError("Value must be one of %s."
-                    % unicode(self.choices))
+            option_keys = [option_key for option_key, option_value in self.choices]
+            if value not in option_keys:
+                raise ValidationError("Value must be one of %s." % unicode(option_keys))
 
         # check validation argument
         if self.validation is not None:
@@ -254,8 +254,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
                 # Propagate index options.
                 for key in ('index_background', 'index_drop_dups', 'index_opts'):
-                   if key in base._meta:
-                      base_meta[key] = base._meta[key]
+                    if key in base._meta:
+                        base_meta[key] = base._meta[key]
 
                 id_field = id_field or base._meta.get('id_field')
                 base_indexes += base._meta.get('indexes', [])
