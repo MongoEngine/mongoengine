@@ -1440,6 +1440,24 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
+    def test_order_then_filter(self):
+        """Ensure that ordering still works after filtering.
+        """
+        class Number(Document):
+            n = IntField()
+
+        Number.drop_collection()
+
+        n2 = Number.objects.create(n=2)
+        n1 = Number.objects.create(n=1)
+
+        self.assertEqual(list(Number.objects), [n2, n1])
+        self.assertEqual(list(Number.objects.order_by('n')), [n1, n2])
+        self.assertEqual(list(Number.objects.order_by('n').filter()), [n1, n2])
+
+        Number.drop_collection()
+
+
 class QTest(unittest.TestCase):
 
     def test_empty_q(self):

@@ -431,7 +431,9 @@ class QuerySet(object):
                 self._cursor_obj.where(self._where_clause)
 
             # apply default ordering
-            if self._document._meta['ordering']:
+            if self._ordering:
+                self._cursor_obj.sort(self._ordering)
+            elif self._document._meta['ordering']:
                 self.order_by(*self._document._meta['ordering'])
 
             if self._limit is not None:
