@@ -818,11 +818,7 @@ class QuerySet(object):
         """
         self._loaded_fields = []
         for field in fields:
-            if '.' in field:
-                raise InvalidQueryError('Subfields cannot be used as '
-                                        'arguments to QuerySet.only')
-            # Translate field name
-            field = QuerySet._lookup_field(self._document, field)[-1].db_field
+            field = ".".join(f.db_field for f in QuerySet._lookup_field(self._document, field.split('.')))
             self._loaded_fields.append(field)
 
         # _cls is needed for polymorphism
