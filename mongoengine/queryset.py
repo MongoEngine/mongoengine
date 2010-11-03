@@ -268,6 +268,48 @@ class Q(QNode):
         return not bool(self.query)
 
 
+class QueryFieldList(object):
+    """Object that handles combinations of .only() and .exclude() calls"""
+    ONLY = True
+    EXCLUDE = False
+
+    def __init__(self, fields=[], direction=ONLY, always_include=[]):
+        self.direction = direction
+        self.fields = set(fields)
+        self.always_include = set(always_include)
+
+    def as_dict(self):
+        return dict((field, self.direction) for field in self.fields)
+
+    def __add__(self, f):
+        if not self.fields:
+            self.fields = f.fields
+            self.direction = f.direction
+        elif self.direction is self.ONLY and f.direction is self.ONLY:
+            self.fields = self.fields.intersection(f.fields)
+        elif self.direction is self.EXCLUDE and f.direction is self.EXCLUDE:
+            self.fields = self.fields.union(f.fields)
+        elif self.direction is self.ONLY and f.direction is self.EXCLUDE:
+            self.fields -= f.fields
+        elif self.direction is self.EXCLUDE and f.direction is self.ONLY:
+            self.direction = self.ONLY
+            self.fields = f.fields - self.fields
+
+        if self.always_include:
+            if self.direction is self.ONLY and self.fields:
+                self.fields = self.fields.union(self.always_include)
+            else:
+                self.fields -= self.always_include
+        return self
+
+    def reset(self):
+        self.fields = set([])
+        self.direction = self.ONLY
+
+    def __nonzero__(self):
+        return bool(self.fields)
+
+
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
@@ -281,7 +323,7 @@ class QuerySet(object):
         self._query_obj = Q()
         self._initial_query = {}
         self._where_clause = None
-        self._loaded_fields = []
+        self._loaded_fields = QueryFieldList()
         self._ordering = []
         self._snapshot = False
         self._timeout = True
@@ -290,6 +332,7 @@ class QuerySet(object):
         # subclasses of the class being used
         if document._meta.get('allow_inheritance'):
             self._initial_query = {'_types': self._document._class_name}
+            self._loaded_fields = QueryFieldList(always_include=['_cls'])
         self._cursor_obj = None
         self._limit = None
         self._skip = None
@@ -423,7 +466,7 @@ class QuerySet(object):
                 'timeout': self._timeout,
             }
             if self._loaded_fields:
-                cursor_args['fields'] = self._loaded_fields
+                cursor_args['fields'] = self._loaded_fields.as_dict()
             self._cursor_obj = self._collection.find(self._query, 
                                                      **cursor_args)
             # Apply where clauses to cursor
@@ -818,15 +861,22 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
-        self._loaded_fields = []
+        fields = self._fields_to_dbfields(fields)
+        self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.ONLY)
+        return self
+
+
+    def exclude(self, *fields):
+        fields = self._fields_to_dbfields(fields)
+        self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.EXCLUDE)
+        return self
+
+    def _fields_to_dbfields(self, fields):
+        ret = []
         for field in fields:
             field = ".".join(f.db_field for f in QuerySet._lookup_field(self._document, field.split('.')))
-            self._loaded_fields.append(field)
-
-        # _cls is needed for polymorphism
-        if self._document._meta.get('allow_inheritance'):
-            self._loaded_fields += ['_cls']
-        return self
+            ret.append(field)
+        return ret
 
     def order_by(self, *keys):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The

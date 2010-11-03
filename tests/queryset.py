@@ -6,7 +6,7 @@ import pymongo
 from datetime import datetime, timedelta
 
 from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
-                                  DoesNotExist)
+                                  DoesNotExist, QueryFieldList)
 from mongoengine import *
 
 
@@ -496,6 +496,81 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(obj.comments[1].text, 'I hate coffee')
 
         BlogPost.drop_collection()
+
+    def test_exclude(self):
+        class User(EmbeddedDocument):
+            name = StringField()
+            email = StringField()
+
+        class Comment(EmbeddedDocument):
+            title = StringField()
+            text = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = EmbeddedDocumentField(User)
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(content='Had a good coffee today...')
+        post.author = User(name='Test User')
+        post.comments = [Comment(title='I aggree', text='Great post!'), Comment(title='Coffee', text='I hate coffee')]
+        post.save()
+
+        obj = BlogPost.objects.exclude('author', 'comments.text').get()
+        self.assertEqual(obj.author, None)
+        self.assertEqual(obj.content, 'Had a good coffee today...')
+        self.assertEqual(obj.comments[0].title, 'I aggree')
+        self.assertEqual(obj.comments[0].text, None)
+
+        BlogPost.drop_collection()
+
+    def test_exclude_only_combining(self):
+        class Attachment(EmbeddedDocument):
+            name = StringField()
+            content = StringField()
+
+        class Email(Document):
+            sender = StringField()
+            to = StringField()
+            subject = StringField()
+            body = StringField()
+            content_type = StringField()
+            attachments = ListField(EmbeddedDocumentField(Attachment))
+
+        Email.drop_collection()
+        email = Email(sender='me', to='you', subject='From Russia with Love', body='Hello!', content_type='text/plain')
+        email.attachments = [
+            Attachment(name='file1.doc', content='ABC'),
+            Attachment(name='file2.doc', content='XYZ'),
+        ]
+        email.save()
+
+        obj = Email.objects.exclude('content_type').exclude('body').get()
+        self.assertEqual(obj.sender, 'me')
+        self.assertEqual(obj.to, 'you')
+        self.assertEqual(obj.subject, 'From Russia with Love')
+        self.assertEqual(obj.body, None)
+        self.assertEqual(obj.content_type, None)
+
+        obj = Email.objects.only('sender', 'to').exclude('body', 'sender').get()
+        self.assertEqual(obj.sender, None)
+        self.assertEqual(obj.to, 'you')
+        self.assertEqual(obj.subject, None)
+        self.assertEqual(obj.body, None)
+        self.assertEqual(obj.content_type, None)
+
+        obj = Email.objects.exclude('attachments.content').exclude('body').only('to', 'attachments.name').get()
+        self.assertEqual(obj.attachments[0].name, 'file1.doc')
+        self.assertEqual(obj.attachments[0].content, None)
+        self.assertEqual(obj.sender, None)
+        self.assertEqual(obj.to, 'you')
+        self.assertEqual(obj.subject, None)
+        self.assertEqual(obj.body, None)
+        self.assertEqual(obj.content_type, None)
+
+        Email.drop_collection()
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
@@ -1593,6 +1668,62 @@ class QTest(unittest.TestCase):
         self.assertEqual(len(conditions), len(query['$or']))
         for condition in conditions:
             self.assertTrue(condition in query['$or'])
+
+class QueryFieldListTest(unittest.TestCase):
+    def test_empty(self):
+        q = QueryFieldList()
+        self.assertFalse(q)
+
+        q = QueryFieldList(always_include=['_cls'])
+        self.assertFalse(q)
+
+    def test_include_include(self):
+        q = QueryFieldList()
+        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'a': True, 'b': True})
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'b': True})
+
+    def test_include_exclude(self):
+        q = QueryFieldList()
+        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'a': True, 'b': True})
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.EXCLUDE)
+        self.assertEqual(q.as_dict(), {'a': True})
+
+    def test_exclude_exclude(self):
+        q = QueryFieldList()
+        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.EXCLUDE)
+        self.assertEqual(q.as_dict(), {'a': False, 'b': False})
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.EXCLUDE)
+        self.assertEqual(q.as_dict(), {'a': False, 'b': False, 'c': False})
+
+    def test_exclude_include(self):
+        q = QueryFieldList()
+        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.EXCLUDE)
+        self.assertEqual(q.as_dict(), {'a': False, 'b': False})
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'c': True})
+
+    def test_always_include(self):
+        q = QueryFieldList(always_include=['x', 'y'])
+        q += QueryFieldList(fields=['a', 'b', 'x'], direction=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'c': True})
+
+
+    def test_reset(self):
+        q = QueryFieldList(always_include=['x', 'y'])
+        q += QueryFieldList(fields=['a', 'b', 'x'], direction=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'c': True})
+        q.reset()
+        self.assertFalse(q)
+        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'b': True, 'c': True})
+
+
+
 
 
 if __name__ == '__main__':
