@@ -78,7 +78,7 @@ class SimplificationVisitor(QNodeVisitor):
             # to a single field
             intersection = ops.intersection(query_ops)
             if intersection:
-                msg = 'Duplicate query contitions: '
+                msg = 'Duplicate query conditions: '
                 raise InvalidQueryError(msg + ', '.join(intersection))
 
             query_ops.update(ops)
@@ -179,7 +179,7 @@ class QueryCompilerVisitor(QNodeVisitor):
                     # once to a single field
                     intersection = current_ops.intersection(new_ops)
                     if intersection:
-                        msg = 'Duplicate query contitions: '
+                        msg = 'Duplicate query conditions: '
                         raise InvalidQueryError(msg + ', '.join(intersection))
 
                     # Right! We've got two non-overlapping dicts of operations!
