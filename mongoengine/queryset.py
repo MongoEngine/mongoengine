@@ -867,11 +867,26 @@ class QuerySet(object):
 
 
     def exclude(self, *fields):
+        """Opposite to .only(), exclude some document's fields. ::
+
+            post = BlogPost.objects(...).exclude("comments")
+
+        :param fields: fields to exclude
+        """
         fields = self._fields_to_dbfields(fields)
         self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.EXCLUDE)
         return self
 
+    def all_fields(self):
+        """Include all fields. Reset all previously calls of .only() and .exclude(). ::
+
+            post = BlogPost.objects(...).exclude("comments").only("title").all_fields()
+        """
+        self._loaded_fields = QueryFieldList(always_include=self._loaded_fields.always_include)
+        return self
+
     def _fields_to_dbfields(self, fields):
+        """Translate fields paths to its db equivalents"""
         ret = []
         for field in fields:
             field = ".".join(f.db_field for f in QuerySet._lookup_field(self._document, field.split('.')))

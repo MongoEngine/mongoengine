@@ -572,6 +572,29 @@ class QuerySetTest(unittest.TestCase):
 
         Email.drop_collection()
 
+    def test_all_fields(self):
+
+        class Email(Document):
+            sender = StringField()
+            to = StringField()
+            subject = StringField()
+            body = StringField()
+            content_type = StringField()
+
+        Email.drop_collection()
+
+        email = Email(sender='me', to='you', subject='From Russia with Love', body='Hello!', content_type='text/plain')
+        email.save()
+
+        obj = Email.objects.exclude('content_type', 'body').only('to', 'body').all_fields().get()
+        self.assertEqual(obj.sender, 'me')
+        self.assertEqual(obj.to, 'you')
+        self.assertEqual(obj.subject, 'From Russia with Love')
+        self.assertEqual(obj.body, 'Hello!')
+        self.assertEqual(obj.content_type, 'text/plain')
+
+        Email.drop_collection()
+
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
