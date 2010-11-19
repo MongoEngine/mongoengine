@@ -8,7 +8,7 @@ import pymongo
 import pymongo.dbref
 import pymongo.son
 import pymongo.binary
-import datetime
+import datetime, time
 import decimal
 import gridfs
 import warnings
