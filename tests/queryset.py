@@ -351,8 +351,6 @@ class QuerySetTest(unittest.TestCase):
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """
-        from datetime import datetime
-
         class BlogPost(Document):
             title = StringField()
             is_published = BooleanField()
