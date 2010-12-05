@@ -417,12 +417,13 @@ class ReferenceField(BaseField):
     access (lazily).
     """
 
-    def __init__(self, document_type, **kwargs):
+    def __init__(self, document_type, delete_rule=None, **kwargs):
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
                 raise ValidationError('Argument to ReferenceField constructor '
                                       'must be a document class or a string')
         self.document_type_obj = document_type
+        self.delete_rule = delete_rule
         super(ReferenceField, self).__init__(**kwargs)
 
     @property

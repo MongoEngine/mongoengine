@@ -190,6 +190,8 @@ class DocumentMetaclass(type):
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
             field.owner_document = new_class
+            if hasattr(field, 'delete_rule') and field.delete_rule:
+                field.document_type._meta['delete_rules'][(new_class, field.name)] = field.delete_rule
 
         module = attrs.get('__module__')
 
@@ -258,6 +260,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'index_drop_dups': False,
             'index_opts': {},
             'queryset_class': QuerySet,
+            'delete_rules': {},
         }
         meta.update(base_meta)
 

@@ -624,6 +624,31 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+
+    def test_cascade_delete(self):
+        """Ensure that a referenced document is also deleted upon deletion.
+        """
+
+        class BlogPost(Document):
+            meta = {'collection': 'blogpost_1'}
+            content = StringField()
+            author = ReferenceField(self.Person, delete_rule=CASCADE)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        post = BlogPost(content = 'Watched some TV')
+        post.author = author
+        post.save()
+
+        # Delete the Person, which should lead to deletion of the BlogPost, too
+        author.delete()
+        self.assertEqual(len(BlogPost.objects), 0)
+
+
     def tearDown(self):
         self.Person.drop_collection()
 

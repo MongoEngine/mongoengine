@@ -6,8 +6,15 @@ from connection import _get_db
 import pymongo
 
 
-__all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
+__all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError',
+        'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
 
+
+# Delete rules
+DO_NOTHING = 0
+NULLIFY = 1
+CASCADE = 2
+DENY = 3
 
 class EmbeddedDocument(BaseDocument):
     """A :class:`~mongoengine.Document` that isn't stored in its own
@@ -92,6 +99,13 @@ class Document(BaseDocument):
 
         :param safe: check if the operation succeeded before returning
         """
+        for rule_entry in self._meta['delete_rules']:
+            document_cls, field_name = rule_entry
+            rule = self._meta['delete_rules'][rule_entry]
+
+            if rule == CASCADE:
+                document_cls.objects(**{field_name: self.id}).delete(safe=safe)
+
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
         try:
@@ -99,6 +113,17 @@ class Document(BaseDocument):
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
+
+    @classmethod
+    def register_delete_rule(cls, document_cls, field_name, rule):
+        """This method registers the delete rules to apply when removing this
+        object.  This could go into the Document class.
+        """
+        if rule == DO_NOTHING:
+            return
+
+        cls._meta['delete_rules'][(document_cls, field_name)] = rule
+
 
     def reload(self):
         """Reloads all attributes from the database.
