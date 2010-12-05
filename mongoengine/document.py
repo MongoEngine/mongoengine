@@ -105,6 +105,19 @@ class Document(BaseDocument):
 
             if rule == CASCADE:
                 document_cls.objects(**{field_name: self.id}).delete(safe=safe)
+            elif rule == NULLIFY:
+                # TODO: For now, this makes the nullify test pass, but it would
+                # be nicer to use any of these two atomic versions:
+                #
+                #    document_cls.objects(**{field_name: self.id}).update(**{'unset__%s' % field_name: 1})
+                # or
+                #    document_cls.objects(**{field_name: self.id}).update(**{'set__%s' % field_name: None})
+                #
+                # However, I'm getting ValidationError: 1/None is not a valid ObjectId
+                # Anybody got a clue?
+                for doc in document_cls.objects(**{field_name: self.id}):
+                    doc.reviewer = None
+                    doc.save()
 
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
