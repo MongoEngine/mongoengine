@@ -1462,6 +1462,27 @@ class QuerySetTest(unittest.TestCase):
 
         Number.drop_collection()
 
+    def test_unset_reference(self):
+        class Comment(Document):
+            text = StringField()
+
+        class Post(Document):
+            comment = ReferenceField(Comment)
+
+        Comment.drop_collection()
+        Post.drop_collection()
+
+        comment = Comment.objects.create(text='test')
+        post = Post.objects.create(comment=comment)
+
+        self.assertEqual(post.comment, comment)
+        Post.objects.update(unset__comment=1)
+        post.reload()
+        self.assertEqual(post.comment, None)
+
+        Comment.drop_collection()
+        Post.drop_collection()
+
 
 class QTest(unittest.TestCase):
 
