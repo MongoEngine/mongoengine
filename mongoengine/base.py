@@ -191,7 +191,8 @@ class DocumentMetaclass(type):
         for field in new_class._fields.values():
             field.owner_document = new_class
             if hasattr(field, 'delete_rule') and field.delete_rule:
-                field.document_type._meta['delete_rules'][(new_class, field.name)] = field.delete_rule
+                field.document_type.register_delete_rule(new_class, field.name,
+                        field.delete_rule)
 
         module = attrs.get('__module__')
 
