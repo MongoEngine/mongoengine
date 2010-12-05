@@ -778,6 +778,11 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.objects.update_one(add_to_set__tags='unique')
         post.reload()
         self.assertEqual(post.tags.count('unique'), 1)
+
+        self.assertNotEqual(post.hits, None)
+        BlogPost.objects.update_one(unset__hits=1)
+        post.reload()
+        self.assertEqual(post.hits, None)
         
         BlogPost.drop_collection()
 
