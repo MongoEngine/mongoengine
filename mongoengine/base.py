@@ -492,6 +492,7 @@ class BaseDocument(object):
 if sys.version_info < (2, 5):
     # Prior to Python 2.5, Exception was an old-style class
     def subclass_exception(name, parents, unused):
+        import types
         return types.ClassType(name, parents, {})
 else:
     def subclass_exception(name, parents, module):
