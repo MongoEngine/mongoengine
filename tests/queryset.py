@@ -734,6 +734,21 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects.delete()
         self.assertEqual(len(self.Person.objects), 0)
 
+    def test_delete_rule_cascade(self):
+        """Ensure cascading deletion of referring documents from the database.
+        """
+        self.fail()
+
+    def test_delete_rule_nullify(self):
+        """Ensure nullification of references to deleted documents.
+        """
+        self.fail()
+
+    def test_delete_rule_deny(self):
+        """Ensure deletion gets denied on documents that still have references to them.
+        """
+        self.fail()
+
     def test_update(self):
         """Ensure that atomic updates work properly.
         """

@@ -657,6 +657,18 @@ class DocumentTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
+    def test_delete_rule_cascade_recurs(self):
+        """Ensure that a recursive chain of documents is also deleted upon
+        cascaded deletion.
+        """
+        self.fail()
+
+    def test_delete_rule_deny(self):
+        """Ensure that a document cannot be referenced if there are still
+        documents referring to it.
+        """
+        self.fail()
+
 
     def tearDown(self):
         self.Person.drop_collection()
