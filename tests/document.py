@@ -502,7 +502,7 @@ class DocumentTest(unittest.TestCase):
         try:
             recipient.save(validate=False)
         except ValidationError:
-            fail()
+            self.fail()
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
