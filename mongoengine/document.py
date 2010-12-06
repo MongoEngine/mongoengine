@@ -107,7 +107,6 @@ class Document(BaseDocument):
             if rule == DENY and document_cls.objects(**{field_name: self.id}).count() > 0:
                 msg = u'Could not delete document (at least %s.%s refers to it)' % \
                         (document_cls.__name__, field_name)
-                logging.error(msg)
                 raise OperationError(msg)
 
         for rule_entry in self._meta['delete_rules']:
