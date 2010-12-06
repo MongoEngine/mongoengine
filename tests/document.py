@@ -667,7 +667,36 @@ class DocumentTest(unittest.TestCase):
         """Ensure that a document cannot be referenced if there are still
         documents referring to it.
         """
-        self.fail()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, delete_rule=DENY)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        post = BlogPost(content = 'Watched some TV')
+        post.author = author
+        post.save()
+
+        # Delete the Person should be denied
+        self.assertRaises(OperationError, author.delete)  # Should raise denied error
+        self.assertEqual(len(BlogPost.objects), 1)  # No objects may have been deleted
+        self.assertEqual(len(self.Person.objects), 1)
+
+        # Other users, that don't have BlogPosts must be removable, like normal
+        author = self.Person(name='Another User')
+        author.save()
+
+        self.assertEqual(len(self.Person.objects), 2)
+        author.delete()
+        self.assertEqual(len(self.Person.objects), 1)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
 
 
     def tearDown(self):
