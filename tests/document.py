@@ -658,8 +658,8 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(len(BlogPost.objects), 0)
 
     def test_delete_rule_cascade_recurs(self):
-        """Ensure that a recursive chain of documents is also deleted upon
-        cascaded deletion.
+        """Ensure that a chain of documents is also deleted upon cascaded
+        deletion.
         """
         self.fail()
 
