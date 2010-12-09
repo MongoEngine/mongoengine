@@ -442,7 +442,7 @@ class BaseDocument(object):
                 self._meta.get('allow_inheritance', True) == False):
             data['_cls'] = self._class_name
             data['_types'] = self._superclasses.keys() + [self._class_name]
-        if data.has_key('_id') and not data['_id']:
+        if data.has_key('_id') and data['_id'] is None:
             del data['_id']
         return data
 
