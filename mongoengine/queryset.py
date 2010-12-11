@@ -431,7 +431,9 @@ class QuerySet(object):
                 self._cursor_obj.where(self._where_clause)
 
             # apply default ordering
-            if self._document._meta['ordering']:
+            if self._ordering:
+                self._cursor_obj.sort(self._ordering)
+            elif self._document._meta['ordering']:
                 self.order_by(*self._document._meta['ordering'])
 
             if self._limit is not None:
@@ -818,11 +820,7 @@ class QuerySet(object):
         """
         self._loaded_fields = []
         for field in fields:
-            if '.' in field:
-                raise InvalidQueryError('Subfields cannot be used as '
-                                        'arguments to QuerySet.only')
-            # Translate field name
-            field = QuerySet._lookup_field(self._document, field)[-1].db_field
+            field = ".".join(f.db_field for f in QuerySet._lookup_field(self._document, field.split('.')))
             self._loaded_fields.append(field)
 
         # _cls is needed for polymorphism
@@ -919,8 +917,7 @@ class QuerySet(object):
 
                 # Convert value to proper value
                 field = fields[-1]
-                if op in (None, 'set', 'unset', 'pop', 'push', 'pull',
-                          'addToSet'):
+                if op in (None, 'set', 'push', 'pull', 'addToSet'):
                     value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
                     value = [field.prepare_query_value(op, v) for v in value]
