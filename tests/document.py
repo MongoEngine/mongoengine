@@ -661,7 +661,35 @@ class DocumentTest(unittest.TestCase):
         """Ensure that a chain of documents is also deleted upon cascaded
         deletion.
         """
-        self.fail()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, delete_rule=CASCADE)
+
+        class Comment(Document):
+            text = StringField()
+            post = ReferenceField(BlogPost, delete_rule=CASCADE)
+
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        post = BlogPost(content = 'Watched some TV')
+        post.author = author
+        post.save()
+
+        comment = Comment(text = 'Kudos.')
+        comment.post = post
+        comment.save()
+
+        # Delete the Person, which should lead to deletion of the BlogPost, and,
+        # recursively to the Comment, too
+        author.delete()
+        self.assertEqual(len(Comment.objects), 0)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+        Comment.drop_collection()
 
     def test_delete_rule_deny(self):
         """Ensure that a document cannot be referenced if there are still

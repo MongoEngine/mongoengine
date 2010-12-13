@@ -882,6 +882,28 @@ class QuerySet(object):
 
         :param safe: check if the operation succeeded before returning
         """
+        from document import CASCADE, DENY, NULLIFY
+
+        doc = self._document
+
+        # Check for DENY rules before actually deleting/nullifying any other
+        # references
+        for rule_entry in doc._meta['delete_rules']:
+            document_cls, field_name = rule_entry
+            rule = doc._meta['delete_rules'][rule_entry]
+            if rule == DENY and document_cls.objects(**{field_name + '__in': self}).count() > 0:
+                msg = u'Could not delete document (at least %s.%s refers to it)' % \
+                        (document_cls.__name__, field_name)
+                raise OperationError(msg)
+
+        for rule_entry in doc._meta['delete_rules']:
+            document_cls, field_name = rule_entry
+            rule = doc._meta['delete_rules'][rule_entry]
+            if rule == CASCADE:
+                document_cls.objects(**{field_name + '__in': self}).delete(safe=safe)
+            elif rule == NULLIFY:
+                document_cls.objects(**{field_name + '__in': self}).update(**{'unset__%s' % field_name: 1})
+
         self._collection.remove(self._query, safe=safe)
 
     @classmethod

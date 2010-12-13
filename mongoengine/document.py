@@ -99,26 +99,6 @@ class Document(BaseDocument):
 
         :param safe: check if the operation succeeded before returning
         """
-        # Check for DENY rules before actually deleting/nullifying any other
-        # references
-        for rule_entry in self._meta['delete_rules']:
-            document_cls, field_name = rule_entry
-            rule = self._meta['delete_rules'][rule_entry]
-            if rule == DENY and document_cls.objects(**{field_name: self.id}).count() > 0:
-                msg = u'Could not delete document (at least %s.%s refers to it)' % \
-                        (document_cls.__name__, field_name)
-                raise OperationError(msg)
-
-        for rule_entry in self._meta['delete_rules']:
-            document_cls, field_name = rule_entry
-            rule = self._meta['delete_rules'][rule_entry]
-
-            if rule == CASCADE:
-                document_cls.objects(**{field_name: self.id}).delete(safe=safe)
-            elif rule == NULLIFY:
-                document_cls.objects(**{field_name:
-                    self.id}).update(**{'unset__%s' % field_name: 1})
-
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
         try:

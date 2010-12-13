@@ -737,7 +737,20 @@ class QuerySetTest(unittest.TestCase):
     def test_delete_rule_cascade(self):
         """Ensure cascading deletion of referring documents from the database.
         """
-        self.fail()
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, delete_rule=CASCADE)
+        BlogPost.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+
+        post = BlogPost(content='Watching TV', author=me)
+        post.save()
+
+        self.assertEqual(1, BlogPost.objects.count())
+        self.Person.objects.delete()
+        self.assertEqual(0, BlogPost.objects.count())
 
     def test_delete_rule_nullify(self):
         """Ensure nullification of references to deleted documents.
