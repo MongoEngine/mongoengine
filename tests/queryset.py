@@ -755,12 +755,46 @@ class QuerySetTest(unittest.TestCase):
     def test_delete_rule_nullify(self):
         """Ensure nullification of references to deleted documents.
         """
-        self.fail()
+        class Category(Document):
+            name = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            category = ReferenceField(Category, delete_rule=NULLIFY)
+
+        BlogPost.drop_collection()
+        Category.drop_collection()
+
+        lameness = Category(name='Lameness')
+        lameness.save()
+
+        post = BlogPost(content='Watching TV', category=lameness)
+        post.save()
+
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertEqual('Lameness', BlogPost.objects.first().category.name)
+        Category.objects.delete()
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertEqual(None, BlogPost.objects.first().category)
 
     def test_delete_rule_deny(self):
-        """Ensure deletion gets denied on documents that still have references to them.
+        """Ensure deletion gets denied on documents that still have references
+        to them.
         """
-        self.fail()
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, delete_rule=DENY)
+
+        BlogPost.drop_collection()
+        self.Person.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+
+        post = BlogPost(content='Watching TV', author=me)
+        post.save()
+
+        self.assertRaises(OperationError, self.Person.objects.delete)
 
     def test_update(self):
         """Ensure that atomic updates work properly.
