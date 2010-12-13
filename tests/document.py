@@ -630,7 +630,6 @@ class DocumentTest(unittest.TestCase):
         """
 
         class BlogPost(Document):
-            meta = {'collection': 'blogpost_1'}
             content = StringField()
             author = ReferenceField(self.Person, delete_rule=CASCADE)
             reviewer = ReferenceField(self.Person, delete_rule=NULLIFY)
