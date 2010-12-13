@@ -744,13 +744,16 @@ class QuerySetTest(unittest.TestCase):
 
         me = self.Person(name='Test User')
         me.save()
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
 
-        post = BlogPost(content='Watching TV', author=me)
-        post.save()
+        BlogPost(content='Watching TV', author=me).save()
+        BlogPost(content='Chilling out', author=me).save()
+        BlogPost(content='Pro Testing', author=someoneelse).save()
 
+        self.assertEqual(3, BlogPost.objects.count())
+        self.Person.objects(name='Test User').delete()
         self.assertEqual(1, BlogPost.objects.count())
-        self.Person.objects.delete()
-        self.assertEqual(0, BlogPost.objects.count())
 
     def test_delete_rule_nullify(self):
         """Ensure nullification of references to deleted documents.
