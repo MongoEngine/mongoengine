@@ -1,20 +1,13 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
-from queryset import OperationError
+from queryset import OperationError, DO_NOTHING
 from connection import _get_db
 
 import pymongo
 
 
-__all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError',
-        'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
+__all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
 
-
-# Delete rules
-DO_NOTHING = 0
-NULLIFY = 1
-CASCADE = 2
-DENY = 3
 
 class EmbeddedDocument(BaseDocument):
     """A :class:`~mongoengine.Document` that isn't stored in its own
@@ -110,7 +103,7 @@ class Document(BaseDocument):
     @classmethod
     def register_delete_rule(cls, document_cls, field_name, rule):
         """This method registers the delete rules to apply when removing this
-        object.  This could go into the Document class.
+        object.
         """
         if rule == DO_NOTHING:
             return

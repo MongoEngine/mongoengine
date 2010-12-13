@@ -10,10 +10,17 @@ import copy
 import itertools
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
-           'InvalidCollectionError']
+           'InvalidCollectionError', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
+
 
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
+
+# Delete rules
+DO_NOTHING = 0
+NULLIFY = 1
+CASCADE = 2
+DENY = 3
 
 
 class DoesNotExist(Exception):
@@ -882,8 +889,6 @@ class QuerySet(object):
 
         :param safe: check if the operation succeeded before returning
         """
-        from document import CASCADE, DENY, NULLIFY
-
         doc = self._document
 
         # Check for DENY rules before actually deleting/nullifying any other
