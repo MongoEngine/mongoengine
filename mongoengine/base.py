@@ -1,5 +1,6 @@
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
+from queryset import DO_NOTHING
 
 import sys
 import pymongo
@@ -190,7 +191,7 @@ class DocumentMetaclass(type):
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
             field.owner_document = new_class
-            if hasattr(field, 'delete_rule') and field.delete_rule:
+            if hasattr(field, 'delete_rule') and field.delete_rule > DO_NOTHING:
                 field.document_type.register_delete_rule(new_class, field.name,
                         field.delete_rule)
 

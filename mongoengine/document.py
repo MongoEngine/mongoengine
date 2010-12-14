@@ -1,6 +1,6 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
-from queryset import OperationError, DO_NOTHING
+from queryset import OperationError
 from connection import _get_db
 
 import pymongo
@@ -105,9 +105,6 @@ class Document(BaseDocument):
         """This method registers the delete rules to apply when removing this
         object.
         """
-        if rule == DO_NOTHING:
-            return
-
         cls._meta['delete_rules'][(document_cls, field_name)] = rule
 
 
