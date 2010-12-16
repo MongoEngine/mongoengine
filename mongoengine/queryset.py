@@ -907,7 +907,9 @@ class QuerySet(object):
             if rule == CASCADE:
                 document_cls.objects(**{field_name + '__in': self}).delete(safe=safe)
             elif rule == NULLIFY:
-                document_cls.objects(**{field_name + '__in': self}).update(**{'unset__%s' % field_name: 1})
+                document_cls.objects(**{field_name + '__in': self}).update(
+                        safe_update=safe,
+                        **{'unset__%s' % field_name: 1})
 
         self._collection.remove(self._query, safe=safe)
 
