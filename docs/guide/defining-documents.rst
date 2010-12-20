@@ -205,23 +205,22 @@ supplying the :attr:`reverse_delete_rule` attributes on the
 
     class Employee(Document):
         ...
-        profile_page = ReferenceField('ProfilePage', delete_rule=mongoengine.NULLIFY)
+        profile_page = ReferenceField('ProfilePage', reverse_delete_rule=mongoengine.NULLIFY)
 
 Its value can take any of the following constants:
 
 :const:`mongoengine.DO_NOTHING`
-  This is the default and won't do anything.  Deletes are fast, but may
-  cause database inconsistency or dangling references.
+  This is the default and won't do anything.  Deletes are fast, but may cause
+  database inconsistency or dangling references.
 :const:`mongoengine.DENY`
   Deletion is denied if there still exist references to the object being
   deleted.
 :const:`mongoengine.NULLIFY`
-  Any object's fields still referring to the object being deleted are
-  removed (using MongoDB's "unset" operation), effectively nullifying the
-  relationship.
+  Any object's fields still referring to the object being deleted are removed
+  (using MongoDB's "unset" operation), effectively nullifying the relationship.
 :const:`mongoengine.CASCADE`
-  Any object containing fields that are refererring to the object being
-  deleted are deleted first.
+  Any object containing fields that are refererring to the object being deleted
+  are deleted first.
 
 
 Generic reference fields
