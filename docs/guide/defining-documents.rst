@@ -193,6 +193,37 @@ as the constructor's argument::
     class ProfilePage(Document):
         content = StringField()
 
+Dealing with deletion of referred documents
+'''''''''''''''''''''''''''''''''''''''''''
+By default, MongoDB doesn't check the integrity of your data, so deleting
+documents that other documents still hold references to will lead to consistency
+issues.  Mongoengine's :class:`ReferenceField` adds some functionality to
+safeguard against these kinds of database integrity problems, providing each
+reference with a delete rule specification.  A delete rule is specified by
+supplying the :attr:`delete_rule` attribute on the :class:`ReferenceField`
+definition, like this::
+
+    class Employee(Document):
+        ...
+        profile_page = ReferenceField('ProfilePage', delete_rule=mongoengine.NULLIFY)
+
+Its value can take any of the following constants:
+
+:const:`mongoengine.DO_NOTHING`
+  This is the default and won't do anything.  Deletes are fast, but may
+  cause database inconsistency or dangling references.
+:const:`mongoengine.DENY`
+  Deletion is denied if there still exist references to the object being
+  deleted.
+:const:`mongoengine.NULLIFY`
+  Any object's fields still referring to the object being deleted are
+  removed (using MongoDB's "unset" operation), effectively nullifying the
+  relationship.
+:const:`mongoengine.CASCADE`
+  Any object containing fields that are refererring to the object being
+  deleted are deleted first.
+
+
 Generic reference fields
 ''''''''''''''''''''''''
 A second kind of reference field also exists,
