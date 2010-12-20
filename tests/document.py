@@ -625,14 +625,14 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
 
-    def test_delete_rule_cascade_and_nullify(self):
+    def test_reverse_delete_rule_cascade_and_nullify(self):
         """Ensure that a referenced document is also deleted upon deletion.
         """
 
         class BlogPost(Document):
             content = StringField()
-            author = ReferenceField(self.Person, delete_rule=CASCADE)
-            reviewer = ReferenceField(self.Person, delete_rule=NULLIFY)
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+            reviewer = ReferenceField(self.Person, reverse_delete_rule=NULLIFY)
 
         self.Person.drop_collection()
         BlogPost.drop_collection()
@@ -656,18 +656,18 @@ class DocumentTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
-    def test_delete_rule_cascade_recurs(self):
+    def test_reverse_delete_rule_cascade_recurs(self):
         """Ensure that a chain of documents is also deleted upon cascaded
         deletion.
         """
 
         class BlogPost(Document):
             content = StringField()
-            author = ReferenceField(self.Person, delete_rule=CASCADE)
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
 
         class Comment(Document):
             text = StringField()
-            post = ReferenceField(BlogPost, delete_rule=CASCADE)
+            post = ReferenceField(BlogPost, reverse_delete_rule=CASCADE)
 
 
         author = self.Person(name='Test User')
@@ -690,14 +690,14 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
         Comment.drop_collection()
 
-    def test_delete_rule_deny(self):
+    def test_reverse_delete_rule_deny(self):
         """Ensure that a document cannot be referenced if there are still
         documents referring to it.
         """
 
         class BlogPost(Document):
             content = StringField()
-            author = ReferenceField(self.Person, delete_rule=DENY)
+            author = ReferenceField(self.Person, reverse_delete_rule=DENY)
 
         self.Person.drop_collection()
         BlogPost.drop_collection()

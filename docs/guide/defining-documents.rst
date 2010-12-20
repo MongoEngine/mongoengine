@@ -200,8 +200,8 @@ documents that other documents still hold references to will lead to consistency
 issues.  Mongoengine's :class:`ReferenceField` adds some functionality to
 safeguard against these kinds of database integrity problems, providing each
 reference with a delete rule specification.  A delete rule is specified by
-supplying the :attr:`delete_rule` attribute on the :class:`ReferenceField`
-definition, like this::
+supplying the :attr:`reverse_delete_rule` attributes on the
+:class:`ReferenceField` definition, like this::
 
     class Employee(Document):
         ...

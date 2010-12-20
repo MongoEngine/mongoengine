@@ -734,12 +734,12 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects.delete()
         self.assertEqual(len(self.Person.objects), 0)
 
-    def test_delete_rule_cascade(self):
+    def test_reverse_delete_rule_cascade(self):
         """Ensure cascading deletion of referring documents from the database.
         """
         class BlogPost(Document):
             content = StringField()
-            author = ReferenceField(self.Person, delete_rule=CASCADE)
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
         BlogPost.drop_collection()
 
         me = self.Person(name='Test User')
@@ -755,7 +755,7 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects(name='Test User').delete()
         self.assertEqual(1, BlogPost.objects.count())
 
-    def test_delete_rule_nullify(self):
+    def test_reverse_delete_rule_nullify(self):
         """Ensure nullification of references to deleted documents.
         """
         class Category(Document):
@@ -763,7 +763,7 @@ class QuerySetTest(unittest.TestCase):
 
         class BlogPost(Document):
             content = StringField()
-            category = ReferenceField(Category, delete_rule=NULLIFY)
+            category = ReferenceField(Category, reverse_delete_rule=NULLIFY)
 
         BlogPost.drop_collection()
         Category.drop_collection()
@@ -780,13 +780,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, BlogPost.objects.count())
         self.assertEqual(None, BlogPost.objects.first().category)
 
-    def test_delete_rule_deny(self):
+    def test_reverse_delete_rule_deny(self):
         """Ensure deletion gets denied on documents that still have references
         to them.
         """
         class BlogPost(Document):
             content = StringField()
-            author = ReferenceField(self.Person, delete_rule=DENY)
+            author = ReferenceField(self.Person, reverse_delete_rule=DENY)
 
         BlogPost.drop_collection()
         self.Person.drop_collection()

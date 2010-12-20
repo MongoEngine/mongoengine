@@ -191,7 +191,7 @@ class DocumentMetaclass(type):
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
             field.owner_document = new_class
-            delete_rule = getattr(field, 'delete_rule', DO_NOTHING)
+            delete_rule = getattr(field, 'reverse_delete_rule', DO_NOTHING)
             if delete_rule != DO_NOTHING:
                 field.document_type.register_delete_rule(new_class, field.name,
                         delete_rule)
