@@ -193,6 +193,7 @@ as the constructor's argument::
     class ProfilePage(Document):
         content = StringField()
 
+
 Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
 By default, MongoDB doesn't check the integrity of your data, so deleting
@@ -206,6 +207,11 @@ supplying the :attr:`reverse_delete_rule` attributes on the
     class Employee(Document):
         ...
         profile_page = ReferenceField('ProfilePage', reverse_delete_rule=mongoengine.NULLIFY)
+
+The declaration in this example means that when an :class:`Employee` object is
+removed, the :class:`ProfilePage` that belongs to that employee is removed as
+well.  If a whole batch of employees is removed, all profile pages that are
+linked are removed as well.
 
 Its value can take any of the following constants:
 
@@ -221,6 +227,23 @@ Its value can take any of the following constants:
 :const:`mongoengine.CASCADE`
   Any object containing fields that are refererring to the object being deleted
   are deleted first.
+
+
+.. warning::
+   A safety note on setting up these delete rules!  Since the delete rules are
+   not recorded on the database level by MongoDB itself, but instead at runtime,
+   in-memory, by the MongoEngine module, it is of the upmost importance
+   that the module that declares the relationship is loaded **BEFORE** the
+   delete is invoked.
+   
+   If, for example, the :class:`Employee` object lives in the
+   :mod:`payroll` app, and the :class:`ProfilePage` in the :mod:`people`
+   app, it is extremely important that the :mod:`people` app is loaded
+   before any employee is removed, because otherwise, MongoEngine could
+   never know this relationship exists.
+   
+   In Django, be sure to put all apps that have such delete rule declarations in
+   their :file:`models.py` in the :const:`INSTALLED_APPS` tuple.
 
 
 Generic reference fields
