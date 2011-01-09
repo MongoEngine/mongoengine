@@ -644,7 +644,8 @@ class FieldTest(unittest.TestCase):
         """Ensure that value is in a container of allowed values.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=('S','M','L','XL','XXL'))
+            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
 
         Shirt.drop_collection()
 
