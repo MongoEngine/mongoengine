@@ -539,32 +539,46 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that Q objects may be used to query for documents.
         """
         class BlogPost(Document):
+            title = StringField()
             publish_date = DateTimeField()
             published = BooleanField()
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(publish_date=datetime(2010, 1, 8), published=False)
+        post1 = BlogPost(title='Test 1', publish_date=datetime(2010, 1, 8), published=False)
         post1.save()
 
-        post2 = BlogPost(publish_date=datetime(2010, 1, 15), published=True)
+        post2 = BlogPost(title='Test 2', publish_date=datetime(2010, 1, 15), published=True)
         post2.save()
 
-        post3 = BlogPost(published=True)
+        post3 = BlogPost(title='Test 3', published=True)
         post3.save()
 
-        post4 = BlogPost(publish_date=datetime(2010, 1, 8))
+        post4 = BlogPost(title='Test 4', publish_date=datetime(2010, 1, 8))
         post4.save()
 
-        post5 = BlogPost(publish_date=datetime(2010, 1, 15))
+        post5 = BlogPost(title='Test 1', publish_date=datetime(2010, 1, 15))
         post5.save()
 
-        post6 = BlogPost(published=False)
+        post6 = BlogPost(title='Test 1', published=False)
         post6.save()
 
         # Check ObjectId lookup works
         obj = BlogPost.objects(id=post1.id).first()
         self.assertEqual(obj, post1)
+
+        # Check Q object combination with one does not exist
+        q = BlogPost.objects(Q(title='Test 5') | Q(published=True))
+        posts = [post.id for post in q]
+
+        published_posts = (post2, post3)
+        self.assertTrue(all(obj.id in posts for obj in published_posts))
+
+        q = BlogPost.objects(Q(title='Test 1') | Q(published=True))
+        posts = [post.id for post in q]
+        published_posts = (post1, post2, post3, post5, post6)
+        self.assertTrue(all(obj.id in posts for obj in published_posts))
+		
 
         # Check Q object combination
         date = datetime(2010, 1, 10)
