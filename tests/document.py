@@ -502,7 +502,7 @@ class DocumentTest(unittest.TestCase):
         try:
             recipient.save(validate=False)
         except ValidationError:
-            fail()
+            self.fail()
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
@@ -623,6 +623,108 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(author.age, 25)
 
         BlogPost.drop_collection()
+
+
+    def test_reverse_delete_rule_cascade_and_nullify(self):
+        """Ensure that a referenced document is also deleted upon deletion.
+        """
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+            reviewer = ReferenceField(self.Person, reverse_delete_rule=NULLIFY)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        reviewer = self.Person(name='Re Viewer')
+        reviewer.save()
+
+        post = BlogPost(content = 'Watched some TV')
+        post.author = author
+        post.reviewer = reviewer
+        post.save()
+
+        reviewer.delete()
+        self.assertEqual(len(BlogPost.objects), 1)  # No effect on the BlogPost
+        self.assertEqual(BlogPost.objects.get().reviewer, None)
+
+        # Delete the Person, which should lead to deletion of the BlogPost, too
+        author.delete()
+        self.assertEqual(len(BlogPost.objects), 0)
+
+    def test_reverse_delete_rule_cascade_recurs(self):
+        """Ensure that a chain of documents is also deleted upon cascaded
+        deletion.
+        """
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+
+        class Comment(Document):
+            text = StringField()
+            post = ReferenceField(BlogPost, reverse_delete_rule=CASCADE)
+
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        post = BlogPost(content = 'Watched some TV')
+        post.author = author
+        post.save()
+
+        comment = Comment(text = 'Kudos.')
+        comment.post = post
+        comment.save()
+
+        # Delete the Person, which should lead to deletion of the BlogPost, and,
+        # recursively to the Comment, too
+        author.delete()
+        self.assertEqual(len(Comment.objects), 0)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+        Comment.drop_collection()
+
+    def test_reverse_delete_rule_deny(self):
+        """Ensure that a document cannot be referenced if there are still
+        documents referring to it.
+        """
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=DENY)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        post = BlogPost(content = 'Watched some TV')
+        post.author = author
+        post.save()
+
+        # Delete the Person should be denied
+        self.assertRaises(OperationError, author.delete)  # Should raise denied error
+        self.assertEqual(len(BlogPost.objects), 1)  # No objects may have been deleted
+        self.assertEqual(len(self.Person.objects), 1)
+
+        # Other users, that don't have BlogPosts must be removable, like normal
+        author = self.Person(name='Another User')
+        author.save()
+
+        self.assertEqual(len(self.Person.objects), 2)
+        author.delete()
+        self.assertEqual(len(self.Person.objects), 1)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
 
     def tearDown(self):
         self.Person.drop_collection()

@@ -1,5 +1,6 @@
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
+from queryset import DO_NOTHING
 
 import sys
 import pymongo
@@ -203,6 +204,10 @@ class DocumentMetaclass(type):
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
             field.owner_document = new_class
+            delete_rule = getattr(field, 'reverse_delete_rule', DO_NOTHING)
+            if delete_rule != DO_NOTHING:
+                field.document_type.register_delete_rule(new_class, field.name,
+                        delete_rule)
 
         module = attrs.get('__module__')
 
@@ -271,6 +276,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'index_drop_dups': False,
             'index_opts': {},
             'queryset_class': QuerySet,
+            'delete_rules': {},
         }
         meta.update(base_meta)
 
@@ -506,6 +512,7 @@ if sys.version_info < (2, 5):
     # Prior to Python 2.5, Exception was an old-style class
     import types
     def subclass_exception(name, parents, unused):
+        import types
         return types.ClassType(name, parents, {})
 else:
     def subclass_exception(name, parents, module):

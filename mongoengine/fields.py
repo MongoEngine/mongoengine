@@ -1,4 +1,5 @@
 from base import BaseField, ObjectIdField, ValidationError, get_document
+from queryset import DO_NOTHING
 from document import Document, EmbeddedDocument
 from connection import _get_db
 from operator import itemgetter
@@ -455,12 +456,13 @@ class ReferenceField(BaseField):
     access (lazily).
     """
 
-    def __init__(self, document_type, **kwargs):
+    def __init__(self, document_type, reverse_delete_rule=DO_NOTHING, **kwargs):
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
                 raise ValidationError('Argument to ReferenceField constructor '
                                       'must be a document class or a string')
         self.document_type_obj = document_type
+        self.reverse_delete_rule = reverse_delete_rule
         super(ReferenceField, self).__init__(**kwargs)
 
     @property

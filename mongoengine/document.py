@@ -100,6 +100,14 @@ class Document(BaseDocument):
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
 
+    @classmethod
+    def register_delete_rule(cls, document_cls, field_name, rule):
+        """This method registers the delete rules to apply when removing this
+        object.
+        """
+        cls._meta['delete_rules'][(document_cls, field_name)] = rule
+
+
     def reload(self):
         """Reloads all attributes from the database.
 

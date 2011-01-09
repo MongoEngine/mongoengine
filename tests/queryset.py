@@ -351,8 +351,6 @@ class QuerySetTest(unittest.TestCase):
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """
-        from datetime import datetime
-
         class BlogPost(Document):
             title = StringField()
             is_published = BooleanField()
@@ -847,6 +845,71 @@ class QuerySetTest(unittest.TestCase):
 
         self.Person.objects.delete()
         self.assertEqual(len(self.Person.objects), 0)
+
+    def test_reverse_delete_rule_cascade(self):
+        """Ensure cascading deletion of referring documents from the database.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+        BlogPost.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
+
+        BlogPost(content='Watching TV', author=me).save()
+        BlogPost(content='Chilling out', author=me).save()
+        BlogPost(content='Pro Testing', author=someoneelse).save()
+
+        self.assertEqual(3, BlogPost.objects.count())
+        self.Person.objects(name='Test User').delete()
+        self.assertEqual(1, BlogPost.objects.count())
+
+    def test_reverse_delete_rule_nullify(self):
+        """Ensure nullification of references to deleted documents.
+        """
+        class Category(Document):
+            name = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            category = ReferenceField(Category, reverse_delete_rule=NULLIFY)
+
+        BlogPost.drop_collection()
+        Category.drop_collection()
+
+        lameness = Category(name='Lameness')
+        lameness.save()
+
+        post = BlogPost(content='Watching TV', category=lameness)
+        post.save()
+
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertEqual('Lameness', BlogPost.objects.first().category.name)
+        Category.objects.delete()
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertEqual(None, BlogPost.objects.first().category)
+
+    def test_reverse_delete_rule_deny(self):
+        """Ensure deletion gets denied on documents that still have references
+        to them.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=DENY)
+
+        BlogPost.drop_collection()
+        self.Person.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+
+        post = BlogPost(content='Watching TV', author=me)
+        post.save()
+
+        self.assertRaises(OperationError, self.Person.objects.delete)
 
     def test_update(self):
         """Ensure that atomic updates work properly.
