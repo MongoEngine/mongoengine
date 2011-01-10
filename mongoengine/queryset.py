@@ -1209,11 +1209,19 @@ class QuerySet(object):
                 db[collection].find(query).forEach(function(doc) {
                     if (doc[field].constructor == Array) {
                         doc[field].forEach(function(item) {
-                            frequencies[item] = inc + (frequencies[item] || 0);
+                            var preValue = 0; 
+                            if (!isNaN(frequencies[item])) {
+                                preValue = frequencies[item];
+                            }
+                            frequencies[item] = inc + preValue;
                         });
                     } else {
                         var item = doc[field];
-                        frequencies[item] = inc + (frequencies[item] || 0);
+                        var preValue = 0;
+                        if (!isNaN(frequencies[item])) {
+                            preValue = frequencies[item];
+                        }
+                        frequencies[item] = inc + preValue;
                     }
                 });
                 return frequencies;
