@@ -293,6 +293,20 @@ class QuerySet(object):
         self._cursor_obj = None
         self._limit = None
         self._skip = None
+        
+    def clone(self):
+      """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`"""
+      c = self.__class__(self._document, self._collection_obj)
+      
+      copy_props = ('_initial_query', '_query_obj', '_where_clause',
+                    '_loaded_fields', '_ordering', '_snapshot',
+                    '_timeout', '_limit', '_skip')
+                    
+      for prop in copy_props:
+        val = getattr(self, prop)
+        setattr(c, prop, copy.deepcopy(val))
+        
+      return c
 
     @property
     def _query(self):
