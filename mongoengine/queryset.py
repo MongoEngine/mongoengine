@@ -334,6 +334,7 @@ class QuerySet(object):
         self._ordering = []
         self._snapshot = False
         self._timeout = True
+        self._class_check = True
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -348,7 +349,8 @@ class QuerySet(object):
     def _query(self):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
-            self._mongo_query.update(self._initial_query)
+            if self._class_check:
+                self._mongo_query.update(self._initial_query)
         return self._mongo_query
 
     def ensure_index(self, key_or_list, drop_dups=False, background=False,
@@ -399,7 +401,7 @@ class QuerySet(object):
 
         return index_list
 
-    def __call__(self, q_obj=None, **query):
+    def __call__(self, q_obj=None, class_check=True, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -407,6 +409,8 @@ class QuerySet(object):
             the query; the :class:`~mongoengine.queryset.QuerySet` is filtered
             multiple times with different :class:`~mongoengine.queryset.Q`
             objects, only the last one will be used
+        :param class_check: If set to False bypass class name check when
+            querying collection
         :param query: Django-style query keyword arguments
         """
         #if q_obj:
@@ -417,6 +421,7 @@ class QuerySet(object):
         self._query_obj &= query
         self._mongo_query = None
         self._cursor_obj = None
+        self._class_check = class_check
         return self
 
     def filter(self, *q_objs, **query):
