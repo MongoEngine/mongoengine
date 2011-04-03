@@ -700,6 +700,12 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(streamfile == result)
         self.assertEquals(result.file.read(), text + more_text)
         self.assertEquals(result.file.content_type, content_type)
+        result.file.seek(0)
+        self.assertEquals(result.file.tell(), 0)
+        self.assertEquals(result.file.read(len(text)), text)
+        self.assertEquals(result.file.tell(), len(text))
+        self.assertEquals(result.file.read(len(more_text)), more_text)
+        self.assertEquals(result.file.tell(), len(text + more_text))
         result.file.delete()
 
         # Ensure deleted file returns None
