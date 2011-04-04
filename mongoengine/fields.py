@@ -620,7 +620,7 @@ class GridFSProxy(object):
         # Delete file from GridFS, FileField still remains
         self.fs.delete(self.grid_id)
         self.grid_id = None
-        self.grid_out = None
+        self.gridout = None
 
     def replace(self, file, **kwargs):
         self.delete()
