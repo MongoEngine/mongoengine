@@ -522,6 +522,7 @@ class QuerySet(object):
                     raise InvalidQueryError('Cannot resolve field "%s"'
                                             % field_name)
             fields.append(field)
+            field = None
         return fields
 
     @classmethod
