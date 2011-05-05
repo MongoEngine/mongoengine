@@ -67,7 +67,7 @@ class Document(BaseDocument):
         :param safe: check if the operation succeeded before returning
         :param force_insert: only try to create a new document, don't allow 
             updates of existing documents
-        :param validate: validates the document; set to ``False`` for skiping
+        :param validate: validates the document; set to ``False`` to skip.
         """
         if validate:
             self.validate()
