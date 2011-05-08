@@ -134,8 +134,8 @@ document class as the first argument::
     class Page(Document):
         comments = ListField(EmbeddedDocumentField(Comment))
 
-    comment1 = Comment('Good work!')
-    comment2 = Comment('Nice article!')
+    comment1 = Comment(content='Good work!')
+    comment2 = Comment(content='Nice article!')
     page = Page(comments=[comment1, comment2])
 
 Dictionary Fields
