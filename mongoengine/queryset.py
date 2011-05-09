@@ -522,7 +522,6 @@ class QuerySet(object):
                     raise InvalidQueryError('Cannot resolve field "%s"'
                                             % field_name)
             fields.append(field)
-            field = None
         return fields
 
     @classmethod
@@ -731,7 +730,7 @@ class QuerySet(object):
     def __len__(self):
         return self.count()
 
-    def map_reduce(self, map_f, reduce_f, finalize_f=None, limit=None,
+    def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
                    scope=None, keep_temp=False):
         """Perform a map/reduce query using the current query spec
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
@@ -745,26 +744,26 @@ class QuerySet(object):
         :param map_f: map function, as :class:`~pymongo.code.Code` or string
         :param reduce_f: reduce function, as
                          :class:`~pymongo.code.Code` or string
+        :param output: output collection name
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
         :param limit: number of objects from current query to provide
                       to map/reduce method
-        :param keep_temp: keep temporary table (boolean, default ``True``)
 
         Returns an iterator yielding
         :class:`~mongoengine.document.MapReduceDocument`.
 
-        .. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
+        .. note:: Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-           PyMongo version **>= 1.2**.
+           PyMongo version **>= 1.11**.
 
         .. versionadded:: 0.3
         """
         from document import MapReduceDocument
 
         if not hasattr(self._collection, "map_reduce"):
-            raise NotImplementedError("Requires MongoDB >= 1.1.1")
+            raise NotImplementedError("Requires MongoDB >= 1.7.1")
 
         map_f_scope = {}
         if isinstance(map_f, pymongo.code.Code):
@@ -795,8 +794,7 @@ class QuerySet(object):
 
         if limit:
             mr_args['limit'] = limit
-
-        results = self._collection.map_reduce(map_f, reduce_f, **mr_args)
+        results = self._collection.map_reduce(map_f, reduce_f, output, **mr_args)
         results = results.find()
 
         if self._ordering:

@@ -1027,7 +1027,7 @@ class QuerySetTest(unittest.TestCase):
         """
 
         # run a map/reduce operation spanning all posts
-        results = BlogPost.objects.map_reduce(map_f, reduce_f)
+        results = BlogPost.objects.map_reduce(map_f, reduce_f, "myresults")
         results = list(results)
         self.assertEqual(len(results), 4)
 
@@ -1076,7 +1076,7 @@ class QuerySetTest(unittest.TestCase):
             }
         """
         
-        results = BlogPost.objects.map_reduce(map_f, reduce_f)
+        results = BlogPost.objects.map_reduce(map_f, reduce_f, "myresults")
         results = list(results)
         
         self.assertEqual(results[0].object, post1)
@@ -1187,6 +1187,7 @@ class QuerySetTest(unittest.TestCase):
         results = Link.objects.order_by("-value")
         results = results.map_reduce(map_f,
                                      reduce_f,
+                                     "myresults",
                                      finalize_f=finalize_f,
                                      scope=scope)
         results = list(results)
@@ -1451,7 +1452,9 @@ class QuerySetTest(unittest.TestCase):
         """
         class Test(Document):
             testdict = DictField()
-
+        
+        Test.drop_collection()
+        
         t = Test(testdict={'f': 'Value'})
         t.save()
 
