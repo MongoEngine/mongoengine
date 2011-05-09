@@ -1316,7 +1316,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events.count(), 3)
         self.assertEqual(list(events), [event1, event3, event2])
 
-        # find events within 5 miles of pitchfork office, chicago
+        # find events within 5 degrees of pitchfork office, chicago
         point_and_distance = [[41.9120459, -87.67892], 5]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 2)
@@ -1331,13 +1331,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events.count(), 3)
         self.assertEqual(list(events), [event3, event1, event2])
         
-        # find events around san francisco
+        # find events within 10 degrees of san francisco
         point_and_distance = [[37.7566023, -122.415579], 10]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
         
-        # find events within 1 mile of greenpoint, broolyn, nyc, ny
+        # find events within 1 degree of greenpoint, broolyn, nyc, ny
         point_and_distance = [[40.7237134, -73.9509714], 1]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 0)
