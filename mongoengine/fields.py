@@ -663,9 +663,6 @@ class GridFSProxy(object):
     def close(self):
         if self.newfile:
             self.newfile.close()
-        else:
-            msg = "The close() method is only necessary after calling write()"
-            warnings.warn(msg)
 
 
 class FileField(BaseField):

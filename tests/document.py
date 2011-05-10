@@ -729,6 +729,54 @@ class DocumentTest(unittest.TestCase):
     def tearDown(self):
         self.Person.drop_collection()
 
+    def test_document_hash(self):
+        """Test document in list, dict, set
+        """
+        class User(Document):
+            pass
+
+        class BlogPost(Document):
+            pass
+        
+        # Clear old datas
+        User.drop_collection()
+        BlogPost.drop_collection()
+
+        u1 = User.objects.create()
+        u2 = User.objects.create()
+        u3 = User.objects.create()
+        u4 = User() # New object
+
+        b1 = BlogPost.objects.create()
+        b2 = BlogPost.objects.create()
+
+        # in List
+        all_user_list = list(User.objects.all())
+
+        self.assertTrue(u1 in all_user_list)
+        self.assertTrue(u2 in all_user_list)
+        self.assertTrue(u3 in all_user_list)
+        self.assertFalse(u4 in all_user_list) # New object
+        self.assertFalse(b1 in all_user_list) # Other object
+        self.assertFalse(b2 in all_user_list) # Other object
+
+        # in Dict
+        all_user_dic = {}
+        for u in User.objects.all():
+            all_user_dic[u] = "OK"
+
+        self.assertEqual(all_user_dic.get(u1, False), "OK" )
+        self.assertEqual(all_user_dic.get(u2, False), "OK" )
+        self.assertEqual(all_user_dic.get(u3, False), "OK" )
+        self.assertEqual(all_user_dic.get(u4, False), False ) # New object
+        self.assertEqual(all_user_dic.get(b1, False), False ) # Other object
+        self.assertEqual(all_user_dic.get(b2, False), False ) # Other object
+
+        # in Set
+        all_user_set = set(User.objects.all())
+        
+        self.assertTrue(u1 in all_user_set )
+        
 
 if __name__ == '__main__':
     unittest.main()
