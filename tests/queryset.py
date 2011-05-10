@@ -1379,6 +1379,12 @@ class QuerySetTest(unittest.TestCase):
         points = Point.objects(location__near_sphere=[-122, 37.5])
         self.assertEqual(points.count(), 2)
 
+        # Same behavior for _within_spherical_distance
+        points = Point.objects(
+            location__within_spherical_distance=[[-122, 37.5], 60/earth_radius]
+        );
+        self.assertEqual(points.count(), 2)
+
         # Finds both points, but orders the north point first because it's
         # closer to the reference point to the north.
         points = Point.objects(location__near_sphere=[-122, 38.5])
@@ -1392,12 +1398,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(points.count(), 2)
         self.assertEqual(points[0].id, south_point.id)
         self.assertEqual(points[1].id, north_point.id)
-
-        # Same behavior for _within_spherical_distance
-        points = Point.objects(
-            location__within_spherical_distance=[[-122, 37.5], 60/earth_radius]
-        );
-        self.assertEqual(points.count(), 2)
 
         # Finds only one point because only the first point is within 60km of
         # the reference point to the south.
