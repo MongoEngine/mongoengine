@@ -939,6 +939,10 @@ class QuerySet(object):
             if key[0] in ('-', '+'):
                 key = key[1:]
             key = key.replace('__', '.')
+            try:
+                key = QuerySet._translate_field_name(self._document, key)
+            except:
+                pass
             key_list.append((key, direction))
 
         self._ordering = key_list

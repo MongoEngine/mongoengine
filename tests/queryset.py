@@ -1746,6 +1746,20 @@ class QuerySetTest(unittest.TestCase):
         Comment.drop_collection()
         Post.drop_collection()
 
+    def test_order_works_with_custom_db_field_names(self):
+        class Number(Document):
+            n = IntField(db_field='number')
+
+        Number.drop_collection()
+
+        n2 = Number.objects.create(n=2)
+        n1 = Number.objects.create(n=1)
+
+        self.assertEqual(list(Number.objects), [n2,n1])
+        self.assertEqual(list(Number.objects.order_by('n')), [n1,n2])
+
+        Number.drop_collection()
+
 
 class QTest(unittest.TestCase):
 
