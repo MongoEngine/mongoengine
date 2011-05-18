@@ -8,6 +8,7 @@ import pymongo.objectid
 import re
 import copy
 import itertools
+import operator
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
@@ -280,30 +281,30 @@ class QueryFieldList(object):
     ONLY = True
     EXCLUDE = False
 
-    def __init__(self, fields=[], direction=ONLY, always_include=[]):
-        self.direction = direction
+    def __init__(self, fields=[], value=ONLY, always_include=[]):
+        self.value = value
         self.fields = set(fields)
         self.always_include = set(always_include)
 
     def as_dict(self):
-        return dict((field, self.direction) for field in self.fields)
+        return dict((field, self.value) for field in self.fields)
 
     def __add__(self, f):
         if not self.fields:
             self.fields = f.fields
-            self.direction = f.direction
-        elif self.direction is self.ONLY and f.direction is self.ONLY:
+            self.value = f.value
+        elif self.value is self.ONLY and f.value is self.ONLY:
             self.fields = self.fields.intersection(f.fields)
-        elif self.direction is self.EXCLUDE and f.direction is self.EXCLUDE:
+        elif self.value is self.EXCLUDE and f.value is self.EXCLUDE:
             self.fields = self.fields.union(f.fields)
-        elif self.direction is self.ONLY and f.direction is self.EXCLUDE:
+        elif self.value is self.ONLY and f.value is self.EXCLUDE:
             self.fields -= f.fields
-        elif self.direction is self.EXCLUDE and f.direction is self.ONLY:
-            self.direction = self.ONLY
+        elif self.value is self.EXCLUDE and f.value is self.ONLY:
+            self.value = self.ONLY
             self.fields = f.fields - self.fields
 
         if self.always_include:
-            if self.direction is self.ONLY and self.fields:
+            if self.value is self.ONLY and self.fields:
                 self.fields = self.fields.union(self.always_include)
             else:
                 self.fields -= self.always_include
@@ -311,7 +312,7 @@ class QueryFieldList(object):
 
     def reset(self):
         self.fields = set([])
-        self.direction = self.ONLY
+        self.value = self.ONLY
 
     def __nonzero__(self):
         return bool(self.fields)
@@ -890,10 +891,8 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
-        fields = self._fields_to_dbfields(fields)
-        self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.ONLY)
-        return self
-
+        fields = dict([(f, QueryFieldList.ONLY) for f in fields])
+        return self.fields(**fields)
 
     def exclude(self, *fields):
         """Opposite to .only(), exclude some document's fields. ::
@@ -902,8 +901,31 @@ class QuerySet(object):
 
         :param fields: fields to exclude
         """
-        fields = self._fields_to_dbfields(fields)
-        self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.EXCLUDE)
+        fields = dict([(f, QueryFieldList.EXCLUDE) for f in fields])
+        return self.fields(**fields)
+
+    def fields(self, **kwargs):
+        """Manipulate how you load this document's fields.  Used by `.only()`
+        and `.exclude()` to manipulate which fields to retrieve.  Fields also
+        allows for a greater level of control for example:
+
+        Retrieving a Subrange of Array Elements
+        ---------------------------------------
+
+        You can use the $slice operator to retrieve a subrange of elements in
+        an array ::
+
+            post = BlogPost.objects(...).fields(comments={"$slice": 5}) // first 5 comments
+
+        :param kwargs: A dictionary identifying what to include
+
+        .. versionadded:: 0.5
+        """
+        fields = sorted(kwargs.iteritems(), key=operator.itemgetter(1))
+        for value, group in itertools.groupby(fields, lambda x: x[1]):
+            fields = [field for field, value in group]
+            fields = self._fields_to_dbfields(fields)
+            self._loaded_fields += QueryFieldList(fields, value=value)
         return self
 
     def all_fields(self):
@@ -1277,7 +1299,7 @@ class QuerySetManager(object):
             # Create collection as a capped collection if specified
             if owner._meta['max_size'] or owner._meta['max_documents']:
                 # Get max document limit and max byte size from meta
-                max_size = owner._meta['max_size'] or 10000000 # 10MB default
+                max_size = owner._meta['max_size'] or 10000000  # 10MB default
                 max_documents = owner._meta['max_documents']
 
                 if collection in db.collection_names():
