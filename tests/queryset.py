@@ -105,6 +105,10 @@ class QuerySetTest(unittest.TestCase):
         people = list(self.Person.objects[1:1])
         self.assertEqual(len(people), 0)
 
+        # Test slice out of range
+        people = list(self.Person.objects[80000:80001])
+        self.assertEqual(len(people), 0)
+
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
         """
