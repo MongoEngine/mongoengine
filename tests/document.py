@@ -380,6 +380,28 @@ class DocumentTest(unittest.TestCase):
             pass
         Customer.drop_collection()
 
+    def test_unique_and_primary(self):
+        """If you set a field as primary, then unexpected behaviour can occur.
+        You won't create a duplicate but you will update an existing document.
+        """
+
+        class User(Document):
+            name = StringField(primary_key=True, unique=True)
+            password = StringField()
+
+        User.drop_collection()
+
+        user = User(name='huangz', password='secret')
+        user.save()
+
+        user = User(name='huangz', password='secret2')
+        user.save()
+
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().password, 'secret2')
+
+        User.drop_collection()
+
     def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
         """
