@@ -1544,7 +1544,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events.count(), 3)
         self.assertEqual(list(events), [event1, event3, event2])
 
-        # find events within 5 miles of pitchfork office, chicago
+        # find events within 5 degrees of pitchfork office, chicago
         point_and_distance = [[41.9120459, -87.67892], 5]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 2)
@@ -1559,13 +1559,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events.count(), 3)
         self.assertEqual(list(events), [event3, event1, event2])
         
-        # find events around san francisco
+        # find events within 10 degrees of san francisco
         point_and_distance = [[37.7566023, -122.415579], 10]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
         
-        # find events within 1 mile of greenpoint, broolyn, nyc, ny
+        # find events within 1 degree of greenpoint, broolyn, nyc, ny
         point_and_distance = [[40.7237134, -73.9509714], 1]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 0)
@@ -1584,6 +1584,58 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events[0].id, event2.id)
         
         Event.drop_collection()
+
+    def test_spherical_geospatial_operators(self):
+        """Ensure that spherical geospatial queries are working
+        """
+        class Point(Document):
+            location = GeoPointField()
+
+        Point.drop_collection()
+
+        # These points are one degree apart, which (according to Google Maps)
+        # is about 110 km apart at this place on the Earth.
+        north_point = Point(location=[-122, 38]) # Near Concord, CA
+        south_point = Point(location=[-122, 37]) # Near Santa Cruz, CA
+        north_point.save()
+        south_point.save()
+
+        earth_radius = 6378.009; # in km (needs to be a float for dividing by)
+
+        # Finds both points because they are within 60 km of the reference
+        # point equidistant between them.
+        points = Point.objects(location__near_sphere=[-122, 37.5])
+        self.assertEqual(points.count(), 2)
+
+        # Same behavior for _within_spherical_distance
+        points = Point.objects(
+            location__within_spherical_distance=[[-122, 37.5], 60/earth_radius]
+        );
+        self.assertEqual(points.count(), 2)
+
+        # Finds both points, but orders the north point first because it's
+        # closer to the reference point to the north.
+        points = Point.objects(location__near_sphere=[-122, 38.5])
+        self.assertEqual(points.count(), 2)
+        self.assertEqual(points[0].id, north_point.id)
+        self.assertEqual(points[1].id, south_point.id)
+
+        # Finds both points, but orders the south point first because it's
+        # closer to the reference point to the south.
+        points = Point.objects(location__near_sphere=[-122, 36.5])
+        self.assertEqual(points.count(), 2)
+        self.assertEqual(points[0].id, south_point.id)
+        self.assertEqual(points[1].id, north_point.id)
+
+        # Finds only one point because only the first point is within 60km of
+        # the reference point to the south.
+        points = Point.objects(
+            location__within_spherical_distance=[[-122, 36.5], 60/earth_radius]
+        );
+        self.assertEqual(points.count(), 1)
+        self.assertEqual(points[0].id, south_point.id)
+
+        Point.drop_collection()
 
     def test_custom_querysets(self):
         """Ensure that custom QuerySet classes may be used.

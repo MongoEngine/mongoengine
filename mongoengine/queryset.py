@@ -538,7 +538,7 @@ class QuerySet(object):
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists', 'not']
-        geo_operators = ['within_distance', 'within_box', 'near']
+        geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'near', 'near_sphere']
         match_operators = ['contains', 'icontains', 'startswith', 
                            'istartswith', 'endswith', 'iendswith', 
                            'exact', 'iexact']
@@ -582,8 +582,12 @@ class QuerySet(object):
                 if op in geo_operators:
                     if op == "within_distance":
                         value = {'$within': {'$center': value}}
+                    elif op == "within_spherical_distance":
+                        value = {'$within': {'$centerSphere': value}}
                     elif op == "near":
                         value = {'$near': value}
+                    elif op == "near_sphere":
+                        value = {'$nearSphere': value}
                     elif op == 'within_box':
                         value = {'$within': {'$box': value}}
                     else:

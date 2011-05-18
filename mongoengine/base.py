@@ -508,6 +508,17 @@ class BaseDocument(object):
                 return True
         return False
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        """ For list, dic key  """
+        if self.pk is None:
+            # For new object
+            return super(BaseDocument,self).__hash__()
+        else:
+            return hash(self.pk)
+
 if sys.version_info < (2, 5):
     # Prior to Python 2.5, Exception was an old-style class
     import types
