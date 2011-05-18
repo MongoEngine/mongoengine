@@ -357,6 +357,29 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_unique_and_indexes(self):
+        """Ensure that 'unique' constraints aren't overridden by
+        meta.indexes.
+        """
+        class Customer(Document):
+            cust_id = IntField(unique=True, required=True)
+            meta = {
+                'indexes': ['cust_id'],
+                'allow_inheritance': False,
+            }
+
+        Customer.drop_collection()
+        cust = Customer(cust_id=1)
+        cust.save()
+
+        cust_dupe = Customer(cust_id=1)
+        try:
+            cust_dupe.save()
+            raise AssertionError, "We saved a dupe!"
+        except OperationError:
+            pass
+        Customer.drop_collection()
+
     def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
         """

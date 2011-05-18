@@ -459,16 +459,16 @@ class QuerySet(object):
             drop_dups = self._document._meta.get('index_drop_dups', False)
             index_opts = self._document._meta.get('index_options', {})
 
+            # Ensure indexes created by uniqueness constraints
+            for index in self._document._meta['unique_indexes']:
+                self._collection.ensure_index(index, unique=True,
+                    background=background, drop_dups=drop_dups, **index_opts)
+
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
                     self._collection.ensure_index(key_or_list,
                         background=background, **index_opts)
-
-            # Ensure indexes created by uniqueness constraints
-            for index in self._document._meta['unique_indexes']:
-                self._collection.ensure_index(index, unique=True,
-                    background=background, drop_dups=drop_dups, **index_opts)
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
