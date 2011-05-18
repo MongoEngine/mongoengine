@@ -344,19 +344,19 @@ class QuerySet(object):
         self._cursor_obj = None
         self._limit = None
         self._skip = None
-        
+
     def clone(self):
       """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`"""
       c = self.__class__(self._document, self._collection_obj)
-      
+
       copy_props = ('_initial_query', '_query_obj', '_where_clause',
                     '_loaded_fields', '_ordering', '_snapshot',
                     '_timeout', '_limit', '_skip')
-                    
+
       for prop in copy_props:
         val = getattr(self, prop)
         setattr(c, prop, copy.deepcopy(val))
-        
+
       return c
 
     @property
@@ -493,7 +493,7 @@ class QuerySet(object):
             }
             if self._loaded_fields:
                 cursor_args['fields'] = self._loaded_fields.as_dict()
-            self._cursor_obj = self._collection.find(self._query, 
+            self._cursor_obj = self._collection.find(self._query,
                                                      **cursor_args)
             # Apply where clauses to cursor
             if self._where_clause:
@@ -553,8 +553,8 @@ class QuerySet(object):
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists', 'not']
         geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'near', 'near_sphere']
-        match_operators = ['contains', 'icontains', 'startswith', 
-                           'istartswith', 'endswith', 'iendswith', 
+        match_operators = ['contains', 'icontains', 'startswith',
+                           'istartswith', 'endswith', 'iendswith',
                            'exact', 'iexact']
 
         mongo_query = {}
@@ -644,8 +644,8 @@ class QuerySet(object):
                                               % self._document._class_name)
 
     def get_or_create(self, *q_objs, **query):
-        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of 
-        ``(object, created)``, where ``object`` is the retrieved or created object 
+        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
+        ``(object, created)``, where ``object`` is the retrieved or created object
         and ``created`` is a boolean specifying whether a new object was created. Raises
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` if multiple results are found.
@@ -857,7 +857,7 @@ class QuerySet(object):
                 self._skip, self._limit = key.start, key.stop
             except IndexError, err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
-                # bin it, kill it. 
+                # bin it, kill it.
                 start = key.start or 0
                 if start >= 0 and key.stop >= 0 and key.step is None:
                     if start == key.stop:
@@ -1052,7 +1052,7 @@ class QuerySet(object):
         return mongo_update
 
     def update(self, safe_update=True, upsert=False, **update):
-        """Perform an atomic update on the fields matched by the query. When 
+        """Perform an atomic update on the fields matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe: check if the operation succeeded before returning
@@ -1076,7 +1076,7 @@ class QuerySet(object):
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
     def update_one(self, safe_update=True, upsert=False, **update):
-        """Perform an atomic update on first field matched by the query. When 
+        """Perform an atomic update on first field matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe: check if the operation succeeded before returning
@@ -1104,8 +1104,8 @@ class QuerySet(object):
         return self
 
     def _sub_js_fields(self, code):
-        """When fields are specified with [~fieldname] syntax, where 
-        *fieldname* is the Python name of a field, *fieldname* will be 
+        """When fields are specified with [~fieldname] syntax, where
+        *fieldname* is the Python name of a field, *fieldname* will be
         substituted for the MongoDB name of the field (specified using the
         :attr:`name` keyword argument in a field's constructor).
         """
@@ -1128,9 +1128,9 @@ class QuerySet(object):
         options specified as keyword arguments.
 
         As fields in MongoEngine may use different names in the database (set
-        using the :attr:`db_field` keyword argument to a :class:`Field` 
+        using the :attr:`db_field` keyword argument to a :class:`Field`
         constructor), a mechanism exists for replacing MongoEngine field names
-        with the database field names in Javascript code. When accessing a 
+        with the database field names in Javascript code. When accessing a
         field, use square-bracket notation, and prefix the MongoEngine field
         name with a tilde (~).
 
