@@ -601,6 +601,7 @@ class GridFSProxy(object):
         self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = grid_id              # Store GridFS id for file
+        self.gridout = None
 
     def __getattr__(self, name):
         obj = self.get()
@@ -614,8 +615,12 @@ class GridFSProxy(object):
     def get(self, id=None):
         if id:
             self.grid_id = id
+        if self.grid_id is None:
+            return None
         try:
-            return self.fs.get(id or self.grid_id)
+            if self.gridout is None:
+                self.gridout = self.fs.get(self.grid_id)
+            return self.gridout
         except:
             # File has been deleted
             return None
@@ -645,9 +650,9 @@ class GridFSProxy(object):
             self.grid_id = self.newfile._id
         self.newfile.writelines(lines) 
 
-    def read(self):
+    def read(self, size=-1):
         try:
-            return self.get().read()
+            return self.get().read(size)
         except:
             return None
 
@@ -655,6 +660,7 @@ class GridFSProxy(object):
         # Delete file from GridFS, FileField still remains
         self.fs.delete(self.grid_id)
         self.grid_id = None
+        self.gridout = None
 
     def replace(self, file, **kwargs):
         self.delete()
