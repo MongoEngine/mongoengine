@@ -1,9 +1,21 @@
 import unittest
 from datetime import datetime
 import pymongo
+import pickle
 
 from mongoengine import *
+from mongoengine.base import BaseField
 from mongoengine.connection import _get_db
+
+
+class PickleEmbedded(EmbeddedDocument):
+    date = DateTimeField(default=datetime.now)
+
+class PickleTest(Document):
+    number = IntField()
+    string = StringField()
+    embedded = EmbeddedDocumentField(PickleEmbedded)
+    lists = ListField(StringField())
 
 
 class DocumentTest(unittest.TestCase):
@@ -868,6 +880,23 @@ class DocumentTest(unittest.TestCase):
         all_user_set = set(User.objects.all())
 
         self.assertTrue(u1 in all_user_set )
+
+    def test_picklable(self):
+
+        pickle_doc = PickleTest(number=1, string="OH HAI", lists=['1', '2'])
+        pickle_doc.embedded = PickleEmbedded()
+        pickle_doc.save()
+
+        pickled_doc = pickle.dumps(pickle_doc)
+        resurrected = pickle.loads(pickled_doc)
+
+        self.assertEquals(resurrected, pickle_doc)
+
+        resurrected.string = "Working"
+        resurrected.save()
+
+        pickle_doc.reload()
+        self.assertEquals(resurrected, pickle_doc)
 
 
 if __name__ == '__main__':
