@@ -798,6 +798,25 @@ class DocumentTest(unittest.TestCase):
         self.Person.drop_collection()
         BlogPost.drop_collection()
 
+    def subclasses_and_unique_keys_works(self):
+
+        class A(Document):
+            pass
+
+        class B(A):
+            foo = BooleanField(unique=True)
+
+        A.drop_collection()
+        B.drop_collection()
+
+        A().save()
+        A().save()
+        B(foo=True).save()
+
+        self.assertEquals(A.objects.count(), 2)
+        self.assertEquals(B.objects.count(), 1)
+        A.drop_collection()
+        B.drop_collection()
 
     def tearDown(self):
         self.Person.drop_collection()
