@@ -1294,6 +1294,7 @@ class QuerySetTest(unittest.TestCase):
         class BlogPost(Document):
             tags = ListField(StringField())
             deleted = BooleanField(default=False)
+            date = DateTimeField(default=datetime.now)
 
             @queryset_manager
             def objects(doc_cls, queryset):
@@ -1301,7 +1302,7 @@ class QuerySetTest(unittest.TestCase):
 
             @queryset_manager
             def music_posts(doc_cls, queryset):
-                return queryset(tags='music', deleted=False)
+                return queryset(tags='music', deleted=False).order_by('-date')
 
         BlogPost.drop_collection()
 
@@ -1317,7 +1318,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual([p.id for p in BlogPost.objects],
                          [post1.id, post2.id, post3.id])
         self.assertEqual([p.id for p in BlogPost.music_posts],
-                         [post1.id, post2.id])
+                         [post2.id, post1.id])
 
         BlogPost.drop_collection()
 
