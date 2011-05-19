@@ -898,6 +898,26 @@ class DocumentTest(unittest.TestCase):
         pickle_doc.reload()
         self.assertEquals(resurrected, pickle_doc)
 
+    def test_write_options(self):
+        """Test that passing write_options works"""
+
+        self.Person.drop_collection()
+
+        write_options = {"fsync": True}
+
+        author, created = self.Person.objects.get_or_create(
+                            name='Test User', write_options=write_options)
+        author.save(write_options=write_options)
+
+        self.Person.objects.update(set__name='Ross', write_options=write_options)
+
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Ross')
+
+        self.Person.objects.update_one(set__name='Test User', write_options=write_options)
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Test User')
+
 
 if __name__ == '__main__':
     unittest.main()

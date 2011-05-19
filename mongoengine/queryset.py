@@ -643,7 +643,7 @@ class QuerySet(object):
             raise self._document.DoesNotExist("%s matching query does not exist."
                                               % self._document._class_name)
 
-    def get_or_create(self, *q_objs, **query):
+    def get_or_create(self, write_options=None, *q_objs, **query):
         """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
         ``(object, created)``, where ``object`` is the retrieved or created object
         and ``created`` is a boolean specifying whether a new object was created. Raises
@@ -652,6 +652,10 @@ class QuerySet(object):
         A new document will be created if the document doesn't exists; a
         dictionary of default values for the new document may be provided as a
         keyword argument called :attr:`defaults`.
+
+        :param write_options: optional extra keyword arguments used if we
+            have to create a new document.
+            Passes any write_options onto :meth:`~mongoengine.document.Document.save`
 
         .. versionadded:: 0.3
         """
@@ -664,7 +668,7 @@ class QuerySet(object):
         if count == 0:
             query.update(defaults)
             doc = self._document(**query)
-            doc.save()
+            doc.save(write_options=write_options)
             return doc, True
         elif count == 1:
             return self.first(), False
@@ -1055,22 +1059,27 @@ class QuerySet(object):
 
         return mongo_update
 
-    def update(self, safe_update=True, upsert=False, **update):
+    def update(self, safe_update=True, upsert=False, write_options=None, **update):
         """Perform an atomic update on the fields matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
-        :param safe: check if the operation succeeded before returning
-        :param update: Django-style update keyword arguments
+        :param safe_update: check if the operation succeeded before returning
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
 
         .. versionadded:: 0.2
         """
         if pymongo.version < '1.1.1':
             raise OperationError('update() method requires PyMongo 1.1.1+')
 
+        if not write_options:
+            write_options = {}
+
         update = QuerySet._transform_update(self._document, **update)
         try:
             ret = self._collection.update(self._query, update, multi=True,
-                                          upsert=upsert, safe=safe_update)
+                                          upsert=upsert, safe=safe_update,
+                                          **write_options)
             if ret is not None and 'n' in ret:
                 return ret['n']
         except pymongo.errors.OperationFailure, err:
@@ -1079,22 +1088,27 @@ class QuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-    def update_one(self, safe_update=True, upsert=False, **update):
+    def update_one(self, safe_update=True, upsert=False, write_options=None, **update):
         """Perform an atomic update on first field matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
-        :param safe: check if the operation succeeded before returning
+        :param safe_update: check if the operation succeeded before returning
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
         """
+        if not write_options:
+            write_options = {}
         update = QuerySet._transform_update(self._document, **update)
         try:
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
             if pymongo.version >= '1.1.1':
                 ret = self._collection.update(self._query, update, multi=False,
-                                              upsert=upsert, safe=safe_update)
+                                              upsert=upsert, safe=safe_update,
+                                              **write_options)
             else:
                 # Older versions of PyMongo don't support 'multi'
                 ret = self._collection.update(self._query, update,
