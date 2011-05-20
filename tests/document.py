@@ -362,6 +362,10 @@ class DocumentTest(unittest.TestCase):
         post2 = BlogPost(title='test2', slug='test')
         self.assertRaises(OperationError, post2.save)
 
+
+    def test_unique_with(self):
+        """Ensure that unique_with constraints are applied to fields.
+        """
         class Date(EmbeddedDocument):
             year = IntField(db_field='yr')
 
@@ -381,6 +385,63 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same slug and the same day: fail
         post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
+        self.assertRaises(OperationError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_embedded_document(self):
+        """Ensure that uniqueness constraints are applied to fields on embedded documents.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(OperationError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_with_embedded_document_and_embedded_unique(self):
+        """Ensure that uniqueness constraints are applied to fields on
+        embedded documents.  And work with unique_with as well.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField(unique_with='sub.year')
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(OperationError, post3.save)
+
+        # Now there will be two docs with the same title and year
+        post3 = BlogPost(title='test1', sub=SubDocument(year=2009, slug='test-1'))
         self.assertRaises(OperationError, post3.save)
 
         BlogPost.drop_collection()
