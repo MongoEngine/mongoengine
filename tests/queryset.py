@@ -1761,6 +1761,25 @@ class QuerySetTest(unittest.TestCase):
 
         Number.drop_collection()
 
+    def test_order_works_with_primary(self):
+        """Ensure that order_by and primary work.
+        """
+        class Number(Document):
+            n = IntField(primary_key=True)
+
+        Number.drop_collection()
+
+        Number(n=1).save()
+        Number(n=2).save()
+        Number(n=3).save()
+
+        numbers = [n.n for n in Number.objects.order_by('-n')]
+        self.assertEquals([3, 2, 1], numbers)
+
+        numbers = [n.n for n in Number.objects.order_by('+n')]
+        self.assertEquals([1, 2, 3], numbers)
+        Number.drop_collection()
+
 
 class QTest(unittest.TestCase):
 
