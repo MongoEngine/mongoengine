@@ -597,10 +597,9 @@ class QuerySetTest(unittest.TestCase):
 
         Email.drop_collection()
 
-    def test_custom_fields(self):
+    def test_slicing_fields(self):
         """Ensure that query slicing an array works.
         """
-
         class Numbers(Document):
             n = ListField(IntField())
 
@@ -610,24 +609,68 @@ class QuerySetTest(unittest.TestCase):
         numbers.save()
 
         # first three
-        numbers = Numbers.objects.fields(n={"$slice": 3}).get()
+        numbers = Numbers.objects.fields(slice__n=3).get()
         self.assertEquals(numbers.n, [0, 1, 2])
 
         # last three
-        numbers = Numbers.objects.fields(n={"$slice": -3}).get()
+        numbers = Numbers.objects.fields(slice__n=-3).get()
         self.assertEquals(numbers.n, [-3, -2, -1])
 
         # skip 2, limit 3
-        numbers = Numbers.objects.fields(n={"$slice": [2, 3]}).get()
+        numbers = Numbers.objects.fields(slice__n=[2, 3]).get()
         self.assertEquals(numbers.n, [2, 3, 4])
 
         # skip to fifth from last, limit 4
-        numbers = Numbers.objects.fields(n={"$slice": [-5, 4]}).get()
+        numbers = Numbers.objects.fields(slice__n=[-5, 4]).get()
         self.assertEquals(numbers.n, [-5, -4, -3, -2])
 
         # skip to fifth from last, limit 10
+        numbers = Numbers.objects.fields(slice__n=[-5, 10]).get()
+        self.assertEquals(numbers.n, [-5, -4, -3, -2, -1])
+
+        # skip to fifth from last, limit 10 dict method
         numbers = Numbers.objects.fields(n={"$slice": [-5, 10]}).get()
         self.assertEquals(numbers.n, [-5, -4, -3, -2, -1])
+
+    def test_slicing_nested_fields(self):
+        """Ensure that query slicing an embedded array works.
+        """
+
+        class EmbeddedNumber(EmbeddedDocument):
+            n = ListField(IntField())
+
+        class Numbers(Document):
+            embedded = EmbeddedDocumentField(EmbeddedNumber)
+
+        Numbers.drop_collection()
+
+        numbers = Numbers()
+        numbers.embedded = EmbeddedNumber(n=[0,1,2,3,4,5,-5,-4,-3,-2,-1])
+        numbers.save()
+
+        # first three
+        numbers = Numbers.objects.fields(slice__embedded__n=3).get()
+        self.assertEquals(numbers.embedded.n, [0, 1, 2])
+
+        # last three
+        numbers = Numbers.objects.fields(slice__embedded__n=-3).get()
+        self.assertEquals(numbers.embedded.n, [-3, -2, -1])
+
+        # skip 2, limit 3
+        numbers = Numbers.objects.fields(slice__embedded__n=[2, 3]).get()
+        self.assertEquals(numbers.embedded.n, [2, 3, 4])
+
+        # skip to fifth from last, limit 4
+        numbers = Numbers.objects.fields(slice__embedded__n=[-5, 4]).get()
+        self.assertEquals(numbers.embedded.n, [-5, -4, -3, -2])
+
+        # skip to fifth from last, limit 10
+        numbers = Numbers.objects.fields(slice__embedded__n=[-5, 10]).get()
+        self.assertEquals(numbers.embedded.n, [-5, -4, -3, -2, -1])
+
+        # skip to fifth from last, limit 10 dict method
+        numbers = Numbers.objects.fields(embedded__n={"$slice": [-5, 10]}).get()
+        self.assertEquals(numbers.embedded.n, [-5, -4, -3, -2, -1])
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.

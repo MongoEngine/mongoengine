@@ -548,7 +548,7 @@ class QuerySet(object):
         return '.'.join(parts)
 
     @classmethod
-    def _transform_query(cls, _doc_cls=None, **query):
+    def _transform_query(cls, _doc_cls=None, _field_operation=False, **query):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
@@ -915,13 +915,26 @@ class QuerySet(object):
         You can use the $slice operator to retrieve a subrange of elements in
         an array ::
 
-            post = BlogPost.objects(...).fields(comments={"$slice": 5}) // first 5 comments
+            post = BlogPost.objects(...).fields(slice__comments=5) // first 5 comments
 
         :param kwargs: A dictionary identifying what to include
 
         .. versionadded:: 0.5
         """
-        fields = sorted(kwargs.iteritems(), key=operator.itemgetter(1))
+
+        # Check for an operator and transform to mongo-style if there is
+        operators = ["slice"]
+        cleaned_fields = []
+        for key, value in kwargs.items():
+            parts = key.split('__')
+            op = None
+            if parts[0] in operators:
+                op = parts.pop(0)
+                value = {'$' + op: value}
+            key = '.'.join(parts)
+            cleaned_fields.append((key, value))
+
+        fields = sorted(cleaned_fields, key=operator.itemgetter(1))
         for value, group in itertools.groupby(fields, lambda x: x[1]):
             fields = [field for field, value in group]
             fields = self._fields_to_dbfields(fields)
