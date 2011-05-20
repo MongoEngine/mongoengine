@@ -212,6 +212,22 @@ class DocumentTest(unittest.TestCase):
         Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
 
+    def test_collection_name_and_primary(self):
+        """Ensure that a collection with a specified name may be used.
+        """
+
+        class Person(Document):
+            name = StringField(primary_key=True)
+            meta = {'collection': 'app'}
+
+        user = Person(name="Test User")
+        user.save()
+
+        user_obj = Person.objects[0]
+        self.assertEqual(user_obj.name, "Test User")
+
+        Person.drop_collection()
+
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents' collections.
         """
