@@ -523,6 +523,10 @@ class QuerySet(object):
         fields = []
         field = None
         for field_name in parts:
+            if field_name.isdigit():
+                fields.append(field_name)
+                field = field.field
+                continue
             if field is None:
                 # Look up first field from the document
                 if field_name == 'pk':
@@ -620,7 +624,6 @@ class QuerySet(object):
                 mongo_query[key] = value
             elif key in mongo_query and isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
-
         return mongo_query
 
     def get(self, *q_objs, **query):
@@ -1010,7 +1013,6 @@ class QuerySet(object):
         """
         operators = ['set', 'unset', 'inc', 'dec', 'pop', 'push', 'push_all',
                      'pull', 'pull_all', 'add_to_set']
-
         mongo_update = {}
         for key, value in update.items():
             parts = key.split('__')
@@ -1033,10 +1035,15 @@ class QuerySet(object):
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
-                parts = [field.db_field for field in fields]
-
+                parts = []
+                for field in fields:
+                    if isinstance(field, str):
+                        parts.append(field)
+                    else:
+                        parts.append(field.db_field)
                 # Convert value to proper value
                 field = fields[-1]
+
                 if op in (None, 'set', 'push', 'pull', 'addToSet'):
                     value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
