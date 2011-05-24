@@ -524,6 +524,15 @@ class QuerySet(object):
         fields = []
         field = None
         for field_name in parts:
+            # Handle ListField indexing:
+            if field_name.isdigit():
+                try:
+                    field = field.field
+                except AttributeError, err:
+                    raise InvalidQueryError(
+                        "Can't use index on unsubscriptable field (%s)" % err)
+                fields.append(field_name)
+                continue
             if field is None:
                 # Look up first field from the document
                 if field_name == 'pk':
@@ -1072,7 +1081,12 @@ class QuerySet(object):
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
-                parts = [field.db_field for field in fields]
+                parts = []
+                for field in fields:
+                    if isinstance(field, str):
+                        parts.append(field)
+                    else:
+                        parts.append(field.db_field)
 
                 # Convert value to proper value
                 field = fields[-1]
