@@ -15,7 +15,7 @@ def get_version(version_tuple):
         version = '%s.%s' % (version, version_tuple[2])
     return version
 
-# Dirty hack to get version number from monogengine/__init__.py - we can't 
+# Dirty hack to get version number from monogengine/__init__.py - we can't
 # import it as it depends on PyMongo and PyMongo isn't installed until this
 # file is read
 init = os.path.join(os.path.dirname(__file__), 'mongoengine', '__init__.py')
@@ -45,6 +45,6 @@ setup(name='mongoengine',
       long_description=LONG_DESCRIPTION,
       platforms=['any'],
       classifiers=CLASSIFIERS,
-      install_requires=['pymongo'],
-      test_suite='tests',
+      install_requires=['pymongo', 'blinker'],
+      test_suite='tests.signals',
 )

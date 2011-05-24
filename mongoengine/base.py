@@ -2,6 +2,8 @@ from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
 
+from mongoengine import signals
+
 import sys
 import pymongo
 import pymongo.objectid
@@ -382,6 +384,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 class BaseDocument(object):
 
     def __init__(self, **values):
+        signals.pre_init.send(self, values=values)
+
         self._data = {}
         # Assign default values to instance
         for attr_name in self._fields.keys():
@@ -394,6 +398,8 @@ class BaseDocument(object):
                 setattr(self, attr_name, values.pop(attr_name))
             except AttributeError:
                 pass
+
+        signals.post_init.send(self)
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
