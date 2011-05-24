@@ -428,8 +428,6 @@ class QuerySet(object):
             querying collection
         :param query: Django-style query keyword arguments
         """
-        #if q_obj:
-            #self._where_clause = q_obj.as_js(self._document)
         query = Q(**query)
         if q_obj:
             query &= q_obj
@@ -1308,8 +1306,11 @@ class QuerySet(object):
 
 class QuerySetManager(object):
 
-    def __init__(self, manager_func=None):
-        self._manager_func = manager_func
+    get_queryset = None
+
+    def __init__(self, queryset_func=None):
+        if queryset_func:
+            self.get_queryset = queryset_func
         self._collections = {}
 
     def __get__(self, instance, owner):
@@ -1353,11 +1354,11 @@ class QuerySetManager(object):
         # owner is the document that contains the QuerySetManager
         queryset_class = owner._meta['queryset_class'] or QuerySet
         queryset = queryset_class(owner, self._collections[(db, collection)])
-        if self._manager_func:
-            if self._manager_func.func_code.co_argcount == 1:
-                queryset = self._manager_func(queryset)
+        if self.get_queryset:
+            if self.get_queryset.func_code.co_argcount == 1:
+                queryset = self.get_queryset(queryset)
             else:
-                queryset = self._manager_func(owner, queryset)
+                queryset = self.get_queryset(owner, queryset)
         return queryset
 
 
