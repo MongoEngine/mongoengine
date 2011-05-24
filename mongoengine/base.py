@@ -253,7 +253,16 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # __metaclass__ is only set on the class with the __metaclass__
         # attribute (i.e. it is not set on subclasses). This differentiates
         # 'real' documents from the 'Document' class
-        if attrs.get('__metaclass__') == TopLevelDocumentMetaclass:
+        #
+        # Also assume a class is abstract if it has abstract set to True in
+        # its meta dictionary. This allows custom Document superclasses.
+        if (attrs.get('__metaclass__') == TopLevelDocumentMetaclass or
+            ('meta' in attrs and attrs['meta'].get('abstract', False))):
+            # Make sure no base class was non-abstract
+            non_abstract_bases = [b for b in bases
+                if hasattr(b,'_meta') and not b._meta.get('abstract', False)]
+            if non_abstract_bases:
+                raise ValueError("Abstract document cannot have non-abstract base")
             return super_new(cls, name, bases, attrs)
 
         collection = name.lower()
@@ -276,6 +285,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 base_indexes += base._meta.get('indexes', [])
 
         meta = {
+            'abstract': False,
             'collection': collection,
             'max_documents': None,
             'max_size': None,

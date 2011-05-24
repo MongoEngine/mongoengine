@@ -29,6 +29,9 @@ class DocumentTest(unittest.TestCase):
             age = IntField()
         self.Person = Person
 
+    def tearDown(self):
+        self.Person.drop_collection()
+
     def test_drop_collection(self):
         """Ensure that the collection may be dropped from the database.
         """
@@ -187,6 +190,34 @@ class DocumentTest(unittest.TestCase):
         comment = Comment(content='test')
         self.assertFalse('_cls' in comment.to_mongo())
         self.assertFalse('_types' in comment.to_mongo())
+
+    def test_abstract_documents(self):
+        """Ensure that a document superclass can be marked as abstract
+        thereby not using it as the name for the collection."""
+
+        class Animal(Document):
+            name = StringField()
+            meta = {'abstract': True}
+
+        class Fish(Animal): pass
+        class Guppy(Fish): pass
+
+        class Mammal(Animal):
+            meta = {'abstract': True}
+        class Human(Mammal): pass
+
+        self.assertFalse('collection' in Animal._meta)
+        self.assertFalse('collection' in Mammal._meta)
+
+        self.assertEqual(Fish._meta['collection'], 'fish')
+        self.assertEqual(Guppy._meta['collection'], 'fish')
+        self.assertEqual(Human._meta['collection'], 'human')
+
+        def create_bad_abstract():
+            class EvilHuman(Human):
+                evil = BooleanField(default=True)
+                meta = {'abstract': True}
+        self.assertRaises(ValueError, create_bad_abstract)
 
     def test_collection_name(self):
         """Ensure that a collection with a specified name may be used.
@@ -906,9 +937,6 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(B.objects.count(), 1)
         A.drop_collection()
         B.drop_collection()
-
-    def tearDown(self):
-        self.Person.drop_collection()
 
     def test_document_hash(self):
         """Test document in list, dict, set
