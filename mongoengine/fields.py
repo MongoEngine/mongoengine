@@ -449,7 +449,17 @@ class DictField(BaseField):
                                   'contain "." or "$" characters')
 
     def lookup_member(self, member_name):
-        return self.basecls(db_field=member_name)
+        return DictField(basecls=self.basecls, db_field=member_name)
+
+    def prepare_query_value(self, op, value):
+        match_operators = ['contains', 'icontains', 'startswith',
+                           'istartswith', 'endswith', 'iendswith',
+                           'exact', 'iexact']
+
+        if op in match_operators and isinstance(value, basestring):
+            return StringField().prepare_query_value(op, value)
+
+        return super(DictField,self).prepare_query_value(op, value)
 
 
 class MapField(BaseField):

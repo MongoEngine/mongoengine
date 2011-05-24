@@ -262,11 +262,13 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def test_dict_validation(self):
+    def test_dict_field(self):
         """Ensure that dict types work as expected.
         """
         class BlogPost(Document):
             info = DictField()
+
+        BlogPost.drop_collection()
 
         post = BlogPost()
         post.info = 'my post'
@@ -282,7 +284,24 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, post.validate)
 
         post.info = {'title': 'test'}
-        post.validate()
+        post.save()
+
+        post = BlogPost()
+        post.info = {'details': {'test': 'test'}}
+        post.save()
+
+        post = BlogPost()
+        post.info = {'details': {'test': 3}}
+        post.save()
+
+        self.assertEquals(BlogPost.objects.count(), 3)
+        self.assertEquals(BlogPost.objects.filter(info__title__exact='test').count(), 1)
+        self.assertEquals(BlogPost.objects.filter(info__details__test__exact='test').count(), 1)
+
+        # Confirm handles non strings or non existing keys
+        self.assertEquals(BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
+        self.assertEquals(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
+        BlogPost.drop_collection()
 
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
