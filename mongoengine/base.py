@@ -299,8 +299,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         new_class = super_new(cls, name, bases, attrs)
 
         # Provide a default queryset unless one has been manually provided
-        if not hasattr(new_class, 'objects'):
-            new_class.objects = QuerySetManager()
+        manager = attrs.get('objects', QuerySetManager())
+        if hasattr(manager, 'queryset_class'):
+            meta['queryset_class'] = manager.queryset_class
+        new_class.objects = manager
 
         user_indexes = [QuerySet._build_index_spec(new_class, spec)
                         for spec in meta['indexes']] + base_indexes

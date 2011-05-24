@@ -5,8 +5,9 @@ import unittest
 import pymongo
 from datetime import datetime, timedelta
 
-from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
-                                  DoesNotExist, QueryFieldList)
+from mongoengine.queryset import (QuerySet, QuerySetManager,
+                                  MultipleObjectsReturned, DoesNotExist,
+                                  QueryFieldList)
 from mongoengine import *
 
 
@@ -1783,6 +1784,53 @@ class QuerySetTest(unittest.TestCase):
 
         Post().save()
         self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
+    def test_custom_querysets_set_manager_directly(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+
+        class CustomQuerySet(QuerySet):
+            def not_empty(self):
+                return len(self) > 0
+
+        class CustomQuerySetManager(QuerySetManager):
+            queryset_class = CustomQuerySet
+
+        class Post(Document):
+            objects = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertFalse(Post.objects.not_empty())
+
+        Post().save()
+        self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
+    def test_custom_querysets_managers_directly(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+
+        class CustomQuerySetManager(QuerySetManager):
+
+            @staticmethod
+            def get_queryset(doc_cls, queryset):
+                return queryset(is_published=True)
+
+        class Post(Document):
+            is_published = BooleanField(default=False)
+            published = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        Post().save()
+        Post(is_published=True).save()
+        self.assertEquals(Post.objects.count(), 2)
+        self.assertEquals(Post.published.count(), 1)
 
         Post.drop_collection()
 
