@@ -200,6 +200,7 @@ class DocumentMetaclass(type):
 
         attrs['_class_name'] = '.'.join(reversed(class_name))
         attrs['_superclasses'] = superclasses
+
         # Add the document's fields to the _fields attribute
         for attr_name, attr_value in attrs.items():
             if hasattr(attr_value, "__class__") and \

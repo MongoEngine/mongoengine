@@ -628,6 +628,7 @@ class QuerySet(object):
                 mongo_query[key] = value
             elif key in mongo_query and isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
+
         return mongo_query
 
     def get(self, *q_objs, **query):
@@ -1055,6 +1056,7 @@ class QuerySet(object):
         """
         operators = ['set', 'unset', 'inc', 'dec', 'pop', 'push', 'push_all',
                      'pull', 'pull_all', 'add_to_set']
+
         mongo_update = {}
         for key, value in update.items():
             parts = key.split('__')
