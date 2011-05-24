@@ -8,6 +8,7 @@ import pymongo.objectid
 import re
 import copy
 import itertools
+import operator
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
@@ -280,30 +281,30 @@ class QueryFieldList(object):
     ONLY = True
     EXCLUDE = False
 
-    def __init__(self, fields=[], direction=ONLY, always_include=[]):
-        self.direction = direction
+    def __init__(self, fields=[], value=ONLY, always_include=[]):
+        self.value = value
         self.fields = set(fields)
         self.always_include = set(always_include)
 
     def as_dict(self):
-        return dict((field, self.direction) for field in self.fields)
+        return dict((field, self.value) for field in self.fields)
 
     def __add__(self, f):
         if not self.fields:
             self.fields = f.fields
-            self.direction = f.direction
-        elif self.direction is self.ONLY and f.direction is self.ONLY:
+            self.value = f.value
+        elif self.value is self.ONLY and f.value is self.ONLY:
             self.fields = self.fields.intersection(f.fields)
-        elif self.direction is self.EXCLUDE and f.direction is self.EXCLUDE:
+        elif self.value is self.EXCLUDE and f.value is self.EXCLUDE:
             self.fields = self.fields.union(f.fields)
-        elif self.direction is self.ONLY and f.direction is self.EXCLUDE:
+        elif self.value is self.ONLY and f.value is self.EXCLUDE:
             self.fields -= f.fields
-        elif self.direction is self.EXCLUDE and f.direction is self.ONLY:
-            self.direction = self.ONLY
+        elif self.value is self.EXCLUDE and f.value is self.ONLY:
+            self.value = self.ONLY
             self.fields = f.fields - self.fields
 
         if self.always_include:
-            if self.direction is self.ONLY and self.fields:
+            if self.value is self.ONLY and self.fields:
                 self.fields = self.fields.union(self.always_include)
             else:
                 self.fields -= self.always_include
@@ -311,7 +312,7 @@ class QueryFieldList(object):
 
     def reset(self):
         self.fields = set([])
-        self.direction = self.ONLY
+        self.value = self.ONLY
 
     def __nonzero__(self):
         return bool(self.fields)
@@ -551,7 +552,7 @@ class QuerySet(object):
         return '.'.join(parts)
 
     @classmethod
-    def _transform_query(cls, _doc_cls=None, **query):
+    def _transform_query(cls, _doc_cls=None, _field_operation=False, **query):
         """Transform a query from Django-style format to Mongo format.
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
@@ -646,7 +647,7 @@ class QuerySet(object):
             raise self._document.DoesNotExist("%s matching query does not exist."
                                               % self._document._class_name)
 
-    def get_or_create(self, *q_objs, **query):
+    def get_or_create(self, write_options=None, *q_objs, **query):
         """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
         ``(object, created)``, where ``object`` is the retrieved or created object
         and ``created`` is a boolean specifying whether a new object was created. Raises
@@ -655,6 +656,10 @@ class QuerySet(object):
         A new document will be created if the document doesn't exists; a
         dictionary of default values for the new document may be provided as a
         keyword argument called :attr:`defaults`.
+
+        :param write_options: optional extra keyword arguments used if we
+            have to create a new document.
+            Passes any write_options onto :meth:`~mongoengine.document.Document.save`
 
         .. versionadded:: 0.3
         """
@@ -667,7 +672,7 @@ class QuerySet(object):
         if count == 0:
             query.update(defaults)
             doc = self._document(**query)
-            doc.save()
+            doc.save(write_options=write_options)
             return doc, True
         elif count == 1:
             return self.first(), False
@@ -893,10 +898,8 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
-        fields = self._fields_to_dbfields(fields)
-        self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.ONLY)
-        return self
-
+        fields = dict([(f, QueryFieldList.ONLY) for f in fields])
+        return self.fields(**fields)
 
     def exclude(self, *fields):
         """Opposite to .only(), exclude some document's fields. ::
@@ -905,8 +908,44 @@ class QuerySet(object):
 
         :param fields: fields to exclude
         """
-        fields = self._fields_to_dbfields(fields)
-        self._loaded_fields += QueryFieldList(fields, direction=QueryFieldList.EXCLUDE)
+        fields = dict([(f, QueryFieldList.EXCLUDE) for f in fields])
+        return self.fields(**fields)
+
+    def fields(self, **kwargs):
+        """Manipulate how you load this document's fields.  Used by `.only()`
+        and `.exclude()` to manipulate which fields to retrieve.  Fields also
+        allows for a greater level of control for example:
+
+        Retrieving a Subrange of Array Elements
+        ---------------------------------------
+
+        You can use the $slice operator to retrieve a subrange of elements in
+        an array ::
+
+            post = BlogPost.objects(...).fields(slice__comments=5) // first 5 comments
+
+        :param kwargs: A dictionary identifying what to include
+
+        .. versionadded:: 0.5
+        """
+
+        # Check for an operator and transform to mongo-style if there is
+        operators = ["slice"]
+        cleaned_fields = []
+        for key, value in kwargs.items():
+            parts = key.split('__')
+            op = None
+            if parts[0] in operators:
+                op = parts.pop(0)
+                value = {'$' + op: value}
+            key = '.'.join(parts)
+            cleaned_fields.append((key, value))
+
+        fields = sorted(cleaned_fields, key=operator.itemgetter(1))
+        for value, group in itertools.groupby(fields, lambda x: x[1]):
+            fields = [field for field, value in group]
+            fields = self._fields_to_dbfields(fields)
+            self._loaded_fields += QueryFieldList(fields, value=value)
         return self
 
     def all_fields(self):
@@ -1062,22 +1101,27 @@ class QuerySet(object):
 
         return mongo_update
 
-    def update(self, safe_update=True, upsert=False, **update):
+    def update(self, safe_update=True, upsert=False, write_options=None, **update):
         """Perform an atomic update on the fields matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
-        :param safe: check if the operation succeeded before returning
-        :param update: Django-style update keyword arguments
+        :param safe_update: check if the operation succeeded before returning
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
 
         .. versionadded:: 0.2
         """
         if pymongo.version < '1.1.1':
             raise OperationError('update() method requires PyMongo 1.1.1+')
 
+        if not write_options:
+            write_options = {}
+
         update = QuerySet._transform_update(self._document, **update)
         try:
             ret = self._collection.update(self._query, update, multi=True,
-                                          upsert=upsert, safe=safe_update)
+                                          upsert=upsert, safe=safe_update,
+                                          **write_options)
             if ret is not None and 'n' in ret:
                 return ret['n']
         except pymongo.errors.OperationFailure, err:
@@ -1086,22 +1130,27 @@ class QuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-    def update_one(self, safe_update=True, upsert=False, **update):
+    def update_one(self, safe_update=True, upsert=False, write_options=None, **update):
         """Perform an atomic update on first field matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
-        :param safe: check if the operation succeeded before returning
+        :param safe_update: check if the operation succeeded before returning
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
         """
+        if not write_options:
+            write_options = {}
         update = QuerySet._transform_update(self._document, **update)
         try:
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
             if pymongo.version >= '1.1.1':
                 ret = self._collection.update(self._query, update, multi=False,
-                                              upsert=upsert, safe=safe_update)
+                                              upsert=upsert, safe=safe_update,
+                                              **write_options)
             else:
                 # Older versions of PyMongo don't support 'multi'
                 ret = self._collection.update(self._query, update,
@@ -1284,7 +1333,7 @@ class QuerySetManager(object):
             # Create collection as a capped collection if specified
             if owner._meta['max_size'] or owner._meta['max_documents']:
                 # Get max document limit and max byte size from meta
-                max_size = owner._meta['max_size'] or 10000000 # 10MB default
+                max_size = owner._meta['max_size'] or 10000000  # 10MB default
                 max_documents = owner._meta['max_documents']
 
                 if collection in db.collection_names():

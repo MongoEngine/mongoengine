@@ -597,6 +597,81 @@ class QuerySetTest(unittest.TestCase):
 
         Email.drop_collection()
 
+    def test_slicing_fields(self):
+        """Ensure that query slicing an array works.
+        """
+        class Numbers(Document):
+            n = ListField(IntField())
+
+        Numbers.drop_collection()
+
+        numbers = Numbers(n=[0,1,2,3,4,5,-5,-4,-3,-2,-1])
+        numbers.save()
+
+        # first three
+        numbers = Numbers.objects.fields(slice__n=3).get()
+        self.assertEquals(numbers.n, [0, 1, 2])
+
+        # last three
+        numbers = Numbers.objects.fields(slice__n=-3).get()
+        self.assertEquals(numbers.n, [-3, -2, -1])
+
+        # skip 2, limit 3
+        numbers = Numbers.objects.fields(slice__n=[2, 3]).get()
+        self.assertEquals(numbers.n, [2, 3, 4])
+
+        # skip to fifth from last, limit 4
+        numbers = Numbers.objects.fields(slice__n=[-5, 4]).get()
+        self.assertEquals(numbers.n, [-5, -4, -3, -2])
+
+        # skip to fifth from last, limit 10
+        numbers = Numbers.objects.fields(slice__n=[-5, 10]).get()
+        self.assertEquals(numbers.n, [-5, -4, -3, -2, -1])
+
+        # skip to fifth from last, limit 10 dict method
+        numbers = Numbers.objects.fields(n={"$slice": [-5, 10]}).get()
+        self.assertEquals(numbers.n, [-5, -4, -3, -2, -1])
+
+    def test_slicing_nested_fields(self):
+        """Ensure that query slicing an embedded array works.
+        """
+
+        class EmbeddedNumber(EmbeddedDocument):
+            n = ListField(IntField())
+
+        class Numbers(Document):
+            embedded = EmbeddedDocumentField(EmbeddedNumber)
+
+        Numbers.drop_collection()
+
+        numbers = Numbers()
+        numbers.embedded = EmbeddedNumber(n=[0,1,2,3,4,5,-5,-4,-3,-2,-1])
+        numbers.save()
+
+        # first three
+        numbers = Numbers.objects.fields(slice__embedded__n=3).get()
+        self.assertEquals(numbers.embedded.n, [0, 1, 2])
+
+        # last three
+        numbers = Numbers.objects.fields(slice__embedded__n=-3).get()
+        self.assertEquals(numbers.embedded.n, [-3, -2, -1])
+
+        # skip 2, limit 3
+        numbers = Numbers.objects.fields(slice__embedded__n=[2, 3]).get()
+        self.assertEquals(numbers.embedded.n, [2, 3, 4])
+
+        # skip to fifth from last, limit 4
+        numbers = Numbers.objects.fields(slice__embedded__n=[-5, 4]).get()
+        self.assertEquals(numbers.embedded.n, [-5, -4, -3, -2])
+
+        # skip to fifth from last, limit 10
+        numbers = Numbers.objects.fields(slice__embedded__n=[-5, 10]).get()
+        self.assertEquals(numbers.embedded.n, [-5, -4, -3, -2, -1])
+
+        # skip to fifth from last, limit 10 dict method
+        numbers = Numbers.objects.fields(embedded__n={"$slice": [-5, 10]}).get()
+        self.assertEquals(numbers.embedded.n, [-5, -4, -3, -2, -1])
+
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
@@ -1294,6 +1369,7 @@ class QuerySetTest(unittest.TestCase):
         class BlogPost(Document):
             tags = ListField(StringField())
             deleted = BooleanField(default=False)
+            date = DateTimeField(default=datetime.now)
 
             @queryset_manager
             def objects(doc_cls, queryset):
@@ -1301,7 +1377,7 @@ class QuerySetTest(unittest.TestCase):
 
             @queryset_manager
             def music_posts(doc_cls, queryset):
-                return queryset(tags='music', deleted=False)
+                return queryset(tags='music', deleted=False).order_by('-date')
 
         BlogPost.drop_collection()
 
@@ -1317,7 +1393,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual([p.id for p in BlogPost.objects],
                          [post1.id, post2.id, post3.id])
         self.assertEqual([p.id for p in BlogPost.music_posts],
-                         [post1.id, post2.id])
+                         [post2.id, post1.id])
 
         BlogPost.drop_collection()
 
@@ -1760,6 +1836,25 @@ class QuerySetTest(unittest.TestCase):
 
         Number.drop_collection()
 
+    def test_order_works_with_primary(self):
+        """Ensure that order_by and primary work.
+        """
+        class Number(Document):
+            n = IntField(primary_key=True)
+
+        Number.drop_collection()
+
+        Number(n=1).save()
+        Number(n=2).save()
+        Number(n=3).save()
+
+        numbers = [n.n for n in Number.objects.order_by('-n')]
+        self.assertEquals([3, 2, 1], numbers)
+
+        numbers = [n.n for n in Number.objects.order_by('+n')]
+        self.assertEquals([1, 2, 3], numbers)
+        Number.drop_collection()
+
 
 class QTest(unittest.TestCase):
 
@@ -1931,48 +2026,52 @@ class QueryFieldListTest(unittest.TestCase):
 
     def test_include_include(self):
         q = QueryFieldList()
-        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'a': True, 'b': True})
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'b': True})
 
     def test_include_exclude(self):
         q = QueryFieldList()
-        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'a': True, 'b': True})
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.EXCLUDE)
         self.assertEqual(q.as_dict(), {'a': True})
 
     def test_exclude_exclude(self):
         q = QueryFieldList()
-        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.EXCLUDE)
         self.assertEqual(q.as_dict(), {'a': False, 'b': False})
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.EXCLUDE)
         self.assertEqual(q.as_dict(), {'a': False, 'b': False, 'c': False})
 
     def test_exclude_include(self):
         q = QueryFieldList()
-        q += QueryFieldList(fields=['a', 'b'], direction=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.EXCLUDE)
         self.assertEqual(q.as_dict(), {'a': False, 'b': False})
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'c': True})
 
     def test_always_include(self):
         q = QueryFieldList(always_include=['x', 'y'])
-        q += QueryFieldList(fields=['a', 'b', 'x'], direction=QueryFieldList.EXCLUDE)
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['a', 'b', 'x'], value=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'c': True})
-
 
     def test_reset(self):
         q = QueryFieldList(always_include=['x', 'y'])
-        q += QueryFieldList(fields=['a', 'b', 'x'], direction=QueryFieldList.EXCLUDE)
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['a', 'b', 'x'], value=QueryFieldList.EXCLUDE)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'c': True})
         q.reset()
         self.assertFalse(q)
-        q += QueryFieldList(fields=['b', 'c'], direction=QueryFieldList.ONLY)
+        q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
         self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'b': True, 'c': True})
+
+    def test_using_a_slice(self):
+        q = QueryFieldList()
+        q += QueryFieldList(fields=['a'], value={"$slice": 5})
+        self.assertEqual(q.as_dict(), {'a': {"$slice": 5}})
 
 
 if __name__ == '__main__':

@@ -7,14 +7,24 @@ import pymongo
 import pymongo.objectid
 
 
-_document_registry = {}
-
-def get_document(name):
-    return _document_registry[name]
+class NotRegistered(Exception):
+    pass
 
 
 class ValidationError(Exception):
     pass
+
+
+_document_registry = {}
+
+def get_document(name):
+    if name not in _document_registry:
+        raise NotRegistered("""
+            `%s` has not been registered in the document registry.
+            Importing the document class automatically registers it, has it
+            been imported?
+        """.strip() % name)
+    return _document_registry[name]
 
 
 class BaseField(object):
@@ -295,6 +305,30 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                         for spec in meta['indexes']] + base_indexes
         new_class._meta['indexes'] = user_indexes
 
+        unique_indexes = cls._unique_with_indexes(new_class)
+        new_class._meta['unique_indexes'] = unique_indexes
+
+        for field_name, field in new_class._fields.items():
+            # Check for custom primary key
+            if field.primary_key:
+                current_pk = new_class._meta['id_field']
+                if current_pk and current_pk != field_name:
+                    raise ValueError('Cannot override primary key field')
+
+                if not current_pk:
+                    new_class._meta['id_field'] = field_name
+                    # Make 'Document.id' an alias to the real primary key field
+                    new_class.id = field
+
+        if not new_class._meta['id_field']:
+            new_class._meta['id_field'] = 'id'
+            new_class._fields['id'] = ObjectIdField(db_field='_id')
+            new_class.id = new_class._fields['id']
+
+        return new_class
+
+    @classmethod
+    def _unique_with_indexes(cls, new_class, namespace=""):
         unique_indexes = []
         for field_name, field in new_class._fields.items():
             # Generate a list of indexes needed by uniqueness constraints
@@ -320,28 +354,16 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     unique_fields += unique_with
 
                 # Add the new index to the list
-                index = [(f, pymongo.ASCENDING) for f in unique_fields]
+                index = [("%s%s" % (namespace, f), pymongo.ASCENDING) for f in unique_fields]
                 unique_indexes.append(index)
 
-            # Check for custom primary key
-            if field.primary_key:
-                current_pk = new_class._meta['id_field']
-                if current_pk and current_pk != field_name:
-                    raise ValueError('Cannot override primary key field')
+            # Grab any embedded document field unique indexes
+            if field.__class__.__name__ == "EmbeddedDocumentField":
+                field_namespace = "%s." % field_name
+                unique_indexes += cls._unique_with_indexes(field.document_type,
+                                    field_namespace)
 
-                if not current_pk:
-                    new_class._meta['id_field'] = field_name
-                    # Make 'Document.id' an alias to the real primary key field
-                    new_class.id = field
-
-        new_class._meta['unique_indexes'] = unique_indexes
-
-        if not new_class._meta['id_field']:
-            new_class._meta['id_field'] = 'id'
-            new_class._fields['id'] = ObjectIdField(db_field='_id')
-            new_class.id = new_class._fields['id']
-
-        return new_class
+        return unique_indexes
 
 
 class BaseDocument(object):

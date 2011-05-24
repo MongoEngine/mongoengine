@@ -1,9 +1,21 @@
 import unittest
 from datetime import datetime
 import pymongo
+import pickle
 
 from mongoengine import *
+from mongoengine.base import BaseField
 from mongoengine.connection import _get_db
+
+
+class PickleEmbedded(EmbeddedDocument):
+    date = DateTimeField(default=datetime.now)
+
+class PickleTest(Document):
+    number = IntField()
+    string = StringField()
+    embedded = EmbeddedDocumentField(PickleEmbedded)
+    lists = ListField(StringField())
 
 
 class DocumentTest(unittest.TestCase):
@@ -200,6 +212,22 @@ class DocumentTest(unittest.TestCase):
         Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
 
+    def test_collection_name_and_primary(self):
+        """Ensure that a collection with a specified name may be used.
+        """
+
+        class Person(Document):
+            name = StringField(primary_key=True)
+            meta = {'collection': 'app'}
+
+        user = Person(name="Test User")
+        user.save()
+
+        user_obj = Person.objects[0]
+        self.assertEqual(user_obj.name, "Test User")
+
+        Person.drop_collection()
+
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents' collections.
         """
@@ -334,6 +362,10 @@ class DocumentTest(unittest.TestCase):
         post2 = BlogPost(title='test2', slug='test')
         self.assertRaises(OperationError, post2.save)
 
+
+    def test_unique_with(self):
+        """Ensure that unique_with constraints are applied to fields.
+        """
         class Date(EmbeddedDocument):
             year = IntField(db_field='yr')
 
@@ -353,6 +385,63 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same slug and the same day: fail
         post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
+        self.assertRaises(OperationError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_embedded_document(self):
+        """Ensure that uniqueness constraints are applied to fields on embedded documents.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(OperationError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_with_embedded_document_and_embedded_unique(self):
+        """Ensure that uniqueness constraints are applied to fields on
+        embedded documents.  And work with unique_with as well.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField(unique_with='sub.year')
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(OperationError, post3.save)
+
+        # Now there will be two docs with the same title and year
+        post3 = BlogPost(title='test1', sub=SubDocument(year=2009, slug='test-1'))
         self.assertRaises(OperationError, post3.save)
 
         BlogPost.drop_collection()
@@ -798,6 +887,25 @@ class DocumentTest(unittest.TestCase):
         self.Person.drop_collection()
         BlogPost.drop_collection()
 
+    def subclasses_and_unique_keys_works(self):
+
+        class A(Document):
+            pass
+
+        class B(A):
+            foo = BooleanField(unique=True)
+
+        A.drop_collection()
+        B.drop_collection()
+
+        A().save()
+        A().save()
+        B(foo=True).save()
+
+        self.assertEquals(A.objects.count(), 2)
+        self.assertEquals(B.objects.count(), 1)
+        A.drop_collection()
+        B.drop_collection()
 
     def tearDown(self):
         self.Person.drop_collection()
@@ -849,6 +957,43 @@ class DocumentTest(unittest.TestCase):
         all_user_set = set(User.objects.all())
 
         self.assertTrue(u1 in all_user_set )
+
+    def test_picklable(self):
+
+        pickle_doc = PickleTest(number=1, string="OH HAI", lists=['1', '2'])
+        pickle_doc.embedded = PickleEmbedded()
+        pickle_doc.save()
+
+        pickled_doc = pickle.dumps(pickle_doc)
+        resurrected = pickle.loads(pickled_doc)
+
+        self.assertEquals(resurrected, pickle_doc)
+
+        resurrected.string = "Working"
+        resurrected.save()
+
+        pickle_doc.reload()
+        self.assertEquals(resurrected, pickle_doc)
+
+    def test_write_options(self):
+        """Test that passing write_options works"""
+
+        self.Person.drop_collection()
+
+        write_options = {"fsync": True}
+
+        author, created = self.Person.objects.get_or_create(
+                            name='Test User', write_options=write_options)
+        author.save(write_options=write_options)
+
+        self.Person.objects.update(set__name='Ross', write_options=write_options)
+
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Ross')
+
+        self.Person.objects.update_one(set__name='Test User', write_options=write_options)
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Test User')
 
 
 if __name__ == '__main__':
