@@ -428,8 +428,6 @@ class QuerySet(object):
             querying collection
         :param query: Django-style query keyword arguments
         """
-        #if q_obj:
-            #self._where_clause = q_obj.as_js(self._document)
         query = Q(**query)
         if q_obj:
             query &= q_obj
@@ -524,9 +522,14 @@ class QuerySet(object):
         fields = []
         field = None
         for field_name in parts:
+            # Handle ListField indexing:
             if field_name.isdigit():
+                try:
+                    field = field.field
+                except AttributeError, err:
+                    raise InvalidQueryError(
+                        "Can't use index on unsubscriptable field (%s)" % err)
                 fields.append(field_name)
-                field = field.field
                 continue
             if field is None:
                 # Look up first field from the document
@@ -1075,11 +1078,13 @@ class QuerySet(object):
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
                 parts = []
+
                 for field in fields:
                     if isinstance(field, str):
                         parts.append(field)
                     else:
                         parts.append(field.db_field)
+
                 # Convert value to proper value
                 field = fields[-1]
 
@@ -1315,8 +1320,11 @@ class QuerySet(object):
 
 class QuerySetManager(object):
 
-    def __init__(self, manager_func=None):
-        self._manager_func = manager_func
+    get_queryset = None
+
+    def __init__(self, queryset_func=None):
+        if queryset_func:
+            self.get_queryset = queryset_func
         self._collections = {}
 
     def __get__(self, instance, owner):
@@ -1360,11 +1368,11 @@ class QuerySetManager(object):
         # owner is the document that contains the QuerySetManager
         queryset_class = owner._meta['queryset_class'] or QuerySet
         queryset = queryset_class(owner, self._collections[(db, collection)])
-        if self._manager_func:
-            if self._manager_func.func_code.co_argcount == 1:
-                queryset = self._manager_func(queryset)
+        if self.get_queryset:
+            if self.get_queryset.func_code.co_argcount == 1:
+                queryset = self.get_queryset(queryset)
             else:
-                queryset = self._manager_func(owner, queryset)
+                queryset = self.get_queryset(owner, queryset)
         return queryset
 
 

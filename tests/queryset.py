@@ -5,8 +5,9 @@ import unittest
 import pymongo
 from datetime import datetime, timedelta
 
-from mongoengine.queryset import (QuerySet, MultipleObjectsReturned,
-                                  DoesNotExist, QueryFieldList)
+from mongoengine.queryset import (QuerySet, QuerySetManager,
+                                  MultipleObjectsReturned, DoesNotExist,
+                                  QueryFieldList)
 from mongoengine import *
 
 
@@ -208,6 +209,55 @@ class QuerySetTest(unittest.TestCase):
 
         query = Blog.objects(posts__0__comments__1__name='testa')
         self.assertEqual(len(query), 0)
+
+        Blog.drop_collection()
+
+    def test_update_array_position(self):
+        """Ensure that updating by array position works.
+
+        Check update() and update_one() can take syntax like:
+            set__posts__1__comments__1__name="testc"
+        Check that it only works for ListFields.
+        """
+        class Comment(EmbeddedDocument):
+            name = StringField()
+
+        class Post(EmbeddedDocument):
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        class Blog(Document):
+            tags = ListField(StringField())
+            posts = ListField(EmbeddedDocumentField(Post))
+
+        Blog.drop_collection()
+
+        comment1 = Comment(name='testa')
+        comment2 = Comment(name='testb')
+        post1 = Post(comments=[comment1, comment2])
+        post2 = Post(comments=[comment2, comment2])
+        blog1 = Blog.objects.create(posts=[post1, post2])
+        blog2 = Blog.objects.create(posts=[post2, post1])
+
+        # Update all of the first comments of second posts of all blogs
+        blog = Blog.objects().update(set__posts__1__comments__0__name="testc")
+        testc_blogs = Blog.objects(posts__1__comments__0__name="testc")
+        self.assertEqual(len(testc_blogs), 2)
+
+        Blog.drop_collection()
+
+        blog1 = Blog.objects.create(posts=[post1, post2])
+        blog2 = Blog.objects.create(posts=[post2, post1])
+
+        # Update only the first blog returned by the query
+        blog = Blog.objects().update_one(
+            set__posts__1__comments__1__name="testc")
+        testc_blogs = Blog.objects(posts__1__comments__1__name="testc")
+        self.assertEqual(len(testc_blogs), 1)
+
+        # Check that using this indexing syntax on a non-list fails
+        def non_list_indexing():
+            Blog.objects().update(set__posts__1__comments__0__name__1="asdf")
+        self.assertRaises(InvalidQueryError, non_list_indexing)
 
         Blog.drop_collection()
 
@@ -1734,6 +1784,53 @@ class QuerySetTest(unittest.TestCase):
 
         Post().save()
         self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
+    def test_custom_querysets_set_manager_directly(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+
+        class CustomQuerySet(QuerySet):
+            def not_empty(self):
+                return len(self) > 0
+
+        class CustomQuerySetManager(QuerySetManager):
+            queryset_class = CustomQuerySet
+
+        class Post(Document):
+            objects = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertFalse(Post.objects.not_empty())
+
+        Post().save()
+        self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
+    def test_custom_querysets_managers_directly(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+
+        class CustomQuerySetManager(QuerySetManager):
+
+            @staticmethod
+            def get_queryset(doc_cls, queryset):
+                return queryset(is_published=True)
+
+        class Post(Document):
+            is_published = BooleanField(default=False)
+            published = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        Post().save()
+        Post(is_published=True).save()
+        self.assertEquals(Post.objects.count(), 2)
+        self.assertEquals(Post.published.count(), 1)
 
         Post.drop_collection()
 
