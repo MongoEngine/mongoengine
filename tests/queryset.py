@@ -261,6 +261,44 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+    def test_mapfield_update(self):
+        """Ensure that the MapField can be updated."""
+        class Member(EmbeddedDocument):
+            gender = StringField()
+            age = IntField()
+
+        class Club(Document):
+            members = MapField(EmbeddedDocumentField(Member))
+
+        Club.drop_collection()
+
+        club = Club()
+        club.members['John'] = Member(gender="M", age=13)
+        club.save()
+
+        Club.objects().update(
+            set__members={"John": Member(gender="F", age=14)})
+
+        club = Club.objects().first()
+        self.assertEqual(club.members['John'].gender, "F")
+        self.assertEqual(club.members['John'].age, 14)
+
+    def test_dictfield_update(self):
+        """Ensure that the MapField can be updated."""
+        class Club(Document):
+            members = DictField()
+
+        club = Club()
+        club.members['John'] = dict(gender="M", age=13)
+        club.save()
+
+        Club.objects().update(
+            set__members={"John": dict(gender="F", age=14)})
+
+        club = Club.objects().first()
+        self.assertEqual(club.members['John']['gender'], "F")
+        self.assertEqual(club.members['John']['age'], 14)
+
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
         document.

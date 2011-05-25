@@ -537,7 +537,11 @@ class MapField(BaseField):
         return dict( [(key,self.field.to_mongo(item)) for key,item in value.iteritems()] )
 
     def prepare_query_value(self, op, value):
-        return self.field.prepare_query_value(op, value)
+        if op not in ('set', 'unset'):
+            return self.field.prepare_query_value(op, value)
+        for key in value:
+            value[key] = self.field.prepare_query_value(op, value[key])
+        return value
 
     def lookup_member(self, member_name):
         return self.field.lookup_member(member_name)
