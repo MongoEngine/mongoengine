@@ -1114,6 +1114,9 @@ class QuerySetTest(unittest.TestCase):
             slug = StringField()
             tags = ListField(ReferenceField(BlogTag), required=True)
 
+        BlogPost.drop_collection()
+        BlogTag.drop_collection()
+
         tag_1 = BlogTag(name='code')
         tag_1.save()
         tag_2 = BlogTag(name='mongodb')
@@ -1130,6 +1133,40 @@ class QuerySetTest(unittest.TestCase):
 
         post.reload()
         self.assertEqual(len(post.tags), 1)
+
+        BlogPost.drop_collection()
+        BlogTag.drop_collection()
+
+    def test_editting_embedded_objects(self):
+
+        class BlogTag(EmbeddedDocument):
+            name = StringField(required=True)
+
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(EmbeddedDocumentField(BlogTag), required=True)
+
+        BlogPost.drop_collection()
+
+        tag_1 = BlogTag(name='code')
+        tag_2 = BlogTag(name='mongodb')
+
+        post = BlogPost(slug="test", tags=[tag_1])
+        post.save()
+
+        post = BlogPost(slug="test-2", tags=[tag_1, tag_2])
+        post.save()
+        self.assertEqual(len(post.tags), 2)
+
+        BlogPost.objects(slug="test-2").update_one(set__tags__0__name="python")
+        post.reload()
+        self.assertEquals(post.tags[0].name, 'python')
+
+        BlogPost.objects(slug="test-2").update_one(pop__tags=-1)
+        post.reload()
+        self.assertEqual(len(post.tags), 1)
+
+        BlogPost.drop_collection()
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
