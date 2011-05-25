@@ -1339,7 +1339,7 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         BlogPost(hits=1, tags=['music', 'film', 'actors', 'watch']).save()
-        BlogPost(hits=2, tags=['music']).save()
+        BlogPost(hits=2, tags=['music', 'watch']).save()
         BlogPost(hits=2, tags=['music', 'actors']).save()
 
         f = BlogPost.objects.item_frequencies('tags')
@@ -1347,20 +1347,23 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(set(['music', 'film', 'actors', 'watch']), set(f.keys()))
         self.assertEqual(f['music'], 3)
         self.assertEqual(f['actors'], 2)
+        self.assertEqual(f['watch'], 2)
         self.assertEqual(f['film'], 1)
 
         # Ensure query is taken into account
         f = BlogPost.objects(hits__gt=1).item_frequencies('tags')
         f = dict((key, int(val)) for key, val in f.items())
-        self.assertEqual(set(['music', 'actors']), set(f.keys()))
+        self.assertEqual(set(['music', 'actors', 'watch']), set(f.keys()))
         self.assertEqual(f['music'], 2)
         self.assertEqual(f['actors'], 1)
+        self.assertEqual(f['watch'], 1)
 
         # Check that normalization works
         f = BlogPost.objects.item_frequencies('tags', normalize=True)
-        self.assertAlmostEqual(f['music'], 3.0/7.0)
-        self.assertAlmostEqual(f['actors'], 2.0/7.0)
-        self.assertAlmostEqual(f['film'], 1.0/7.0)
+        self.assertAlmostEqual(f['music'], 3.0/8.0)
+        self.assertAlmostEqual(f['actors'], 2.0/8.0)
+        self.assertAlmostEqual(f['watch'], 2.0/8.0)
+        self.assertAlmostEqual(f['film'], 1.0/8.0)
 
         # Check item_frequencies works for non-list fields
         f = BlogPost.objects.item_frequencies('hits')

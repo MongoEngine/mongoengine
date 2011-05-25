@@ -1298,19 +1298,11 @@ class QuerySet(object):
                 db[collection].find(query).forEach(function(doc) {
                     if (doc[field].constructor == Array) {
                         doc[field].forEach(function(item) {
-                            var preValue = 0; 
-                            if (!isNaN(frequencies[item])) {
-                                preValue = frequencies[item];
-                            }
-                            frequencies[item] = inc + preValue;
+                            frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
                         });
                     } else {
                         var item = doc[field];
-                        var preValue = 0;
-                        if (!isNaN(frequencies[item])) {
-                            preValue = frequencies[item];
-                        }
-                        frequencies[item] = inc + preValue;
+                        frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
                     }
                 });
                 return frequencies;
