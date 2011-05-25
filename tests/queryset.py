@@ -1105,6 +1105,32 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue('code' not in post.tags)
         self.assertEqual(len(post.tags), 1)
 
+    def test_update_one_pop_generic_reference(self):
+
+        class BlogTag(Document):
+            name = StringField(required=True)
+
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(ReferenceField(BlogTag), required=True)
+
+        tag_1 = BlogTag(name='code')
+        tag_1.save()
+        tag_2 = BlogTag(name='mongodb')
+        tag_2.save()
+
+        post = BlogPost(slug="test", tags=[tag_1])
+        post.save()
+
+        post = BlogPost(slug="test-2", tags=[tag_1, tag_2])
+        post.save()
+        self.assertEqual(len(post.tags), 2)
+
+        BlogPost.objects(slug="test-2").update_one(pop__tags=-1)
+
+        post.reload()
+        self.assertEqual(len(post.tags), 1)
+
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
         """
