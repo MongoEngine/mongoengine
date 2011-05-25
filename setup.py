@@ -46,5 +46,5 @@ setup(name='mongoengine',
       platforms=['any'],
       classifiers=CLASSIFIERS,
       install_requires=['pymongo', 'blinker'],
-      test_suite='tests.signals',
+      test_suite='tests',
 )
