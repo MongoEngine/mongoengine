@@ -1187,6 +1187,29 @@ class QuerySetTest(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
+    def test_confirm_order_by_reference_wont_work(self):
+        """Ordering by reference is not possible.  Use map / reduce.. or
+        denormalise"""
+
+        class Author(Document):
+            author = ReferenceField(self.Person)
+
+        Author.drop_collection()
+
+        person_a = self.Person(name="User A", age=20)
+        person_a.save()
+        person_b = self.Person(name="User B", age=40)
+        person_b.save()
+        person_c = self.Person(name="User C", age=30)
+        person_c.save()
+
+        Author(author=person_a).save()
+        Author(author=person_b).save()
+        Author(author=person_c).save()
+
+        names = [a.author.name for a in Author.objects.order_by('-author__age')]
+        self.assertEqual(names, ['User A', 'User B', 'User C'])
+
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
         """
