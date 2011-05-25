@@ -1,5 +1,6 @@
 from pymongo import Connection
 import multiprocessing
+import threading
 
 __all__ = ['ConnectionError', 'connect']
 
@@ -22,17 +23,22 @@ class ConnectionError(Exception):
 
 
 def _get_connection(reconnect=False):
+    """Handles the connection to the database
+    """
     global _connection
     identity = get_identity()
     # Connect to the database if not already connected
     if _connection.get(identity) is None or reconnect:
         try:
             _connection[identity] = Connection(**_connection_settings)
-        except:
-            raise ConnectionError('Cannot connect to the database')
+        except Exception, e:
+            raise ConnectionError("Cannot connect to the database:\n%s" % e)
     return _connection[identity]
 
 def _get_db(reconnect=False):
+    """Handles database connections and authentication based on the current
+    identity
+    """
     global _db, _connection
     identity = get_identity()
     # Connect if not already connected
@@ -52,12 +58,17 @@ def _get_db(reconnect=False):
     return _db[identity]
 
 def get_identity():
+    """Creates an identity key based on the current process and thread
+    identity.
+    """
     identity = multiprocessing.current_process()._identity
     identity = 0 if not identity else identity[0]
+
+    identity = (identity, threading.current_thread().ident)
     return identity
-    
+
 def connect(db, username=None, password=None, **kwargs):
-    """Connect to the database specified by the 'db' argument. Connection 
+    """Connect to the database specified by the 'db' argument. Connection
     settings may be provided here as well if the database is not running on
     the default port on localhost. If authentication is needed, provide
     username and password arguments as well.

@@ -17,7 +17,7 @@ import warnings
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
-           'ObjectIdField', 'ReferenceField', 'ValidationError',
+           'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
            'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
            'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField']
 
@@ -339,7 +339,7 @@ class ListField(BaseField):
 
         if isinstance(self.field, ReferenceField):
             referenced_type = self.field.document_type
-            # Get value from document instance if available 
+            # Get value from document instance if available
             value_list = instance._data.get(self.name)
             if value_list:
                 deref_list = []
@@ -449,7 +449,108 @@ class DictField(BaseField):
                                   'contain "." or "$" characters')
 
     def lookup_member(self, member_name):
-        return self.basecls(db_field=member_name)
+        return DictField(basecls=self.basecls, db_field=member_name)
+
+    def prepare_query_value(self, op, value):
+        match_operators = ['contains', 'icontains', 'startswith',
+                           'istartswith', 'endswith', 'iendswith',
+                           'exact', 'iexact']
+
+        if op in match_operators and isinstance(value, basestring):
+            return StringField().prepare_query_value(op, value)
+
+        return super(DictField,self).prepare_query_value(op, value)
+
+
+class MapField(BaseField):
+    """A field that maps a name to a specified field type. Similar to
+    a DictField, except the 'value' of each item must match the specified
+    field type.
+
+    .. versionadded:: 0.5
+    """
+
+    def __init__(self, field=None, *args, **kwargs):
+        if not isinstance(field, BaseField):
+            raise ValidationError('Argument to MapField constructor must be '
+                                  'a valid field')
+        self.field = field
+        kwargs.setdefault('default', lambda: {})
+        super(MapField, self).__init__(*args, **kwargs)
+
+    def validate(self, value):
+        """Make sure that a list of valid fields is being used.
+        """
+        if not isinstance(value, dict):
+            raise ValidationError('Only dictionaries may be used in a '
+                                  'DictField')
+
+        if any(('.' in k or '$' in k) for k in value):
+            raise ValidationError('Invalid dictionary key name - keys may not '
+                                  'contain "." or "$" characters')
+
+        try:
+            [self.field.validate(item) for item in value.values()]
+        except Exception, err:
+            raise ValidationError('Invalid MapField item (%s)' % str(item))
+
+    def __get__(self, instance, owner):
+        """Descriptor to automatically dereference references.
+        """
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        if isinstance(self.field, ReferenceField):
+            referenced_type = self.field.document_type
+            # Get value from document instance if available
+            value_dict = instance._data.get(self.name)
+            if value_dict:
+                deref_dict = []
+                for key,value in value_dict.iteritems():
+                    # Dereference DBRefs
+                    if isinstance(value, (pymongo.dbref.DBRef)):
+                        value = _get_db().dereference(value)
+                        deref_dict[key] = referenced_type._from_son(value)
+                    else:
+                        deref_dict[key] = value
+                instance._data[self.name] = deref_dict
+
+        if isinstance(self.field, GenericReferenceField):
+            value_dict = instance._data.get(self.name)
+            if value_dict:
+                deref_dict = []
+                for key,value in value_dict.iteritems():
+                    # Dereference DBRefs
+                    if isinstance(value, (dict, pymongo.son.SON)):
+                        deref_dict[key] = self.field.dereference(value)
+                    else:
+                        deref_dict[key] = value
+                instance._data[self.name] = deref_dict
+
+        return super(MapField, self).__get__(instance, owner)
+
+    def to_python(self, value):
+        return dict( [(key,self.field.to_python(item)) for key,item in value.iteritems()] )
+
+    def to_mongo(self, value):
+        return dict( [(key,self.field.to_mongo(item)) for key,item in value.iteritems()] )
+
+    def prepare_query_value(self, op, value):
+        return self.field.prepare_query_value(op, value)
+
+    def lookup_member(self, member_name):
+        return self.field.lookup_member(member_name)
+
+    def _set_owner_document(self, owner_document):
+        self.field.owner_document = owner_document
+        self._owner_document = owner_document
+
+    def _get_owner_document(self, owner_document):
+        self._owner_document = owner_document
+
+    owner_document = property(_get_owner_document, _set_owner_document)
+
 
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
@@ -521,6 +622,9 @@ class ReferenceField(BaseField):
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
+
+    note:  Any documents used as a generic reference must be registered in the
+    document registry.  Importing the model will automatically register it.
 
     .. versionadded:: 0.3
     """
@@ -601,6 +705,7 @@ class GridFSProxy(object):
         self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = grid_id              # Store GridFS id for file
+        self.gridout = None
 
     def __getattr__(self, name):
         obj = self.get()
@@ -614,8 +719,12 @@ class GridFSProxy(object):
     def get(self, id=None):
         if id:
             self.grid_id = id
+        if self.grid_id is None:
+            return None
         try:
-            return self.fs.get(id or self.grid_id)
+            if self.gridout is None:
+                self.gridout = self.fs.get(self.grid_id)
+            return self.gridout
         except:
             # File has been deleted
             return None
@@ -643,11 +752,11 @@ class GridFSProxy(object):
         if not self.newfile:
             self.new_file()
             self.grid_id = self.newfile._id
-        self.newfile.writelines(lines) 
+        self.newfile.writelines(lines)
 
-    def read(self):
+    def read(self, size=-1):
         try:
-            return self.get().read()
+            return self.get().read(size)
         except:
             return None
 
@@ -655,6 +764,7 @@ class GridFSProxy(object):
         # Delete file from GridFS, FileField still remains
         self.fs.delete(self.grid_id)
         self.grid_id = None
+        self.gridout = None
 
     def replace(self, file, **kwargs):
         self.delete()

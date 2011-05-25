@@ -1,13 +1,25 @@
 import unittest
 from datetime import datetime
 import pymongo
+import pickle
 
 from mongoengine import *
+from mongoengine.base import BaseField
 from mongoengine.connection import _get_db
 
 
+class PickleEmbedded(EmbeddedDocument):
+    date = DateTimeField(default=datetime.now)
+
+class PickleTest(Document):
+    number = IntField()
+    string = StringField()
+    embedded = EmbeddedDocumentField(PickleEmbedded)
+    lists = ListField(StringField())
+
+
 class DocumentTest(unittest.TestCase):
-    
+
     def setUp(self):
         connect(db='mongoenginetest')
         self.db = _get_db()
@@ -16,6 +28,9 @@ class DocumentTest(unittest.TestCase):
             name = StringField()
             age = IntField()
         self.Person = Person
+
+    def tearDown(self):
+        self.Person.drop_collection()
 
     def test_drop_collection(self):
         """Ensure that the collection may be dropped from the database.
@@ -38,7 +53,7 @@ class DocumentTest(unittest.TestCase):
             name = name_field
             age = age_field
             non_field = True
-        
+
         self.assertEqual(Person._fields['name'], name_field)
         self.assertEqual(Person._fields['age'], age_field)
         self.assertFalse('non_field' in Person._fields)
@@ -60,7 +75,7 @@ class DocumentTest(unittest.TestCase):
 
         mammal_superclasses = {'Animal': Animal}
         self.assertEqual(Mammal._superclasses, mammal_superclasses)
-        
+
         dog_superclasses = {
             'Animal': Animal,
             'Animal.Mammal': Mammal,
@@ -68,7 +83,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Dog._superclasses, dog_superclasses)
 
     def test_get_subclasses(self):
-        """Ensure that the correct list of subclasses is retrieved by the 
+        """Ensure that the correct list of subclasses is retrieved by the
         _get_subclasses method.
         """
         class Animal(Document): pass
@@ -78,15 +93,15 @@ class DocumentTest(unittest.TestCase):
         class Dog(Mammal): pass
 
         mammal_subclasses = {
-            'Animal.Mammal.Dog': Dog, 
+            'Animal.Mammal.Dog': Dog,
             'Animal.Mammal.Human': Human
         }
         self.assertEqual(Mammal._get_subclasses(), mammal_subclasses)
-        
+
         animal_subclasses = {
             'Animal.Fish': Fish,
             'Animal.Mammal': Mammal,
-            'Animal.Mammal.Dog': Dog, 
+            'Animal.Mammal.Dog': Dog,
             'Animal.Mammal.Human': Human
         }
         self.assertEqual(Animal._get_subclasses(), animal_subclasses)
@@ -124,7 +139,7 @@ class DocumentTest(unittest.TestCase):
 
         self.assertTrue('name' in Employee._fields)
         self.assertTrue('salary' in Employee._fields)
-        self.assertEqual(Employee._meta['collection'], 
+        self.assertEqual(Employee._meta['collection'],
                          self.Person._meta['collection'])
 
         # Ensure that MRO error is not raised
@@ -146,7 +161,7 @@ class DocumentTest(unittest.TestCase):
             class Dog(Animal):
                 pass
         self.assertRaises(ValueError, create_dog_class)
-        
+
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name='dog')
         dog.save()
@@ -161,7 +176,7 @@ class DocumentTest(unittest.TestCase):
             class Employee(self.Person):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
-        
+
         # Test the same for embedded documents
         class Comment(EmbeddedDocument):
             content = StringField()
@@ -176,6 +191,34 @@ class DocumentTest(unittest.TestCase):
         self.assertFalse('_cls' in comment.to_mongo())
         self.assertFalse('_types' in comment.to_mongo())
 
+    def test_abstract_documents(self):
+        """Ensure that a document superclass can be marked as abstract
+        thereby not using it as the name for the collection."""
+
+        class Animal(Document):
+            name = StringField()
+            meta = {'abstract': True}
+
+        class Fish(Animal): pass
+        class Guppy(Fish): pass
+
+        class Mammal(Animal):
+            meta = {'abstract': True}
+        class Human(Mammal): pass
+
+        self.assertFalse('collection' in Animal._meta)
+        self.assertFalse('collection' in Mammal._meta)
+
+        self.assertEqual(Fish._meta['collection'], 'fish')
+        self.assertEqual(Guppy._meta['collection'], 'fish')
+        self.assertEqual(Human._meta['collection'], 'human')
+
+        def create_bad_abstract():
+            class EvilHuman(Human):
+                evil = BooleanField(default=True)
+                meta = {'abstract': True}
+        self.assertRaises(ValueError, create_bad_abstract)
+
     def test_collection_name(self):
         """Ensure that a collection with a specified name may be used.
         """
@@ -186,7 +229,7 @@ class DocumentTest(unittest.TestCase):
         class Person(Document):
             name = StringField()
             meta = {'collection': collection}
-        
+
         user = Person(name="Test User")
         user.save()
         self.assertTrue(collection in self.db.collection_names())
@@ -199,6 +242,22 @@ class DocumentTest(unittest.TestCase):
 
         Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
+
+    def test_collection_name_and_primary(self):
+        """Ensure that a collection with a specified name may be used.
+        """
+
+        class Person(Document):
+            name = StringField(primary_key=True)
+            meta = {'collection': 'app'}
+
+        user = Person(name="Test User")
+        user.save()
+
+        user_obj = Person.objects[0]
+        self.assertEqual(user_obj.name, "Test User")
+
+        Person.drop_collection()
 
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents' collections.
@@ -280,7 +339,7 @@ class DocumentTest(unittest.TestCase):
             tags = ListField(StringField())
             meta = {
                 'indexes': [
-                    '-date', 
+                    '-date',
                     'tags',
                     ('category', '-date')
                 ],
@@ -296,12 +355,12 @@ class DocumentTest(unittest.TestCase):
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
+        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)]
                         in info)
         self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         # tags is a list field so it shouldn't have _types in the index
         self.assertTrue([('tags', 1)] in info)
-        
+
         class ExtendedBlogPost(BlogPost):
             title = StringField()
             meta = {'indexes': ['title']}
@@ -311,7 +370,7 @@ class DocumentTest(unittest.TestCase):
         list(ExtendedBlogPost.objects)
         info = ExtendedBlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
+        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)]
                         in info)
         self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         self.assertTrue([('_types', 1), ('title', 1)] in info)
@@ -334,6 +393,10 @@ class DocumentTest(unittest.TestCase):
         post2 = BlogPost(title='test2', slug='test')
         self.assertRaises(OperationError, post2.save)
 
+
+    def test_unique_with(self):
+        """Ensure that unique_with constraints are applied to fields.
+        """
         class Date(EmbeddedDocument):
             year = IntField(db_field='yr')
 
@@ -356,6 +419,108 @@ class DocumentTest(unittest.TestCase):
         self.assertRaises(OperationError, post3.save)
 
         BlogPost.drop_collection()
+
+    def test_unique_embedded_document(self):
+        """Ensure that uniqueness constraints are applied to fields on embedded documents.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(OperationError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_with_embedded_document_and_embedded_unique(self):
+        """Ensure that uniqueness constraints are applied to fields on
+        embedded documents.  And work with unique_with as well.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField(unique_with='sub.year')
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(OperationError, post3.save)
+
+        # Now there will be two docs with the same title and year
+        post3 = BlogPost(title='test1', sub=SubDocument(year=2009, slug='test-1'))
+        self.assertRaises(OperationError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_and_indexes(self):
+        """Ensure that 'unique' constraints aren't overridden by
+        meta.indexes.
+        """
+        class Customer(Document):
+            cust_id = IntField(unique=True, required=True)
+            meta = {
+                'indexes': ['cust_id'],
+                'allow_inheritance': False,
+            }
+
+        Customer.drop_collection()
+        cust = Customer(cust_id=1)
+        cust.save()
+
+        cust_dupe = Customer(cust_id=1)
+        try:
+            cust_dupe.save()
+            raise AssertionError, "We saved a dupe!"
+        except OperationError:
+            pass
+        Customer.drop_collection()
+
+    def test_unique_and_primary(self):
+        """If you set a field as primary, then unexpected behaviour can occur.
+        You won't create a duplicate but you will update an existing document.
+        """
+
+        class User(Document):
+            name = StringField(primary_key=True, unique=True)
+            password = StringField()
+
+        User.drop_collection()
+
+        user = User(name='huangz', password='secret')
+        user.save()
+
+        user = User(name='huangz', password='secret2')
+        user.save()
+
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().password, 'secret2')
+
+        User.drop_collection()
 
     def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
@@ -380,7 +545,7 @@ class DocumentTest(unittest.TestCase):
 
         class EmailUser(User):
             email = StringField()
-        
+
         user = User(username='test', name='test user')
         user.save()
 
@@ -391,20 +556,20 @@ class DocumentTest(unittest.TestCase):
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'test')
         self.assertTrue('username' not in user_son['_id'])
-        
+
         User.drop_collection()
-        
+
         user = User(pk='mongo', name='mongo user')
         user.save()
-        
+
         user_obj = User.objects.first()
         self.assertEqual(user_obj.id, 'mongo')
         self.assertEqual(user_obj.pk, 'mongo')
-        
+
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'mongo')
         self.assertTrue('username' not in user_son['_id'])
-        
+
         User.drop_collection()
 
     def test_creation(self):
@@ -457,18 +622,18 @@ class DocumentTest(unittest.TestCase):
         """
         class Comment(EmbeddedDocument):
             content = StringField()
-        
+
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
         self.assertFalse('collection' in Comment._meta)
-    
+
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.
         """
         class Comment(EmbeddedDocument):
             date = DateTimeField()
             content = StringField(required=True)
-        
+
         comment = Comment()
         self.assertRaises(ValidationError, comment.validate)
 
@@ -496,7 +661,7 @@ class DocumentTest(unittest.TestCase):
         # Test skipping validation on save
         class Recipient(Document):
             email = EmailField(required=True)
-        
+
         recipient = Recipient(email='root@localhost')
         self.assertRaises(ValidationError, recipient.save)
         try:
@@ -517,19 +682,19 @@ class DocumentTest(unittest.TestCase):
         """Ensure that a document may be saved with a custom _id.
         """
         # Create person object and save it to the database
-        person = self.Person(name='Test User', age=30, 
+        person = self.Person(name='Test User', age=30,
                              id='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
         collection = self.db[self.Person._meta['collection']]
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
-        
+
     def test_save_custom_pk(self):
         """Ensure that a document may be saved with a custom _id using pk alias.
         """
         # Create person object and save it to the database
-        person = self.Person(name='Test User', age=30, 
+        person = self.Person(name='Test User', age=30,
                              pk='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
@@ -565,7 +730,7 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_save_embedded_document(self):
-        """Ensure that a document with an embedded document field may be 
+        """Ensure that a document with an embedded document field may be
         saved in the database.
         """
         class EmployeeDetails(EmbeddedDocument):
@@ -588,10 +753,38 @@ class DocumentTest(unittest.TestCase):
         # Ensure that the 'details' embedded object saved correctly
         self.assertEqual(employee_obj['details']['position'], 'Developer')
 
+    def test_updating_an_embedded_document(self):
+        """Ensure that a document with an embedded document field may be
+        saved in the database.
+        """
+        class EmployeeDetails(EmbeddedDocument):
+            position = StringField()
+
+        class Employee(self.Person):
+            salary = IntField()
+            details = EmbeddedDocumentField(EmployeeDetails)
+
+        # Create employee object and save it to the database
+        employee = Employee(name='Test Employee', age=50, salary=20000)
+        employee.details = EmployeeDetails(position='Developer')
+        employee.save()
+
+        # Test updating an embedded document
+        promoted_employee = Employee.objects.get(name='Test Employee')
+        promoted_employee.details.position = 'Senior Developer'
+        promoted_employee.save()
+
+        collection = self.db[self.Person._meta['collection']]
+        employee_obj = collection.find_one({'name': 'Test Employee'})
+        self.assertEqual(employee_obj['name'], 'Test Employee')
+        self.assertEqual(employee_obj['age'], 50)
+        # Ensure that the 'details' embedded object saved correctly
+        self.assertEqual(employee_obj['details']['position'], 'Senior Developer')
+
     def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.
         """
-        
+
         class BlogPost(Document):
             meta = {'collection': 'blogpost_1'}
             content = StringField()
@@ -610,7 +803,7 @@ class DocumentTest(unittest.TestCase):
         post_obj = BlogPost.objects.first()
 
         # Test laziness
-        self.assertTrue(isinstance(post_obj._data['author'], 
+        self.assertTrue(isinstance(post_obj._data['author'],
                                    pymongo.dbref.DBRef))
         self.assertTrue(isinstance(post_obj.author, self.Person))
         self.assertEqual(post_obj.author.name, 'Test User')
@@ -725,9 +918,25 @@ class DocumentTest(unittest.TestCase):
         self.Person.drop_collection()
         BlogPost.drop_collection()
 
+    def subclasses_and_unique_keys_works(self):
 
-    def tearDown(self):
-        self.Person.drop_collection()
+        class A(Document):
+            pass
+
+        class B(A):
+            foo = BooleanField(unique=True)
+
+        A.drop_collection()
+        B.drop_collection()
+
+        A().save()
+        A().save()
+        B(foo=True).save()
+
+        self.assertEquals(A.objects.count(), 2)
+        self.assertEquals(B.objects.count(), 1)
+        A.drop_collection()
+        B.drop_collection()
 
     def test_document_hash(self):
         """Test document in list, dict, set
@@ -737,7 +946,7 @@ class DocumentTest(unittest.TestCase):
 
         class BlogPost(Document):
             pass
-        
+
         # Clear old datas
         User.drop_collection()
         BlogPost.drop_collection()
@@ -774,9 +983,46 @@ class DocumentTest(unittest.TestCase):
 
         # in Set
         all_user_set = set(User.objects.all())
-        
+
         self.assertTrue(u1 in all_user_set )
-        
+
+    def test_picklable(self):
+
+        pickle_doc = PickleTest(number=1, string="OH HAI", lists=['1', '2'])
+        pickle_doc.embedded = PickleEmbedded()
+        pickle_doc.save()
+
+        pickled_doc = pickle.dumps(pickle_doc)
+        resurrected = pickle.loads(pickled_doc)
+
+        self.assertEquals(resurrected, pickle_doc)
+
+        resurrected.string = "Working"
+        resurrected.save()
+
+        pickle_doc.reload()
+        self.assertEquals(resurrected, pickle_doc)
+
+    def test_write_options(self):
+        """Test that passing write_options works"""
+
+        self.Person.drop_collection()
+
+        write_options = {"fsync": True}
+
+        author, created = self.Person.objects.get_or_create(
+                            name='Test User', write_options=write_options)
+        author.save(write_options=write_options)
+
+        self.Person.objects.update(set__name='Ross', write_options=write_options)
+
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Ross')
+
+        self.Person.objects.update_one(set__name='Test User', write_options=write_options)
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Test User')
+
 
 if __name__ == '__main__':
     unittest.main()

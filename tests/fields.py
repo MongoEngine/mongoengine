@@ -7,6 +7,7 @@ import gridfs
 
 from mongoengine import *
 from mongoengine.connection import _get_db
+from mongoengine.base import _document_registry, NotRegistered
 
 
 class FieldTest(unittest.TestCase):
@@ -45,7 +46,7 @@ class FieldTest(unittest.TestCase):
         """
         class Person(Document):
             name = StringField()
-        
+
         person = Person(name='Test User')
         self.assertEqual(person.id, None)
 
@@ -95,7 +96,7 @@ class FieldTest(unittest.TestCase):
 
         link.url = 'http://www.google.com:8080'
         link.validate()
-        
+
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
@@ -129,12 +130,12 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
-        
+
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.
         """
         class Person(Document):
-            height = DecimalField(min_value=Decimal('0.1'), 
+            height = DecimalField(min_value=Decimal('0.1'),
                                   max_value=Decimal('3.5'))
 
         Person.drop_collection()
@@ -249,7 +250,7 @@ class FieldTest(unittest.TestCase):
         post.save()
         post.reload()
         self.assertEqual(post.tags, ['fun', 'leisure'])
-        
+
         comment1 = Comment(content='Good for you', order=1)
         comment2 = Comment(content='Yay.', order=0)
         comments = [comment1, comment2]
@@ -261,11 +262,13 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def test_dict_validation(self):
+    def test_dict_field(self):
         """Ensure that dict types work as expected.
         """
         class BlogPost(Document):
             info = DictField()
+
+        BlogPost.drop_collection()
 
         post = BlogPost()
         post.info = 'my post'
@@ -281,7 +284,24 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, post.validate)
 
         post.info = {'title': 'test'}
-        post.validate()
+        post.save()
+
+        post = BlogPost()
+        post.info = {'details': {'test': 'test'}}
+        post.save()
+
+        post = BlogPost()
+        post.info = {'details': {'test': 3}}
+        post.save()
+
+        self.assertEquals(BlogPost.objects.count(), 3)
+        self.assertEquals(BlogPost.objects.filter(info__title__exact='test').count(), 1)
+        self.assertEquals(BlogPost.objects.filter(info__details__test__exact='test').count(), 1)
+
+        # Confirm handles non strings or non existing keys
+        self.assertEquals(BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
+        self.assertEquals(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
+        BlogPost.drop_collection()
 
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
@@ -315,7 +335,7 @@ class FieldTest(unittest.TestCase):
         person.validate()
 
     def test_embedded_document_inheritance(self):
-        """Ensure that subclasses of embedded documents may be provided to 
+        """Ensure that subclasses of embedded documents may be provided to
         EmbeddedDocumentFields of the superclass' type.
         """
         class User(EmbeddedDocument):
@@ -327,7 +347,7 @@ class FieldTest(unittest.TestCase):
         class BlogPost(Document):
             content = StringField()
             author = EmbeddedDocumentField(User)
-        
+
         post = BlogPost(content='What I did today...')
         post.author = User(name='Test User')
         post.author = PowerUser(name='Test User', power=47)
@@ -370,7 +390,7 @@ class FieldTest(unittest.TestCase):
 
         User.drop_collection()
         BlogPost.drop_collection()
-    
+
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
@@ -434,7 +454,7 @@ class FieldTest(unittest.TestCase):
         class TreeNode(EmbeddedDocument):
             name = StringField()
             children = ListField(EmbeddedDocumentField('self'))
-        
+
         tree = Tree(name="Tree")
 
         first_child = TreeNode(name="Child 1")
@@ -442,7 +462,7 @@ class FieldTest(unittest.TestCase):
 
         second_child = TreeNode(name="Child 2")
         first_child.children.append(second_child)
-        
+
         third_child = TreeNode(name="Child 3")
         first_child.children.append(third_child)
 
@@ -506,20 +526,20 @@ class FieldTest(unittest.TestCase):
 
         Member.drop_collection()
         BlogPost.drop_collection()
-        
+
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
         """
         class Link(Document):
             title = StringField()
             meta = {'allow_inheritance': False}
-            
+
         class Post(Document):
             title = StringField()
-            
+
         class Bookmark(Document):
             bookmark_object = GenericReferenceField()
-            
+
         Link.drop_collection()
         Post.drop_collection()
         Bookmark.drop_collection()
@@ -574,14 +594,47 @@ class FieldTest(unittest.TestCase):
 
         user = User(bookmarks=[post_1, link_1])
         user.save()
-        
+
         user = User.objects(bookmarks__all=[post_1, link_1]).first()
-        
+
         self.assertEqual(user.bookmarks[0], post_1)
         self.assertEqual(user.bookmarks[1], link_1)
-        
+
         Link.drop_collection()
         Post.drop_collection()
+        User.drop_collection()
+
+    def test_generic_reference_document_not_registered(self):
+        """Ensure dereferencing out of the document registry throws a
+        `NotRegistered` error.
+        """
+        class Link(Document):
+            title = StringField()
+
+        class User(Document):
+            bookmarks = ListField(GenericReferenceField())
+
+        Link.drop_collection()
+        User.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        user = User(bookmarks=[link_1])
+        user.save()
+
+        # Mimic User and Link definitions being in a different file
+        # and the Link model not being imported in the User file.
+        del(_document_registry["Link"])
+
+        user = User.objects.first()
+        try:
+            user.bookmarks
+            raise AssertionError, "Link was removed from the registry"
+        except NotRegistered:
+            pass
+
+        Link.drop_collection()
         User.drop_collection()
 
     def test_binary_fields(self):
@@ -701,6 +754,12 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(streamfile == result)
         self.assertEquals(result.file.read(), text + more_text)
         self.assertEquals(result.file.content_type, content_type)
+        result.file.seek(0)
+        self.assertEquals(result.file.tell(), 0)
+        self.assertEquals(result.file.read(len(text)), text)
+        self.assertEquals(result.file.tell(), len(text))
+        self.assertEquals(result.file.read(len(more_text)), more_text)
+        self.assertEquals(result.file.tell(), len(text + more_text))
         result.file.delete()
 
         # Ensure deleted file returns None
@@ -721,7 +780,7 @@ class FieldTest(unittest.TestCase):
         result = SetFile.objects.first()
         self.assertTrue(setfile == result)
         self.assertEquals(result.file.read(), more_text)
-        result.file.delete() 
+        result.file.delete()
 
         PutFile.drop_collection()
         StreamFile.drop_collection()
@@ -784,6 +843,67 @@ class FieldTest(unittest.TestCase):
         d2 = D()
         self.assertEqual(d2.data, {})
         self.assertEqual(d2.data2, {})
+
+    def test_mapfield(self):
+        """Ensure that the MapField handles the declared type."""
+
+        class Simple(Document):
+            mapping = MapField(IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping['someint'] = 1
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping['somestring'] = "abc"
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        def create_invalid_class():
+            class NoDeclaredType(Document):
+                mapping = MapField()
+
+        self.assertRaises(ValidationError, create_invalid_class)
+
+        Simple.drop_collection()
+
+    def test_complex_mapfield(self):
+        """Ensure that the MapField can handle complex declared types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Extensible(Document):
+            mapping = MapField(EmbeddedDocumentField(SettingBase))
+
+        Extensible.drop_collection()
+
+        e = Extensible()
+        e.mapping['somestring'] = StringSetting(value='foo')
+        e.mapping['someint'] = IntegerSetting(value=42)
+        e.save()
+
+        e2 = Extensible.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
+        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+
+        def create_invalid_mapping():
+            e.mapping['someint'] = 123
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Extensible.drop_collection()
+
 
 if __name__ == '__main__':
     unittest.main()
