@@ -31,8 +31,8 @@ def _get_connection(reconnect=False):
     if _connection.get(identity) is None or reconnect:
         try:
             _connection[identity] = Connection(**_connection_settings)
-        except:
-            raise ConnectionError('Cannot connect to the database')
+        except Exception, e:
+            raise ConnectionError("Cannot connect to the database:\n%s" % e)
     return _connection[identity]
 
 def _get_db(reconnect=False):
