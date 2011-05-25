@@ -555,9 +555,24 @@ class MapField(BaseField):
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
+
+    Use the `reverse_delete_rule` to handle what should happen if the document
+    the field is referencing is deleted.
+
+    The options are:
+
+      * DO_NOTHING  - don't do anything (default).
+      * NULLIFY     - Updates the reference to null.
+      * CASCADE     - Deletes the documents associated with the reference.
+      * DENY        - Prevent the deletion of the reference object.
     """
 
     def __init__(self, document_type, reverse_delete_rule=DO_NOTHING, **kwargs):
+        """Initialises the Reference Field.
+
+        :param reverse_delete_rule: Determines what to do when the referring
+          object is deleted
+        """
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
                 raise ValidationError('Argument to ReferenceField constructor '

@@ -152,6 +152,21 @@ We can then store a list of comment documents in our post document::
         tags = ListField(StringField(max_length=30))
         comments = ListField(EmbeddedDocumentField(Comment))
 
+Handling deletions of references
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`~mongoengine.ReferenceField` object takes a keyword
+`reverse_delete_rule` for handling deletion rules if the reference is deleted.
+To delete all the posts if a user is deleted set the rule::
+
+    class Post(Document):
+        title = StringField(max_length=120, required=True)
+        author = ReferenceField(User, reverse_delete_rule=CASCADE)
+        tags = ListField(StringField(max_length=30))
+        comments = ListField(EmbeddedDocumentField(Comment))
+
+See :class:`~mongoengine.ReferenceField` for more information.
+
 Adding data to our Tumblelog
 ============================
 Now that we've defined how our documents will be structured, let's start adding
