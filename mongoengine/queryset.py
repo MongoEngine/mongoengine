@@ -382,15 +382,17 @@ class QuerySet(object):
         return self
 
     @classmethod
-    def _build_index_spec(cls, doc_cls, key_or_list):
+    def _build_index_spec(cls, doc_cls, spec):
         """Build a PyMongo index spec from a MongoEngine index spec.
         """
-        if isinstance(key_or_list, basestring):
-            key_or_list = [key_or_list]
+        if isinstance(spec, basestring):
+            spec = {'fields': [spec]}
+        if isinstance(spec, (list, tuple)):
+            spec = {'fields': spec}
 
         index_list = []
         use_types = doc_cls._meta.get('allow_inheritance', True)
-        for key in key_or_list:
+        for key in spec['fields']:
             # Get direction from + or -
             direction = pymongo.ASCENDING
             if key.startswith("-"):
@@ -411,10 +413,18 @@ class QuerySet(object):
                 use_types = False
 
         # If _types is being used, prepend it to every specified index
-        if doc_cls._meta.get('allow_inheritance') and use_types:
+        if (spec.get('types', True) and doc_cls._meta.get('allow_inheritance')
+                and use_types):
             index_list.insert(0, ('_types', 1))
 
-        return index_list
+        spec['fields'] = index_list
+
+        if spec.get('sparse', False) and len(spec['fields']) > 1:
+            raise ValueError(
+                'Sparse indexes can only have one field in them. '
+                'See https://jira.mongodb.org/browse/SERVER-2193')
+
+        return spec
 
     def __call__(self, q_obj=None, class_check=True, **query):
         """Filter the selected documents by calling the
@@ -465,9 +475,12 @@ class QuerySet(object):
 
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
-                for key_or_list in self._document._meta['indexes']:
-                    self._collection.ensure_index(key_or_list,
-                        background=background, **index_opts)
+                for spec in self._document._meta['indexes']:
+                    opts = index_opts.copy()
+                    opts['unique'] = spec.get('unique', False)
+                    opts['sparse'] = spec.get('sparse', False)
+                    self._collection.ensure_index(spec['fields'],
+                        background=background, **opts)
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
