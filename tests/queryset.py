@@ -1466,35 +1466,54 @@ class QuerySetTest(unittest.TestCase):
         BlogPost(hits=2, tags=['music', 'watch']).save()
         BlogPost(hits=2, tags=['music', 'actors']).save()
 
-        f = BlogPost.objects.item_frequencies('tags')
-        f = dict((key, int(val)) for key, val in f.items())
-        self.assertEqual(set(['music', 'film', 'actors', 'watch']), set(f.keys()))
-        self.assertEqual(f['music'], 3)
-        self.assertEqual(f['actors'], 2)
-        self.assertEqual(f['watch'], 2)
-        self.assertEqual(f['film'], 1)
+        def test_assertions(f):
+            f = dict((key, int(val)) for key, val in f.items())
+            self.assertEqual(set(['music', 'film', 'actors', 'watch']), set(f.keys()))
+            self.assertEqual(f['music'], 3)
+            self.assertEqual(f['actors'], 2)
+            self.assertEqual(f['watch'], 2)
+            self.assertEqual(f['film'], 1)
+
+        exec_js = BlogPost.objects.item_frequencies('tags')
+        map_reduce = BlogPost.objects.item_frequencies('tags', map_reduce=True)
+        test_assertions(exec_js)
+        test_assertions(map_reduce)
 
         # Ensure query is taken into account
-        f = BlogPost.objects(hits__gt=1).item_frequencies('tags')
-        f = dict((key, int(val)) for key, val in f.items())
-        self.assertEqual(set(['music', 'actors', 'watch']), set(f.keys()))
-        self.assertEqual(f['music'], 2)
-        self.assertEqual(f['actors'], 1)
-        self.assertEqual(f['watch'], 1)
+        def test_assertions(f):
+            f = dict((key, int(val)) for key, val in f.items())
+            self.assertEqual(set(['music', 'actors', 'watch']), set(f.keys()))
+            self.assertEqual(f['music'], 2)
+            self.assertEqual(f['actors'], 1)
+            self.assertEqual(f['watch'], 1)
+
+        exec_js = BlogPost.objects(hits__gt=1).item_frequencies('tags')
+        map_reduce = BlogPost.objects(hits__gt=1).item_frequencies('tags', map_reduce=True)
+        test_assertions(exec_js)
+        test_assertions(map_reduce)
 
         # Check that normalization works
-        f = BlogPost.objects.item_frequencies('tags', normalize=True)
-        self.assertAlmostEqual(f['music'], 3.0/8.0)
-        self.assertAlmostEqual(f['actors'], 2.0/8.0)
-        self.assertAlmostEqual(f['watch'], 2.0/8.0)
-        self.assertAlmostEqual(f['film'], 1.0/8.0)
+        def test_assertions(f):
+            self.assertAlmostEqual(f['music'], 3.0/8.0)
+            self.assertAlmostEqual(f['actors'], 2.0/8.0)
+            self.assertAlmostEqual(f['watch'], 2.0/8.0)
+            self.assertAlmostEqual(f['film'], 1.0/8.0)
+
+        exec_js = BlogPost.objects.item_frequencies('tags', normalize=True)
+        map_reduce = BlogPost.objects.item_frequencies('tags', normalize=True, map_reduce=True)
+        test_assertions(exec_js)
+        test_assertions(map_reduce)
 
         # Check item_frequencies works for non-list fields
-        f = BlogPost.objects.item_frequencies('hits')
-        f = dict((key, int(val)) for key, val in f.items())
-        self.assertEqual(set(['1', '2']), set(f.keys()))
-        self.assertEqual(f['1'], 1)
-        self.assertEqual(f['2'], 2)
+        def test_assertions(f):
+            self.assertEqual(set(['1', '2']), set(f.keys()))
+            self.assertEqual(f['1'], 1)
+            self.assertEqual(f['2'], 2)
+
+        exec_js = BlogPost.objects.item_frequencies('hits')
+        map_reduce = BlogPost.objects.item_frequencies('hits', map_reduce=True)
+        test_assertions(exec_js)
+        test_assertions(map_reduce)
 
         BlogPost.drop_collection()
 

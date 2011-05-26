@@ -774,7 +774,8 @@ class QuerySet(object):
         :param map_f: map function, as :class:`~pymongo.code.Code` or string
         :param reduce_f: reduce function, as
                          :class:`~pymongo.code.Code` or string
-        :param output: output collection name
+        :param output: output collection name, if set to 'inline' will try to
+                       use :class:`~pymongo.collection.Collection.inline_map_reduce`
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
@@ -824,8 +825,17 @@ class QuerySet(object):
 
         if limit:
             mr_args['limit'] = limit
-        results = self._collection.map_reduce(map_f, reduce_f, output, **mr_args)
-        results = results.find()
+
+        if output == 'inline' or (not keep_temp and not self._ordering):
+            map_reduce_function = 'inline_map_reduce'
+        else:
+            map_reduce_function = 'map_reduce'
+            mr_args['out'] = output
+
+        results = getattr(self._collection, map_reduce_function)(map_f, reduce_f, **mr_args)
+
+        if map_reduce_function == 'map_reduce':
+            results = results.find()
 
         if self._ordering:
             results = results.sort(self._ordering)
@@ -1266,7 +1276,7 @@ class QuerySet(object):
         """
         return self.exec_js(average_func, field)
 
-    def item_frequencies(self, field, normalize=False):
+    def item_frequencies(self, field, normalize=False, map_reduce=False):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents.
@@ -1276,7 +1286,52 @@ class QuerySet(object):
 
         :param field: the field to use
         :param normalize: normalize the results so they add to 1.0
+        :param map_reduce: Use map_reduce over exec_js
         """
+        if map_reduce:
+            return self._item_frequencies_map_reduce(field, normalize=normalize)
+        return self._item_frequencies_exec_js(field, normalize=normalize)
+
+    def _item_frequencies_map_reduce(self, field, normalize=False):
+        map_func = """
+            function() {
+                if (this[~%(field)s].constructor == Array) {
+                    this[~%(field)s].forEach(function(item) {
+                        emit(item, 1);
+                    });
+                } else {
+                    emit(this[~%(field)s], 1);
+                }
+            }
+        """ % dict(field=field)
+        reduce_func = """
+            function(key, values) {
+                var total = 0;
+                var valuesSize = values.length;
+                for (var i=0; i < valuesSize; i++) {
+                    total += parseInt(values[i], 10);
+                }
+                return total;
+            }
+        """
+        values = self.map_reduce(map_func, reduce_func, 'inline', keep_temp=False)
+        frequencies = {}
+        for f in values:
+            key = f.key
+            if isinstance(key, float):
+                if int(key) == key:
+                    key = int(key)
+                key = str(key)
+            frequencies[key] = f.value
+
+        if normalize:
+            count = sum(frequencies.values())
+            frequencies = dict([(k, v/count) for k,v in frequencies.items()])
+
+        return frequencies
+
+    def _item_frequencies_exec_js(self, field, normalize=False):
+        """Uses exec_js to execute"""
         freq_func = """
             function(field) {
                 if (options.normalize) {

@@ -5,6 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Added optional map_reduce method item_frequencies
+- Added inline_map_reduce option to map_reduce
 - Updated connection exception so it provides more info on the cause.
 - Added searching multiple levels deep in ``DictField``
 - Added ``DictField`` entries containing strings to use matching operators
