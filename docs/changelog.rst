@@ -2,6 +2,42 @@
 Changelog
 =========
 
+Changes in dev
+==============
+
+- Updated connection exception so it provides more info on the cause.
+- Added searching multiple levels deep in ``DictField``
+- Added ``DictField`` entries containing strings to use matching operators
+- Added ``MapField``, similar to ``DictField`` 
+- Added Abstract Base Classes
+- Added Custom Objects Managers
+- Added sliced subfields updating
+- Added ``NotRegistered`` exception if dereferencing ``Document`` not in the registry
+- Added a write concern for ``save``, ``update``, ``update_one`` and ``get_or_create``
+- Added slicing / subarray fetching controls
+- Fixed various unique index and other index issues
+- Fixed threaded connection issues
+- Added spherical geospatial query operators
+- Updated queryset to handle latest version of pymongo
+  map_reduce now requires an output.
+- Added ``Document`` __hash__, __ne__ for pickling
+- Added ``FileField`` optional size arg for read method 
+- Fixed ``FileField`` seek and tell methods for reading files
+- Added ``QuerySet.clone`` to support copying querysets 
+- Fixed item_frequencies when using name thats the same as a native js function
+- Added reverse delete rules
+- Fixed issue with unset operation
+- Fixed Q-object bug
+- Added ``QuerySet.all_fields`` resets previous .only() and .exlude() 
+- Added ``QuerySet.exclude``
+- Added django style choices
+- Fixed order and filter issue
+- Added ``QuerySet.only`` subfield support
+- Added creation_counter to ``BaseField`` allowing fields to be sorted in the
+  way the user has specified them
+- Fixed various errors
+- Added many tests
+
 Changes in v0.4
 ===============
 - Added ``GridFSStorage`` Django storage backend
