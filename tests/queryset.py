@@ -284,7 +284,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(club.members['John'].age, 14)
 
     def test_dictfield_update(self):
-        """Ensure that the MapField can be updated."""
+        """Ensure that the DictField can be updated."""
         class Club(Document):
             members = DictField()
 
