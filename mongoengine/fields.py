@@ -337,33 +337,54 @@ class ListField(BaseField):
             # Document class being used rather than a document object
             return self
 
-        if isinstance(self.field, ReferenceField):
-            referenced_type = self.field.document_type
-            # Get value from document instance if available
-            value_list = instance._data.get(self.name)
-            if value_list:
-                deref_list = []
-                for value in value_list:
-                    # Dereference DBRefs
-                    if isinstance(value, (pymongo.dbref.DBRef)):
-                        value = _get_db().dereference(value)
-                        deref_list.append(referenced_type._from_son(value))
-                    else:
-                        deref_list.append(value)
-                instance._data[self.name] = deref_list
+        # Get value from document instance if available
+        value_list = instance._data.get(self.name)
+        if isinstance(self.field, ReferenceField) and value_list:
+            db = _get_db()
+            value_list = [(k,v) for k,v in enumerate(value_list)]
+            deref_list = []
+            collections = {}
 
-        if isinstance(self.field, GenericReferenceField):
-            value_list = instance._data.get(self.name)
-            if value_list:
-                deref_list = []
-                for value in value_list:
-                    # Dereference DBRefs
-                    if isinstance(value, (dict, pymongo.son.SON)):
-                        deref_list.append(self.field.dereference(value))
-                    else:
-                        deref_list.append(value)
-                instance._data[self.name] = deref_list
+            for k, v in value_list:
+                deref_list.append(v)
+                # Save any DBRefs
+                if isinstance(v, (pymongo.dbref.DBRef)):
+                    collections.setdefault(v.collection, []).append((k, v))
 
+            # For each collection get the references
+            for collection, dbrefs in collections.items():
+                id_map = dict([(v.id, k) for k, v in dbrefs])
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    deref_list[key] = get_document(ref['_cls'])._from_son(ref)
+            instance._data[self.name] = deref_list
+
+        # Get value from document instance if available
+        if isinstance(self.field, GenericReferenceField) and value_list:
+
+            db = _get_db()
+            value_list = [(k,v) for k,v in enumerate(value_list)]
+            deref_list = []
+            classes = {}
+
+            for k, v in value_list:
+                deref_list.append(v)
+                # Save any DBRefs
+                if isinstance(v, (dict, pymongo.son.SON)):
+                    classes.setdefault(v['_cls'], []).append((k, v))
+
+            # For each collection get the references
+            for doc_cls, dbrefs in classes.items():
+                id_map = dict([(v['_ref'].id, k) for k, v in dbrefs])
+                doc_cls = get_document(doc_cls)
+                collection = doc_cls._meta['collection']
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    deref_list[key] = doc_cls._from_son(ref)
+            instance._data[self.name] = deref_list
         return super(ListField, self).__get__(instance, owner)
 
     def to_python(self, value):
@@ -501,32 +522,53 @@ class MapField(BaseField):
             # Document class being used rather than a document object
             return self
 
-        if isinstance(self.field, ReferenceField):
-            referenced_type = self.field.document_type
-            # Get value from document instance if available
-            value_dict = instance._data.get(self.name)
-            if value_dict:
-                deref_dict = []
-                for key,value in value_dict.iteritems():
-                    # Dereference DBRefs
-                    if isinstance(value, (pymongo.dbref.DBRef)):
-                        value = _get_db().dereference(value)
-                        deref_dict[key] = referenced_type._from_son(value)
-                    else:
-                        deref_dict[key] = value
-                instance._data[self.name] = deref_dict
+        # Get value from document instance if available
+        value_list = instance._data.get(self.name)
+        if isinstance(self.field, ReferenceField) and value_list:
+            db = _get_db()
+            deref_dict = {}
+            collections = {}
 
-        if isinstance(self.field, GenericReferenceField):
-            value_dict = instance._data.get(self.name)
-            if value_dict:
-                deref_dict = []
-                for key,value in value_dict.iteritems():
-                    # Dereference DBRefs
-                    if isinstance(value, (dict, pymongo.son.SON)):
-                        deref_dict[key] = self.field.dereference(value)
-                    else:
-                        deref_dict[key] = value
-                instance._data[self.name] = deref_dict
+            for k, v in value_list.items():
+                deref_dict[k] = v
+                # Save any DBRefs
+                if isinstance(v, (pymongo.dbref.DBRef)):
+                    collections.setdefault(v.collection, []).append((k, v))
+
+            # For each collection get the references
+            for collection, dbrefs in collections.items():
+                id_map = dict([(v.id, k) for k, v in dbrefs])
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    deref_dict[key] = get_document(ref['_cls'])._from_son(ref)
+            instance._data[self.name] = deref_dict
+
+        # Get value from document instance if available
+        if isinstance(self.field, GenericReferenceField) and value_list:
+
+            db = _get_db()
+            value_list = [(k,v) for k,v in value_list.items()]
+            deref_dict = {}
+            classes = {}
+
+            for k, v in value_list:
+                deref_dict[k] = v
+                # Save any DBRefs
+                if isinstance(v, (dict, pymongo.son.SON)):
+                    classes.setdefault(v['_cls'], []).append((k, v))
+
+            # For each collection get the references
+            for doc_cls, dbrefs in classes.items():
+                id_map = dict([(v['_ref'].id, k) for k, v in dbrefs])
+                doc_cls = get_document(doc_cls)
+                collection = doc_cls._meta['collection']
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    deref_dict[key] = doc_cls._from_son(ref)
+            instance._data[self.name] = deref_dict
 
         return super(MapField, self).__get__(instance, owner)
 
@@ -869,3 +911,76 @@ class GeoPointField(BaseField):
         if (not isinstance(value[0], (float, int)) and
             not isinstance(value[1], (float, int))):
             raise ValidationError('Both values in point must be float or int.')
+
+
+
+class DereferenceMixin(object):
+    """ WORK IN PROGRESS"""
+
+    def __get__(self, instance, owner):
+        """Descriptor to automatically dereference references.
+        """
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        # Get value from document instance if available
+        value_list = instance._data.get(self.name)
+        if not value_list:
+            return super(MapField, self).__get__(instance, owner)
+
+        is_dict = True
+        if not hasattr(value_list, 'items'):
+            is_dict = False
+            value_list = dict([(k,v) for k,v in enumerate(value_list)])
+
+        if isinstance(self.field, ReferenceField) and value_list:
+            db = _get_db()
+            dbref = {}
+            if not is_dict:
+                dbref = []
+            collections = {}
+
+            for k, v in value_list.items():
+                dbref[k] = v
+                # Save any DBRefs
+                if isinstance(v, (pymongo.dbref.DBRef)):
+                    collections.setdefault(v.collection, []).append((k, v))
+
+            # For each collection get the references
+            for collection, dbrefs in collections.items():
+                id_map = dict([(v.id, k) for k, v in dbrefs])
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    dbref[key] = get_document(ref['_cls'])._from_son(ref)
+
+            instance._data[self.name] = dbref
+
+        # Get value from document instance if available
+        if isinstance(self.field, GenericReferenceField) and value_list:
+
+            db = _get_db()
+            value_list = [(k,v) for k,v in value_list.items()]
+            dbref = {}
+            classes = {}
+
+            for k, v in value_list:
+                dbref[k] = v
+                # Save any DBRefs
+                if isinstance(v, (dict, pymongo.son.SON)):
+                    classes.setdefault(v['_cls'], []).append((k, v))
+
+            # For each collection get the references
+            for doc_cls, dbrefs in classes.items():
+                id_map = dict([(v['_ref'].id, k) for k, v in dbrefs])
+                doc_cls = get_document(doc_cls)
+                collection = doc_cls._meta['collection']
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    dbref[key] = doc_cls._from_son(ref)
+            instance._data[self.name] = dbref
+
+        return super(DereferenceField, self).__get__(instance, owner)

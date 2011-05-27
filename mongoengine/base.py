@@ -126,6 +126,7 @@ class BaseField(object):
 
         self.validate(value)
 
+
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
     """
