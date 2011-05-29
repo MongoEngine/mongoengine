@@ -2099,6 +2099,22 @@ class QuerySetTest(unittest.TestCase):
         Number.drop_collection()
 
 
+    def test_ensure_index(self):
+        """Ensure that manual creation of indexes works.
+        """
+        class Comment(Document):
+            message = StringField()
+
+        Comment.objects.ensure_index('message')
+
+        info = Comment.objects._collection.index_information()
+        info = [(value['key'],
+                 value.get('unique', False),
+                 value.get('sparse', False))
+                for key, value in info.iteritems()]
+        self.assertTrue(([('_types', 1), ('message', 1)], False, False) in info)
+
+
 class QTest(unittest.TestCase):
 
     def setUp(self):

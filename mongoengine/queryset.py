@@ -376,9 +376,13 @@ class QuerySet(object):
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
         """
-        index_list = QuerySet._build_index_spec(self._document, key_or_list)
-        self._collection.ensure_index(index_list, drop_dups=drop_dups,
-            background=background)
+        index_spec = QuerySet._build_index_spec(self._document, key_or_list)
+        self._collection.ensure_index(
+            index_spec['fields'], 
+            drop_dups=drop_dups,
+            background=background,
+            sparse=index_spec.get('sparse', False),
+            unique=index_spec.get('unique', False))
         return self
 
     @classmethod
