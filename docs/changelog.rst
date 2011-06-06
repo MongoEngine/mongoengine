@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added insert method for bulk inserts
 - Added blinker signal support
 - Added query_counter context manager for tests
 - Added DereferenceBaseField - for improved performance in field dereferencing
