@@ -1,4 +1,5 @@
-from base import BaseField, ObjectIdField, ValidationError, get_document
+from base import (BaseField, DereferenceBaseField, ObjectIdField,
+                  ValidationError, get_document)
 from queryset import DO_NOTHING
 from document import Document, EmbeddedDocument
 from connection import _get_db
@@ -12,7 +13,6 @@ import pymongo.binary
 import datetime, time
 import decimal
 import gridfs
-import warnings
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
@@ -118,8 +118,8 @@ class EmailField(StringField):
 
     EMAIL_REGEX = re.compile(
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
-        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"' # quoted-string
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE # domain
+        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'  # quoted-string
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE  # domain
     )
 
     def validate(self, value):
@@ -153,6 +153,7 @@ class IntField(BaseField):
     def prepare_query_value(self, op, value):
         return int(value)
 
+
 class FloatField(BaseField):
     """An floating point number field.
     """
@@ -177,6 +178,7 @@ class FloatField(BaseField):
 
     def prepare_query_value(self, op, value):
         return float(value)
+
 
 class DecimalField(BaseField):
     """A fixed-point decimal number field.
@@ -252,20 +254,20 @@ class DateTimeField(BaseField):
         else:
             usecs = 0
         kwargs = {'microsecond': usecs}
-        try: # Seconds are optional, so try converting seconds first.
+        try:  # Seconds are optional, so try converting seconds first.
             return datetime.datetime(*time.strptime(value, '%Y-%m-%d %H:%M:%S')[:6],
                                      **kwargs)
-
         except ValueError:
-            try: # Try without seconds.
+            try:  # Try without seconds.
                 return datetime.datetime(*time.strptime(value, '%Y-%m-%d %H:%M')[:5],
                                          **kwargs)
-            except ValueError: # Try without hour/minutes/seconds.
+            except ValueError:  # Try without hour/minutes/seconds.
                 try:
                     return datetime.datetime(*time.strptime(value, '%Y-%m-%d')[:3],
                                              **kwargs)
                 except ValueError:
                     return None
+
 
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of
@@ -314,7 +316,7 @@ class EmbeddedDocumentField(BaseField):
         return self.to_mongo(value)
 
 
-class ListField(BaseField):
+class ListField(DereferenceBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
     """
@@ -329,42 +331,6 @@ class ListField(BaseField):
         self.field = field
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
-
-    def __get__(self, instance, owner):
-        """Descriptor to automatically dereference references.
-        """
-        if instance is None:
-            # Document class being used rather than a document object
-            return self
-
-        if isinstance(self.field, ReferenceField):
-            referenced_type = self.field.document_type
-            # Get value from document instance if available
-            value_list = instance._data.get(self.name)
-            if value_list:
-                deref_list = []
-                for value in value_list:
-                    # Dereference DBRefs
-                    if isinstance(value, (pymongo.dbref.DBRef)):
-                        value = _get_db().dereference(value)
-                        deref_list.append(referenced_type._from_son(value))
-                    else:
-                        deref_list.append(value)
-                instance._data[self.name] = deref_list
-
-        if isinstance(self.field, GenericReferenceField):
-            value_list = instance._data.get(self.name)
-            if value_list:
-                deref_list = []
-                for value in value_list:
-                    # Dereference DBRefs
-                    if isinstance(value, (dict, pymongo.son.SON)):
-                        deref_list.append(self.field.dereference(value))
-                    else:
-                        deref_list.append(value)
-                instance._data[self.name] = deref_list
-
-        return super(ListField, self).__get__(instance, owner)
 
     def to_python(self, value):
         return [self.field.to_python(item) for item in value]
@@ -459,10 +425,10 @@ class DictField(BaseField):
         if op in match_operators and isinstance(value, basestring):
             return StringField().prepare_query_value(op, value)
 
-        return super(DictField,self).prepare_query_value(op, value)
+        return super(DictField, self).prepare_query_value(op, value)
 
 
-class MapField(BaseField):
+class MapField(DereferenceBaseField):
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
@@ -494,47 +460,11 @@ class MapField(BaseField):
         except Exception, err:
             raise ValidationError('Invalid MapField item (%s)' % str(item))
 
-    def __get__(self, instance, owner):
-        """Descriptor to automatically dereference references.
-        """
-        if instance is None:
-            # Document class being used rather than a document object
-            return self
-
-        if isinstance(self.field, ReferenceField):
-            referenced_type = self.field.document_type
-            # Get value from document instance if available
-            value_dict = instance._data.get(self.name)
-            if value_dict:
-                deref_dict = []
-                for key,value in value_dict.iteritems():
-                    # Dereference DBRefs
-                    if isinstance(value, (pymongo.dbref.DBRef)):
-                        value = _get_db().dereference(value)
-                        deref_dict[key] = referenced_type._from_son(value)
-                    else:
-                        deref_dict[key] = value
-                instance._data[self.name] = deref_dict
-
-        if isinstance(self.field, GenericReferenceField):
-            value_dict = instance._data.get(self.name)
-            if value_dict:
-                deref_dict = []
-                for key,value in value_dict.iteritems():
-                    # Dereference DBRefs
-                    if isinstance(value, (dict, pymongo.son.SON)):
-                        deref_dict[key] = self.field.dereference(value)
-                    else:
-                        deref_dict[key] = value
-                instance._data[self.name] = deref_dict
-
-        return super(MapField, self).__get__(instance, owner)
-
     def to_python(self, value):
-        return dict( [(key,self.field.to_python(item)) for key,item in value.iteritems()] )
+        return dict([(key, self.field.to_python(item)) for key, item in value.iteritems()])
 
     def to_mongo(self, value):
-        return dict( [(key,self.field.to_mongo(item)) for key,item in value.iteritems()] )
+        return dict([(key, self.field.to_mongo(item)) for key, item in value.iteritems()])
 
     def prepare_query_value(self, op, value):
         if op not in ('set', 'unset'):
@@ -752,11 +682,11 @@ class GridFSProxy(object):
         self.newfile = self.fs.new_file(**kwargs)
         self.grid_id = self.newfile._id
 
-    def put(self, file, **kwargs):
+    def put(self, file_obj, **kwargs):
         if self.grid_id:
             raise GridFSError('This document already has a file. Either delete '
                               'it or call replace to overwrite it')
-        self.grid_id = self.fs.put(file, **kwargs)
+        self.grid_id = self.fs.put(file_obj, **kwargs)
 
     def write(self, string):
         if self.grid_id:
@@ -785,9 +715,9 @@ class GridFSProxy(object):
         self.grid_id = None
         self.gridout = None
 
-    def replace(self, file, **kwargs):
+    def replace(self, file_obj, **kwargs):
         self.delete()
-        self.put(file, **kwargs)
+        self.put(file_obj, **kwargs)
 
     def close(self):
         if self.newfile:

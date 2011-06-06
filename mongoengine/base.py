@@ -2,9 +2,12 @@ from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
 
+from mongoengine import signals
+
 import sys
 import pymongo
 import pymongo.objectid
+from operator import itemgetter
 
 
 class NotRegistered(Exception):
@@ -125,6 +128,88 @@ class BaseField(object):
                 raise ValueError('validation argument must be a callable.')
 
         self.validate(value)
+
+
+class DereferenceBaseField(BaseField):
+    """Handles the lazy dereferencing of a queryset.  Will dereference all
+    items in a list / dict rather than one at a time.
+    """
+
+    def __get__(self, instance, owner):
+        """Descriptor to automatically dereference references.
+        """
+        from fields import ReferenceField, GenericReferenceField
+        from connection import _get_db
+
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        # Get value from document instance if available
+        value_list = instance._data.get(self.name)
+        if not value_list:
+            return super(DereferenceBaseField, self).__get__(instance, owner)
+
+        is_list = False
+        if not hasattr(value_list, 'items'):
+            is_list = True
+            value_list = dict([(k,v) for k,v in enumerate(value_list)])
+
+        if isinstance(self.field, ReferenceField) and value_list:
+            db = _get_db()
+            dbref = {}
+            collections = {}
+
+            for k, v in value_list.items():
+                dbref[k] = v
+                # Save any DBRefs
+                if isinstance(v, (pymongo.dbref.DBRef)):
+                    collections.setdefault(v.collection, []).append((k, v))
+
+            # For each collection get the references
+            for collection, dbrefs in collections.items():
+                id_map = dict([(v.id, k) for k, v in dbrefs])
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    dbref[key] = get_document(ref['_cls'])._from_son(ref)
+
+            if is_list:
+                dbref = [v for k,v in sorted(dbref.items(), key=itemgetter(0))]
+            instance._data[self.name] = dbref
+
+        # Get value from document instance if available
+        if isinstance(self.field, GenericReferenceField) and value_list:
+            db = _get_db()
+            value_list = [(k,v) for k,v in value_list.items()]
+            dbref = {}
+            classes = {}
+
+            for k, v in value_list:
+                dbref[k] = v
+                # Save any DBRefs
+                if isinstance(v, (dict, pymongo.son.SON)):
+                    classes.setdefault(v['_cls'], []).append((k, v))
+
+            # For each collection get the references
+            for doc_cls, dbrefs in classes.items():
+                id_map = dict([(v['_ref'].id, k) for k, v in dbrefs])
+                doc_cls = get_document(doc_cls)
+                collection = doc_cls._meta['collection']
+                references = db[collection].find({'_id': {'$in': id_map.keys()}})
+
+                for ref in references:
+                    key = id_map[ref['_id']]
+                    dbref[key] = doc_cls._from_son(ref)
+
+            if is_list:
+                dbref = [v for k,v in sorted(dbref.items(), key=itemgetter(0))]
+
+            instance._data[self.name] = dbref
+
+        return super(DereferenceBaseField, self).__get__(instance, owner)
+
+
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
@@ -382,6 +467,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 class BaseDocument(object):
 
     def __init__(self, **values):
+        signals.pre_init.send(self, values=values)
+
         self._data = {}
         # Assign default values to instance
         for attr_name in self._fields.keys():
@@ -394,6 +481,8 @@ class BaseDocument(object):
                 setattr(self, attr_name, values.pop(attr_name))
             except AttributeError:
                 pass
+
+        signals.post_init.send(self)
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
