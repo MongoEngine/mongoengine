@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added slave_okay kwarg to queryset
 - Added insert method for bulk inserts
 - Added blinker signal support
 - Added query_counter context manager for tests
