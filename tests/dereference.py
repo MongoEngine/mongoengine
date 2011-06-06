@@ -11,7 +11,7 @@ class FieldTest(unittest.TestCase):
         connect(db='mongoenginetest')
         self.db = _get_db()
 
-    def ztest_list_item_dereference(self):
+    def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
         class User(Document):
@@ -42,7 +42,7 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-    def ztest_recursive_reference(self):
+    def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
         """
         class Employee(Document):
@@ -75,7 +75,7 @@ class FieldTest(unittest.TestCase):
             peter.friends
             self.assertEqual(q, 3)
 
-    def ztest_generic_reference(self):
+    def test_generic_reference(self):
 
         class UserA(Document):
             name = StringField()
