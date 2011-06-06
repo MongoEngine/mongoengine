@@ -336,6 +336,7 @@ class QuerySet(object):
         self._snapshot = False
         self._timeout = True
         self._class_check = True
+        self._slave_okay = False
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -430,7 +431,7 @@ class QuerySet(object):
 
         return spec
 
-    def __call__(self, q_obj=None, class_check=True, **query):
+    def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -440,6 +441,8 @@ class QuerySet(object):
             objects, only the last one will be used
         :param class_check: If set to False bypass class name check when
             querying collection
+        :param slave_okay: if True, allows this query to be run against a
+            replica secondary.
         :param query: Django-style query keyword arguments
         """
         query = Q(**query)
@@ -449,6 +452,7 @@ class QuerySet(object):
         self._mongo_query = None
         self._cursor_obj = None
         self._class_check = class_check
+        self._slave_okay = slave_okay
         return self
 
     def filter(self, *q_objs, **query):
@@ -506,6 +510,7 @@ class QuerySet(object):
             cursor_args = {
                 'snapshot': self._snapshot,
                 'timeout': self._timeout,
+                'slave_okay': self._slave_okay
             }
             if self._loaded_fields:
                 cursor_args['fields'] = self._loaded_fields.as_dict()

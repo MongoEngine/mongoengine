@@ -413,6 +413,19 @@ class QuerySetTest(unittest.TestCase):
         obj_id = Blog.objects.insert(blog1, load_bulk=False)
         self.assertEquals(obj_id.__class__.__name__, 'ObjectId')
 
+    def test_slave_okay(self):
+        """Ensures that a query can take slave_okay syntax
+        """
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Retrieve the first person from the database
+        person = self.Person.objects(slave_okay=True).first()
+        self.assertTrue(isinstance(person, self.Person))
+        self.assertEqual(person.name, "User A")
+        self.assertEqual(person.age, 20)
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
