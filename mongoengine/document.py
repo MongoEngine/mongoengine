@@ -1,3 +1,4 @@
+from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError)
 from queryset import OperationError
@@ -75,6 +76,8 @@ class Document(BaseDocument):
                 For example, ``save(..., w=2, fsync=True)`` will wait until at least two servers
                 have recorded the write and will force an fsync on each server being written to.
         """
+        signals.pre_save.send(self)
+
         if validate:
             self.validate()
 
@@ -82,6 +85,7 @@ class Document(BaseDocument):
             write_options = {}
 
         doc = self.to_mongo()
+        created = '_id' not in doc
         try:
             collection = self.__class__.objects._collection
             if force_insert:
@@ -96,12 +100,16 @@ class Document(BaseDocument):
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
+        signals.post_save.send(self, created=created)
+
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
         :param safe: check if the operation succeeded before returning
         """
+        signals.pre_delete.send(self)
+
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
         try:
@@ -109,6 +117,8 @@ class Document(BaseDocument):
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
+
+        signals.post_delete.send(self)
 
     @classmethod
     def register_delete_rule(cls, document_cls, field_name, rule):
