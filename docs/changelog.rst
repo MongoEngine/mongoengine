@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added blinker signal support
 - Added query_counter context manager for tests
 - Added DereferenceBaseField - for improved performance in field dereferencing
 - Added optional map_reduce method item_frequencies
