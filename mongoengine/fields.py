@@ -1,4 +1,4 @@
-from base import (BaseField, DereferenceBaseField, ObjectIdField,
+from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document)
 from queryset import DO_NOTHING
 from document import Document, EmbeddedDocument
@@ -301,6 +301,8 @@ class EmbeddedDocumentField(BaseField):
         return value
 
     def to_mongo(self, value):
+        if isinstance(value, basestring):
+            return value
         return self.document_type.to_mongo(value)
 
     def validate(self, value):
@@ -320,7 +322,7 @@ class EmbeddedDocumentField(BaseField):
         return self.to_mongo(value)
 
 
-class ListField(DereferenceBaseField):
+class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
     """
@@ -328,19 +330,10 @@ class ListField(DereferenceBaseField):
     # ListFields cannot be indexed with _types - MongoDB doesn't support this
     _index_with_types = False
 
-    def __init__(self, field, **kwargs):
-        if not isinstance(field, BaseField):
-            raise ValidationError('Argument to ListField constructor must be '
-                                  'a valid field')
+    def __init__(self, field=None, **kwargs):
         self.field = field
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
-
-    def to_python(self, value):
-        return [self.field.to_python(item) for item in value]
-
-    def to_mongo(self, value):
-        return [self.field.to_mongo(item) for item in value]
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
@@ -348,28 +341,14 @@ class ListField(DereferenceBaseField):
         if not isinstance(value, (list, tuple)):
             raise ValidationError('Only lists and tuples may be used in a '
                                   'list field')
-
-        try:
-            [self.field.validate(item) for item in value]
-        except Exception, err:
-            raise ValidationError('Invalid ListField item (%s)' % str(item))
+        super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
-        if op in ('set', 'unset'):
-            return [self.field.prepare_query_value(op, v) for v in value]
-        return self.field.prepare_query_value(op, value)
-
-    def lookup_member(self, member_name):
-        return self.field.lookup_member(member_name)
-
-    def _set_owner_document(self, owner_document):
-        self.field.owner_document = owner_document
-        self._owner_document = owner_document
-
-    def _get_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
-    owner_document = property(_get_owner_document, _set_owner_document)
+        if self.field:
+            if op in ('set', 'unset') and not isinstance(value, basestring):
+                return [self.field.prepare_query_value(op, v) for v in value]
+            return self.field.prepare_query_value(op, value)
+        return super(ListField, self).prepare_query_value(op, value)
 
 
 class SortedListField(ListField):
@@ -388,20 +367,21 @@ class SortedListField(ListField):
         super(SortedListField, self).__init__(field, **kwargs)
 
     def to_mongo(self, value):
+        value = super(SortedListField, self).to_mongo(value)
         if self._ordering is not None:
-            return sorted([self.field.to_mongo(item) for item in value],
-                          key=itemgetter(self._ordering))
-        return sorted([self.field.to_mongo(item) for item in value])
+            return sorted(value, key=itemgetter(self._ordering))
+        return sorted(value)
 
 
-class DictField(BaseField):
+class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
     .. versionadded:: 0.3
     """
 
-    def __init__(self, basecls=None, *args, **kwargs):
+    def __init__(self, basecls=None, field=None, *args, **kwargs):
+        self.field = field
         self.basecls = basecls or BaseField
         assert issubclass(self.basecls, BaseField)
         kwargs.setdefault('default', lambda: {})
@@ -417,6 +397,7 @@ class DictField(BaseField):
         if any(('.' in k or '$' in k) for k in value):
             raise ValidationError('Invalid dictionary key name - keys may not '
                                   'contain "." or "$" characters')
+        super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
         return DictField(basecls=self.basecls, db_field=member_name)
@@ -432,7 +413,7 @@ class DictField(BaseField):
         return super(DictField, self).prepare_query_value(op, value)
 
 
-class MapField(DereferenceBaseField):
+class MapField(DictField):
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
@@ -444,50 +425,7 @@ class MapField(DereferenceBaseField):
         if not isinstance(field, BaseField):
             raise ValidationError('Argument to MapField constructor must be '
                                   'a valid field')
-        self.field = field
-        kwargs.setdefault('default', lambda: {})
-        super(MapField, self).__init__(*args, **kwargs)
-
-    def validate(self, value):
-        """Make sure that a list of valid fields is being used.
-        """
-        if not isinstance(value, dict):
-            raise ValidationError('Only dictionaries may be used in a '
-                                  'DictField')
-
-        if any(('.' in k or '$' in k) for k in value):
-            raise ValidationError('Invalid dictionary key name - keys may not '
-                                  'contain "." or "$" characters')
-
-        try:
-            [self.field.validate(item) for item in value.values()]
-        except Exception, err:
-            raise ValidationError('Invalid MapField item (%s)' % str(item))
-
-    def to_python(self, value):
-        return dict([(key, self.field.to_python(item)) for key, item in value.iteritems()])
-
-    def to_mongo(self, value):
-        return dict([(key, self.field.to_mongo(item)) for key, item in value.iteritems()])
-
-    def prepare_query_value(self, op, value):
-        if op not in ('set', 'unset'):
-            return self.field.prepare_query_value(op, value)
-        for key in value:
-            value[key] = self.field.prepare_query_value(op, value[key])
-        return value
-
-    def lookup_member(self, member_name):
-        return self.field.lookup_member(member_name)
-
-    def _set_owner_document(self, owner_document):
-        self.field.owner_document = owner_document
-        self._owner_document = owner_document
-
-    def _get_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
-    owner_document = property(_get_owner_document, _set_owner_document)
+        super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
 class ReferenceField(BaseField):

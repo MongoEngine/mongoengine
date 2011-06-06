@@ -322,6 +322,108 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_list_field(self):
+        """Ensure that list types work as expected.
+        """
+        class BlogPost(Document):
+            info = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.info = 'my post'
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = ['test']
+        post.save()
+
+        post = BlogPost()
+        post.info = [{'test': 'test'}]
+        post.save()
+
+        post = BlogPost()
+        post.info = [{'test': 3}]
+        post.save()
+
+
+        self.assertEquals(BlogPost.objects.count(), 3)
+        self.assertEquals(BlogPost.objects.filter(info__exact='test').count(), 1)
+        self.assertEquals(BlogPost.objects.filter(info__0__test='test').count(), 1)
+
+        # Confirm handles non strings or non existing keys
+        self.assertEquals(BlogPost.objects.filter(info__0__test__exact='5').count(), 0)
+        self.assertEquals(BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
+        BlogPost.drop_collection()
+
+    def test_list_field_Strict(self):
+        """Ensure that list field handles validation if provided a strict field type."""
+
+        class Simple(Document):
+            mapping = ListField(field=IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping = [1]
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping = ["abc"]
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Simple.drop_collection()
+
+    def test_list_field_complex(self):
+        """Ensure that the list fields can handle the complex types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Simple(Document):
+            mapping = ListField()
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping.append(StringSetting(value='foo'))
+        e.mapping.append(IntegerSetting(value=42))
+        e.mapping.append({'number': 1, 'string': 'Hi!', 'float': 1.001,
+                          'complex': IntegerSetting(value=42), 'list':
+                          [IntegerSetting(value=42), StringSetting(value='foo')]})
+        e.save()
+
+        e2 = Simple.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping[0], StringSetting))
+        self.assertTrue(isinstance(e2.mapping[1], IntegerSetting))
+
+        # Test querying
+        self.assertEquals(Simple.objects.filter(mapping__1__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__number=1).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__complex__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__list__0__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__list__1__value='foo').count(), 1)
+
+        # Confirm can update
+        Simple.objects().update(set__mapping__1=IntegerSetting(value=10))
+        self.assertEquals(Simple.objects.filter(mapping__1__value=10).count(), 1)
+
+        Simple.objects().update(
+            set__mapping__2__list__1=StringSetting(value='Boo'))
+        self.assertEquals(Simple.objects.filter(mapping__2__list__1__value='foo').count(), 0)
+        self.assertEquals(Simple.objects.filter(mapping__2__list__1__value='Boo').count(), 1)
+
+        Simple.drop_collection()
+
     def test_dict_field(self):
         """Ensure that dict types work as expected.
         """
@@ -362,6 +464,131 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
         self.assertEquals(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
         BlogPost.drop_collection()
+
+    def test_dictfield_Strict(self):
+        """Ensure that dict field handles validation if provided a strict field type."""
+
+        class Simple(Document):
+            mapping = DictField(field=IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping['someint'] = 1
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping['somestring'] = "abc"
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Simple.drop_collection()
+
+    def test_dictfield_complex(self):
+        """Ensure that the dict field can handle the complex types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Simple(Document):
+            mapping = DictField()
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping['somestring'] = StringSetting(value='foo')
+        e.mapping['someint'] = IntegerSetting(value=42)
+        e.mapping['nested_dict'] = {'number': 1, 'string': 'Hi!', 'float': 1.001,
+                                 'complex': IntegerSetting(value=42), 'list':
+                                [IntegerSetting(value=42), StringSetting(value='foo')]}
+        e.save()
+
+        e2 = Simple.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
+        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+
+        # Test querying
+        self.assertEquals(Simple.objects.filter(mapping__someint__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__number=1).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__complex__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__0__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 1)
+
+        # Confirm can update
+        Simple.objects().update(
+            set__mapping={"someint": IntegerSetting(value=10)})
+        Simple.objects().update(
+            set__mapping__nested_dict__list__1=StringSetting(value='Boo'))
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 0)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
+
+        Simple.drop_collection()
+
+    def test_mapfield(self):
+        """Ensure that the MapField handles the declared type."""
+
+        class Simple(Document):
+            mapping = MapField(IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping['someint'] = 1
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping['somestring'] = "abc"
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        def create_invalid_class():
+            class NoDeclaredType(Document):
+                mapping = MapField()
+
+        self.assertRaises(ValidationError, create_invalid_class)
+
+        Simple.drop_collection()
+
+    def test_complex_mapfield(self):
+        """Ensure that the MapField can handle complex declared types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Extensible(Document):
+            mapping = MapField(EmbeddedDocumentField(SettingBase))
+
+        Extensible.drop_collection()
+
+        e = Extensible()
+        e.mapping['somestring'] = StringSetting(value='foo')
+        e.mapping['someint'] = IntegerSetting(value=42)
+        e.save()
+
+        e2 = Extensible.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
+        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+
+        def create_invalid_mapping():
+            e.mapping['someint'] = 123
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Extensible.drop_collection()
 
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
@@ -932,66 +1159,6 @@ class FieldTest(unittest.TestCase):
         d2 = D()
         self.assertEqual(d2.data, {})
         self.assertEqual(d2.data2, {})
-
-    def test_mapfield(self):
-        """Ensure that the MapField handles the declared type."""
-
-        class Simple(Document):
-            mapping = MapField(IntField())
-
-        Simple.drop_collection()
-
-        e = Simple()
-        e.mapping['someint'] = 1
-        e.save()
-
-        def create_invalid_mapping():
-            e.mapping['somestring'] = "abc"
-            e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
-
-        def create_invalid_class():
-            class NoDeclaredType(Document):
-                mapping = MapField()
-
-        self.assertRaises(ValidationError, create_invalid_class)
-
-        Simple.drop_collection()
-
-    def test_complex_mapfield(self):
-        """Ensure that the MapField can handle complex declared types."""
-
-        class SettingBase(EmbeddedDocument):
-            pass
-
-        class StringSetting(SettingBase):
-            value = StringField()
-
-        class IntegerSetting(SettingBase):
-            value = IntField()
-
-        class Extensible(Document):
-            mapping = MapField(EmbeddedDocumentField(SettingBase))
-
-        Extensible.drop_collection()
-
-        e = Extensible()
-        e.mapping['somestring'] = StringSetting(value='foo')
-        e.mapping['someint'] = IntegerSetting(value=42)
-        e.save()
-
-        e2 = Extensible.objects.get(id=e.id)
-        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
-        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
-
-        def create_invalid_mapping():
-            e.mapping['someint'] = 123
-            e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
-
-        Extensible.drop_collection()
 
 
 if __name__ == '__main__':
