@@ -5,6 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Added query_counter context manager for tests
+- Added DereferenceBaseField - for improved performance in field dereferencing
 - Added optional map_reduce method item_frequencies
 - Added inline_map_reduce option to map_reduce
 - Updated connection exception so it provides more info on the cause.
