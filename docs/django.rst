@@ -52,7 +52,7 @@ it is useful to have a Django file storage backend that wraps this. The new
 storage module is called :class:`~mongoengine.django.GridFSStorage`. Using it
 is very similar to using the default FileSystemStorage.::
 
-    fs = mongoengine.django.GridFSStorage()
+    fs = mongoengine.django.storage.GridFSStorage()
 
     filename = fs.save('hello.txt', 'Hello, World!')
 
