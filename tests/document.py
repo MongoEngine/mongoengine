@@ -151,12 +151,12 @@ class DocumentTest(unittest.TestCase):
         """Ensure that inheritance may be disabled on simple classes and that
         _cls and _types will not be used.
         """
+
         class Animal(Document):
-            meta = {'allow_inheritance': False}
             name = StringField()
+            meta = {'allow_inheritance': False}
 
         Animal.drop_collection()
-
         def create_dog_class():
             class Dog(Animal):
                 pass
@@ -190,6 +190,92 @@ class DocumentTest(unittest.TestCase):
         comment = Comment(content='test')
         self.assertFalse('_cls' in comment.to_mongo())
         self.assertFalse('_types' in comment.to_mongo())
+
+    def test_allow_inheritance_abstract_document(self):
+        """Ensure that abstract documents can set inheritance rules and that
+        _cls and _types will not be used.
+        """
+        class FinalDocument(Document):
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class Animal(FinalDocument):
+            name = StringField()
+
+        Animal.drop_collection()
+        def create_dog_class():
+            class Dog(Animal):
+                pass
+        self.assertRaises(ValueError, create_dog_class)
+
+        # Check that _cls etc aren't present on simple documents
+        dog = Animal(name='dog')
+        dog.save()
+        collection = self.db[Animal._meta['collection']]
+        obj = collection.find_one()
+        self.assertFalse('_cls' in obj)
+        self.assertFalse('_types' in obj)
+
+        Animal.drop_collection()
+
+    def test_how_to_turn_off_inheritance(self):
+        """Demonstrates migrating from allow_inheritance = True to False.
+        """
+        class Animal(Document):
+            name = StringField()
+            meta = {
+                'indexes': ['name']
+            }
+
+        Animal.drop_collection()
+
+        dog = Animal(name='dog')
+        dog.save()
+
+        collection = self.db[Animal._meta['collection']]
+        obj = collection.find_one()
+        self.assertTrue('_cls' in obj)
+        self.assertTrue('_types' in obj)
+
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)], [(u'_types', 1)], [(u'_types', 1), (u'name', 1)]], info)
+
+        # Turn off inheritance
+        class Animal(Document):
+            name = StringField()
+            meta = {
+                'allow_inheritance': False,
+                'indexes': ['name']
+            }
+        collection.update({}, {"$unset": {"_types": 1, "_cls": 1}}, False, True)
+
+        # Confirm extra data is removed
+        obj = collection.find_one()
+        self.assertFalse('_cls' in obj)
+        self.assertFalse('_types' in obj)
+
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)], [(u'_types', 1)], [(u'_types', 1), (u'name', 1)]], info)
+
+        info = collection.index_information()
+        indexes_to_drop = [key for key, value in info.iteritems() if '_types' in dict(value['key'])]
+        for index in indexes_to_drop:
+            collection.drop_index(index)
+
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)]], info)
+
+        # Recreate indexes
+        dog = Animal.objects.first()
+        dog.save()
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)], [(u'name', 1),]], info)
+
+        Animal.drop_collection()
 
     def test_abstract_documents(self):
         """Ensure that a document superclass can be marked as abstract

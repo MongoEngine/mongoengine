@@ -263,7 +263,7 @@ class DocumentMetaclass(type):
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
 
-            if hasattr(base, '_meta'):
+            if hasattr(base, '_meta') and not base._meta.get('abstract'):
                 # Ensure that the Document class may be subclassed -
                 # inheritance may be disabled to remove dependency on
                 # additional fields _cls and _types
@@ -280,7 +280,7 @@ class DocumentMetaclass(type):
 
         # Only simple classes - direct subclasses of Document - may set
         # allow_inheritance to False
-        if not simple_class and not meta['allow_inheritance']:
+        if not simple_class and not meta['allow_inheritance'] and not meta['abstract']:
             raise ValueError('Only direct subclasses of Document may set '
                              '"allow_inheritance" to False')
         attrs['_meta'] = meta
@@ -360,8 +360,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Subclassed documents inherit collection from superclass
         for base in bases:
-            if hasattr(base, '_meta') and 'collection' in base._meta:
-                collection = base._meta['collection']
+            if hasattr(base, '_meta'):
+                if 'collection' in base._meta:
+                    collection = base._meta['collection']
 
                 # Propagate index options.
                 for key in ('index_background', 'index_drop_dups', 'index_opts'):
@@ -370,6 +371,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
                 id_field = id_field or base._meta.get('id_field')
                 base_indexes += base._meta.get('indexes', [])
+                # Propagate 'allow_inheritance'
+                if 'allow_inheritance' in base._meta:
+                    base_meta['allow_inheritance'] = base._meta['allow_inheritance']
 
         meta = {
             'abstract': False,
@@ -384,6 +388,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'index_opts': {},
             'queryset_class': QuerySet,
             'delete_rules': {},
+            'allow_inheritance': True
         }
         meta.update(base_meta)
 
