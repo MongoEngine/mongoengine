@@ -5,7 +5,8 @@ Changelog
 Changes in dev
 ==============
 
-- Added slave_okay kwarg to queryset
+- Added queryset.slave_okay(enabled) method
+- Updated queryset.timeout(enabled) and queryset.snapshot(enabled) to be chainable
 - Added insert method for bulk inserts
 - Added blinker signal support
 - Added query_counter context manager for tests
