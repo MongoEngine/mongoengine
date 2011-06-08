@@ -353,7 +353,7 @@ class QuerySet(object):
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
                     '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip')
+                    '_timeout', '_limit', '_skip', '_slave_okay')
 
         for prop in copy_props:
             val = getattr(self, prop)
