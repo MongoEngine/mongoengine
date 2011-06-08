@@ -229,6 +229,10 @@ class BooleanField(BaseField):
 
 class DateTimeField(BaseField):
     """A datetime field.
+
+    Note: Microseconds are rounded to the nearest millisecond.
+      Pre UTC microsecond support is effecively broken see
+      `tests.field.test_datetime` for more information.
     """
 
     def validate(self, value):
