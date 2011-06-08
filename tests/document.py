@@ -377,6 +377,40 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+
+    def test_dictionary_indexes(self):
+        """Ensure that indexes are used when meta[indexes] contains dictionaries
+        instead of lists.
+        """
+        class BlogPost(Document):
+            date = DateTimeField(db_field='addDate', default=datetime.now)
+            category = StringField()
+            tags = ListField(StringField())
+            meta = {
+                'indexes': [
+                    { 'fields': ['-date'], 'unique': True,
+                      'sparse': True, 'types': False },
+                ],
+            }
+
+        BlogPost.drop_collection()
+
+        info = BlogPost.objects._collection.index_information()
+        # _id, '-date'
+        self.assertEqual(len(info), 3)
+
+        # Indexes are lazy so use list() to perform query
+        list(BlogPost.objects)
+        info = BlogPost.objects._collection.index_information()
+        info = [(value['key'],
+                 value.get('unique', False),
+                 value.get('sparse', False))
+                for key, value in info.iteritems()]
+        self.assertTrue(([('addDate', -1)], True, True) in info)
+
+        BlogPost.drop_collection()
+
+
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
         """

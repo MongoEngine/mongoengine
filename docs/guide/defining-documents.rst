@@ -341,9 +341,10 @@ Indexes
 You can specify indexes on collections to make querying faster. This is done
 by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
-either be a single field name, or a tuple containing multiple field names. A
-direction may be specified on fields by prefixing the field name with a **+**
-or a **-** sign. Note that direction only matters on multi-field indexes. ::
+either be a single field name, a tuple containing multiple field names, or a
+dictionary containing a full index definition. A direction may be specified on
+fields by prefixing the field name with a **+** or a **-** sign. Note that
+direction only matters on multi-field indexes. ::
 
     class Page(Document):
         title = StringField()
@@ -351,6 +352,21 @@ or a **-** sign. Note that direction only matters on multi-field indexes. ::
         meta = {
             'indexes': ['title', ('title', '-rating')]
         }
+
+If a dictionary is passed then the following options are available:
+
+:attr:`fields` (Default: None)
+    The fields to index. Specified in the same format as described above.
+
+:attr:`types` (Default: True)
+    Whether the index should have the :attr:`_types` field added automatically
+    to the start of the index.
+
+:attr:`sparse` (Default: False)
+    Whether the index should be sparse.
+
+:attr:`unique` (Default: False)
+    Whether the index should be sparse.
 
 .. note::
    Geospatial indexes will be automatically created for all 

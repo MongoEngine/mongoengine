@@ -336,6 +336,7 @@ class QuerySet(object):
         self._snapshot = False
         self._timeout = True
         self._class_check = True
+        self._slave_okay = False
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -352,7 +353,7 @@ class QuerySet(object):
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
                     '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip')
+                    '_timeout', '_limit', '_skip', '_slave_okay')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -376,21 +377,27 @@ class QuerySet(object):
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
         """
-        index_list = QuerySet._build_index_spec(self._document, key_or_list)
-        self._collection.ensure_index(index_list, drop_dups=drop_dups,
-            background=background)
+        index_spec = QuerySet._build_index_spec(self._document, key_or_list)
+        self._collection.ensure_index(
+            index_spec['fields'],
+            drop_dups=drop_dups,
+            background=background,
+            sparse=index_spec.get('sparse', False),
+            unique=index_spec.get('unique', False))
         return self
 
     @classmethod
-    def _build_index_spec(cls, doc_cls, key_or_list):
+    def _build_index_spec(cls, doc_cls, spec):
         """Build a PyMongo index spec from a MongoEngine index spec.
         """
-        if isinstance(key_or_list, basestring):
-            key_or_list = [key_or_list]
+        if isinstance(spec, basestring):
+            spec = {'fields': [spec]}
+        if isinstance(spec, (list, tuple)):
+            spec = {'fields': spec}
 
         index_list = []
         use_types = doc_cls._meta.get('allow_inheritance', True)
-        for key in key_or_list:
+        for key in spec['fields']:
             # Get direction from + or -
             direction = pymongo.ASCENDING
             if key.startswith("-"):
@@ -411,12 +418,20 @@ class QuerySet(object):
                 use_types = False
 
         # If _types is being used, prepend it to every specified index
-        if doc_cls._meta.get('allow_inheritance') and use_types:
+        if (spec.get('types', True) and doc_cls._meta.get('allow_inheritance')
+                and use_types):
             index_list.insert(0, ('_types', 1))
 
-        return index_list
+        spec['fields'] = index_list
 
-    def __call__(self, q_obj=None, class_check=True, **query):
+        if spec.get('sparse', False) and len(spec['fields']) > 1:
+            raise ValueError(
+                'Sparse indexes can only have one field in them. '
+                'See https://jira.mongodb.org/browse/SERVER-2193')
+
+        return spec
+
+    def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -426,6 +441,8 @@ class QuerySet(object):
             objects, only the last one will be used
         :param class_check: If set to False bypass class name check when
             querying collection
+        :param slave_okay: if True, allows this query to be run against a
+            replica secondary.
         :param query: Django-style query keyword arguments
         """
         query = Q(**query)
@@ -465,9 +482,12 @@ class QuerySet(object):
 
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
-                for key_or_list in self._document._meta['indexes']:
-                    self._collection.ensure_index(key_or_list,
-                        background=background, **index_opts)
+                for spec in self._document._meta['indexes']:
+                    opts = index_opts.copy()
+                    opts['unique'] = spec.get('unique', False)
+                    opts['sparse'] = spec.get('sparse', False)
+                    self._collection.ensure_index(spec['fields'],
+                        background=background, **opts)
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
@@ -484,16 +504,22 @@ class QuerySet(object):
         return self._collection_obj
 
     @property
+    def _cursor_args(self):
+        cursor_args = {
+            'snapshot': self._snapshot,
+            'timeout': self._timeout,
+            'slave_okay': self._slave_okay
+        }
+        if self._loaded_fields:
+            cursor_args['fields'] = self._loaded_fields.as_dict()
+        return cursor_args
+
+    @property
     def _cursor(self):
         if self._cursor_obj is None:
-            cursor_args = {
-                'snapshot': self._snapshot,
-                'timeout': self._timeout,
-            }
-            if self._loaded_fields:
-                cursor_args['fields'] = self._loaded_fields.as_dict()
+
             self._cursor_obj = self._collection.find(self._query,
-                                                     **cursor_args)
+                                                     **self._cursor_args)
             # Apply where clauses to cursor
             if self._where_clause:
                 self._cursor_obj.where(self._where_clause)
@@ -702,6 +728,46 @@ class QuerySet(object):
             result = None
         return result
 
+    def insert(self, doc_or_docs, load_bulk=True):
+        """bulk insert documents
+
+        :param docs_or_doc: a document or list of documents to be inserted
+        :param load_bulk (optional): If True returns the list of document instances
+
+        By default returns document instances, set ``load_bulk`` to False to
+        return just ``ObjectIds``
+
+        .. versionadded:: 0.5
+        """
+        from document import Document
+
+        docs = doc_or_docs
+        return_one = False
+        if isinstance(docs, Document) or issubclass(docs.__class__, Document):
+            return_one = True
+            docs = [docs]
+
+        raw = []
+        for doc in docs:
+            if not isinstance(doc, self._document):
+                msg = "Some documents inserted aren't instances of %s" % str(self._document)
+                raise OperationError(msg)
+            if doc.pk:
+                msg = "Some documents have ObjectIds use doc.update() instead"
+                raise OperationError(msg)
+            raw.append(doc.to_mongo())
+
+        ids = self._collection.insert(raw)
+
+        if not load_bulk:
+            return return_one and ids[0] or ids
+
+        documents = self.in_bulk(ids)
+        results = []
+        for obj_id in ids:
+            results.append(documents.get(obj_id))
+        return return_one and results[0] or results
+
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.
 
@@ -710,7 +776,7 @@ class QuerySet(object):
         id_field = self._document._meta['id_field']
         object_id = self._document._fields[id_field].to_mongo(object_id)
 
-        result = self._collection.find_one({'_id': object_id})
+        result = self._collection.find_one({'_id': object_id}, **self._cursor_args)
         if result is not None:
             result = self._document._from_son(result)
         return result
@@ -726,7 +792,8 @@ class QuerySet(object):
         """
         doc_map = {}
 
-        docs = self._collection.find({'_id': {'$in': object_ids}})
+        docs = self._collection.find({'_id': {'$in': object_ids}},
+                                     **self._cursor_args)
         for doc in docs:
             doc_map[doc['_id']] = self._document._from_son(doc)
 
@@ -1023,6 +1090,7 @@ class QuerySet(object):
         :param enabled: whether or not snapshot mode is enabled
         """
         self._snapshot = enabled
+        return self
 
     def timeout(self, enabled):
         """Enable or disable the default mongod timeout when querying.
@@ -1030,6 +1098,15 @@ class QuerySet(object):
         :param enabled: whether or not the timeout is used
         """
         self._timeout = enabled
+        return self
+
+    def slave_okay(self, enabled):
+        """Enable or disable the slave_okay when querying.
+
+        :param enabled: whether or not the slave_okay is enabled
+        """
+        self._slave_okay = enabled
+        return self
 
     def delete(self, safe=False):
         """Delete the documents matched by the query.

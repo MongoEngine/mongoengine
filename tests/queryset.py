@@ -9,6 +9,7 @@ from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
                                   QueryFieldList)
 from mongoengine import *
+from mongoengine.tests import query_counter
 
 
 class QuerySetTest(unittest.TestCase):
@@ -330,6 +331,125 @@ class QuerySetTest(unittest.TestCase):
 
         person = self.Person.objects.get(age=50)
         self.assertEqual(person.name, "User C")
+
+    def test_bulk_insert(self):
+        """Ensure that query by array position works.
+        """
+
+        class Comment(EmbeddedDocument):
+            name = StringField()
+
+        class Post(EmbeddedDocument):
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        class Blog(Document):
+            title = StringField()
+            tags = ListField(StringField())
+            posts = ListField(EmbeddedDocumentField(Post))
+
+        Blog.drop_collection()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            comment1 = Comment(name='testa')
+            comment2 = Comment(name='testb')
+            post1 = Post(comments=[comment1, comment2])
+            post2 = Post(comments=[comment2, comment2])
+
+            blogs = []
+            for i in xrange(1, 100):
+                blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
+
+            Blog.objects.insert(blogs, load_bulk=False)
+            self.assertEqual(q, 2) # 1 for the inital connection and 1 for the insert
+
+            Blog.objects.insert(blogs)
+            self.assertEqual(q, 4) # 1 for insert, and 1 for in bulk
+
+        Blog.drop_collection()
+
+        comment1 = Comment(name='testa')
+        comment2 = Comment(name='testb')
+        post1 = Post(comments=[comment1, comment2])
+        post2 = Post(comments=[comment2, comment2])
+        blog1 = Blog(title="code", posts=[post1, post2])
+        blog2 = Blog(title="mongodb", posts=[post2, post1])
+        blog1, blog2 = Blog.objects.insert([blog1, blog2])
+        self.assertEqual(blog1.title, "code")
+        self.assertEqual(blog2.title, "mongodb")
+
+        self.assertEqual(Blog.objects.count(), 2)
+
+        # test handles people trying to upsert
+        def throw_operation_error():
+            blogs = Blog.objects
+            Blog.objects.insert(blogs)
+
+        self.assertRaises(OperationError, throw_operation_error)
+
+        # test handles other classes being inserted
+        def throw_operation_error_wrong_doc():
+            class Author(Document):
+                pass
+            Blog.objects.insert(Author())
+
+        self.assertRaises(OperationError, throw_operation_error_wrong_doc)
+
+        def throw_operation_error_not_a_document():
+            Blog.objects.insert("HELLO WORLD")
+
+        self.assertRaises(OperationError, throw_operation_error_not_a_document)
+
+        Blog.drop_collection()
+
+        blog1 = Blog(title="code", posts=[post1, post2])
+        blog1 = Blog.objects.insert(blog1)
+        self.assertEqual(blog1.title, "code")
+        self.assertEqual(Blog.objects.count(), 1)
+
+        Blog.drop_collection()
+        blog1 = Blog(title="code", posts=[post1, post2])
+        obj_id = Blog.objects.insert(blog1, load_bulk=False)
+        self.assertEquals(obj_id.__class__.__name__, 'ObjectId')
+
+    def test_slave_okay(self):
+        """Ensures that a query can take slave_okay syntax
+        """
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Retrieve the first person from the database
+        person = self.Person.objects.slave_okay(True).first()
+        self.assertTrue(isinstance(person, self.Person))
+        self.assertEqual(person.name, "User A")
+        self.assertEqual(person.age, 20)
+
+    def test_cursor_args(self):
+        """Ensures the cursor args can be set as expected
+        """
+        p = self.Person.objects
+        # Check default
+        self.assertEqual(p._cursor_args,
+                {'snapshot': False, 'slave_okay': False, 'timeout': True})
+
+        p.snapshot(False).slave_okay(False).timeout(False)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': False, 'slave_okay': False, 'timeout': False})
+
+        p.snapshot(True).slave_okay(False).timeout(False)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': True, 'slave_okay': False, 'timeout': False})
+
+        p.snapshot(True).slave_okay(True).timeout(False)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': True, 'slave_okay': True, 'timeout': False})
+
+        p.snapshot(True).slave_okay(True).timeout(True)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': True, 'slave_okay': True, 'timeout': True})
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
@@ -2099,7 +2219,26 @@ class QuerySetTest(unittest.TestCase):
         Number.drop_collection()
 
 
+    def test_ensure_index(self):
+        """Ensure that manual creation of indexes works.
+        """
+        class Comment(Document):
+            message = StringField()
+
+        Comment.objects.ensure_index('message')
+
+        info = Comment.objects._collection.index_information()
+        info = [(value['key'],
+                 value.get('unique', False),
+                 value.get('sparse', False))
+                for key, value in info.iteritems()]
+        self.assertTrue(([('_types', 1), ('message', 1)], False, False) in info)
+
+
 class QTest(unittest.TestCase):
+
+    def setUp(self):
+        connect(db='mongoenginetest')
 
     def test_empty_q(self):
         """Ensure that empty Q objects won't hurt.
