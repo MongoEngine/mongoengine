@@ -422,10 +422,34 @@ class QuerySetTest(unittest.TestCase):
         person2.save()
 
         # Retrieve the first person from the database
-        person = self.Person.objects(slave_okay=True).first()
+        person = self.Person.objects.slave_okay(True).first()
         self.assertTrue(isinstance(person, self.Person))
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
+
+    def test_cursor_args(self):
+        """Ensures the cursor args can be set as expected
+        """
+        p = self.Person.objects
+        # Check default
+        self.assertEqual(p._cursor_args,
+                {'snapshot': False, 'slave_okay': False, 'timeout': True})
+
+        p.snapshot(False).slave_okay(False).timeout(False)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': False, 'slave_okay': False, 'timeout': False})
+
+        p.snapshot(True).slave_okay(False).timeout(False)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': True, 'slave_okay': False, 'timeout': False})
+
+        p.snapshot(True).slave_okay(True).timeout(False)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': True, 'slave_okay': True, 'timeout': False})
+
+        p.snapshot(True).slave_okay(True).timeout(True)
+        self.assertEqual(p._cursor_args,
+                {'snapshot': True, 'slave_okay': True, 'timeout': True})
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
