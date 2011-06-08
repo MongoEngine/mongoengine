@@ -53,6 +53,11 @@ class Document(BaseDocument):
     dictionary. The value should be a list of field names or tuples of field
     names. Index direction may be specified by prefixing the field names with
     a **+** or **-** sign.
+
+    By default, _types will be added to the start of every index (that
+    doesn't contain a list) if allow_inheritence is True. This can be
+    disabled by either setting types to False on the specific index or
+    by setting index_types to False on the meta dictionary for the document.
     """
 
     __metaclass__ = TopLevelDocumentMetaclass
