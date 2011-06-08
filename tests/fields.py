@@ -773,6 +773,35 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_choices_get_field_display(self):
+        """Test dynamic helper for returning the display value of a choices field.
+        """
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            style = StringField(max_length=3, choices=(('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+
+        self.assertEqual(shirt.get_size_display(), None)
+        self.assertEqual(shirt.get_style_display(), 'Small')
+
+        shirt.size = "XXL"
+        shirt.style = "B"
+        self.assertEqual(shirt.get_size_display(), 'Extra Extra Large')
+        self.assertEqual(shirt.get_style_display(), 'Baggy')
+
+        # Set as Z - an invalid choice
+        shirt.size = "Z"
+        shirt.style = "Z"
+        self.assertEqual(shirt.get_size_display(), 'Z')
+        self.assertEqual(shirt.get_style_display(), 'Z')
+        self.assertRaises(ValidationError, shirt.validate)
+
+        Shirt.drop_collection()
+
     def test_file_fields(self):
         """Ensure that file fields can be written to and their data retrieved
         """

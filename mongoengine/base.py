@@ -8,6 +8,7 @@ import sys
 import pymongo
 import pymongo.objectid
 from operator import itemgetter
+from functools import partial
 
 
 class NotRegistered(Exception):
@@ -61,6 +62,7 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
+
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
             self.creation_counter = BaseField.auto_creation_counter
@@ -471,7 +473,10 @@ class BaseDocument(object):
 
         self._data = {}
         # Assign default values to instance
-        for attr_name in self._fields.keys():
+        for attr_name, field in self._fields.items():
+            if field.choices:  # dynamically adds a way to get the display value for a field with choices
+                setattr(self, 'get_%s_display' % attr_name, partial(self._get_FIELD_display, field=field))
+
             # Use default value if present
             value = getattr(self, attr_name, None)
             setattr(self, attr_name, value)
@@ -483,6 +488,11 @@ class BaseDocument(object):
                 pass
 
         signals.post_init.send(self)
+
+    def _get_FIELD_display(self, field):
+        """Returns the display value for a choice field"""
+        value = getattr(self, field.name)
+        return dict(field.choices).get(value, value)
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields

@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added get_FIELD_display() method for easy choice field displaying.
 - Added queryset.slave_okay(enabled) method
 - Updated queryset.timeout(enabled) and queryset.snapshot(enabled) to be chainable
 - Added insert method for bulk inserts
