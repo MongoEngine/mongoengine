@@ -1710,6 +1710,22 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue([('_types', 1)] in info)
         self.assertTrue([('_types', 1), ('date', -1)] in info)
 
+    def test_dont_index_types(self):
+        """Ensure that index_types will, when disabled, prevent _types
+        being added to all indices.
+        """
+        class BlogPost(Document):
+            date = DateTimeField()
+            meta = {'index_types': False,
+                    'indexes': ['-date']}
+
+        # Indexes are lazy so use list() to perform query
+        list(BlogPost.objects)
+        info = BlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('_types', 1)] not in info)
+        self.assertTrue([('date', -1)] in info)
+
         BlogPost.drop_collection()
 
         class BlogPost(Document):

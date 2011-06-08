@@ -410,8 +410,10 @@ class QuerySet(object):
             if use_types and not all(f._index_with_types for f in fields):
                 use_types = False
 
-        # If _types is being used, prepend it to every specified index
-        if doc_cls._meta.get('allow_inheritance') and use_types:
+        # If _types is being used, create an index for it
+        index_types = doc_cls._meta.get('index_types', True)
+        allow_inheritance = doc_cls._meta.get('allow_inheritance')
+        if index_types and allow_inheritance and use_types:
             index_list.insert(0, ('_types', 1))
 
         return index_list
@@ -457,6 +459,7 @@ class QuerySet(object):
             background = self._document._meta.get('index_background', False)
             drop_dups = self._document._meta.get('index_drop_dups', False)
             index_opts = self._document._meta.get('index_options', {})
+            index_types = self._document._meta.get('index_types', True)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
@@ -470,7 +473,7 @@ class QuerySet(object):
                         background=background, **index_opts)
 
             # If _types is being used (for polymorphism), it needs an index
-            if '_types' in self._query:
+            if index_types and '_types' in self._query:
                 self._collection.ensure_index('_types',
                     background=background, **index_opts)
 
