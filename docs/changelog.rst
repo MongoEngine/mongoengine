@@ -5,9 +5,10 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed saving so sets updated values rather than overwrites
 - Added ComplexDateTimeField - Handles datetimes correctly with microseconds
-- Added ComplexBaseField - for improved flexibility and performance.
-- Added get_FIELD_display() method for easy choice field displaying.
+- Added ComplexBaseField - for improved flexibility and performance
+- Added get_FIELD_display() method for easy choice field displaying
 - Added queryset.slave_okay(enabled) method
 - Updated queryset.timeout(enabled) and queryset.snapshot(enabled) to be chainable
 - Added insert method for bulk inserts

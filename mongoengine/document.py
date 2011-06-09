@@ -95,6 +95,16 @@ class Document(BaseDocument):
             collection = self.__class__.objects._collection
             if force_insert:
                 object_id = collection.insert(doc, safe=safe, **write_options)
+            elif '_id' in doc:
+                # Perform a set rather than a save - this will only save set fields
+                object_id = doc.pop('_id')
+                collection.update({'_id': object_id}, {"$set": doc}, upsert=True, safe=safe, **write_options)
+
+                # Find and unset any fields explicitly set to None
+                if hasattr(self, '_present_fields'):
+                    removals = dict([(k, 1) for k in self._present_fields if k not in doc and k != '_id'])
+                    if removals:
+                        collection.update({'_id': object_id}, {"$unset": removals}, upsert=True, safe=safe, **write_options)
             else:
                 object_id = collection.save(doc, safe=safe, **write_options)
         except pymongo.errors.OperationFailure, err:

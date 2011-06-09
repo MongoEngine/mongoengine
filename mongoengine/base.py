@@ -92,6 +92,9 @@ class BaseField(object):
         """Descriptor for assigning a value to a field in a document.
         """
         instance._data[self.name] = value
+        # If the field set is in the _present_fields list add it so we can track
+        if hasattr(instance, '_present_fields') and self.name not in instance._present_fields:
+            instance._present_fields.append(self.name)
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -592,13 +595,14 @@ class BaseDocument(object):
             if field.choices:  # dynamically adds a way to get the display value for a field with choices
                 setattr(self, 'get_%s_display' % attr_name, partial(self._get_FIELD_display, field=field))
 
-            # Use default value if present
             value = getattr(self, attr_name, None)
             setattr(self, attr_name, value)
+
         # Assign initial values to instance
         for attr_name in values.keys():
             try:
-                setattr(self, attr_name, values.pop(attr_name))
+                value = values.pop(attr_name)
+                setattr(self, attr_name, value)
             except AttributeError:
                 pass
 
@@ -739,7 +743,6 @@ class BaseDocument(object):
             cls = subclasses[class_name]
 
         present_fields = data.keys()
-
         for field_name, field in cls._fields.items():
             if field.db_field in data:
                 value = data[field.db_field]

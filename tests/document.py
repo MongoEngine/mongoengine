@@ -789,6 +789,90 @@ class DocumentTest(unittest.TestCase):
         except ValidationError:
             self.fail()
 
+    def test_update(self):
+        """Ensure that an existing document is updated instead of be overwritten.
+        """
+        # Create person object and save it to the database
+        person = self.Person(name='Test User', age=30)
+        person.save()
+
+        # Create same person object, with same id, without age
+        same_person = self.Person(name='Test')
+        same_person.id = person.id
+        same_person.save()
+
+        # Confirm only one object
+        self.assertEquals(self.Person.objects.count(), 1)
+
+        # reload
+        person.reload()
+        same_person.reload()
+
+        # Confirm the same
+        self.assertEqual(person, same_person)
+        self.assertEqual(person.name, same_person.name)
+        self.assertEqual(person.age, same_person.age)
+
+        # Confirm the saved values
+        self.assertEqual(person.name, 'Test')
+        self.assertEqual(person.age, 30)
+
+        # Test only / exclude only updates included fields
+        person = self.Person.objects.only('name').get()
+        person.name = 'User'
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, 30)
+
+        # test exclude only updates set fields
+        person = self.Person.objects.exclude('name').get()
+        person.age = 21
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, 21)
+
+        # Test only / exclude can set non excluded / included fields
+        person = self.Person.objects.only('name').get()
+        person.name = 'Test'
+        person.age = 30
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'Test')
+        self.assertEqual(person.age, 30)
+
+        # test exclude only updates set fields
+        person = self.Person.objects.exclude('name').get()
+        person.name = 'User'
+        person.age = 21
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, 21)
+
+        # Confirm does remove unrequired fields
+        person = self.Person.objects.exclude('name').get()
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, None)
+
+        person = self.Person.objects.get()
+        person.name = None
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, None)
+        self.assertEqual(person.age, None)
+
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
         """
