@@ -358,7 +358,7 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
         BlogPost.drop_collection()
 
-    def test_list_field_Strict(self):
+    def test_list_field_strict(self):
         """Ensure that list field handles validation if provided a strict field type."""
 
         class Simple(Document):
@@ -465,7 +465,7 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
         BlogPost.drop_collection()
 
-    def test_dictfield_Strict(self):
+    def test_dictfield_strict(self):
         """Ensure that dict field handles validation if provided a strict field type."""
 
         class Simple(Document):
