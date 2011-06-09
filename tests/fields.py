@@ -247,6 +247,107 @@ class FieldTest(unittest.TestCase):
 
         LogEntry.drop_collection()
 
+    def test_complexdatetime_storage(self):
+        """Tests for complex datetime fields - which can handle microseconds
+        without rounding.
+        """
+        class LogEntry(Document):
+            date = ComplexDateTimeField()
+
+        LogEntry.drop_collection()
+
+        # Post UTC - microseconds are rounded (down) nearest millisecond and dropped - with default datetimefields
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
+        log = LogEntry()
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEquals(log.date, d1)
+
+        # Post UTC - microseconds are rounded (down) nearest millisecond - with default datetimefields
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 9999)
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEquals(log.date, d1)
+
+        # Pre UTC dates microseconds below 1000 are dropped - with default datetimefields
+        d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEquals(log.date, d1)
+
+        # Pre UTC microseconds above 1000 is wonky - with default datetimefields
+        # log.date has an invalid microsecond value so I can't construct
+        # a date to compare.
+        for i in xrange(1001, 3113, 33):
+            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i)
+            log.date = d1
+            log.save()
+            log.reload()
+            self.assertEquals(log.date, d1)
+            log1 = LogEntry.objects.get(date=d1)
+            self.assertEqual(log, log1)
+
+        LogEntry.drop_collection()
+
+    def test_complexdatetime_usage(self):
+        """Tests for complex datetime fields - which can handle microseconds
+        without rounding.
+        """
+        class LogEntry(Document):
+            date = ComplexDateTimeField()
+
+        LogEntry.drop_collection()
+
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
+        log = LogEntry()
+        log.date = d1
+        log.save()
+
+        log1 = LogEntry.objects.get(date=d1)
+        self.assertEquals(log, log1)
+
+        LogEntry.drop_collection()
+
+        # create 60 log entries
+        for i in xrange(1950, 2010):
+            d = datetime.datetime(i, 01, 01, 00, 00, 01, 999)
+            LogEntry(date=d).save()
+
+        self.assertEqual(LogEntry.objects.count(), 60)
+
+        # Test ordering
+        logs = LogEntry.objects.order_by("date")
+        count = logs.count()
+        i = 0
+        while i == count-1:
+            self.assertTrue(logs[i].date <= logs[i+1].date)
+            i +=1
+
+        logs = LogEntry.objects.order_by("-date")
+        count = logs.count()
+        i = 0
+        while i == count-1:
+            self.assertTrue(logs[i].date >= logs[i+1].date)
+            i +=1
+
+        # Test searching
+        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980,1,1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980,1,1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(
+            date__lte=datetime.datetime(2011,1,1),
+            date__gte=datetime.datetime(2000,1,1),
+        )
+        self.assertEqual(logs.count(), 10)
+
+        LogEntry.drop_collection()
+
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.
         """
