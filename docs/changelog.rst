@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added ComplexDateTimeField - Handles datetimes correctly with microseconds
 - Added ComplexBaseField - for improved flexibility and performance.
 - Added get_FIELD_display() method for easy choice field displaying.
 - Added queryset.slave_okay(enabled) method
