@@ -5,6 +5,9 @@ import unittest
 
 from mongoengine import *
 
+from django.template import Context, Template
+from django.conf import settings
+settings.configure()
 
 class QuerySetTest(unittest.TestCase):
 
@@ -26,10 +29,6 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name="B", age=40).save()
         self.Person(name="C", age=30).save()
 
-        from django.conf import settings
-        settings.configure()
-        from django.template import Context, Template
-
         t = Template("{% for o in ol %}{{ o.name }}-{{ o.age }}:{% endfor %}")
 
         d = {"ol": self.Person.objects.order_by('-name')}
@@ -42,3 +41,17 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(t.render(Context(d)), u'D-10:A-20:C-30:B-40:')
 
         self.Person.drop_collection()
+
+    def test_q_object_filter_in_template(self):
+
+        self.Person.drop_collection()
+
+        self.Person(name="A", age=20).save()
+        self.Person(name="D", age=10).save()
+        self.Person(name="B", age=40).save()
+        self.Person(name="C", age=30).save()
+
+        t = Template("{% for o in ol %}{{ o.name }}-{{ o.age }}:{% endfor %}")
+
+        d = {"ol": self.Person.objects.filter(Q(age=10) | Q(name="C"))}
+        self.assertEqual(t.render(Context(d)), u'D-10:C-30:')
