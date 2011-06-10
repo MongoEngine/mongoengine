@@ -53,6 +53,8 @@ Fields
 
 .. autoclass:: mongoengine.DateTimeField
 
+.. autoclass:: mongoengine.ComplexDateTimeField
+
 .. autoclass:: mongoengine.EmbeddedDocumentField
 
 .. autoclass:: mongoengine.DictField

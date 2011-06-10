@@ -122,6 +122,64 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
+            for m in group_obj.members:
+                self.assertTrue('User' in m.__class__.__name__)
+
+        UserA.drop_collection()
+        UserB.drop_collection()
+        UserC.drop_collection()
+        Group.drop_collection()
+
+    def test_list_field_complex(self):
+
+        class UserA(Document):
+            name = StringField()
+
+        class UserB(Document):
+            name = StringField()
+
+        class UserC(Document):
+            name = StringField()
+
+        class Group(Document):
+            members = ListField()
+
+        UserA.drop_collection()
+        UserB.drop_collection()
+        UserC.drop_collection()
+        Group.drop_collection()
+
+        members = []
+        for i in xrange(1, 51):
+            a = UserA(name='User A %s' % i)
+            a.save()
+
+            b = UserB(name='User B %s' % i)
+            b.save()
+
+            c = UserC(name='User C %s' % i)
+            c.save()
+
+            members += [a, b, c]
+
+        group = Group(members=members)
+        group.save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            [m for m in group_obj.members]
+            self.assertEqual(q, 4)
+
+            [m for m in group_obj.members]
+            self.assertEqual(q, 4)
+
+            for m in group_obj.members:
+                self.assertTrue('User' in m.__class__.__name__)
+
         UserA.drop_collection()
         UserB.drop_collection()
         UserC.drop_collection()
@@ -156,10 +214,13 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
+            for k, m in group_obj.members.iteritems():
+                self.assertTrue(isinstance(m, User))
+
         User.drop_collection()
         Group.drop_collection()
 
-    def ztest_generic_reference_dict_field(self):
+    def test_dict_field(self):
 
         class UserA(Document):
             name = StringField()
@@ -206,6 +267,9 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
+            for k, m in group_obj.members.iteritems():
+                self.assertTrue('User' in m.__class__.__name__)
+
         group.members = {}
         group.save()
 
@@ -218,9 +282,52 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 1)
 
+            for k, m in group_obj.members.iteritems():
+                self.assertTrue('User' in m.__class__.__name__)
+
         UserA.drop_collection()
         UserB.drop_collection()
         UserC.drop_collection()
+        Group.drop_collection()
+
+    def test_dict_field_no_field_inheritance(self):
+
+        class UserA(Document):
+            name = StringField()
+            meta = {'allow_inheritance': False}
+
+        class Group(Document):
+            members = DictField()
+
+        UserA.drop_collection()
+        Group.drop_collection()
+
+        members = []
+        for i in xrange(1, 51):
+            a = UserA(name='User A %s' % i)
+            a.save()
+
+            members += [a]
+
+        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group.save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            [m for m in group_obj.members]
+            self.assertEqual(q, 2)
+
+            [m for m in group_obj.members]
+            self.assertEqual(q, 2)
+
+            for k, m in group_obj.members.iteritems():
+                self.assertTrue(isinstance(m, UserA))
+
+        UserA.drop_collection()
         Group.drop_collection()
 
     def test_generic_reference_map_field(self):
@@ -269,6 +376,9 @@ class FieldTest(unittest.TestCase):
 
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
+
+            for k, m in group_obj.members.iteritems():
+                self.assertTrue('User' in m.__class__.__name__)
 
         group.members = {}
         group.save()

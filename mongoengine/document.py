@@ -53,6 +53,11 @@ class Document(BaseDocument):
     dictionary. The value should be a list of field names or tuples of field
     names. Index direction may be specified by prefixing the field names with
     a **+** or **-** sign.
+
+    By default, _types will be added to the start of every index (that
+    doesn't contain a list) if allow_inheritence is True. This can be
+    disabled by either setting types to False on the specific index or
+    by setting index_types to False on the meta dictionary for the document.
     """
 
     __metaclass__ = TopLevelDocumentMetaclass
@@ -90,6 +95,16 @@ class Document(BaseDocument):
             collection = self.__class__.objects._collection
             if force_insert:
                 object_id = collection.insert(doc, safe=safe, **write_options)
+            elif '_id' in doc:
+                # Perform a set rather than a save - this will only save set fields
+                object_id = doc.pop('_id')
+                collection.update({'_id': object_id}, {"$set": doc}, upsert=True, safe=safe, **write_options)
+
+                # Find and unset any fields explicitly set to None
+                if hasattr(self, '_present_fields'):
+                    removals = dict([(k, 1) for k in self._present_fields if k not in doc and k != '_id'])
+                    if removals:
+                        collection.update({'_id': object_id}, {"$unset": removals}, upsert=True, safe=safe, **write_options)
             else:
                 object_id = collection.save(doc, safe=safe, **write_options)
         except pymongo.errors.OperationFailure, err:

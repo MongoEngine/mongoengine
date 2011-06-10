@@ -247,6 +247,107 @@ class FieldTest(unittest.TestCase):
 
         LogEntry.drop_collection()
 
+    def test_complexdatetime_storage(self):
+        """Tests for complex datetime fields - which can handle microseconds
+        without rounding.
+        """
+        class LogEntry(Document):
+            date = ComplexDateTimeField()
+
+        LogEntry.drop_collection()
+
+        # Post UTC - microseconds are rounded (down) nearest millisecond and dropped - with default datetimefields
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
+        log = LogEntry()
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEquals(log.date, d1)
+
+        # Post UTC - microseconds are rounded (down) nearest millisecond - with default datetimefields
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 9999)
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEquals(log.date, d1)
+
+        # Pre UTC dates microseconds below 1000 are dropped - with default datetimefields
+        d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEquals(log.date, d1)
+
+        # Pre UTC microseconds above 1000 is wonky - with default datetimefields
+        # log.date has an invalid microsecond value so I can't construct
+        # a date to compare.
+        for i in xrange(1001, 3113, 33):
+            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i)
+            log.date = d1
+            log.save()
+            log.reload()
+            self.assertEquals(log.date, d1)
+            log1 = LogEntry.objects.get(date=d1)
+            self.assertEqual(log, log1)
+
+        LogEntry.drop_collection()
+
+    def test_complexdatetime_usage(self):
+        """Tests for complex datetime fields - which can handle microseconds
+        without rounding.
+        """
+        class LogEntry(Document):
+            date = ComplexDateTimeField()
+
+        LogEntry.drop_collection()
+
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
+        log = LogEntry()
+        log.date = d1
+        log.save()
+
+        log1 = LogEntry.objects.get(date=d1)
+        self.assertEquals(log, log1)
+
+        LogEntry.drop_collection()
+
+        # create 60 log entries
+        for i in xrange(1950, 2010):
+            d = datetime.datetime(i, 01, 01, 00, 00, 01, 999)
+            LogEntry(date=d).save()
+
+        self.assertEqual(LogEntry.objects.count(), 60)
+
+        # Test ordering
+        logs = LogEntry.objects.order_by("date")
+        count = logs.count()
+        i = 0
+        while i == count-1:
+            self.assertTrue(logs[i].date <= logs[i+1].date)
+            i +=1
+
+        logs = LogEntry.objects.order_by("-date")
+        count = logs.count()
+        i = 0
+        while i == count-1:
+            self.assertTrue(logs[i].date >= logs[i+1].date)
+            i +=1
+
+        # Test searching
+        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980,1,1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980,1,1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(
+            date__lte=datetime.datetime(2011,1,1),
+            date__gte=datetime.datetime(2000,1,1),
+        )
+        self.assertEqual(logs.count(), 10)
+
+        LogEntry.drop_collection()
+
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.
         """
@@ -322,6 +423,108 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_list_field(self):
+        """Ensure that list types work as expected.
+        """
+        class BlogPost(Document):
+            info = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.info = 'my post'
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = ['test']
+        post.save()
+
+        post = BlogPost()
+        post.info = [{'test': 'test'}]
+        post.save()
+
+        post = BlogPost()
+        post.info = [{'test': 3}]
+        post.save()
+
+
+        self.assertEquals(BlogPost.objects.count(), 3)
+        self.assertEquals(BlogPost.objects.filter(info__exact='test').count(), 1)
+        self.assertEquals(BlogPost.objects.filter(info__0__test='test').count(), 1)
+
+        # Confirm handles non strings or non existing keys
+        self.assertEquals(BlogPost.objects.filter(info__0__test__exact='5').count(), 0)
+        self.assertEquals(BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
+        BlogPost.drop_collection()
+
+    def test_list_field_strict(self):
+        """Ensure that list field handles validation if provided a strict field type."""
+
+        class Simple(Document):
+            mapping = ListField(field=IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping = [1]
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping = ["abc"]
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Simple.drop_collection()
+
+    def test_list_field_complex(self):
+        """Ensure that the list fields can handle the complex types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Simple(Document):
+            mapping = ListField()
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping.append(StringSetting(value='foo'))
+        e.mapping.append(IntegerSetting(value=42))
+        e.mapping.append({'number': 1, 'string': 'Hi!', 'float': 1.001,
+                          'complex': IntegerSetting(value=42), 'list':
+                          [IntegerSetting(value=42), StringSetting(value='foo')]})
+        e.save()
+
+        e2 = Simple.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping[0], StringSetting))
+        self.assertTrue(isinstance(e2.mapping[1], IntegerSetting))
+
+        # Test querying
+        self.assertEquals(Simple.objects.filter(mapping__1__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__number=1).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__complex__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__list__0__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__2__list__1__value='foo').count(), 1)
+
+        # Confirm can update
+        Simple.objects().update(set__mapping__1=IntegerSetting(value=10))
+        self.assertEquals(Simple.objects.filter(mapping__1__value=10).count(), 1)
+
+        Simple.objects().update(
+            set__mapping__2__list__1=StringSetting(value='Boo'))
+        self.assertEquals(Simple.objects.filter(mapping__2__list__1__value='foo').count(), 0)
+        self.assertEquals(Simple.objects.filter(mapping__2__list__1__value='Boo').count(), 1)
+
+        Simple.drop_collection()
+
     def test_dict_field(self):
         """Ensure that dict types work as expected.
         """
@@ -362,6 +565,131 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
         self.assertEquals(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
         BlogPost.drop_collection()
+
+    def test_dictfield_strict(self):
+        """Ensure that dict field handles validation if provided a strict field type."""
+
+        class Simple(Document):
+            mapping = DictField(field=IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping['someint'] = 1
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping['somestring'] = "abc"
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Simple.drop_collection()
+
+    def test_dictfield_complex(self):
+        """Ensure that the dict field can handle the complex types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Simple(Document):
+            mapping = DictField()
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping['somestring'] = StringSetting(value='foo')
+        e.mapping['someint'] = IntegerSetting(value=42)
+        e.mapping['nested_dict'] = {'number': 1, 'string': 'Hi!', 'float': 1.001,
+                                 'complex': IntegerSetting(value=42), 'list':
+                                [IntegerSetting(value=42), StringSetting(value='foo')]}
+        e.save()
+
+        e2 = Simple.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
+        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+
+        # Test querying
+        self.assertEquals(Simple.objects.filter(mapping__someint__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__number=1).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__complex__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__0__value=42).count(), 1)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 1)
+
+        # Confirm can update
+        Simple.objects().update(
+            set__mapping={"someint": IntegerSetting(value=10)})
+        Simple.objects().update(
+            set__mapping__nested_dict__list__1=StringSetting(value='Boo'))
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 0)
+        self.assertEquals(Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
+
+        Simple.drop_collection()
+
+    def test_mapfield(self):
+        """Ensure that the MapField handles the declared type."""
+
+        class Simple(Document):
+            mapping = MapField(IntField())
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping['someint'] = 1
+        e.save()
+
+        def create_invalid_mapping():
+            e.mapping['somestring'] = "abc"
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        def create_invalid_class():
+            class NoDeclaredType(Document):
+                mapping = MapField()
+
+        self.assertRaises(ValidationError, create_invalid_class)
+
+        Simple.drop_collection()
+
+    def test_complex_mapfield(self):
+        """Ensure that the MapField can handle complex declared types."""
+
+        class SettingBase(EmbeddedDocument):
+            pass
+
+        class StringSetting(SettingBase):
+            value = StringField()
+
+        class IntegerSetting(SettingBase):
+            value = IntField()
+
+        class Extensible(Document):
+            mapping = MapField(EmbeddedDocumentField(SettingBase))
+
+        Extensible.drop_collection()
+
+        e = Extensible()
+        e.mapping['somestring'] = StringSetting(value='foo')
+        e.mapping['someint'] = IntegerSetting(value=42)
+        e.save()
+
+        e2 = Extensible.objects.get(id=e.id)
+        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
+        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+
+        def create_invalid_mapping():
+            e.mapping['someint'] = 123
+            e.save()
+
+        self.assertRaises(ValidationError, create_invalid_mapping)
+
+        Extensible.drop_collection()
 
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
@@ -773,6 +1101,35 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_choices_get_field_display(self):
+        """Test dynamic helper for returning the display value of a choices field.
+        """
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            style = StringField(max_length=3, choices=(('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+
+        self.assertEqual(shirt.get_size_display(), None)
+        self.assertEqual(shirt.get_style_display(), 'Small')
+
+        shirt.size = "XXL"
+        shirt.style = "B"
+        self.assertEqual(shirt.get_size_display(), 'Extra Extra Large')
+        self.assertEqual(shirt.get_style_display(), 'Baggy')
+
+        # Set as Z - an invalid choice
+        shirt.size = "Z"
+        shirt.style = "Z"
+        self.assertEqual(shirt.get_size_display(), 'Z')
+        self.assertEqual(shirt.get_style_display(), 'Z')
+        self.assertRaises(ValidationError, shirt.validate)
+
+        Shirt.drop_collection()
+
     def test_file_fields(self):
         """Ensure that file fields can be written to and their data retrieved
         """
@@ -903,66 +1260,6 @@ class FieldTest(unittest.TestCase):
         d2 = D()
         self.assertEqual(d2.data, {})
         self.assertEqual(d2.data2, {})
-
-    def test_mapfield(self):
-        """Ensure that the MapField handles the declared type."""
-
-        class Simple(Document):
-            mapping = MapField(IntField())
-
-        Simple.drop_collection()
-
-        e = Simple()
-        e.mapping['someint'] = 1
-        e.save()
-
-        def create_invalid_mapping():
-            e.mapping['somestring'] = "abc"
-            e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
-
-        def create_invalid_class():
-            class NoDeclaredType(Document):
-                mapping = MapField()
-
-        self.assertRaises(ValidationError, create_invalid_class)
-
-        Simple.drop_collection()
-
-    def test_complex_mapfield(self):
-        """Ensure that the MapField can handle complex declared types."""
-
-        class SettingBase(EmbeddedDocument):
-            pass
-
-        class StringSetting(SettingBase):
-            value = StringField()
-
-        class IntegerSetting(SettingBase):
-            value = IntField()
-
-        class Extensible(Document):
-            mapping = MapField(EmbeddedDocumentField(SettingBase))
-
-        Extensible.drop_collection()
-
-        e = Extensible()
-        e.mapping['somestring'] = StringSetting(value='foo')
-        e.mapping['someint'] = IntegerSetting(value=42)
-        e.save()
-
-        e2 = Extensible.objects.get(id=e.id)
-        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
-        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
-
-        def create_invalid_mapping():
-            e.mapping['someint'] = 123
-            e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
-
-        Extensible.drop_collection()
 
 
 if __name__ == '__main__':

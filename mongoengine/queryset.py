@@ -418,8 +418,9 @@ class QuerySet(object):
                 use_types = False
 
         # If _types is being used, prepend it to every specified index
-        if (spec.get('types', True) and doc_cls._meta.get('allow_inheritance')
-                and use_types):
+        index_types = doc_cls._meta.get('index_types', True)
+        allow_inheritance = doc_cls._meta.get('allow_inheritance')
+        if spec.get('types', index_types) and allow_inheritance and use_types:
             index_list.insert(0, ('_types', 1))
 
         spec['fields'] = index_list
@@ -474,6 +475,7 @@ class QuerySet(object):
             background = self._document._meta.get('index_background', False)
             drop_dups = self._document._meta.get('index_drop_dups', False)
             index_opts = self._document._meta.get('index_options', {})
+            index_types = self._document._meta.get('index_types', True)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
@@ -490,7 +492,7 @@ class QuerySet(object):
                         background=background, **opts)
 
             # If _types is being used (for polymorphism), it needs an index
-            if '_types' in self._query:
+            if index_types and '_types' in self._query:
                 self._collection.ensure_index('_types',
                     background=background, **index_opts)
 
@@ -547,11 +549,12 @@ class QuerySet(object):
             parts = [parts]
         fields = []
         field = None
+
         for field_name in parts:
             # Handle ListField indexing:
             if field_name.isdigit():
                 try:
-                    field = field.field
+                    new_field = field.field
                 except AttributeError, err:
                     raise InvalidQueryError(
                         "Can't use index on unsubscriptable field (%s)" % err)
@@ -565,11 +568,17 @@ class QuerySet(object):
                 field = document._fields[field_name]
             else:
                 # Look up subfield on the previous field
-                field = field.lookup_member(field_name)
-                if field is None:
+                new_field = field.lookup_member(field_name)
+                from base import ComplexBaseField
+                if not new_field and isinstance(field, ComplexBaseField):
+                    fields.append(field_name)
+                    continue
+                elif not new_field:
                     raise InvalidQueryError('Cannot resolve field "%s"'
-                                            % field_name)
+                                                % field_name)
+                field = new_field  # update field to the new field type
             fields.append(field)
+
         return fields
 
     @classmethod
@@ -613,14 +622,33 @@ class QuerySet(object):
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
                 fields = QuerySet._lookup_field(_doc_cls, parts)
-                parts = [field.db_field for field in fields]
+                parts = []
+
+                cleaned_fields = []
+                append_field = True
+                for field in fields:
+                    if isinstance(field, str):
+                        parts.append(field)
+                        append_field = False
+                    else:
+                        parts.append(field.db_field)
+                    if append_field:
+                        cleaned_fields.append(field)
 
                 # Convert value to proper value
-                field = fields[-1]
+                field = cleaned_fields[-1]
+
                 singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte', 'not']
                 singular_ops += match_operators
                 if op in singular_ops:
-                    value = field.prepare_query_value(op, value)
+                    if isinstance(field, basestring):
+                        if op in match_operators and isinstance(value, basestring):
+                            from mongoengine import StringField
+                            value = StringField().prepare_query_value(op, value)
+                        else:
+                            value = field
+                    else:
+                        value = field.prepare_query_value(op, value)
                 elif op in ('in', 'nin', 'all', 'near'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
@@ -1168,14 +1196,19 @@ class QuerySet(object):
                 fields = QuerySet._lookup_field(_doc_cls, parts)
                 parts = []
 
+                cleaned_fields = []
+                append_field = True
                 for field in fields:
                     if isinstance(field, str):
                         parts.append(field)
+                        append_field = False
                     else:
                         parts.append(field.db_field)
+                    if append_field:
+                        cleaned_fields.append(field)
 
                 # Convert value to proper value
-                field = fields[-1]
+                field = cleaned_fields[-1]
 
                 if op in (None, 'set', 'push', 'pull', 'addToSet'):
                     value = field.prepare_query_value(op, value)

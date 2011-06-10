@@ -151,12 +151,12 @@ class DocumentTest(unittest.TestCase):
         """Ensure that inheritance may be disabled on simple classes and that
         _cls and _types will not be used.
         """
+
         class Animal(Document):
-            meta = {'allow_inheritance': False}
             name = StringField()
+            meta = {'allow_inheritance': False}
 
         Animal.drop_collection()
-
         def create_dog_class():
             class Dog(Animal):
                 pass
@@ -190,6 +190,92 @@ class DocumentTest(unittest.TestCase):
         comment = Comment(content='test')
         self.assertFalse('_cls' in comment.to_mongo())
         self.assertFalse('_types' in comment.to_mongo())
+
+    def test_allow_inheritance_abstract_document(self):
+        """Ensure that abstract documents can set inheritance rules and that
+        _cls and _types will not be used.
+        """
+        class FinalDocument(Document):
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class Animal(FinalDocument):
+            name = StringField()
+
+        Animal.drop_collection()
+        def create_dog_class():
+            class Dog(Animal):
+                pass
+        self.assertRaises(ValueError, create_dog_class)
+
+        # Check that _cls etc aren't present on simple documents
+        dog = Animal(name='dog')
+        dog.save()
+        collection = self.db[Animal._meta['collection']]
+        obj = collection.find_one()
+        self.assertFalse('_cls' in obj)
+        self.assertFalse('_types' in obj)
+
+        Animal.drop_collection()
+
+    def test_how_to_turn_off_inheritance(self):
+        """Demonstrates migrating from allow_inheritance = True to False.
+        """
+        class Animal(Document):
+            name = StringField()
+            meta = {
+                'indexes': ['name']
+            }
+
+        Animal.drop_collection()
+
+        dog = Animal(name='dog')
+        dog.save()
+
+        collection = self.db[Animal._meta['collection']]
+        obj = collection.find_one()
+        self.assertTrue('_cls' in obj)
+        self.assertTrue('_types' in obj)
+
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)], [(u'_types', 1)], [(u'_types', 1), (u'name', 1)]], info)
+
+        # Turn off inheritance
+        class Animal(Document):
+            name = StringField()
+            meta = {
+                'allow_inheritance': False,
+                'indexes': ['name']
+            }
+        collection.update({}, {"$unset": {"_types": 1, "_cls": 1}}, False, True)
+
+        # Confirm extra data is removed
+        obj = collection.find_one()
+        self.assertFalse('_cls' in obj)
+        self.assertFalse('_types' in obj)
+
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)], [(u'_types', 1)], [(u'_types', 1), (u'name', 1)]], info)
+
+        info = collection.index_information()
+        indexes_to_drop = [key for key, value in info.iteritems() if '_types' in dict(value['key'])]
+        for index in indexes_to_drop:
+            collection.drop_index(index)
+
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)]], info)
+
+        # Recreate indexes
+        dog = Animal.objects.first()
+        dog.save()
+        info = collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertEquals([[(u'_id', 1)], [(u'name', 1),]], info)
+
+        Animal.drop_collection()
 
     def test_abstract_documents(self):
         """Ensure that a document superclass can be marked as abstract
@@ -702,6 +788,90 @@ class DocumentTest(unittest.TestCase):
             recipient.save(validate=False)
         except ValidationError:
             self.fail()
+
+    def test_update(self):
+        """Ensure that an existing document is updated instead of be overwritten.
+        """
+        # Create person object and save it to the database
+        person = self.Person(name='Test User', age=30)
+        person.save()
+
+        # Create same person object, with same id, without age
+        same_person = self.Person(name='Test')
+        same_person.id = person.id
+        same_person.save()
+
+        # Confirm only one object
+        self.assertEquals(self.Person.objects.count(), 1)
+
+        # reload
+        person.reload()
+        same_person.reload()
+
+        # Confirm the same
+        self.assertEqual(person, same_person)
+        self.assertEqual(person.name, same_person.name)
+        self.assertEqual(person.age, same_person.age)
+
+        # Confirm the saved values
+        self.assertEqual(person.name, 'Test')
+        self.assertEqual(person.age, 30)
+
+        # Test only / exclude only updates included fields
+        person = self.Person.objects.only('name').get()
+        person.name = 'User'
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, 30)
+
+        # test exclude only updates set fields
+        person = self.Person.objects.exclude('name').get()
+        person.age = 21
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, 21)
+
+        # Test only / exclude can set non excluded / included fields
+        person = self.Person.objects.only('name').get()
+        person.name = 'Test'
+        person.age = 30
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'Test')
+        self.assertEqual(person.age, 30)
+
+        # test exclude only updates set fields
+        person = self.Person.objects.exclude('name').get()
+        person.name = 'User'
+        person.age = 21
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, 21)
+
+        # Confirm does remove unrequired fields
+        person = self.Person.objects.exclude('name').get()
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, 'User')
+        self.assertEqual(person.age, None)
+
+        person = self.Person.objects.get()
+        person.name = None
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertEqual(person.name, None)
+        self.assertEqual(person.age, None)
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.

@@ -1,4 +1,4 @@
-from base import (BaseField, DereferenceBaseField, ObjectIdField,
+from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document)
 from queryset import DO_NOTHING
 from document import Document, EmbeddedDocument
@@ -18,8 +18,9 @@ import gridfs
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
-           'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
-           'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField']
+           'DecimalField', 'ComplexDateTimeField', 'URLField',
+           'GenericReferenceField', 'FileField', 'BinaryField',
+           'SortedListField', 'EmailField', 'GeoPointField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -273,6 +274,98 @@ class DateTimeField(BaseField):
                     return None
 
 
+class ComplexDateTimeField(StringField):
+    """
+    ComplexDateTimeField handles microseconds exactly instead of rounding
+    like DateTimeField does.
+
+    Derives from a StringField so you can do `gte` and `lte` filtering by
+    using lexicographical comparison when filtering / sorting strings.
+
+    The stored string has the following format:
+
+        YYYY,MM,DD,HH,MM,SS,NNNNNN
+
+    Where NNNNNN is the number of microseconds of the represented `datetime`.
+    The `,` as the separator can be easily modified by passing the `separator`
+    keyword when initializing the field.
+    """
+
+    def __init__(self, separator=',', **kwargs):
+        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second',
+                      'microsecond']
+        self.separtor = separator
+        super(ComplexDateTimeField, self).__init__(**kwargs)
+
+    def _leading_zero(self, number):
+        """
+        Converts the given number to a string.
+
+        If it has only one digit, a leading zero so as it has always at least
+        two digits.
+        """
+        if int(number) < 10:
+            return "0%s" % number
+        else:
+            return str(number)
+
+    def _convert_from_datetime(self, val):
+        """
+        Convert a `datetime` object to a string representation (which will be
+        stored in MongoDB). This is the reverse function of
+        `_convert_from_string`.
+
+        >>> a = datetime(2011, 6, 8, 20, 26, 24, 192284)
+        >>> RealDateTimeField()._convert_from_datetime(a)
+        '2011,06,08,20,26,24,192284'
+        """
+        data = []
+        for name in self.names:
+            data.append(self._leading_zero(getattr(val, name)))
+        return ','.join(data)
+
+    def _convert_from_string(self, data):
+        """
+        Convert a string representation to a `datetime` object (the object you
+        will manipulate). This is the reverse function of
+        `_convert_from_datetime`.
+
+        >>> a = '2011,06,08,20,26,24,192284'
+        >>> ComplexDateTimeField()._convert_from_string(a)
+        datetime.datetime(2011, 6, 8, 20, 26, 24, 192284)
+        """
+        data = data.split(',')
+        data = map(int, data)
+        values = {}
+        for i in range(7):
+            values[self.names[i]] = data[i]
+        return datetime.datetime(**values)
+
+    def __get__(self, instance, owner):
+        data = super(ComplexDateTimeField, self).__get__(instance, owner)
+        if data == None:
+            return datetime.datetime.now()
+        return self._convert_from_string(data)
+
+    def __set__(self, obj, val):
+        data = self._convert_from_datetime(val)
+        return super(ComplexDateTimeField, self).__set__(obj, data)
+
+    def validate(self, value):
+        if not isinstance(value, datetime.datetime):
+            raise ValidationError('Only datetime objects may used in a \
+                                   ComplexDateTimeField')
+
+    def to_python(self, value):
+        return self._convert_from_string(value)
+
+    def to_mongo(self, value):
+        return self._convert_from_datetime(value)
+
+    def prepare_query_value(self, op, value):
+        return self._convert_from_datetime(value)
+
+
 class EmbeddedDocumentField(BaseField):
     """An embedded document field. Only valid values are subclasses of
     :class:`~mongoengine.EmbeddedDocument`.
@@ -301,6 +394,8 @@ class EmbeddedDocumentField(BaseField):
         return value
 
     def to_mongo(self, value):
+        if isinstance(value, basestring):
+            return value
         return self.document_type.to_mongo(value)
 
     def validate(self, value):
@@ -320,7 +415,7 @@ class EmbeddedDocumentField(BaseField):
         return self.to_mongo(value)
 
 
-class ListField(DereferenceBaseField):
+class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
     """
@@ -328,19 +423,10 @@ class ListField(DereferenceBaseField):
     # ListFields cannot be indexed with _types - MongoDB doesn't support this
     _index_with_types = False
 
-    def __init__(self, field, **kwargs):
-        if not isinstance(field, BaseField):
-            raise ValidationError('Argument to ListField constructor must be '
-                                  'a valid field')
+    def __init__(self, field=None, **kwargs):
         self.field = field
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
-
-    def to_python(self, value):
-        return [self.field.to_python(item) for item in value]
-
-    def to_mongo(self, value):
-        return [self.field.to_mongo(item) for item in value]
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
@@ -348,28 +434,14 @@ class ListField(DereferenceBaseField):
         if not isinstance(value, (list, tuple)):
             raise ValidationError('Only lists and tuples may be used in a '
                                   'list field')
-
-        try:
-            [self.field.validate(item) for item in value]
-        except Exception, err:
-            raise ValidationError('Invalid ListField item (%s)' % str(item))
+        super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
-        if op in ('set', 'unset'):
-            return [self.field.prepare_query_value(op, v) for v in value]
-        return self.field.prepare_query_value(op, value)
-
-    def lookup_member(self, member_name):
-        return self.field.lookup_member(member_name)
-
-    def _set_owner_document(self, owner_document):
-        self.field.owner_document = owner_document
-        self._owner_document = owner_document
-
-    def _get_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
-    owner_document = property(_get_owner_document, _set_owner_document)
+        if self.field:
+            if op in ('set', 'unset') and not isinstance(value, basestring):
+                return [self.field.prepare_query_value(op, v) for v in value]
+            return self.field.prepare_query_value(op, value)
+        return super(ListField, self).prepare_query_value(op, value)
 
 
 class SortedListField(ListField):
@@ -388,20 +460,21 @@ class SortedListField(ListField):
         super(SortedListField, self).__init__(field, **kwargs)
 
     def to_mongo(self, value):
+        value = super(SortedListField, self).to_mongo(value)
         if self._ordering is not None:
-            return sorted([self.field.to_mongo(item) for item in value],
-                          key=itemgetter(self._ordering))
-        return sorted([self.field.to_mongo(item) for item in value])
+            return sorted(value, key=itemgetter(self._ordering))
+        return sorted(value)
 
 
-class DictField(BaseField):
+class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
     .. versionadded:: 0.3
     """
 
-    def __init__(self, basecls=None, *args, **kwargs):
+    def __init__(self, basecls=None, field=None, *args, **kwargs):
+        self.field = field
         self.basecls = basecls or BaseField
         assert issubclass(self.basecls, BaseField)
         kwargs.setdefault('default', lambda: {})
@@ -417,6 +490,7 @@ class DictField(BaseField):
         if any(('.' in k or '$' in k) for k in value):
             raise ValidationError('Invalid dictionary key name - keys may not '
                                   'contain "." or "$" characters')
+        super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
         return DictField(basecls=self.basecls, db_field=member_name)
@@ -432,7 +506,7 @@ class DictField(BaseField):
         return super(DictField, self).prepare_query_value(op, value)
 
 
-class MapField(DereferenceBaseField):
+class MapField(DictField):
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
@@ -444,50 +518,7 @@ class MapField(DereferenceBaseField):
         if not isinstance(field, BaseField):
             raise ValidationError('Argument to MapField constructor must be '
                                   'a valid field')
-        self.field = field
-        kwargs.setdefault('default', lambda: {})
-        super(MapField, self).__init__(*args, **kwargs)
-
-    def validate(self, value):
-        """Make sure that a list of valid fields is being used.
-        """
-        if not isinstance(value, dict):
-            raise ValidationError('Only dictionaries may be used in a '
-                                  'DictField')
-
-        if any(('.' in k or '$' in k) for k in value):
-            raise ValidationError('Invalid dictionary key name - keys may not '
-                                  'contain "." or "$" characters')
-
-        try:
-            [self.field.validate(item) for item in value.values()]
-        except Exception, err:
-            raise ValidationError('Invalid MapField item (%s)' % str(item))
-
-    def to_python(self, value):
-        return dict([(key, self.field.to_python(item)) for key, item in value.iteritems()])
-
-    def to_mongo(self, value):
-        return dict([(key, self.field.to_mongo(item)) for key, item in value.iteritems()])
-
-    def prepare_query_value(self, op, value):
-        if op not in ('set', 'unset'):
-            return self.field.prepare_query_value(op, value)
-        for key in value:
-            value[key] = self.field.prepare_query_value(op, value[key])
-        return value
-
-    def lookup_member(self, member_name):
-        return self.field.lookup_member(member_name)
-
-    def _set_owner_document(self, owner_document):
-        self.field.owner_document = owner_document
-        self._owner_document = owner_document
-
-    def _get_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
-    owner_document = property(_get_owner_document, _set_owner_document)
+        super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
 class ReferenceField(BaseField):
