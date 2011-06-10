@@ -347,9 +347,9 @@ class ComplexDateTimeField(StringField):
             return datetime.datetime.now()
         return self._convert_from_string(data)
 
-    def __set__(self, obj, val):
-        data = self._convert_from_datetime(val)
-        return super(ComplexDateTimeField, self).__set__(obj, data)
+    def __set__(self, instance, value):
+        value = self._convert_from_datetime(value)
+        return super(ComplexDateTimeField, self).__set__(instance, value)
 
     def validate(self, value):
         if not isinstance(value, datetime.datetime):
@@ -686,11 +686,13 @@ class GridFSProxy(object):
     .. versionadded:: 0.4
     """
 
-    def __init__(self, grid_id=None):
+    def __init__(self, grid_id=None, key=None, instance=None):
         self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = grid_id              # Store GridFS id for file
         self.gridout = None
+        self.key = key
+        self.instance = instance
 
     def __getattr__(self, name):
         obj = self.get()
@@ -723,6 +725,7 @@ class GridFSProxy(object):
             raise GridFSError('This document already has a file. Either delete '
                               'it or call replace to overwrite it')
         self.grid_id = self.fs.put(file_obj, **kwargs)
+        self._mark_as_changed()
 
     def write(self, string):
         if self.grid_id:
@@ -750,6 +753,12 @@ class GridFSProxy(object):
         self.fs.delete(self.grid_id)
         self.grid_id = None
         self.gridout = None
+        self._mark_as_changed()
+
+    def _mark_as_changed(self):
+        """Inform the instance that `self.key` has been changed"""
+        if self.instance:
+            self.instance._mark_as_changed(self.key)
 
     def replace(self, file_obj, **kwargs):
         self.delete()
@@ -777,10 +786,14 @@ class FileField(BaseField):
         grid_file = instance._data.get(self.name)
         self.grid_file = grid_file
         if self.grid_file:
+            if not self.grid_file.key:
+                self.grid_file.key = self.name
+                self.grid_file.instance = instance
             return self.grid_file
-        return GridFSProxy()
+        return GridFSProxy(key=self.name, instance=instance)
 
     def __set__(self, instance, value):
+        key = self.name
         if isinstance(value, file) or isinstance(value, str):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
@@ -794,10 +807,12 @@ class FileField(BaseField):
                 grid_file.put(value)
             else:
                 # Create a new proxy object as we don't already have one
-                instance._data[self.name] = GridFSProxy()
-                instance._data[self.name].put(value)
+                instance._data[key] = GridFSProxy(key=key, instance=instance)
+                instance._data[key].put(value)
         else:
-            instance._data[self.name] = value
+            instance._data[key] = value
+
+        instance._mark_as_changed(key)
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB

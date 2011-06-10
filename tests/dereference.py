@@ -281,9 +281,7 @@ class FieldTest(unittest.TestCase):
 
             [m for m in group_obj.members]
             self.assertEqual(q, 1)
-
-            for k, m in group_obj.members.iteritems():
-                self.assertTrue('User' in m.__class__.__name__)
+            self.assertEqual(group_obj.members, {})
 
         UserA.drop_collection()
         UserB.drop_collection()

@@ -843,6 +843,7 @@ class FieldTest(unittest.TestCase):
             name = StringField()
             children = ListField(EmbeddedDocumentField('self'))
 
+        Tree.drop_collection
         tree = Tree(name="Tree")
 
         first_child = TreeNode(name="Child 1")
@@ -853,12 +854,39 @@ class FieldTest(unittest.TestCase):
 
         third_child = TreeNode(name="Child 3")
         first_child.children.append(third_child)
-
         tree.save()
 
-        tree_obj = Tree.objects.first()
         self.assertEqual(len(tree.children), 1)
         self.assertEqual(tree.children[0].name, first_child.name)
+        self.assertEqual(tree.children[0].children[0].name, second_child.name)
+        self.assertEqual(tree.children[0].children[1].name, third_child.name)
+
+        # Test updating
+        tree.children[0].name = 'I am Child 1'
+        tree.children[0].children[0].name = 'I am Child 2'
+        tree.children[0].children[1].name = 'I am Child 3'
+        tree.save()
+
+        self.assertEqual(tree.children[0].name, 'I am Child 1')
+        self.assertEqual(tree.children[0].children[0].name, 'I am Child 2')
+        self.assertEqual(tree.children[0].children[1].name, 'I am Child 3')
+
+        # Test removal
+        self.assertEqual(len(tree.children[0].children), 2)
+        del(tree.children[0].children[1])
+
+        tree.save()
+        self.assertEqual(len(tree.children[0].children), 1)
+
+        tree.children[0].children.pop(0)
+        tree.save()
+        self.assertEqual(len(tree.children[0].children), 0)
+        self.assertEqual(tree.children[0].children, [])
+
+        tree.children[0].children.insert(0, third_child)
+        tree.children[0].children.insert(0, second_child)
+        tree.save()
+        self.assertEqual(len(tree.children[0].children), 2)
         self.assertEqual(tree.children[0].children[0].name, second_child.name)
         self.assertEqual(tree.children[0].children[1].name, third_child.name)
 

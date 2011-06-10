@@ -18,10 +18,21 @@ attribute syntax::
 
 Saving and deleting documents
 =============================
-To save the document to the database, call the
-:meth:`~mongoengine.Document.save` method. If the document does not exist in
-the database, it will be created. If it does already exist, it will be
-updated.
+MongoEngine tracks changes to documents to provide efficient saving.  To save 
+the document to the database, call the :meth:`~mongoengine.Document.save` method.
+If the document does not exist in the database, it will be created. If it does 
+already exist, then any changes will be updated atomically.  For example::
+
+    >>> page = Page(title="Test Page")
+    >>> page.save()  # Performs an insert
+    >>> page.title = "My Page"
+    >>> page.save()  # Performs an atomic set on the title field.
+
+.. note::
+    Changes to documents are tracked and on the whole perform `set` operations.
+
+    * ``list_field.pop(0)`` - *sets* the resulting list
+    * ``del(list_field)``   - *unsets* whole list
 
 To delete a document, call the :meth:`~mongoengine.Document.delete` method.
 Note that this will only work if the document exists in the database and has a

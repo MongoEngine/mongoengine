@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added delta tracking now only sets / unsets explicitly changed fields
 - Fixed saving so sets updated values rather than overwrites
 - Added ComplexDateTimeField - Handles datetimes correctly with microseconds
 - Added ComplexBaseField - for improved flexibility and performance
