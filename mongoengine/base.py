@@ -627,8 +627,8 @@ class BaseDocument(object):
                 try:
                     field._validate(value)
                 except (ValueError, AttributeError, AssertionError), e:
-                    raise ValidationError('Invalid value for field of type "%s": %s'
-                                          % (field.__class__.__name__, value))
+                    raise ValidationError('Invalid value for field named "%s" of type "%s": %s'
+                                          % (field.name, field.__class__.__name__, value))
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
 
