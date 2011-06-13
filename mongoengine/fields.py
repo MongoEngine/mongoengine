@@ -394,7 +394,7 @@ class EmbeddedDocumentField(BaseField):
         return value
 
     def to_mongo(self, value):
-        if isinstance(value, basestring):
+        if not isinstance(value, self.document_type):
             return value
         return self.document_type.to_mongo(value)
 
@@ -438,7 +438,8 @@ class ListField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         if self.field:
-            if op in ('set', 'unset') and not isinstance(value, basestring):
+            if op in ('set', 'unset') and (not isinstance(value, basestring)
+                and hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)
         return super(ListField, self).prepare_query_value(op, value)
