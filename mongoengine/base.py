@@ -91,9 +91,10 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        instance._data[self.name] = value
+        key = self.name
+        instance._data[key] = value
         # If the field set is in the _present_fields list add it so we can track
-        if hasattr(instance, '_present_fields') and self.name not in instance._present_fields:
+        if hasattr(instance, '_present_fields') and key and key not in instance._present_fields:
             instance._present_fields.append(self.name)
 
     def to_python(self, value):
