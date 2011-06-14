@@ -91,7 +91,7 @@ class Document(BaseDocument):
                 For example, ``save(..., w=2, fsync=True)`` will wait until at least two servers
                 have recorded the write and will force an fsync on each server being written to.
         """
-        signals.pre_save.send(self)
+        signals.pre_save.send(self.__class__, document=self)
 
         if validate:
             self.validate()
@@ -122,7 +122,7 @@ class Document(BaseDocument):
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
         self._changed_fields = []
-        signals.post_save.send(self, created=created)
+        signals.post_save.send(self.__class__, document=self, created=created)
 
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -130,7 +130,7 @@ class Document(BaseDocument):
 
         :param safe: check if the operation succeeded before returning
         """
-        signals.pre_delete.send(self)
+        signals.pre_delete.send(self.__class__, document=self)
 
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
@@ -140,7 +140,7 @@ class Document(BaseDocument):
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
 
-        signals.post_delete.send(self)
+        signals.post_delete.send(self.__class__, document=self)
 
     def reload(self):
         """Reloads all attributes from the database.

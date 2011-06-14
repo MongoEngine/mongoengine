@@ -28,21 +28,21 @@ class SignalTests(unittest.TestCase):
                 return self.name
 
             @classmethod
-            def pre_init(cls, instance, **kwargs):
+            def pre_init(cls, sender, document, *args, **kwargs):
                 signal_output.append('pre_init signal, %s' % cls.__name__)
                 signal_output.append(str(kwargs['values']))
 
             @classmethod
-            def post_init(cls, instance, **kwargs):
-                signal_output.append('post_init signal, %s' % instance)
+            def post_init(cls, sender, document, **kwargs):
+                signal_output.append('post_init signal, %s' % document)
 
             @classmethod
-            def pre_save(cls, instance, **kwargs):
-                signal_output.append('pre_save signal, %s' % instance)
+            def pre_save(cls, sender, document, **kwargs):
+                signal_output.append('pre_save signal, %s' % document)
 
             @classmethod
-            def post_save(cls, instance, **kwargs):
-                signal_output.append('post_save signal, %s' % instance)
+            def post_save(cls, sender, document, **kwargs):
+                signal_output.append('post_save signal, %s' % document)
                 if 'created' in kwargs:
                     if kwargs['created']:
                         signal_output.append('Is created')
@@ -50,15 +50,52 @@ class SignalTests(unittest.TestCase):
                         signal_output.append('Is updated')
 
             @classmethod
-            def pre_delete(cls, instance, **kwargs):
-                signal_output.append('pre_delete signal, %s' % instance)
+            def pre_delete(cls, sender, document, **kwargs):
+                signal_output.append('pre_delete signal, %s' % document)
 
             @classmethod
-            def post_delete(cls, instance, **kwargs):
-                signal_output.append('post_delete signal, %s' % instance)
-
+            def post_delete(cls, sender, document, **kwargs):
+                signal_output.append('post_delete signal, %s' % document)
         self.Author = Author
 
+
+        class Another(Document):
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+            @classmethod
+            def pre_init(cls, sender, document, **kwargs):
+                signal_output.append('pre_init Another signal, %s' % cls.__name__)
+                signal_output.append(str(kwargs['values']))
+
+            @classmethod
+            def post_init(cls, sender, document, **kwargs):
+                signal_output.append('post_init Another signal, %s' % document)
+
+            @classmethod
+            def pre_save(cls, sender, document, **kwargs):
+                signal_output.append('pre_save Another signal, %s' % document)
+
+            @classmethod
+            def post_save(cls, sender, document, **kwargs):
+                signal_output.append('post_save Another signal, %s' % document)
+                if 'created' in kwargs:
+                    if kwargs['created']:
+                        signal_output.append('Is created')
+                    else:
+                        signal_output.append('Is updated')
+
+            @classmethod
+            def pre_delete(cls, sender, document, **kwargs):
+                signal_output.append('pre_delete Another signal, %s' % document)
+
+            @classmethod
+            def post_delete(cls, sender, document, **kwargs):
+                signal_output.append('post_delete Another signal, %s' % document)
+
+        self.Another = Another
         # Save up the number of connected signals so that we can check at the end
         # that all the signals we register get properly unregistered
         self.pre_signals = (
@@ -70,12 +107,19 @@ class SignalTests(unittest.TestCase):
             len(signals.post_delete.receivers)
         )
 
-        signals.pre_init.connect(Author.pre_init)
-        signals.post_init.connect(Author.post_init)
-        signals.pre_save.connect(Author.pre_save)
-        signals.post_save.connect(Author.post_save)
-        signals.pre_delete.connect(Author.pre_delete)
-        signals.post_delete.connect(Author.post_delete)
+        signals.pre_init.connect(Author.pre_init, sender=Author)
+        signals.post_init.connect(Author.post_init, sender=Author)
+        signals.pre_save.connect(Author.pre_save, sender=Author)
+        signals.post_save.connect(Author.post_save, sender=Author)
+        signals.pre_delete.connect(Author.pre_delete, sender=Author)
+        signals.post_delete.connect(Author.post_delete, sender=Author)
+
+        signals.pre_init.connect(Another.pre_init, sender=Another)
+        signals.post_init.connect(Another.post_init, sender=Another)
+        signals.pre_save.connect(Another.pre_save, sender=Another)
+        signals.post_save.connect(Another.post_save, sender=Another)
+        signals.pre_delete.connect(Another.pre_delete, sender=Another)
+        signals.post_delete.connect(Another.post_delete, sender=Another)
 
     def tearDown(self):
         signals.pre_init.disconnect(self.Author.pre_init)
@@ -84,6 +128,13 @@ class SignalTests(unittest.TestCase):
         signals.pre_delete.disconnect(self.Author.pre_delete)
         signals.post_save.disconnect(self.Author.post_save)
         signals.pre_save.disconnect(self.Author.pre_save)
+
+        signals.pre_init.disconnect(self.Another.pre_init)
+        signals.post_init.disconnect(self.Another.post_init)
+        signals.post_delete.disconnect(self.Another.post_delete)
+        signals.pre_delete.disconnect(self.Another.pre_delete)
+        signals.post_save.disconnect(self.Another.post_save)
+        signals.pre_save.disconnect(self.Another.pre_save)
 
         # Check that all our signals got disconnected properly.
         post_signals = (

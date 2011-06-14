@@ -600,7 +600,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 class BaseDocument(object):
 
     def __init__(self, **values):
-        signals.pre_init.send(self, values=values)
+        signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
         # Assign default values to instance
@@ -619,7 +619,7 @@ class BaseDocument(object):
             except AttributeError:
                 pass
 
-        signals.post_init.send(self)
+        signals.post_init.send(self.__class__, document=self)
 
     def _get_FIELD_display(self, field):
         """Returns the display value for a choice field"""

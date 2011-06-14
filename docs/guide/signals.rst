@@ -30,20 +30,20 @@ Example usage::
             return self.name
 
         @classmethod
-        def pre_save(cls, instance, **kwargs):
-            logging.debug("Pre Save: %s" % instance.name)
+        def pre_save(cls, sender, document, **kwargs):
+            logging.debug("Pre Save: %s" % document.name)
 
         @classmethod
-        def post_save(cls, instance, **kwargs):
-            logging.debug("Post Save: %s" % instance.name)
+        def post_save(cls, sender, document, **kwargs):
+            logging.debug("Post Save: %s" % document.name)
             if 'created' in kwargs:
                 if kwargs['created']:
                     logging.debug("Created")
                 else:
                     logging.debug("Updated")
         
-        signals.pre_save.connect(Author.pre_save)
-        signals.post_save.connect(Author.post_save)
+        signals.pre_save.connect(Author.pre_save, sender=Author)
+        signals.post_save.connect(Author.post_save, sender=Author)
 
 
 .. _blinker: http://pypi.python.org/pypi/blinker
