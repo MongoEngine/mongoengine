@@ -864,14 +864,6 @@ class BaseList(list):
         self.instance._mark_as_changed(self.name)
         super(BaseList, self).__delitem__(*args, **kwargs)
 
-    def __delete__(self, *args, **kwargs):
-        if hasattr(self, 'instance') and hasattr(self, 'name'):
-            import ipdb; ipdb.set_trace()
-            self.instance._mark_as_changed(self.name)
-            delattr(self, 'instance')
-            delattr(self, 'name')
-        super(BaseDict, self).__delete__(*args, **kwargs)
-
     def append(self, *args, **kwargs):
         self.instance._mark_as_changed(self.name)
         return super(BaseList, self).append(*args, **kwargs)
