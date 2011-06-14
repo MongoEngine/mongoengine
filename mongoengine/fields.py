@@ -232,12 +232,16 @@ class DateTimeField(BaseField):
     """A datetime field.
 
     Note: Microseconds are rounded to the nearest millisecond.
-      Pre UTC microsecond support is effecively broken see
-      `tests.field.test_datetime` for more information.
+      Pre UTC microsecond support is effecively broken.
+      Use :class:`~mongoengine.fields.ComplexDateTimeField` if you
+      need accurate microsecond support.
     """
 
     def validate(self, value):
-        assert isinstance(value, datetime.datetime)
+        assert isinstance(value, (datetime.datetime, datetime.date))
+
+    def to_mongo(self, value):
+        return self.prepare_query_value(None, value)
 
     def prepare_query_value(self, op, value):
         if value is None:

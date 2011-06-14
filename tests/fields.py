@@ -182,6 +182,9 @@ class FieldTest(unittest.TestCase):
         log.time = datetime.datetime.now()
         log.validate()
 
+        log.time = datetime.date.today()
+        log.validate()
+
         log.time = -1
         self.assertRaises(ValidationError, log.validate)
         log.time = '1pm'
@@ -196,6 +199,15 @@ class FieldTest(unittest.TestCase):
         """
         class LogEntry(Document):
             date = DateTimeField()
+
+        LogEntry.drop_collection()
+
+        # Test can save dates
+        log = LogEntry()
+        log.date = datetime.date.today()
+        log.save()
+        log.reload()
+        self.assertEquals(log.date.date(), datetime.date.today())
 
         LogEntry.drop_collection()
 
