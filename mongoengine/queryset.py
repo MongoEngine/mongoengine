@@ -1400,6 +1400,12 @@ class QuerySet(object):
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents.
 
+        .. note::
+            Can only do direct simple mappings and cannot map across
+            :class:`~mongoengine.ReferenceField` or
+            :class:`~mongoengine.GenericReferenceField` for more complex
+            counting a manual map reduce call would is required.
+
         If the field is a :class:`~mongoengine.ListField`, the items within
         each list will be counted individually.
 
