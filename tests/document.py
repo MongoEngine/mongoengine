@@ -933,31 +933,35 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(doc._delta(), ({}, {}))
 
         doc.string_field = 'hello'
+        self.assertEquals(doc._get_changed_fields(), ['string_field'])
         self.assertEquals(doc._delta(), ({'string_field': 'hello'}, {}))
 
         doc._changed_fields = []
         doc.int_field = 1
+        self.assertEquals(doc._get_changed_fields(), ['int_field'])
         self.assertEquals(doc._delta(), ({'int_field': 1}, {}))
 
         doc._changed_fields = []
         dict_value = {'hello': 'world', 'ping': 'pong'}
         doc.dict_field = dict_value
+        self.assertEquals(doc._get_changed_fields(), ['dict_field'])
         self.assertEquals(doc._delta(), ({'dict_field': dict_value}, {}))
 
         doc._changed_fields = []
         list_value = ['1', 2, {'hello': 'world'}]
         doc.list_field = list_value
+        self.assertEquals(doc._get_changed_fields(), ['list_field'])
         self.assertEquals(doc._delta(), ({'list_field': list_value}, {}))
 
         # Test unsetting
         doc._changed_fields = []
-        doc._unset_fields = []
         doc.dict_field = {}
+        self.assertEquals(doc._get_changed_fields(), ['dict_field'])
         self.assertEquals(doc._delta(), ({}, {'dict_field': 1}))
 
         doc._changed_fields = []
-        doc._unset_fields = {}
         doc.list_field = []
+        self.assertEquals(doc._get_changed_fields(), ['list_field'])
         self.assertEquals(doc._delta(), ({}, {'list_field': 1}))
 
     def test_delta_recursive(self):
@@ -990,6 +994,8 @@ class DocumentTest(unittest.TestCase):
         embedded_1.list_field = ['1', 2, {'hello': 'world'}]
         doc.embedded_field = embedded_1
 
+        self.assertEquals(doc._get_changed_fields(), ['embedded_field'])
+
         embedded_delta = {
             '_types': ['Embedded'],
             '_cls': 'Embedded',
@@ -1005,6 +1011,7 @@ class DocumentTest(unittest.TestCase):
         doc.reload()
 
         doc.embedded_field.dict_field = {}
+        self.assertEquals(doc._get_changed_fields(), ['embedded_field.dict_field'])
         self.assertEquals(doc.embedded_field._delta(), ({}, {'dict_field': 1}))
         self.assertEquals(doc._delta(), ({}, {'embedded_field.dict_field': 1}))
         doc.save()
@@ -1012,6 +1019,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(doc.embedded_field.dict_field, {})
 
         doc.embedded_field.list_field = []
+        self.assertEquals(doc._get_changed_fields(), ['embedded_field.list_field'])
         self.assertEquals(doc.embedded_field._delta(), ({}, {'list_field': 1}))
         self.assertEquals(doc._delta(), ({}, {'embedded_field.list_field': 1}))
         doc.save()
@@ -1025,6 +1033,7 @@ class DocumentTest(unittest.TestCase):
         embedded_2.list_field = ['1', 2, {'hello': 'world'}]
 
         doc.embedded_field.list_field = ['1', 2, embedded_2]
+        self.assertEquals(doc._get_changed_fields(), ['embedded_field.list_field'])
         self.assertEquals(doc.embedded_field._delta(), ({
             'list_field': ['1', 2, {
                 '_cls': 'Embedded',
@@ -1055,11 +1064,37 @@ class DocumentTest(unittest.TestCase):
             self.assertEquals(doc.embedded_field.list_field[2][k], embedded_2[k])
 
         doc.embedded_field.list_field[2].string_field = 'world'
+        self.assertEquals(doc._get_changed_fields(), ['embedded_field.list_field.2.string_field'])
         self.assertEquals(doc.embedded_field._delta(), ({'list_field.2.string_field': 'world'}, {}))
         self.assertEquals(doc._delta(), ({'embedded_field.list_field.2.string_field': 'world'}, {}))
         doc.save()
         doc.reload()
         self.assertEquals(doc.embedded_field.list_field[2].string_field, 'world')
+
+        # Test multiple assignments
+        doc.embedded_field.list_field[2].string_field = 'hello world'
+        doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
+        self.assertEquals(doc._get_changed_fields(), ['embedded_field.list_field'])
+        self.assertEquals(doc.embedded_field._delta(), ({
+            'list_field': ['1', 2, {
+            '_types': ['Embedded'],
+            '_cls': 'Embedded',
+            'string_field': 'hello world',
+            'int_field': 1,
+            'list_field': ['1', 2, {'hello': 'world'}],
+            'dict_field': {'hello': 'world'}}]}, {}))
+        self.assertEquals(doc._delta(), ({
+            'embedded_field.list_field': ['1', 2, {
+                '_types': ['Embedded'],
+                '_cls': 'Embedded',
+                'string_field': 'hello world',
+                'int_field': 1,
+                'list_field': ['1', 2, {'hello': 'world'}],
+                'dict_field': {'hello': 'world'}}
+            ]}, {}))
+        doc.save()
+        doc.reload()
+        self.assertEquals(doc.embedded_field.list_field[2].string_field, 'hello world')
 
         # Test list native methods
         doc.embedded_field.list_field[2].list_field.pop(0)
