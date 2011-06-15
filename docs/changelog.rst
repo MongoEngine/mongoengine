@@ -5,6 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Added help_text and verbose_name to fields to help with some form libs
+- Updated item_frequencies to handle embedded document lookups
 - Added delta tracking now only sets / unsets explicitly changed fields
 - Fixed saving so sets updated values rather than overwrites
 - Added ComplexDateTimeField - Handles datetimes correctly with microseconds
