@@ -652,7 +652,7 @@ class GenericReferenceField(BaseField):
         id_ = id_field.to_mongo(id_)
         collection = document._meta['collection']
         ref = pymongo.dbref.DBRef(collection, id_)
-        return {'_cls': document.__class__.__name__, '_ref': ref}
+        return {'_cls': document._class_name, '_ref': ref}
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)

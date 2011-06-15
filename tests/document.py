@@ -116,6 +116,8 @@ class DocumentTest(unittest.TestCase):
         class Human(Mammal): pass
         class Dog(Mammal): pass
 
+        Animal.drop_collection()
+
         Animal().save()
         Fish().save()
         Mammal().save()
@@ -131,6 +133,52 @@ class DocumentTest(unittest.TestCase):
         classes = [obj.__class__ for obj in Human.objects]
         self.assertEqual(classes, [Human])
 
+        Animal.drop_collection()
+
+    def test_polymorphic_references(self):
+        """Ensure that the correct subclasses are returned from a query when
+        using references / generic references
+        """
+        class Animal(Document): pass
+        class Fish(Animal): pass
+        class Mammal(Animal): pass
+        class Human(Mammal): pass
+        class Dog(Mammal): pass
+
+        class Zoo(Document):
+            animals = ListField(ReferenceField(Animal))
+
+        Zoo.drop_collection()
+        Animal.drop_collection()
+
+        Animal().save()
+        Fish().save()
+        Mammal().save()
+        Human().save()
+        Dog().save()
+
+        # Save a reference to each animal
+        zoo = Zoo(animals=Animal.objects)
+        zoo.save()
+        zoo.reload()
+
+        classes = [a.__class__ for a in Zoo.objects.first().animals]
+        self.assertEqual(classes, [Animal, Fish, Mammal, Human, Dog])
+
+        Zoo.drop_collection()
+
+        class Zoo(Document):
+            animals = ListField(GenericReferenceField(Animal))
+
+        # Save a reference to each animal
+        zoo = Zoo(animals=Animal.objects)
+        zoo.save()
+        zoo.reload()
+
+        classes = [a.__class__ for a in Zoo.objects.first().animals]
+        self.assertEqual(classes, [Animal, Fish, Mammal, Human, Dog])
+
+        Zoo.drop_collection()
         Animal.drop_collection()
 
     def test_inheritance(self):

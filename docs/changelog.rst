@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed issue with inconsitent setting of _cls breaking inherited referencing
 - Added help_text and verbose_name to fields to help with some form libs
 - Updated item_frequencies to handle embedded document lookups
 - Added delta tracking now only sets / unsets explicitly changed fields
@@ -22,7 +23,7 @@ Changes in dev
 - Updated connection exception so it provides more info on the cause.
 - Added searching multiple levels deep in ``DictField``
 - Added ``DictField`` entries containing strings to use matching operators
-- Added ``MapField``, similar to ``DictField`` 
+- Added ``MapField``, similar to ``DictField``
 - Added Abstract Base Classes
 - Added Custom Objects Managers
 - Added sliced subfields updating
@@ -35,14 +36,14 @@ Changes in dev
 - Updated queryset to handle latest version of pymongo
   map_reduce now requires an output.
 - Added ``Document`` __hash__, __ne__ for pickling
-- Added ``FileField`` optional size arg for read method 
+- Added ``FileField`` optional size arg for read method
 - Fixed ``FileField`` seek and tell methods for reading files
-- Added ``QuerySet.clone`` to support copying querysets 
+- Added ``QuerySet.clone`` to support copying querysets
 - Fixed item_frequencies when using name thats the same as a native js function
 - Added reverse delete rules
 - Fixed issue with unset operation
 - Fixed Q-object bug
-- Added ``QuerySet.all_fields`` resets previous .only() and .exlude() 
+- Added ``QuerySet.all_fields`` resets previous .only() and .exlude()
 - Added ``QuerySet.exclude``
 - Added django style choices
 - Fixed order and filter issue
@@ -82,7 +83,7 @@ Changes in v0.3
 ===============
 - Added MapReduce support
 - Added ``contains``, ``startswith`` and ``endswith`` query operators (and
-  case-insensitive versions that are prefixed with 'i') 
+  case-insensitive versions that are prefixed with 'i')
 - Deprecated fields' ``name`` parameter, replaced with ``db_field``
 - Added ``QuerySet.only`` for only retrieving specific fields
 - Added ``QuerySet.in_bulk()`` for bulk querying using ids
@@ -129,7 +130,7 @@ Changes in v0.2
 ===============
 - Added ``Q`` class for building advanced queries
 - Added ``QuerySet`` methods for atomic updates to documents
-- Fields may now specify ``unique=True`` to enforce uniqueness across a 
+- Fields may now specify ``unique=True`` to enforce uniqueness across a
   collection
 - Added option for default document ordering
 - Fixed bug in index definitions
@@ -137,7 +138,7 @@ Changes in v0.2
 Changes in v0.1.3
 =================
 - Added Django authentication backend
-- Added ``Document.meta`` support for indexes, which are ensured just before 
+- Added ``Document.meta`` support for indexes, which are ensured just before
   querying takes place
 - A few minor bugfixes
 

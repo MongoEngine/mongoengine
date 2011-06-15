@@ -173,7 +173,7 @@ class ComplexBaseField(BaseField):
 
         for k,v in value_list.items():
             if isinstance(v, dict) and '_cls' in v and '_ref' not in v:
-                value_list[k] = get_document(v['_cls'].split('.')[-1])._from_son(v)
+                value_list[k] = get_document(v['_cls'])._from_son(v)
 
         # Handle all dereferencing
         db = _get_db()
@@ -401,6 +401,7 @@ class DocumentMetaclass(type):
                 else:
                     simple_class = False
 
+        doc_class_name = '.'.join(reversed(class_name))
         meta = attrs.get('_meta', attrs.get('meta', {}))
 
         if 'allow_inheritance' not in meta:
@@ -412,8 +413,7 @@ class DocumentMetaclass(type):
             raise ValueError('Only direct subclasses of Document may set '
                              '"allow_inheritance" to False')
         attrs['_meta'] = meta
-
-        attrs['_class_name'] = '.'.join(reversed(class_name))
+        attrs['_class_name'] = doc_class_name
         attrs['_superclasses'] = superclasses
 
         # Add the document's fields to the _fields attribute
@@ -448,7 +448,7 @@ class DocumentMetaclass(type):
         new_class.add_to_class('MultipleObjectsReturned', exc)
 
         global _document_registry
-        _document_registry[name] = new_class
+        _document_registry[doc_class_name] = new_class
 
         return new_class
 
