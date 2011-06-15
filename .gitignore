@@ -12,3 +12,4 @@ env/
 .settings
 .project
 .pydevproject
+tests/bugfix.py

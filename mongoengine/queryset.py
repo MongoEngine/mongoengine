@@ -1303,7 +1303,16 @@ class QuerySet(object):
             # Substitute the correct name for the field into the javascript
             return u'["%s"]' % fields[-1].db_field
 
-        return re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+        def field_path_sub(match):
+            # Extract just the field name, and look up the field objects
+            field_name = match.group(1).split('.')
+            fields = QuerySet._lookup_field(self._document, field_name)
+            # Substitute the correct name for the field into the javascript
+            return ".".join([f.db_field for f in fields])
+
+        code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub, code)
+        return code
 
     def exec_js(self, code, *fields, **options):
         """Execute a Javascript function on the server. A list of fields may be
@@ -1405,12 +1414,15 @@ class QuerySet(object):
     def _item_frequencies_map_reduce(self, field, normalize=False):
         map_func = """
             function() {
-                if (this[~%(field)s].constructor == Array) {
-                    this[~%(field)s].forEach(function(item) {
+                path = '{{~%(field)s}}'.split('.');
+                field = this;
+                for (p in path) { field = field[path[p]]; }
+                if (field.constructor == Array) {
+                    field.forEach(function(item) {
                         emit(item, 1);
                     });
                 } else {
-                    emit(this[~%(field)s], 1);
+                    emit(field, 1);
                 }
             }
         """ % dict(field=field)
@@ -1443,12 +1455,16 @@ class QuerySet(object):
     def _item_frequencies_exec_js(self, field, normalize=False):
         """Uses exec_js to execute"""
         freq_func = """
-            function(field) {
+            function(path) {
+                path = path.split('.');
+
                 if (options.normalize) {
                     var total = 0.0;
                     db[collection].find(query).forEach(function(doc) {
-                        if (doc[field].constructor == Array) {
-                            total += doc[field].length;
+                        field = doc;
+                        for (p in path) { field = field[path[p]]; }
+                        if (field.constructor == Array) {
+                            total += field.length;
                         } else {
                             total++;
                         }
@@ -1461,18 +1477,21 @@ class QuerySet(object):
                     inc /= total;
                 }
                 db[collection].find(query).forEach(function(doc) {
-                    if (doc[field].constructor == Array) {
-                        doc[field].forEach(function(item) {
+                    field = doc;
+                    for (p in path) { field = field[path[p]]; }
+                    if (field.constructor == Array) {
+                        field.forEach(function(item) {
                             frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
                         });
                     } else {
-                        var item = doc[field];
+                        var item = field;
                         frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
                     }
                 });
                 return frequencies;
             }
         """
+
         return self.exec_js(freq_func, field, normalize=normalize)
 
     def __repr__(self):
