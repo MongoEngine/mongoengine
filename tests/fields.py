@@ -21,12 +21,15 @@ class FieldTest(unittest.TestCase):
         """
         class Person(Document):
             name = StringField()
-            age = IntField(default=30)
-            userid = StringField(default=lambda: 'test')
+            age = IntField(default=30, help_text="Your real age")
+            userid = StringField(default=lambda: 'test', verbose_name="User Identity")
 
         person = Person(name='Test Person')
         self.assertEqual(person._data['age'], 30)
         self.assertEqual(person._data['userid'], 'test')
+        self.assertEqual(person._fields['name'].help_text, None)
+        self.assertEqual(person._fields['age'].help_text, "Your real age")
+        self.assertEqual(person._fields['userid'].verbose_name, "User Identity")
 
     def test_required_values(self):
         """Ensure that required field constraints are enforced.

@@ -49,7 +49,7 @@ class BaseField(object):
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
-                 validation=None, choices=None):
+                 validation=None, choices=None, verbose_name=None, help_text=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -63,6 +63,8 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
+        self.verbose_name = verbose_name
+        self.help_text = help_text
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
