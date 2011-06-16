@@ -377,6 +377,7 @@ class FieldTest(unittest.TestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
             authors = ListField(ReferenceField(User))
+            generic = ListField(GenericReferenceField())
 
         post = BlogPost(content='Went for a walk today...')
         post.validate()
@@ -404,7 +405,27 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, post.validate)
 
         post.authors = [User()]
+        self.assertRaises(ValidationError, post.validate)
+
+        user = User()
+        user.save()
+        post.authors = [user]
         post.validate()
+
+        post.generic = [1, 2]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.generic = [User(), Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.generic = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.generic = [user]
+        post.validate()
+
+        User.drop_collection()
+        BlogPost.drop_collection()
 
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.

@@ -604,6 +604,11 @@ class ReferenceField(BaseField):
     def validate(self, value):
         assert isinstance(value, (self.document_type, pymongo.dbref.DBRef))
 
+        if isinstance(value, Document) and value.id is None:
+            raise ValidationError('You can only reference documents once '
+                                  'they have been saved to the database')
+
+
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
@@ -627,6 +632,15 @@ class GenericReferenceField(BaseField):
             instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
+
+    def validate(self, value):
+        if not isinstance(value, (Document, pymongo.dbref.DBRef)):
+            raise ValidationError('GenericReferences can only contain documents')
+
+        # We need the id from the saved object to create the DBRef
+        if isinstance(value, Document) and value.id is None:
+            raise ValidationError('You can only reference documents once '
+                                  'they have been saved to the database')
 
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])
