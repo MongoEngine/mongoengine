@@ -53,4 +53,7 @@ class QuerySetTest(unittest.TestCase):
         t = Template("{% for o in ol %}{{ o.name }}-{{ o.age }}:{% endfor %}")
 
         d = {"ol": self.Person.objects.filter(Q(age=10) | Q(name="C"))}
-        self.assertEqual(t.render(Context(d)), u'D-10:C-30:')
+        self.assertEqual(t.render(Context(d)), 'D-10:C-30:')
+
+        # Check double rendering doesn't throw an error
+        self.assertEqual(t.render(Context(d)), 'D-10:C-30:')
