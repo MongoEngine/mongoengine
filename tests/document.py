@@ -15,7 +15,7 @@ class PickleEmbedded(EmbeddedDocument):
 
 class PickleTest(Document):
     number = IntField()
-    string = StringField()
+    string = StringField(choices=(('One', '1'), ('Two', '2')))
     embedded = EmbeddedDocumentField(PickleEmbedded)
     lists = ListField(StringField())
 
@@ -1516,7 +1516,7 @@ class DocumentTest(unittest.TestCase):
 
     def test_picklable(self):
 
-        pickle_doc = PickleTest(number=1, string="OH HAI", lists=['1', '2'])
+        pickle_doc = PickleTest(number=1, string="One", lists=['1', '2'])
         pickle_doc.embedded = PickleEmbedded()
         pickle_doc.save()
 
@@ -1525,7 +1525,7 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEquals(resurrected, pickle_doc)
 
-        resurrected.string = "Working"
+        resurrected.string = "Two"
         resurrected.save()
 
         pickle_doc.reload()
