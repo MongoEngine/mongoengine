@@ -347,6 +347,7 @@ class QuerySet(object):
         self._cursor_obj = None
         self._limit = None
         self._skip = None
+        self._hint = -1  # Using -1 as None is a valid value for hint
 
     def clone(self):
         """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`"""
@@ -354,7 +355,7 @@ class QuerySet(object):
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
                     '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip', '_slave_okay')
+                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -538,6 +539,9 @@ class QuerySet(object):
 
             if self._skip is not None:
                 self._cursor_obj.skip(self._skip)
+
+            if self._hint != -1:
+                self._cursor_obj.hint(self._hint)
 
         return self._cursor_obj
 
@@ -963,6 +967,21 @@ class QuerySet(object):
         """
         self._cursor.skip(n)
         self._skip = n
+        return self
+
+    def hint(self, index=None):
+        """Added 'hint' support, telling Mongo the proper index to use for the
+        query.
+
+        Judicious use of hints can greatly improve query performance. When doing
+        a query on multiple fields (at least one of which is indexed) pass the
+        indexed field as a hint to the query.
+
+        Hinting will not do anything if the corresponding index does not exist.
+        The last hint applied to this cursor takes precedence over all others.
+        """
+        self._cursor.hint(index)
+        self._hint = index
         return self
 
     def __getitem__(self, key):

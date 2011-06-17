@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added hint() support, so cantell Mongo the proper index to use for the query
 - Fixed issue with inconsitent setting of _cls breaking inherited referencing
 - Added help_text and verbose_name to fields to help with some form libs
 - Updated item_frequencies to handle embedded document lookups

@@ -513,7 +513,6 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains dictionaries
         instead of lists.
@@ -546,6 +545,35 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_hint(self):
+
+        class BlogPost(Document):
+            tags = ListField(StringField())
+            meta = {
+                'indexes': [
+                    'tags',
+                ],
+            }
+
+        BlogPost.drop_collection()
+
+        for i in xrange(0, 10):
+            tags = [("tag %i" % n) for n in xrange(0, i % 2)]
+            BlogPost(tags=tags).save()
+
+        self.assertEquals(BlogPost.objects.count(), 10)
+        self.assertEquals(BlogPost.objects.hint().count(), 10)
+        self.assertEquals(BlogPost.objects.hint([('tags', 1)]).count(), 10)
+
+        self.assertEquals(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
+
+        def invalid_index():
+            BlogPost.objects.hint('tags')
+        self.assertRaises(TypeError, invalid_index)
+
+        def invalid_index_2():
+            return BlogPost.objects.hint(('tags', 1))
+        self.assertRaises(TypeError, invalid_index_2)
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
