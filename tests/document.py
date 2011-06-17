@@ -777,6 +777,14 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 30)
 
+    def test_to_dbref(self):
+        """Ensure that you can get a dbref of a document"""
+        person = self.Person(name="Test User", age=30)
+        self.assertRaises(OperationError, person.to_dbref)
+        person.save()
+
+        person.to_dbref()
+
     def test_reload(self):
         """Ensure that attributes may be reloaded.
         """
