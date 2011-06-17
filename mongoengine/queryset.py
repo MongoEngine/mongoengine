@@ -1524,7 +1524,10 @@ class QuerySet(object):
         limit = REPR_OUTPUT_SIZE + 1
         if self._limit is not None and self._limit < limit:
             limit = self._limit
-        data = list(self[self._skip:limit])
+        try:
+            data = list(self[self._skip:limit])
+        except pymongo.errors.InvalidOperation:
+            return ".. queryset mid-iteration .."
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)

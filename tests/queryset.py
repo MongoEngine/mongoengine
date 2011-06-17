@@ -463,6 +463,18 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(people1, people2)
 
+    def test_repr_iteration(self):
+        """Ensure that QuerySet __repr__ can handle loops
+        """
+        self.Person(name='Person 1').save()
+        self.Person(name='Person 2').save()
+
+        queryset = self.Person.objects
+        self.assertEquals('[<Person: Person object>, <Person: Person object>]', repr(queryset))
+        for person in queryset:
+            self.assertEquals('.. queryset mid-iteration ..', repr(queryset))
+
+
     def test_regex_query_shortcuts(self):
         """Ensure that contains, startswith, endswith, etc work.
         """
