@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added Document Mixin support
 - Fixed queryet __repr__ mid iteration
 - Added hint() support, so cantell Mongo the proper index to use for the query
 - Fixed issue with inconsitent setting of _cls breaking inherited referencing

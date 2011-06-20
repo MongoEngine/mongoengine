@@ -1380,6 +1380,36 @@ class DocumentTest(unittest.TestCase):
         promoted_employee.reload()
         self.assertEqual(promoted_employee.details, None)
 
+    def test_mixins_dont_add_to_types(self):
+
+        class Bob(Document): name = StringField()
+
+        Bob.drop_collection()
+
+        p = Bob(name="Rozza")
+        p.save()
+        Bob.drop_collection()
+
+        class Person(Document, Mixin):
+            pass
+
+        Person.drop_collection()
+
+        p = Person(name="Rozza")
+        p.save()
+        self.assertEquals(p._fields.keys(), ['name', 'id'])
+
+        collection = self.db[Person._meta['collection']]
+        obj = collection.find_one()
+        self.assertEquals(obj['_cls'], 'Person')
+        self.assertEquals(obj['_types'], ['Person'])
+
+
+
+        self.assertEquals(Person.objects.count(), 1)
+        rozza = Person.objects.get(name="Rozza")
+
+        Person.drop_collection()
 
     def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.

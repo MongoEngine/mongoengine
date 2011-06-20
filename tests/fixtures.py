@@ -18,8 +18,7 @@ class PickleTest(Document):
 
 
 class Mixin(object):
-    number = IntField()
-    string = StringField(choices=(('One', '1'), ('Two', '2')))
+    name = StringField()
 
 
 class Base(Document):

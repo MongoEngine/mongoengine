@@ -389,6 +389,7 @@ class DocumentMetaclass(type):
         class_name = [name]
         superclasses = {}
         simple_class = True
+
         for base in bases:
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
@@ -397,6 +398,9 @@ class DocumentMetaclass(type):
                 # Get superclasses from superclass
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
+            else:  # Add any mixin fields
+                attrs.update(dict([(k,v) for k,v in base.__dict__.items()
+                                    if issubclass(v.__class__, BaseField)]))
 
             if hasattr(base, '_meta') and not base._meta.get('abstract'):
                 # Ensure that the Document class may be subclassed -
