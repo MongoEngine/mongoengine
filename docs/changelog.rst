@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Updated geo index checking to be recursive and check in embedded documents
 - Updated default collection naming convention
 - Added Document Mixin support
 - Fixed queryet __repr__ mid iteration

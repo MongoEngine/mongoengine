@@ -644,28 +644,6 @@ class BaseDocument(object):
 
         signals.post_init.send(self.__class__, document=self)
 
-    def __getstate__(self):
-        self_dict = self.__dict__
-        removals = ["get_%s_display" % k for k,v in self._fields.items() if v.choices]
-        for k in removals:
-            if hasattr(self, k):
-                delattr(self, k)
-        return self.__dict__
-
-    def __setstate__(self, __dict__):
-        self.__dict__ = __dict__
-        self.__set_field_display()
-
-    def __set_field_display(self):
-        for attr_name, field in self._fields.items():
-            if field.choices:  # dynamically adds a way to get the display value for a field with choices
-                setattr(self, 'get_%s_display' % attr_name, partial(self.__get_field_display, field=field))
-
-    def __get_field_display(self, field):
-        """Returns the display value for a choice field"""
-        value = getattr(self, field.name)
-        return dict(field.choices).get(value, value)
-
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
         are present.
@@ -684,6 +662,33 @@ class BaseDocument(object):
                                           % (field.name, field.__class__.__name__, value))
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
+
+    @apply
+    def pk():
+        """Primary key alias
+        """
+        def fget(self):
+            return getattr(self, self._meta['id_field'])
+        def fset(self, value):
+            return setattr(self, self._meta['id_field'], value)
+        return property(fget, fset)
+
+    def to_mongo(self):
+        """Return data dictionary ready for use with MongoDB.
+        """
+        data = {}
+        for field_name, field in self._fields.items():
+            value = getattr(self, field_name, None)
+            if value is not None:
+                data[field.db_field] = field.to_mongo(value)
+        # Only add _cls and _types if allow_inheritance is not False
+        if not (hasattr(self, '_meta') and
+                self._meta.get('allow_inheritance', True) == False):
+            data['_cls'] = self._class_name
+            data['_types'] = self._superclasses.keys() + [self._class_name]
+        if '_id' in data and data['_id'] is None:
+            del data['_id']
+        return data
 
     @classmethod
     def _get_collection_name(cls):
@@ -705,76 +710,6 @@ class BaseDocument(object):
             all_subclasses[subclass._class_name] = subclass
             all_subclasses.update(subclass._get_subclasses())
         return all_subclasses
-
-    @apply
-    def pk():
-        """Primary key alias
-        """
-        def fget(self):
-            return getattr(self, self._meta['id_field'])
-        def fset(self, value):
-            return setattr(self, self._meta['id_field'], value)
-        return property(fget, fset)
-
-    def __iter__(self):
-        return iter(self._fields)
-
-    def __getitem__(self, name):
-        """Dictionary-style field access, return a field's value if present.
-        """
-        try:
-            if name in self._fields:
-                return getattr(self, name)
-        except AttributeError:
-            pass
-        raise KeyError(name)
-
-    def __setitem__(self, name, value):
-        """Dictionary-style field access, set a field's value.
-        """
-        # Ensure that the field exists before settings its value
-        if name not in self._fields:
-            raise KeyError(name)
-        return setattr(self, name, value)
-
-    def __contains__(self, name):
-        try:
-            val = getattr(self, name)
-            return val is not None
-        except AttributeError:
-            return False
-
-    def __len__(self):
-        return len(self._data)
-
-    def __repr__(self):
-        try:
-            u = unicode(self)
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            u = '[Bad Unicode data]'
-        return u'<%s: %s>' % (self.__class__.__name__, u)
-
-    def __str__(self):
-        if hasattr(self, '__unicode__'):
-            return unicode(self).encode('utf-8')
-        return '%s object' % self.__class__.__name__
-
-    def to_mongo(self):
-        """Return data dictionary ready for use with MongoDB.
-        """
-        data = {}
-        for field_name, field in self._fields.items():
-            value = getattr(self, field_name, None)
-            if value is not None:
-                data[field.db_field] = field.to_mongo(value)
-        # Only add _cls and _types if allow_inheritance is not False
-        if not (hasattr(self, '_meta') and
-                self._meta.get('allow_inheritance', True) == False):
-            data['_cls'] = self._class_name
-            data['_types'] = self._superclasses.keys() + [self._class_name]
-        if '_id' in data and data['_id'] is None:
-            del data['_id']
-        return data
 
     @classmethod
     def _from_son(cls, son):
@@ -873,6 +808,81 @@ class BaseDocument(object):
                 del(set_data[k])
                 unset_data[k] = 1
         return set_data, unset_data
+
+    @classmethod
+    def _geo_indices(cls):
+        geo_indices = []
+        for field in cls._fields.values():
+            if hasattr(field, 'document_type'):
+                geo_indices += field.document_type._geo_indices()
+            elif field._geo_index:
+                geo_indices.append(field)
+        return geo_indices
+
+    def __getstate__(self):
+        self_dict = self.__dict__
+        removals = ["get_%s_display" % k for k,v in self._fields.items() if v.choices]
+        for k in removals:
+            if hasattr(self, k):
+                delattr(self, k)
+        return self.__dict__
+
+    def __setstate__(self, __dict__):
+        self.__dict__ = __dict__
+        self.__set_field_display()
+
+    def __set_field_display(self):
+        for attr_name, field in self._fields.items():
+            if field.choices:  # dynamically adds a way to get the display value for a field with choices
+                setattr(self, 'get_%s_display' % attr_name, partial(self.__get_field_display, field=field))
+
+    def __get_field_display(self, field):
+        """Returns the display value for a choice field"""
+        value = getattr(self, field.name)
+        return dict(field.choices).get(value, value)
+
+    def __iter__(self):
+        return iter(self._fields)
+
+    def __getitem__(self, name):
+        """Dictionary-style field access, return a field's value if present.
+        """
+        try:
+            if name in self._fields:
+                return getattr(self, name)
+        except AttributeError:
+            pass
+        raise KeyError(name)
+
+    def __setitem__(self, name, value):
+        """Dictionary-style field access, set a field's value.
+        """
+        # Ensure that the field exists before settings its value
+        if name not in self._fields:
+            raise KeyError(name)
+        return setattr(self, name, value)
+
+    def __contains__(self, name):
+        try:
+            val = getattr(self, name)
+            return val is not None
+        except AttributeError:
+            return False
+
+    def __len__(self):
+        return len(self._data)
+
+    def __repr__(self):
+        try:
+            u = unicode(self)
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            u = '[Bad Unicode data]'
+        return u'<%s: %s>' % (self.__class__.__name__, u)
+
+    def __str__(self):
+        if hasattr(self, '__unicode__'):
+            return unicode(self).encode('utf-8')
+        return '%s object' % self.__class__.__name__
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):

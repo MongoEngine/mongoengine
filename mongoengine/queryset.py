@@ -494,12 +494,11 @@ class QuerySet(object):
                 self._collection.ensure_index('_types',
                     background=background, **index_opts)
 
-            # Ensure all needed field indexes are created
-            for field in self._document._fields.values():
-                if field.__class__._geo_index:
-                    index_spec = [(field.db_field, pymongo.GEO2D)]
-                    self._collection.ensure_index(index_spec,
-                        background=background, **index_opts)
+            # Add geo indicies
+            for field in self._document._geo_indices():
+                index_spec = [(field.db_field, pymongo.GEO2D)]
+                self._collection.ensure_index(index_spec,
+                    background=background, **index_opts)
 
         return self._collection_obj
 
