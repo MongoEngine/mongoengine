@@ -4,20 +4,11 @@ import pymongo
 import pickle
 import weakref
 
+from fixtures import Base, Mixin, PickleEmbedded, PickleTest
+
 from mongoengine import *
 from mongoengine.base import BaseField
 from mongoengine.connection import _get_db
-
-
-class PickleEmbedded(EmbeddedDocument):
-    date = DateTimeField(default=datetime.now)
-
-
-class PickleTest(Document):
-    number = IntField()
-    string = StringField(choices=(('One', '1'), ('Two', '2')))
-    embedded = EmbeddedDocumentField(PickleEmbedded)
-    lists = ListField(StringField())
 
 
 class DocumentTest(unittest.TestCase):
@@ -107,6 +98,51 @@ class DocumentTest(unittest.TestCase):
             'Animal.Mammal.Human': Human
         }
         self.assertEqual(Animal._get_subclasses(), animal_subclasses)
+
+    def test_external_super_and_sub_classes(self):
+        """Ensure that the correct list of sub and super classes is assembled.
+        when importing part of the model
+        """
+        class Animal(Base): pass
+        class Fish(Animal): pass
+        class Mammal(Animal): pass
+        class Human(Mammal): pass
+        class Dog(Mammal): pass
+
+        mammal_superclasses = {'Base': Base, 'Base.Animal': Animal}
+        self.assertEqual(Mammal._superclasses, mammal_superclasses)
+
+        dog_superclasses = {
+            'Base': Base,
+            'Base.Animal': Animal,
+            'Base.Animal.Mammal': Mammal,
+        }
+        self.assertEqual(Dog._superclasses, dog_superclasses)
+
+        animal_subclasses = {
+            'Base.Animal.Fish': Fish,
+            'Base.Animal.Mammal': Mammal,
+            'Base.Animal.Mammal.Dog': Dog,
+            'Base.Animal.Mammal.Human': Human
+        }
+        self.assertEqual(Animal._get_subclasses(), animal_subclasses)
+
+        mammal_subclasses = {
+            'Base.Animal.Mammal.Dog': Dog,
+            'Base.Animal.Mammal.Human': Human
+        }
+        self.assertEqual(Mammal._get_subclasses(), mammal_subclasses)
+
+        Base.drop_collection()
+
+        h = Human()
+        h.save()
+
+        self.assertEquals(Human.objects.count(), 1)
+        self.assertEquals(Mammal.objects.count(), 1)
+        self.assertEquals(Animal.objects.count(), 1)
+        self.assertEquals(Base.objects.count(), 1)
+        Base.drop_collection()
 
     def test_polymorphic_queries(self):
         """Ensure that the correct subclasses are returned from a query"""
