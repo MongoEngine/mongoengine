@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-
-
 import unittest
 import pymongo
 from datetime import datetime, timedelta
@@ -27,7 +25,7 @@ class QuerySetTest(unittest.TestCase):
         """
         self.assertTrue(isinstance(self.Person.objects, QuerySet))
         self.assertEqual(self.Person.objects._collection.name,
-                         self.Person._meta['collection'])
+                         self.Person._get_collection_name())
         self.assertTrue(isinstance(self.Person.objects._collection,
                                    pymongo.collection.Collection))
 

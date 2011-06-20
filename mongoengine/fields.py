@@ -252,7 +252,7 @@ class DateTimeField(BaseField):
             return datetime.datetime(value.year, value.month, value.day)
 
         # Attempt to parse a datetime:
-        #value = smart_str(value)
+        # value = smart_str(value)
         # split usecs, because they are not recognized by strptime.
         if '.' in value:
             try:
@@ -276,6 +276,7 @@ class DateTimeField(BaseField):
                                              **kwargs)
                 except ValueError:
                     return None
+
 
 
 class ComplexDateTimeField(StringField):
@@ -526,6 +527,7 @@ class MapField(DictField):
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
+
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
@@ -595,7 +597,7 @@ class ReferenceField(BaseField):
             id_ = document
 
         id_ = id_field.to_mongo(id_)
-        collection = self.document_type._meta['collection']
+        collection = self.document_type._get_collection_name()
         return pymongo.dbref.DBRef(collection, id_)
 
     def prepare_query_value(self, op, value):
@@ -664,7 +666,7 @@ class GenericReferenceField(BaseField):
             id_ = document
 
         id_ = id_field.to_mongo(id_)
-        collection = document._meta['collection']
+        collection = document._get_collection_name()
         ref = pymongo.dbref.DBRef(collection, id_)
         return {'_cls': document._class_name, '_ref': ref}
 

@@ -22,6 +22,7 @@ class ValidationError(Exception):
 
 _document_registry = {}
 
+
 def get_document(name):
     doc = _document_registry.get(name, None)
     if not doc:
@@ -195,7 +196,7 @@ class ComplexBaseField(BaseField):
             elif isinstance(v, (dict, pymongo.son.SON)):
                 if '_ref' in v:
                     # generic reference
-                    collection = get_document(v['_cls'])._meta['collection']
+                    collection = get_document(v['_cls'])._get_collection_name()
                     collections.setdefault(collection, []).append((k,v))
                 else:
                     # Use BaseDict so can watch any changes
@@ -257,7 +258,7 @@ class ComplexBaseField(BaseField):
                     if v.pk is None:
                         raise ValidationError('You can only reference documents once '
                                       'they have been saved to the database')
-                    collection = v._meta['collection']
+                    collection = v._get_collection_name()
                     value_dict[k] = pymongo.dbref.DBRef(collection, v.pk)
                 elif hasattr(v, 'to_python'):
                     value_dict[k] = v.to_python()
@@ -306,7 +307,7 @@ class ComplexBaseField(BaseField):
                         from fields import GenericReferenceField
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
-                        collection = v._meta['collection']
+                        collection = v._get_collection_name()
                         value_dict[k] = pymongo.dbref.DBRef(collection, v.pk)
                 elif hasattr(v, 'to_mongo'):
                     value_dict[k] = v.to_mongo()
@@ -500,9 +501,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta'):
-                if 'collection' in base._meta:
-                    collection = base._meta['collection']
 
+                if 'collection' in attrs.get('meta', {}) and not base._meta.get('abstract', False):
+                    import warnings
+                    msg = "Trying to set a collection on a subclass (%s)" % name
+                    warnings.warn(msg, SyntaxWarning)
+                    del(attrs['meta']['collection'])
+                if base._get_collection_name():
+                    collection = base._get_collection_name()
                 # Propagate index options.
                 for key in ('index_background', 'index_drop_dups', 'index_opts'):
                     if key in base._meta:
@@ -538,6 +544,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Set up collection manager, needs the class to have fields so use
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
+
+        collection = attrs['_meta'].get('collection', None)
+        if callable(collection):
+            new_class._meta['collection'] = collection(new_class)
 
         # Provide a default queryset unless one has been manually provided
         manager = attrs.get('objects', QuerySetManager())
@@ -674,6 +684,12 @@ class BaseDocument(object):
                                           % (field.name, field.__class__.__name__, value))
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
+
+    @classmethod
+    def _get_collection_name(cls):
+        """Returns the collection name for this class.
+        """
+        return cls._meta.get('collection', None)
 
     @classmethod
     def _get_subclasses(cls):
