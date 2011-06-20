@@ -2,7 +2,7 @@
 MongoEngine User Documentation
 ==============================
 
-MongoEngine is an Object-Document Mapper, written in Python for working with 
+MongoEngine is an Object-Document Mapper, written in Python for working with
 MongoDB. To install it, simply run
 
 .. code-block:: console
@@ -15,7 +15,7 @@ To get help with using MongoEngine, use the `MongoEngine Users mailing list
 <http://groups.google.com/group/mongoengine-users>`_ or come chat on the
 `#mongoengine IRC channel <irc://irc.freenode.net/mongoengine>`_.
 
-If you are interested in contributing, join the developers' `mailing list 
+If you are interested in contributing, join the developers' `mailing list
 <http://groups.google.com/group/mongoengine-dev>`_.
 
 .. toctree::
@@ -26,6 +26,7 @@ If you are interested in contributing, join the developers' `mailing list
    apireference
    django
    changelog
+   upgrading
 
 Indices and tables
 ==================

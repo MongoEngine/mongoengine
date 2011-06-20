@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Updated default collection naming convention
 - Added Document Mixin support
 - Fixed queryet __repr__ mid iteration
 - Added hint() support, so cantell Mongo the proper index to use for the query

@@ -492,7 +492,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 raise ValueError("Abstract document cannot have non-abstract base")
             return super_new(cls, name, bases, attrs)
 
-        collection = name.lower()
+        collection = ''.join('_%s' % c if c.isupper() else c for c in name).strip('_').lower()
 
         id_field = None
         base_indexes = []

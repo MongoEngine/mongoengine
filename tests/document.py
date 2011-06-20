@@ -62,22 +62,72 @@ class DocumentTest(unittest.TestCase):
         # Ensure Document isn't treated like an actual document
         self.assertFalse(hasattr(Document, '_fields'))
 
-    def test_dynamic_collection_naming(self):
+    def test_collection_name(self):
+        """Ensure that a collection with a specified name may be used.
+        """
 
-        def create_collection_name(cls):
-            return "PERSON"
+        class DefaultNamingTest(Document):
+            pass
+        self.assertEquals('default_naming_test', DefaultNamingTest._get_collection_name())
 
-        class DynamicPerson(Document):
-            name = StringField()
-            age = IntField()
+        class CustomNamingTest(Document):
+            meta = {'collection': 'pimp_my_collection'}
 
-            meta = {'collection': create_collection_name}
+        self.assertEquals('pimp_my_collection', CustomNamingTest._get_collection_name())
 
-        collection = DynamicPerson._get_collection_name()
-        self.assertEquals(collection, 'PERSON')
+        class DynamicNamingTest(Document):
+            meta = {'collection': lambda c: "DYNAMO"}
+        self.assertEquals('DYNAMO', DynamicNamingTest._get_collection_name())
 
-        DynamicPerson(name='Test User', age=30).save()
-        self.assertTrue(collection in self.db.collection_names())
+        # Use Abstract class to handle backwards compatibility
+        class BaseDocument(Document):
+            meta = {
+                'abstract': True,
+                'collection': lambda c: c.__name__.lower()
+            }
+
+        class OldNamingConvention(BaseDocument):
+            pass
+        self.assertEquals('oldnamingconvention', OldNamingConvention._get_collection_name())
+
+        class InheritedAbstractNamingTest(BaseDocument):
+            meta = {'collection': 'wibble'}
+        self.assertEquals('wibble', InheritedAbstractNamingTest._get_collection_name())
+
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+
+            class NonAbstractBase(Document):
+                pass
+
+            class InheritedDocumentFailTest(NonAbstractBase):
+                meta = {'collection': 'fail'}
+
+            self.assertTrue(issubclass(w[0].category, SyntaxWarning))
+            self.assertEquals('non_abstract_base', InheritedDocumentFailTest._get_collection_name())
+
+        # Mixin tests
+        class BaseMixin(object):
+            meta = {
+                'collection': lambda c: c.__name__.lower()
+            }
+
+        class OldMixinNamingConvention(Document, BaseMixin):
+            pass
+        self.assertEquals('oldmixinnamingconvention', OldMixinNamingConvention._get_collection_name())
+
+        class BaseMixin(object):
+            meta = {
+                'collection': lambda c: c.__name__.lower()
+            }
+
+        class BaseDocument(Document, BaseMixin):
+            pass
+
+        class MyDocument(BaseDocument):
+            pass
+        self.assertEquals('mydocument', OldMixinNamingConvention._get_collection_name())
 
     def test_get_superclasses(self):
         """Ensure that the correct list of superclasses is assembled.
