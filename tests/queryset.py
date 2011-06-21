@@ -260,6 +260,77 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+    def test_update_using_positional_operator(self):
+        """Ensure that the list fields can be updated using the positional
+        operator."""
+
+        class Comment(EmbeddedDocument):
+            by = StringField()
+            votes = IntField()
+
+        class BlogPost(Document):
+            title = StringField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        BlogPost.drop_collection()
+
+        c1 = Comment(by="joe", votes=3)
+        c2 = Comment(by="jane", votes=7)
+
+        BlogPost(title="ABC", comments=[c1, c2]).save()
+
+        BlogPost.objects(comments__by="joe").update(inc__comments__S__votes=1)
+
+        post = BlogPost.objects.first()
+        self.assertEquals(post.comments[0].by, 'joe')
+        self.assertEquals(post.comments[0].votes, 4)
+
+        # Currently the $ operator only applies to the first matched item in
+        # the query
+
+        class Simple(Document):
+            x = ListField()
+
+        Simple.drop_collection()
+        Simple(x=[1, 2, 3, 2]).save()
+        Simple.objects(x=2).update(inc__x__S=1)
+
+        simple = Simple.objects.first()
+        self.assertEquals(simple.x, [1, 3, 3, 2])
+        Simple.drop_collection()
+
+        # You can set multiples
+        Simple.drop_collection()
+        Simple(x=[1, 2, 3, 4]).save()
+        Simple(x=[2, 3, 4, 5]).save()
+        Simple(x=[3, 4, 5, 6]).save()
+        Simple(x=[4, 5, 6, 7]).save()
+        Simple.objects(x=3).update(set__x__S=0)
+
+        s = Simple.objects()
+        self.assertEquals(s[0].x, [1, 2, 0, 4])
+        self.assertEquals(s[1].x, [2, 0, 4, 5])
+        self.assertEquals(s[2].x, [0, 4, 5, 6])
+        self.assertEquals(s[3].x, [4, 5, 6, 7])
+
+        # Using "$unset" with an expression like this "array.$" will result in
+        # the array item becoming None, not being removed.
+        Simple.drop_collection()
+        Simple(x=[1, 2, 3, 4, 3, 2, 3, 4]).save()
+        Simple.objects(x=3).update(unset__x__S=1)
+        simple = Simple.objects.first()
+        self.assertEquals(simple.x, [1, 2, None, 4, 3, 2, 3, 4])
+
+        # Nested updates arent supported yet..
+        def update_nested():
+            Simple.drop_collection()
+            Simple(x=[{'test': [1, 2, 3, 4]}]).save()
+            Simple.objects(x__test=2).update(set__x__S__test__S=3)
+            self.assertEquals(simple.x, [1, 2, 3, 4])
+
+        self.assertRaises(OperationError, update_nested)
+        Simple.drop_collection()
+
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""
         class Member(EmbeddedDocument):

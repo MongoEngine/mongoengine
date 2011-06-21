@@ -1215,6 +1215,9 @@ class QuerySet(object):
                 append_field = True
                 for field in fields:
                     if isinstance(field, str):
+                        # Convert the S operator to $
+                        if field == 'S':
+                            field = '$'
                         parts.append(field)
                         append_field = False
                     else:
@@ -1243,7 +1246,7 @@ class QuerySet(object):
 
         return mongo_update
 
-    def update(self, safe_update=True, upsert=False, write_options=None, **update):
+    def update(self, safe_update=True, upsert=False, multi=True, write_options=None, **update):
         """Perform an atomic update on the fields matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
@@ -1261,7 +1264,7 @@ class QuerySet(object):
 
         update = QuerySet._transform_update(self._document, **update)
         try:
-            ret = self._collection.update(self._query, update, multi=True,
+            ret = self._collection.update(self._query, update, multi=multi,
                                           upsert=upsert, safe=safe_update,
                                           **write_options)
             if ret is not None and 'n' in ret:

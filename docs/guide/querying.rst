@@ -23,7 +23,7 @@ fetch documents from the database::
 Filtering queries
 =================
 The query may be filtered by calling the
-:class:`~mongoengine.queryset.QuerySet` object with field lookup keyword 
+:class:`~mongoengine.queryset.QuerySet` object with field lookup keyword
 arguments. The keys in the keyword arguments correspond to fields on the
 :class:`~mongoengine.Document` you are querying::
 
@@ -84,7 +84,7 @@ Available operators are as follows:
 * ``nin`` -- value is not in list (a list of values should be provided)
 * ``mod`` -- ``value % x == y``, where ``x`` and ``y`` are two provided values
 * ``all`` -- every item in list of values provided is in array
-* ``size`` -- the size of the array is 
+* ``size`` -- the size of the array is
 * ``exists`` -- value for field exists
 
 The following operators are available as shortcuts to querying with regular
@@ -163,9 +163,9 @@ To retrieve a result that should be unique in the collection, use
 and :class:`~mongoengine.queryset.MultipleObjectsReturned` if more than one
 document matched the query.
 
-A variation of this method exists, 
+A variation of this method exists,
 :meth:`~mongoengine.queryset.Queryset.get_or_create`, that will create a new
-document with the query arguments if no documents match the query. An 
+document with the query arguments if no documents match the query. An
 additional keyword argument, :attr:`defaults` may be provided, which will be
 used as default values for the new document, in the case that it should need
 to be created::
@@ -240,7 +240,7 @@ Javascript code that is executed on the database server.
 Counting results
 ----------------
 Just as with limiting and skipping results, there is a method on
-:class:`~mongoengine.queryset.QuerySet` objects -- 
+:class:`~mongoengine.queryset.QuerySet` objects --
 :meth:`~mongoengine.queryset.QuerySet.count`, but there is also a more Pythonic
 way of achieving this::
 
@@ -309,11 +309,11 @@ Advanced queries
 ================
 Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
 arguments can't fully express the query you want to use -- for example if you
-need to combine a number of constraints using *and* and *or*. This is made 
+need to combine a number of constraints using *and* and *or*. This is made
 possible in MongoEngine through the :class:`~mongoengine.queryset.Q` class.
 A :class:`~mongoengine.queryset.Q` object represents part of a query, and
 can be initialised using the same keyword-argument syntax you use to query
-documents. To build a complex query, you may combine 
+documents. To build a complex query, you may combine
 :class:`~mongoengine.queryset.Q` objects using the ``&`` (and) and ``|`` (or)
 operators. To use a :class:`~mongoengine.queryset.Q` object, pass it in as the
 first positional argument to :attr:`Document.objects` when you filter it by
@@ -434,7 +434,7 @@ Atomic updates
 ==============
 Documents may be updated atomically by using the
 :meth:`~mongoengine.queryset.QuerySet.update_one` and
-:meth:`~mongoengine.queryset.QuerySet.update` methods on a 
+:meth:`~mongoengine.queryset.QuerySet.update` methods on a
 :meth:`~mongoengine.queryset.QuerySet`. There are several different "modifiers"
 that you may use with these methods:
 
@@ -450,7 +450,7 @@ that you may use with these methods:
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
 
-The syntax for atomic updates is similar to the querying syntax, but the 
+The syntax for atomic updates is similar to the querying syntax, but the
 modifier comes before the field, not after it::
 
     >>> post = BlogPost(title='Test', page_views=0, tags=['database'])
@@ -467,3 +467,19 @@ modifier comes before the field, not after it::
     >>> post.reload()
     >>> post.tags
     ['database', 'nosql']
+
+The positional operator allows you to update list items without knowing the
+index position, therefore making the update a single atomic operation.  As we
+cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
+
+    >>> post = BlogPost(title='Test', page_views=0, tags=['database', 'mongo'])
+    >>> post.save()
+    >>> BlogPost.objects(id=post.id, tags='mongo').update(set__tags__S='mongodb')
+    >>> post.reload()
+    >>> post.tags
+    ['database', 'mongodb']
+
+.. note ::
+    Currently only top level lists are handled, future versions of mongodb /
+    pymongo plan to support nested positional operators.  See `The $ positional
+    operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.
