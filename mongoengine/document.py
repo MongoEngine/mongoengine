@@ -161,7 +161,18 @@ class Document(BaseDocument):
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
-        self._changed_fields = []
+
+        def reset_changed_fields(doc):
+            """Loop through and reset changed fields lists"""
+            if hasattr(doc, '_changed_fields'):
+                doc._changed_fields = []
+
+            for field_name in doc._fields:
+                field = getattr(doc, field_name)
+                if hasattr(field, '_changed_fields') and field != doc:
+                    reset_changed_fields(field)
+
+        reset_changed_fields(self)
         signals.post_save.send(self.__class__, document=self, created=created)
 
     def delete(self, safe=False):

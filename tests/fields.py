@@ -879,7 +879,7 @@ class FieldTest(unittest.TestCase):
             name = StringField()
             children = ListField(EmbeddedDocumentField('self'))
 
-        Tree.drop_collection
+        Tree.drop_collection()
         tree = Tree(name="Tree")
 
         first_child = TreeNode(name="Child 1")
@@ -887,9 +887,15 @@ class FieldTest(unittest.TestCase):
 
         second_child = TreeNode(name="Child 2")
         first_child.children.append(second_child)
+        tree.save()
+
+        tree = Tree.objects.first()
+        self.assertEqual(len(tree.children), 1)
+
+        self.assertEqual(len(tree.children[0].children), 1)
 
         third_child = TreeNode(name="Child 3")
-        first_child.children.append(third_child)
+        tree.children[0].children.append(third_child)
         tree.save()
 
         self.assertEqual(len(tree.children), 1)
