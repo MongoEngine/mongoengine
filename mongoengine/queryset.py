@@ -801,13 +801,7 @@ class QuerySet(object):
 
         :param object_id: the value for the id of the document to look up
         """
-        id_field = self._document._meta['id_field']
-        object_id = self._document._fields[id_field].to_mongo(object_id)
-
-        result = self._collection.find_one({'_id': object_id}, **self._cursor_args)
-        if result is not None:
-            result = self._document._from_son(result)
-        return result
+        return self._document.objects(pk=object_id).first()
 
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
@@ -1530,6 +1524,9 @@ class QuerySet(object):
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)
 
+    def select_related(self, max_depth=1):
+        from dereference import dereference
+        return dereference(self, max_depth=max_depth)
 
 class QuerySetManager(object):
 

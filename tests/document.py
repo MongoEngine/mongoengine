@@ -932,7 +932,7 @@ class DocumentTest(unittest.TestCase):
             list_field = ListField()
             embedded_field = EmbeddedDocumentField(Embedded)
 
-        Doc.drop_collection
+        Doc.drop_collection()
         doc = Doc()
         doc.dict_field = {'hello': 'world'}
         doc.list_field = ['1', 2, {'hello': 'world'}]
@@ -1125,7 +1125,7 @@ class DocumentTest(unittest.TestCase):
             dict_field = DictField()
             list_field = ListField()
 
-        Doc.drop_collection
+        Doc.drop_collection()
         doc = Doc()
         doc.save()
 
@@ -1180,7 +1180,7 @@ class DocumentTest(unittest.TestCase):
             list_field = ListField()
             embedded_field = EmbeddedDocumentField(Embedded)
 
-        Doc.drop_collection
+        Doc.drop_collection()
         doc = Doc()
         doc.save()
 

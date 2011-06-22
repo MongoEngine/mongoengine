@@ -193,6 +193,11 @@ class Document(BaseDocument):
 
         signals.post_delete.send(self.__class__, document=self)
 
+    def select_related(self, max_depth=1):
+        from dereference import dereference
+        self._data = dereference(self._data, max_depth)
+        return self
+
     def reload(self):
         """Reloads all attributes from the database.
 

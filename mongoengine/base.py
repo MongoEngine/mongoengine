@@ -8,7 +8,7 @@ import weakref
 import sys
 import pymongo
 import pymongo.objectid
-from operator import itemgetter
+import operator
 from functools import partial
 
 
@@ -163,70 +163,14 @@ class ComplexBaseField(BaseField):
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
         """
-        from connection import _get_db
-
         if instance is None:
             # Document class being used rather than a document object
             return self
 
-        # Get value from document instance if available
-        value_list = instance._data.get(self.name)
-        if not value_list or isinstance(value_list, basestring):
-            return super(ComplexBaseField, self).__get__(instance, owner)
-
-        is_list = False
-        if not hasattr(value_list, 'items'):
-            is_list = True
-            value_list = dict([(k,v) for k,v in enumerate(value_list)])
-
-        for k,v in value_list.items():
-            if isinstance(v, dict) and '_cls' in v and '_ref' not in v:
-                value_list[k] = get_document(v['_cls'])._from_son(v)
-
-        # Handle all dereferencing
-        db = _get_db()
-        dbref = {}
-        collections = {}
-        for k,v in value_list.items():
-
-            # Save any DBRefs
-            if isinstance(v, (pymongo.dbref.DBRef)):
-                # direct reference (DBRef)
-                collections.setdefault(v.collection, []).append((k,v))
-            elif isinstance(v, (dict, pymongo.son.SON)):
-                if '_ref' in v:
-                    # generic reference
-                    collection = get_document(v['_cls'])._get_collection_name()
-                    collections.setdefault(collection, []).append((k,v))
-                else:
-                    # Use BaseDict so can watch any changes
-                    dbref[k] = BaseDict(v, instance=instance, name=self.name)
-            else:
-                dbref[k] = v
-
-        # For each collection get the references
-        for collection, dbrefs in collections.items():
-            id_map = {}
-            for k,v in dbrefs:
-                if isinstance(v, (pymongo.dbref.DBRef)):
-                    # direct reference (DBRef), has no _cls information
-                    id_map[v.id] = (k, None)
-                elif isinstance(v, (dict, pymongo.son.SON)) and '_ref' in v:
-                    # generic reference - includes _cls information
-                    id_map[v['_ref'].id] = (k, get_document(v['_cls']))
-
-            references = db[collection].find({'_id': {'$in': id_map.keys()}})
-            for ref in references:
-                key, doc_cls = id_map[ref['_id']]
-                if not doc_cls:  # If no doc_cls get it from the referenced doc
-                    doc_cls = get_document(ref['_cls'])
-                dbref[key] = doc_cls._from_son(ref)
-
-        if is_list:
-            dbref = BaseList([v for k,v in sorted(dbref.items(), key=itemgetter(0))], instance=instance, name=self.name)
-        else:
-            dbref = BaseDict(dbref, instance=instance, name=self.name)
-        instance._data[self.name] = dbref
+        from dereference import dereference
+        instance._data[self.name] = dereference(
+            instance._data.get(self.name), max_depth=1, instance=instance, name=self.name, get=True
+        )
         return super(ComplexBaseField, self).__get__(instance, owner)
 
     def to_python(self, value):
@@ -266,7 +210,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k,v in sorted(value_dict.items(), key=itemgetter(0))]
+            return [v for k,v in sorted(value_dict.items(), key=operator.itemgetter(0))]
         return value_dict
 
     def to_mongo(self, value):
@@ -315,7 +259,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k,v in sorted(value_dict.items(), key=itemgetter(0))]
+            return [v for k,v in sorted(value_dict.items(), key=operator.itemgetter(0))]
         return value_dict
 
     def validate(self, value):
@@ -907,7 +851,7 @@ class BaseList(list):
     """
 
     def __init__(self, list_items, instance, name):
-        self.instance = weakref.proxy(instance)
+        self.instance = instance
         self.name = name
         super(BaseList, self).__init__(list_items)
 
@@ -958,7 +902,7 @@ class BaseDict(dict):
     """
 
     def __init__(self, dict_items, instance, name):
-        self.instance = weakref.proxy(instance)
+        self.instance = instance
         self.name = name
         super(BaseDict, self).__init__(dict_items)
 
