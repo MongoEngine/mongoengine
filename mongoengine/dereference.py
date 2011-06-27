@@ -2,9 +2,10 @@ import operator
 
 import pymongo
 
-from base import BaseDict, BaseList, get_document
+from base import BaseDict, BaseList, get_document, TopLevelDocumentMetaclass
 from connection import _get_db
 from queryset import QuerySet
+from document import Document
 
 
 class DeReference(object):
@@ -65,7 +66,7 @@ class DeReference(object):
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
                         references = self._find_references(v, depth)
                         for key, refs in references.iteritems():
-                            if field_cls:
+                            if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, []).extend(refs)
             elif isinstance(item, (pymongo.dbref.DBRef)):
