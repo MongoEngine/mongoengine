@@ -175,6 +175,22 @@ to be created::
     >>> a.name == b.name and a.age == b.age
     True
 
+Dereferencing results
+---------------------
+When iterating the results of :class:`~mongoengine.ListField` or
+:class:`~mongoengine.DictField` we automatically dereference any
+:class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
+number the queries to mongo.
+
+There are times when that efficiency is not enough, documents that have
+:class:`~mongoengine.ReferenceField` objects or
+:class:`~mongoengine.GenericReferenceField` objects at the top level are
+expensive as the number of queries to MongoDB can quickly rise.
+
+To limit the number of queries use
+:func:`~mongoengine.queryset.QuerySet.select_related` which converts the
+QuerySet to a list and dereferences as efficiently as possible.
+
 Default Document queries
 ========================
 By default, the objects :attr:`~mongoengine.Document.objects` attribute on a

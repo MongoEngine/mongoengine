@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added select_related() support
 - Added support for the positional operator
 - Updated geo index checking to be recursive and check in embedded documents
 - Updated default collection naming convention
