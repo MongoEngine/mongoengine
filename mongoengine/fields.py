@@ -775,11 +775,6 @@ class GridFSProxy(object):
         self.gridout = None
         self._mark_as_changed()
 
-    def _mark_as_changed(self):
-        """Inform the instance that `self.key` has been changed"""
-        if self.instance:
-            self.instance._mark_as_changed(self.key)
-
     def replace(self, file_obj, **kwargs):
         self.delete()
         self.put(file_obj, **kwargs)
@@ -787,6 +782,11 @@ class GridFSProxy(object):
     def close(self):
         if self.newfile:
             self.newfile.close()
+
+    def _mark_as_changed(self):
+        """Inform the instance that `self.key` has been changed"""
+        if self.instance:
+            self.instance._mark_as_changed(self.key)
 
 
 class FileField(BaseField):
