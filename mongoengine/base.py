@@ -754,11 +754,16 @@ class BaseDocument(object):
         return set_data, unset_data
 
     @classmethod
-    def _geo_indices(cls):
+    def _geo_indices(cls, inspected_classes=None):
+        inspected_classes = inspected_classes or []
         geo_indices = []
+        inspected_classes.append(cls)
         for field in cls._fields.values():
             if hasattr(field, 'document_type'):
-                geo_indices += field.document_type._geo_indices()
+                field_cls = field.document_type
+                if field_cls in inspected_classes:
+                    continue
+                geo_indices += field_cls._geo_indices(inspected_classes)
             elif field._geo_index:
                 geo_indices.append(field)
         return geo_indices

@@ -662,6 +662,18 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_geo_indexes_recursion(self):
+
+        class User(Document):
+            channel = ReferenceField('Channel')
+            location = GeoPointField()
+
+        class Channel(Document):
+            user = ReferenceField('User')
+            location = GeoPointField()
+
+        self.assertEquals(len(User._geo_indices()), 2)
+
     def test_hint(self):
 
         class BlogPost(Document):
