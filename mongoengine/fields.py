@@ -723,6 +723,9 @@ class GridFSProxy(object):
     def __get__(self, instance, value):
         return self
 
+    def __nonzero__(self):
+        return bool(self.grid_id)
+
     def get(self, id=None):
         if id:
             self.grid_id = id
@@ -805,7 +808,7 @@ class FileField(BaseField):
         # Check if a file already exists for this model
         grid_file = instance._data.get(self.name)
         self.grid_file = grid_file
-        if self.grid_file:
+        if isinstance(self.grid_file, GridFSProxy):
             if not self.grid_file.key:
                 self.grid_file.key = self.name
                 self.grid_file.instance = instance
