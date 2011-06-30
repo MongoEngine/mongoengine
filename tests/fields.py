@@ -1300,6 +1300,21 @@ class FieldTest(unittest.TestCase):
 
         TestFile.drop_collection()
 
+    def test_file_boolean(self):
+        """Ensure that a boolean test of a FileField indicates its presence
+        """
+        class TestFile(Document):
+            file = FileField()
+
+        testfile = TestFile()
+        self.assertFalse(bool(testfile.file))
+        testfile.file = 'Hello, World!'
+        testfile.file.content_type = 'text/plain'
+        testfile.save()
+        self.assertTrue(bool(testfile.file))
+
+        TestFile.drop_collection()
+
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
