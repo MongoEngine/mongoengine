@@ -1045,6 +1045,32 @@ class DocumentTest(unittest.TestCase):
         except ValidationError:
             self.fail()
 
+    def test_save_max_recursion_not_hit(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self')
+            friend = ReferenceField('self')
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Jr")
+        p1.parent = None
+        p1.save()
+
+        p2 = Person(name="Wilson Jr2")
+        p2.parent = p1
+        p2.save()
+
+        p1.friend = p2
+        p1.save()
+
+        # Confirm can save and it resets the changed fields without hitting
+        # max recursion error
+        p0 = Person.objects.first()
+        p0.name = 'wpjunior'
+        p0.save()
+
     def test_update(self):
         """Ensure that an existing document is updated instead of be overwritten.
         """
