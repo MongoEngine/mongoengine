@@ -5,8 +5,8 @@ Querying the database
 is used for accessing the objects in the database associated with the class.
 The :attr:`objects` attribute is actually a
 :class:`~mongoengine.queryset.QuerySetManager`, which creates and returns a new
-a new :class:`~mongoengine.queryset.QuerySet` object on access. The
-:class:`~mongoengine.queryset.QuerySet` object may may be iterated over to
+:class:`~mongoengine.queryset.QuerySet` object on access. The
+:class:`~mongoengine.queryset.QuerySet` object may be iterated over to
 fetch documents from the database::
 
     # Prints out the names of all the users in the database
