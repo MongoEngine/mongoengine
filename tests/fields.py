@@ -1095,6 +1095,18 @@ class FieldTest(unittest.TestCase):
         Link.drop_collection()
         User.drop_collection()
 
+    def test_generic_reference_is_none(self):
+
+        class Person(Document):
+            name = StringField()
+            city = GenericReferenceField()
+
+        Person.drop_collection()
+        Person(name="Wilson Jr").save()
+
+        self.assertEquals(repr(Person.objects(city=None)),
+                            "[<Person: Person object>]")
+
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """

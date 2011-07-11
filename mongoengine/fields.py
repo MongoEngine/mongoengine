@@ -653,6 +653,9 @@ class GenericReferenceField(BaseField):
         return doc
 
     def to_mongo(self, document):
+        if document is None:
+            return None
+
         id_field_name = document.__class__._meta['id_field']
         id_field = document.__class__._fields[id_field_name]
 
