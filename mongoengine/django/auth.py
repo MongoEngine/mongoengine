@@ -32,6 +32,12 @@ class User(Document):
     last_login = DateTimeField(default=datetime.datetime.now)
     date_joined = DateTimeField(default=datetime.datetime.now)
 
+    meta = {
+        'indexes': [
+            {'fields': ['username'], 'unique': True}
+        ]
+    }
+
     def __unicode__(self):
         return self.username
 
