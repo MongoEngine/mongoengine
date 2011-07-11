@@ -1057,11 +1057,11 @@ class DocumentTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        p1 = Person(name="Wilson Jr")
+        p1 = Person(name="Wilson Snr")
         p1.parent = None
         p1.save()
 
-        p2 = Person(name="Wilson Jr2")
+        p2 = Person(name="Wilson Jr")
         p2.parent = p1
         p2.save()
 
@@ -1073,6 +1073,51 @@ class DocumentTest(unittest.TestCase):
         p0 = Person.objects.first()
         p0.name = 'wpjunior'
         p0.save()
+
+    def test_save_cascades(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self')
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.parent = None
+        p1.save()
+
+        p2 = Person(name="Wilson Jr")
+        p2.parent = p1
+        p2.save()
+
+        p = Person.objects(name="Wilson Jr").get()
+        p.parent.name = "Daddy Wilson"
+        p.save()
+
+        p1.reload()
+        self.assertEquals(p1.name, p.parent.name)
+
+    def test_save_cascades_generically(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = GenericReferenceField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.save()
+
+        p2 = Person(name="Wilson Jr")
+        p2.parent = p1
+        p2.save()
+
+        p = Person.objects(name="Wilson Jr").get()
+        p.parent.name = "Daddy Wilson"
+        p.save()
+
+        p1.reload()
+        self.assertEquals(p1.name, p.parent.name)
 
     def test_update(self):
         """Ensure that an existing document is updated instead of be overwritten.
@@ -1367,22 +1412,31 @@ class DocumentTest(unittest.TestCase):
         """Ensure save only sets / unsets changed fields
         """
 
+        class User(self.Person):
+            active = BooleanField(default=True)
+
+
+        User.drop_collection()
+
         # Create person object and save it to the database
-        person = self.Person(name='Test User', age=30)
-        person.save()
-        person.reload()
+        user = User(name='Test User', age=30, active=True)
+        user.save()
+        user.reload()
 
+        # Simulated Race condition
         same_person = self.Person.objects.get()
+        same_person.active = False
 
-        person.age = 21
+        user.age = 21
+        user.save()
+
         same_person.name = 'User'
-
-        person.save()
         same_person.save()
 
         person = self.Person.objects.get()
         self.assertEquals(person.name, 'User')
         self.assertEquals(person.age, 21)
+        self.assertEquals(person.active, False)
 
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.

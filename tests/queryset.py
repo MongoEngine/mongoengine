@@ -1781,6 +1781,28 @@ class QuerySetTest(unittest.TestCase):
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
+    def test_item_frequencies_null_values(self):
+
+        class Person(Document):
+            name = StringField()
+            city = StringField()
+
+        Person.drop_collection()
+
+        Person(name="Wilson Snr", city="CRB").save()
+        Person(name="Wilson Jr").save()
+
+        freq = Person.objects.item_frequencies('city')
+        self.assertEquals(freq, {'CRB': 1.0, None: 1.0})
+        freq = Person.objects.item_frequencies('city', normalize=True)
+        self.assertEquals(freq, {'CRB': 0.5, None: 0.5})
+
+
+        freq = Person.objects.item_frequencies('city', map_reduce=True)
+        self.assertEquals(freq, {'CRB': 1.0, None: 1.0})
+        freq = Person.objects.item_frequencies('city', normalize=True, map_reduce=True)
+        self.assertEquals(freq, {'CRB': 0.5, None: 0.5})
+
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """

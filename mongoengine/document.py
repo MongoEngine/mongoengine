@@ -112,7 +112,7 @@ class Document(BaseDocument):
                 self._collection = db[collection_name]
         return self._collection
 
-    def save(self, safe=True, force_insert=False, validate=True, write_options=None):
+    def save(self, safe=True, force_insert=False, validate=True, write_options=None, _refs=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -131,6 +131,8 @@ class Document(BaseDocument):
                 For example, ``save(..., w=2, fsync=True)`` will wait until at least two servers
                 have recorded the write and will force an fsync on each server being written to.
         """
+        from fields import ReferenceField, GenericReferenceField
+
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
@@ -140,6 +142,7 @@ class Document(BaseDocument):
             write_options = {}
 
         doc = self.to_mongo()
+
         created = '_id' not in doc
         try:
             collection = self.__class__.objects._collection
@@ -154,6 +157,18 @@ class Document(BaseDocument):
                     collection.update({'_id': object_id}, {"$set": updates}, upsert=True, safe=safe, **write_options)
                 if removals:
                     collection.update({'_id': object_id}, {"$unset": removals}, upsert=True, safe=safe, **write_options)
+
+            # Save any references / generic references
+            _refs = _refs or []
+            for name, cls in self._fields.items():
+                if isinstance(cls, (ReferenceField, GenericReferenceField)):
+                    ref = getattr(self, name)
+                    if ref and str(ref) not in _refs:
+                        _refs.append(str(ref))
+                        ref.save(safe=safe, force_insert=force_insert,
+                                 validate=validate, write_options=write_options,
+                                 _refs=_refs)
+
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if u'duplicate key' in unicode(err):
