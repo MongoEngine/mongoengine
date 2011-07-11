@@ -476,22 +476,39 @@ class QuerySet(object):
             index_opts = self._document._meta.get('index_options', {})
             index_types = self._document._meta.get('index_types', True)
 
+            # determine if an index which we are creating includes
+            # _type as its first field; if so, we can avoid creating
+            # an extra index on _type, as mongodb will use the existing
+            # index to service queries against _type
+            types_indexed = False
+            def includes_types(fields):
+                first_field = None
+                if len(fields):
+                    if isinstance(fields[0], basestring):
+                        first_field = fields[0]
+                    elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+                        first_field = fields[0][0]
+                return first_field == '_types'
+
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
+                types_indexed = types_indexed or includes_types(index)
                 self._collection.ensure_index(index, unique=True,
                     background=background, drop_dups=drop_dups, **index_opts)
 
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for spec in self._document._meta['indexes']:
+                    types_indexed = types_indexed or includes_types(spec['fields'])
                     opts = index_opts.copy()
                     opts['unique'] = spec.get('unique', False)
                     opts['sparse'] = spec.get('sparse', False)
                     self._collection.ensure_index(spec['fields'],
                         background=background, **opts)
 
-            # If _types is being used (for polymorphism), it needs an index
-            if index_types and '_types' in self._query:
+            # If _types is being used (for polymorphism), it needs an index,
+            # only if another index doesn't begin with _types
+            if index_types and '_types' in self._query and not types_indexed:
                 self._collection.ensure_index('_types',
                     background=background, **index_opts)
 

@@ -397,7 +397,7 @@ class DocumentTest(unittest.TestCase):
 
         info = collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertEquals([[(u'_id', 1)], [(u'_types', 1)], [(u'_types', 1), (u'name', 1)]], info)
+        self.assertEquals([[(u'_id', 1)], [(u'_types', 1), (u'name', 1)]], info)
 
         # Turn off inheritance
         class Animal(Document):
@@ -415,7 +415,7 @@ class DocumentTest(unittest.TestCase):
 
         info = collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertEquals([[(u'_id', 1)], [(u'_types', 1)], [(u'_types', 1), (u'name', 1)]], info)
+        self.assertEquals([[(u'_id', 1)], [(u'_types', 1), (u'name', 1)]], info)
 
         info = collection.index_information()
         indexes_to_drop = [key for key, value in info.iteritems() if '_types' in dict(value['key'])]
@@ -601,8 +601,11 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
-        # _id, types, '-date', 'tags', ('cat', 'date')
-        self.assertEqual(len(info), 5)
+        # _id, '-date', 'tags', ('cat', 'date')
+        # NB: there is no index on _types by itself, since
+        # the indices on -date and tags will both contain
+        # _types as first element in the key
+        self.assertEqual(len(info), 4)
 
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
