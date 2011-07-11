@@ -747,10 +747,21 @@ class BaseDocument(object):
             if '_id' in set_data:
                 del(set_data['_id'])
 
-        for k,v in set_data.items():
-            if not v:
-                del(set_data[k])
-                unset_data[k] = 1
+        # Determine if any changed items were actually unset.
+        for path, value in set_data.items():
+            if value:
+                continue
+
+            # If we've set a value that aint the default value save it.
+            if path in self._fields:
+                default = self._fields[path].default
+                if callable(default):
+                    default = default()
+                if default != value:
+                    continue
+
+            del(set_data[path])
+            unset_data[path] = 1
         return set_data, unset_data
 
     @classmethod
