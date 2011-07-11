@@ -1435,7 +1435,7 @@ class QuerySet(object):
                 path = '{{~%(field)s}}'.split('.');
                 field = this;
                 for (p in path) { field = field[path[p]]; }
-                if (field.constructor == Array) {
+                if (field && field.constructor == Array) {
                     field.forEach(function(item) {
                         emit(item, 1);
                     });
@@ -1481,7 +1481,7 @@ class QuerySet(object):
                     db[collection].find(query).forEach(function(doc) {
                         field = doc;
                         for (p in path) { field = field[path[p]]; }
-                        if (field.constructor == Array) {
+                        if (field && field.constructor == Array) {
                             total += field.length;
                         } else {
                             total++;
@@ -1497,7 +1497,7 @@ class QuerySet(object):
                 db[collection].find(query).forEach(function(doc) {
                     field = doc;
                     for (p in path) { field = field[path[p]]; }
-                    if (field.constructor == Array) {
+                    if (field && field.constructor == Array) {
                         field.forEach(function(item) {
                             frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
                         });
@@ -1509,8 +1509,11 @@ class QuerySet(object):
                 return frequencies;
             }
         """
-
-        return self.exec_js(freq_func, field, normalize=normalize)
+        data = self.exec_js(freq_func, field, normalize=normalize)
+        if 'undefined' in data:
+            data[None] = data['undefined']
+            del(data['undefined'])
+        return data
 
     def __repr__(self):
         limit = REPR_OUTPUT_SIZE + 1
