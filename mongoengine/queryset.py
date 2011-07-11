@@ -320,7 +320,7 @@ class QuerySet(object):
     providing :class:`~mongoengine.Document` objects as the results.
     """
 
-    ALREADY_INDEXED = set()
+    __already_indexed = set()
 
     def __init__(self, document, collection):
         self._document = document
@@ -468,8 +468,8 @@ class QuerySet(object):
         """Property that returns the collection object. This allows us to
         perform operations only if the collection is accessed.
         """
-        if self._document not in QuerySet.ALREADY_INDEXED:
-            QuerySet.ALREADY_INDEXED.add(self._document)
+        if self._document not in QuerySet.__already_indexed:
+            QuerySet.__already_indexed.add(self._document)
 
             background = self._document._meta.get('index_background', False)
             drop_dups = self._document._meta.get('index_drop_dups', False)
