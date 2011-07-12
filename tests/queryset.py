@@ -211,6 +211,42 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+    def test_update_write_options(self):
+        """Test that passing write_options works"""
+
+        self.Person.drop_collection()
+
+        write_options = {"fsync": True}
+
+        author, created = self.Person.objects.get_or_create(
+                            name='Test User', write_options=write_options)
+        author.save(write_options=write_options)
+
+        self.Person.objects.update(set__name='Ross', write_options=write_options)
+
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Ross')
+
+        self.Person.objects.update_one(set__name='Test User', write_options=write_options)
+        author = self.Person.objects.first()
+        self.assertEquals(author.name, 'Test User')
+
+    def test_update_update_has_a_value(self):
+        """Test to ensure that update is passed a value to update to"""
+        self.Person.drop_collection()
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        def update_raises():
+            self.Person.objects(pk=author.pk).update({})
+
+        def update_one_raises():
+            self.Person.objects(pk=author.pk).update({})
+
+        self.assertRaises(OperationError, update_raises)
+        self.assertRaises(OperationError, update_one_raises)
+
     def test_update_array_position(self):
         """Ensure that updating by array position works.
 
