@@ -381,6 +381,7 @@ class DocumentMetaclass(type):
                     attr_value.db_field = attr_name
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
+        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items()])
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
@@ -696,6 +697,7 @@ class BaseDocument(object):
         """
         if not key:
             return
+        key = self._db_field_map.get(key, key)
         if hasattr(self, '_changed_fields') and key not in self._changed_fields:
             self._changed_fields.append(key)
 
@@ -705,13 +707,13 @@ class BaseDocument(object):
         from mongoengine import EmbeddedDocument
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
-
         for field_name in self._fields:
-            key = '%s.' % field_name
+            db_field_name = self._db_field_map.get(field_name, field_name)
+            key = '%s.' % db_field_name
             field = getattr(self, field_name, None)
-            if isinstance(field, EmbeddedDocument) and field_name not in _changed_fields:  # Grab all embedded fields that have been changed
+            if isinstance(field, EmbeddedDocument) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
                 _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key) if k]
-            elif isinstance(field, (list, tuple)) and field_name not in _changed_fields:  # Loop list fields as they contain documents
+            elif isinstance(field, (list, tuple)) and db_field_name not in _changed_fields:  # Loop list fields as they contain documents
                 for index, value in enumerate(field):
                     if not hasattr(value, '_get_changed_fields'):
                         continue
@@ -726,6 +728,7 @@ class BaseDocument(object):
         # Handles cases where not loaded from_son but has _id
         doc = self.to_mongo()
         set_fields = self._get_changed_fields()
+
         set_data = {}
         unset_data = {}
         if hasattr(self, '_changed_fields'):
