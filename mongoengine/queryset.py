@@ -1268,6 +1268,9 @@ class QuerySet(object):
 
         .. versionadded:: 0.2
         """
+        if not update:
+            raise OperationError("No update parameters, would remove data")
+
         if pymongo.version < '1.1.1':
             raise OperationError('update() method requires PyMongo 1.1.1+')
 
@@ -1298,6 +1301,9 @@ class QuerySet(object):
 
         .. versionadded:: 0.2
         """
+        if not update:
+            raise OperationError("No update parameters, would remove data")
+
         if not write_options:
             write_options = {}
         update = QuerySet._transform_update(self._document, **update)
