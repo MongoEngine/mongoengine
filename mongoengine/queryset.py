@@ -122,7 +122,6 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
                 q_object = reduce(lambda a, b: a & b, and_parts, Q())
                 q_object = reduce(lambda a, b: a & b, or_group, q_object)
                 clauses.append(q_object)
-
             # Finally, $or the generated clauses in to one query. Each of the
             # clauses is sufficient for the query to succeed.
             return reduce(lambda a, b: a | b, clauses, Q())
@@ -430,6 +429,11 @@ class QuerySet(object):
                 'See https://jira.mongodb.org/browse/SERVER-2193')
 
         return spec
+
+    @classmethod
+    def _reset_already_indexed(cls):
+        """Helper to reset already indexed, can be useful for testing purposes"""
+        cls.__already_indexed = set()
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
         """Filter the selected documents by calling the
