@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added update() convenience method to a document
 - Added cascading saves - so changes to Referenced documents are saved on .save()
 - Added select_related() support
 - Added support for the positional operator
