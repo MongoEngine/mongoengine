@@ -755,9 +755,26 @@ class BaseDocument(object):
             if value:
                 continue
 
-            # If we've set a value that aint the default value save it.
+            # If we've set a value that ain't the default value unset it.
+            default = None
+
             if path in self._fields:
                 default = self._fields[path].default
+            else:  # Perform a full lookup for lists / embedded lookups
+                d = self
+                parts = path.split('.')
+                field_name = parts.pop()
+                for p in parts:
+                    if p.isdigit():
+                        d = d[int(p)]
+                    elif hasattr(d, '__getattribute__'):
+                        d = getattr(d, p)
+                    else:
+                        d = d.get(p)
+                if hasattr(d, '_fields'):
+                    default = d._fields[field_name].default
+
+            if default is not None:
                 if callable(default):
                     default = default()
                 if default != value:

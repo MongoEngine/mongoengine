@@ -1735,6 +1735,47 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(person.age, 21)
         self.assertEquals(person.active, False)
 
+    def test_save_only_changed_fields_recursive(self):
+        """Ensure save only sets / unsets changed fields
+        """
+
+        class Comment(EmbeddedDocument):
+            published = BooleanField(default=True)
+
+        class User(self.Person):
+            comments_dict = DictField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+            active = BooleanField(default=True)
+
+        User.drop_collection()
+
+        # Create person object and save it to the database
+        person = User(name='Test User', age=30, active=True)
+        person.comments.append(Comment())
+        person.save()
+        person.reload()
+
+        person = self.Person.objects.get()
+        self.assertTrue(person.comments[0].published)
+
+        person.comments[0].published = False
+        person.save()
+
+        person = self.Person.objects.get()
+        self.assertFalse(person.comments[0].published)
+
+        # Simple dict w
+        person.comments_dict['first_post'] = Comment()
+        person.save()
+
+        person = self.Person.objects.get()
+        self.assertTrue(person.comments_dict['first_post'].published)
+
+        person.comments_dict['first_post'].published = False
+        person.save()
+
+        person = self.Person.objects.get()
+        self.assertTrue(person.comments_dict['first_post'].published)
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
         """
