@@ -193,6 +193,18 @@ class Document(BaseDocument):
         reset_changed_fields(self)
         signals.post_save.send(self.__class__, document=self, created=created)
 
+    def update(self, **kwargs):
+        """Performs an update on the :class:`~mongoengine.Document`
+        A convenience wrapper to :meth:`~mongoengine.QuerySet.update`.
+
+        Raises :class:`OperationError` if called on an object that has not yet
+        been saved.
+        """
+        if not self.pk:
+            raise OperationError('attempt to update a document not yet saved')
+
+        return self.__class__.objects(pk=self.pk).update_one(**kwargs)
+
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.

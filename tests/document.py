@@ -1203,6 +1203,29 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, None)
 
+    def test_document_update(self):
+
+        def update_not_saved_raises():
+            person = self.Person(name='dcrosta')
+            person.update(set__name='Dan Crosta')
+
+        self.assertRaises(OperationError, update_not_saved_raises)
+
+        author = self.Person(name='dcrosta')
+        author.save()
+
+        author.update(set__name='Dan Crosta')
+        author.reload()
+
+        p1 = self.Person.objects.first()
+        self.assertEquals(p1.name, author.name)
+
+        def update_no_value_raises():
+            person = self.Person.objects.first()
+            person.update()
+
+        self.assertRaises(OperationError, update_no_value_raises)
+
     def test_embedded_update(self):
         """
         Test update on `EmbeddedDocumentField` fields

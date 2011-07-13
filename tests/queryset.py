@@ -242,7 +242,7 @@ class QuerySetTest(unittest.TestCase):
             self.Person.objects(pk=author.pk).update({})
 
         def update_one_raises():
-            self.Person.objects(pk=author.pk).update({})
+            self.Person.objects(pk=author.pk).update_one({})
 
         self.assertRaises(OperationError, update_raises)
         self.assertRaises(OperationError, update_one_raises)
