@@ -3,7 +3,9 @@
 import unittest
 
 from mongoengine import *
+from mongoengine.django.shortcuts import get_document_or_404
 
+from django.http import Http404
 from django.template import Context, Template
 from django.conf import settings
 settings.configure()
@@ -57,3 +59,11 @@ class QuerySetTest(unittest.TestCase):
 
         # Check double rendering doesn't throw an error
         self.assertEqual(t.render(Context(d)), 'D-10:C-30:')
+
+    def test_get_document_or_404(self):
+        p = self.Person(name="G404")
+        p.save()
+
+        self.assertRaises(Http404, get_document_or_404, self.Person, pk='1234')
+        self.assertEqual(p, get_document_or_404(self.Person, pk=p.pk))
+
