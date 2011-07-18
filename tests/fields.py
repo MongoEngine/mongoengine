@@ -1380,5 +1380,42 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(d2.data2, {})
 
 
+    def test_sequence_field(self):
+        class Person(Document):
+            id = SequenceField(primary_key=True)
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+        p = Person()
+        p.save()
+
+        p = Person.objects.first()
+        self.assertEqual(p.id, 1)
+
+    def test_multiple_sequence_field(self):
+        class Person(Document):
+            id = SequenceField(primary_key=True)
+            name = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+
+        for x in xrange(10):
+            p = Person(name="Person %s" % x)
+            p.save()
+
+        ids = [i.id for i in Person.objects]
+        self.assertEqual(ids, range(1, 11))
+
+        for x in xrange(10):
+            p = Person(name="Person %s" % x)
+            p.save()
+
+        ids = [i.id for i in Person.objects]
+        self.assertEqual(ids, range(1, 21))
+
+        counter = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
+        self.assertEqual(counter['next'], 20)
+
 if __name__ == '__main__':
     unittest.main()

@@ -20,7 +20,8 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
            'DecimalField', 'ComplexDateTimeField', 'URLField',
            'GenericReferenceField', 'FileField', 'BinaryField',
-           'SortedListField', 'EmailField', 'GeoPointField']
+           'SortedListField', 'EmailField', 'GeoPointField',
+           'SequenceField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -876,3 +877,33 @@ class GeoPointField(BaseField):
         if (not isinstance(value[0], (float, int)) and
             not isinstance(value[1], (float, int))):
             raise ValidationError('Both values in point must be float or int.')
+
+
+class SequenceField(IntField):
+    def generate_new_value(self):
+        """
+        Generate and Increment counter
+        """
+        sequence_id = "{0}.{1}".format(self.owner_document._get_collection_name(),
+                                       self.name)
+        collection = _get_db()['mongoengine.counters']
+        counter = collection.find_and_modify(query={"_id": sequence_id},
+                                             update={"$inc" : {"next": 1}},
+                                             new=True,
+                                             upsert=True)
+        return counter['next']
+
+    def __get__(self, instance, owner):
+        if not instance._data:
+            return
+        
+        if instance is None:
+            return self
+
+        value = instance._data.get(self.name)
+        
+        if not value:
+            value = self.generate_new_value()
+            instance._data[self.name] = value
+
+        return value
