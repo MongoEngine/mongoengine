@@ -382,6 +382,7 @@ class DocumentMetaclass(type):
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
         attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items()])
+        attrs['_reverse_db_field_map'] = dict([(v.db_field, k) for k, v in doc_fields.items()])
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
@@ -763,17 +764,22 @@ class BaseDocument(object):
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
                 parts = path.split('.')
-                field_name = parts.pop()
+                db_field_name = parts.pop()
                 for p in parts:
                     if p.isdigit():
                         d = d[int(p)]
                     elif hasattr(d, '__getattribute__'):
-                        d = getattr(d, p)
+                        real_path = d._reverse_db_field_map.get(p, p)
+                        d = getattr(d, real_path)
                     else:
                         d = d.get(p)
+                
                 if hasattr(d, '_fields'):
+                    field_name = d._reverse_db_field_map.get(db_field_name,
+                                                             db_field_name)
+                    
                     default = d._fields[field_name].default
-
+                    
             if default is not None:
                 if callable(default):
                     default = default()
