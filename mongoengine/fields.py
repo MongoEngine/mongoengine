@@ -880,30 +880,46 @@ class GeoPointField(BaseField):
 
 
 class SequenceField(IntField):
+    """Provides a sequental counter.
+
+    ..note:: Although traditional databases often use increasing sequence
+             numbers for primary keys. In MongoDB, the preferred approach is to
+             use Object IDs instead.  The concept is that in a very large
+             cluster of machines, it is easier to create an object ID than have
+             global, uniformly increasing sequence numbers.
+
+    .. versionadded:: 0.5
+    """
+    def __init__(self, collection_name=None, *args, **kwargs):
+        self.collection_name = collection_name or 'mongoengine.counters'
+        return super(SequenceField, self).__init__(*args, **kwargs)
+
     def generate_new_value(self):
         """
-        Generate and Increment counter
+        Generate and Increment the counter
         """
         sequence_id = "{0}.{1}".format(self.owner_document._get_collection_name(),
                                        self.name)
-        collection = _get_db()['mongoengine.counters']
+        collection = _get_db()[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
-                                             update={"$inc" : {"next": 1}},
+                                             update={"$inc": {"next": 1}},
                                              new=True,
                                              upsert=True)
         return counter['next']
 
     def __get__(self, instance, owner):
-        if not instance._data:
-            return
-        
+
         if instance is None:
             return self
-
+        if not instance._data:
+            return
         value = instance._data.get(self.name)
-        
-        if not value:
+        if not value and instance._initialised:
             value = self.generate_new_value()
             instance._data[self.name] = value
+        return value
 
+    def to_python(self, value):
+        if value is None:
+            value = self.generate_new_value()
         return value

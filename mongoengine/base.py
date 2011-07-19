@@ -587,7 +587,8 @@ class BaseDocument(object):
 
         # Set any get_fieldname_display methods
         self.__set_field_display()
-
+        # Flag initialised
+        self._initialised = True
         signals.post_init.send(self.__class__, document=self)
 
     def validate(self):
@@ -773,13 +774,13 @@ class BaseDocument(object):
                         d = getattr(d, real_path)
                     else:
                         d = d.get(p)
-                
+
                 if hasattr(d, '_fields'):
                     field_name = d._reverse_db_field_map.get(db_field_name,
                                                              db_field_name)
-                    
+
                     default = d._fields[field_name].default
-                    
+
             if default is not None:
                 if callable(default):
                     default = default()
