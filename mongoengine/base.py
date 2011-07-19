@@ -381,8 +381,8 @@ class DocumentMetaclass(type):
                     attr_value.db_field = attr_name
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
-        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items()])
-        attrs['_reverse_db_field_map'] = dict([(v.db_field, k) for k, v in doc_fields.items()])
+        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k!=v])
+        attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
