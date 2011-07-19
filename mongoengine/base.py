@@ -447,7 +447,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Subclassed documents inherit collection from superclass
         for base in bases:
             if hasattr(base, '_meta'):
-
                 if 'collection' in attrs.get('meta', {}) and not base._meta.get('abstract', False):
                     import warnings
                     msg = "Trying to set a collection on a subclass (%s)" % name
@@ -465,14 +464,20 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 # Propagate 'allow_inheritance'
                 if 'allow_inheritance' in base._meta:
                     base_meta['allow_inheritance'] = base._meta['allow_inheritance']
+                if 'queryset_class' in base._meta:
+                    base_meta['queryset_class'] = base._meta['queryset_class']
+            try:
+                base_meta['objects'] = base.__getattribute__(base, 'objects')
+            except AttributeError:
+                pass
 
         meta = {
             'abstract': False,
             'collection': collection,
             'max_documents': None,
             'max_size': None,
-            'ordering': [], # default ordering applied at runtime
-            'indexes': [], # indexes to be ensured at runtime
+            'ordering': [],  # default ordering applied at runtime
+            'indexes': [],  # indexes to be ensured at runtime
             'id_field': id_field,
             'index_background': False,
             'index_drop_dups': False,
@@ -496,7 +501,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['collection'] = collection(new_class)
 
         # Provide a default queryset unless one has been manually provided
-        manager = attrs.get('objects', QuerySetManager())
+        manager = attrs.get('objects', meta.get('objects', QuerySetManager()))
         if hasattr(manager, 'queryset_class'):
             meta['queryset_class'] = manager.queryset_class
         new_class.objects = manager

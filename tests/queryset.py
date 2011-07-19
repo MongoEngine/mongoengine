@@ -2318,6 +2318,56 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
+    def test_custom_querysets_inherited(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+
+        class CustomQuerySet(QuerySet):
+            def not_empty(self):
+                return len(self) > 0
+
+        class Base(Document):
+            meta = {'abstract': True, 'queryset_class': CustomQuerySet}
+
+        class Post(Base):
+            pass
+
+        Post.drop_collection()
+        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertFalse(Post.objects.not_empty())
+
+        Post().save()
+        self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
+    def test_custom_querysets_inherited_direct(self):
+        """Ensure that custom QuerySet classes may be used.
+        """
+
+        class CustomQuerySet(QuerySet):
+            def not_empty(self):
+                return len(self) > 0
+
+        class CustomQuerySetManager(QuerySetManager):
+            queryset_class = CustomQuerySet
+
+        class Base(Document):
+            meta = {'abstract': True}
+            objects = CustomQuerySetManager()
+
+        class Post(Base):
+            pass
+
+        Post.drop_collection()
+        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertFalse(Post.objects.not_empty())
+
+        Post().save()
+        self.assertTrue(Post.objects.not_empty())
+
+        Post.drop_collection()
+
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """
