@@ -1397,6 +1397,11 @@ class QuerySet(object):
         db = _get_db()
         return db.eval(code, *fields)
 
+    def where(self, where_clause):
+        where_clause = self._sub_js_fields(where_clause)
+        self._where_clause = where_clause
+        return self
+
     def sum(self, field):
         """Sum over the values of the specified field.
 
