@@ -339,7 +339,6 @@ class DocumentMetaclass(type):
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
-                class_name.append(base._class_name)
                 # Get superclasses from superclass
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
@@ -351,6 +350,7 @@ class DocumentMetaclass(type):
                 # Ensure that the Document class may be subclassed -
                 # inheritance may be disabled to remove dependency on
                 # additional fields _cls and _types
+                class_name.append(base._class_name)
                 if base._meta.get('allow_inheritance', True) == False:
                     raise ValueError('Document %s may not be subclassed' %
                                      base.__name__)
