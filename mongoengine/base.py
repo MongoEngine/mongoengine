@@ -577,6 +577,7 @@ class BaseDocument(object):
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
+        self._initialised = False
         # Assign default values to instance
         for attr_name, field in self._fields.items():
             value = getattr(self, attr_name, None)
