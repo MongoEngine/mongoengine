@@ -1048,6 +1048,26 @@ class DocumentTest(unittest.TestCase):
         except ValidationError:
             self.fail()
 
+    def test_save_to_a_value_that_equates_to_false(self):
+
+        class Thing(EmbeddedDocument):
+            count = IntField()
+
+        class User(Document):
+            thing = EmbeddedDocumentField(Thing)
+
+        User.drop_collection()
+
+        user = User(thing=Thing(count=1))
+        user.save()
+        user.reload()
+
+        user.thing.count = 0
+        user.save()
+
+        user.reload()
+        self.assertEquals(user.thing.count, 0)
+
     def test_save_max_recursion_not_hit(self):
 
         class Person(Document):

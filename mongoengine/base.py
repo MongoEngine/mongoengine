@@ -762,7 +762,7 @@ class BaseDocument(object):
             if value:
                 continue
 
-            # If we've set a value that ain't the default value unset it.
+            # If we've set a value that ain't the default value dont unset it.
             default = None
 
             if path in self._fields:
@@ -789,8 +789,8 @@ class BaseDocument(object):
             if default is not None:
                 if callable(default):
                     default = default()
-                if default != value:
-                    continue
+            if default != value:
+                continue
 
             del(set_data[path])
             unset_data[path] = 1
