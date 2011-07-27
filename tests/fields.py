@@ -1488,5 +1488,30 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(c['next'], 10)
 
 
+    def test_generic_embedded_document(self):
+        class Car(EmbeddedDocument):
+            name = StringField()
+
+        class Dish(EmbeddedDocument):
+            food = StringField(required=True)
+            number = IntField()
+
+        class Person(Document):
+            name = StringField()
+            like = GenericEmbeddedDocumentField()
+
+        person = Person(name='Test User')
+        person.like = Car(name='Fiat')
+        person.save()
+
+        person = Person.objects.first()
+        self.assertTrue(isinstance(person.like, Car))
+
+        person.like = Dish(food="arroz", number=15)
+        person.save()
+
+        person = Person.objects.first()
+        self.assertTrue(isinstance(person.like, Dish))
+
 if __name__ == '__main__':
     unittest.main()

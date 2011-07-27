@@ -21,7 +21,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DecimalField', 'ComplexDateTimeField', 'URLField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField',
-           'SequenceField']
+           'SequenceField', 'GenericEmbeddedDocumentField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -420,6 +420,32 @@ class EmbeddedDocumentField(BaseField):
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
+class GenericEmbeddedDocumentField(BaseField):
+    def prepare_query_value(self, op, value):
+        return self.to_mongo(value)
+
+    def to_python(self, value):
+        if isinstance(value, dict):
+            doc_cls = get_document(value['_cls'])
+            value = doc_cls._from_son(value)
+
+        return value
+
+    def validate(self, value):
+        if not isinstance(value, EmbeddedDocument):
+            raise ValidationError('Invalid embedded document instance '
+                                  'provided to an GenericEmbeddedDocumentField')
+
+        value.validate()
+
+    def to_mongo(self, document):
+        if document is None:
+            return None
+
+        data = document.to_mongo()
+        if not '_cls' in data:
+            data['_cls'] = document._class_name
+        return data
 
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
