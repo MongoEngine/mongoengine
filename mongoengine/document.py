@@ -143,13 +143,15 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        created = '_id' not in doc
+        created = '_id' in doc
+        creation_mode = force_insert or not created
         try:
             collection = self.__class__.objects._collection
-            if force_insert:
-                object_id = collection.insert(doc, safe=safe, **write_options)
-            if created:
-                object_id = collection.save(doc, safe=safe, **write_options)
+            if creation_mode:
+                if force_insert:
+                    object_id = collection.insert(doc, safe=safe, **write_options)
+                else:
+                    object_id = collection.save(doc, safe=safe, **write_options)
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
@@ -191,7 +193,7 @@ class Document(BaseDocument):
                     reset_changed_fields(field, inspected_docs)
 
         reset_changed_fields(self)
-        signals.post_save.send(self.__class__, document=self, created=created)
+        signals.post_save.send(self.__class__, document=self, created=creation_mode)
 
     def update(self, **kwargs):
         """Performs an update on the :class:`~mongoengine.Document`
