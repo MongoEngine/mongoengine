@@ -53,7 +53,7 @@ Changes in dev
 - Added reverse delete rules
 - Fixed issue with unset operation
 - Fixed Q-object bug
-- Added ``QuerySet.all_fields`` resets previous .only() and .exlude()
+- Added ``QuerySet.all_fields`` resets previous .only() and .exclude()
 - Added ``QuerySet.exclude``
 - Added django style choices
 - Fixed order and filter issue

@@ -721,12 +721,18 @@ class BaseDocument(object):
             field = getattr(self, field_name, None)
             if isinstance(field, EmbeddedDocument) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
                 _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key) if k]
-            elif isinstance(field, (list, tuple)) and db_field_name not in _changed_fields:  # Loop list fields as they contain documents
-                for index, value in enumerate(field):
+            elif isinstance(field, (list, tuple, dict)) and db_field_name not in _changed_fields:  # Loop list / dict fields as they contain documents
+                # Determine the iterator to use
+                if not hasattr(field, 'items'):
+                    iterator = enumerate(field)
+                else:
+                    iterator = field.iteritems()
+                for index, value in iterator:
                     if not hasattr(value, '_get_changed_fields'):
                         continue
                     list_key = "%s%s." % (key, index)
                     _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key) if k]
+
         return _changed_fields
 
     def _delta(self):
@@ -736,7 +742,6 @@ class BaseDocument(object):
         # Handles cases where not loaded from_son but has _id
         doc = self.to_mongo()
         set_fields = self._get_changed_fields()
-
         set_data = {}
         unset_data = {}
         if hasattr(self, '_changed_fields'):
@@ -775,7 +780,7 @@ class BaseDocument(object):
                 for p in parts:
                     if p.isdigit():
                         d = d[int(p)]
-                    elif hasattr(d, '__getattribute__'):
+                    elif hasattr(d, '__getattribute__') and not isinstance(d, dict):
                         real_path = d._reverse_db_field_map.get(p, p)
                         d = getattr(d, real_path)
                     else:
