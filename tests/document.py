@@ -289,6 +289,31 @@ class DocumentTest(unittest.TestCase):
         Zoo.drop_collection()
         Animal.drop_collection()
 
+    def test_reference_inheritance(self):
+        class Stats(Document):
+            created = DateTimeField(default=datetime.now)
+
+            meta = {'allow_inheritance': False}
+
+        class CompareStats(Document):
+            generated = DateTimeField(default=datetime.now)
+            stats = ListField(ReferenceField(Stats))
+
+        Stats.drop_collection()
+        CompareStats.drop_collection()
+
+        list_stats = []
+
+        for i in xrange(10):
+            s = Stats()
+            s.save()
+            list_stats.append(s)
+
+        cmp_stats = CompareStats(stats=list_stats)
+        cmp_stats.save()
+
+        self.assertEqual(list_stats, CompareStats.objects.first().stats)
+
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
         """
