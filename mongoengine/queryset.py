@@ -1398,6 +1398,10 @@ class QuerySet(object):
         return db.eval(code, *fields)
 
     def where(self, where_clause):
+        """Filter ``QuerySet`` results with a ``$where`` clause (a Javascript
+        expression). Performs automatic field name substitution like
+        :meth:`mongoengine.queryset.Queryset.exec_js`.
+        """
         where_clause = self._sub_js_fields(where_clause)
         self._where_clause = where_clause
         return self
