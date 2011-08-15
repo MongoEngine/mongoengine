@@ -812,7 +812,8 @@ class BaseDocument(object):
                 field_cls = field.document_type
                 if field_cls in inspected_classes:
                     continue
-                geo_indices += field_cls._geo_indices(inspected_classes)
+                if hasattr(field_cls, '_geo_indices'):
+                    geo_indices += field_cls._geo_indices(inspected_classes)
             elif field._geo_index:
                 geo_indices.append(field)
         return geo_indices
