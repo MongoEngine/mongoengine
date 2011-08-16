@@ -1416,16 +1416,26 @@ class QuerySet(object):
         :param field: the field to sum over; use dot-notation to refer to
             embedded document fields
         """
-        sum_func = """
-            function(sumField) {
-                var total = 0.0;
-                db[collection].find(query).forEach(function(doc) {
-                    total += (doc[sumField] || 0.0);
-                });
-                return total;
+        map_func = pymongo.code.Code("""
+            function() {
+                emit(1, this[field] || 0);
             }
-        """
-        return self.exec_js(sum_func, field)
+        """, scope={'field': field})
+
+        reduce_func = pymongo.code.Code("""
+            function(key, values) {
+                var sum = 0;
+                for (var i in values) {
+                    sum += values[i];
+                }
+                return sum;
+            }
+        """)
+
+        for result in self.map_reduce(map_func, reduce_func, output='inline'):
+            return result.value
+        else:
+            return 0
 
     def average(self, field):
         """Average over the values of the specified field.
@@ -1433,22 +1443,38 @@ class QuerySet(object):
         :param field: the field to average over; use dot-notation to refer to
             embedded document fields
         """
-        average_func = """
-            function(averageField) {
-                var total = 0.0;
-                var num = 0;
-                db[collection].find(query).forEach(function(doc) {
-                    if (doc[averageField] !== undefined) {
-                        total += doc[averageField];
-                        num += 1;
-                    }
-                });
-                return total / num;
+        map_func = pymongo.code.Code("""
+            function() {
+                if (this.hasOwnProperty(field))
+                    emit(1, {t: this[field] || 0, c: 1});
             }
-        """
-        return self.exec_js(average_func, field)
+        """, scope={'field': field})
 
-    def item_frequencies(self, field, normalize=False, map_reduce=False):
+        reduce_func = pymongo.code.Code("""
+            function(key, values) {
+                var out = {t: 0, c: 0};
+                for (var i in values) {
+                    var value = values[i];
+                    out.t += value.t;
+                    out.c += value.c;
+                }
+                return out;
+            }
+        """)
+
+        finalize_func = pymongo.code.Code("""
+            function(key, value) {
+                return value.t / value.c;
+            }
+        """)
+
+        for result in self.map_reduce(map_func, reduce_func, finalize_f=finalize_func, output='inline'):
+            return result.value
+        else:
+            return 0
+
+
+    def item_frequencies(self, field, normalize=False, map_reduce=True):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents.
