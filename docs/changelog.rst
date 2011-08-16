@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Updated sum / average to use map_reduce as db.eval doesn't work in sharded environments
 - Added where() - filter to allowing users to specify query expressions as Javascript
 - Added SequenceField - for creating sequential counters
 - Added update() convenience method to a document
