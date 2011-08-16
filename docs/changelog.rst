@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added where() - filter to allowing users to specify query expressions as Javascript
 - Added SequenceField - for creating sequential counters
 - Added update() convenience method to a document
 - Added cascading saves - so changes to Referenced documents are saved on .save()

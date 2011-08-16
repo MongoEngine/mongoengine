@@ -620,7 +620,7 @@ class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
-    note:  Any documents used as a generic reference must be registered in the
+    ..note ::  Any documents used as a generic reference must be registered in the
     document registry.  Importing the model will automatically register it.
 
     .. versionadded:: 0.3
@@ -925,7 +925,7 @@ class SequenceField(IntField):
         return value
 
     def __set__(self, instance, value):
-        
+
         if value is None and instance._initialised:
             value = self.generate_new_value()
 

@@ -1401,6 +1401,10 @@ class QuerySet(object):
         """Filter ``QuerySet`` results with a ``$where`` clause (a Javascript
         expression). Performs automatic field name substitution like
         :meth:`mongoengine.queryset.Queryset.exec_js`.
+
+        .. note:: When using this mode of query, the database will call your
+                  function, or evaluate your predicate clause, for each object
+                  in the collection.
         """
         where_clause = self._sub_js_fields(where_clause)
         self._where_clause = where_clause

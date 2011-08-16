@@ -2531,6 +2531,19 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, len(results))
         self.assertTrue(a in results)
 
+        query = IntPair.objects.where('function() { return this[~fielda] >= this[~fieldb] }')
+        self.assertEqual('function() { return this["fielda"] >= this["fieldb"] }', query._where_clause)
+        results = list(query)
+        self.assertEqual(2, len(results))
+        self.assertTrue(a in results)
+        self.assertTrue(c in results)
+
+        def invalid_where():
+            list(IntPair.objects.where(fielda__gte=3))
+
+        self.assertRaises(TypeError, invalid_where)
+
+
 class QTest(unittest.TestCase):
 
     def setUp(self):
