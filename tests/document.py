@@ -690,6 +690,57 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_embedded_document_index(self):
+        """Tests settings an index on an embedded document
+        """
+        class Date(EmbeddedDocument):
+            year = IntField(db_field='yr')
+
+        class BlogPost(Document):
+            title = StringField()
+            date = EmbeddedDocumentField(Date)
+
+            meta = {
+                'indexes': [
+                    '-date.year'
+                ],
+            }
+
+        BlogPost.drop_collection()
+
+        info = BlogPost.objects._collection.index_information()
+        self.assertEqual(info.keys(), ['_types_1_date.yr_-1', '_id_'])
+        BlogPost.drop_collection()
+
+    def test_list_embedded_document_index(self):
+        """Ensure list embedded documents can be indexed
+        """
+        class Tag(EmbeddedDocument):
+            name = StringField(db_field='tag')
+
+        class BlogPost(Document):
+            title = StringField()
+            tags = ListField(EmbeddedDocumentField(Tag))
+
+            meta = {
+                'indexes': [
+                    'tags.name'
+                ],
+            }
+
+        BlogPost.drop_collection()
+
+        info = BlogPost.objects._collection.index_information()
+        # we don't use _types in with list fields by default
+        self.assertEqual(info.keys(), ['_id_', '_types_1', 'tags.tag_1'])
+
+        post1 = BlogPost(title="Embedded Indexes tests in place",
+                        tags=[Tag(name="about"), Tag(name="time")]
+                )
+        post1.save()
+        BlogPost.drop_collection()
+
+
     def test_geo_indexes_recursion(self):
 
         class User(Document):
