@@ -1425,6 +1425,32 @@ class FieldTest(unittest.TestCase):
         c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
         self.assertEqual(c['next'], 10)
 
+    def test_sequence_fields_reload(self):
+        class Animal(Document):
+            counter = SequenceField()
+            type = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Animal.drop_collection()
+
+        a = Animal(type="Boi")
+        a.save()
+
+        self.assertEqual(a.counter, 1)
+        a.reload()
+        self.assertEqual(a.counter, 1)
+
+        a.counter = None
+        self.assertEqual(a.counter, 2)
+        a.save()
+
+        self.assertEqual(a.counter, 2)
+        
+        a = Animal.objects.first()
+        self.assertEqual(a.counter, 2)
+        a.reload()
+        self.assertEqual(a.counter, 2)
+
     def test_multiple_sequence_fields_on_docs(self):
 
         class Animal(Document):

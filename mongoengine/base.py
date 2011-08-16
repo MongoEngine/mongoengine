@@ -381,8 +381,8 @@ class DocumentMetaclass(type):
                     attr_value.db_field = attr_name
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
-        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items()])
-        attrs['_reverse_db_field_map'] = dict([(v.db_field, k) for k, v in doc_fields.items()])
+        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k!=v.db_field])
+        attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
@@ -577,6 +577,7 @@ class BaseDocument(object):
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
+        self._initialised = False
         # Assign default values to instance
         for attr_name, field in self._fields.items():
             value = getattr(self, attr_name, None)
@@ -720,12 +721,18 @@ class BaseDocument(object):
             field = getattr(self, field_name, None)
             if isinstance(field, EmbeddedDocument) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
                 _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key) if k]
-            elif isinstance(field, (list, tuple)) and db_field_name not in _changed_fields:  # Loop list fields as they contain documents
-                for index, value in enumerate(field):
+            elif isinstance(field, (list, tuple, dict)) and db_field_name not in _changed_fields:  # Loop list / dict fields as they contain documents
+                # Determine the iterator to use
+                if not hasattr(field, 'items'):
+                    iterator = enumerate(field)
+                else:
+                    iterator = field.iteritems()
+                for index, value in iterator:
                     if not hasattr(value, '_get_changed_fields'):
                         continue
                     list_key = "%s%s." % (key, index)
                     _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key) if k]
+
         return _changed_fields
 
     def _delta(self):
@@ -735,7 +742,6 @@ class BaseDocument(object):
         # Handles cases where not loaded from_son but has _id
         doc = self.to_mongo()
         set_fields = self._get_changed_fields()
-
         set_data = {}
         unset_data = {}
         if hasattr(self, '_changed_fields'):
@@ -762,7 +768,7 @@ class BaseDocument(object):
             if value:
                 continue
 
-            # If we've set a value that ain't the default value unset it.
+            # If we've set a value that ain't the default value dont unset it.
             default = None
 
             if path in self._fields:
@@ -774,7 +780,7 @@ class BaseDocument(object):
                 for p in parts:
                     if p.isdigit():
                         d = d[int(p)]
-                    elif hasattr(d, '__getattribute__'):
+                    elif hasattr(d, '__getattribute__') and not isinstance(d, dict):
                         real_path = d._reverse_db_field_map.get(p, p)
                         d = getattr(d, real_path)
                     else:
@@ -789,8 +795,8 @@ class BaseDocument(object):
             if default is not None:
                 if callable(default):
                     default = default()
-                if default != value:
-                    continue
+            if default != value:
+                continue
 
             del(set_data[path])
             unset_data[path] = 1

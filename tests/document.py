@@ -289,6 +289,31 @@ class DocumentTest(unittest.TestCase):
         Zoo.drop_collection()
         Animal.drop_collection()
 
+    def test_reference_inheritance(self):
+        class Stats(Document):
+            created = DateTimeField(default=datetime.now)
+
+            meta = {'allow_inheritance': False}
+
+        class CompareStats(Document):
+            generated = DateTimeField(default=datetime.now)
+            stats = ListField(ReferenceField(Stats))
+
+        Stats.drop_collection()
+        CompareStats.drop_collection()
+
+        list_stats = []
+
+        for i in xrange(10):
+            s = Stats()
+            s.save()
+            list_stats.append(s)
+
+        cmp_stats = CompareStats(stats=list_stats)
+        cmp_stats.save()
+
+        self.assertEqual(list_stats, CompareStats.objects.first().stats)
+
     def test_inheritance(self):
         """Ensure that document may inherit fields from a superclass document.
         """
@@ -1048,6 +1073,26 @@ class DocumentTest(unittest.TestCase):
         except ValidationError:
             self.fail()
 
+    def test_save_to_a_value_that_equates_to_false(self):
+
+        class Thing(EmbeddedDocument):
+            count = IntField()
+
+        class User(Document):
+            thing = EmbeddedDocumentField(Thing)
+
+        User.drop_collection()
+
+        user = User(thing=Thing(count=1))
+        user.save()
+        user.reload()
+
+        user.thing.count = 0
+        user.save()
+
+        user.reload()
+        self.assertEquals(user.thing.count, 0)
+
     def test_save_max_recursion_not_hit(self):
 
         class Person(Document):
@@ -1484,6 +1529,18 @@ class DocumentTest(unittest.TestCase):
         del(doc.embedded_field.list_field[2].list_field)
         self.assertEquals(doc._delta(), ({}, {'embedded_field.list_field.2.list_field': 1}))
 
+        doc.save()
+        doc.reload()
+
+        doc.dict_field['Embedded'] = embedded_1
+        doc.save()
+        doc.reload()
+
+        doc.dict_field['Embedded'].string_field = 'Hello World'
+        self.assertEquals(doc._get_changed_fields(), ['dict_field.Embedded.string_field'])
+        self.assertEquals(doc._delta(), ({'dict_field.Embedded.string_field': 'Hello World'}, {}))
+
+
     def test_delta_db_field(self):
 
         class Doc(Document):
@@ -1775,7 +1832,8 @@ class DocumentTest(unittest.TestCase):
         person.save()
 
         person = self.Person.objects.get()
-        self.assertTrue(person.comments_dict['first_post'].published)
+        self.assertFalse(person.comments_dict['first_post'].published)
+
     def test_delete(self):
         """Ensure that document may be deleted using the delete method.
         """

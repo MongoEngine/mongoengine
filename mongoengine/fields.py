@@ -911,13 +911,25 @@ class SequenceField(IntField):
 
         if instance is None:
             return self
+
         if not instance._data:
             return
+
         value = instance._data.get(self.name)
+
         if not value and instance._initialised:
             value = self.generate_new_value()
             instance._data[self.name] = value
+            instance._mark_as_changed(self.name)
+
         return value
+
+    def __set__(self, instance, value):
+        
+        if value is None and instance._initialised:
+            value = self.generate_new_value()
+
+        return super(SequenceField, self).__set__(instance, value)
 
     def to_python(self, value):
         if value is None:
