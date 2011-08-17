@@ -872,7 +872,7 @@ class QuerySet(object):
         return self.count()
 
     def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
-                   scope=None, keep_temp=False):
+                   scope=None):
         """Perform a map/reduce query using the current query spec
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
         it must be the last call made, as it does not return a maleable
@@ -920,7 +920,7 @@ class QuerySet(object):
         reduce_f_code = self._sub_js_fields(reduce_f)
         reduce_f = pymongo.code.Code(reduce_f_code, reduce_f_scope)
 
-        mr_args = {'query': self._query, 'keeptemp': keep_temp}
+        mr_args = {'query': self._query}
 
         if finalize_f:
             finalize_f_scope = {}
@@ -937,7 +937,7 @@ class QuerySet(object):
         if limit:
             mr_args['limit'] = limit
 
-        if output == 'inline' or (not keep_temp and not self._ordering):
+        if output == 'inline' and not self._ordering:
             map_reduce_function = 'inline_map_reduce'
         else:
             map_reduce_function = 'map_reduce'
@@ -1514,7 +1514,7 @@ class QuerySet(object):
                 return total;
             }
         """
-        values = self.map_reduce(map_func, reduce_func, 'inline', keep_temp=False)
+        values = self.map_reduce(map_func, reduce_func, 'inline')
         frequencies = {}
         for f in values:
             key = f.key
