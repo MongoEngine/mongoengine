@@ -5,6 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Updated sum / average to use map_reduce as db.eval doesn't work in sharded environments
+- Added where() - filter to allowing users to specify query expressions as Javascript
 - Added SequenceField - for creating sequential counters
 - Added update() convenience method to a document
 - Added cascading saves - so changes to Referenced documents are saved on .save()
@@ -28,7 +30,7 @@ Changes in dev
 - Added insert method for bulk inserts
 - Added blinker signal support
 - Added query_counter context manager for tests
-- Added optional map_reduce method item_frequencies
+- Added map_reduce method item_frequencies and set as default (as db.eval doesn't work in sharded environments)
 - Added inline_map_reduce option to map_reduce
 - Updated connection exception so it provides more info on the cause.
 - Added searching multiple levels deep in ``DictField``

@@ -2502,6 +2502,47 @@ class QuerySetTest(unittest.TestCase):
                 for key, value in info.iteritems()]
         self.assertTrue(([('_types', 1), ('message', 1)], False, False) in info)
 
+    def test_where(self):
+        """Ensure that where clauses work.
+        """
+
+        class IntPair(Document):
+            fielda = IntField()
+            fieldb = IntField()
+
+        IntPair.objects._collection.remove()
+
+        a = IntPair(fielda=1, fieldb=1)
+        b = IntPair(fielda=1, fieldb=2)
+        c = IntPair(fielda=2, fieldb=1)
+        a.save()
+        b.save()
+        c.save()
+
+        query = IntPair.objects.where('this[~fielda] >= this[~fieldb]')
+        self.assertEqual('this["fielda"] >= this["fieldb"]', query._where_clause)
+        results = list(query)
+        self.assertEqual(2, len(results))
+        self.assertTrue(a in results)
+        self.assertTrue(c in results)
+
+        query = IntPair.objects.where('this[~fielda] == this[~fieldb]')
+        results = list(query)
+        self.assertEqual(1, len(results))
+        self.assertTrue(a in results)
+
+        query = IntPair.objects.where('function() { return this[~fielda] >= this[~fieldb] }')
+        self.assertEqual('function() { return this["fielda"] >= this["fieldb"] }', query._where_clause)
+        results = list(query)
+        self.assertEqual(2, len(results))
+        self.assertTrue(a in results)
+        self.assertTrue(c in results)
+
+        def invalid_where():
+            list(IntPair.objects.where(fielda__gte=3))
+
+        self.assertRaises(TypeError, invalid_where)
+
 
 class QTest(unittest.TestCase):
 
