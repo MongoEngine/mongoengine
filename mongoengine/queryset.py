@@ -1275,9 +1275,6 @@ class QuerySet(object):
         if not update:
             raise OperationError("No update parameters, would remove data")
 
-        if pymongo.version < '1.1.1':
-            raise OperationError('update() method requires PyMongo 1.1.1+')
-
         if not write_options:
             write_options = {}
 
@@ -1314,14 +1311,10 @@ class QuerySet(object):
         try:
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
-            if pymongo.version >= '1.1.1':
-                ret = self._collection.update(self._query, update, multi=False,
-                                              upsert=upsert, safe=safe_update,
-                                              **write_options)
-            else:
-                # Older versions of PyMongo don't support 'multi'
-                ret = self._collection.update(self._query, update,
-                                              safe=safe_update)
+            ret = self._collection.update(self._query, update, multi=False,
+                                          upsert=upsert, safe=safe_update,
+                                           **write_options)
+
             if ret is not None and 'n' in ret:
                 return ret['n']
         except pymongo.errors.OperationFailure, e:
