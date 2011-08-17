@@ -617,15 +617,9 @@ class QuerySet(object):
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists', 'not']
-<<<<<<< HEAD
-        geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'near', 'near_sphere']
+        geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'within_polygon' 'near', 'near_sphere']
         match_operators = ['contains', 'icontains', 'startswith',
                            'istartswith', 'endswith', 'iendswith',
-=======
-        geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'within_polygon', 'near', 'near_sphere']
-        match_operators = ['contains', 'icontains', 'startswith', 
-                           'istartswith', 'endswith', 'iendswith', 
->>>>>>> master
                            'exact', 'iexact']
 
         mongo_query = {}
