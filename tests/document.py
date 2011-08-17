@@ -1945,6 +1945,58 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_list_search_by_embedded(self):
+        class User(Document):
+            username = StringField(required=True)
+    
+            meta = {'allow_inheritance': False}
+    
+        class Comment(EmbeddedDocument):
+            comment = StringField()
+            user = ReferenceField(User,
+                                  required=True)
+                          
+            meta = {'allow_inheritance': False}
+
+        class Page(Document):
+            comments = ListField(EmbeddedDocumentField(Comment))
+            meta = {'allow_inheritance': False,
+                    'indexes': [
+                        {'fields': ['comments.user']}
+                    ]}
+
+        User.drop_collection()
+        Page.drop_collection()
+
+        u1 = User(username="wilson")
+        u1.save()
+
+        u2 = User(username="rozza")
+        u2.save()
+
+        u3 = User(username="hmarr")
+        u3.save()
+
+        p1 = Page(comments = [Comment(user=u1, comment="Its very good"),
+                              Comment(user=u2, comment="Hello world"),
+                              Comment(user=u3, comment="Ping Pong"),
+                              Comment(user=u1, comment="I like a beer")])
+        p1.save()
+
+        p2 = Page(comments = [Comment(user=u1, comment="Its very good"),
+                              Comment(user=u2, comment="Hello world")])
+        p2.save()
+
+        p3 = Page(comments = [Comment(user=u3, comment="Its very good")])
+        p3.save()
+
+        p4 = Page(comments = [Comment(user=u2, comment="Heavy Metal song")])
+        p4.save()
+
+        self.assertEqual([p1, p2], list(Page.objects.filter(comments__user=u1)))
+        self.assertEqual([p1, p2, p4], list(Page.objects.filter(comments__user=u2)))
+        self.assertEqual([p1, p3], list(Page.objects.filter(comments__user=u3)))
+
     def test_save_embedded_document(self):
         """Ensure that a document with an embedded document field may be
         saved in the database.
