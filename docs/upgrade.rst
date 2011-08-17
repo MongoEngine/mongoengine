@@ -7,6 +7,15 @@ Upgrading
 
 There have been the following backwards incompatibilities from 0.4 to 0.5:
 
+# PyMongo / MongoDB
+
+map reduce now requires pymongo 1.11+ More methods now use map_reduce as db.eval
+is not supported for sharding - the following have been changed:
+
+    * sum
+    * average
+    * item_frequencies
+
 #. Default collection naming.
 
 Previously it was just lowercase, its now much more pythonic and readable as its
