@@ -1355,6 +1355,26 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0].id, event2.id)
         
+        # check that polygon works
+        polygon = [
+            (41.912114,-87.694445),
+            (41.919395,-87.69084),
+            (41.927186,-87.681742),
+            (41.911731,-87.654276),
+            (41.898061,-87.656164),
+        ]
+        events = Event.objects(location__within_polygon=polygon)
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0].id, event1.id)
+        
+        polygon2 = [
+            (54.033586,-1.742249),
+            (52.792797,-1.225891),
+            (53.389881,-4.40094)
+        ]
+        events = Event.objects(location__within_polygon=polygon2)
+        self.assertEqual(events.count(), 0)
+            
         Event.drop_collection()
 
     def test_spherical_geospatial_operators(self):
