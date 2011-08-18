@@ -902,6 +902,10 @@ class QuerySet(object):
            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
            PyMongo version **>= 1.11**.
 
+        .. versionchanged:: 0.5
+           - removed ``keep_temp`` keyword argument, which was only relevant
+             for MongoDB server versions older than 1.7.4
+
         .. versionadded:: 0.3
         """
         from document import MapReduceDocument
