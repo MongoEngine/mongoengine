@@ -431,7 +431,7 @@ class DocumentTest(unittest.TestCase):
                 'allow_inheritance': False,
                 'indexes': ['name']
             }
-        collection.update({}, {"$unset": {"_types": 1, "_cls": 1}}, False, True)
+        collection.update({}, {"$unset": {"_types": 1, "_cls": 1}},  multi=True)
 
         # Confirm extra data is removed
         obj = collection.find_one()
@@ -1948,14 +1948,14 @@ class DocumentTest(unittest.TestCase):
     def test_list_search_by_embedded(self):
         class User(Document):
             username = StringField(required=True)
-    
+
             meta = {'allow_inheritance': False}
-    
+
         class Comment(EmbeddedDocument):
             comment = StringField()
             user = ReferenceField(User,
                                   required=True)
-                          
+
             meta = {'allow_inheritance': False}
 
         class Page(Document):
