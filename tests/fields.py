@@ -1062,6 +1062,7 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+
     def test_generic_reference_document_not_registered(self):
         """Ensure dereferencing out of the document registry throws a
         `NotRegistered` error.
@@ -1445,7 +1446,7 @@ class FieldTest(unittest.TestCase):
         a.save()
 
         self.assertEqual(a.counter, 2)
-        
+
         a = Animal.objects.first()
         self.assertEqual(a.counter, 2)
         a.reload()

@@ -671,7 +671,6 @@ class BaseDocument(object):
         # get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get(u'_cls', cls._class_name)
-
         data = dict((str(key), value) for key, value in son.items())
 
         if '_types' in data:
@@ -686,7 +685,11 @@ class BaseDocument(object):
             if class_name not in subclasses:
                 # Type of document is probably more generic than the class
                 # that has been queried to return this SON
-                return None
+                raise NotRegistered("""
+                        `%s` has not been registered in the document registry.
+                        Importing the document class automatically registers it,
+                        has it been imported?
+                    """.strip() % class_name)
             cls = subclasses[class_name]
 
         present_fields = data.keys()

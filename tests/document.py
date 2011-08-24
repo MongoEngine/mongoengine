@@ -12,7 +12,7 @@ import weakref
 from fixtures import Base, Mixin, PickleEmbedded, PickleTest
 
 from mongoengine import *
-from mongoengine.base import BaseField
+from mongoengine.base import _document_registry, NotRegistered
 from mongoengine.connection import _get_db
 
 
@@ -740,7 +740,6 @@ class DocumentTest(unittest.TestCase):
         post1.save()
         BlogPost.drop_collection()
 
-
     def test_geo_indexes_recursion(self):
 
         class User(Document):
@@ -798,7 +797,6 @@ class DocumentTest(unittest.TestCase):
         # Two posts with the same slug is not allowed
         post2 = BlogPost(title='test2', slug='test')
         self.assertRaises(OperationError, post2.save)
-
 
     def test_unique_with(self):
         """Ensure that unique_with constraints are applied to fields.
@@ -977,6 +975,32 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue('username' not in user_son['_id'])
 
         User.drop_collection()
+
+
+    def test_document_not_registered(self):
+
+        class Place(Document):
+            name = StringField()
+
+        class NicePlace(Place):
+            pass
+
+        Place.drop_collection()
+
+        Place(name="London").save()
+        NicePlace(name="Buckingham Palace").save()
+
+        # Mimic Place and NicePlace definitions being in a different file
+        # and the NicePlace model not being imported in at query time.
+        @classmethod
+        def _get_subclasses(cls):
+            return {}
+        Place._get_subclasses = _get_subclasses
+
+        def query_without_importing_nice_place():
+            print Place.objects.all()
+        self.assertRaises(NotRegistered, query_without_importing_nice_place)
+
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
