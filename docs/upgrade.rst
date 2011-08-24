@@ -7,6 +7,12 @@ Upgrading
 
 There have been the following backwards incompatibilities from 0.4 to 0.5:
 
+# Choice options:
+
+Are now expected to be an iterable of tuples, with  the first element in each
+tuple being the actual value to be stored. The second element is the
+human-readable name for the option.
+
 # PyMongo / MongoDB
 
 map reduce now requires pymongo 1.11+ More methods now use map_reduce as db.eval
