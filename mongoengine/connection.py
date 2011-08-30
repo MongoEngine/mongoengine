@@ -47,7 +47,11 @@ def _get_db(reconnect=False):
         # Get DB from current connection and authenticate if necessary
         _db[identity] = _connection[identity][_db_name]
         if _db_username and _db_password:
-            _db[identity].authenticate(_db_username, _db_password)
+            authenticated = _db[identity].authenticate(_db_username, _db_password)
+            # make sure authentication passes.
+            if not authenticated:
+                raise ConnectionError('Authentication failed with username %s',
+                    _db_username)
 
     return _db[identity]
 
