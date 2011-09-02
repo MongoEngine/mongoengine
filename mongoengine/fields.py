@@ -2,6 +2,7 @@ from base import BaseField, ObjectIdField, ValidationError, get_document
 from document import Document, EmbeddedDocument
 from connection import _get_db
 from operator import itemgetter
+from queryset import DoesNotExist
 
 import re
 import pymongo
@@ -300,7 +301,7 @@ class ListField(BaseField):
 
         if isinstance(self.field, ReferenceField):
             referenced_type = self.field.document_type
-            # Get value from document instance if available 
+            # Get value from document instance if available
             value_list = instance._data.get(self.name)
             if value_list:
                 deref_list = []
@@ -448,6 +449,9 @@ class ReferenceField(BaseField):
             value = _get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
+            else:
+                raise DoesNotExist("DBRef for collection %s ID %s cannot be dereferenced" %
+                                   (value.collection, str(value.id)))
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -603,7 +607,7 @@ class GridFSProxy(object):
         if not self.newfile:
             self.new_file()
             self.grid_id = self.newfile._id
-        self.newfile.writelines(lines) 
+        self.newfile.writelines(lines)
 
     def read(self):
         try:
