@@ -451,7 +451,8 @@ class ReferenceField(BaseField):
                 instance._data[self.name] = self.document_type._from_son(value)
             else:
                 raise DoesNotExist("DBRef for collection %s ID %s cannot be dereferenced" %
-                                   (value.collection, str(value.id)))
+                                   (instance._data[self.name].collection,
+                                    str(instance._data[self.name].id)))
 
         return super(ReferenceField, self).__get__(instance, owner)
 
