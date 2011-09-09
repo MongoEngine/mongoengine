@@ -374,8 +374,8 @@ class ComplexDateTimeField(StringField):
 
 
 class EmbeddedDocumentField(BaseField):
-    """An embedded document field. Only valid values are subclasses of
-    :class:`~mongoengine.EmbeddedDocument`.
+    """An embedded document field - with a declared document_type.
+    Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
     """
 
     def __init__(self, document_type, **kwargs):
@@ -421,7 +421,14 @@ class EmbeddedDocumentField(BaseField):
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
+
 class GenericEmbeddedDocumentField(BaseField):
+    """A generic embedded document field - allows any
+    :class:`~mongoengine.EmbeddedDocument` to be stored.
+
+    Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
+    """
+
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
@@ -447,6 +454,7 @@ class GenericEmbeddedDocumentField(BaseField):
         if not '_cls' in data:
             data['_cls'] = document._class_name
         return data
+
 
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances

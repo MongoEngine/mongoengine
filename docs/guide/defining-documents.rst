@@ -50,6 +50,7 @@ are as follows:
 * :class:`~mongoengine.ReferenceField`
 * :class:`~mongoengine.GenericReferenceField`
 * :class:`~mongoengine.EmbeddedDocumentField`
+* :class:`~mongoengine.GenericEmbeddedDocumentField`
 * :class:`~mongoengine.BooleanField`
 * :class:`~mongoengine.FileField`
 * :class:`~mongoengine.BinaryField`
