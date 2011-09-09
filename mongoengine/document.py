@@ -130,6 +130,11 @@ class Document(BaseDocument):
                 which will be used as options for the resultant ``getLastError`` command.
                 For example, ``save(..., w=2, fsync=True)`` will wait until at least two servers
                 have recorded the write and will force an fsync on each server being written to.
+
+        .. versionchanged:: 0.5
+            In existing documents it only saves changed fields using set / unset
+            Saves are cascaded and any :class:`~pymongo.dbref.DBRef` objects
+            that have changes are saved as well.
         """
         from fields import ReferenceField, GenericReferenceField
 
@@ -226,6 +231,11 @@ class Document(BaseDocument):
         signals.post_delete.send(self.__class__, document=self)
 
     def select_related(self, max_depth=1):
+        """Handles dereferencing of :class:`~pymongo.dbref.DBRef` objects to
+        a maximum depth in order to cut down the number queries to mongodb.
+
+        .. versionadded:: 0.5
+        """
         from dereference import dereference
         self._data = dereference(self._data, max_depth)
         return self

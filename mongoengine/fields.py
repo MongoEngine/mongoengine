@@ -279,7 +279,6 @@ class DateTimeField(BaseField):
                     return None
 
 
-
 class ComplexDateTimeField(StringField):
     """
     ComplexDateTimeField handles microseconds exactly instead of rounding
@@ -295,6 +294,8 @@ class ComplexDateTimeField(StringField):
     Where NNNNNN is the number of microseconds of the represented `datetime`.
     The `,` as the separator can be easily modified by passing the `separator`
     keyword when initializing the field.
+
+    .. versionadded:: 0.5
     """
 
     def __init__(self, separator=',', **kwargs):
@@ -478,6 +479,7 @@ class DictField(ComplexBaseField):
     similar to an embedded document, but the structure is not defined.
 
     .. versionadded:: 0.3
+    .. versionchanged:: 0.5 - Can now handle complex / varying types of data
     """
 
     def __init__(self, basecls=None, field=None, *args, **kwargs):
@@ -542,6 +544,8 @@ class ReferenceField(BaseField):
       * NULLIFY     - Updates the reference to null.
       * CASCADE     - Deletes the documents associated with the reference.
       * DENY        - Prevent the deletion of the reference object.
+
+    .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
     def __init__(self, document_type, reverse_delete_rule=DO_NOTHING, **kwargs):
@@ -708,6 +712,7 @@ class GridFSProxy(object):
     """Proxy object to handle writing and reading of files to and from GridFS
 
     .. versionadded:: 0.4
+    .. versionchanged:: 0.5 - added optional size param to read
     """
 
     def __init__(self, grid_id=None, key=None, instance=None):
@@ -800,6 +805,7 @@ class FileField(BaseField):
     """A GridFS storage field.
 
     .. versionadded:: 0.4
+    .. versionchanged:: 0.5 added optional size param for read
     """
 
     def __init__(self, **kwargs):

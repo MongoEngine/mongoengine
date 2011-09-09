@@ -346,7 +346,10 @@ class QuerySet(object):
         self._hint = -1  # Using -1 as None is a valid value for hint
 
     def clone(self):
-        """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`"""
+        """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`
+
+        .. versionadded:: 0.5
+        """
         c = self.__class__(self._document, self._collection_obj)
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
@@ -996,6 +999,8 @@ class QuerySet(object):
 
         Hinting will not do anything if the corresponding index does not exist.
         The last hint applied to this cursor takes precedence over all others.
+
+        .. versionadded:: 0.5
         """
         self._cursor.hint(index)
         self._hint = index
@@ -1038,11 +1043,12 @@ class QuerySet(object):
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
 
-            post = BlogPost.objects(...).only("title")
+            post = BlogPost.objects(...).only("title", "author.name")
 
         :param fields: fields to include
 
         .. versionadded:: 0.3
+        .. versionchanged:: 0.5 - Added subfield support
         """
         fields = dict([(f, QueryFieldList.ONLY) for f in fields])
         return self.fields(**fields)
@@ -1053,6 +1059,8 @@ class QuerySet(object):
             post = BlogPost.objects(...).exclude("comments")
 
         :param fields: fields to exclude
+
+        .. versionadded:: 0.5
         """
         fields = dict([(f, QueryFieldList.EXCLUDE) for f in fields])
         return self.fields(**fields)
@@ -1098,6 +1106,8 @@ class QuerySet(object):
         """Include all fields. Reset all previously calls of .only() and .exclude(). ::
 
             post = BlogPost.objects(...).exclude("comments").only("title").all_fields()
+
+        .. versionadded:: 0.5
         """
         self._loaded_fields = QueryFieldList(always_include=self._loaded_fields.always_include)
         return self
@@ -1153,6 +1163,8 @@ class QuerySet(object):
         """Enable or disable snapshot mode when querying.
 
         :param enabled: whether or not snapshot mode is enabled
+
+        ..versionchanged:: 0.5 - made chainable
         """
         self._snapshot = enabled
         return self
@@ -1161,6 +1173,8 @@ class QuerySet(object):
         """Enable or disable the default mongod timeout when querying.
 
         :param enabled: whether or not the timeout is used
+
+        ..versionchanged:: 0.5 - made chainable
         """
         self._timeout = enabled
         return self
@@ -1404,6 +1418,8 @@ class QuerySet(object):
         .. note:: When using this mode of query, the database will call your
                   function, or evaluate your predicate clause, for each object
                   in the collection.
+
+        .. versionadded:: 0.5
         """
         where_clause = self._sub_js_fields(where_clause)
         self._where_clause = where_clause
@@ -1414,6 +1430,9 @@ class QuerySet(object):
 
         :param field: the field to sum over; use dot-notation to refer to
             embedded document fields
+
+        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
+            with sharding.
         """
         map_func = pymongo.code.Code("""
             function() {
@@ -1441,6 +1460,9 @@ class QuerySet(object):
 
         :param field: the field to average over; use dot-notation to refer to
             embedded document fields
+
+        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
+            with sharding.
         """
         map_func = pymongo.code.Code("""
             function() {
@@ -1472,7 +1494,6 @@ class QuerySet(object):
         else:
             return 0
 
-
     def item_frequencies(self, field, normalize=False, map_reduce=True):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
@@ -1490,6 +1511,9 @@ class QuerySet(object):
         :param field: the field to use
         :param normalize: normalize the results so they add to 1.0
         :param map_reduce: Use map_reduce over exec_js
+
+        .. versionchanged:: 0.5 defaults to map_reduce and can handle embedded
+                            document lookups
         """
         if map_reduce:
             return self._item_frequencies_map_reduce(field, normalize=normalize)
@@ -1532,7 +1556,7 @@ class QuerySet(object):
 
         if normalize:
             count = sum(frequencies.values())
-            frequencies = dict([(k, v/count) for k,v in frequencies.items()])
+            frequencies = dict([(k, v / count) for k, v in frequencies.items()])
 
         return frequencies
 
@@ -1594,8 +1618,14 @@ class QuerySet(object):
         return repr(data)
 
     def select_related(self, max_depth=1):
+        """Handles dereferencing of :class:`~pymongo.dbref.DBRef` objects to
+        a maximum depth in order to cut down the number queries to mongodb.
+
+        .. versionadded:: 0.5
+        """
         from dereference import dereference
         return dereference(self, max_depth=max_depth)
+
 
 class QuerySetManager(object):
 

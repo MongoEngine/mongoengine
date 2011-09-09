@@ -43,6 +43,8 @@ def get_document(name):
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
+
+    .. versionchanged:: 0.5 - added verbose and help text
     """
 
     # Fields may have _types inserted into indexes by default
@@ -156,6 +158,8 @@ class ComplexBaseField(BaseField):
     Allows for nesting of embedded documents inside complex types.
     Handles the lazy dereferencing of a queryset by lazily dereferencing all
     items in a list / dict rather than one at a time.
+
+    .. versionadded:: 0.5
     """
 
     field = None
@@ -896,7 +900,6 @@ class BaseDocument(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        """ For list, dict key  """
         if self.pk is None:
             # For new object
             return super(BaseDocument,self).__hash__()
