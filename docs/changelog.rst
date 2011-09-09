@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added GenericEmbeddedDocument - So you can embed any type of embeddable document
 - Added within_polygon support - for those with mongodb 1.9
 - Updated sum / average to use map_reduce as db.eval doesn't work in sharded environments
 - Added where() - filter to allowing users to specify query expressions as Javascript
