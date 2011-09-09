@@ -1,4 +1,5 @@
 from connection import _get_db
+from mongoengine import signals
 
 import pprint
 import pymongo
@@ -812,15 +813,20 @@ class QuerySet(object):
                 raise OperationError(msg)
             raw.append(doc.to_mongo())
 
+        signals.pre_bulk_insert.send(self._document, documents=docs)
         ids = self._collection.insert(raw)
 
         if not load_bulk:
+            signals.post_bulk_insert.send(
+                    self._document, documents=docs, loaded=False)
             return return_one and ids[0] or ids
 
         documents = self.in_bulk(ids)
         results = []
         for obj_id in ids:
             results.append(documents.get(obj_id))
+        signals.post_bulk_insert.send(
+                self._document, documents=results, loaded=True)
         return return_one and results[0] or results
 
     def with_id(self, object_id):
