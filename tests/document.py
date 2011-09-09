@@ -12,7 +12,7 @@ import weakref
 from fixtures import Base, Mixin, PickleEmbedded, PickleTest
 
 from mongoengine import *
-from mongoengine.base import _document_registry, NotRegistered
+from mongoengine.base import _document_registry, NotRegistered, InvalidDocumentError
 from mongoengine.connection import _get_db
 
 
@@ -2335,6 +2335,15 @@ class DocumentTest(unittest.TestCase):
 
         pickle_doc.reload()
         self.assertEquals(resurrected, pickle_doc)
+
+    def throw_invalid_document_error(self):
+
+        # test handles people trying to upsert
+        def throw_invalid_document_error():
+            class Blog(Document):
+                validate = DictField()
+
+        self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
 
 if __name__ == '__main__':
