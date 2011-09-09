@@ -5,24 +5,33 @@ Upgrading
 0.4 to 0.5
 ===========
 
-There have been the following backwards incompatibilities from 0.4 to 0.5:
+There have been the following backwards incompatibilities from 0.4 to 0.5.  The
+main areas of changed are: choices in fields, map_reduce and collection names.
 
-# Choice options:
+Choice options:
+--------------
 
 Are now expected to be an iterable of tuples, with  the first element in each
 tuple being the actual value to be stored. The second element is the
 human-readable name for the option.
 
-# PyMongo / MongoDB
 
-map reduce now requires pymongo 1.11+ More methods now use map_reduce as db.eval
-is not supported for sharding - the following have been changed:
+PyMongo / MongoDB
+-----------------
 
-    * sum
-    * average
-    * item_frequencies
+map reduce now requires pymongo 1.11+- The pymongo merge_output and reduce_output
+parameters, have been depreciated.
 
-#. Default collection naming.
+More methods now use map_reduce as db.eval is not supported for sharding as such
+the following have been changed:
+
+    * :meth:`~mongoengine.queryset.QuerySet.sum`
+    * :meth:`~mongoengine.queryset.QuerySet.average`
+    * :meth:`~mongoengine.queryset.QuerySet.item_frequencies`
+
+
+Default collection naming
+-------------------------
 
 Previously it was just lowercase, its now much more pythonic and readable as its
 lowercase and underscores, previously ::

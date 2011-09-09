@@ -744,7 +744,7 @@ class QuerySet(object):
 
         :param write_options: optional extra keyword arguments used if we
             have to create a new document.
-            Passes any write_options onto :meth:`~mongoengine.document.Document.save`
+            Passes any write_options onto :meth:`~mongoengine.Document.save`
 
         .. versionadded:: 0.3
         """
@@ -901,9 +901,11 @@ class QuerySet(object):
         Returns an iterator yielding
         :class:`~mongoengine.document.MapReduceDocument`.
 
-        .. note:: Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
-           :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-           PyMongo version **>= 1.11**.
+        .. note::
+
+            Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
+            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
+            PyMongo version **>= 1.11**.
 
         .. versionchanged:: 0.5
            - removed ``keep_temp`` keyword argument, which was only relevant
@@ -1070,8 +1072,7 @@ class QuerySet(object):
         and `.exclude()` to manipulate which fields to retrieve.  Fields also
         allows for a greater level of control for example:
 
-        Retrieving a Subrange of Array Elements
-        ---------------------------------------
+        Retrieving a Subrange of Array Elements:
 
         You can use the $slice operator to retrieve a subrange of elements in
         an array ::
@@ -1500,6 +1501,7 @@ class QuerySet(object):
         This is useful for generating tag clouds, or searching documents.
 
         .. note::
+
             Can only do direct simple mappings and cannot map across
             :class:`~mongoengine.ReferenceField` or
             :class:`~mongoengine.GenericReferenceField` for more complex

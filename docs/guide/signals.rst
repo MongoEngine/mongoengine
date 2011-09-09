@@ -41,7 +41,7 @@ Example usage::
                     logging.debug("Created")
                 else:
                     logging.debug("Updated")
-        
+
         signals.pre_save.connect(Author.pre_save, sender=Author)
         signals.post_save.connect(Author.post_save, sender=Author)
 
