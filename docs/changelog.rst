@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Changes in dev
-==============
+Changes in v0.5
+===============
 
 - Added InvalidDocumentError - so Document core methods can't be overwritten
 - Added GenericEmbeddedDocument - so you can embed any type of embeddable document
