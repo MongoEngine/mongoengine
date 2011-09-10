@@ -41,6 +41,8 @@ Fields
 
 .. autoclass:: mongoengine.URLField
 
+.. autoclass:: mongoengine.EmailField
+
 .. autoclass:: mongoengine.IntField
 
 .. autoclass:: mongoengine.FloatField
@@ -51,11 +53,15 @@ Fields
 
 .. autoclass:: mongoengine.DateTimeField
 
+.. autoclass:: mongoengine.ComplexDateTimeField
+
 .. autoclass:: mongoengine.EmbeddedDocumentField
 
 .. autoclass:: mongoengine.DictField
 
 .. autoclass:: mongoengine.ListField
+
+.. autoclass:: mongoengine.SortedListField
 
 .. autoclass:: mongoengine.BinaryField
 

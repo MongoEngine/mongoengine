@@ -2,6 +2,72 @@
 Changelog
 =========
 
+Changes in dev
+==============
+
+- Added InvalidDocumentError - so Document core methods can't be overwritten
+- Added GenericEmbeddedDocument - so you can embed any type of embeddable document
+- Added within_polygon support - for those with mongodb 1.9
+- Updated sum / average to use map_reduce as db.eval doesn't work in sharded environments
+- Added where() - filter to allowing users to specify query expressions as Javascript
+- Added SequenceField - for creating sequential counters
+- Added update() convenience method to a document
+- Added cascading saves - so changes to Referenced documents are saved on .save()
+- Added select_related() support
+- Added support for the positional operator
+- Updated geo index checking to be recursive and check in embedded documents
+- Updated default collection naming convention
+- Added Document Mixin support
+- Fixed queryet __repr__ mid iteration
+- Added hint() support, so cantell Mongo the proper index to use for the query
+- Fixed issue with inconsitent setting of _cls breaking inherited referencing
+- Added help_text and verbose_name to fields to help with some form libs
+- Updated item_frequencies to handle embedded document lookups
+- Added delta tracking now only sets / unsets explicitly changed fields
+- Fixed saving so sets updated values rather than overwrites
+- Added ComplexDateTimeField - Handles datetimes correctly with microseconds
+- Added ComplexBaseField - for improved flexibility and performance
+- Added get_FIELD_display() method for easy choice field displaying
+- Added queryset.slave_okay(enabled) method
+- Updated queryset.timeout(enabled) and queryset.snapshot(enabled) to be chainable
+- Added insert method for bulk inserts
+- Added blinker signal support
+- Added query_counter context manager for tests
+- Added map_reduce method item_frequencies and set as default (as db.eval doesn't work in sharded environments)
+- Added inline_map_reduce option to map_reduce
+- Updated connection exception so it provides more info on the cause.
+- Added searching multiple levels deep in ``DictField``
+- Added ``DictField`` entries containing strings to use matching operators
+- Added ``MapField``, similar to ``DictField``
+- Added Abstract Base Classes
+- Added Custom Objects Managers
+- Added sliced subfields updating
+- Added ``NotRegistered`` exception if dereferencing ``Document`` not in the registry
+- Added a write concern for ``save``, ``update``, ``update_one`` and ``get_or_create``
+- Added slicing / subarray fetching controls
+- Fixed various unique index and other index issues
+- Fixed threaded connection issues
+- Added spherical geospatial query operators
+- Updated queryset to handle latest version of pymongo
+  map_reduce now requires an output.
+- Added ``Document`` __hash__, __ne__ for pickling
+- Added ``FileField`` optional size arg for read method
+- Fixed ``FileField`` seek and tell methods for reading files
+- Added ``QuerySet.clone`` to support copying querysets
+- Fixed item_frequencies when using name thats the same as a native js function
+- Added reverse delete rules
+- Fixed issue with unset operation
+- Fixed Q-object bug
+- Added ``QuerySet.all_fields`` resets previous .only() and .exclude()
+- Added ``QuerySet.exclude``
+- Added django style choices
+- Fixed order and filter issue
+- Added ``QuerySet.only`` subfield support
+- Added creation_counter to ``BaseField`` allowing fields to be sorted in the
+  way the user has specified them
+- Fixed various errors
+- Added many tests
+
 Changes in v0.4
 ===============
 - Added ``GridFSStorage`` Django storage backend
@@ -32,7 +98,7 @@ Changes in v0.3
 ===============
 - Added MapReduce support
 - Added ``contains``, ``startswith`` and ``endswith`` query operators (and
-  case-insensitive versions that are prefixed with 'i') 
+  case-insensitive versions that are prefixed with 'i')
 - Deprecated fields' ``name`` parameter, replaced with ``db_field``
 - Added ``QuerySet.only`` for only retrieving specific fields
 - Added ``QuerySet.in_bulk()`` for bulk querying using ids
@@ -79,7 +145,7 @@ Changes in v0.2
 ===============
 - Added ``Q`` class for building advanced queries
 - Added ``QuerySet`` methods for atomic updates to documents
-- Fields may now specify ``unique=True`` to enforce uniqueness across a 
+- Fields may now specify ``unique=True`` to enforce uniqueness across a
   collection
 - Added option for default document ordering
 - Fixed bug in index definitions
@@ -87,7 +153,7 @@ Changes in v0.2
 Changes in v0.1.3
 =================
 - Added Django authentication backend
-- Added ``Document.meta`` support for indexes, which are ensured just before 
+- Added ``Document.meta`` support for indexes, which are ensured just before
   querying takes place
 - A few minor bugfixes
 
