@@ -124,7 +124,7 @@ the $ positional operator ::
 
     Post.objects(comments__by="joe").update(**{'inc__comments__$__votes': 1})
 
-However, this doesn't map well to the syntax so you can alos use a capital S instead ::
+However, this doesn't map well to the syntax so you can also use a capital S instead ::
 
     Post.objects(comments__by="joe").update(inc__comments__S__votes=1)
 
