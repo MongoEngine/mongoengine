@@ -920,9 +920,11 @@ class GeoPointField(BaseField):
 
 
 class SequenceField(IntField):
-    """Provides a sequental counter.
+    """Provides a sequental counter (see http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers)
 
-    ..note:: Although traditional databases often use increasing sequence
+    .. note::
+
+             Although traditional databases often use increasing sequence
              numbers for primary keys. In MongoDB, the preferred approach is to
              use Object IDs instead.  The concept is that in a very large
              cluster of machines, it is easier to create an object ID than have
