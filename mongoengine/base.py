@@ -139,9 +139,14 @@ class BaseField(object):
     def _validate(self, value):
         # check choices
         if self.choices is not None:
-            option_keys = [option_key for option_key, option_value in self.choices]
-            if value not in option_keys:
-                raise ValidationError("Value must be one of %s." % unicode(option_keys))
+	    if type(choices[0]) is tuple:
+                option_keys = [option_key for option_key, option_value in self.choices]
+                if value not in option_keys:
+                    raise ValidationError("Value must be one of %s." % unicode(option_keys))
+	    else:
+	        if value not in self.choices:
+		    raise ValidationError("Value must be one of %s." % unicode(self.choices))
+
 
         # check validation argument
         if self.validation is not None:
