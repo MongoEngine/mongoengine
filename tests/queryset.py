@@ -1840,6 +1840,36 @@ class QuerySetTest(unittest.TestCase):
         freq = Person.objects.item_frequencies('city', normalize=True, map_reduce=True)
         self.assertEquals(freq, {'CRB': 0.5, None: 0.5})
 
+        
+    def test_item_frequencies_with_null_embedded(self):
+        class Data(EmbeddedDocument):
+            name = StringField()
+
+        class Extra(EmbeddedDocument):
+            tag = StringField()
+
+        class Person(Document):
+            data = EmbeddedDocumentField(Data, required=True)
+            extra = EmbeddedDocumentField(Extra)
+
+
+        Person.drop_collection()
+
+        p = Person()
+        p.data = Data(name="Wilson Jr")
+        p.save()
+
+        p = Person()
+        p.data = Data(name="Wesley")
+        p.extra = Extra(tag="friend")
+        p.save()
+
+        ot = Person.objects.item_frequencies('extra.tag', map_reduce=False)
+        self.assertEquals(ot, {None: 1.0, u'friend': 1.0})
+
+        ot = Person.objects.item_frequencies('extra.tag', map_reduce=True)
+        self.assertEquals(ot, {None: 1.0, u'friend': 1.0})
+
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """
