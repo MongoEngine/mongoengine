@@ -1526,7 +1526,12 @@ class QuerySet(object):
             function() {
                 path = '{{~%(field)s}}'.split('.');
                 field = this;
-                for (p in path) { field = field[path[p]]; }
+                for (p in path) {
+                    if (field)
+                       field = field[path[p]];
+                    else
+                       break;
+                }
                 if (field && field.constructor == Array) {
                     field.forEach(function(item) {
                         emit(item, 1);
@@ -1572,7 +1577,12 @@ class QuerySet(object):
                     var total = 0.0;
                     db[collection].find(query).forEach(function(doc) {
                         field = doc;
-                        for (p in path) { field = field[path[p]]; }
+                        for (p in path) {
+                            if (field)
+                                field = field[path[p]];
+                            else
+                                break;
+                        }
                         if (field && field.constructor == Array) {
                             total += field.length;
                         } else {
@@ -1588,7 +1598,12 @@ class QuerySet(object):
                 }
                 db[collection].find(query).forEach(function(doc) {
                     field = doc;
-                    for (p in path) { field = field[path[p]]; }
+                    for (p in path) {
+                        if (field)
+                            field = field[path[p]];
+                        else
+                            break;
+                    }
                     if (field && field.constructor == Array) {
                         field.forEach(function(item) {
                             frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
