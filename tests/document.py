@@ -2336,7 +2336,7 @@ class DocumentTest(unittest.TestCase):
         pickle_doc.reload()
         self.assertEquals(resurrected, pickle_doc)
 
-    def throw_invalid_document_error(self):
+    def test_throw_invalid_document_error(self):
 
         # test handles people trying to upsert
         def throw_invalid_document_error():

@@ -391,7 +391,7 @@ class DocumentMetaclass(type):
         attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k!=v.db_field])
         attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
 
-        from mongoengine import Document
+        from mongoengine import Document, EmbeddedDocument
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
@@ -401,7 +401,7 @@ class DocumentMetaclass(type):
                 field.document_type.register_delete_rule(new_class, field.name,
                         delete_rule)
 
-            if field.name and hasattr(Document, field.name):
+            if field.name and hasattr(Document, field.name) and EmbeddedDocument not in new_class.mro():
                 raise InvalidDocumentError("%s is a document method and not a valid field name" % field.name)
 
         module = attrs.get('__module__')
