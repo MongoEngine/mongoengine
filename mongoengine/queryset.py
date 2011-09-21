@@ -590,7 +590,14 @@ class QuerySet(object):
                 if field_name == 'pk':
                     # Deal with "primary key" alias
                     field_name = document._meta['id_field']
-                field = document._fields[field_name]
+                if field_name in document._fields:
+                    field = document._fields[field_name]
+                elif document._dynamic:
+                    from base import BaseDynamicField
+                    field = BaseDynamicField(db_field=field_name)
+                else:
+                    raise InvalidQueryError('Cannot resolve field "%s"'
+                                                % field_name)
             else:
                 # Look up subfield on the previous field
                 new_field = field.lookup_member(field_name)
@@ -603,7 +610,6 @@ class QuerySet(object):
                                                 % field_name)
                 field = new_field  # update field to the new field type
             fields.append(field)
-
         return fields
 
     @classmethod

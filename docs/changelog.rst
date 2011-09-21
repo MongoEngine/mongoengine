@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Changes in dev
+==============
+
+- Added DynamicDocument and EmbeddedDynamicDocument classes for expando schemas
+
 Changes in v0.5
 ===============
 

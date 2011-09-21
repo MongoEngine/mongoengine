@@ -301,6 +301,40 @@ class ComplexBaseField(BaseField):
     owner_document = property(_get_owner_document, _set_owner_document)
 
 
+class BaseDynamicField(BaseField):
+    """Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
+
+    def to_mongo(self, value):
+        """Convert a Python type to a MongoDBcompatible type.
+        """
+
+        if isinstance(value, basestring):
+            return value
+
+        if hasattr(value, 'to_mongo'):
+            return value.to_mongo()
+
+        if not isinstance(value, (dict, list, tuple)):
+            return value
+
+        is_list = False
+        if not hasattr(value, 'items'):
+            is_list = True
+            value = dict([(k, v) for k, v in enumerate(value)])
+
+        data = {}
+        for k, v in value.items():
+            data[k] = self.to_mongo(v)
+
+        if is_list:  # Convert back to a list
+            value = [v for k, v in sorted(data.items(), key=operator.itemgetter(0))]
+        else:
+            value = data
+        return value
+
+    def lookup_member(self, member_name):
+        return member_name
+
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
     """
@@ -585,29 +619,97 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
 class BaseDocument(object):
 
+    _dynamic = False
+
     def __init__(self, **values):
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
         self._initialised = False
+
         # Assign default values to instance
         for attr_name, field in self._fields.items():
             value = getattr(self, attr_name, None)
             setattr(self, attr_name, value)
 
-        # Assign initial values to instance
-        for attr_name in values.keys():
-            try:
-                value = values.pop(attr_name)
-                setattr(self, attr_name, value)
-            except AttributeError:
-                pass
+        # Set passed values after initialisation
+        if self._dynamic:
+            self._dynamic_fields = {}
+            dynamic_data = {}
+            for key, value in values.items():
+                if key in self._fields or key == '_id':
+                    setattr(self, key, value)
+                elif self._dynamic:
+                    dynamic_data[key] = value
+        else:
+            for key, value in values.items():
+                setattr(self, key, value)
 
-        # Set any get_fieldname_display methods
+        # Set any get_fieldname_display methodsF
         self.__set_field_display()
         # Flag initialised
         self._initialised = True
+
+        if self._dynamic:
+            for key, value in dynamic_data.items():
+                setattr(self, key, value)
         signals.post_init.send(self.__class__, document=self)
+
+    def __setattr__(self, name, value):
+        # Handle dynamic data only if an intialised dynamic document
+        if self._dynamic and getattr(self, '_initialised', False):
+
+            field = None
+            if not hasattr(self, name) and not name.startswith('_'):
+                field = BaseDynamicField(db_field=name)
+                field.name = name
+                self._dynamic_fields[name] = field
+
+            if not name.startswith('_'):
+                value = self.__expand_dynamic_values(name, value)
+
+            # Handle marking data as changed
+            if name in self._dynamic_fields:
+                self._data[name] = value
+                if hasattr(self, '_changed_fields'):
+                    self._mark_as_changed(name)
+
+        super(BaseDocument, self).__setattr__(name, value)
+
+    def __expand_dynamic_values(self, name, value):
+        """expand any dynamic values to their correct types / values"""
+        if not isinstance(value, (dict, list, tuple)):
+            return value
+
+        is_list = False
+        if not hasattr(value, 'items'):
+            is_list = True
+            value = dict([(k, v) for k, v in enumerate(value)])
+
+        if not is_list and '_cls' in value:
+            cls = get_document(value['_cls'])
+            value = cls(**value)
+            value._dynamic = True
+            value._changed_fields = []
+            return value
+
+        data = {}
+        for k, v in value.items():
+            key = name if is_list else k
+            data[k] = self.__expand_dynamic_values(key, v)
+
+        if is_list:  # Convert back to a list
+            value = [v for k, v in sorted(data.items(), key=operator.itemgetter(0))]
+        else:
+            value = data
+
+        # Convert lists / values so we can watch for any changes on them
+        if isinstance(value, (list, tuple)) and not isinstance(value, BaseList):
+            value = BaseList(value, instance=self, name=name)
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
+            value = BaseDict(value, instance=self, name=name)
+
+        return value
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
@@ -653,6 +755,12 @@ class BaseDocument(object):
             data['_types'] = self._superclasses.keys() + [self._class_name]
         if '_id' in data and data['_id'] is None:
             del data['_id']
+
+        if not self._dynamic:
+            return data
+
+        for name, field in self._dynamic_fields.items():
+            data[name] = field.to_mongo(self._data.get(name, None))
         return data
 
     @classmethod
@@ -727,14 +835,19 @@ class BaseDocument(object):
     def _get_changed_fields(self, key=''):
         """Returns a list of all fields that have explicitly been changed.
         """
-        from mongoengine import EmbeddedDocument
+        from mongoengine import EmbeddedDocument, DynamicEmbeddedDocument
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
-        for field_name in self._fields:
+
+        field_list = self._fields.copy()
+        if self._dynamic:
+            field_list.update(self._dynamic_fields)
+
+        for field_name in field_list:
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
             field = getattr(self, field_name, None)
-            if isinstance(field, EmbeddedDocument) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
+            if isinstance(field, (EmbeddedDocument, DynamicEmbeddedDocument)) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
                 _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key) if k]
             elif isinstance(field, (list, tuple, dict)) and db_field_name not in _changed_fields:  # Loop list / dict fields as they contain documents
                 # Determine the iterator to use
@@ -747,7 +860,6 @@ class BaseDocument(object):
                         continue
                     list_key = "%s%s." % (key, index)
                     _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key) if k]
-
         return _changed_fields
 
     def _delta(self):
@@ -785,8 +897,11 @@ class BaseDocument(object):
 
             # If we've set a value that ain't the default value dont unset it.
             default = None
-
-            if path in self._fields:
+            if self._dynamic and parts[0] in self._dynamic_fields:
+                del(set_data[path])
+                unset_data[path] = 1
+                continue
+            elif path in self._fields:
                 default = self._fields[path].default
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
@@ -805,7 +920,10 @@ class BaseDocument(object):
                     field_name = d._reverse_db_field_map.get(db_field_name,
                                                              db_field_name)
 
-                    default = d._fields[field_name].default
+                    if field_name in d._fields:
+                        default = d._fields.get(field_name).default
+                    else:
+                        default = None
 
             if default is not None:
                 if callable(default):

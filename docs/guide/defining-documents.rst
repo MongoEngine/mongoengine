@@ -24,6 +24,34 @@ objects** as class attributes to the document class::
         title = StringField(max_length=200, required=True)
         date_modified = DateTimeField(default=datetime.datetime.now)
 
+Dynamic document schemas
+========================
+One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
+should be planned and organised (after all explicit is better than implicit!)
+there are scenarios where having dynamic / expando style documents is desirable.
+
+:class:`~mongoengine.DynamicDocument` documents work in the same way as
+:class:`~mongoengine.Document` but any data / attributes set to them will also
+be saved ::
+
+    from mongoengine import *
+
+    class Page(DynamicDocument):
+        title = StringField(max_length=200, required=True)
+
+    # Create a new page and add tags
+    >>> page = Page(title='Using MongoEngine')
+    >>> page.tags = ['mongodb', 'mongoengine']
+    >>> page.save()
+
+    >>> Page.objects(tags='mongoengine').count()
+    >>> 1
+
+..note::
+
+   There is one caveat on Dynamic Documents: fields cannot start with `_`
+
+
 Fields
 ======
 By default, fields are not required. To make a field mandatory, set the

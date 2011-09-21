@@ -1,13 +1,14 @@
+import operator
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, BaseDict, BaseList)
+                  ValidationError, BaseDict, BaseList, BaseDynamicField)
 from queryset import OperationError
 from connection import _get_db
 
 import pymongo
 
-__all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
-           'OperationError', 'InvalidCollectionError']
+__all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument', 'DynamicEmbeddedDocument',
+           'ValidationError', 'OperationError', 'InvalidCollectionError']
 
 
 class InvalidCollectionError(Exception):
@@ -198,6 +199,7 @@ class Document(BaseDocument):
                     reset_changed_fields(field, inspected_docs)
 
         reset_changed_fields(self)
+        self._changed_fields = []
         signals.post_save.send(self.__class__, document=self, created=creation_mode)
 
     def update(self, **kwargs):
@@ -247,8 +249,12 @@ class Document(BaseDocument):
         """
         id_field = self._meta['id_field']
         obj = self.__class__.objects(**{id_field: self[id_field]}).first()
+
         for field in self._fields:
             setattr(self, field, self._reload(field, obj[field]))
+        if self._dynamic:
+            for name in self._dynamic_fields.keys():
+                setattr(self, name, self._reload(name, obj._data[name]))
         self._changed_fields = []
 
     def _reload(self, key, value):
@@ -261,7 +267,7 @@ class Document(BaseDocument):
         elif isinstance(value, BaseList):
             value = [self._reload(key, v) for v in value]
             value = BaseList(value, instance=self, name=key)
-        elif isinstance(value, EmbeddedDocument):
+        elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._changed_fields = []
         return value
 
@@ -287,6 +293,39 @@ class Document(BaseDocument):
         """
         db = _get_db()
         db.drop_collection(cls._get_collection_name())
+
+
+class DynamicDocument(Document):
+    """A Dynamic Document class allowing flexible, expandable and uncontrolled
+    schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
+    way as an ordinary document but has expando style properties.  Any data
+    passed or set against the :class:`~mongoengine.DynamicDocument` that is
+    not a field is automatically converted into a
+    :class:`~mongoengine.BaseDynamicField` and data can be attributed to that
+    field.
+
+    ..note::
+
+        There is one caveat on Dynamic Documents: fields cannot start with `_`
+    """
+    __metaclass__ = TopLevelDocumentMetaclass
+    _dynamic = True
+
+
+class DynamicEmbeddedDocument(EmbeddedDocument):
+    """A Dynamic Embedded Document class allowing flexible, expandable and
+    uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
+    information about dynamic documents.
+    """
+
+    __metaclass__ = DocumentMetaclass
+    _dynamic = True
+
+    def __delattr__(self, *args, **kwargs):
+        """Deletes the attribute by setting to None and allowing _delta to unset
+        it"""
+        field_name = args[0]
+        setattr(self, field_name, None)
 
 
 class MapReduceDocument(object):
