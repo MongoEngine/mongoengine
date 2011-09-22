@@ -1,3 +1,5 @@
+.*
+!.gitignore
 *.pyc
 .*.swp
 *.egg
@@ -7,3 +9,7 @@ build/
 dist/
 mongoengine.egg-info/
 env/
+.settings
+.project
+.pydevproject
+tests/bugfix.py

@@ -11,3 +11,4 @@ User Guide
    document-instances
    querying
    gridfs
+   signals

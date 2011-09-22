@@ -6,13 +6,16 @@ import connection
 from connection import *
 import queryset
 from queryset import *
+import signals
+from signals import *
 
 __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
-           queryset.__all__)
+           queryset.__all__ + signals.__all__)
 
 __author__ = 'Harry Marr'
 
-VERSION = (0, 4, 0)
+VERSION = (0, 5, 0)
+
 
 def get_version():
     version = '%s.%s' % (VERSION[0], VERSION[1])
@@ -21,4 +24,3 @@ def get_version():
     return version
 
 __version__ = get_version()
-
