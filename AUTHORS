@@ -1,5 +1,69 @@
+The PRIMARY AUTHORS are (and/or have been):
+
 Harry Marr <harry@hmarr.com>
 Matt Dennewitz <mattdennewitz@gmail.com>
 Deepak Thukral <iapain@yahoo.com>
 Florian Schlachter <flori@n-schlachter.de>
 Steve Challis <steve@stevechallis.com>
+Ross Lawley <ross.lawley@gmail.com>
+Wilson Júnior <wilsonpjunior@gmail.com>
+Dan Crosta https://github.com/dcrosta
+
+CONTRIBUTORS
+
+Dervived from the git logs, inevitably incomplete but all of whom and others
+have submitted patches, reported bugs and generally helped make MongoEngine
+that much better:
+
+ * Harry Marr
+ * Ross Lawley
+ * blackbrrr
+ * Florian Schlachter
+ * Vincent Driessen
+ * Steve Challis
+ * flosch
+ * Deepak Thukral
+ * Colin Howe
+ * Wilson Júnior
+ * Alistair Roche
+ * Dan Crosta
+ * Viktor Kerkez
+ * Stephan Jaekel
+ * Rached Ben Mustapha
+ * Greg Turner
+ * Daniel Hasselrot
+ * Mircea Pasoi
+ * Matt Chisholm
+ * James Punteney
+ * TimothéePeignier
+ * Stuart Rackham
+ * Serge Matveenko
+ * Matt Dennewitz
+ * Don Spaulding
+ * Ales Zoulek
+ * sshwsfc
+ * sib
+ * Samuel Clay
+ * Nick Vlku
+ * martin
+ * Flavio Amieiro
+ * Анхбаяр Лхагвадорж
+ * Zak Johnson
+ * Victor Farazdagi
+ * vandersonmota
+ * Theo Julienne
+ * sp
+ * Slavi Pantaleev
+ * Richard Henry
+ * Nicolas Perriault
+ * Nick Vlku Jr
+ * Michael Henson
+ * Leo Honkanen
+ * kuno
+ * Josh Ourisman
+ * Jaime
+ * Igor Ivanov
+ * Gregg Lind
+ * Gareth Lloyd
+ * Albert Choi
+ * John Arnfield

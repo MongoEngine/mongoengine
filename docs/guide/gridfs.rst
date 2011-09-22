@@ -66,6 +66,7 @@ Deleting stored files is achieved with the :func:`delete` method::
     marmot.photo.delete()
 
 .. note::
+
     The FileField in a Document actually only stores the ID of a file in a
     separate GridFS collection. This means that deleting a document
     with a defined FileField does not actually delete the file. You must be

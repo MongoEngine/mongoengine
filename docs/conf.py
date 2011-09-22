@@ -38,7 +38,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'MongoEngine'
-copyright = u'2009-2010, Harry Marr'
+copyright = u'2009-2011, Harry Marr'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
