@@ -10,6 +10,7 @@ import pymongo
 import pymongo.objectid
 import operator
 from functools import partial
+from bson.dbref import DBRef
 
 
 class NotRegistered(Exception):
@@ -97,6 +98,9 @@ class BaseField(object):
 
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
+	if isinstance(value, DBRef):
+		raise ValueError("Can't dereference from the given DBRef (%s)" % str(value))
+
         if value is None:
             value = self.default
             # Allow callable default values
