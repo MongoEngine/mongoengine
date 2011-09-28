@@ -42,8 +42,8 @@ Example usage::
                 else:
                     logging.debug("Updated")
 
-        signals.pre_save.connect(Author.pre_save, sender=Author)
-        signals.post_save.connect(Author.post_save, sender=Author)
+    signals.pre_save.connect(Author.pre_save, sender=Author)
+    signals.post_save.connect(Author.post_save, sender=Author)
 
 
 .. _blinker: http://pypi.python.org/pypi/blinker
