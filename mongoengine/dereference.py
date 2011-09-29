@@ -33,13 +33,15 @@ class DeReference(object):
             items = [i for i in items]
 
         self.max_depth = max_depth
-        
+
         doc_type = None
         if instance and instance._fields:
             doc_type = instance._fields[name].field
-    
+
             if isinstance(doc_type, ReferenceField):
                 doc_type = doc_type.document_type
+                if all([i.__class__ == doc_type for i in items]):
+                    return items
 
         self.reference_map = self._find_references(items)
         self.object_map = self._fetch_objects(doc_type=doc_type)
