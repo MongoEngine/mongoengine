@@ -81,10 +81,10 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(self):
         """Returns the collection for the document."""
-        db = _get_db()
-        collection_name = self._get_collection_name()
 
         if not hasattr(self, '_collection') or self._collection is None:
+            db = _get_db()
+            collection_name = self._get_collection_name()
             # Create collection as a capped collection if specified
             if self._meta['max_size'] or self._meta['max_documents']:
                 # Get max document limit and max byte size from meta
