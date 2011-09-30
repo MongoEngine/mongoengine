@@ -472,7 +472,8 @@ class ListField(ComplexBaseField):
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
-        if not isinstance(value, (list, tuple)):
+        if (not isinstance(value, (list, tuple)) or
+            isinstance(value, basestring)):
             raise ValidationError('Only lists and tuples may be used in a '
                                   'list field')
         super(ListField, self).validate(value)
