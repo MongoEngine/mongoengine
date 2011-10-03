@@ -476,6 +476,10 @@ class ListField(ComplexBaseField):
             isinstance(value, basestring)):
             raise ValidationError('Only lists and tuples may be used in a '
                                   'list field')
+        # don't allow empty lists when they are required
+        if self.required and not value:
+            raise ValidationError('Field "%s" is required and cannot be empty' %
+                                  self.name)
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
