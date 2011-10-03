@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed ListField so it doesnt accept strings
 - Added DynamicDocument and EmbeddedDynamicDocument classes for expando schemas
 
 Changes in v0.5

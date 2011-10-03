@@ -515,6 +515,20 @@ class FieldTest(unittest.TestCase):
 
         Simple.drop_collection()
 
+
+    def test_list_field_rejects_strings(self):
+        """Strings aren't valid list field data types"""
+
+        class Simple(Document):
+            mapping = ListField()
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping = 'hello world'
+
+        self.assertRaises(ValidationError, e.save)
+
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 
