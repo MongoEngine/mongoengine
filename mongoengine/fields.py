@@ -459,6 +459,9 @@ class GenericEmbeddedDocumentField(BaseField):
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
+
+    .. note::
+        Required means it cannot be empty - as the default for ListFields is []
     """
 
     # ListFields cannot be indexed with _types - MongoDB doesn't support this
@@ -512,6 +515,9 @@ class SortedListField(ListField):
 class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
+
+    .. note::
+        Required means it cannot be empty - as the default for ListFields is []
 
     .. versionadded:: 0.3
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
