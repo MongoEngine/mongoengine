@@ -5,11 +5,8 @@ Changelog
 Changes in dev
 ==============
 
-<<<<<<< HEAD
-- Added spec file for rpm-based distributions
-=======
 - Updated ComplexFields so if required they won't accept empty lists / dicts
->>>>>>> listfield
+- Added spec file for rpm-based distributions
 - Fixed ListField so it doesnt accept strings
 - Added DynamicDocument and EmbeddedDynamicDocument classes for expando schemas
 
