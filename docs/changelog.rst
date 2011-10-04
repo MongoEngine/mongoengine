@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Updated ComplexFields so if required they won't accept empty lists / dicts
 - Fixed ListField so it doesnt accept strings
 - Added DynamicDocument and EmbeddedDynamicDocument classes for expando schemas
 

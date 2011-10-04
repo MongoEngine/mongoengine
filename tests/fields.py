@@ -526,7 +526,7 @@ class FieldTest(unittest.TestCase):
 
         self.assertRaises(ValidationError, e.save)
 
-    def test_list_field_required(self):
+    def test_complex_field_required(self):
         """Ensure required cant be None / Empty"""
 
         class Simple(Document):
@@ -535,6 +535,15 @@ class FieldTest(unittest.TestCase):
         Simple.drop_collection()
         e = Simple()
         e.mapping = []
+
+        self.assertRaises(ValidationError, e.save)
+
+        class Simple(Document):
+            mapping = DictField(required=True)
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping = {}
 
         self.assertRaises(ValidationError, e.save)
 
