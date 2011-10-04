@@ -282,6 +282,11 @@ class ComplexBaseField(BaseField):
                 raise ValidationError('Invalid %s item (%s)' % (
                         self.field.__class__.__name__, str(v)))
 
+        # Don't allow empty values if required
+        if self.required and not value:
+            raise ValidationError('Field "%s" is required and cannot be empty' %
+                                  self.name)
+
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
