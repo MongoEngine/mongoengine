@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added spec file for rpm-based distributions
 - Fixed ListField so it doesnt accept strings
 - Added DynamicDocument and EmbeddedDynamicDocument classes for expando schemas
 
