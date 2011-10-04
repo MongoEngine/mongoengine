@@ -485,7 +485,6 @@ class FieldTest(unittest.TestCase):
         post.info = [{'test': 3}]
         post.save()
 
-
         self.assertEquals(BlogPost.objects.count(), 3)
         self.assertEquals(BlogPost.objects.filter(info__exact='test').count(), 1)
         self.assertEquals(BlogPost.objects.filter(info__0__test='test').count(), 1)
@@ -515,7 +514,6 @@ class FieldTest(unittest.TestCase):
 
         Simple.drop_collection()
 
-
     def test_list_field_rejects_strings(self):
         """Strings aren't valid list field data types"""
 
@@ -528,6 +526,17 @@ class FieldTest(unittest.TestCase):
 
         self.assertRaises(ValidationError, e.save)
 
+    def test_list_field_required(self):
+        """Ensure required cant be None / Empty"""
+
+        class Simple(Document):
+            mapping = ListField(required=True)
+
+        Simple.drop_collection()
+        e = Simple()
+        e.mapping = []
+
+        self.assertRaises(ValidationError, e.save)
 
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
