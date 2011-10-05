@@ -567,7 +567,13 @@ class QuerySetTest(unittest.TestCase):
         people1 = [person for person in queryset]
         people2 = [person for person in queryset]
 
+        # Check that it still works even if iteration is interrupted.
+        for person in queryset:
+            break
+        people3 = [person for person in queryset]
+
         self.assertEqual(people1, people2)
+        self.assertEqual(people1, people3)
 
     def test_repr_iteration(self):
         """Ensure that QuerySet __repr__ can handle loops
