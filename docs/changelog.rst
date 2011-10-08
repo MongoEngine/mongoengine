@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Changes in v0.5.1
+=================
+
+- Circular reference bugfix
+
 Changes in v0.5
 ===============
 

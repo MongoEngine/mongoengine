@@ -129,6 +129,65 @@ class FieldTest(unittest.TestCase):
                 self.assertEquals(employee.friends, friends)
                 self.assertEqual(q, 2)
 
+    def test_circular_reference(self):
+        """Ensure you can handle circular references
+        """
+        class Person(Document):
+            name = StringField()
+            relations = ListField(EmbeddedDocumentField('Relation'))
+
+            def __repr__(self):
+                return "<Person: %s>" % self.name
+
+        class Relation(EmbeddedDocument):
+            name = StringField()
+            person = ReferenceField('Person')
+
+        Person.drop_collection()
+        mother = Person(name="Mother")
+        daughter = Person(name="Daughter")
+
+        mother.save()
+        daughter.save()
+
+        daughter_rel = Relation(name="Daughter", person=daughter)
+        mother.relations.append(daughter_rel)
+        mother.save()
+
+        mother_rel = Relation(name="Daughter", person=mother)
+        self_rel = Relation(name="Self", person=daughter)
+        daughter.relations.append(mother_rel)
+        daughter.relations.append(self_rel)
+        daughter.save()
+
+        self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
+
+    def test_circular_reference_on_self(self):
+        """Ensure you can handle circular references
+        """
+        class Person(Document):
+            name = StringField()
+            relations = ListField(ReferenceField('self'))
+
+            def __repr__(self):
+                return "<Person: %s>" % self.name
+
+        Person.drop_collection()
+        mother = Person(name="Mother")
+        daughter = Person(name="Daughter")
+
+        mother.save()
+        daughter.save()
+
+        mother.relations.append(daughter)
+        mother.save()
+
+        daughter.relations.append(mother)
+        daughter.relations.append(daughter)
+        daughter.save()
+
+        self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
+
     def test_generic_reference(self):
 
         class UserA(Document):
