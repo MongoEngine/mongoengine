@@ -728,15 +728,17 @@ class QuerySet(object):
         .. versionadded:: 0.3
         """
         self.__call__(*q_objs, **query)
-        count = self.count()
-        if count == 1:
-            return self[0]
-        elif count > 1:
-            message = u'%d items returned, instead of 1' % count
-            raise self._document.MultipleObjectsReturned(message)
-        else:
+        try:
+            result1 = self[0]
+        except IndexError:
             raise self._document.DoesNotExist("%s matching query does not exist."
                                               % self._document._class_name)
+        try:
+            result2 = self[1]
+        except IndexError:
+            return result1
+        message = u'%d items returned, instead of 1' % self.count()
+        raise self._document.MultipleObjectsReturned(message)
 
     def get_or_create(self, write_options=None, *q_objs, **query):
         """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
