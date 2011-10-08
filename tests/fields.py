@@ -1,9 +1,7 @@
 import unittest
 import datetime
 from decimal import Decimal
-
-import pymongo
-import gridfs
+import uuid
 
 from mongoengine import *
 from mongoengine.connection import _get_db
@@ -173,6 +171,26 @@ class FieldTest(unittest.TestCase):
         person.admin = 2
         self.assertRaises(ValidationError, person.validate)
         person.admin = 'Yes'
+        self.assertRaises(ValidationError, person.validate)
+
+    def test_uuid_validation(self):
+        """Ensure that invalid values cannot be assigned to UUID fields.
+        """
+        class Person(Document):
+            api_key = UUIDField()
+
+        person = Person()
+        # any uuid type is valid
+        person.api_key = uuid.uuid4()
+        person.validate()
+        person.api_key = uuid.uuid1()
+        person.validate()
+
+        # last g cannot belong to an hex number
+        person.api_key = '9d159858-549b-4975-9f98-dd2f987c113g'
+        self.assertRaises(ValidationError, person.validate)
+        # short strings don't validate
+        person.api_key = '9d159858-549b-4975-9f98-dd2f987c113'
         self.assertRaises(ValidationError, person.validate)
 
     def test_datetime_validation(self):

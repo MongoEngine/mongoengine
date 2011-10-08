@@ -13,6 +13,7 @@ import pymongo.binary
 import datetime, time
 import decimal
 import gridfs
+import uuid
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
@@ -21,7 +22,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DecimalField', 'ComplexDateTimeField', 'URLField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField',
-           'SequenceField', 'GenericEmbeddedDocumentField']
+           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -984,3 +985,30 @@ class SequenceField(IntField):
         if value is None:
             value = self.generate_new_value()
         return value
+
+
+class UUIDField(BaseField):
+    """A UUID field.
+
+    .. versionadded:: 0.6
+    """
+
+    def __init__(self, **kwargs):
+        super(UUIDField, self).__init__(**kwargs)
+
+    def to_python(self, value):
+        if not isinstance(value, basestring):
+            value = unicode(value)
+        return uuid.UUID(value)
+
+    def to_mongo(self, value):
+        return unicode(value)
+
+    def validate(self, value):
+        if not isinstance(value, uuid.UUID):
+            if not isinstance(value, basestring):
+                value = str(value)
+            try:
+                value = uuid.UUID(value)
+            except Exception, exc:
+                raise ValidationError('Could not convert to UUID: %s' % exc)
