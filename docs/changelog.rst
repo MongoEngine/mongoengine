@@ -6,6 +6,8 @@ Changelog
 Changes in dev
 ==============
 
+- Add field name to validation exception messages
+- Added UUID field
 - Improved efficiency of .get()
 - Updated ComplexFields so if required they won't accept empty lists / dicts
 - Added spec file for rpm-based distributions
