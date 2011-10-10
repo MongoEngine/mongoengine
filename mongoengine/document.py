@@ -185,18 +185,18 @@ class Document(BaseDocument):
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
-        def reset_changed_fields(doc, inspected_docs=None):
+        def reset_changed_fields(doc, inspected=None):
             """Loop through and reset changed fields lists"""
 
-            inspected_docs = inspected_docs or []
-            inspected_docs.append(doc)
+            inspected = inspected or []
+            inspected.append(doc)
             if hasattr(doc, '_changed_fields'):
                 doc._changed_fields = []
 
             for field_name in doc._fields:
                 field = getattr(doc, field_name)
-                if field not in inspected_docs and hasattr(field, '_changed_fields'):
-                    reset_changed_fields(field, inspected_docs)
+                if field not in inspected and hasattr(field, '_changed_fields'):
+                    reset_changed_fields(field, inspected)
 
         reset_changed_fields(self)
         self._changed_fields = []

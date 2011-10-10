@@ -6,6 +6,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed tree based circular reference bug
 - Add field name to validation exception messages
 - Added UUID field
 - Improved efficiency of .get()
@@ -17,7 +18,7 @@ Changes in dev
 Changes in v0.5.1
 =================
 
-- Circular reference bugfix
+- Fixed simple circular reference bug
 
 Changes in v0.5
 ===============

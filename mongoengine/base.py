@@ -837,12 +837,18 @@ class BaseDocument(object):
         if hasattr(self, '_changed_fields') and key not in self._changed_fields:
             self._changed_fields.append(key)
 
-    def _get_changed_fields(self, key=''):
+    def _get_changed_fields(self, key='', inspected=[]):
         """Returns a list of all fields that have explicitly been changed.
         """
         from mongoengine import EmbeddedDocument, DynamicEmbeddedDocument
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
+
+        inspected = inspected or []
+        if hasattr(self, 'id'):
+            if self.id in inspected:
+                return _changed_fields
+            inspected.append(self.id)
 
         field_list = self._fields.copy()
         if self._dynamic:
@@ -852,8 +858,13 @@ class BaseDocument(object):
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
             field = getattr(self, field_name, None)
+            if hasattr(field, 'id'):
+                if field.id in inspected:
+                    continue
+                inspected.append(field.id)
+
             if isinstance(field, (EmbeddedDocument, DynamicEmbeddedDocument)) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
-                _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key) if k]
+                _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key, inspected) if k]
             elif isinstance(field, (list, tuple, dict)) and db_field_name not in _changed_fields:  # Loop list / dict fields as they contain documents
                 # Determine the iterator to use
                 if not hasattr(field, 'items'):
@@ -864,7 +875,7 @@ class BaseDocument(object):
                     if not hasattr(value, '_get_changed_fields'):
                         continue
                     list_key = "%s%s." % (key, index)
-                    _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key) if k]
+                    _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key, inspected) if k]
         return _changed_fields
 
     def _delta(self):
@@ -941,17 +952,17 @@ class BaseDocument(object):
         return set_data, unset_data
 
     @classmethod
-    def _geo_indices(cls, inspected_classes=None):
-        inspected_classes = inspected_classes or []
+    def _geo_indices(cls, inspected=None):
+        inspected = inspected or []
         geo_indices = []
-        inspected_classes.append(cls)
+        inspected.append(cls)
         for field in cls._fields.values():
             if hasattr(field, 'document_type'):
                 field_cls = field.document_type
-                if field_cls in inspected_classes:
+                if field_cls in inspected:
                     continue
                 if hasattr(field_cls, '_geo_indices'):
-                    geo_indices += field_cls._geo_indices(inspected_classes)
+                    geo_indices += field_cls._geo_indices(inspected)
             elif field._geo_index:
                 geo_indices.append(field)
         return geo_indices
