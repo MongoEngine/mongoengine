@@ -841,7 +841,7 @@ class BaseDocument(object):
         if hasattr(self, '_changed_fields') and key not in self._changed_fields:
             self._changed_fields.append(key)
 
-    def _get_changed_fields(self, key='', inspected=[]):
+    def _get_changed_fields(self, key='', inspected=None):
         """Returns a list of all fields that have explicitly been changed.
         """
         from mongoengine import EmbeddedDocument, DynamicEmbeddedDocument
