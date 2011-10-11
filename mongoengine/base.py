@@ -654,7 +654,7 @@ class BaseDocument(object):
             for key, value in values.items():
                 setattr(self, key, value)
 
-        # Set any get_fieldname_display methodsF
+        # Set any get_fieldname_display methods
         self.__set_field_display()
         # Flag initialised
         self._initialised = True
