@@ -36,7 +36,6 @@ class EmbeddedDocument(BaseDocument):
             super(EmbeddedDocument, self).__delattr__(*args, **kwargs)
 
 
-
 class Document(BaseDocument):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
@@ -81,7 +80,6 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(self):
         """Returns the collection for the document."""
-
         if not hasattr(self, '_collection') or self._collection is None:
             db = _get_db()
             collection_name = self._get_collection_name()
@@ -291,8 +289,10 @@ class Document(BaseDocument):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
         """
+        from mongoengine.queryset import QuerySet
         db = _get_db()
         db.drop_collection(cls._get_collection_name())
+        QuerySet._reset_already_indexed(cls)
 
 
 class DynamicDocument(Document):

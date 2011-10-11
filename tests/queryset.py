@@ -15,7 +15,7 @@ class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        
+
         class Person(Document):
             name = StringField()
             age = IntField()
@@ -455,6 +455,9 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+        # Recreates the collection
+        self.assertEqual(0, Blog.objects.count())
+
         with query_counter() as q:
             self.assertEqual(q, 0)
 
@@ -468,10 +471,10 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            self.assertEqual(q, 2) # 1 for the inital connection and 1 for the insert
+            self.assertEqual(q, 1) # 1 for the insert
 
             Blog.objects.insert(blogs)
-            self.assertEqual(q, 4) # 1 for insert, and 1 for in bulk
+            self.assertEqual(q, 3) # 1 for insert, and 1 for in bulk fetch (3 in total)
 
         Blog.drop_collection()
 
@@ -1840,7 +1843,6 @@ class QuerySetTest(unittest.TestCase):
         freq = Person.objects.item_frequencies('city', normalize=True, map_reduce=True)
         self.assertEquals(freq, {'CRB': 0.5, None: 0.5})
 
-        
     def test_item_frequencies_with_null_embedded(self):
         class Data(EmbeddedDocument):
             name = StringField()
@@ -2227,7 +2229,7 @@ class QuerySetTest(unittest.TestCase):
         events = Event.objects(location__within_box=box)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0].id, event2.id)
-        
+
         # check that polygon works for users who have a server >= 1.9
         server_version = tuple(
             _get_connection().server_info()['version'].split('.')
@@ -2244,7 +2246,7 @@ class QuerySetTest(unittest.TestCase):
             events = Event.objects(location__within_polygon=polygon)
             self.assertEqual(events.count(), 1)
             self.assertEqual(events[0].id, event1.id)
-            
+
             polygon2 = [
                 (54.033586,-1.742249),
                 (52.792797,-1.225891),
@@ -2252,7 +2254,7 @@ class QuerySetTest(unittest.TestCase):
             ]
             events = Event.objects(location__within_polygon=polygon2)
             self.assertEqual(events.count(), 0)
-            
+
         Event.drop_collection()
 
     def test_spherical_geospatial_operators(self):

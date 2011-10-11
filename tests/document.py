@@ -41,6 +41,21 @@ class DocumentTest(unittest.TestCase):
         self.Person.drop_collection()
         self.assertFalse(collection in self.db.collection_names())
 
+    def test_queryset_resurrects_dropped_collection(self):
+
+        self.Person.objects().item_frequencies('name')
+        self.Person.drop_collection()
+
+        self.assertEqual({}, self.Person.objects().item_frequencies('name'))
+
+        class Actor(self.Person):
+            pass
+
+        # Ensure works correctly with inhertited classes
+        Actor.objects().item_frequencies('name')
+        self.Person.drop_collection()
+        self.assertEqual({}, Actor.objects().item_frequencies('name'))
+
     def test_definition(self):
         """Ensure that document may be defined using fields.
         """

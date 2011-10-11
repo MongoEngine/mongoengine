@@ -434,9 +434,11 @@ class QuerySet(object):
         return spec
 
     @classmethod
-    def _reset_already_indexed(cls):
+    def _reset_already_indexed(cls, document=None):
         """Helper to reset already indexed, can be useful for testing purposes"""
-        cls.__already_indexed = set()
+        if document:
+            cls.__already_indexed.discard(document)
+        cls.__already_indexed.clear()
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
         """Filter the selected documents by calling the
@@ -476,6 +478,13 @@ class QuerySet(object):
         perform operations only if the collection is accessed.
         """
         if self._document not in QuerySet.__already_indexed:
+
+            # Ensure collection exists
+            db = _get_db()
+            if self._collection_obj.name not in db.collection_names():
+                self._document._collection = None
+                self._collection_obj = self._document._get_collection()
+
             QuerySet.__already_indexed.add(self._document)
 
             background = self._document._meta.get('index_background', False)

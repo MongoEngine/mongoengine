@@ -6,6 +6,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed calling a queryset after drop_collection now recreates the collection
 - Fixed tree based circular reference bug
 - Add field name to validation exception messages
 - Added UUID field
