@@ -141,16 +141,18 @@ class BaseField(object):
         if self.choices is not None:
             option_keys = [option_key for option_key, option_value in self.choices]
             if value not in option_keys:
-                raise ValidationError("Value must be one of %s." % unicode(option_keys))
+                raise ValidationError('Value must be one of %s ("%s")' %
+                                      (unicode(option_keys), self.name))
 
         # check validation argument
         if self.validation is not None:
             if callable(self.validation):
                 if not self.validation(value):
-                    raise ValidationError('Value does not match custom' \
-                                          'validation method.')
+                    raise ValidationError('Value does not match custom '
+                                          'validation method ("%s")' % self.name)
             else:
-                raise ValueError('validation argument must be a callable.')
+                raise ValueError('validation argument for "%s" must be a '
+                                 'callable.' % self.name)
 
         self.validate(value)
 
@@ -207,8 +209,9 @@ class ComplexBaseField(BaseField):
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
-                        raise ValidationError('You can only reference documents once '
-                                      'they have been saved to the database')
+                        raise ValidationError('You can only reference '
+                                      'documents once they have been saved '
+                                      'to the database ("%s")' % self.name)
                     collection = v._get_collection_name()
                     value_dict[k] = pymongo.dbref.DBRef(collection, v.pk)
                 elif hasattr(v, 'to_python'):
@@ -247,8 +250,9 @@ class ComplexBaseField(BaseField):
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
-                        raise ValidationError('You can only reference documents once '
-                                      'they have been saved to the database')
+                        raise ValidationError('You can only reference '
+                                      'documents once they have been saved '
+                                      'to the database ("%s")' % self.name)
 
                     # If its a document that is not inheritable it won't have
                     # _types / _cls data so make it a generic reference allows
@@ -279,8 +283,8 @@ class ComplexBaseField(BaseField):
                 else:
                     [self.field.validate(v) for v in value]
             except Exception, err:
-                raise ValidationError('Invalid %s item (%s)' % (
-                        self.field.__class__.__name__, str(v)))
+                raise ValidationError('Invalid %s item (%s) ("%s")' % (
+                        self.field.__class__.__name__, str(v), self.name))
 
         # Don't allow empty values if required
         if self.required and not value:
@@ -363,7 +367,7 @@ class ObjectIdField(BaseField):
         try:
             pymongo.objectid.ObjectId(unicode(value))
         except:
-            raise ValidationError('Invalid Object ID')
+            raise ValidationError('Invalid Object ID ("%s")' % self.name)
 
 
 class DocumentMetaclass(type):
