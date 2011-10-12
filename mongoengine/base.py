@@ -739,16 +739,6 @@ class BaseDocument(object):
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
 
-    @apply
-    def pk():
-        """Primary key alias
-        """
-        def fget(self):
-            return getattr(self, self._meta['id_field'])
-        def fset(self, value):
-            return setattr(self, self._meta['id_field'], value)
-        return property(fget, fset)
-
     def to_mongo(self):
         """Return data dictionary ready for use with MongoDB.
         """
