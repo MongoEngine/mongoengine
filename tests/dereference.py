@@ -188,6 +188,51 @@ class FieldTest(unittest.TestCase):
 
         self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
 
+    def test_circular_tree_reference(self):
+        """Ensure you can handle circular references with more than one level
+        """
+        class Other(EmbeddedDocument):
+            name = StringField()
+            friends = ListField(ReferenceField('Person'))
+
+        class Person(Document):
+            name = StringField()
+            other = EmbeddedDocumentField(Other, default=lambda: Other())
+
+            def __repr__(self):
+                return "<Person: %s>" % self.name
+
+        Person.drop_collection()
+        paul = Person(name="Paul")
+        paul.save()
+        maria = Person(name="Maria")
+        maria.save()
+        julia = Person(name='Julia')
+        julia.save()
+        anna = Person(name='Anna')
+        anna.save()
+
+        paul.other.friends = [maria, julia, anna]
+        paul.other.name = "Paul's friends"
+        paul.save()
+
+        maria.other.friends = [paul, julia, anna]
+        maria.other.name = "Maria's friends"
+        maria.save()
+
+        julia.other.friends = [paul, maria, anna]
+        julia.other.name = "Julia's friends"
+        julia.save()
+
+        anna.other.friends = [paul, maria, julia]
+        anna.other.name = "Anna's friends"
+        anna.save()
+
+        self.assertEquals(
+            "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]",
+            "%s" % Person.objects()
+        )
+
     def test_generic_reference(self):
 
         class UserA(Document):

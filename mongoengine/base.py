@@ -724,18 +724,32 @@ class BaseDocument(object):
         if hasattr(self, '_changed_fields') and key not in self._changed_fields:
             self._changed_fields.append(key)
 
-    def _get_changed_fields(self, key=''):
+    def _get_changed_fields(self, key='', inspected=None):
         """Returns a list of all fields that have explicitly been changed.
         """
         from mongoengine import EmbeddedDocument
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
-        for field_name in self._fields:
+
+        inspected = inspected or set()
+        if hasattr(self, 'id'):
+            if self.id in inspected:
+                return _changed_fields
+            inspected.add(self.id)
+
+        field_list = self._fields.copy()
+
+        for field_name in field_list:
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
             field = getattr(self, field_name, None)
-            if isinstance(field, EmbeddedDocument) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
-                _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key) if k]
+            if hasattr(field, 'id'):
+                if field.id in inspected:
+                    continue
+                inspected.add(field.id)
+
+            if isinstance(field, (EmbeddedDocument,)) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
+                _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key, inspected) if k]
             elif isinstance(field, (list, tuple, dict)) and db_field_name not in _changed_fields:  # Loop list / dict fields as they contain documents
                 # Determine the iterator to use
                 if not hasattr(field, 'items'):
@@ -746,8 +760,7 @@ class BaseDocument(object):
                     if not hasattr(value, '_get_changed_fields'):
                         continue
                     list_key = "%s%s." % (key, index)
-                    _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key) if k]
-
+                    _changed_fields += ["%s%s" % (list_key, k) for k in value._get_changed_fields(list_key, inspected) if k]
         return _changed_fields
 
     def _delta(self):
