@@ -5,8 +5,8 @@
 %define srcname mongoengine
 
 Name:           python-%{srcname}
-Version:        0.5.0
-Release:        2%{?dist}
+Version:        0.5.2
+Release:        1%{?dist}
 Summary:        A Python Document-Object Mapper for working with MongoDB
 
 Group:          Development/Libraries
@@ -49,5 +49,8 @@ rm -rf $RPM_BUILD_ROOT
 # %{python_sitearch}/*
 
 %changelog
+* Wed Oct 12 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.2-1
+- Update to latest version
+
 * Fri Sep 23 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.0-1
 - Initial version
