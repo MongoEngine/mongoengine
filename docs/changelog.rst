@@ -2,12 +2,10 @@
 Changelog
 =========
 
-
 Changes in dev
 ==============
 
 - Fixed calling a queryset after drop_collection now recreates the collection
-- Fixed tree based circular reference bug
 - Add field name to validation exception messages
 - Added UUID field
 - Improved efficiency of .get()
@@ -15,6 +13,12 @@ Changes in dev
 - Added spec file for rpm-based distributions
 - Fixed ListField so it doesnt accept strings
 - Added DynamicDocument and EmbeddedDynamicDocument classes for expando schemas
+
+Changes in v0.5.2
+=================
+
+- A Robust Circular reference bugfix
+
 
 Changes in v0.5.1
 =================

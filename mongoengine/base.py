@@ -848,11 +848,11 @@ class BaseDocument(object):
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
 
-        inspected = inspected or []
+        inspected = inspected or set()
         if hasattr(self, 'id'):
             if self.id in inspected:
                 return _changed_fields
-            inspected.append(self.id)
+            inspected.add(self.id)
 
         field_list = self._fields.copy()
         if self._dynamic:
@@ -865,7 +865,7 @@ class BaseDocument(object):
             if hasattr(field, 'id'):
                 if field.id in inspected:
                     continue
-                inspected.append(field.id)
+                inspected.add(field.id)
 
             if isinstance(field, (EmbeddedDocument, DynamicEmbeddedDocument)) and db_field_name not in _changed_fields:  # Grab all embedded fields that have been changed
                 _changed_fields += ["%s%s" % (key, k) for k in field._get_changed_fields(key, inspected) if k]
