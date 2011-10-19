@@ -992,6 +992,9 @@ class FieldTest(unittest.TestCase):
         class Company(Document):
             name = StringField()
 
+        Product.drop_collection()
+        Company.drop_collection()
+
         ten_gen = Company(name='10gen')
         ten_gen.save()
         mongodb = Product(name='MongoDB', company=ten_gen)
