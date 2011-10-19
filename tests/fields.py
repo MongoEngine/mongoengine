@@ -997,9 +997,15 @@ class FieldTest(unittest.TestCase):
         mongodb = Product(name='MongoDB', company=ten_gen)
         mongodb.save()
 
+        me = Product(name='MongoEngine')
+        me.save()
+
         obj = Product.objects(company=ten_gen).first()
         self.assertEqual(obj, mongodb)
         self.assertEqual(obj.company, ten_gen)
+
+        obj = Product.objects(company=None).first()
+        self.assertEqual(obj, me)
 
     def test_reference_query_conversion(self):
         """Ensure that ReferenceFields can be queried using objects and values
