@@ -1010,6 +1010,11 @@ class FieldTest(unittest.TestCase):
         obj = Product.objects(company=None).first()
         self.assertEqual(obj, me)
 
+        obj, created = Product.objects.get_or_create(company=None)
+        
+        self.assertEqual(created, False)
+        self.assertEqual(obj, me)
+
     def test_reference_query_conversion(self):
         """Ensure that ReferenceFields can be queried using objects and values
         of the type of the primary key of the referenced object.
