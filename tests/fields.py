@@ -355,27 +355,27 @@ class FieldTest(unittest.TestCase):
         logs = LogEntry.objects.order_by("date")
         count = logs.count()
         i = 0
-        while i == count-1:
-            self.assertTrue(logs[i].date <= logs[i+1].date)
-            i +=1
+        while i == count - 1:
+            self.assertTrue(logs[i].date <= logs[i + 1].date)
+            i += 1
 
         logs = LogEntry.objects.order_by("-date")
         count = logs.count()
         i = 0
-        while i == count-1:
-            self.assertTrue(logs[i].date >= logs[i+1].date)
-            i +=1
+        while i == count - 1:
+            self.assertTrue(logs[i].date >= logs[i + 1].date)
+            i += 1
 
         # Test searching
-        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980,1,1))
+        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
         self.assertEqual(logs.count(), 30)
 
-        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980,1,1))
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980, 1, 1))
         self.assertEqual(logs.count(), 30)
 
         logs = LogEntry.objects.filter(
-            date__lte=datetime.datetime(2011,1,1),
-            date__gte=datetime.datetime(2000,1,1),
+            date__lte=datetime.datetime(2011, 1, 1),
+            date__gte=datetime.datetime(2000, 1, 1),
         )
         self.assertEqual(logs.count(), 10)
 
@@ -1112,7 +1112,6 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
-
     def test_generic_reference_document_not_registered(self):
         """Ensure dereferencing out of the document registry throws a
         `NotRegistered` error.
@@ -1139,7 +1138,7 @@ class FieldTest(unittest.TestCase):
         user = User.objects.first()
         try:
             user.bookmarks
-            raise AssertionError, "Link was removed from the registry"
+            raise AssertionError("Link was removed from the registry")
         except NotRegistered:
             pass
 
@@ -1339,7 +1338,7 @@ class FieldTest(unittest.TestCase):
         # Make sure FileField is optional and not required
         class DemoFile(Document):
             file = FileField()
-        d = DemoFile.objects.create()
+        DemoFile.objects.create()
 
     def test_file_uniqueness(self):
         """Ensure that each instance of a FileField is unique
@@ -1538,7 +1537,6 @@ class FieldTest(unittest.TestCase):
         c = self.db['mongoengine.counters'].find_one({'_id': 'animal.id'})
         self.assertEqual(c['next'], 10)
 
-
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()
@@ -1563,6 +1561,41 @@ class FieldTest(unittest.TestCase):
 
         person = Person.objects.first()
         self.assertTrue(isinstance(person.like, Dish))
+
+    def test_recursive_validation(self):
+        """Ensure that a validation result schema is available.
+        """
+        class Author(EmbeddedDocument):
+            name = StringField(required=True)
+
+        class Comment(EmbeddedDocument):
+            author = EmbeddedDocumentField(Author, required=True)
+            content = StringField(required=True)
+
+        class Post(Document):
+            title = StringField(required=True)
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        bob = Author(name='Bob')
+        post = Post(title='hello world')
+        post.comments.append(Comment(content='hello', author=bob))
+        post.comments.append(Comment(author=bob))
+
+        try:
+            post.validate()
+        except ValidationError, error:
+            pass
+
+        self.assertTrue(hasattr(error, 'errors'))
+        self.assertTrue(isinstance(error.errors, dict))
+        self.assertTrue('comments' in error.errors)
+        self.assertTrue(1 in error.errors['comments'])
+        self.assertTrue(isinstance(error.errors['comments'][1]['content'],
+                        ValidationError))
+
+        post.comments[1].content = 'here we go'
+        post.validate()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,7 +4,6 @@ from queryset import DO_NOTHING
 
 from mongoengine import signals
 
-import weakref
 import sys
 import pymongo
 import pymongo.objectid
@@ -19,9 +18,27 @@ class NotRegistered(Exception):
 class InvalidDocumentError(Exception):
     pass
 
-class ValidationError(Exception):
-    pass
 
+class ValidationError(Exception):
+    errors = {}
+    field_name = None
+
+    def __init__(self, message, **kwargs):
+        self.field_name = kwargs.get('field_name')
+        super(ValidationError, self).__init__(message)
+
+    def __str__(self):
+        return self.message
+
+    def __repr__(self):
+        return '%s(%s,)' % (self.__class__.__name__, self.message)
+
+    def __getattribute__(self, name):
+        message = super(ValidationError, self).__getattribute__(name)
+        if name == 'message' and self.field_name:
+            return message + ' ("%s")' % self.field_name
+        else:
+            return message
 
 _document_registry = {}
 
@@ -49,6 +66,8 @@ class BaseField(object):
 
     .. versionchanged:: 0.5 - added verbose and help text
     """
+
+    name = None
 
     # Fields may have _types inserted into indexes by default
     _index_with_types = True
@@ -116,6 +135,14 @@ class BaseField(object):
         instance._data[self.name] = value
         instance._mark_as_changed(self.name)
 
+    def error(self, message, errors=None, field_name=None):
+        """Raises a ValidationError.
+        """
+        field_name = field_name if field_name else self.name
+        error = ValidationError(message, field_name=field_name)
+        error.errors = errors if errors else {}
+        raise error
+
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
@@ -141,15 +168,13 @@ class BaseField(object):
         if self.choices is not None:
             option_keys = [option_key for option_key, option_value in self.choices]
             if value not in option_keys:
-                raise ValidationError('Value must be one of %s ("%s")' %
-                                      (unicode(option_keys), self.name))
+                self.error('Value must be one of %s' % unicode(option_keys))
 
         # check validation argument
         if self.validation is not None:
             if callable(self.validation):
                 if not self.validation(value):
-                    raise ValidationError('Value does not match custom '
-                                          'validation method ("%s")' % self.name)
+                    self.error('Value does not match custom validation method')
             else:
                 raise ValueError('validation argument for "%s" must be a '
                                  'callable.' % self.name)
@@ -197,7 +222,7 @@ class ComplexBaseField(BaseField):
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = dict([(k,v) for k,v in enumerate(value)])
+                value = dict([(k, v) for k, v in enumerate(value)])
             except TypeError:  # Not iterable return the value
                 return value
 
@@ -205,13 +230,12 @@ class ComplexBaseField(BaseField):
             value_dict = dict([(key, self.field.to_python(item)) for key, item in value.items()])
         else:
             value_dict = {}
-            for k,v in value.items():
+            for k, v in value.items():
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
-                        raise ValidationError('You can only reference '
-                                      'documents once they have been saved '
-                                      'to the database ("%s")' % self.name)
+                        self.error('You can only reference documents once they'
+                                   ' have been saved to the database')
                     collection = v._get_collection_name()
                     value_dict[k] = pymongo.dbref.DBRef(collection, v.pk)
                 elif hasattr(v, 'to_python'):
@@ -220,7 +244,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k,v in sorted(value_dict.items(), key=operator.itemgetter(0))]
+            return [v for k, v in sorted(value_dict.items(), key=operator.itemgetter(0))]
         return value_dict
 
     def to_mongo(self, value):
@@ -238,7 +262,7 @@ class ComplexBaseField(BaseField):
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = dict([(k,v) for k,v in enumerate(value)])
+                value = dict([(k, v) for k, v in enumerate(value)])
             except TypeError:  # Not iterable return the value
                 return value
 
@@ -246,13 +270,12 @@ class ComplexBaseField(BaseField):
             value_dict = dict([(key, self.field.to_mongo(item)) for key, item in value.items()])
         else:
             value_dict = {}
-            for k,v in value.items():
+            for k, v in value.items():
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
-                        raise ValidationError('You can only reference '
-                                      'documents once they have been saved '
-                                      'to the database ("%s")' % self.name)
+                        self.error('You can only reference documents once they'
+                                   ' have been saved to the database')
 
                     # If its a document that is not inheritable it won't have
                     # _types / _cls data so make it a generic reference allows
@@ -270,26 +293,33 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k,v in sorted(value_dict.items(), key=operator.itemgetter(0))]
+            return [v for k, v in sorted(value_dict.items(), key=operator.itemgetter(0))]
         return value_dict
 
     def validate(self, value):
-        """If field provided ensure the value is valid.
+        """If field is provided ensure the value is valid.
         """
+        errors = {}
         if self.field:
-            try:
-                if hasattr(value, 'iteritems'):
-                    [self.field.validate(v) for k,v in value.iteritems()]
-                else:
-                    [self.field.validate(v) for v in value]
-            except Exception, err:
-                raise ValidationError('Invalid %s item (%s) ("%s")' % (
-                        self.field.__class__.__name__, str(v), self.name))
-
+            if hasattr(value, 'iteritems'):
+                sequence = value.iteritems()
+            else:
+                sequence = enumerate(value)
+            for k, v in sequence:
+                try:
+                    self.field.validate(v)
+                except (ValidationError, AssertionError), error:
+                    if hasattr(error, 'errors'):
+                        errors[k] = error.errors
+                    else:
+                        errors[k] = error
+            if errors:
+                field_class = self.field.__class__.__name__
+                self.error('Invalid %s item (%s)' % (field_class, value),
+                           errors=errors)
         # Don't allow empty values if required
         if self.required and not value:
-            raise ValidationError('Field "%s" is required and cannot be empty' %
-                                  self.name)
+            self.error('Field is required and cannot be empty')
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
@@ -344,6 +374,7 @@ class BaseDynamicField(BaseField):
     def lookup_member(self, member_name):
         return member_name
 
+
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
     """
@@ -356,8 +387,8 @@ class ObjectIdField(BaseField):
             try:
                 return pymongo.objectid.ObjectId(unicode(value))
             except Exception, e:
-                #e.message attribute has been deprecated since Python 2.6
-                raise ValidationError(unicode(e))
+                # e.message attribute has been deprecated since Python 2.6
+                self.error(unicode(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -367,7 +398,7 @@ class ObjectIdField(BaseField):
         try:
             pymongo.objectid.ObjectId(unicode(value))
         except:
-            raise ValidationError('Invalid Object ID ("%s")' % self.name)
+            self.error('Invalid Object ID')
 
 
 class DocumentMetaclass(type):
@@ -393,7 +424,7 @@ class DocumentMetaclass(type):
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
             else:  # Add any mixin fields
-                attrs.update(dict([(k,v) for k,v in base.__dict__.items()
+                attrs.update(dict([(k, v) for k, v in base.__dict__.items()
                                     if issubclass(v.__class__, BaseField)]))
 
             if hasattr(base, '_meta') and not base._meta.get('abstract'):
@@ -488,7 +519,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             ('meta' in attrs and attrs['meta'].get('abstract', False))):
             # Make sure no base class was non-abstract
             non_abstract_bases = [b for b in bases
-                if hasattr(b,'_meta') and not b._meta.get('abstract', False)]
+                if hasattr(b, '_meta') and not b._meta.get('abstract', False)]
             if non_abstract_bases:
                 raise ValueError("Abstract document cannot have non-abstract base")
             return super_new(cls, name, bases, attrs)
@@ -665,7 +696,7 @@ class BaseDocument(object):
         signals.post_init.send(self.__class__, document=self)
 
     def __setattr__(self, name, value):
-        # Handle dynamic data only if an intialised dynamic document
+        # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and getattr(self, '_initialised', False):
 
             field = None
@@ -708,7 +739,8 @@ class BaseDocument(object):
             data[k] = self.__expand_dynamic_values(key, v)
 
         if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(data.items(), key=operator.itemgetter(0))]
+            data_items = sorted(data.items(), key=operator.itemgetter(0))
+            value = [v for k, v in data_items]
         else:
             value = data
 
@@ -729,15 +761,22 @@ class BaseDocument(object):
                   for name, field in self._fields.items()]
 
         # Ensure that each field is matched to a valid value
+        errors = {}
         for field, value in fields:
             if value is not None:
                 try:
                     field._validate(value)
-                except (ValueError, AttributeError, AssertionError), e:
-                    raise ValidationError('Invalid value for field named "%s" of type "%s": %s'
-                                          % (field.name, field.__class__.__name__, value))
+                except ValidationError, error:
+                    errors[field.name] = error.errors or error
+                except (ValueError, AttributeError, AssertionError), error:
+                    errors[field.name] = error
             elif field.required:
-                raise ValidationError('Field "%s" is required' % field.name)
+                errors[field.name] = ValidationError('Field is required',
+                                                     field_name=field.name)
+        if errors:
+            error = ValidationError('Errors encountered validating document')
+            error.errors = errors
+            raise error
 
     @apply
     def pk():
@@ -745,8 +784,10 @@ class BaseDocument(object):
         """
         def fget(self):
             return getattr(self, self._meta['id_field'])
+
         def fset(self, value):
             return setattr(self, self._meta['id_field'], value)
+
         return property(fget, fset)
 
     def to_mongo(self):
@@ -821,7 +862,6 @@ class BaseDocument(object):
                     """.strip() % class_name)
             cls = subclasses[class_name]
 
-        present_fields = data.keys()
         for field_name, field in cls._fields.items():
             if field.db_field in data:
                 value = data[field.db_field]
@@ -972,8 +1012,7 @@ class BaseDocument(object):
         return geo_indices
 
     def __getstate__(self):
-        self_dict = self.__dict__
-        removals = ["get_%s_display" % k for k,v in self._fields.items() if v.choices]
+        removals = ["get_%s_display" % k for k, v in self._fields.items() if v.choices]
         for k in removals:
             if hasattr(self, k):
                 delattr(self, k)
@@ -1048,7 +1087,7 @@ class BaseDocument(object):
     def __hash__(self):
         if self.pk is None:
             # For new object
-            return super(BaseDocument,self).__hash__()
+            return super(BaseDocument, self).__hash__()
         else:
             return hash(self.pk)
 
