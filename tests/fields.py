@@ -1586,6 +1586,7 @@ class FieldTest(unittest.TestCase):
         except ValidationError, error:
             pass
 
+        # ValidationError.errors property
         self.assertTrue(hasattr(error, 'errors'))
         self.assertTrue(isinstance(error.errors, dict))
         self.assertTrue('comments' in error.errors)
@@ -1593,8 +1594,55 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(error.errors['comments'][1]['content'],
                         ValidationError))
 
+        # ValidationError.schema property
+        schema = error.schema
+        self.assertTrue(isinstance(schema, dict))
+        self.assertTrue('comments' in schema)
+        self.assertTrue(1 in schema['comments'])
+        self.assertTrue('content' in schema['comments'][1])
+        self.assertEquals(schema['comments'][1]['content'],
+                          u'Field is required ("content")')
+
         post.comments[1].content = 'here we go'
         post.validate()
+
+
+class ValidatorErrorTest(unittest.TestCase):
+
+    def test_schema(self):
+        """Ensure a ValidationError handles error schema correctly.
+        """
+        error = ValidationError('root')
+        self.assertEquals(error.schema, {})
+
+        # 1st level error schema
+        error.errors = {'1st': ValidationError('bad 1st'), }
+        self.assertTrue('1st' in error.schema)
+        self.assertEquals(error.schema['1st'], 'bad 1st')
+
+        # 2nd level error schema
+        error.errors = {'1st': ValidationError('bad 1st', errors={
+            '2nd': ValidationError('bad 2nd'),
+        })}
+        self.assertTrue('1st' in error.schema)
+        self.assertTrue(isinstance(error.schema['1st'], dict))
+        self.assertTrue('2nd' in error.schema['1st'])
+        self.assertEquals(error.schema['1st']['2nd'], 'bad 2nd')
+
+        # moar levels
+        error.errors = {'1st': ValidationError('bad 1st', errors={
+            '2nd': ValidationError('bad 2nd', errors={
+                '3rd': ValidationError('bad 3rd', errors={
+                    '4th': ValidationError('Inception'),
+                }),
+            }),
+        })}
+        self.assertTrue('1st' in error.schema)
+        self.assertTrue('2nd' in error.schema['1st'])
+        self.assertTrue('3rd' in error.schema['1st']['2nd'])
+        self.assertTrue('4th' in error.schema['1st']['2nd']['3rd'])
+        self.assertEquals(error.schema['1st']['2nd']['3rd']['4th'],
+                          'Inception')
 
 
 if __name__ == '__main__':

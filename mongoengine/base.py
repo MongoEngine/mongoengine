@@ -20,10 +20,13 @@ class InvalidDocumentError(Exception):
 
 
 class ValidationError(Exception):
+    """Validation exception.
+    """
     errors = {}
     field_name = None
 
     def __init__(self, message, **kwargs):
+        self.errors = kwargs.get('errors', {})
         self.field_name = kwargs.get('field_name')
         super(ValidationError, self).__init__(message)
 
@@ -39,6 +42,25 @@ class ValidationError(Exception):
             return message + ' ("%s")' % self.field_name
         else:
             return message
+
+    @property
+    def schema(self):
+        def get_schema(source):
+            errors_dict = {}
+            if not source:
+                return errors_dict
+            if isinstance(source, dict):
+                for field_name, error in source.iteritems():
+                    errors_dict[field_name] = get_schema(error)
+            elif isinstance(source, ValidationError) and source.errors:
+                return get_schema(source.errors)
+            else:
+                return unicode(source)
+            return errors_dict
+        if not self.errors:
+            return {}
+        return get_schema(self.errors)
+
 
 _document_registry = {}
 
