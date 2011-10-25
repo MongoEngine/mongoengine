@@ -100,8 +100,7 @@ class URLField(StringField):
 
     def validate(self, value):
         if not URLField.URL_REGEX.match(value):
-            raise ValidationError('Invalid URL: %s ("%s")' % (value,
-                                  self.name))
+            self.error('Invalid URL: %s' % value)
 
         if self.verify_exists:
             import urllib2
