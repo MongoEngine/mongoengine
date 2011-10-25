@@ -161,9 +161,7 @@ class BaseField(object):
         """Raises a ValidationError.
         """
         field_name = field_name if field_name else self.name
-        error = ValidationError(message, field_name=field_name)
-        error.errors = errors if errors else {}
-        raise error
+        raise ValidationError(message, errors=errors, field_name=field_name)
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
