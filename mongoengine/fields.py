@@ -41,7 +41,8 @@ class StringField(BaseField):
         return unicode(value)
 
     def validate(self, value):
-        assert isinstance(value, (str, unicode))
+        if not isinstance(value, (str, unicode)):
+            self.error('StringField only accepts string values')
 
         if self.max_length is not None and len(value) > self.max_length:
             self.error('String value is too long')
@@ -143,7 +144,7 @@ class IntField(BaseField):
         try:
             value = int(value)
         except:
-            raise self.error('%s could not be converted to int' % value)
+            self.error('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
             self.error('Integer value is too small')
@@ -169,7 +170,8 @@ class FloatField(BaseField):
     def validate(self, value):
         if isinstance(value, int):
             value = float(value)
-        assert isinstance(value, float)
+        if not isinstance(value, float):
+            self.error('FoatField only accepts float values')
 
         if self.min_value is not None and value < self.min_value:
             self.error('Float value is too small')
@@ -225,7 +227,8 @@ class BooleanField(BaseField):
         return bool(value)
 
     def validate(self, value):
-        assert isinstance(value, bool)
+        if not isinstance(value, bool):
+            self.error('BooleanField only accepts boolean values')
 
 
 class DateTimeField(BaseField):
@@ -238,7 +241,8 @@ class DateTimeField(BaseField):
     """
 
     def validate(self, value):
-        assert isinstance(value, (datetime.datetime, datetime.date))
+        if not isinstance(value, (datetime.datetime, datetime.date)):
+            self.error(u'cannot parse date "%s"' % value)
 
     def to_mongo(self, value):
         return self.prepare_query_value(None, value)
@@ -524,7 +528,8 @@ class DictField(ComplexBaseField):
     def __init__(self, basecls=None, field=None, *args, **kwargs):
         self.field = field
         self.basecls = basecls or BaseField
-        assert issubclass(self.basecls, BaseField)
+        if not issubclass(self.basecls, BaseField):
+            self.error('DictField only accepts dict values')
         kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
 
@@ -646,11 +651,12 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
-        assert isinstance(value, (self.document_type, pymongo.dbref.DBRef))
+        if not isinstance(value, (self.document_type, pymongo.dbref.DBRef)):
+            self.error('A ReferenceField only accepts DBRef')
 
         if isinstance(value, Document) and value.id is None:
-            raise self.error('You can only reference documents once they have'
-                             ' been saved to the database')
+            self.error('You can only reference documents once they have been '
+                       'saved to the database')
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -678,7 +684,7 @@ class GenericReferenceField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, (Document, pymongo.dbref.DBRef)):
-            raise self.error('GenericReferences can only contain documents')
+            self.error('GenericReferences can only contain documents')
 
         # We need the id from the saved object to create the DBRef
         if isinstance(value, Document) and value.id is None:
@@ -734,7 +740,8 @@ class BinaryField(BaseField):
         return str(value)
 
     def validate(self, value):
-        assert isinstance(value, str)
+        if not isinstance(value, str):
+            self.error('BinaryField only accepts string values')
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -895,8 +902,10 @@ class FileField(BaseField):
 
     def validate(self, value):
         if value.grid_id is not None:
-            assert isinstance(value, GridFSProxy)
-            assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+            if not isinstance(value, GridFSProxy):
+                self.error('FileField only accepts GridFSProxy values')
+            if not isinstance(value.grid_id, pymongo.objectid.ObjectId):
+                self.error('Invalid GridFSProxy value')
 
 
 class GeoPointField(BaseField):
@@ -915,7 +924,7 @@ class GeoPointField(BaseField):
                        'of (x, y)')
 
         if not len(value) == 2:
-            raise self.error('Value must be a two-dimensional point')
+            self.error('Value must be a two-dimensional point')
         if (not isinstance(value[0], (float, int)) and
             not isinstance(value[1], (float, int))):
             self.error('Both values in point must be float or int')

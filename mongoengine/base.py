@@ -19,13 +19,13 @@ class InvalidDocumentError(Exception):
     pass
 
 
-class ValidationError(Exception):
+class ValidationError(AssertionError):
     """Validation exception.
     """
     errors = {}
     field_name = None
 
-    def __init__(self, message, **kwargs):
+    def __init__(self, message="", **kwargs):
         self.errors = kwargs.get('errors', {})
         self.field_name = kwargs.get('field_name')
         super(ValidationError, self).__init__(message)
@@ -157,7 +157,7 @@ class BaseField(object):
         instance._data[self.name] = value
         instance._mark_as_changed(self.name)
 
-    def error(self, message, errors=None, field_name=None):
+    def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
         """
         field_name = field_name if field_name else self.name
@@ -794,9 +794,8 @@ class BaseDocument(object):
                 errors[field.name] = ValidationError('Field is required',
                                                      field_name=field.name)
         if errors:
-            error = ValidationError('Errors encountered validating document')
-            error.errors = errors
-            raise error
+            raise ValidationError('Errors encountered validating document',
+                                  errors=errors)
 
     @apply
     def pk():
