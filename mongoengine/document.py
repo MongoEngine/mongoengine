@@ -76,6 +76,16 @@ class Document(BaseDocument):
     by setting index_types to False on the meta dictionary for the document.
     """
     __metaclass__ = TopLevelDocumentMetaclass
+    
+    @apply
+    def pk():
+        """Primary key alias
+        """
+        def fget(self):
+            return getattr(self, self._meta['id_field'])
+        def fset(self, value):
+            return setattr(self, self._meta['id_field'], value)
+        return property(fget, fset)
 
     @classmethod
     def _get_collection(self):
