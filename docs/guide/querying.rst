@@ -34,7 +34,7 @@ arguments. The keys in the keyword arguments correspond to fields on the
 Fields on embedded documents may also be referred to using field lookup syntax
 by using a double-underscore in place of the dot in object attribute access
 syntax::
-    
+
     # This will return a QuerySet that will only iterate over pages that have
     # been written by a user whose 'country' field is set to 'uk'
     uk_pages = Page.objects(author__country='uk')
@@ -53,11 +53,21 @@ lists that contain that item will be matched::
     # 'tags' list
     Page.objects(tags='coding')
 
+Raw queries
+-----------
+It is possible to provide a raw PyMongo query as a query parameter, which will
+be integrated directly into the query. This is done using the ``__raw__``
+keyword argument::
+
+    Page.objects(__raw__={'tags': 'coding'})
+
+.. versionadded:: 0.4
+
 Query operators
 ===============
 Operators other than equality may also be used in queries; just attach the
 operator name to a key with a double-underscore::
-    
+
     # Only find users whose age is 18 or less
     young_users = Users.objects(age__lte=18)
 
@@ -68,10 +78,12 @@ Available operators are as follows:
 * ``lte`` -- less than or equal to
 * ``gt`` -- greater than
 * ``gte`` -- greater than or equal to
+* ``not`` -- negate a standard check, may be used before other operators (e.g.
+  ``Q(age__not__mod=5)``)
 * ``in`` -- value is in list (a list of values should be provided)
 * ``nin`` -- value is not in list (a list of values should be provided)
 * ``mod`` -- ``value % x == y``, where ``x`` and ``y`` are two provided values
-* ``all`` -- every item in array is in list of values provided
+* ``all`` -- every item in list of values provided is in array
 * ``size`` -- the size of the array is 
 * ``exists`` -- value for field exists
 
@@ -88,6 +100,27 @@ expressions:
 * ``iendswith`` -- string field ends with value (case insensitive)
 
 .. versionadded:: 0.3
+
+There are a few special operators for performing geographical queries, that
+may used with :class:`~mongoengine.GeoPointField`\ s:
+
+* ``within_distance`` -- provide a list containing a point and a maximum
+  distance (e.g. [(41.342, -87.653), 5])
+* ``within_box`` -- filter documents to those within a given bounding box (e.g.
+  [(35.0, -125.0), (40.0, -100.0)])
+* ``near`` -- order the documents by how close they are to a given point
+
+.. versionadded:: 0.4
+
+Querying by position
+====================
+It is possible to query by position in a list by using a numerical value as a
+query operator. So if you wanted to find all pages whose first tag was ``db``,
+you could use the following query::
+
+    BlogPost.objects(tags__0='db')
+
+.. versionadded:: 0.4
 
 Limiting and skipping results
 =============================
@@ -111,7 +144,7 @@ You may also index the query to retrieve a single result. If an item at that
 index does not exists, an :class:`IndexError` will be raised. A shortcut for
 retrieving the first result and returning :attr:`None` if no result exists is
 provided (:meth:`~mongoengine.queryset.QuerySet.first`)::
-    
+
     >>> # Make sure there are no users
     >>> User.drop_collection()
     >>> User.objects[0]
@@ -174,12 +207,28 @@ custom manager methods as you like::
 
         @queryset_manager
         def live_posts(doc_cls, queryset):
-            return queryset(published=True).filter(published=True)
+            return queryset.filter(published=True)
 
     BlogPost(title='test1', published=False).save()
     BlogPost(title='test2', published=True).save()
     assert len(BlogPost.objects) == 2
     assert len(BlogPost.live_posts) == 1
+
+Custom QuerySets
+================
+Should you want to add custom methods for interacting with or filtering
+documents, extending the :class:`~mongoengine.queryset.QuerySet` class may be
+the way to go. To use a custom :class:`~mongoengine.queryset.QuerySet` class on
+a document, set ``queryset_class`` to the custom class in a
+:class:`~mongoengine.Document`\ s ``meta`` dictionary::
+
+    class AwesomerQuerySet(QuerySet):
+        pass
+
+    class Page(Document):
+        meta = {'queryset_class': AwesomerQuerySet}
+
+.. versionadded:: 0.4
 
 Aggregation
 ===========
@@ -399,14 +448,17 @@ that you may use with these methods:
 * ``unset`` -- delete a particular value (since MongoDB v1.3+)
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
+* ``pop`` -- remove the last item from a list
 * ``push`` -- append a value to a list
 * ``push_all`` -- append several values to a list
+* ``pop`` -- remove the first or last element of a list
 * ``pull`` -- remove a value from a list
 * ``pull_all`` -- remove several values from a list
+* ``add_to_set`` -- add value to a list only if its not in the list already
 
 The syntax for atomic updates is similar to the querying syntax, but the 
 modifier comes before the field, not after it::
-    
+
     >>> post = BlogPost(title='Test', page_views=0, tags=['database'])
     >>> post.save()
     >>> BlogPost.objects(id=post.id).update_one(inc__page_views=1)
