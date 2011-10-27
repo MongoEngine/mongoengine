@@ -17,7 +17,6 @@ class SignalTests(unittest.TestCase):
         global signal_output
         signal_output = []
         fn(*args, **kwargs)
-        print signal_output
         return signal_output
 
     def setUp(self):
@@ -213,9 +212,9 @@ class SignalTests(unittest.TestCase):
 
         # The output of this signal is not entirely deterministic. The reloaded
         # object will have an object ID. Hence, we only check part of the output
-        self.assertEquals(signal_output[3], 
+        self.assertEquals(signal_output[3],
             "pre_bulk_insert signal, [<Author: Bill Shakespeare>]")
-        self.assertEquals(signal_output[-2:], 
+        self.assertEquals(signal_output[-2:],
             ["post_bulk_insert signal, [<Author: Bill Shakespeare>]",
              "Is loaded",])
 
