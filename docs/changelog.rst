@@ -93,6 +93,7 @@ Changes in v0.5
   way the user has specified them
 - Fixed various errors
 - Added many tests
+- Added pre and post bulk-insert signals
 
 Changes in v0.4
 ===============
