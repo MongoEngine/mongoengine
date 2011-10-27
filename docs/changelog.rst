@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added pre and post bulk-insert signals
 - Added ImageField - requires PIL
 - Fixed Reference Fields can be None in get_or_create / queries
 - Fixed accessing pk on an embedded document
@@ -93,7 +94,6 @@ Changes in v0.5
   way the user has specified them
 - Fixed various errors
 - Added many tests
-- Added pre and post bulk-insert signals
 
 Changes in v0.4
 ===============
