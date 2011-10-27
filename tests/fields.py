@@ -1,11 +1,15 @@
-import unittest
 import datetime
-from decimal import Decimal
+import os
+import unittest
 import uuid
+
+from decimal import Decimal
 
 from mongoengine import *
 from mongoengine.connection import _get_db
 from mongoengine.base import _document_registry, NotRegistered
+
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
 
 class FieldTest(unittest.TestCase):
@@ -1011,7 +1015,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(obj, me)
 
         obj, created = Product.objects.get_or_create(company=None)
-        
+
         self.assertEqual(created, False)
         self.assertEqual(obj, me)
 
@@ -1391,6 +1395,67 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(bool(testfile.file))
 
         TestFile.drop_collection()
+
+    def test_image_field(self):
+
+        class TestImage(Document):
+            image = ImageField()
+
+        TestImage.drop_collection()
+
+        t = TestImage()
+        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.save()
+
+        t = TestImage.objects.first()
+
+        self.assertEquals(t.image.format, 'PNG')
+
+        w, h = t.image.size
+        self.assertEquals(w, 371)
+        self.assertEquals(h, 76)
+
+        t.image.delete()
+
+    def test_image_field_resize(self):
+
+        class TestImage(Document):
+            image = ImageField(size=(185, 37))
+
+        TestImage.drop_collection()
+
+        t = TestImage()
+        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.save()
+
+        t = TestImage.objects.first()
+
+        self.assertEquals(t.image.format, 'PNG')
+        w, h = t.image.size
+
+        self.assertEquals(w, 185)
+        self.assertEquals(h, 37)
+
+        t.image.delete()
+
+    def test_image_field_thumbnail(self):
+
+        class TestImage(Document):
+            image = ImageField(thumbnail_size=(92, 18))
+
+        TestImage.drop_collection()
+
+        t = TestImage()
+        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.save()
+
+        t = TestImage.objects.first()
+
+        self.assertEquals(t.image.thumbnail.format, 'PNG')
+        self.assertEquals(t.image.thumbnail.width, 92)
+        self.assertEquals(t.image.thumbnail.height, 18)
+
+        t.image.delete()
 
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.

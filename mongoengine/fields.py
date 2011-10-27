@@ -1,3 +1,14 @@
+import datetime
+import time
+import decimal
+import gridfs
+import pymongo
+import pymongo.binary
+import pymongo.dbref
+import pymongo.son
+import re
+import uuid
+
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document)
 from queryset import DO_NOTHING
@@ -5,15 +16,17 @@ from document import Document, EmbeddedDocument
 from connection import _get_db
 from operator import itemgetter
 
-import re
-import pymongo
-import pymongo.dbref
-import pymongo.son
-import pymongo.binary
-import datetime, time
-import decimal
-import gridfs
-import uuid
+
+try:
+    from PIL import Image, ImageOps
+except ImportError:
+    Image = None
+    ImageOps = None
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
@@ -21,7 +34,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
            'DecimalField', 'ComplexDateTimeField', 'URLField',
            'GenericReferenceField', 'FileField', 'BinaryField',
-           'SortedListField', 'EmailField', 'GeoPointField',
+           'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
            'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -784,10 +797,12 @@ class GridFSProxy(object):
 
     .. versionadded:: 0.4
     .. versionchanged:: 0.5 - added optional size param to read
+    .. versionchanged:: 0.6 - added collection name param
     """
 
-    def __init__(self, grid_id=None, key=None, instance=None):
-        self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
+    def __init__(self, grid_id=None, key=None,
+                 instance=None, collection_name='fs'):
+        self.fs = gridfs.GridFS(_get_db(), collection_name)  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = grid_id              # Store GridFS id for file
         self.gridout = None
@@ -878,9 +893,11 @@ class FileField(BaseField):
     .. versionadded:: 0.4
     .. versionchanged:: 0.5 added optional size param for read
     """
+    proxy_class = GridFSProxy
 
-    def __init__(self, **kwargs):
+    def __init__(self, collection_name="fs", **kwargs):
         super(FileField, self).__init__(**kwargs)
+        self.collection_name = collection_name
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -889,12 +906,13 @@ class FileField(BaseField):
         # Check if a file already exists for this model
         grid_file = instance._data.get(self.name)
         self.grid_file = grid_file
-        if isinstance(self.grid_file, GridFSProxy):
+        if isinstance(self.grid_file, self.proxy_class):
             if not self.grid_file.key:
                 self.grid_file.key = self.name
                 self.grid_file.instance = instance
             return self.grid_file
-        return GridFSProxy(key=self.name, instance=instance)
+        return self.proxy_class(key=self.name, instance=instance,
+                                collection_name=self.collection_name)
 
     def __set__(self, instance, value):
         key = self.name
@@ -911,7 +929,8 @@ class FileField(BaseField):
                 grid_file.put(value)
             else:
                 # Create a new proxy object as we don't already have one
-                instance._data[key] = GridFSProxy(key=key, instance=instance)
+                instance._data[key] = self.proxy_class(key=key, instance=instance,
+                                                       collection_name=self.collection_name)
                 instance._data[key].put(value)
         else:
             instance._data[key] = value
@@ -920,18 +939,178 @@ class FileField(BaseField):
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
-        if isinstance(value, GridFSProxy) and value.grid_id is not None:
+        if isinstance(value, self.proxy_class) and value.grid_id is not None:
             return value.grid_id
         return None
 
     def to_python(self, value):
         if value is not None:
-            return GridFSProxy(value)
+            return self.proxy_class(value,
+                                    collection_name=self.collection_name)
 
     def validate(self, value):
         if value.grid_id is not None:
-            assert isinstance(value, GridFSProxy)
+            assert isinstance(value, self.proxy_class)
             assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+
+
+class ImageGridFsProxy(GridFSProxy):
+    """
+    Proxy for ImageField
+
+    versionadded: 0.6
+    """
+    def put(self, file_obj, **kwargs):
+        """
+        Insert a image in database
+        applying field properties (size, thumbnail_size)
+        """
+        field = self.instance._fields[self.key]
+
+        try:
+            img = Image.open(file_obj)
+        except:
+            raise ValidationError('Invalid image')
+
+        if (field.size and (img.size[0] > field.size['width'] or
+                            img.size[1] > field.size['height'])):
+            size = field.size
+
+            if size['force']:
+                img = ImageOps.fit(img,
+                                   (size['width'],
+                                    size['height']),
+                                   Image.ANTIALIAS)
+            else:
+                img.thumbnail((size['width'],
+                               size['height']),
+                              Image.ANTIALIAS)
+
+        thumbnail = None
+        if field.thumbnail_size:
+            size = field.thumbnail_size
+
+            if size['force']:
+                thumbnail = ImageOps.fit(img,
+                                   (size['width'],
+                                    size['height']),
+                                   Image.ANTIALIAS)
+            else:
+                thumbnail = img.copy()
+                thumbnail.thumbnail((size['width'],
+                                     size['height']),
+                                    Image.ANTIALIAS)
+
+        if thumbnail:
+            thumb_id = self._put_thumbnail(thumbnail,
+                                          img.format)
+        else:
+            thumb_id = None
+
+        w, h = img.size
+
+        io = StringIO()
+        img.save(io, img.format)
+        io.seek(0)
+
+        return super(ImageGridFsProxy, self).put(io,
+                                                 width=w,
+                                                 height=h,
+                                                 format=img.format,
+                                                 thumbnail_id=thumb_id,
+                                                 **kwargs)
+
+    def delete(self, *args, **kwargs):
+        #deletes thumbnail
+        out = self.get()
+        if out and out.thumbnail_id:
+            self.fs.delete(out.thumbnail_id)
+
+        return super(ImageGridFsProxy, self).delete(*args, **kwargs)
+
+    def _put_thumbnail(self, thumbnail, format, **kwargs):
+        w, h = thumbnail.size
+
+        io = StringIO()
+        thumbnail.save(io, format)
+        io.seek(0)
+
+        return self.fs.put(io, width=w,
+                           height=h,
+                           format=format,
+                           **kwargs)
+    @property
+    def size(self):
+        """
+        return a width, height of image
+        """
+        out = self.get()
+        if out:
+            return out.width, out.height
+
+    @property
+    def format(self):
+        """
+        return format of image
+        ex: PNG, JPEG, GIF, etc
+        """
+        out = self.get()
+        if out:
+            return out.format
+
+    @property
+    def thumbnail(self):
+        """
+        return a gridfs.grid_file.GridOut
+        representing a thumbnail of Image
+        """
+        out = self.get()
+        if out and out.thumbnail_id:
+            return self.fs.get(out.thumbnail_id)
+
+    def write(self, *args, **kwargs):
+        raise RuntimeError("Please use \"put\" method instead")
+
+    def writelines(self, *args, **kwargs):
+        raise RuntimeError("Please use \"put\" method instead")
+
+
+class ImproperlyConfigured(Exception):
+    pass
+
+
+class ImageField(FileField):
+    """
+    A Image File storage field.
+
+    @size (width, height, force):
+        max size to store images, if larger will be automatically resized
+        ex: size=(800, 600, True)
+
+    @thumbnail (width, height, force):
+        size to generate a thumbnail
+
+    .. versionadded:: 0.6
+    """
+    proxy_class = ImageGridFsProxy
+
+    def __init__(self, size=None, thumbnail_size=None,
+                 collection_name='images', **kwargs):
+        if not Image:
+            raise ImproperlyConfigured("PIL library was not found")
+
+        params_size = ('width', 'height', 'force')
+        extra_args = dict(size=size, thumbnail_size=thumbnail_size)
+        for att_name, att in extra_args.items():
+            if att and (isinstance(att, tuple) or isinstance(att, list)):
+                setattr(self, att_name, dict(
+                        map(None, params_size, att)))
+            else:
+                setattr(self, att_name, None)
+
+        super(ImageField, self).__init__(
+            collection_name=collection_name,
+            **kwargs)
 
 
 class GeoPointField(BaseField):

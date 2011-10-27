@@ -19,6 +19,7 @@ class NotRegistered(Exception):
 class InvalidDocumentError(Exception):
     pass
 
+
 class ValidationError(Exception):
     pass
 

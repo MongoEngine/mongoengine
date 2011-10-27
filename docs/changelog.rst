@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added ImageField - requires PIL
 - Fixed Reference Fields can be None in get_or_create / queries
 - Fixed accessing pk on an embedded document
 - Fixed calling a queryset after drop_collection now recreates the collection
