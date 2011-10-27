@@ -666,6 +666,9 @@ class ReferenceField(BaseField):
         return pymongo.dbref.DBRef(collection, id_)
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return None
+
         return self.to_mongo(value)
 
     def validate(self, value):
@@ -743,6 +746,9 @@ class GenericReferenceField(BaseField):
         return {'_cls': document._class_name, '_ref': ref}
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return None
+
         return self.to_mongo(value)
 
 
