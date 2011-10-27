@@ -5,7 +5,8 @@ Upgrading
 0.5 to 0.6
 ==========
 
-TBC
+Embedded Documents - if you had a `pk` field you will have to rename it from `_id`
+to `pk` as pk is no longer a property of Embedded Documents.
 
 0.4 to 0.5
 ===========

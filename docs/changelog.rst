@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed accessing pk on an embedded document
 - Fixed calling a queryset after drop_collection now recreates the collection
 - Add field name to validation exception messages
 - Added UUID field
