@@ -739,18 +739,20 @@ class QuerySet(object):
         """
         self.__call__(*q_objs, **query)
         try:
-            result1 = self[0]
-        except IndexError:
+            result1 = self.next()
+        except StopIteration:
             raise self._document.DoesNotExist("%s matching query does not exist."
                                               % self._document._class_name)
         try:
-            result2 = self[1]
-        except IndexError:
+            result2 = self.next()
+        except StopIteration:
             return result1
+
+        self.rewind()
         message = u'%d items returned, instead of 1' % self.count()
         raise self._document.MultipleObjectsReturned(message)
 
-    def get_or_create(self, write_options=None, *q_objs, **query):
+    def get_or_create(self, write_options=None, auto_save=True, *q_objs, **query):
         """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
         ``(object, created)``, where ``object`` is the retrieved or created object
         and ``created`` is a boolean specifying whether a new object was created. Raises
@@ -765,23 +767,25 @@ class QuerySet(object):
             Passes any write_options onto :meth:`~mongoengine.Document.save`
 
         .. versionadded:: 0.3
+
+        :param auto_save: if the object is to be saved automatically if not found.
+
+        .. versionadded:: 0.6
         """
         defaults = query.get('defaults', {})
         if 'defaults' in query:
             del query['defaults']
 
-        self.__call__(*q_objs, **query)
-        count = self.count()
-        if count == 0:
+        try:
+            doc = self.get(*q_objs, **query)
+            return doc, False
+        except self._document.DoesNotExist:
             query.update(defaults)
             doc = self._document(**query)
-            doc.save(write_options=write_options)
+
+            if auto_save:
+                doc.save(write_options=write_options)
             return doc, True
-        elif count == 1:
-            return self.first(), False
-        else:
-            message = u'%d items returned, instead of 1' % count
-            raise self._document.MultipleObjectsReturned(message)
 
     def create(self, **kwargs):
         """Create new object. Returns the saved object instance.
