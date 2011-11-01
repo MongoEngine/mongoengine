@@ -1648,10 +1648,16 @@ class QuerySet(object):
 
     def __repr__(self):
         limit = REPR_OUTPUT_SIZE + 1
-        if self._limit is not None and self._limit < limit:
-            limit = self._limit
+        start = ( 0 if self._skip is None else self._skip )
+        if self._limit is None:
+            stop = start + limit
+        if self._limit is not None:
+            if self._limit - start > limit:
+                stop = start + limit
+            else:
+                stop = self._limit
         try:
-            data = list(self[self._skip:limit])
+            data = list(self[start:stop])
         except pymongo.errors.InvalidOperation:
             return ".. queryset mid-iteration .."
         if len(data) > REPR_OUTPUT_SIZE:
