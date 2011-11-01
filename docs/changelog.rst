@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed __repr__ of a sliced queryset
 - Added recursive validation error of documents / complex fields
 - Fixed breaking during queryset iteration
 - Added pre and post bulk-insert signals

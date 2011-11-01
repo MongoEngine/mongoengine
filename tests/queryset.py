@@ -110,6 +110,16 @@ class QuerySetTest(unittest.TestCase):
         people = list(self.Person.objects[80000:80001])
         self.assertEqual(len(people), 0)
 
+        # Test larger slice __repr__
+        self.Person.objects.delete()
+        for i in xrange(55):
+            self.Person(name='A%s' % i, age=i).save()
+
+        self.assertEqual(len(self.Person.objects), 55)
+        self.assertEqual("Person object", "%s" % self.Person.objects[0])
+        self.assertEqual("[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[1:3])
+        self.assertEqual("[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[51:53])
+
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
         """
