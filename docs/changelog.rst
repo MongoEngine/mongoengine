@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed breaking during queryset iteration
 - Added pre and post bulk-insert signals
 - Added ImageField - requires PIL
 - Fixed Reference Fields can be None in get_or_create / queries
