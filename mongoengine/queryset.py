@@ -1365,6 +1365,7 @@ class QuerySet(object):
             raise OperationError(u'Update failed [%s]' % unicode(e))
 
     def __iter__(self):
+        self.rewind()
         return self
 
     def _sub_js_fields(self, code):
