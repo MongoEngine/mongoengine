@@ -54,20 +54,17 @@ class StringField(BaseField):
         return unicode(value)
 
     def validate(self, value):
-        assert isinstance(value, (str, unicode))
+        if not isinstance(value, (str, unicode)):
+            self.error('StringField only accepts string values')
 
         if self.max_length is not None and len(value) > self.max_length:
-            raise ValidationError('String value is too long ("%s")' %
-                                  self.name)
+            self.error('String value is too long')
 
         if self.min_length is not None and len(value) < self.min_length:
-            raise ValidationError('String value is too short ("%s")' %
-                                  self.name)
+            self.error('String value is too short')
 
         if self.regex is not None and self.regex.match(value) is None:
-            message = 'String value did not match validation regex ("%s")' % \
-                       self.name
-            raise ValidationError(message)
+            self.error('String value did not match validation regex')
 
     def lookup_member(self, member_name):
         return None
@@ -117,18 +114,15 @@ class URLField(StringField):
 
     def validate(self, value):
         if not URLField.URL_REGEX.match(value):
-            raise ValidationError('Invalid URL: %s ("%s")' % (value,
-                                  self.name))
+            self.error('Invalid URL: %s' % value)
 
         if self.verify_exists:
             import urllib2
             try:
                 request = urllib2.Request(value)
-                response = urllib2.urlopen(request)
+                urllib2.urlopen(request)
             except Exception, e:
-                message = 'This URL appears to be a broken link: %s ("%s")' % (
-                          e, self.name)
-                raise ValidationError(message)
+                self.error('This URL appears to be a broken link: %s' % e)
 
 
 class EmailField(StringField):
@@ -145,8 +139,7 @@ class EmailField(StringField):
 
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
-            raise ValidationError('Invalid Mail-address: %s ("%s")' % (value,
-                                  self.name))
+            self.error('Invalid Mail-address: %s' % value)
 
 
 class IntField(BaseField):
@@ -164,16 +157,13 @@ class IntField(BaseField):
         try:
             value = int(value)
         except:
-            raise ValidationError('%s could not be converted to int ("%s")' % (
-                                  value, self.name))
+            self.error('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Integer value is too small ("%s")' %
-                                  self.name)
+            self.error('Integer value is too small')
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Integer value is too large ("%s")' %
-                                  self.name)
+            self.error('Integer value is too large')
 
     def prepare_query_value(self, op, value):
         return int(value)
@@ -193,15 +183,14 @@ class FloatField(BaseField):
     def validate(self, value):
         if isinstance(value, int):
             value = float(value)
-        assert isinstance(value, float)
+        if not isinstance(value, float):
+            self.error('FoatField only accepts float values')
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Float value is too small ("%s")' %
-                                  self.name)
+            self.error('Float value is too small')
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Float value is too large ("%s")' %
-                                  self.name)
+            self.error('Float value is too large')
 
     def prepare_query_value(self, op, value):
         return float(value)
@@ -232,16 +221,13 @@ class DecimalField(BaseField):
             try:
                 value = decimal.Decimal(value)
             except Exception, exc:
-                raise ValidationError('Could not convert value to decimal: %s'
-                                      '("%s")' % (exc, self.name))
+                self.error('Could not convert value to decimal: %s' % exc)
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Decimal value is too small ("%s")' %
-                                  self.name)
+            self.error('Decimal value is too small')
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Decimal value is too large ("%s")' %
-                                  self.name)
+            self.error('Decimal value is too large')
 
 
 class BooleanField(BaseField):
@@ -254,7 +240,8 @@ class BooleanField(BaseField):
         return bool(value)
 
     def validate(self, value):
-        assert isinstance(value, bool)
+        if not isinstance(value, bool):
+            self.error('BooleanField only accepts boolean values')
 
 
 class DateTimeField(BaseField):
@@ -267,7 +254,8 @@ class DateTimeField(BaseField):
     """
 
     def validate(self, value):
-        assert isinstance(value, (datetime.datetime, datetime.date))
+        if not isinstance(value, (datetime.datetime, datetime.date)):
+            self.error(u'cannot parse date "%s"' % value)
 
     def to_mongo(self, value):
         return self.prepare_query_value(None, value)
@@ -388,8 +376,8 @@ class ComplexDateTimeField(StringField):
 
     def validate(self, value):
         if not isinstance(value, datetime.datetime):
-            raise ValidationError('Only datetime objects may used in a '
-                                  'ComplexDateTimeField ("%s")' % self.name)
+            self.error('Only datetime objects may used in a '
+                       'ComplexDateTimeField')
 
     def to_python(self, value):
         return self._convert_from_string(value)
@@ -409,9 +397,8 @@ class EmbeddedDocumentField(BaseField):
     def __init__(self, document_type, **kwargs):
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, EmbeddedDocument):
-                raise ValidationError('Invalid embedded document class '
-                                      'provided to an EmbeddedDocumentField '
-                                      '("%s")' % self.name)
+                self.error('Invalid embedded document class provided to an '
+                           'EmbeddedDocumentField')
         self.document_type_obj = document_type
         super(EmbeddedDocumentField, self).__init__(**kwargs)
 
@@ -440,9 +427,8 @@ class EmbeddedDocumentField(BaseField):
         """
         # Using isinstance also works for subclasses of self.document
         if not isinstance(value, self.document_type):
-            raise ValidationError('Invalid embedded document instance '
-                                  'provided to an EmbeddedDocumentField '
-                                  '("%s")' % self.name)
+            self.error('Invalid embedded document instance provided to an '
+                       'EmbeddedDocumentField')
         self.document_type.validate(value)
 
     def lookup_member(self, member_name):
@@ -471,9 +457,8 @@ class GenericEmbeddedDocumentField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, EmbeddedDocument):
-            raise ValidationError('Invalid embedded document instance '
-                                  'provided to an GenericEmbeddedDocumentField '
-                                  '("%s")' % self.name)
+            self.error('Invalid embedded document instance provided to an '
+                       'GenericEmbeddedDocumentField')
 
         value.validate()
 
@@ -508,8 +493,7 @@ class ListField(ComplexBaseField):
         """
         if (not isinstance(value, (list, tuple)) or
             isinstance(value, basestring)):
-            raise ValidationError('Only lists and tuples may be used in a '
-                                  'list field ("%s")' % self.name)
+            self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
@@ -557,7 +541,8 @@ class DictField(ComplexBaseField):
     def __init__(self, basecls=None, field=None, *args, **kwargs):
         self.field = field
         self.basecls = basecls or BaseField
-        assert issubclass(self.basecls, BaseField)
+        if not issubclass(self.basecls, BaseField):
+            self.error('DictField only accepts dict values')
         kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
 
@@ -565,13 +550,11 @@ class DictField(ComplexBaseField):
         """Make sure that a list of valid fields is being used.
         """
         if not isinstance(value, dict):
-            raise ValidationError('Only dictionaries may be used in a '
-                                  'DictField ("%s")' % self.name)
+            self.error('Only dictionaries may be used in a DictField')
 
         if any(('.' in k or '$' in k) for k in value):
-            raise ValidationError('Invalid dictionary key name - keys may not '
-                                  'contain "." or "$" characters ("%s")' %
-                                  self.name)
+            self.error('Invalid dictionary key name - keys may not contain "."'
+                       ' or "$" characters')
         super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
@@ -598,10 +581,9 @@ class MapField(DictField):
 
     def __init__(self, field=None, *args, **kwargs):
         if not isinstance(field, BaseField):
-            raise ValidationError('Argument to MapField constructor must be '
-                                  'a valid field')
+            self.error('Argument to MapField constructor must be a valid '
+                       'field')
         super(MapField, self).__init__(field=field, *args, **kwargs)
-
 
 
 class ReferenceField(BaseField):
@@ -629,8 +611,8 @@ class ReferenceField(BaseField):
         """
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
-                raise ValidationError('Argument to ReferenceField constructor '
-                                      'must be a document class or a string')
+                self.error('Argument to ReferenceField constructor must be a '
+                           'document class or a string')
         self.document_type_obj = document_type
         self.reverse_delete_rule = reverse_delete_rule
         super(ReferenceField, self).__init__(**kwargs)
@@ -669,8 +651,8 @@ class ReferenceField(BaseField):
             # We need the id from the saved object to create the DBRef
             id_ = document.id
             if id_ is None:
-                raise ValidationError('You can only reference documents once '
-                                      'they have been saved to the database')
+                self.error('You can only reference documents once they have'
+                           ' been saved to the database')
         else:
             id_ = document
 
@@ -685,13 +667,12 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
-        assert isinstance(value, (self.document_type, pymongo.dbref.DBRef))
+        if not isinstance(value, (self.document_type, pymongo.dbref.DBRef)):
+            self.error('A ReferenceField only accepts DBRef')
 
         if isinstance(value, Document) and value.id is None:
-            raise ValidationError('You can only reference documents once '
-                                  'they have been saved to the database '
-                                  '("%s")' % self.name)
-
+            self.error('You can only reference documents once they have been '
+                       'saved to the database')
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -719,14 +700,12 @@ class GenericReferenceField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, (Document, pymongo.dbref.DBRef)):
-            raise ValidationError('GenericReferences can only contain '
-                                  'documents ("%s")' % self.name)
+            self.error('GenericReferences can only contain documents')
 
         # We need the id from the saved object to create the DBRef
         if isinstance(value, Document) and value.id is None:
-            raise ValidationError('You can only reference documents once '
-                                  'they have been saved to the database '
-                                  '("%s")' % self.name)
+            self.error('You can only reference documents once they have been'
+                       ' saved to the database')
 
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])
@@ -747,9 +726,8 @@ class GenericReferenceField(BaseField):
             # We need the id from the saved object to create the DBRef
             id_ = document.id
             if id_ is None:
-                raise ValidationError('You can only reference documents once '
-                                      'they have been saved to the database '
-                                      '("%s")' % self.name)
+                self.error('You can only reference documents once they have'
+                           ' been saved to the database')
         else:
             id_ = document
 
@@ -781,11 +759,11 @@ class BinaryField(BaseField):
         return str(value)
 
     def validate(self, value):
-        assert isinstance(value, str)
+        if not isinstance(value, str):
+            self.error('BinaryField only accepts string values')
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
-            raise ValidationError('Binary value is too long ("%s")' %
-                                  self.name)
+            self.error('Binary value is too long')
 
 
 class GridFSError(Exception):
@@ -950,8 +928,10 @@ class FileField(BaseField):
 
     def validate(self, value):
         if value.grid_id is not None:
-            assert isinstance(value, self.proxy_class)
-            assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+            if not isinstance(value, self.proxy_class):
+                self.error('FileField only accepts GridFSProxy values')
+            if not isinstance(value.grid_id, pymongo.objectid.ObjectId):
+                self.error('Invalid GridFSProxy value')
 
 
 class ImageGridFsProxy(GridFSProxy):
@@ -1125,16 +1105,14 @@ class GeoPointField(BaseField):
         """Make sure that a geo-value is of type (x, y)
         """
         if not isinstance(value, (list, tuple)):
-            raise ValidationError('GeoPointField can only accept tuples or '
-                                  'lists of (x, y) ("%s")' % self.name)
+            self.error('GeoPointField can only accept tuples or lists '
+                       'of (x, y)')
 
         if not len(value) == 2:
-            raise ValidationError('Value must be a two-dimensional point '
-                                  '("%s")' % self.name)
+            self.error('Value must be a two-dimensional point')
         if (not isinstance(value[0], (float, int)) and
             not isinstance(value[1], (float, int))):
-            raise ValidationError('Both values in point must be float or int '
-                                  '("%s")' % self.name)
+            self.error('Both values in point must be float or int')
 
 
 class SequenceField(IntField):
@@ -1221,4 +1199,4 @@ class UUIDField(BaseField):
             try:
                 value = uuid.UUID(value)
             except Exception, exc:
-                raise ValidationError('Could not convert to UUID: %s' % exc)
+                self.error('Could not convert to UUID: %s' % exc)
