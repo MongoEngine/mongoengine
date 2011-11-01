@@ -52,23 +52,22 @@ class ValidationError(AssertionError):
 
     message = property(_get_message, _set_message)
 
-    @property
-    def schema(self):
-        def get_schema(source):
+    def to_dict(self):
+        def build_dict(source):
             errors_dict = {}
             if not source:
                 return errors_dict
             if isinstance(source, dict):
                 for field_name, error in source.iteritems():
-                    errors_dict[field_name] = get_schema(error)
+                    errors_dict[field_name] = build_dict(error)
             elif isinstance(source, ValidationError) and source.errors:
-                return get_schema(source.errors)
+                return build_dict(source.errors)
             else:
                 return unicode(source)
             return errors_dict
         if not self.errors:
             return {}
-        return get_schema(self.errors)
+        return build_dict(self.errors)
 
 
 _document_registry = {}

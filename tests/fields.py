@@ -1642,7 +1642,7 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(person.like, Dish))
 
     def test_recursive_validation(self):
-        """Ensure that a validation result schema is available.
+        """Ensure that a validation result to_dict is available.
         """
         class Author(EmbeddedDocument):
             name = StringField(required=True)
@@ -1674,12 +1674,12 @@ class FieldTest(unittest.TestCase):
                         ValidationError))
 
         # ValidationError.schema property
-        schema = error.schema
-        self.assertTrue(isinstance(schema, dict))
-        self.assertTrue('comments' in schema)
-        self.assertTrue(1 in schema['comments'])
-        self.assertTrue('content' in schema['comments'][1])
-        self.assertEquals(schema['comments'][1]['content'],
+        error_dict = error.to_dict()
+        self.assertTrue(isinstance(error_dict, dict))
+        self.assertTrue('comments' in error_dict)
+        self.assertTrue(1 in error_dict['comments'])
+        self.assertTrue('content' in error_dict['comments'][1])
+        self.assertEquals(error_dict['comments'][1]['content'],
                           u'Field is required ("content")')
 
         post.comments[1].content = 'here we go'
@@ -1688,25 +1688,25 @@ class FieldTest(unittest.TestCase):
 
 class ValidatorErrorTest(unittest.TestCase):
 
-    def test_schema(self):
-        """Ensure a ValidationError handles error schema correctly.
+    def test_to_dict(self):
+        """Ensure a ValidationError handles error to_dict correctly.
         """
         error = ValidationError('root')
-        self.assertEquals(error.schema, {})
+        self.assertEquals(error.to_dict(), {})
 
         # 1st level error schema
         error.errors = {'1st': ValidationError('bad 1st'), }
-        self.assertTrue('1st' in error.schema)
-        self.assertEquals(error.schema['1st'], 'bad 1st')
+        self.assertTrue('1st' in error.to_dict())
+        self.assertEquals(error.to_dict()['1st'], 'bad 1st')
 
         # 2nd level error schema
         error.errors = {'1st': ValidationError('bad 1st', errors={
             '2nd': ValidationError('bad 2nd'),
         })}
-        self.assertTrue('1st' in error.schema)
-        self.assertTrue(isinstance(error.schema['1st'], dict))
-        self.assertTrue('2nd' in error.schema['1st'])
-        self.assertEquals(error.schema['1st']['2nd'], 'bad 2nd')
+        self.assertTrue('1st' in error.to_dict())
+        self.assertTrue(isinstance(error.to_dict()['1st'], dict))
+        self.assertTrue('2nd' in error.to_dict()['1st'])
+        self.assertEquals(error.to_dict()['1st']['2nd'], 'bad 2nd')
 
         # moar levels
         error.errors = {'1st': ValidationError('bad 1st', errors={
@@ -1716,11 +1716,11 @@ class ValidatorErrorTest(unittest.TestCase):
                 }),
             }),
         })}
-        self.assertTrue('1st' in error.schema)
-        self.assertTrue('2nd' in error.schema['1st'])
-        self.assertTrue('3rd' in error.schema['1st']['2nd'])
-        self.assertTrue('4th' in error.schema['1st']['2nd']['3rd'])
-        self.assertEquals(error.schema['1st']['2nd']['3rd']['4th'],
+        self.assertTrue('1st' in error.to_dict())
+        self.assertTrue('2nd' in error.to_dict()['1st'])
+        self.assertTrue('3rd' in error.to_dict()['1st']['2nd'])
+        self.assertTrue('4th' in error.to_dict()['1st']['2nd']['3rd'])
+        self.assertEquals(error.to_dict()['1st']['2nd']['3rd']['4th'],
                           'Inception')
 
 
