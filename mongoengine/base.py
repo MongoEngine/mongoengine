@@ -1080,10 +1080,10 @@ class BaseDocument(object):
 
     def __repr__(self):
         try:
-            u = unicode(self)
+            u = unicode(self).encode('utf-8')
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = '[Bad Unicode data]'
-        return u'<%s: %s>' % (self.__class__.__name__, u)
+        return '<%s: %s>' % (self.__class__.__name__, u)
 
     def __str__(self):
         if hasattr(self, '__unicode__'):
