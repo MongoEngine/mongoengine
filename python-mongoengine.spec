@@ -5,8 +5,8 @@
 %define srcname mongoengine
 
 Name:           python-%{srcname}
-Version:        0.5.0
-Release:        2%{?dist}
+Version:        0.5.3
+Release:        1%{?dist}
 Summary:        A Python Document-Object Mapper for working with MongoDB
 
 Group:          Development/Libraries
@@ -20,6 +20,7 @@ BuildRequires:  python-setuptools
 Requires:       mongodb
 Requires:       pymongo
 Requires:       python-blinker
+Requires:       python-imaging
 
 %description
 MongoEngine is an ORM-like layer on top of PyMongo.
@@ -49,5 +50,12 @@ rm -rf $RPM_BUILD_ROOT
 # %{python_sitearch}/*
 
 %changelog
+* Thu Oct 27 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.3-1
+- Update to latest dev version
+* Add PIL dependency for ImageField
+
+* Wed Oct 12 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.2-1
+- Update version
+
 * Fri Sep 23 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.0-1
 - Initial version
