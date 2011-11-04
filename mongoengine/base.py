@@ -146,6 +146,7 @@ class BaseField(object):
 
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
+
         if value is None:
             value = self.default
             # Allow callable default values
@@ -192,11 +193,16 @@ class BaseField(object):
         pass
 
     def _validate(self, value):
+
         # check choices
         if self.choices is not None:
-            option_keys = [option_key for option_key, option_value in self.choices]
-            if value not in option_keys:
-                self.error('Value must be one of %s' % unicode(option_keys))
+    	    if type(choices[0]) is tuple:
+                    option_keys = [option_key for option_key, option_value in self.choices]
+                    if value not in option_keys:
+                        self.error('Value must be one of %s' % unicode(option_keys))
+    	    else:
+    	        if value not in self.choices:
+                    self.error('Value must be one of %s' % unicode(option_keys))
 
         # check validation argument
         if self.validation is not None:
