@@ -135,7 +135,28 @@ arguments can be set on all fields:
     When True, use this field as a primary key for the collection.
 
 :attr:`choices` (Default: None)
-    An iterable of choices to which the value of this field should be limited.
+    An iterable (e.g. a list or tuple) of choices to which the value of this
+    field should be limited.
+
+    Can be either be a nested tuples of value (stored in mongo) and a
+    human readable key ::
+
+        SIZE = (('S', 'Small'),
+                ('M', 'Medium'),
+                ('L', 'Large'),
+                ('XL', 'Extra Large'),
+                ('XXL', 'Extra Extra Large'))
+
+
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=SIZE)
+
+    Or a flat iterable just containing values ::
+
+        SIZE = ('S', 'M', 'L', 'XL', 'XXL')
+
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=SIZE)
 
 :attr:`help_text` (Default: None)
     Optional help text to output with the field - used by form libraries
