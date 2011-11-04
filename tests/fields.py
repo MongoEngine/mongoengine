@@ -1280,6 +1280,53 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_simple_choices_validation(self):
+        """Ensure that value is in a container of allowed values.
+        """
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=('S', 'M', 'L', 'XL', 'XXL'))
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+        shirt.validate()
+
+        shirt.size = "S"
+        shirt.validate()
+
+        shirt.size = "XS"
+        self.assertRaises(ValidationError, shirt.validate)
+
+        Shirt.drop_collection()
+
+    def test_simple_choices_get_field_display(self):
+        """Test dynamic helper for returning the display value of a choices field.
+        """
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=('S', 'M', 'L', 'XL', 'XXL'))
+            style = StringField(max_length=3, choices=('Small', 'Baggy', 'wide'), default='Small')
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+
+        self.assertEqual(shirt.get_size_display(), None)
+        self.assertEqual(shirt.get_style_display(), 'Small')
+
+        shirt.size = "XXL"
+        shirt.style = "Baggy"
+        self.assertEqual(shirt.get_size_display(), 'XXL')
+        self.assertEqual(shirt.get_style_display(), 'Baggy')
+
+        # Set as Z - an invalid choice
+        shirt.size = "Z"
+        shirt.style = "Z"
+        self.assertEqual(shirt.get_size_display(), 'Z')
+        self.assertEqual(shirt.get_style_display(), 'Z')
+        self.assertRaises(ValidationError, shirt.validate)
+
+        Shirt.drop_collection()
+
     def test_file_fields(self):
         """Ensure that file fields can be written to and their data retrieved
         """

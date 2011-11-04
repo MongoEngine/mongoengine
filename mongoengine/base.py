@@ -195,14 +195,14 @@ class BaseField(object):
     def _validate(self, value):
 
         # check choices
-        if self.choices is not None:
-    	    if type(choices[0]) is tuple:
-                    option_keys = [option_key for option_key, option_value in self.choices]
-                    if value not in option_keys:
-                        self.error('Value must be one of %s' % unicode(option_keys))
-    	    else:
-    	        if value not in self.choices:
+        if self.choices:
+            if isinstance(self.choices[0], (list, tuple)):
+                option_keys = [option_key for option_key, option_value in self.choices]
+                if value not in option_keys:
                     self.error('Value must be one of %s' % unicode(option_keys))
+            else:
+                if value not in self.choices:
+                    self.error('Value must be one of %s' % unicode(self.choices))
 
         # check validation argument
         if self.validation is not None:
@@ -1051,7 +1051,9 @@ class BaseDocument(object):
     def __get_field_display(self, field):
         """Returns the display value for a choice field"""
         value = getattr(self, field.name)
-        return dict(field.choices).get(value, value)
+        if field.choices and isinstance(field.choices[0], (list, tuple)):
+            return dict(field.choices).get(value, value)
+        return value
 
     def __iter__(self):
         return iter(self._fields)

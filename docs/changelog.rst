@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added Non-Django Style choices back (you can have either)
 - Fixed __repr__ of a sliced queryset
 - Added recursive validation error of documents / complex fields
 - Fixed breaking during queryset iteration
