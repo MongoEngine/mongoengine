@@ -378,6 +378,34 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(OperationError, update_nested)
         Simple.drop_collection()
 
+    def test_update_using_positional_operator_embedded_document(self):
+        """Ensure that the embedded documents can be updated using the positional
+        operator."""
+
+        class Vote(EmbeddedDocument):
+            score = IntField()
+
+        class Comment(EmbeddedDocument):
+            by = StringField()
+            votes = EmbeddedDocumentField(Vote)
+
+        class BlogPost(Document):
+            title = StringField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        BlogPost.drop_collection()
+
+        c1 = Comment(by="joe", votes=Vote(score=3))
+        c2 = Comment(by="jane", votes=Vote(score=7))
+
+        BlogPost(title="ABC", comments=[c1, c2]).save()
+
+        BlogPost.objects(comments__by="joe").update(set__comments__S__votes=Vote(score=4))
+
+        post = BlogPost.objects.first()
+        self.assertEquals(post.comments[0].by, 'joe')
+        self.assertEquals(post.comments[0].votes.score, 4)
+
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""
         class Member(EmbeddedDocument):

@@ -1276,8 +1276,8 @@ class QuerySet(object):
                 parts = []
 
                 cleaned_fields = []
-                append_field = True
                 for field in fields:
+                    append_field = True
                     if isinstance(field, str):
                         # Convert the S operator to $
                         if field == 'S':
