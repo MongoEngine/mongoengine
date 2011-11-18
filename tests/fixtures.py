@@ -1,9 +1,6 @@
 from datetime import datetime
-import pymongo
 
 from mongoengine import *
-from mongoengine.base import BaseField
-from mongoengine.connection import _get_db
 
 
 class PickleEmbedded(EmbeddedDocument):

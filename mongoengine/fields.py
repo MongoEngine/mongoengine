@@ -13,7 +13,7 @@ from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document)
 from queryset import DO_NOTHING
 from document import Document, EmbeddedDocument
-from connection import _get_db
+from connection import get_db
 from operator import itemgetter
 
 
@@ -637,7 +637,7 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         # Dereference DBRefs
         if isinstance(value, (pymongo.dbref.DBRef)):
-            value = _get_db().dereference(value)
+            value = get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
 
@@ -710,7 +710,7 @@ class GenericReferenceField(BaseField):
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])
         reference = value['_ref']
-        doc = _get_db().dereference(reference)
+        doc = get_db().dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
         return doc
@@ -780,7 +780,7 @@ class GridFSProxy(object):
 
     def __init__(self, grid_id=None, key=None,
                  instance=None, collection_name='fs'):
-        self.fs = gridfs.GridFS(_get_db(), collection_name)  # Filesystem instance
+        self.fs = gridfs.GridFS(get_db(), collection_name)  # Filesystem instance
         self.newfile = None                 # Used for partial writes
         self.grid_id = grid_id              # Store GridFS id for file
         self.gridout = None
@@ -1138,7 +1138,7 @@ class SequenceField(IntField):
         """
         sequence_id = "{0}.{1}".format(self.owner_document._get_collection_name(),
                                        self.name)
-        collection = _get_db()[self.collection_name]
+        collection = get_db()[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
                                              update={"$inc": {"next": 1}},
                                              new=True,

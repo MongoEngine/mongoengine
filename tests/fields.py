@@ -6,7 +6,7 @@ import uuid
 from decimal import Decimal
 
 from mongoengine import *
-from mongoengine.connection import _get_db
+from mongoengine.connection import get_db
 from mongoengine.base import _document_registry, NotRegistered
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
@@ -16,7 +16,7 @@ class FieldTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        self.db = _get_db()
+        self.db = get_db()
 
     def test_default_values(self):
         """Ensure that default field values are used when creating a document.

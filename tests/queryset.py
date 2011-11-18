@@ -7,7 +7,7 @@ from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
                                   QueryFieldList)
 from mongoengine import *
-from mongoengine.connection import _get_connection
+from mongoengine.connection import get_connection
 from mongoengine.tests import query_counter
 
 
@@ -2276,7 +2276,7 @@ class QuerySetTest(unittest.TestCase):
 
         # check that polygon works for users who have a server >= 1.9
         server_version = tuple(
-            _get_connection().server_info()['version'].split('.')
+            get_connection().server_info()['version'].split('.')
         )
         required_version = tuple("1.9.0".split("."))
         if server_version >= required_version:

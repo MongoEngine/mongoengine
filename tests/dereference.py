@@ -1,7 +1,7 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.connection import _get_db
+from mongoengine.connection import get_db
 from mongoengine.tests import query_counter
 
 
@@ -9,7 +9,7 @@ class FieldTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        self.db = _get_db()
+        self.db = get_db()
 
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.

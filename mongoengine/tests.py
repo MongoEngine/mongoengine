@@ -1,4 +1,4 @@
-from mongoengine.connection import _get_db
+from mongoengine.connection import get_db
 
 
 class query_counter(object):
@@ -7,7 +7,7 @@ class query_counter(object):
     def __init__(self):
         """ Construct the query_counter. """
         self.counter = 0
-        self.db = _get_db()
+        self.db = get_db()
 
     def __enter__(self):
         """ On every with block we need to drop the profile collection. """

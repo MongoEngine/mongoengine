@@ -1,14 +1,14 @@
-import operator
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError, BaseDict, BaseList, BaseDynamicField)
 from queryset import OperationError
-from connection import _get_db
+from connection import get_db
 
 import pymongo
 
-__all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument', 'DynamicEmbeddedDocument',
-           'ValidationError', 'OperationError', 'InvalidCollectionError']
+__all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
+           'DynamicEmbeddedDocument', 'ValidationError', 'OperationError',
+           'InvalidCollectionError']
 
 
 class InvalidCollectionError(Exception):
@@ -76,7 +76,7 @@ class Document(BaseDocument):
     by setting index_types to False on the meta dictionary for the document.
     """
     __metaclass__ = TopLevelDocumentMetaclass
-    
+
     @apply
     def pk():
         """Primary key alias
@@ -91,7 +91,7 @@ class Document(BaseDocument):
     def _get_collection(self):
         """Returns the collection for the document."""
         if not hasattr(self, '_collection') or self._collection is None:
-            db = _get_db()
+            db = get_db()
             collection_name = self._get_collection_name()
             # Create collection as a capped collection if specified
             if self._meta['max_size'] or self._meta['max_documents']:
@@ -300,7 +300,7 @@ class Document(BaseDocument):
         :class:`~mongoengine.Document` type from the database.
         """
         from mongoengine.queryset import QuerySet
-        db = _get_db()
+        db = get_db()
         db.drop_collection(cls._get_collection_name())
         QuerySet._reset_already_indexed(cls)
 

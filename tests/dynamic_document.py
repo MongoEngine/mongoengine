@@ -1,13 +1,14 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.connection import _get_db
+from mongoengine.connection import get_db
+
 
 class DynamicDocTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        self.db = _get_db()
+        self.db = get_db()
 
         class Person(DynamicDocument):
             name = StringField()

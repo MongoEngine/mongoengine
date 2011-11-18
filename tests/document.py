@@ -5,22 +5,18 @@ import warnings
 
 from datetime import datetime
 
-import pymongo
-import pickle
-import weakref
-
 from fixtures import Base, Mixin, PickleEmbedded, PickleTest
 
 from mongoengine import *
-from mongoengine.base import _document_registry, NotRegistered, InvalidDocumentError
-from mongoengine.connection import _get_db
+from mongoengine.base import NotRegistered, InvalidDocumentError
+from mongoengine.connection import get_db
 
 
 class DocumentTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        self.db = _get_db()
+        self.db = get_db()
 
         class Person(Document):
             name = StringField()

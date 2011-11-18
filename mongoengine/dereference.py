@@ -1,10 +1,8 @@
-import operator
-
 import pymongo
 
 from base import BaseDict, BaseList, get_document, TopLevelDocumentMetaclass
 from fields import ReferenceField
-from connection import _get_db
+from connection import get_db
 from queryset import QuerySet
 from document import Document
 
@@ -103,7 +101,7 @@ class DeReference(object):
                 for key, doc in references.iteritems():
                     object_map[key] = doc
             else:  # Generic reference: use the refs data to convert to document
-                references = _get_db()[col].find({'_id': {'$in': refs}})
+                references = get_db()[col].find({'_id': {'$in': refs}})
                 for ref in references:
                     if '_cls' in ref:
                         doc = get_document(ref['_cls'])._from_son(ref)

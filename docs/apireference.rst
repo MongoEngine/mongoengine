@@ -6,6 +6,7 @@ Connecting
 ==========
 
 .. autofunction:: mongoengine.connect
+.. autofunction:: mongoengine.register_connection
 
 Documents
 =========
