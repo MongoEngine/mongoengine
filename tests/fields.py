@@ -1503,6 +1503,34 @@ class FieldTest(unittest.TestCase):
 
         t.image.delete()
 
+
+    def test_file_multidb(self):
+        register_connection('testfiles', 'testfiles')
+        class TestFile(Document):
+            name = StringField()
+            file = FileField(db_alias="testfiles",
+                             collection_name="macumba")
+
+        TestFile.drop_collection()
+
+        # delete old filesystem
+        get_db("testfiles").macumba.files.drop()
+        get_db("testfiles").macumba.chunks.drop()
+
+        # First instance
+        testfile = TestFile()
+        testfile.name = "Hello, World!"
+        testfile.file.put('Hello, World!',
+                          name="hello.txt")
+        testfile.save()
+
+        data = get_db("testfiles").macumba.files.find_one()
+        self.assertEquals(data.get('name'), 'hello.txt')
+
+        testfile = TestFile.objects.first()
+        self.assertEquals(testfile.file.read(),
+                          'Hello, World!')
+
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
