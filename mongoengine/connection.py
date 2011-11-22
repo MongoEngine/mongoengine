@@ -1,7 +1,8 @@
 from pymongo import Connection
 
 
-__all__ = ['ConnectionError', 'connect', 'register_connection']
+__all__ = ['ConnectionError', 'connect', 'register_connection',
+           'DEFAULT_CONNECTION_NAME']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
