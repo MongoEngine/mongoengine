@@ -2360,6 +2360,36 @@ class DocumentTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
+    def test_mutating_documents(self):
+
+        class B(EmbeddedDocument):
+            field1 = StringField(default='field1')
+
+        class A(Document):
+            b = EmbeddedDocumentField(B, default=lambda: B())
+
+        A.drop_collection()
+        a = A()
+        a.save()
+        a.reload()
+        self.assertEquals(a.b.field1, 'field1')
+
+        class C(EmbeddedDocument):
+            c_field = StringField(default='cfield')
+
+        class B(EmbeddedDocument):
+            field1 = StringField(default='field1')
+            field2 = EmbeddedDocumentField(C, default=lambda: C())
+
+        class A(Document):
+            b = EmbeddedDocumentField(B, default=lambda: B())
+
+        a = A.objects()[0]
+        a.b.field2.c_field = 'new value'
+        a.save()
+
+        a.reload()
+        self.assertEquals(a.b.field2.c_field, 'new value')
 
 if __name__ == '__main__':
     unittest.main()

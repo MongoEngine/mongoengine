@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed document mutation saving issue
 - Fixed positional operator when replacing embedded documents
 - Added Non-Django Style choices back (you can have either)
 - Fixed __repr__ of a sliced queryset

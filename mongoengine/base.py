@@ -883,14 +883,21 @@ class BaseDocument(object):
                     """.strip() % class_name)
             cls = subclasses[class_name]
 
+        changed_fields = []
         for field_name, field in cls._fields.items():
             if field.db_field in data:
                 value = data[field.db_field]
                 data[field_name] = (value if value is None
                                     else field.to_python(value))
+            elif field.default:
+                default = field.default
+                if callable(default):
+                    default = default()
+                if isinstance(default, BaseDocument):
+                    changed_fields.append(field_name)
 
         obj = cls(**data)
-        obj._changed_fields = []
+        obj._changed_fields = changed_fields
         return obj
 
     def _mark_as_changed(self, key):
