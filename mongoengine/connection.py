@@ -45,9 +45,23 @@ def register_connection(alias, name, host='localhost', port=27017,
     }
 
 
-def get_connection(alias=DEFAULT_CONNECTION_NAME):
+def disconnect(alias=DEFAULT_CONNECTION_NAME):
+    global _connections
+    global _dbs
+
+    if alias in _connections:
+        get_connection(alias=alias).disconnect()
+        del _connections[alias]
+    if alias in _dbs:
+        del _dbs[alias]
+
+
+def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     global _connections
     # Connect to the database if not already connected
+    if reconnect:
+        disconnect(alias)
+
     if alias not in _connections:
         if alias not in _connection_settings:
             msg = 'Connection with alias "%s" has not been defined'
@@ -70,8 +84,11 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME):
     return _connections[alias]
 
 
-def get_db(alias=DEFAULT_CONNECTION_NAME):
+def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     global _dbs
+    if reconnect:
+        disconnect(alias)
+
     if alias not in _dbs:
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
