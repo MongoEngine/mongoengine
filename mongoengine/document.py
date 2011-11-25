@@ -1,14 +1,13 @@
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, BaseDict, BaseList, BaseDynamicField)
+                  BaseDict, BaseList, DataObserver)
 from queryset import OperationError
 from connection import get_db
 
 import pymongo
 
 __all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
-           'DynamicEmbeddedDocument', 'ValidationError', 'OperationError',
-           'InvalidCollectionError']
+           'DynamicEmbeddedDocument', 'OperationError', 'InvalidCollectionError']
 
 
 class InvalidCollectionError(Exception):
@@ -250,31 +249,36 @@ class Document(BaseDocument):
         self._data = dereference(self._data, max_depth)
         return self
 
-    def reload(self):
+    def reload(self, max_depth=1):
         """Reloads all attributes from the database.
 
         .. versionadded:: 0.1.2
+        .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self.__class__.objects(**{id_field: self[id_field]}).first()
-
+        obj = self.__class__.objects(
+                **{id_field: self[id_field]}
+              ).first().select_related(max_depth=max_depth)
         for field in self._fields:
             setattr(self, field, self._reload(field, obj[field]))
         if self._dynamic:
             for name in self._dynamic_fields.keys():
                 setattr(self, name, self._reload(name, obj._data[name]))
-        self._changed_fields = []
+        self._changed_fields = obj._changed_fields
+        return obj
 
     def _reload(self, key, value):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the
         correct instance is linked to self.
         """
         if isinstance(value, BaseDict):
-            value = [(k, self._reload(k,v)) for k,v in value.items()]
-            value = BaseDict(value, instance=self, name=key)
+            value = [(k, self._reload(k, v)) for k, v in value.items()]
+            observer = DataObserver(self, key)
+            value = BaseDict(value, observer)
         elif isinstance(value, BaseList):
             value = [self._reload(key, v) for v in value]
-            value = BaseList(value, instance=self, name=key)
+            observer = DataObserver(self, key)
+            value = BaseList(value, observer)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._changed_fields = []
         return value

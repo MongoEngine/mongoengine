@@ -1675,6 +1675,8 @@ class QuerySet(object):
         .. versionadded:: 0.5
         """
         from dereference import dereference
+        # Make select related work the same for querysets
+        max_depth += 1
         return dereference(self, max_depth=max_depth)
 
 
