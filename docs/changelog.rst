@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed validation of DictField Int keys
 - Added optional cascade saving
 - Fixed dereferencing - max_depth now taken into account
 - Fixed document mutation saving issue
