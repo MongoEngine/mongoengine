@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added optional cascade saving
 - Fixed dereferencing - max_depth now taken into account
 - Fixed document mutation saving issue
 - Fixed positional operator when replacing embedded documents
