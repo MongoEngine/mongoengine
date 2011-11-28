@@ -5,6 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed issue creating indexes with recursive embedded documents
+- Fixed recursive lookup in _unique_with_indexes
 - Fixed passing ComplexField defaults to constructor for ReferenceFields
 - Fixed validation of DictField Int keys
 - Added optional cascade saving

@@ -687,7 +687,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 unique_indexes.append(index)
 
             # Grab any embedded document field unique indexes
-            if field.__class__.__name__ == "EmbeddedDocumentField":
+            if field.__class__.__name__ == "EmbeddedDocumentField" and field.document_type != new_class:
                 field_namespace = "%s." % field_name
                 unique_indexes += cls._unique_with_indexes(field.document_type,
                                     field_namespace)

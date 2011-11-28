@@ -751,6 +751,17 @@ class DocumentTest(unittest.TestCase):
         post1.save()
         BlogPost.drop_collection()
 
+    def test_recursive_embedded_objects_dont_break_indexes(self):
+
+        class RecursiveObject(EmbeddedDocument):
+            obj = EmbeddedDocumentField('self')
+
+        class RecursiveDocument(Document):
+            recursive_obj = EmbeddedDocumentField(RecursiveObject)
+
+        info = RecursiveDocument.objects._collection.index_information()
+        self.assertEqual(info.keys(), ['_id_', '_types_1'])
+
     def test_geo_indexes_recursion(self):
 
         class User(Document):
