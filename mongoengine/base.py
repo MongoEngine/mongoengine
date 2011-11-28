@@ -1147,17 +1147,12 @@ class BaseList(list):
         self.observer = observer
         super(BaseList, self).__init__(list_items)
 
-    def __getattribute__(self, name):
-        if name == 'observer' and not hasattr(self, 'observer'):
-            self.observer = DataObserver(None, None)
-        return super(BaseList, self).__getattribute__(name)
-
     def __setitem__(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseList, self).__setitem__(*args, **kwargs)
 
     def __delitem__(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseList, self).__delitem__(*args, **kwargs)
 
     def __getstate__(self):
@@ -1168,32 +1163,38 @@ class BaseList(list):
         self = state
 
     def append(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).append(*args, **kwargs)
 
     def extend(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).extend(*args, **kwargs)
 
     def insert(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).insert(*args, **kwargs)
 
     def pop(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).pop(*args, **kwargs)
 
     def remove(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).remove(*args, **kwargs)
 
     def reverse(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).reverse(*args, **kwargs)
 
     def sort(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         return super(BaseList, self).sort(*args, **kwargs)
+
+    def _updated(self):
+        try:
+            self.observer.updated()
+        except AttributeError:
+            pass
 
 
 class BaseDict(dict):
@@ -1204,25 +1205,20 @@ class BaseDict(dict):
         self.observer = observer
         super(BaseDict, self).__init__(dict_items)
 
-    def __getattribute__(self, name):
-        if name == 'observer' and not hasattr(self, 'observer'):
-            self.observer = DataObserver(None, None)
-        return super(BaseDict, self).__getattribute__(name)
-
     def __setitem__(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).__setitem__(*args, **kwargs)
 
     def __delete__(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).__delete__(*args, **kwargs)
 
     def __delitem__(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).__delitem__(*args, **kwargs)
 
     def __delattr__(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).__delattr__(*args, **kwargs)
 
     def __getstate__(self):
@@ -1233,17 +1229,22 @@ class BaseDict(dict):
         self = state
 
     def clear(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).clear(*args, **kwargs)
 
     def pop(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).clear(*args, **kwargs)
 
     def popitem(self, *args, **kwargs):
-        self.observer.updated()
+        self._updated()
         super(BaseDict, self).clear(*args, **kwargs)
 
+    def _updated(self):
+        try:
+            self.observer.updated()
+        except AttributeError:
+            pass
 
 if sys.version_info < (2, 5):
     # Prior to Python 2.5, Exception was an old-style class
