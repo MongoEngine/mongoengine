@@ -552,7 +552,9 @@ class DictField(ComplexBaseField):
         if not isinstance(value, dict):
             self.error('Only dictionaries may be used in a DictField')
 
-        if any(('.' in k or '$' in k) for k in value):
+        if any(k for k in value.keys() if not isinstance(k, basestring)):
+            self.error('Invalid dictionary key - documents must have only string keys')
+        if any(('.' in k or '$' in k) for k in value.keys()):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')
         super(DictField, self).validate(value)

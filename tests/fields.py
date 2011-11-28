@@ -636,6 +636,9 @@ class FieldTest(unittest.TestCase):
         post.info = {'the.title': 'test'}
         self.assertRaises(ValidationError, post.validate)
 
+        post.info = {1: 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
         post.info = {'title': 'test'}
         post.save()
 
