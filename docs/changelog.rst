@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed passing ComplexField defaults to constructor for ReferenceFields
 - Fixed validation of DictField Int keys
 - Added optional cascade saving
 - Fixed dereferencing - max_depth now taken into account
