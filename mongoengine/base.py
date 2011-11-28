@@ -157,9 +157,11 @@ class BaseField(object):
         if isinstance(value, (list, tuple)) and not isinstance(value, BaseList):
             observer = DataObserver(instance, self.name)
             value = BaseList(value, observer)
+            instance._data[self.name] = value
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             observer = DataObserver(instance, self.name)
             value = BaseDict(value, observer)
+            instance._data[self.name] = value
         return value
 
     def __set__(self, instance, value):
@@ -749,7 +751,6 @@ class BaseDocument(object):
                 self._data[name] = value
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
-
         super(BaseDocument, self).__setattr__(name, value)
 
     def __expand_dynamic_values(self, name, value):

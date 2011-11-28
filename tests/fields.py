@@ -516,6 +516,21 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
         BlogPost.drop_collection()
 
+    def test_list_field_passed_in_value(self):
+        class Foo(Document):
+            bars = ListField(ReferenceField("Bar"))
+
+        class Bar(Document):
+            text = StringField()
+
+        bar = Bar(text="hi")
+        bar.save()
+
+        foo = Foo(bars=[])
+        foo.bars.append(bar)
+        self.assertEquals(repr(foo.bars), '[<Bar: Bar object>]')
+
+
     def test_list_field_strict(self):
         """Ensure that list field handles validation if provided a strict field type."""
 
