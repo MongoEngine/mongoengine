@@ -640,6 +640,7 @@ class QuerySet(object):
         match_operators = ['contains', 'icontains', 'startswith',
                            'istartswith', 'endswith', 'iendswith',
                            'exact', 'iexact']
+        custom_operators = ['match']
 
         mongo_query = {}
         for key, value in query.items():
@@ -652,7 +653,7 @@ class QuerySet(object):
             parts = [part for part in parts if not part.isdigit()]
             # Check for an operator and transform to mongo-style if there is
             op = None
-            if parts[-1] in operators + match_operators + geo_operators:
+            if parts[-1] in operators + match_operators + geo_operators + custom_operators:
                 op = parts.pop()
 
             negate = False
@@ -685,7 +686,7 @@ class QuerySet(object):
                     if isinstance(field, basestring):
                         if op in match_operators and isinstance(value, basestring):
                             from mongoengine import StringField
-                            value = StringField().prepare_query_value(op, value)
+                            value = StringField.prepare_query_value(op, value)
                         else:
                             value = field
                     else:
@@ -693,7 +694,8 @@ class QuerySet(object):
                 elif op in ('in', 'nin', 'all', 'near'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
-
+                
+                
             # if op and op not in match_operators:
             if op:
                 if op in geo_operators:
@@ -712,6 +714,12 @@ class QuerySet(object):
                     else:
                         raise NotImplementedError("Geo method '%s' has not "
                                                   "been implemented" % op)
+                elif op in custom_operators:
+                    if op == 'match':
+                        value = {"$elemMatch": value}
+                    else:
+                        NotImplementedError("Custom method '%s' has not "
+                                            "been implemented" % op)
                 elif op not in match_operators:
                     value = {'$' + op: value}
 
