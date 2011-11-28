@@ -1228,6 +1228,35 @@ class DocumentTest(unittest.TestCase):
         p1.reload()
         self.assertEquals(p1.name, p.parent.name)
 
+    def test_save_cascade_meta(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self')
+
+            meta = {'cascade': False}
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.parent = None
+        p1.save()
+
+        p2 = Person(name="Wilson Jr")
+        p2.parent = p1
+        p2.save()
+
+        p = Person.objects(name="Wilson Jr").get()
+        p.parent.name = "Daddy Wilson"
+        p.save()
+
+        p1.reload()
+        self.assertNotEquals(p1.name, p.parent.name)
+
+        p.save(cascade=True)
+        p1.reload()
+        self.assertEquals(p1.name, p.parent.name)
+
     def test_save_cascades_generically(self):
 
         class Person(Document):
