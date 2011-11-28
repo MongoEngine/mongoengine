@@ -1135,7 +1135,8 @@ class DataObserver(object):
         self.name = name
 
     def updated(self):
-        self.instance._mark_as_changed(self.name)
+        if hasattr(self.instance, '_mark_as_changed'):
+            self.instance._mark_as_changed(self.name)
 
 
 class BaseList(list):
@@ -1145,6 +1146,11 @@ class BaseList(list):
     def __init__(self, list_items, observer):
         self.observer = observer
         super(BaseList, self).__init__(list_items)
+
+    def __getattribute__(self, name):
+        if name == 'observer' and not hasattr(self, 'observer'):
+            self.observer = DataObserver(None, None)
+        return super(BaseList, self).__getattribute__(name)
 
     def __setitem__(self, *args, **kwargs):
         self.observer.updated()
@@ -1197,6 +1203,11 @@ class BaseDict(dict):
     def __init__(self, dict_items, observer):
         self.observer = observer
         super(BaseDict, self).__init__(dict_items)
+
+    def __getattribute__(self, name):
+        if name == 'observer' and not hasattr(self, 'observer'):
+            self.observer = DataObserver(None, None)
+        return super(BaseList, self).__getattribute__(name)
 
     def __setitem__(self, *args, **kwargs):
         self.observer.updated()
