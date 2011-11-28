@@ -1207,7 +1207,7 @@ class BaseDict(dict):
     def __getattribute__(self, name):
         if name == 'observer' and not hasattr(self, 'observer'):
             self.observer = DataObserver(None, None)
-        return super(BaseList, self).__getattribute__(name)
+        return super(BaseDict, self).__getattribute__(name)
 
     def __setitem__(self, *args, **kwargs):
         self.observer.updated()
