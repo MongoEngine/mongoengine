@@ -168,9 +168,9 @@ class DeReference(object):
                     elif isinstance(v, (dict, pymongo.son.SON)) and '_ref' in v:
                         data[k]._data[field_name] = self.object_map.get(v['_ref'].id, v)
                     elif isinstance(v, dict) and depth <= self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects(v, depth - 1, instance=instance, name=name)
+                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
                     elif isinstance(v, (list, tuple)) and depth <= self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects(v, depth - 1, instance=instance, name=name)
+                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 data[k] = self._attach_objects(v, depth - 1, instance=instance, name=name)
             elif hasattr(v, 'id'):
