@@ -760,3 +760,26 @@ class FieldTest(unittest.TestCase):
         UserB.drop_collection()
         UserC.drop_collection()
         Group.drop_collection()
+
+    def test_multidirectional_lists(self):
+
+        class Asset(Document):
+            name = StringField(max_length=250, required=True)
+            parent = GenericReferenceField(default=None)
+            parents = ListField(GenericReferenceField())
+            children = ListField(GenericReferenceField())
+
+        Asset.drop_collection()
+
+        root = Asset(name='', path="/", title="Site Root")
+        root.save()
+
+        company = Asset(name='company', title='Company', parent=root, parents=[root])
+        company.save()
+
+        root.children = [company]
+        root.save()
+
+        root = root.reload()
+        self.assertEquals(root.children, [company])
+        self.assertEquals(company.parents, [root])
