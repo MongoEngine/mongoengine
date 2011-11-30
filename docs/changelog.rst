@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added support for the $elementMatch operator
 - Added reverse option to SortedListFields
 - Fixed dereferencing - multi directional list dereferencing
 - Fixed issue creating indexes with recursive embedded documents

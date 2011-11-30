@@ -76,6 +76,7 @@ expressions:
 * ``istartswith`` -- string field starts with value (case insensitive)
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
+* ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 There are a few special operators for performing geographical queries, that
 may used with :class:`~mongoengine.GeoPointField`\ s:
