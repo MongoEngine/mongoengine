@@ -162,11 +162,10 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        created = '_id' in doc
-        creation_mode = force_insert or not created
+        created = force_insert or '_id' not in doc
         try:
             collection = self.__class__.objects._collection
-            if creation_mode:
+            if created:
                 if force_insert:
                     object_id = collection.insert(doc, safe=safe, **write_options)
                 else:
@@ -194,7 +193,7 @@ class Document(BaseDocument):
         self[id_field] = self._fields[id_field].to_python(object_id)
 
         self._changed_fields = []
-        signals.post_save.send(self.__class__, document=self, created=creation_mode)
+        signals.post_save.send(self.__class__, document=self, created=created)
 
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references / generic references on an object"""

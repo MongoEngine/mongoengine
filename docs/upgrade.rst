@@ -8,6 +8,8 @@ Upgrading
 Embedded Documents - if you had a `pk` field you will have to rename it from `_id`
 to `pk` as pk is no longer a property of Embedded Documents.
 
+Document._get_subclasses - Is no longer used and the class method has been removed.
+
 0.4 to 0.5
 ===========
 

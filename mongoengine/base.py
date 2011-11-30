@@ -846,21 +846,6 @@ class BaseDocument(object):
         return cls._meta.get('collection', None)
 
     @classmethod
-    def _get_subclasses(cls):
-        """Return a dictionary of all subclasses (found recursively).
-        """
-        try:
-            subclasses = cls.__subclasses__()
-        except:
-            subclasses = cls.__subclasses__(cls)
-
-        all_subclasses = {}
-        for subclass in subclasses:
-            all_subclasses[subclass._class_name] = subclass
-            all_subclasses.update(subclass._get_subclasses())
-        return all_subclasses
-
-    @classmethod
     def _from_son(cls, son):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
@@ -877,16 +862,7 @@ class BaseDocument(object):
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
-            subclasses = cls._get_subclasses()
-            if class_name not in subclasses:
-                # Type of document is probably more generic than the class
-                # that has been queried to return this SON
-                raise NotRegistered("""
-                        `%s` has not been registered in the document registry.
-                        Importing the document class automatically registers it,
-                        has it been imported?
-                    """.strip() % class_name)
-            cls = subclasses[class_name]
+            cls = get_document(class_name)
 
         changed_fields = []
         for field_name, field in cls._fields.items():

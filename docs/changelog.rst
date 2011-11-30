@@ -5,6 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Removed Document._get_subclasses() - no longer required
+- Fixed bug requiring subclasses when not actually needed
 - Fixed deletion of dynamic data
 - Added support for the $elementMatch operator
 - Added reverse option to SortedListFields

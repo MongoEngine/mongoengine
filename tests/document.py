@@ -158,29 +158,6 @@ class DocumentTest(unittest.TestCase):
         }
         self.assertEqual(Dog._superclasses, dog_superclasses)
 
-    def test_get_subclasses(self):
-        """Ensure that the correct list of subclasses is retrieved by the
-        _get_subclasses method.
-        """
-        class Animal(Document): pass
-        class Fish(Animal): pass
-        class Mammal(Animal): pass
-        class Human(Mammal): pass
-        class Dog(Mammal): pass
-
-        mammal_subclasses = {
-            'Animal.Mammal.Dog': Dog,
-            'Animal.Mammal.Human': Human
-        }
-        self.assertEqual(Mammal._get_subclasses(), mammal_subclasses)
-
-        animal_subclasses = {
-            'Animal.Fish': Fish,
-            'Animal.Mammal': Mammal,
-            'Animal.Mammal.Dog': Dog,
-            'Animal.Mammal.Human': Human
-        }
-        self.assertEqual(Animal._get_subclasses(), animal_subclasses)
 
     def test_external_super_and_sub_classes(self):
         """Ensure that the correct list of sub and super classes is assembled.
@@ -201,20 +178,6 @@ class DocumentTest(unittest.TestCase):
             'Base.Animal.Mammal': Mammal,
         }
         self.assertEqual(Dog._superclasses, dog_superclasses)
-
-        animal_subclasses = {
-            'Base.Animal.Fish': Fish,
-            'Base.Animal.Mammal': Mammal,
-            'Base.Animal.Mammal.Dog': Dog,
-            'Base.Animal.Mammal.Human': Human
-        }
-        self.assertEqual(Animal._get_subclasses(), animal_subclasses)
-
-        mammal_subclasses = {
-            'Base.Animal.Mammal.Dog': Dog,
-            'Base.Animal.Mammal.Human': Human
-        }
-        self.assertEqual(Mammal._get_subclasses(), mammal_subclasses)
 
         Base.drop_collection()
 
@@ -1014,10 +977,8 @@ class DocumentTest(unittest.TestCase):
 
         # Mimic Place and NicePlace definitions being in a different file
         # and the NicePlace model not being imported in at query time.
-        @classmethod
-        def _get_subclasses(cls):
-            return {}
-        Place._get_subclasses = _get_subclasses
+        from mongoengine.base import _document_registry
+        del(_document_registry['Place.NicePlace'])
 
         def query_without_importing_nice_place():
             print Place.objects.all()
