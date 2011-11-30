@@ -2866,6 +2866,29 @@ class QueryFieldListTest(unittest.TestCase):
         q += QueryFieldList(fields=['a'], value={"$slice": 5})
         self.assertEqual(q.as_dict(), {'a': {"$slice": 5}})
 
+    def test_elem_match(self):
+        class Foo(EmbeddedDocument):
+            shape = StringField()
+            color = StringField()
+            trick = BooleanField()                
+            meta = {'allow_inheritance': False}
+
+        class Bar(Document):
+            foo = ListField(EmbeddedDocumentField(Foo))
+            meta = {'allow_inheritance': False}
+
+        Bar.drop_collection()
+        
+        b1 = Bar(foo=[Foo(shape= "square", color ="purple", thick = False),
+                      Foo(shape= "circle", color ="red", thick = True)])
+        b1.save()
+
+        b2 = Bar(foo=[Foo(shape= "square", color ="red", thick = True),
+                      Foo(shape= "circle", color ="purple", thick = False)])
+        b2.save()
+        
+        ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
+        self.assertEqual([b1], ak)
 
 if __name__ == '__main__':
     unittest.main()
