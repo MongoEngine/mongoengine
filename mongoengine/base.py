@@ -751,6 +751,13 @@ class BaseDocument(object):
                 self._data[name] = value
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
+
+        # Handle None values for required fields
+        if value is None and name in getattr(self, '_fields', {}):
+            self._data[name] = value
+            if hasattr(self, '_changed_fields'):
+                self._mark_as_changed(name)
+            return
         super(BaseDocument, self).__setattr__(name, value)
 
     def __expand_dynamic_values(self, name, value):

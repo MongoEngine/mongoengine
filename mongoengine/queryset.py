@@ -694,8 +694,7 @@ class QuerySet(object):
                 elif op in ('in', 'nin', 'all', 'near'):
                     # 'in', 'nin' and 'all' require a list of values
                     value = [field.prepare_query_value(op, v) for v in value]
-                
-                
+
             # if op and op not in match_operators:
             if op:
                 if op in geo_operators:
@@ -1301,7 +1300,8 @@ class QuerySet(object):
                 field = cleaned_fields[-1]
 
                 if op in (None, 'set', 'push', 'pull', 'addToSet'):
-                    value = field.prepare_query_value(op, value)
+                    if field.required or value is not None:
+                        value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
                     value = [field.prepare_query_value(op, v) for v in value]
 
