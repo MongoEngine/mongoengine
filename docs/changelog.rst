@@ -5,7 +5,8 @@ Changelog
 Changes in dev
 ==============
 
-- Fixed Handle None values for non-required fields.
+- Added customisable cascade kwarg options
+- Fixed Handle None values for non-required fields
 - Removed Document._get_subclasses() - no longer required
 - Fixed bug requiring subclasses when not actually needed
 - Fixed deletion of dynamic data

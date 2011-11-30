@@ -121,7 +121,7 @@ class Document(BaseDocument):
         return self._collection
 
     def save(self, safe=True, force_insert=False, validate=True, write_options=None,
-            cascade=None, _refs=None):
+            cascade=None, cascade_kwargs=None, _refs=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -141,6 +141,7 @@ class Document(BaseDocument):
                 have recorded the write and will force an fsync on each server being written to.
         :param cascade: Sets the flag for cascading saves.  You can set a default by setting
             "cascade" in the document __meta__
+        :param cascade_kwargs: optional kwargs dictionary to be passed throw to cascading saves
         :param _refs: A list of processed references used in cascading saves
 
         .. versionchanged:: 0.5
@@ -150,6 +151,8 @@ class Document(BaseDocument):
         .. versionchanged:: 0.6
             Cascade saves are optional = defaults to True, if you want fine grain
             control then you can turn off using document meta['cascade'] = False
+            Also you can pass different kwargs to the cascade save using cascade_kwargs
+            which overwrites the existing kwargs with custom values
 
         """
         signals.pre_save.send(self.__class__, document=self)
@@ -180,9 +183,17 @@ class Document(BaseDocument):
 
             cascade = self._meta.get('cascade', True) if cascade is None else cascade
             if cascade:
-                self.cascade_save(safe=safe, force_insert=force_insert,
-                                  validate=validate, write_options=write_options,
-                                  cascade=cascade, _refs=_refs)
+                kwargs = {
+                    "safe": safe,
+                    "force_insert": force_insert,
+                    "validate": validate,
+                    "write_options": write_options,
+                    "cascade": cascade
+                }
+                if cascade_kwargs:  # Allow granular control over cascades
+                    kwargs.update(cascade_kwargs)
+                kwargs['_refs'] = _refs
+                self.cascade_save(**kwargs)
 
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'

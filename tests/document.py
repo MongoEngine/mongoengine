@@ -159,7 +159,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Dog._superclasses, dog_superclasses)
 
 
-    def test_external_super_and_sub_classes(self):
+    def test_external_superclasses(self):
         """Ensure that the correct list of sub and super classes is assembled.
         when importing part of the model
         """
@@ -1192,6 +1192,29 @@ class DocumentTest(unittest.TestCase):
         p2 = Person(name="Wilson Jr")
         p2.parent = p1
         p2.save()
+
+        p = Person.objects(name="Wilson Jr").get()
+        p.parent.name = "Daddy Wilson"
+        p.save()
+
+        p1.reload()
+        self.assertEquals(p1.name, p.parent.name)
+
+    def test_save_cascade_kwargs(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self')
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.parent = None
+        p1.save()
+
+        p2 = Person(name="Wilson Jr")
+        p2.parent = p1
+        p2.save(force_insert=True, cascade_kwargs={"force_insert": False})
 
         p = Person.objects(name="Wilson Jr").get()
         p.parent.name = "Daddy Wilson"
