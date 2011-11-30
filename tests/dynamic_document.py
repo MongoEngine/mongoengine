@@ -50,6 +50,33 @@ class DynamicDocTest(unittest.TestCase):
         p = self.Person.objects.get()
         self.assertEquals(p.misc, {'hello': 'world'})
 
+    def test_delete_dynamic_field(self):
+        """Test deleting a dynamic field works"""
+        self.Person.drop_collection()
+        p = self.Person()
+        p.name = "Dean"
+        p.misc = 22
+        p.save()
+
+        p = self.Person.objects.get()
+        p.misc = {'hello': 'world'}
+        p.save()
+
+        p = self.Person.objects.get()
+        self.assertEquals(p.misc, {'hello': 'world'})
+        collection = self.db[self.Person._get_collection_name()]
+        obj = collection.find_one()
+        self.assertEquals(sorted(obj.keys()), ['_cls', '_id', '_types', 'misc', 'name'])
+
+        del(p.misc)
+        p.save()
+
+        p = self.Person.objects.get()
+        self.assertFalse(hasattr(p, 'misc'))
+
+        obj = collection.find_one()
+        self.assertEquals(sorted(obj.keys()), ['_cls', '_id', '_types', 'name'])
+
     def test_dynamic_document_queries(self):
         """Ensure we can query dynamic fields"""
         p = self.Person()

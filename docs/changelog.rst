@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed deletion of dynamic data
 - Added support for the $elementMatch operator
 - Added reverse option to SortedListFields
 - Fixed dereferencing - multi directional list dereferencing

@@ -329,6 +329,15 @@ class DynamicDocument(Document):
     __metaclass__ = TopLevelDocumentMetaclass
     _dynamic = True
 
+    def __delattr__(self, *args, **kwargs):
+        """Deletes the attribute by setting to None and allowing _delta to unset
+        it"""
+        field_name = args[0]
+        if field_name in self._dynamic_fields:
+            setattr(self, field_name, None)
+        else:
+            super(DynamicDocument, self).__delattr__(*args, **kwargs)
+
 
 class DynamicEmbeddedDocument(EmbeddedDocument):
     """A Dynamic Embedded Document class allowing flexible, expandable and
