@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added reverse option to SortedListFields
 - Fixed dereferencing - multi directional list dereferencing
 - Fixed issue creating indexes with recursive embedded documents
 - Fixed recursive lookup in _unique_with_indexes

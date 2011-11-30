@@ -481,6 +481,31 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_reverse_list_sorting(self):
+        '''Ensure that a reverse sorted list field properly sorts values'''
+
+        class Category(EmbeddedDocument):
+            count = IntField()
+            name = StringField()
+
+        class CategoryList(Document):
+            categories = SortedListField(EmbeddedDocumentField(Category), ordering='count', reverse=True)
+            name = StringField()
+
+        catlist = CategoryList(name="Top categories")
+        cat1 = Category(name='posts', count=10)
+        cat2 = Category(name='food', count=100)
+        cat3 = Category(name='drink', count=40)
+        catlist.categories = [cat1, cat2, cat3]
+        catlist.save()
+        catlist.reload()
+
+        self.assertEqual(catlist.categories[0].name, cat2.name)
+        self.assertEqual(catlist.categories[1].name, cat3.name)
+        self.assertEqual(catlist.categories[2].name, cat1.name)
+
+        CategoryList.drop_collection()
+
     def test_list_field(self):
         """Ensure that list types work as expected.
         """
