@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added Reverse Delete Rule support to ListFields - MapFields aren't supported
 - Added customisable cascade kwarg options
 - Fixed Handle None values for non-required fields
 - Removed Document._get_subclasses() - no longer required

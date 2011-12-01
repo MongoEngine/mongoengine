@@ -10,6 +10,9 @@ to `pk` as pk is no longer a property of Embedded Documents.
 
 Document._get_subclasses - Is no longer used and the class method has been removed.
 
+Reverse Delete Rules on MapFields and DictFields now throw a InvalidDocument error
+as they aren't supported.
+
 0.4 to 0.5
 ===========
 
