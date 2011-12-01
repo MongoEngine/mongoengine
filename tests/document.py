@@ -2214,6 +2214,46 @@ class DocumentTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
+    def test_reverse_delete_rule_cascade_and_nullify_complex_field(self):
+        """Ensure that a referenced document is also deleted upon deletion.
+        """
+
+        class BlogPost(Document):
+            content = StringField()
+            authors = ListField(ReferenceField(self.Person, reverse_delete_rule=CASCADE))
+            reviewers = ListField(ReferenceField(self.Person, reverse_delete_rule=NULLIFY))
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name='Test User')
+        author.save()
+
+        reviewer = self.Person(name='Re Viewer')
+        reviewer.save()
+
+        post = BlogPost(content= 'Watched some TV')
+        post.authors = [author]
+        post.reviewers = [reviewer]
+        post.save()
+
+        reviewer.delete()
+        self.assertEqual(len(BlogPost.objects), 1)  # No effect on the BlogPost
+        self.assertEqual(BlogPost.objects.get().reviewers, [])
+
+        # Delete the Person, which should lead to deletion of the BlogPost, too
+        author.delete()
+        self.assertEqual(len(BlogPost.objects), 0)
+
+        def throw_invalid_document_error():
+            class Blog(Document):
+                content = StringField()
+                authors = MapField(ReferenceField(self.Person, reverse_delete_rule=CASCADE))
+                reviewers = DictField(field=ReferenceField(self.Person, reverse_delete_rule=NULLIFY))
+
+        self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
+
+
     def test_reverse_delete_rule_cascade_recurs(self):
         """Ensure that a chain of documents is also deleted upon cascaded
         deletion.
