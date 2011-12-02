@@ -1,7 +1,8 @@
 .*
 !.gitignore
-*.pyc
-.*.swp
+*~
+*.py[co]
+.*.sw[po]
 *.egg
 docs/.build
 docs/_build
