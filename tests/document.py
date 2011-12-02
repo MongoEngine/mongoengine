@@ -2487,5 +2487,37 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEquals(Doc.objects(archived=False).count(), 1)
 
+    def test_do_not_save_unchanged_references(self):
+        """Ensures cascading saves dont auto update"""
+        class Job(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+            job = ReferenceField(Job)
+
+        Job.drop_collection()
+        Person.drop_collection()
+
+        job = Job(name="Job 1")
+        # job should not have any changed fields after the save
+        job.save()
+
+        person = Person(name="name", age=10, job=job)
+
+        from pymongo.collection import Collection
+        orig_update = Collection.update
+        try:
+            def fake_update(*args, **kwargs):
+                self.fail("Unexpected update for %s" % args[0].name)
+                return orig_update(*args, **kwargs)
+
+            Collection.update = fake_update
+            person.save()
+        finally:
+            Collection.update = orig_update
+
+
 if __name__ == '__main__':
     unittest.main()
