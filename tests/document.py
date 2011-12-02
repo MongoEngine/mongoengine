@@ -2182,6 +2182,16 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_duplicate_db_fields_raise_invalid_document_error(self):
+        """Ensure a InvalidDocumentError is thrown if duplicate fields
+        declare the same db_field"""
+
+        def throw_invalid_document_error():
+            class Foo(Document):
+                name = StringField()
+                name2 = StringField(db_field='name')
+
+        self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
     def test_reverse_delete_rule_cascade_and_nullify(self):
         """Ensure that a referenced document is also deleted upon deletion.

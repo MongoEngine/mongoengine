@@ -492,6 +492,7 @@ class DocumentMetaclass(type):
         attrs['_superclasses'] = superclasses
 
         # Add the document's fields to the _fields attribute
+        field_names = {}
         for attr_name, attr_value in attrs.items():
             if hasattr(attr_value, "__class__") and \
                issubclass(attr_value.__class__, BaseField):
@@ -499,8 +500,13 @@ class DocumentMetaclass(type):
                 if not attr_value.db_field:
                     attr_value.db_field = attr_name
                 doc_fields[attr_name] = attr_value
+                field_names[attr_value.db_field] = field_names.get(attr_value.db_field, 0) + 1
+
+        duplicate_db_fields = [k for k, v in field_names.items() if v > 1]
+        if duplicate_db_fields:
+            raise InvalidDocumentError("Multiple db_fields defined for: %s " % ", ".join(duplicate_db_fields))
         attrs['_fields'] = doc_fields
-        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k!=v.db_field])
+        attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k != v.db_field])
         attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
 
         from mongoengine import Document, EmbeddedDocument, DictField

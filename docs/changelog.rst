@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added Now raises an InvalidDocumentError when declaring multiple fields with the same db_field
 - Added InvalidQueryError when calling with_id with a filter
 - Added support for DBRefs in distinct()
 - Fixed issue saving False booleans
