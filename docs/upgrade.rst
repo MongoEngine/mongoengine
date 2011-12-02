@@ -8,10 +8,11 @@ Upgrading
 Embedded Documents - if you had a `pk` field you will have to rename it from `_id`
 to `pk` as pk is no longer a property of Embedded Documents.
 
+Reverse Delete Rules in Embedded Documents, MapFields and DictFields now throw
+an InvalidDocument error as they aren't currently supported.
+
 Document._get_subclasses - Is no longer used and the class method has been removed.
 
-Reverse Delete Rules on MapFields and DictFields now throw a InvalidDocument error
-as they aren't supported.
 
 0.4 to 0.5
 ===========

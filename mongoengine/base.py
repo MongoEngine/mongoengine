@@ -518,6 +518,8 @@ class DocumentMetaclass(type):
                 f = field.field
 
             if delete_rule != DO_NOTHING:
+                if issubclass(new_class, EmbeddedDocument):
+                    raise InvalidDocumentError("Reverse delete rules are not supported for EmbeddedDocuments (field: %s)" % field.name)
                 f.document_type.register_delete_rule(new_class, field.name, delete_rule)
 
             if field.name and hasattr(Document, field.name) and EmbeddedDocument not in new_class.mro():
@@ -662,6 +664,18 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class.id = new_class._fields['id']
 
         return new_class
+
+    def __instancecheck__(cls, inst):
+        """Custom instance check for isinstance() as registering delete rules or
+        calling a cls method in __new__ seems to change the cls so vanilla
+        isinstance() fails"""
+        is_instance = super(DocumentMetaclass, cls).__instancecheck__(inst)
+        if hasattr(cls, '_meta') and 'delete_rules' in cls._meta and not is_instance:
+            try:
+                is_instance = get_document(cls.__name__) == get_document(inst.__class__.__name__)
+            except NotRegistered:
+                pass
+        return is_instance
 
     @classmethod
     def _unique_with_indexes(cls, new_class, namespace=""):

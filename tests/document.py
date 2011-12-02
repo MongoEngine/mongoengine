@@ -2245,6 +2245,8 @@ class DocumentTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
+    def test_invalid_reverse_delete_rules_raise_errors(self):
+
         def throw_invalid_document_error():
             class Blog(Document):
                 content = StringField()
@@ -2253,6 +2255,12 @@ class DocumentTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
+        def throw_invalid_document_error_embedded():
+            class Parents(EmbeddedDocument):
+                father = ReferenceField('Person', reverse_delete_rule=DENY)
+                mother = ReferenceField('Person', reverse_delete_rule=DENY)
+
+        self.assertRaises(InvalidDocumentError, throw_invalid_document_error_embedded)
 
     def test_reverse_delete_rule_cascade_recurs(self):
         """Ensure that a chain of documents is also deleted upon cascaded
