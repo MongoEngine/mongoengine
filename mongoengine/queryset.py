@@ -1073,8 +1073,10 @@ class QuerySet(object):
         :param field: the field to select distinct values from
 
         .. versionadded:: 0.4
+        .. versionchanged:: 0.5 - Fixed handling references
         """
-        return self._cursor.distinct(field)
+        from dereference import dereference
+        return dereference(self._cursor.distinct(field), 1)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::

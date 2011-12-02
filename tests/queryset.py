@@ -1958,6 +1958,24 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(set(self.Person.objects(age=30).distinct('name')),
                          set(['Mr Orange', 'Mr Pink']))
 
+    def test_distinct_handles_references(self):
+        class Foo(Document):
+            bar = ReferenceField("Bar")
+
+        class Bar(Document):
+            text = StringField()
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        bar = Bar(text="hi")
+        bar.save()
+
+        foo = Foo(bar=bar)
+        foo.save()
+
+        self.assertEquals(Foo.objects.distinct("bar"), [bar])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
@@ -2870,7 +2888,7 @@ class QueryFieldListTest(unittest.TestCase):
         class Foo(EmbeddedDocument):
             shape = StringField()
             color = StringField()
-            trick = BooleanField()                
+            trick = BooleanField()
             meta = {'allow_inheritance': False}
 
         class Bar(Document):
@@ -2878,7 +2896,7 @@ class QueryFieldListTest(unittest.TestCase):
             meta = {'allow_inheritance': False}
 
         Bar.drop_collection()
-        
+
         b1 = Bar(foo=[Foo(shape= "square", color ="purple", thick = False),
                       Foo(shape= "circle", color ="red", thick = True)])
         b1.save()
@@ -2886,7 +2904,7 @@ class QueryFieldListTest(unittest.TestCase):
         b2 = Bar(foo=[Foo(shape= "square", color ="red", thick = True),
                       Foo(shape= "circle", color ="purple", thick = False)])
         b2.save()
-        
+
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
 

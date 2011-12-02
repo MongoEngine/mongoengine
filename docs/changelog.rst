@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added support for DBRefs in distinct()
 - Fixed issue saving False booleans
 - Fixed issue with dynamic documents deltas
 - Added Reverse Delete Rule support to ListFields - MapFields aren't supported
