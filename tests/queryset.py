@@ -154,6 +154,8 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
 
+        self.assertRaises(InvalidQueryError, self.Person.objects(name="User A").with_id, person1.id)
+
     def test_find_only_one(self):
         """Ensure that a query using ``get`` returns at most one result.
         """

@@ -858,10 +858,16 @@ class QuerySet(object):
         return return_one and results[0] or results
 
     def with_id(self, object_id):
-        """Retrieve the object matching the id provided.
+        """Retrieve the object matching the id provided.  Uses `object_id` only
+        and raises InvalidQueryError if a filter has been applied.
 
         :param object_id: the value for the id of the document to look up
+
+        .. versionchanged:: 0.6 Raises InvalidQueryError if filter has been set
         """
+        if not self._query_obj.empty:
+            raise InvalidQueryError("Cannot use a filter whilst using `with_id`")
+
         return self._document.objects(pk=object_id).first()
 
     def in_bulk(self, object_ids):

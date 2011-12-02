@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added InvalidQueryError when calling with_id with a filter
 - Added support for DBRefs in distinct()
 - Fixed issue saving False booleans
 - Fixed issue with dynamic documents deltas

@@ -13,6 +13,7 @@ an InvalidDocument error as they aren't currently supported.
 
 Document._get_subclasses - Is no longer used and the class method has been removed.
 
+Document.objects.with_id - now raises an InvalidQueryError if used with a filter.
 
 0.4 to 0.5
 ===========
