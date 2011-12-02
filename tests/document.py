@@ -2459,5 +2459,18 @@ class DocumentTest(unittest.TestCase):
         a.reload()
         self.assertEquals(a.b.field2.c_field, 'new value')
 
+    def test_can_save_false_values(self):
+        class Doc(Document):
+            foo = StringField()
+            archived = BooleanField(default=False, required=True)
+
+        Doc.drop_collection()
+        d = Doc()
+        d.save()
+        d.archived = False
+        d.save()
+
+        self.assertEquals(Doc.objects(archived=False).count(), 1)
+
 if __name__ == '__main__':
     unittest.main()

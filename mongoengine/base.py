@@ -978,7 +978,7 @@ class BaseDocument(object):
 
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
-            if value:
+            if value or isinstance(value, bool):
                 continue
 
             # If we've set a value that ain't the default value dont unset it.
