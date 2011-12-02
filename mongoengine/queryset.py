@@ -1572,8 +1572,10 @@ class QuerySet(object):
                     field.forEach(function(item) {
                         emit(item, 1);
                     });
-                } else {
+                } else if (field) {
                     emit(field, 1);
+                } else {
+                    emit(null, 1);
                 }
             }
         """ % dict(field=field)
