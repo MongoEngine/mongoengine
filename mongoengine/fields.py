@@ -597,7 +597,9 @@ class ReferenceField(BaseField):
     access (lazily).
 
     Use the `reverse_delete_rule` to handle what should happen if the document
-    the field is referencing is deleted.
+    the field is referencing is deleted.  EmbeddedDocuments, DictFields and
+    MapFields do not support reverse_delete_rules and an `InvalidDocumentError`
+    will be raised if trying to set on one of these Document / Field types.
 
     The options are:
 

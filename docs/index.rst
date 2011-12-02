@@ -42,7 +42,8 @@ Also, you can join the developers' `mailing list
 
 Changes
 -------
-See the :doc:`changelog` for a full list of changes to MongoEngine.
+See the :doc:`changelog` for a full list of changes to MongoEngine and
+:doc:`upgrade` for upgrade information.
 
 .. toctree::
    :hidden:
