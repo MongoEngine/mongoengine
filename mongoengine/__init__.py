@@ -14,7 +14,7 @@ __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
 
 __author__ = 'Harry Marr'
 
-VERSION = (0, 5, 2)
+VERSION = (0, 5, 3)
 
 
 def get_version():
