@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed issue with dynamic documents deltas
 - Added Reverse Delete Rule support to ListFields - MapFields aren't supported
 - Added customisable cascade kwarg options
 - Fixed Handle None values for non-required fields

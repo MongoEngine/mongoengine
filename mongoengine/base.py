@@ -954,6 +954,7 @@ class BaseDocument(object):
         set_fields = self._get_changed_fields()
         set_data = {}
         unset_data = {}
+        parts = []
         if hasattr(self, '_changed_fields'):
             set_data = {}
             # Fetch each set item from its path
@@ -980,7 +981,7 @@ class BaseDocument(object):
 
             # If we've set a value that ain't the default value dont unset it.
             default = None
-            if self._dynamic and parts[0] in self._dynamic_fields:
+            if self._dynamic and len(parts) and parts[0] in self._dynamic_fields:
                 del(set_data[path])
                 unset_data[path] = 1
                 continue

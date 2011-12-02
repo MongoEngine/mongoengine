@@ -36,6 +36,15 @@ class DynamicDocTest(unittest.TestCase):
         # Confirm no changes to self.Person
         self.assertFalse(hasattr(self.Person, 'age'))
 
+    def test_dynamic_document_delta(self):
+        """Ensures simple dynamic documents can delta correctly"""
+        p = self.Person(name="James", age=34)
+        self.assertEquals(p._delta(), ({'_types': ['Person'], 'age': 34, 'name': 'James', '_cls': 'Person'}, {}))
+
+        p.doc = 123
+        del(p.doc)
+        self.assertEquals(p._delta(), ({'_types': ['Person'], 'age': 34, 'name': 'James', '_cls': 'Person'}, {'doc': 1}))
+
     def test_change_scope_of_variable(self):
         """Test changing the scope of a dynamic field has no adverse effects"""
         p = self.Person()
