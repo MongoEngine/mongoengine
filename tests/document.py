@@ -2460,9 +2460,24 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(a.b.field2.c_field, 'new value')
 
     def test_can_save_false_values(self):
+        """Ensures you can save False values on save"""
         class Doc(Document):
             foo = StringField()
             archived = BooleanField(default=False, required=True)
+
+        Doc.drop_collection()
+        d = Doc()
+        d.save()
+        d.archived = False
+        d.save()
+
+        self.assertEquals(Doc.objects(archived=False).count(), 1)
+
+
+    def test_can_save_false_values_dynamic(self):
+        """Ensures you can save False values on dynamic docs"""
+        class Doc(DynamicDocument):
+            foo = StringField()
 
         Doc.drop_collection()
         d = Doc()
