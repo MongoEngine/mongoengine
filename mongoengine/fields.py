@@ -786,18 +786,25 @@ class GridFSProxy(object):
     .. versionchanged:: 0.6 - added collection name param
     """
 
+    _fs = None
+
     def __init__(self, grid_id=None, key=None,
                  instance=None,
                  db_alias=DEFAULT_CONNECTION_NAME,
                  collection_name='fs'):
-        self.fs = gridfs.GridFS(get_db(db_alias), collection_name)  # Filesystem instance
-        self.newfile = None                 # Used for partial writes
-        self.grid_id = grid_id              # Store GridFS id for file
-        self.gridout = None
+        self.grid_id = grid_id                  # Store GridFS id for file
         self.key = key
         self.instance = instance
+        self.db_alias = db_alias
+        self.collection_name = collection_name
+        self.newfile = None                     # Used for partial writes
+        self.gridout = None
 
     def __getattr__(self, name):
+        attrs = ('_fs', 'grid_id', 'key', 'instance', 'db_alias',
+                 'collection_name', 'newfile', 'gridout')
+        if name in attrs:
+            return self.__getattribute__(name)
         obj = self.get()
         if name in dir(obj):
             return getattr(obj, name)
@@ -808,6 +815,17 @@ class GridFSProxy(object):
 
     def __nonzero__(self):
         return bool(self.grid_id)
+
+    def __getstate__(self):
+        self_dict = self.__dict__
+        self_dict['_fs'] = None
+        return self_dict
+
+    @property
+    def fs(self):
+        if not self._fs:
+            self._fs = gridfs.GridFS(get_db(self.db_alias), self.collection_name)
+        return self._fs
 
     def get(self, id=None):
         if id:
