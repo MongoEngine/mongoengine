@@ -448,3 +448,31 @@ class DynamicDocTest(unittest.TestCase):
         doc.dict_field['embedded'].string_field = 'Hello World'
         self.assertEquals(doc._get_changed_fields(), ['dict_field.embedded.string_field'])
         self.assertEquals(doc._delta(), ({'dict_field.embedded.string_field': 'Hello World'}, {}))
+
+    def test_indexes(self):
+        """Ensure that indexes are used when meta[indexes] is specified.
+        """
+        class BlogPost(DynamicDocument):
+            meta = {
+                'indexes': [
+                    '-date',
+                    ('category', '-date')
+                ],
+            }
+
+        BlogPost.drop_collection()
+
+        info = BlogPost.objects._collection.index_information()
+        # _id, '-date', ('cat', 'date')
+        # NB: there is no index on _types by itself, since
+        # the indices on -date and tags will both contain
+        # _types as first element in the key
+        self.assertEqual(len(info), 3)
+
+        # Indexes are lazy so use list() to perform query
+        list(BlogPost.objects)
+        info = BlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('_types', 1), ('category', 1), ('date', -1)]
+                        in info)
+        self.assertTrue([('_types', 1), ('date', -1)] in info)
