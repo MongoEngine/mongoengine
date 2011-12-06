@@ -98,6 +98,27 @@ class DynamicDocTest(unittest.TestCase):
         p = p.get()
         self.assertEquals(22, p.age)
 
+    def test_complex_dynamic_document_queries(self):
+        class Person(DynamicDocument):
+            name = StringField()
+
+        Person.drop_collection()
+
+        p = Person(name="test")
+        p.age = "ten"
+        p.save()
+
+        p1 = Person(name="test1")
+        p1.age = "less then ten and a half"
+        p1.save()
+
+        p2 = Person(name="test2")
+        p2.age = 10
+        p2.save()
+
+        self.assertEquals(Person.objects(age__icontains='ten').count(), 2)
+        self.assertEquals(Person.objects(age__gte=10).count(), 1)
+
     def test_complex_data_lookups(self):
         """Ensure you can query dynamic document dynamic fields"""
         p = self.Person()

@@ -412,6 +412,12 @@ class BaseDynamicField(BaseField):
     def lookup_member(self, member_name):
         return member_name
 
+    def prepare_query_value(self, op, value):
+        if isinstance(value, basestring):
+            from mongoengine.fields import StringField
+            return StringField().prepare_query_value(op, value)
+        return self.to_mongo(value)
+
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
