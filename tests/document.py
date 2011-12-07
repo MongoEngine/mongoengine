@@ -2559,15 +2559,29 @@ class DocumentTest(unittest.TestCase):
             author = ReferenceField(User)
             book = ReferenceField(Book)
             meta = {"db_alias" : "testdb-2" }
+
         # Drops
         AuthorBooks.drop_collection()
 
         ab = AuthorBooks.objects.create( author = bob, book = hp)
+
         # select
         self.assertEqual( AuthorBooks.objects.first(), ab)
         self.assertEqual( AuthorBooks.objects.first().book, hp)
         self.assertEqual( AuthorBooks.objects.first().author, bob)
 
+        self.assertEqual( AuthorBooks.objects.filter(author = bob).first() , ab)
+        self.assertEqual( AuthorBooks.objects.filter(book = hp).first() , ab)
+
+        # DB Alias
+        self.assertEqual( User._get_db() , get_db())
+        self.assertEqual( Book._get_db() , get_db("testdb-1"))
+        self.assertEqual( AuthorBooks._get_db() , get_db("testdb-2"))
+
+        # Collections
+        self.assertEqual( User._get_collection() , get_db()[User._get_collection_name()] )
+        self.assertEqual( Book._get_collection() , get_db("testdb-2")[Book._get_collection_name()] )
+        self.assertEqual( AuthorBooks._get_collection() , get_db("testdb-2")[AuthorBooks._get_collection_name()] )
 
 
 
