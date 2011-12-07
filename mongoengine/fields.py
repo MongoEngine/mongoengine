@@ -645,7 +645,7 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         # Dereference DBRefs
         if isinstance(value, (pymongo.dbref.DBRef)):
-            value = get_db().dereference(value)
+            value = self.document_type._get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
 
@@ -718,7 +718,7 @@ class GenericReferenceField(BaseField):
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])
         reference = value['_ref']
-        doc = get_db().dereference(reference)
+        doc = doc_cls._get_db().dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
         return doc
@@ -1162,8 +1162,9 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias = None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
+        self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         return super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate_new_value(self):
@@ -1172,7 +1173,7 @@ class SequenceField(IntField):
         """
         sequence_id = "{0}.{1}".format(self.owner_document._get_collection_name(),
                                        self.name)
-        collection = get_db()[self.collection_name]
+        collection = get_db(alias = self.db_alias )[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
                                              update={"$inc": {"next": 1}},
                                              new=True,

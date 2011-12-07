@@ -481,7 +481,7 @@ class QuerySet(object):
         if self._document not in QuerySet.__already_indexed:
 
             # Ensure collection exists
-            db = get_db()
+            db = self._document._get_db()
             if self._collection_obj.name not in db.collection_names():
                 self._document._collection = None
                 self._collection_obj = self._document._get_collection()
@@ -1452,7 +1452,7 @@ class QuerySet(object):
         scope['query'] = query
         code = pymongo.code.Code(code, scope=scope)
 
-        db = get_db()
+        db = self._document._get_db()
         return db.eval(code, *fields)
 
     def where(self, where_clause):

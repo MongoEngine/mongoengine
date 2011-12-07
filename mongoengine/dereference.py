@@ -103,13 +103,19 @@ class DeReference(object):
                 for key, doc in references.iteritems():
                     object_map[key] = doc
             else:  # Generic reference: use the refs data to convert to document
-                references = get_db()[col].find({'_id': {'$in': refs}})
-                for ref in references:
-                    if '_cls' in ref:
-                        doc = get_document(ref['_cls'])._from_son(ref)
-                    else:
+                if doc_type:
+                    references = doc_type._get_db()[col].find({'_id': {'$in': refs}})
+                    for ref in references:
                         doc = doc_type._from_son(ref)
-                    object_map[doc.id] = doc
+                        object_map[doc.id] = doc
+                else:
+                    references = get_db()[col].find({'_id': {'$in': refs}})
+                    for ref in references:
+                        if '_cls' in ref:
+                            doc = get_document(ref["_cls"])._from_son(ref)
+                        else:
+                            doc = doc_type._from_son(ref)
+                        object_map[doc.id] = doc
         return object_map
 
     def _attach_objects(self, items, depth=0, instance=None, name=None):

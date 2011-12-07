@@ -2,7 +2,7 @@ from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList, DataObserver)
 from queryset import OperationError
-from connection import get_db
+from connection import get_db, DEFAULT_CONNECTION_NAME
 
 import pymongo
 
@@ -87,10 +87,15 @@ class Document(BaseDocument):
         return property(fget, fset)
 
     @classmethod
+    def _get_db(self):
+        """Some Model using other db_alias"""
+        return get_db(self._meta.get("db_alias", DEFAULT_CONNECTION_NAME ))
+
+    @classmethod
     def _get_collection(self):
         """Returns the collection for the document."""
         if not hasattr(self, '_collection') or self._collection is None:
-            db = get_db()
+            db = self._get_db()
             collection_name = self._get_collection_name()
             # Create collection as a capped collection if specified
             if self._meta['max_size'] or self._meta['max_documents']:
@@ -318,7 +323,7 @@ class Document(BaseDocument):
         :class:`~mongoengine.Document` type from the database.
         """
         from mongoengine.queryset import QuerySet
-        db = get_db()
+        db = cls._get_db()
         db.drop_collection(cls._get_collection_name())
         QuerySet._reset_already_indexed(cls)
 
