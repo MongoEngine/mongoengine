@@ -664,6 +664,35 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_abstract_index_inheritance(self):
+
+        class UserBase(Document):
+            meta = {
+                'abstract': True,
+                'indexes': ['user_guid']
+            }
+
+            user_guid = StringField(required=True)
+
+
+        class Person(UserBase):
+            meta = {
+                'indexes': ['name'],
+            }
+
+            name = StringField()
+
+        Person.drop_collection()
+
+        p = Person(name="test", user_guid='123')
+        p.save()
+
+        self.assertEquals(1, Person.objects.count())
+        info = Person.objects._collection.index_information()
+        self.assertEqual(info.keys(), ['_types_1_user_guid_1', '_id_', '_types_1_name_1'])
+        Person.drop_collection()
+
+
     def test_embedded_document_index(self):
         """Tests settings an index on an embedded document
         """

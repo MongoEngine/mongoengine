@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed Abstract documents can now declare indexes
 - Added db_alias support to individual documents
 - Fixed GridFS documents can now be pickled
 - Added Now raises an InvalidDocumentError when declaring multiple fields with the same db_field

@@ -586,6 +586,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         collection = ''.join('_%s' % c if c.isupper() else c for c in name).strip('_').lower()
 
         id_field = None
+        abstract_base_indexes = []
         base_indexes = []
         base_meta = {}
 
@@ -605,7 +606,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                         base_meta[key] = base._meta[key]
 
                 id_field = id_field or base._meta.get('id_field')
-                base_indexes += base._meta.get('indexes', [])
+                if base._meta.get('abstract', False):
+                    abstract_base_indexes += base._meta.get('indexes', [])
+                else:
+                    base_indexes += base._meta.get('indexes', [])
                 # Propagate 'allow_inheritance'
                 if 'allow_inheritance' in base._meta:
                     base_meta['allow_inheritance'] = base._meta['allow_inheritance']
@@ -651,8 +655,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             meta['queryset_class'] = manager.queryset_class
         new_class.objects = manager
 
+        indicies = meta['indexes'] + abstract_base_indexes
         user_indexes = [QuerySet._build_index_spec(new_class, spec)
-                        for spec in meta['indexes']] + base_indexes
+                        for spec in indicies] + base_indexes
         new_class._meta['indexes'] = user_indexes
 
         unique_indexes = cls._unique_with_indexes(new_class)
