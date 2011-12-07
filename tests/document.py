@@ -2532,62 +2532,57 @@ class DocumentTest(unittest.TestCase):
         """ DB Alias tests """
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
-        register_connection('testdb-1', "mongoenginetest2" )
-        register_connection('testdb-2', "mongoenginetest3" )
+        register_connection('testdb-1', 'mongoenginetest2')
+        register_connection('testdb-2', 'mongoenginetest3')
         register_connection('testdb-3', 'mongoenginetest4')
 
         class User(Document):
             name = StringField()
+            meta = {"db_alias": "testdb-1"}
+
         class Book(Document):
             name = StringField()
-            meta = {"db_alias" : "testdb-1" }
+            meta = {"db_alias": "testdb-2"}
 
         # Drops
         User.drop_collection()
         Book.drop_collection()
 
         # Create
-        bob = User.objects.create(name = "Bob")
-        hp = Book.objects.create(name = "Harry Potter")
+        bob = User.objects.create(name="Bob")
+        hp = Book.objects.create(name="Harry Potter")
 
         # Selects
-        self.assertEqual( User.objects.first(), bob)
-        self.assertEqual( Book.objects.first(), hp)
+        self.assertEqual(User.objects.first(), bob)
+        self.assertEqual(Book.objects.first(), hp)
 
         # DeRefecence
         class AuthorBooks(Document):
             author = ReferenceField(User)
             book = ReferenceField(Book)
-            meta = {"db_alias" : "testdb-2" }
+            meta = {"db_alias": "testdb-3"}
 
         # Drops
         AuthorBooks.drop_collection()
 
-        ab = AuthorBooks.objects.create( author = bob, book = hp)
+        ab = AuthorBooks.objects.create(author=bob, book=hp)
 
         # select
-        self.assertEqual( AuthorBooks.objects.first(), ab)
-        self.assertEqual( AuthorBooks.objects.first().book, hp)
-        self.assertEqual( AuthorBooks.objects.first().author, bob)
-
-        self.assertEqual( AuthorBooks.objects.filter(author = bob).first() , ab)
-        self.assertEqual( AuthorBooks.objects.filter(book = hp).first() , ab)
+        self.assertEqual(AuthorBooks.objects.first(), ab)
+        self.assertEqual(AuthorBooks.objects.first().book, hp)
+        self.assertEqual(AuthorBooks.objects.first().author, bob)
+        self.assertEqual(AuthorBooks.objects.filter(author=bob).first(), ab)
+        self.assertEqual(AuthorBooks.objects.filter(book=hp).first(), ab)
 
         # DB Alias
-        self.assertEqual( User._get_db() , get_db())
-        self.assertEqual( Book._get_db() , get_db("testdb-1"))
-        self.assertEqual( AuthorBooks._get_db() , get_db("testdb-2"))
+        self.assertEqual(User._get_db(), get_db("testdb-1"))
+        self.assertEqual(Book._get_db(), get_db("testdb-2"))
+        self.assertEqual(AuthorBooks._get_db(), get_db("testdb-3"))
 
         # Collections
-        self.assertEqual( User._get_collection() , get_db()[User._get_collection_name()] )
-        self.assertEqual( Book._get_collection() , get_db("testdb-2")[Book._get_collection_name()] )
-        self.assertEqual( AuthorBooks._get_collection() , get_db("testdb-2")[AuthorBooks._get_collection_name()] )
-
-
-
-
-
-
+        self.assertEqual(User._get_collection(), get_db("testdb-1")[User._get_collection_name()])
+        self.assertEqual(Book._get_collection(), get_db("testdb-2")[Book._get_collection_name()])
+        self.assertEqual(AuthorBooks._get_collection(), get_db("testdb-3")[AuthorBooks._get_collection_name()])
 
     def test_db_ref_usage(self):
         """ DB Ref usage in __raw__ queries """
@@ -2597,16 +2592,16 @@ class DocumentTest(unittest.TestCase):
         class Book(Document):
             name = StringField()
             author = ReferenceField(User)
-            extra =  DictField()
+            extra = DictField()
             meta = {
                 'ordering': ['+name']
             }
 
             def __unicode__(self):
                 return self.name
+
             def __str__(self):
                 return self.name
-
 
         # Drops
         User.drop_collection()
@@ -2617,22 +2612,22 @@ class DocumentTest(unittest.TestCase):
         jon = User.objects.create(name = "Jon")
 
         # Redactors
-        karl = User.objects.create( name = "Karl")
-        susan = User.objects.create( name = "Susan")
-        peter = User.objects.create( name = "Peter")
+        karl = User.objects.create(name = "Karl")
+        susan = User.objects.create(name = "Susan")
+        peter = User.objects.create(name = "Peter")
 
         # Bob
-        Book.objects.create( name = "1", author = bob, extra = {"a": bob.to_dbref(), "b" : [karl.to_dbref(), susan.to_dbref(),] } )
-        Book.objects.create( name = "2", author = bob, extra = {"a": bob.to_dbref(), "b" :  karl.to_dbref()} )
-        Book.objects.create( name = "3", author = bob, extra = {"a": bob.to_dbref(), "c" : [jon.to_dbref(), peter.to_dbref() ] })
-        Book.objects.create( name = "4", author = bob,)
+        Book.objects.create(name = "1", author = bob, extra = {"a": bob.to_dbref(), "b" : [karl.to_dbref(), susan.to_dbref()]} )
+        Book.objects.create(name = "2", author = bob, extra = {"a": bob.to_dbref(), "b" :  karl.to_dbref()} )
+        Book.objects.create(name = "3", author = bob, extra = {"a": bob.to_dbref(), "c" : [jon.to_dbref(), peter.to_dbref()] })
+        Book.objects.create(name = "4", author = bob)
 
         # Jon
-        Book.objects.create( name = "5", author = jon,)
-        Book.objects.create( name = "6", author = peter,)
-        Book.objects.create( name = "7", author = jon,)
-        Book.objects.create( name = "8", author = jon,)
-        Book.objects.create( name = "9", author = jon, extra = {"a": peter.to_dbref() })
+        Book.objects.create(name = "5", author = jon)
+        Book.objects.create(name = "6", author = peter)
+        Book.objects.create(name = "7", author = jon)
+        Book.objects.create(name = "8", author = jon)
+        Book.objects.create(name = "9", author = jon, extra = {"a": peter.to_dbref()})
 
         # Checks
         self.assertEqual(u",".join([str(b) for b in Book.objects.all()] ) , "1,2,3,4,5,6,7,8,9" )
@@ -2642,6 +2637,7 @@ class DocumentTest(unittest.TestCase):
                                     Q(author = bob) |
                                     Q(extra__b = bob ) )] ) ,
                                     "1,2,3,4" )
+
         # Susan & Karl related books
         self.assertEqual(u",".join([str(b) for b in Book.objects.filter(
                                     Q(extra__a__all = [karl, susan] ) |
@@ -2655,8 +2651,6 @@ class DocumentTest(unittest.TestCase):
                                         "$where" : """function(){ return this.name == '1' || this.name == '2'; } """
                                         }
                                     ) ] ) , "1,2" )
-
-
 
 
 if __name__ == '__main__':
