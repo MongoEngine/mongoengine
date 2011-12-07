@@ -5,16 +5,22 @@ from django.utils.encoding import force_unicode
 from mongoengine.document import Document
 from mongoengine import fields
 from mongoengine.queryset import OperationError
-
+from mongoengine.connection import DEFAULT_CONNECTION_NAME
+from django.conf import settings
 from datetime import datetime
 
+MONGOENGINE_SESSION_DB_ALIAS = getattr(
+    settings, 'MONGOENGINE_SESSION_DB_ALIAS',
+    DEFAULT_CONNECTION_NAME)
 
 class MongoSession(Document):
     session_key = fields.StringField(primary_key=True, max_length=40)
     session_data = fields.StringField()
     expire_date = fields.DateTimeField()
     
-    meta = {'collection': 'django_session', 'allow_inheritance': False}
+    meta = {'collection': 'django_session',
+            'db_alias': MONGOENGINE_SESSION_DB_ALIAS,
+            'allow_inheritance': False}
 
 
 class SessionStore(SessionBase):
