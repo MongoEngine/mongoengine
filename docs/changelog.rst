@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added db_alias support to individual documents
 - Fixed GridFS documents can now be pickled
 - Added Now raises an InvalidDocumentError when declaring multiple fields with the same db_field
 - Added InvalidQueryError when calling with_id with a filter

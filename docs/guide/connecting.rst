@@ -30,3 +30,24 @@ for the connection - if no `alias` is provided then "default" is used.
 
 In the background this uses :func:`~mongoengine.register_connection` to
 store the data and you can register all aliases up front if required.
+
+Individual documents can also support multiple databases by providing a
+`db_alias` in their meta data.  This allows :class:`~pymongo.dbref.DBRef` objects
+to point across databases and collections.  Below is an example schema, using
+3 different databases to store data::
+
+        class User(Document):
+            name = StringField()
+
+            meta = {"db_alias": "user-db"}
+
+        class Book(Document):
+            name = StringField()
+
+            meta = {"db_alias": "book-db"}
+
+        class AuthorBooks(Document):
+            author = ReferenceField(User)
+            book = ReferenceField(Book)
+
+            meta = {"db_alias": "users-books-db"}
