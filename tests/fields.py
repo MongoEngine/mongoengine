@@ -3,6 +3,7 @@ import datetime
 from decimal import Decimal
 
 import pymongo
+import gridfs
 
 from mongoengine import *
 from mongoengine.connection import _get_db
@@ -188,6 +189,9 @@ class FieldTest(unittest.TestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements.
         """
+        class User(Document):
+            pass
+
         class Comment(EmbeddedDocument):
             content = StringField()
 
@@ -195,6 +199,7 @@ class FieldTest(unittest.TestCase):
             content = StringField()
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
+            authors = ListField(ReferenceField(User))
 
         post = BlogPost(content='Went for a walk today...')
         post.validate()
@@ -209,14 +214,20 @@ class FieldTest(unittest.TestCase):
         post.tags = ('fun', 'leisure')
         post.validate()
 
-        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
-        post.comments = comments
-        post.validate()
-
         post.comments = ['a']
         self.assertRaises(ValidationError, post.validate)
         post.comments = 'yay'
         self.assertRaises(ValidationError, post.validate)
+
+        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
+        post.comments = comments
+        post.validate()
+
+        post.authors = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.authors = [User()]
+        post.validate()
 
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
@@ -227,7 +238,8 @@ class FieldTest(unittest.TestCase):
 
         class BlogPost(Document):
             content = StringField()
-            comments = SortedListField(EmbeddedDocumentField(Comment), ordering='order')
+            comments = SortedListField(EmbeddedDocumentField(Comment),
+                                       ordering='order')
             tags = SortedListField(StringField())
 
         post = BlogPost(content='Went for a walk today...')
@@ -393,14 +405,54 @@ class FieldTest(unittest.TestCase):
         class Employee(Document):
             name = StringField()
             boss = ReferenceField('self')
+            friends = ListField(ReferenceField('self'))
 
         bill = Employee(name='Bill Lumbergh')
         bill.save()
-        peter = Employee(name='Peter Gibbons', boss=bill)
+
+        michael = Employee(name='Michael Bolton')
+        michael.save()
+
+        samir = Employee(name='Samir Nagheenanajar')
+        samir.save()
+
+        friends = [michael, samir]
+        peter = Employee(name='Peter Gibbons', boss=bill, friends=friends)
         peter.save()
 
         peter = Employee.objects.with_id(peter.id)
         self.assertEqual(peter.boss, bill)
+        self.assertEqual(peter.friends, friends)
+
+    def test_recursive_embedding(self):
+        """Ensure that EmbeddedDocumentFields can contain their own documents.
+        """
+        class Tree(Document):
+            name = StringField()
+            children = ListField(EmbeddedDocumentField('TreeNode'))
+
+        class TreeNode(EmbeddedDocument):
+            name = StringField()
+            children = ListField(EmbeddedDocumentField('self'))
+        
+        tree = Tree(name="Tree")
+
+        first_child = TreeNode(name="Child 1")
+        tree.children.append(first_child)
+
+        second_child = TreeNode(name="Child 2")
+        first_child.children.append(second_child)
+        
+        third_child = TreeNode(name="Child 3")
+        first_child.children.append(third_child)
+
+        tree.save()
+
+        tree_obj = Tree.objects.first()
+        self.assertEqual(len(tree.children), 1)
+        self.assertEqual(tree.children[0].name, first_child.name)
+        self.assertEqual(tree.children[0].children[0].name, second_child.name)
+        self.assertEqual(tree.children[0].children[1].name, third_child.name)
 
     def test_undefined_reference(self):
         """Ensure that ReferenceFields may reference undefined Documents.
@@ -607,7 +659,130 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_file_fields(self):
+        """Ensure that file fields can be written to and their data retrieved
+        """
+        class PutFile(Document):
+            file = FileField()
 
+        class StreamFile(Document):
+            file = FileField()
+
+        class SetFile(Document):
+            file = FileField()
+
+        text = 'Hello, World!'
+        more_text = 'Foo Bar'
+        content_type = 'text/plain'
+
+        PutFile.drop_collection()
+        StreamFile.drop_collection()
+        SetFile.drop_collection()
+
+        putfile = PutFile()
+        putfile.file.put(text, content_type=content_type)
+        putfile.save()
+        putfile.validate()
+        result = PutFile.objects.first()
+        self.assertTrue(putfile == result)
+        self.assertEquals(result.file.read(), text)
+        self.assertEquals(result.file.content_type, content_type)
+        result.file.delete() # Remove file from GridFS
+
+        streamfile = StreamFile()
+        streamfile.file.new_file(content_type=content_type)
+        streamfile.file.write(text)
+        streamfile.file.write(more_text)
+        streamfile.file.close()
+        streamfile.save()
+        streamfile.validate()
+        result = StreamFile.objects.first()
+        self.assertTrue(streamfile == result)
+        self.assertEquals(result.file.read(), text + more_text)
+        self.assertEquals(result.file.content_type, content_type)
+        result.file.delete()
+
+        # Ensure deleted file returns None
+        self.assertTrue(result.file.read() == None)
+
+        setfile = SetFile()
+        setfile.file = text
+        setfile.save()
+        setfile.validate()
+        result = SetFile.objects.first()
+        self.assertTrue(setfile == result)
+        self.assertEquals(result.file.read(), text)
+
+        # Try replacing file with new one
+        result.file.replace(more_text)
+        result.save()
+        result.validate()
+        result = SetFile.objects.first()
+        self.assertTrue(setfile == result)
+        self.assertEquals(result.file.read(), more_text)
+        result.file.delete() 
+
+        PutFile.drop_collection()
+        StreamFile.drop_collection()
+        SetFile.drop_collection()
+
+        # Make sure FileField is optional and not required
+        class DemoFile(Document):
+            file = FileField()
+        d = DemoFile.objects.create()
+
+    def test_file_uniqueness(self):
+        """Ensure that each instance of a FileField is unique
+        """
+        class TestFile(Document):
+            name = StringField()
+            file = FileField()
+
+        # First instance
+        testfile = TestFile()
+        testfile.name = "Hello, World!"
+        testfile.file.put('Hello, World!')
+        testfile.save()
+
+        # Second instance
+        testfiledupe = TestFile()
+        data = testfiledupe.file.read() # Should be None
+
+        self.assertTrue(testfile.name != testfiledupe.name)
+        self.assertTrue(testfile.file.read() != data)
+
+        TestFile.drop_collection()
+
+    def test_geo_indexes(self):
+        """Ensure that indexes are created automatically for GeoPointFields.
+        """
+        class Event(Document):
+            title = StringField()
+            location = GeoPointField()
+
+        Event.drop_collection()
+        event = Event(title="Coltrane Motion @ Double Door",
+                      location=[41.909889, -87.677137])
+        event.save()
+
+        info = Event.objects._collection.index_information()
+        self.assertTrue(u'location_2d' in info)
+        self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
+
+        Event.drop_collection()
+
+    def test_ensure_unique_default_instances(self):
+        """Ensure that every field has it's own unique default instance."""
+        class D(Document):
+            data = DictField()
+            data2 = DictField(default=lambda: {})
+
+        d1 = D()
+        d1.data['foo'] = 'bar'
+        d1.data2['foo'] = 'bar'
+        d2 = D()
+        self.assertEqual(d2.data, {})
+        self.assertEqual(d2.data2, {})
 
 if __name__ == '__main__':
     unittest.main()
