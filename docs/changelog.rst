@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added pymongo 2.1 support
 - Fixed Abstract documents can now declare indexes
 - Added db_alias support to individual documents
 - Fixed GridFS documents can now be pickled

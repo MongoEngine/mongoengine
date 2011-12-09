@@ -1,4 +1,4 @@
-from pymongo import Connection, version_tuple
+from pymongo import Connection, version
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -73,6 +73,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
+        version_tuple = [int(v) for v in version.split('.')]
         if version_tuple[0] >= 2 and version_tuple [1] > 0:
             conn_settings.pop('name')
             conn_settings.pop('slaves')
