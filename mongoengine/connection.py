@@ -1,4 +1,4 @@
-from pymongo import Connection
+from pymongo import Connection, version_tuple
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -18,8 +18,8 @@ _dbs = {}
 
 
 def register_connection(alias, name, host='localhost', port=27017,
-                        is_slave=False, slaves=None, username=None,
-                        password=None):
+                        is_slave=False, read_preference=False, slaves=None,
+                        username=None, password=None):
     """Add a connection.
 
     :param alias: the name that will be used to refer to this connection
@@ -27,11 +27,13 @@ def register_connection(alias, name, host='localhost', port=27017,
     :param name: the name of the specific database to use
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
-    :param is_slave: whether the connection can act as a slave
+    :param is_slave: whether the connection can act as a slave ** Depreciated pymongo 2.0.1+
+    :param read_preference: The read preference for the collection ** Added pymongo 2.1
     :param slaves: a list of aliases of slave connections; each of these must
         be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with
     :param password: password to authenticate with
+
     """
     global _connection_settings
     _connection_settings[alias] = {
@@ -42,6 +44,7 @@ def register_connection(alias, name, host='localhost', port=27017,
         'slaves': slaves or [],
         'username': username,
         'password': password,
+        'read_preference': read_preference
     }
 
 
@@ -70,11 +73,19 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
-        # Get all the slave connections
-        slaves = []
-        for slave_alias in conn_settings['slaves']:
-            slaves.append(get_connection(slave_alias))
-        conn_settings['slaves'] = slaves
+        if version_tuple[0] >= 2 and version_tuple [1] > 0:
+            conn_settings.pop('name')
+            conn_settings.pop('slaves')
+            conn_settings.pop('is_slave')
+            conn_settings.pop('username')
+            conn_settings.pop('password')
+        else:
+            # Get all the slave connections
+            slaves = []
+            for slave_alias in conn_settings['slaves']:
+                slaves.append(get_connection(slave_alias))
+            conn_settings['slaves'] = slaves
+            conn_settings.pop('read_preference')
 
         try:
             _connections[alias] = Connection(**conn_settings)
