@@ -3,6 +3,7 @@ from mongoengine import *
 from django.utils.hashcompat import md5_constructor, sha_constructor
 from django.utils.encoding import smart_str
 from django.contrib.auth.models import AnonymousUser
+from django.utils.translation import ugettext_lazy as _
 
 import datetime
 
@@ -21,16 +22,38 @@ class User(Document):
     """A User document that aims to mirror most of the API specified by Django
     at http://docs.djangoproject.com/en/dev/topics/auth/#users
     """
-    username = StringField(max_length=30, required=True)
-    first_name = StringField(max_length=30)
-    last_name = StringField(max_length=30)
-    email = StringField()
-    password = StringField(max_length=128)
-    is_staff = BooleanField(default=False)
-    is_active = BooleanField(default=True)
-    is_superuser = BooleanField(default=False)
-    last_login = DateTimeField(default=datetime.datetime.now)
-    date_joined = DateTimeField(default=datetime.datetime.now)
+    username = StringField(max_length=30, required=True,
+                           verbose_name=_('username'),
+                           help_text=_("Required. 30 characters or fewer. Letters, numbers and @/./+/-/_ characters"))
+
+    first_name = StringField(max_length=30,
+                             verbose_name=_('first name'))
+
+    last_name = StringField(max_length=30,
+                            verbose_name=_('last name'))
+    email = EmailField(verbose_name=_('e-mail address'))
+    password = StringField(max_length=128,
+                           verbose_name=_('password'),
+                           help_text=_("Use '[algo]$[salt]$[hexdigest]' or use the <a href=\"password/\">change password form</a>."))
+    is_staff = BooleanField(default=False,
+                            verbose_name=_('staff status'),
+                            help_text=_("Designates whether the user can log into this admin site."))
+    is_active = BooleanField(default=True,
+                             verbose_name=_('active'),
+                             help_text=_("Designates whether this user should be treated as active. Unselect this instead of deleting accounts."))
+    is_superuser = BooleanField(default=False,
+                                verbose_name=_('superuser status'),
+                                help_text=_("Designates that this user has all permissions without explicitly assigning them."))
+    last_login = DateTimeField(default=datetime.datetime.now,
+                               verbose_name=_('last login'))
+    date_joined = DateTimeField(default=datetime.datetime.now,
+                                verbose_name=_('date joined'))
+
+    meta = {
+        'indexes': [
+            {'fields': ['username'], 'unique': True}
+        ]
+    }
 
     def __unicode__(self):
         return self.username
@@ -86,7 +109,7 @@ class User(Document):
             else:
                 email = '@'.join([email_name, domain_part.lower()])
 
-        user = User(username=username, email=email, date_joined=now)
+        user = cls(username=username, email=email, date_joined=now)
         user.set_password(password)
         user.save()
         return user
@@ -98,6 +121,10 @@ class User(Document):
 class MongoEngineBackend(object):
     """Authenticate using MongoEngine and mongoengine.django.auth.User.
     """
+
+    supports_object_permissions = False
+    supports_anonymous_user = False
+    supports_inactive_user = False
 
     def authenticate(self, username=None, password=None):
         user = User.objects(username=username).first()

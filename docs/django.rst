@@ -49,10 +49,11 @@ Storage
 =======
 With MongoEngine's support for GridFS via the :class:`~mongoengine.FileField`,
 it is useful to have a Django file storage backend that wraps this. The new
-storage module is called :class:`~mongoengine.django.GridFSStorage`. Using it
-is very similar to using the default FileSystemStorage.::
-
-    fs = mongoengine.django.GridFSStorage()
+storage module is called :class:`~mongoengine.django.storage.GridFSStorage`. 
+Using it is very similar to using the default FileSystemStorage.::
+    
+    from mongoengine.django.storage import GridFSStorage
+    fs = GridFSStorage()
 
     filename = fs.save('hello.txt', 'Hello, World!')
 
