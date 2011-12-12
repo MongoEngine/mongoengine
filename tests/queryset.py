@@ -2909,6 +2909,51 @@ class QueryFieldListTest(unittest.TestCase):
 
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
+    
+    def test_select(self):
+        class TestDoc(Document):
+            x = IntField()
+            y = BooleanField()
+
+        TestDoc.drop_collection()
+
+        TestDoc(x=10, y=True).save()
+        TestDoc(x=20, y=False).save()
+        TestDoc(x=30, y=True).save()
+
+        plist = list(TestDoc.objects.select('x', 'y'))
+
+        self.assertEqual(len(plist), 3)
+        self.assertEqual(plist[0], [10, True])
+        self.assertEqual(plist[1], [20, False])
+        self.assertEqual(plist[2], [30, True])
+
+        class UserDoc(Document):
+            name = StringField()
+            age = IntField()
+
+        UserDoc.drop_collection()
+
+        UserDoc(name="Wilson Jr", age=19).save()
+        UserDoc(name="Wilson", age=43).save()
+        UserDoc(name="Eliana", age=37).save()
+        UserDoc(name="Tayza", age=15).save()
+
+        ulist = list(UserDoc.objects.select('name', 'age'))
+
+        self.assertEqual(ulist, [
+                [u'Wilson Jr', 19],
+                [u'Wilson', 43],
+                [u'Eliana', 37],
+                [u'Tayza', 15]])
+
+        ulist = list(UserDoc.objects.order_by('age').select('name'))
+
+        self.assertEqual(ulist, [
+                [u'Tayza'],
+                [u'Wilson Jr'],
+                [u'Eliana'],
+                [u'Wilson']])
 
 if __name__ == '__main__':
     unittest.main()
