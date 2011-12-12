@@ -724,6 +724,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 class BaseDocument(object):
 
     _dynamic = False
+    _created = True
 
     def __init__(self, **values):
         signals.pre_init.send(self.__class__, document=self, values=values)
@@ -757,6 +758,7 @@ class BaseDocument(object):
         if self._dynamic:
             for key, value in dynamic_data.items():
                 setattr(self, key, value)
+
         signals.post_init.send(self.__class__, document=self)
 
     def __setattr__(self, name, value):
@@ -784,6 +786,11 @@ class BaseDocument(object):
             if hasattr(self, '_changed_fields'):
                 self._mark_as_changed(name)
             return
+
+        if not self._created and name in self._meta.get('shard_key', tuple()):
+            from queryset import OperationError
+            raise OperationError("Shard Keys are immutable. Tried to update %s" % name)
+
         super(BaseDocument, self).__setattr__(name, value)
 
     def __expand_dynamic_values(self, name, value):
@@ -912,6 +919,7 @@ class BaseDocument(object):
 
         obj = cls(**data)
         obj._changed_fields = changed_fields
+        obj._created = False
         return obj
 
     def _mark_as_changed(self, key):

@@ -171,6 +171,7 @@ class Document(BaseDocument):
         doc = self.to_mongo()
 
         created = force_insert or '_id' not in doc
+
         try:
             collection = self.__class__.objects._collection
             if created:
@@ -181,10 +182,18 @@ class Document(BaseDocument):
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
+
+                # Need to add shard key to query, or you get an error
+                select_dict = {'_id': object_id}
+                shard_key = self.__class__._meta.get('shard_key', tuple())
+                for k in shard_key:
+                    actual_key = self._db_field_map.get(k, k)
+                    select_dict[actual_key] = doc[actual_key]
+
                 if updates:
-                    collection.update({'_id': object_id}, {"$set": updates}, upsert=True, safe=safe, **write_options)
+                    collection.update(select_dict, {"$set": updates}, upsert=True, safe=safe, **write_options)
                 if removals:
-                    collection.update({'_id': object_id}, {"$unset": removals}, upsert=True, safe=safe, **write_options)
+                    collection.update(select_dict, {"$unset": removals}, upsert=True, safe=safe, **write_options)
 
             cascade = self._meta.get('cascade', True) if cascade is None else cascade
             if cascade:
@@ -238,7 +247,12 @@ class Document(BaseDocument):
         if not self.pk:
             raise OperationError('attempt to update a document not yet saved')
 
-        return self.__class__.objects(pk=self.pk).update_one(**kwargs)
+        # Need to add shard key to query, or you get an error
+        select_dict = {'pk': self.pk}
+        shard_key = self.__class__._meta.get('shard_key', tuple())
+        for k in shard_key:
+            select_dict[k] = getattr(self, k)
+        return self.__class__.objects(**select_dict).update_one(**kwargs)
 
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -248,10 +262,8 @@ class Document(BaseDocument):
         """
         signals.pre_delete.send(self.__class__, document=self)
 
-        id_field = self._meta['id_field']
-        object_id = self._fields[id_field].to_mongo(self[id_field])
         try:
-            self.__class__.objects(**{id_field: object_id}).delete(safe=safe)
+            self.__class__.objects(pk=self.pk).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)

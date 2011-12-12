@@ -476,8 +476,29 @@ subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
     first_post = BlogPost.objects.order_by("+published_date").first()
     assert first_post.title == "Blog Post #1"
 
+Shard keys
+==========
+
+If your collection is sharded, then you need to specify the shard key as a tuple,
+using the :attr:`shard_key` attribute of :attr:`-mongoengine.Document.meta`.
+This ensures that the shard key is sent with the query when calling the 
+:meth:`~mongoengine.document.Document.save` or 
+:meth:`~mongoengine.document.Document.update` method on an existing 
+:class:`-mongoengine.Document` instance::
+
+    class LogEntry(Document):
+        machine = StringField()
+        app = StringField()
+        timestamp = DateTimeField()
+        data = StringField()
+
+        meta = {
+            'shard_key': ('machine', 'timestamp',)
+        }
+
 Document inheritance
 ====================
+
 To create a specialised type of a :class:`~mongoengine.Document` you have
 defined, you may subclass it and add any extra fields or methods you may need.
 As this is new class is not a direct subclass of
