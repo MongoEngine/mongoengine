@@ -617,6 +617,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     base_meta['queryset_class'] = base._meta['queryset_class']
             try:
                 base_meta['objects'] = base.__getattribute__(base, 'objects')
+            except TypeError:
+                pass
             except AttributeError:
                 pass
 
