@@ -1,4 +1,5 @@
-from pymongo import Connection, version
+import pymongo
+from pymongo import Connection
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -19,7 +20,7 @@ _dbs = {}
 
 def register_connection(alias, name, host='localhost', port=27017,
                         is_slave=False, read_preference=False, slaves=None,
-                        username=None, password=None):
+                        username=None, password=None, **kwargs):
     """Add a connection.
 
     :param alias: the name that will be used to refer to this connection
@@ -33,6 +34,7 @@ def register_connection(alias, name, host='localhost', port=27017,
         be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with
     :param password: password to authenticate with
+    :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
 
     """
     global _connection_settings
@@ -46,7 +48,7 @@ def register_connection(alias, name, host='localhost', port=27017,
         'password': password,
         'read_preference': read_preference
     }
-
+    _connection_settings[alias].update(kwargs)
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
     global _connections
@@ -73,8 +75,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
-        version_tuple = [int(v) for v in version.split('.')]
-        if version_tuple[0] >= 2 and version_tuple [1] > 0:
+        if hasattr(pymongo, 'version_tuple'):  # Support for 2.1+
             conn_settings.pop('name')
             conn_settings.pop('slaves')
             conn_settings.pop('is_slave')
