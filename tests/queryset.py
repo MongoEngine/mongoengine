@@ -2955,5 +2955,46 @@ class QueryFieldListTest(unittest.TestCase):
                 [u'Eliana'],
                 [u'Wilson']])
 
+    def test_select_embedded(self):
+        class Profile(EmbeddedDocument):
+            name = StringField()
+            age = IntField()
+
+        class Locale(EmbeddedDocument):
+            city = StringField()
+            country = StringField()
+
+        class Person(Document):
+            profile = EmbeddedDocumentField(Profile)
+            locale = EmbeddedDocumentField(Locale)
+
+        Person.drop_collection()
+
+        Person(profile=Profile(name="Wilson Jr", age=19),
+               locale=Locale(city="Corumba-GO", country="Brazil")).save()
+
+        Person(profile=Profile(name="Gabriel Falcao", age=23),
+               locale=Locale(city="New York", country="USA")).save()
+
+        Person(profile=Profile(name="Lincoln de souza", age=28),
+               locale=Locale(city="Belo Horizonte", country="Brazil")).save()
+
+        Person(profile=Profile(name="Walter cruz", age=30),
+               locale=Locale(city="Brasilia", country="Brazil")).save()
+
+        self.assertEqual(
+            list(Person.objects.order_by('profile.age').select('profile.name')),
+            [[u'Wilson Jr'], [u'Gabriel Falcao'],
+             [u'Lincoln de souza'], [u'Walter cruz']])
+
+        ulist = list(Person.objects.order_by('locale.city')
+                     .select('profile.name', 'profile.age', 'locale.city'))
+        self.assertEqual(ulist,
+                         [[u'Lincoln de souza', 28, u'Belo Horizonte'],
+                          [u'Walter cruz', 30, u'Brasilia'],
+                          [u'Wilson Jr', 19, u'Corumba-GO'],
+                          [u'Gabriel Falcao', 23, u'New York']])
+            
+
 if __name__ == '__main__':
     unittest.main()

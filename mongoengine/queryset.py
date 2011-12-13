@@ -320,12 +320,22 @@ class SelectResult(object):
     """
     def __init__(self, cursor, fields):
         self._cursor = cursor
-        self._fields = fields
+        self._fields = [f.split('.') for f in fields]
+        
+    def _get_value(self, keys, data):
+        for key in keys:
+            if data:
+                data = data.get(key)
+            else:
+                break
+
+        return data
 
     def next(self):
         try:
             data = self._cursor.next()
-            return [data.get(f) for f in self._fields]
+            return [self._get_value(f, data)
+                    for f in self._fields]
         except StopIteration, e:
             self.rewind()
             raise e
