@@ -3027,5 +3027,24 @@ class QueryFieldListTest(unittest.TestCase):
         plist = list(Person.objects.select('name', 'state'))
         self.assertEqual(plist, [[u'Wilson JR', s1]])
 
+
+    def test_select_db_field(self):
+        class TestDoc(Document):
+            x = IntField(db_field="y")
+            y = BooleanField(db_field="x")
+
+        TestDoc.drop_collection()
+
+        TestDoc(x=10, y=True).save()
+        TestDoc(x=20, y=False).save()
+        TestDoc(x=30, y=True).save()
+
+        plist = list(TestDoc.objects.select('x', 'y'))
+
+        self.assertEqual(len(plist), 3)
+        self.assertEqual(plist[0], [10, True])
+        self.assertEqual(plist[1], [20, False])
+        self.assertEqual(plist[2], [30, True])
+
 if __name__ == '__main__':
     unittest.main()
