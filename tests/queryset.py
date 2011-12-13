@@ -2994,7 +2994,38 @@ class QueryFieldListTest(unittest.TestCase):
                           [u'Walter cruz', 30, u'Brasilia'],
                           [u'Wilson Jr', 19, u'Corumba-GO'],
                           [u'Gabriel Falcao', 23, u'New York']])
+
+    def test_select_decimal(self):
+        from decimal import Decimal
+        class Person(Document):
+            name = StringField()
+            rating = DecimalField()
             
+        Person.drop_collection()
+        Person(name="Wilson Jr", rating=Decimal('1.0')).save()
+
+        ulist = list(Person.objects.select('name', 'rating'))
+        self.assertEqual(ulist, [[u'Wilson Jr', Decimal('1.0')]])
+
+
+    def test_select_reference_field(self):
+        class State(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            state = ReferenceField(State)
+
+        State.drop_collection()
+        Person.drop_collection()
+
+        s1 = State(name="Goias")
+        s1.save()
+
+        Person(name="Wilson JR", state=s1).save()
+
+        plist = list(Person.objects.select('name', 'state'))
+        self.assertEqual(plist, [[u'Wilson JR', s1]])
 
 if __name__ == '__main__':
     unittest.main()

@@ -318,24 +318,51 @@ class SelectResult(object):
     """
     Used for .select method in QuerySet
     """
-    def __init__(self, cursor, fields):
+    def __init__(self, document_type, cursor, fields, dbfields):
+        from base import BaseField
+        from fields import ReferenceField
+        # Caches for optimization
+        self.ReferenceField = ReferenceField
+
         self._cursor = cursor
-        self._fields = [f.split('.') for f in fields]
         
-    def _get_value(self, keys, data):
+        f = []
+        for field, dbfield in itertools.izip(fields, dbfields):
+            
+            p = document_type
+            for path in field.split('.'):
+                if p and isinstance(p, BaseField):
+                    p = p.lookup_member(path)
+                elif p:
+                    p = getattr(p, path)
+                else:
+                    break
+
+            f.append((dbfield.split('.'), p))
+
+        self._fields = f
+        
+    def _get_value(self, keys, field_type, data):
         for key in keys:
             if data:
                 data = data.get(key)
             else:
                 break
 
-        return data
+        if isinstance(field_type, self.ReferenceField):
+            doc_type = field_type.document_type
+            data = doc_type._get_db().dereference(data)
+            
+            if data:
+                return doc_type._from_son(data)
+
+        return field_type.to_python(data)
 
     def next(self):
         try:
             data = self._cursor.next()
-            return [self._get_value(f, data)
-                    for f in self._fields]
+            return [self._get_value(k, t, data)
+                    for k, t in self._fields]
         except StopIteration, e:
             self.rewind()
             raise e
@@ -843,11 +870,13 @@ class QuerySet(object):
         """
         Select a field and make a tuple of element
         """
+        dbfields = self._fields_to_dbfields(fields)
+
         cursor_args = self._cursor_args
-        cursor_args['fields'] = self._fields_to_dbfields(fields)
+        cursor_args['fields'] = dbfields
         cursor = self._build_cursor(**cursor_args)
 
-        return SelectResult(cursor, fields)
+        return SelectResult(self._document, cursor, fields, dbfields)
 
     def first(self):
         """Retrieve the first object matching the query.
