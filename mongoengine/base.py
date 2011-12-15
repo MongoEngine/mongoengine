@@ -1255,11 +1255,11 @@ class BaseDict(dict):
 
     def pop(self, *args, **kwargs):
         self._updated()
-        super(BaseDict, self).clear(*args, **kwargs)
+        super(BaseDict, self).pop(*args, **kwargs)
 
     def popitem(self, *args, **kwargs):
         self._updated()
-        super(BaseDict, self).clear(*args, **kwargs)
+        super(BaseDict, self).popitem(*args, **kwargs)
 
     def _updated(self):
         try:
