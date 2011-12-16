@@ -314,15 +314,17 @@ class QueryFieldList(object):
     def __nonzero__(self):
         return bool(self.fields)
 
-class SelectResult(object):
+class ListResult(object):
     """
-    Used for .select method in QuerySet
+    Used for .values_list method in QuerySet
     """
     def __init__(self, document_type, cursor, fields, dbfields):
         from base import BaseField
-        from fields import ReferenceField
+        from fields import ReferenceField, GenericReferenceField
         # Caches for optimization
+
         self.ReferenceField = ReferenceField
+        self.GenericReferenceField = GenericReferenceField
 
         self._cursor = cursor
         
@@ -355,6 +357,10 @@ class SelectResult(object):
             
             if data:
                 return doc_type._from_son(data)
+
+        elif isinstance(field_type, self.GenericReferenceField):
+            if data and isinstance(data, (dict, pymongo.dbref.DBRef)):
+                return field_type.dereference(data)
 
         return field_type.to_python(data)
 
@@ -866,9 +872,10 @@ class QuerySet(object):
         doc.save()
         return doc
 
-    def select(self, *fields):
+    def values_list(self, *fields):
         """
-        Select a field and make a tuple of element
+        make a list of elements
+         .. versionadded:: 0.6
         """
         dbfields = self._fields_to_dbfields(fields)
 
@@ -876,7 +883,7 @@ class QuerySet(object):
         cursor_args['fields'] = dbfields
         cursor = self._build_cursor(**cursor_args)
 
-        return SelectResult(self._document, cursor, fields, dbfields)
+        return ListResult(self._document, cursor, fields, dbfields)
 
     def first(self):
         """Retrieve the first object matching the query.
