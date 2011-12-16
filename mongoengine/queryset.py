@@ -376,6 +376,15 @@ class ListResult(object):
     def rewind(self):
         self._cursor.rewind()
 
+    def count(self):
+        """
+        Count the selected elements in the query.
+        """
+        return self._cursor.count(with_limit_and_skip=True)
+
+    def __len__(self):
+        return self.count()
+
     def __iter__(self):
         return self
 
