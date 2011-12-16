@@ -153,15 +153,6 @@ class BaseField(object):
             if callable(value):
                 value = value()
 
-        # Convert lists / values so we can watch for any changes on them
-        if isinstance(value, (list, tuple)) and not isinstance(value, BaseList):
-            observer = DataObserver(instance, self.name)
-            value = BaseList(value, observer)
-            instance._data[self.name] = value
-        elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            observer = DataObserver(instance, self.name)
-            value = BaseDict(value, observer)
-            instance._data[self.name] = value
         return value
 
     def __set__(self, instance, value):
@@ -231,6 +222,7 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
+    _dereference = False
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
@@ -239,11 +231,39 @@ class ComplexBaseField(BaseField):
             # Document class being used rather than a document object
             return self
 
-        from dereference import dereference
-        instance._data[self.name] = dereference(
-            instance._data.get(self.name), max_depth=1, instance=instance, name=self.name
-        )
-        return super(ComplexBaseField, self).__get__(instance, owner)
+        if not self._dereference and instance._initialised:
+            from dereference import dereference
+            self._dereference = dereference  # Cached
+            instance._data[self.name] = self._dereference(
+                instance._data.get(self.name), max_depth=1, instance=instance,
+                name=self.name
+            )
+
+        value = super(ComplexBaseField, self).__get__(instance, owner)
+
+        # Convert lists / values so we can watch for any changes on them
+        if isinstance(value, (list, tuple)) and not isinstance(value, BaseList):
+            value = BaseList(value, instance, self.name)
+            instance._data[self.name] = value
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
+            value = BaseDict(value, instance, self.name)
+            instance._data[self.name] = value
+
+        if self._dereference and instance._initialised and \
+            isinstance(value, (BaseList, BaseDict)) and not value._dereferenced:
+            value = self._dereference(
+                value, max_depth=1, instance=instance, name=self.name
+            )
+            value._dereferenced = True
+            instance._data[self.name] = value
+
+        return value
+
+    def __set__(self, instance, value):
+        """Descriptor for assigning a value to a field in a document.
+        """
+        instance._data[self.name] = value
+        instance._mark_as_changed(self.name)
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -727,12 +747,13 @@ class BaseDocument(object):
 
     _dynamic = False
     _created = True
+    _dynamic_lock = True
+    _initialised = False
 
     def __init__(self, **values):
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
-        self._initialised = False
 
         # Assign default values to instance
         for attr_name, field in self._fields.items():
@@ -754,18 +775,19 @@ class BaseDocument(object):
 
         # Set any get_fieldname_display methods
         self.__set_field_display()
-        # Flag initialised
-        self._initialised = True
 
         if self._dynamic:
+            self._dynamic_lock = False
             for key, value in dynamic_data.items():
                 setattr(self, key, value)
 
+        # Flag initialised
+        self._initialised = True
         signals.post_init.send(self.__class__, document=self)
 
     def __setattr__(self, name, value):
         # Handle dynamic data only if an initialised dynamic document
-        if self._dynamic and getattr(self, '_initialised', False):
+        if self._dynamic and not self._dynamic_lock:
 
             field = None
             if not hasattr(self, name) and not name.startswith('_'):
@@ -825,11 +847,9 @@ class BaseDocument(object):
 
         # Convert lists / values so we can watch for any changes on them
         if isinstance(value, (list, tuple)) and not isinstance(value, BaseList):
-            observer = DataObserver(self, name)
-            value = BaseList(value, observer)
+            value = BaseList(value, self, name)
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            observer = DataObserver(self, name)
-            value = BaseDict(value, observer)
+            value = BaseDict(value, self, name)
 
         return value
 
@@ -1147,33 +1167,25 @@ class BaseDocument(object):
             return hash(self.pk)
 
 
-class DataObserver(object):
-
-    __slots__ = ["instance", "name"]
-
-    def __init__(self, instance, name):
-        self.instance = instance
-        self.name = name
-
-    def updated(self):
-        if hasattr(self.instance, '_mark_as_changed'):
-            self.instance._mark_as_changed(self.name)
-
-
 class BaseList(list):
     """A special list so we can watch any changes
     """
 
-    def __init__(self, list_items, observer):
-        self.observer = observer
+    _dereferenced = False
+    _instance = None
+    _name = None
+
+    def __init__(self, list_items, instance, name):
+        self._instance = instance
+        self._name = name
         super(BaseList, self).__init__(list_items)
 
     def __setitem__(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseList, self).__setitem__(*args, **kwargs)
 
     def __delitem__(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseList, self).__delitem__(*args, **kwargs)
 
     def __getstate__(self):
@@ -1182,90 +1194,94 @@ class BaseList(list):
 
     def __setstate__(self, state):
         self = state
+        return self
 
     def append(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).append(*args, **kwargs)
 
     def extend(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).extend(*args, **kwargs)
 
     def insert(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).insert(*args, **kwargs)
 
     def pop(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).pop(*args, **kwargs)
 
     def remove(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).remove(*args, **kwargs)
 
     def reverse(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).reverse(*args, **kwargs)
 
     def sort(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         return super(BaseList, self).sort(*args, **kwargs)
 
-    def _updated(self):
-        try:
-            self.observer.updated()
-        except AttributeError:
-            pass
+    def _mark_as_changed(self):
+        if hasattr(self._instance, '_mark_as_changed'):
+            self._instance._mark_as_changed(self._name)
 
 
 class BaseDict(dict):
     """A special dict so we can watch any changes
     """
 
-    def __init__(self, dict_items, observer):
-        self.observer = observer
+    _dereferenced = False
+    _instance = None
+    _name = None
+
+    def __init__(self, dict_items, instance, name):
+        self._instance = instance
+        self._name = name
         super(BaseDict, self).__init__(dict_items)
 
     def __setitem__(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).__setitem__(*args, **kwargs)
 
     def __delete__(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).__delete__(*args, **kwargs)
 
     def __delitem__(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).__delitem__(*args, **kwargs)
 
     def __delattr__(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).__delattr__(*args, **kwargs)
 
     def __getstate__(self):
-        self.observer = None
+        self.instance = None
+        self._dereferenced = False
         return self
 
     def __setstate__(self, state):
         self = state
+        return self
 
     def clear(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).clear(*args, **kwargs)
 
     def pop(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).pop(*args, **kwargs)
 
     def popitem(self, *args, **kwargs):
-        self._updated()
+        self._mark_as_changed()
         super(BaseDict, self).popitem(*args, **kwargs)
 
-    def _updated(self):
-        try:
-            self.observer.updated()
-        except AttributeError:
-            pass
+    def _mark_as_changed(self):
+        if hasattr(self._instance, '_mark_as_changed'):
+            self._instance._mark_as_changed(self._name)
 
 if sys.version_info < (2, 5):
     # Prior to Python 2.5, Exception was an old-style class

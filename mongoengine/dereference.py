@@ -1,7 +1,6 @@
 import pymongo
 
-from base import (BaseDict, BaseList, DataObserver,
-                  TopLevelDocumentMetaclass, get_document)
+from base import (BaseDict, BaseList, TopLevelDocumentMetaclass, get_document)
 from fields import ReferenceField
 from connection import get_db
 from queryset import QuerySet
@@ -134,11 +133,10 @@ class DeReference(object):
                 return items
 
             if instance:
-                observer = DataObserver(instance, name)
                 if isinstance(items, dict):
-                    return BaseDict(items, observer)
+                    return BaseDict(items, instance, name)
                 else:
-                    return BaseList(items, observer)
+                    return BaseList(items, instance, name)
 
         if isinstance(items, (dict, pymongo.son.SON)):
             if '_ref' in items:
@@ -183,10 +181,9 @@ class DeReference(object):
                 data[k] = self.object_map.get(v.id, v)
 
         if instance and name:
-            observer = DataObserver(instance, name)
             if is_list:
-                return BaseList(data, observer)
-            return BaseDict(data, observer)
+                return BaseList(data, instance, name)
+            return BaseDict(data, instance, name)
         depth += 1
         return data
 

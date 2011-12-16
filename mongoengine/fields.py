@@ -11,7 +11,7 @@ import uuid
 
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document)
-from queryset import DO_NOTHING
+from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
 from operator import itemgetter
@@ -491,7 +491,7 @@ class ListField(ComplexBaseField):
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
-        if (not isinstance(value, (list, tuple)) or
+        if (not isinstance(value, (list, tuple, QuerySet)) or
             isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)

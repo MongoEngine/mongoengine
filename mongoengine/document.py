@@ -1,6 +1,6 @@
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  BaseDict, BaseList, DataObserver)
+                  BaseDict, BaseList)
 from queryset import OperationError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
@@ -304,12 +304,10 @@ class Document(BaseDocument):
         """
         if isinstance(value, BaseDict):
             value = [(k, self._reload(k, v)) for k, v in value.items()]
-            observer = DataObserver(self, key)
-            value = BaseDict(value, observer)
+            value = BaseDict(value, self, key)
         elif isinstance(value, BaseList):
             value = [self._reload(key, v) for v in value]
-            observer = DataObserver(self, key)
-            value = BaseList(value, observer)
+            value = BaseList(value, self, key)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._changed_fields = []
         return value
