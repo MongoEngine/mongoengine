@@ -468,8 +468,23 @@ class ObjectIdField(BaseField):
 class DocumentMetaclass(type):
     """Metaclass for all documents.
     """
-
+    
+        
     def __new__(cls, name, bases, attrs):
+        def _get_mixin_fields(base):
+            attrs = {}
+            attrs.update(dict([(k, v) for k, v in base.__dict__.items()
+                               if issubclass(v.__class__, BaseField)]))
+        
+            for p_base in base.__bases__:
+                #optimize :-)
+                if p_base in (object, BaseDocument):
+                    continue
+
+                attrs.update(_get_mixin_fields(p_base))
+
+            return attrs
+
         metaclass = attrs.get('__metaclass__')
         super_new = super(DocumentMetaclass, cls).__new__
         if metaclass and issubclass(metaclass, DocumentMetaclass):
@@ -488,8 +503,7 @@ class DocumentMetaclass(type):
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
             else:  # Add any mixin fields
-                attrs.update(dict([(k, v) for k, v in base.__dict__.items()
-                                    if issubclass(v.__class__, BaseField)]))
+                attrs.update(_get_mixin_fields(base))
 
             if hasattr(base, '_meta') and not base._meta.get('abstract'):
                 # Ensure that the Document class may be subclassed -

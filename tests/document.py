@@ -2175,6 +2175,30 @@ class DocumentTest(unittest.TestCase):
 
         Person.drop_collection()
 
+    def test_mixin_inheritance(self):
+        class BaseMixIn(object):
+            count = IntField()
+            data = StringField()
+
+        class DoubleMixIn(BaseMixIn):
+            comment = StringField()
+
+        class TestDoc(Document, DoubleMixIn):
+            age = IntField()
+
+        TestDoc.drop_collection()
+        t = TestDoc(count=12, data="test",
+                    comment="great!", age=19)
+
+        t.save()
+
+        t = TestDoc.objects.first()
+
+        self.assertEquals(t.age, 19)
+        self.assertEquals(t.comment, "great!")
+        self.assertEquals(t.data, "test")
+        self.assertEquals(t.count, 12)
+
     def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.
         """
