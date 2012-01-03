@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Improved Inheritance / Mixin
 - Added sharding support
 - Added pymongo 2.1 support
 - Fixed Abstract documents can now declare indexes
