@@ -361,7 +361,10 @@ class ListResult(object):
         elif isinstance(field_type, self.GenericReferenceField):
             if data and isinstance(data, (dict, pymongo.dbref.DBRef)):
                 return field_type.dereference(data)
-
+        
+        if data is None:
+            return
+        
         return field_type.to_python(data)
 
     def next(self):
