@@ -22,7 +22,7 @@ function. The only argument we need to provide is the name of the MongoDB
 database to use::
 
     from mongoengine import *
-    
+
     connect('tumblelog')
 
 For more information about connecting to MongoDB see :ref:`guide-connecting`.
@@ -112,7 +112,7 @@ link table, we can just store a list of tags in each post. So, for both
 efficiency and simplicity's sake, we'll store the tags as strings directly
 within the post, rather than storing references to tags in a separate
 collection. Especially as tags are generally very short (often even shorter
-than a document's id), this denormalisation won't impact very strongly on the 
+than a document's id), this denormalisation won't impact very strongly on the
 size of our database. So let's take a look that the code our modified
 :class:`Post` class::
 
@@ -151,6 +151,21 @@ We can then store a list of comment documents in our post document::
         author = ReferenceField(User)
         tags = ListField(StringField(max_length=30))
         comments = ListField(EmbeddedDocumentField(Comment))
+
+Handling deletions of references
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`~mongoengine.ReferenceField` object takes a keyword
+`reverse_delete_rule` for handling deletion rules if the reference is deleted.
+To delete all the posts if a user is deleted set the rule::
+
+    class Post(Document):
+        title = StringField(max_length=120, required=True)
+        author = ReferenceField(User, reverse_delete_rule=CASCADE)
+        tags = ListField(StringField(max_length=30))
+        comments = ListField(EmbeddedDocumentField(Comment))
+
+See :class:`~mongoengine.ReferenceField` for more information.
 
 Adding data to our Tumblelog
 ============================
@@ -250,5 +265,5 @@ the first matched by the query you provide. Aggregation functions may also be
 used on :class:`~mongoengine.queryset.QuerySet` objects::
 
     num_posts = Post.objects(tags='mongodb').count()
-    print 'Found % posts with tag "mongodb"' % num_posts
-    
+    print 'Found %d posts with tag "mongodb"' % num_posts
+
