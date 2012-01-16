@@ -161,7 +161,7 @@ arguments can be set on all fields:
 :attr:`help_text` (Default: None)
     Optional help text to output with the field - used by form libraries
 
-:attr:`verbose` (Default: None)
+:attr:`verbose_name` (Default: None)
     Optional human-readable name for the field - used by form libraries
 
 
@@ -481,9 +481,9 @@ Shard keys
 
 If your collection is sharded, then you need to specify the shard key as a tuple,
 using the :attr:`shard_key` attribute of :attr:`-mongoengine.Document.meta`.
-This ensures that the shard key is sent with the query when calling the 
-:meth:`~mongoengine.document.Document.save` or 
-:meth:`~mongoengine.document.Document.update` method on an existing 
+This ensures that the shard key is sent with the query when calling the
+:meth:`~mongoengine.document.Document.save` or
+:meth:`~mongoengine.document.Document.update` method on an existing
 :class:`-mongoengine.Document` instance::
 
     class LogEntry(Document):
