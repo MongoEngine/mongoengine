@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Fixed limit skip bug
 - Added values_list for returning a list of data
 - Improved Inheritance / Mixin
 - Added sharding support

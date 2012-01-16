@@ -8,6 +8,8 @@ from mongoengine.django.shortcuts import get_document_or_404
 from django.http import Http404
 from django.template import Context, Template
 from django.conf import settings
+from django.core.paginator import Paginator
+
 settings.configure()
 
 class QuerySetTest(unittest.TestCase):
@@ -67,3 +69,22 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(Http404, get_document_or_404, self.Person, pk='1234')
         self.assertEqual(p, get_document_or_404(self.Person, pk=p.pk))
 
+    def test_pagination(self):
+        """Ensure that Pagination works as expected
+        """
+        class Page(Document):
+            name = StringField()
+
+        Page.drop_collection()
+
+        for i in xrange(1, 11):
+            Page(name=str(i)).save()
+
+        paginator = Paginator(Page.objects.all(), 2)
+
+        t = Template("{% for i in page.object_list  %}{{ i.name }}:{% endfor %}")
+        for p in paginator.page_range:
+            d = {"page": paginator.page(p)}
+            end = p * 2
+            start = end - 1
+            self.assertEqual(t.render(Context(d)), u'%d:%d:' % (start, end))

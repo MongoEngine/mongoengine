@@ -327,10 +327,10 @@ class ListResult(object):
         self.GenericReferenceField = GenericReferenceField
 
         self._cursor = cursor
-        
+
         f = []
         for field, dbfield in itertools.izip(fields, dbfields):
-            
+
             p = document_type
             for path in field.split('.'):
                 if p and isinstance(p, BaseField):
@@ -343,7 +343,7 @@ class ListResult(object):
             f.append((dbfield.split('.'), p))
 
         self._fields = f
-        
+
     def _get_value(self, keys, field_type, data):
         for key in keys:
             if data:
@@ -354,17 +354,17 @@ class ListResult(object):
         if isinstance(field_type, self.ReferenceField):
             doc_type = field_type.document_type
             data = doc_type._get_db().dereference(data)
-            
+
             if data:
                 return doc_type._from_son(data)
 
         elif isinstance(field_type, self.GenericReferenceField):
             if data and isinstance(data, (dict, pymongo.dbref.DBRef)):
                 return field_type.dereference(data)
-        
+
         if data is None:
             return
-        
+
         return field_type.to_python(data)
 
     def next(self):
@@ -638,13 +638,13 @@ class QuerySet(object):
             self._ordering = self._get_order_key_list(
                 *self._document._meta['ordering'])
             obj.sort(self._ordering)
-            
+
         if self._limit is not None:
-            obj.limit(self._limit)
-            
+            obj.limit(self._limit - (self._skip or 0))
+
         if self._skip is not None:
             obj.skip(self._skip)
-            
+
         if self._hint != -1:
             obj.hint(self._hint)
 
@@ -654,7 +654,7 @@ class QuerySet(object):
     def _cursor(self):
         if self._cursor_obj is None:
             self._cursor_obj = self._build_cursor(**self._cursor_args)
-        
+
         return self._cursor_obj
     @classmethod
     def _lookup_field(cls, document, parts):
@@ -1286,7 +1286,7 @@ class QuerySet(object):
         :param keys: fields to order the query results by; keys may be
             prefixed with **+** or **-** to determine the ordering direction
         """
-        
+
         key_list = self._get_order_key_list(*keys)
         self._ordering = key_list
         self._cursor.sort(key_list)
