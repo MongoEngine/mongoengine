@@ -772,6 +772,13 @@ class FieldTest(unittest.TestCase):
         # Confirm handles non strings or non existing keys
         self.assertEquals(BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
         self.assertEquals(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
+
+        post = BlogPost.objects.create(info={'title': 'original'})
+        post.info.update({'title': 'updated'})
+        post.save()
+        post.reload()
+        self.assertEquals('updated', post.info['title'])
+
         BlogPost.drop_collection()
 
     def test_dictfield_strict(self):

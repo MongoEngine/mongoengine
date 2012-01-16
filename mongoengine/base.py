@@ -1293,6 +1293,10 @@ class BaseDict(dict):
         self._mark_as_changed()
         super(BaseDict, self).popitem(*args, **kwargs)
 
+    def update(self, *args, **kwargs):
+        self._mark_as_changed()
+        super(BaseDict, self).update(*args, **kwargs)
+
     def _mark_as_changed(self):
         if hasattr(self._instance, '_mark_as_changed'):
             self._instance._mark_as_changed(self._name)
