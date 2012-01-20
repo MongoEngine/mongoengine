@@ -915,6 +915,12 @@ class QuerySet(object):
                         value = -value
                 elif op == 'add_to_set':
                     op = op.replace('_to_set', 'ToSet')
+            else:
+                '''
+                Updates must have an actual operator or else it will
+                end up doing a save and borking your object
+                '''
+                raise InvalidQueryError('%s is invalid operator' % parts[0])
 
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
@@ -957,6 +963,10 @@ class QuerySet(object):
             raise OperationError('update() method requires PyMongo 1.1.1+')
 
         update = QuerySet._transform_update(self._document, **update)
+
+        if not update:
+            raise OperationError(u"Update Malformed: No Command Found")
+
         try:
             ret = self._collection.update(self._query, update, multi=True,
                                           upsert=upsert, safe=safe_update)
@@ -978,6 +988,9 @@ class QuerySet(object):
         .. versionadded:: 0.2
         """
         update = QuerySet._transform_update(self._document, **update)
+
+        if not update:
+            raise OperationError(u"Update Malformed: No Command Found")
         try:
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
