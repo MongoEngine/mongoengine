@@ -2909,8 +2909,38 @@ class QueryFieldListTest(unittest.TestCase):
 
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
-    
-    def test_values_list(self):
+
+    def test_scalar(self):
+
+        class Organization(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+
+        class User(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+            organization = ObjectIdField()
+
+        User.drop_collection()
+        Organization.drop_collection()
+
+        whitehouse = Organization(name="White House")
+        whitehouse.save()
+        User(name="Bob Dole", organization=whitehouse.id).save()
+
+        # Efficient way to get all unique organization names for a given
+        # set of users (Pretend this has additional filtering.)
+        user_orgs = set(User.objects.scalar('organization'))
+        orgs = Organization.objects(id__in=user_orgs).scalar('name')
+        self.assertEqual(list(orgs), ['White House'])
+
+        # Efficient for generating listings, too.
+        orgs = Organization.objects.scalar('name').in_bulk(list(user_orgs))
+        user_map = User.objects.scalar('name', 'organization')
+        user_listing = [(user, orgs[org]) for user, org in user_map]
+        self.assertEqual([("Bob Dole", "White House")], user_listing)
+
+    def test_scalar_simple(self):
         class TestDoc(Document):
             x = IntField()
             y = BooleanField()
@@ -2921,12 +2951,12 @@ class QueryFieldListTest(unittest.TestCase):
         TestDoc(x=20, y=False).save()
         TestDoc(x=30, y=True).save()
 
-        plist = list(TestDoc.objects.values_list('x', 'y'))
+        plist = list(TestDoc.objects.scalar('x', 'y'))
 
         self.assertEqual(len(plist), 3)
-        self.assertEqual(plist[0], [10, True])
-        self.assertEqual(plist[1], [20, False])
-        self.assertEqual(plist[2], [30, True])
+        self.assertEqual(plist[0], (10, True))
+        self.assertEqual(plist[1], (20, False))
+        self.assertEqual(plist[2], (30, True))
 
         class UserDoc(Document):
             name = StringField()
@@ -2939,23 +2969,23 @@ class QueryFieldListTest(unittest.TestCase):
         UserDoc(name="Eliana", age=37).save()
         UserDoc(name="Tayza", age=15).save()
 
-        ulist = list(UserDoc.objects.values_list('name', 'age'))
+        ulist = list(UserDoc.objects.scalar('name', 'age'))
 
         self.assertEqual(ulist, [
-                [u'Wilson Jr', 19],
-                [u'Wilson', 43],
-                [u'Eliana', 37],
-                [u'Tayza', 15]])
+                (u'Wilson Jr', 19),
+                (u'Wilson', 43),
+                (u'Eliana', 37),
+                (u'Tayza', 15)])
 
-        ulist = list(UserDoc.objects.order_by('age').values_list('name'))
+        ulist = list(UserDoc.objects.scalar('name').order_by('age'))
 
         self.assertEqual(ulist, [
-                [u'Tayza'],
-                [u'Wilson Jr'],
-                [u'Eliana'],
-                [u'Wilson']])
+                (u'Tayza'),
+                (u'Wilson Jr'),
+                (u'Eliana'),
+                (u'Wilson')])
 
-    def test_values_list_embedded(self):
+    def test_scalar_embedded(self):
         class Profile(EmbeddedDocument):
             name = StringField()
             age = IntField()
@@ -2983,32 +3013,31 @@ class QueryFieldListTest(unittest.TestCase):
                locale=Locale(city="Brasilia", country="Brazil")).save()
 
         self.assertEqual(
-            list(Person.objects.order_by('profile.age').values_list('profile.name')),
-            [[u'Wilson Jr'], [u'Gabriel Falcao'],
-             [u'Lincoln de souza'], [u'Walter cruz']])
+            list(Person.objects.order_by('profile__age').scalar('profile__name')),
+            [u'Wilson Jr', u'Gabriel Falcao', u'Lincoln de souza', u'Walter cruz'])
 
         ulist = list(Person.objects.order_by('locale.city')
-                     .values_list('profile.name', 'profile.age', 'locale.city'))
+                     .scalar('profile__name', 'profile__age', 'locale__city'))
         self.assertEqual(ulist,
-                         [[u'Lincoln de souza', 28, u'Belo Horizonte'],
-                          [u'Walter cruz', 30, u'Brasilia'],
-                          [u'Wilson Jr', 19, u'Corumba-GO'],
-                          [u'Gabriel Falcao', 23, u'New York']])
+                         [(u'Lincoln de souza', 28, u'Belo Horizonte'),
+                          (u'Walter cruz', 30, u'Brasilia'),
+                          (u'Wilson Jr', 19, u'Corumba-GO'),
+                          (u'Gabriel Falcao', 23, u'New York')])
 
-    def test_values_list_decimal(self):
+    def test_scalar_decimal(self):
         from decimal import Decimal
         class Person(Document):
             name = StringField()
             rating = DecimalField()
-            
+
         Person.drop_collection()
         Person(name="Wilson Jr", rating=Decimal('1.0')).save()
 
-        ulist = list(Person.objects.values_list('name', 'rating'))
-        self.assertEqual(ulist, [[u'Wilson Jr', Decimal('1.0')]])
+        ulist = list(Person.objects.scalar('name', 'rating'))
+        self.assertEqual(ulist, [(u'Wilson Jr', Decimal('1.0'))])
 
 
-    def test_values_list_reference_field(self):
+    def test_scalar_reference_field(self):
         class State(Document):
             name = StringField()
 
@@ -3024,10 +3053,10 @@ class QueryFieldListTest(unittest.TestCase):
 
         Person(name="Wilson JR", state=s1).save()
 
-        plist = list(Person.objects.values_list('name', 'state'))
-        self.assertEqual(plist, [[u'Wilson JR', s1]])
+        plist = list(Person.objects.scalar('name', 'state'))
+        self.assertEqual(plist, [(u'Wilson JR', s1)])
 
-    def test_values_list_generic_reference_field(self):
+    def test_scalar_generic_reference_field(self):
         class State(Document):
             name = StringField()
 
@@ -3043,13 +3072,14 @@ class QueryFieldListTest(unittest.TestCase):
 
         Person(name="Wilson JR", state=s1).save()
 
-        plist = list(Person.objects.values_list('name', 'state'))
-        self.assertEqual(plist, [[u'Wilson JR', s1]])
+        plist = list(Person.objects.scalar('name', 'state'))
+        self.assertEqual(plist, [(u'Wilson JR', s1)])
 
-    def test_values_list_db_field(self):
+    def test_scalar_db_field(self):
+
         class TestDoc(Document):
-            x = IntField(db_field="y")
-            y = BooleanField(db_field="x")
+            x = IntField()
+            y = BooleanField()
 
         TestDoc.drop_collection()
 
@@ -3057,12 +3087,12 @@ class QueryFieldListTest(unittest.TestCase):
         TestDoc(x=20, y=False).save()
         TestDoc(x=30, y=True).save()
 
-        plist = list(TestDoc.objects.values_list('x', 'y'))
-
+        plist = list(TestDoc.objects.scalar('x', 'y'))
         self.assertEqual(len(plist), 3)
-        self.assertEqual(plist[0], [10, True])
-        self.assertEqual(plist[1], [20, False])
-        self.assertEqual(plist[2], [30, True])
+        self.assertEqual(plist[0], (10, True))
+        self.assertEqual(plist[1], (20, False))
+        self.assertEqual(plist[2], (30, True))
+
 
 if __name__ == '__main__':
     unittest.main()

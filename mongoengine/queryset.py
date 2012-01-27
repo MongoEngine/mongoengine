@@ -314,82 +314,6 @@ class QueryFieldList(object):
     def __nonzero__(self):
         return bool(self.fields)
 
-class ListResult(object):
-    """
-    Used for .values_list method in QuerySet
-    """
-    def __init__(self, document_type, cursor, fields, dbfields):
-        from base import BaseField
-        from fields import ReferenceField, GenericReferenceField
-        # Caches for optimization
-
-        self.ReferenceField = ReferenceField
-        self.GenericReferenceField = GenericReferenceField
-
-        self._cursor = cursor
-
-        f = []
-        for field, dbfield in itertools.izip(fields, dbfields):
-
-            p = document_type
-            for path in field.split('.'):
-                if p and isinstance(p, BaseField):
-                    p = p.lookup_member(path)
-                elif p:
-                    p = getattr(p, path)
-                else:
-                    break
-
-            f.append((dbfield.split('.'), p))
-
-        self._fields = f
-
-    def _get_value(self, keys, field_type, data):
-        for key in keys:
-            if data:
-                data = data.get(key)
-            else:
-                break
-
-        if isinstance(field_type, self.ReferenceField):
-            doc_type = field_type.document_type
-            data = doc_type._get_db().dereference(data)
-
-            if data:
-                return doc_type._from_son(data)
-
-        elif isinstance(field_type, self.GenericReferenceField):
-            if data and isinstance(data, (dict, pymongo.dbref.DBRef)):
-                return field_type.dereference(data)
-
-        if data is None:
-            return
-
-        return field_type.to_python(data)
-
-    def next(self):
-        try:
-            data = self._cursor.next()
-            return [self._get_value(k, t, data)
-                    for k, t in self._fields]
-        except StopIteration, e:
-            self.rewind()
-            raise e
-
-    def rewind(self):
-        self._cursor.rewind()
-
-    def count(self):
-        """
-        Count the selected elements in the query.
-        """
-        return self._cursor.count(with_limit_and_skip=True)
-
-    def __len__(self):
-        return self.count()
-
-    def __iter__(self):
-        return self
 
 class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor,
@@ -625,38 +549,33 @@ class QuerySet(object):
             cursor_args['fields'] = self._loaded_fields.as_dict()
         return cursor_args
 
-    def _build_cursor(self, **cursor_args):
-        obj = self._collection.find(self._query,
-                                    **cursor_args)
-            # Apply where clauses to cursor
-        if self._where_clause:
-            obj.where(self._where_clause)
-
-        # apply default ordering
-        if self._ordering:
-            obj.sort(self._ordering)
-        elif self._document._meta['ordering']:
-            self._ordering = self._get_order_key_list(
-                *self._document._meta['ordering'])
-            obj.sort(self._ordering)
-
-        if self._limit is not None:
-            obj.limit(self._limit - (self._skip or 0))
-
-        if self._skip is not None:
-            obj.skip(self._skip)
-
-        if self._hint != -1:
-            obj.hint(self._hint)
-
-        return obj
-
     @property
     def _cursor(self):
         if self._cursor_obj is None:
-            self._cursor_obj = self._build_cursor(**self._cursor_args)
+
+            self._cursor_obj = self._collection.find(self._query,
+                                                     **self._cursor_args)
+            # Apply where clauses to cursor
+            if self._where_clause:
+                self._cursor_obj.where(self._where_clause)
+
+            # apply default ordering
+            if self._ordering:
+                self._cursor_obj.sort(self._ordering)
+            elif self._document._meta['ordering']:
+                self.order_by(*self._document._meta['ordering'])
+
+            if self._limit is not None:
+                self._cursor_obj.limit(self._limit - (self._skip or 0))
+
+            if self._skip is not None:
+                self._cursor_obj.skip(self._skip)
+
+            if self._hint != -1:
+                self._cursor_obj.hint(self._hint)
 
         return self._cursor_obj
+
     @classmethod
     def _lookup_field(cls, document, parts):
         """Lookup a field based on its attribute and return a list containing
@@ -884,19 +803,6 @@ class QuerySet(object):
         doc = self._document(**kwargs)
         doc.save()
         return doc
-
-    def values_list(self, *fields):
-        """
-        make a list of elements
-         .. versionadded:: 0.6
-        """
-        dbfields = self._fields_to_dbfields(fields)
-
-        cursor_args = self._cursor_args
-        cursor_args['fields'] = dbfields
-        cursor = self._build_cursor(**cursor_args)
-
-        return ListResult(self._document, cursor, fields, dbfields)
 
     def first(self):
         """Retrieve the first object matching the query.
@@ -1269,9 +1175,13 @@ class QuerySet(object):
             ret.append(field)
         return ret
 
-    def _get_order_key_list(self, *keys):
-        """
-        Build order list for query
+    def order_by(self, *keys):
+        """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
+        order may be specified by prepending each of the keys by a + or a -.
+        Ascending order is assumed.
+
+        :param keys: fields to order the query results by; keys may be
+            prefixed with **+** or **-** to determine the ordering direction
         """
         key_list = []
         for key in keys:
@@ -1288,18 +1198,6 @@ class QuerySet(object):
                 pass
             key_list.append((key, direction))
 
-        return key_list
-
-    def order_by(self, *keys):
-        """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
-        order may be specified by prepending each of the keys by a + or a -.
-        Ascending order is assumed.
-
-        :param keys: fields to order the query results by; keys may be
-            prefixed with **+** or **-** to determine the ordering direction
-        """
-
-        key_list = self._get_order_key_list(*keys)
         self._ordering = key_list
         self._cursor.sort(key_list)
         return self
@@ -1503,36 +1401,42 @@ class QuerySet(object):
         return self
 
     def _get_scalar(self, doc):
+
         def lookup(obj, name):
             chunks = name.split('__')
             for chunk in chunks:
+                if hasattr(obj, '_db_field_map'):
+                    chunk = obj._db_field_map.get(chunk, chunk)
                 obj = getattr(obj, chunk)
             return obj
-        
+
         data = [lookup(doc, n) for n in self._scalar]
-        
         if len(data) == 1:
             return data[0]
-        
+
         return tuple(data)
 
     def scalar(self, *fields):
         """Instead of returning Document instances, return either a specific
         value or a tuple of values in order.
-        
+
         This effects all results and can be unset by calling ``scalar``
         without arguments. Calls ``only`` automatically.
-        
+
         :param fields: One or more fields to return instead of a Document.
         """
         self._scalar = list(fields)
-        
+
         if fields:
             self.only(*fields)
         else:
             self.all_fields()
-        
+
         return self
+
+    def values_list(self, *fields):
+        """An alias for scalar"""
+        return self.scalar(*fields)
 
     def _sub_js_fields(self, code):
         """When fields are specified with [~fieldname] syntax, where

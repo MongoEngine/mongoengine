@@ -5,8 +5,8 @@ Changelog
 Changes in dev
 ==============
 
+- Added scalar for efficiently returning partial data values (aliased to values_list)
 - Fixed limit skip bug
-- Added values_list for returning a list of data
 - Improved Inheritance / Mixin
 - Added sharding support
 - Added pymongo 2.1 support

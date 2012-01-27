@@ -468,14 +468,14 @@ class ObjectIdField(BaseField):
 class DocumentMetaclass(type):
     """Metaclass for all documents.
     """
-    
-        
+
+
     def __new__(cls, name, bases, attrs):
         def _get_mixin_fields(base):
             attrs = {}
             attrs.update(dict([(k, v) for k, v in base.__dict__.items()
                                if issubclass(v.__class__, BaseField)]))
-        
+
             for p_base in base.__bases__:
                 #optimize :-)
                 if p_base in (object, BaseDocument):
