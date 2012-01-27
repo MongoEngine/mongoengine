@@ -868,8 +868,7 @@ class QuerySet(object):
         """
         if not self._query_obj.empty:
             raise InvalidQueryError("Cannot use a filter whilst using `with_id`")
-
-        return self._document.objects(pk=object_id).first()
+        return self.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.

@@ -2665,6 +2665,265 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertRaises(TypeError, invalid_where)
 
+    def test_scalar(self):
+
+        class Organization(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+
+        class User(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+            organization = ObjectIdField()
+
+        User.drop_collection()
+        Organization.drop_collection()
+
+        whitehouse = Organization(name="White House")
+        whitehouse.save()
+        User(name="Bob Dole", organization=whitehouse.id).save()
+
+        # Efficient way to get all unique organization names for a given
+        # set of users (Pretend this has additional filtering.)
+        user_orgs = set(User.objects.scalar('organization'))
+        orgs = Organization.objects(id__in=user_orgs).scalar('name')
+        self.assertEqual(list(orgs), ['White House'])
+
+        # Efficient for generating listings, too.
+        orgs = Organization.objects.scalar('name').in_bulk(list(user_orgs))
+        user_map = User.objects.scalar('name', 'organization')
+        user_listing = [(user, orgs[org]) for user, org in user_map]
+        self.assertEqual([("Bob Dole", "White House")], user_listing)
+
+    def test_scalar_simple(self):
+        class TestDoc(Document):
+            x = IntField()
+            y = BooleanField()
+
+        TestDoc.drop_collection()
+
+        TestDoc(x=10, y=True).save()
+        TestDoc(x=20, y=False).save()
+        TestDoc(x=30, y=True).save()
+
+        plist = list(TestDoc.objects.scalar('x', 'y'))
+
+        self.assertEqual(len(plist), 3)
+        self.assertEqual(plist[0], (10, True))
+        self.assertEqual(plist[1], (20, False))
+        self.assertEqual(plist[2], (30, True))
+
+        class UserDoc(Document):
+            name = StringField()
+            age = IntField()
+
+        UserDoc.drop_collection()
+
+        UserDoc(name="Wilson Jr", age=19).save()
+        UserDoc(name="Wilson", age=43).save()
+        UserDoc(name="Eliana", age=37).save()
+        UserDoc(name="Tayza", age=15).save()
+
+        ulist = list(UserDoc.objects.scalar('name', 'age'))
+
+        self.assertEqual(ulist, [
+                (u'Wilson Jr', 19),
+                (u'Wilson', 43),
+                (u'Eliana', 37),
+                (u'Tayza', 15)])
+
+        ulist = list(UserDoc.objects.scalar('name').order_by('age'))
+
+        self.assertEqual(ulist, [
+                (u'Tayza'),
+                (u'Wilson Jr'),
+                (u'Eliana'),
+                (u'Wilson')])
+
+    def test_scalar_embedded(self):
+        class Profile(EmbeddedDocument):
+            name = StringField()
+            age = IntField()
+
+        class Locale(EmbeddedDocument):
+            city = StringField()
+            country = StringField()
+
+        class Person(Document):
+            profile = EmbeddedDocumentField(Profile)
+            locale = EmbeddedDocumentField(Locale)
+
+        Person.drop_collection()
+
+        Person(profile=Profile(name="Wilson Jr", age=19),
+               locale=Locale(city="Corumba-GO", country="Brazil")).save()
+
+        Person(profile=Profile(name="Gabriel Falcao", age=23),
+               locale=Locale(city="New York", country="USA")).save()
+
+        Person(profile=Profile(name="Lincoln de souza", age=28),
+               locale=Locale(city="Belo Horizonte", country="Brazil")).save()
+
+        Person(profile=Profile(name="Walter cruz", age=30),
+               locale=Locale(city="Brasilia", country="Brazil")).save()
+
+        self.assertEqual(
+            list(Person.objects.order_by('profile__age').scalar('profile__name')),
+            [u'Wilson Jr', u'Gabriel Falcao', u'Lincoln de souza', u'Walter cruz'])
+
+        ulist = list(Person.objects.order_by('locale.city')
+                     .scalar('profile__name', 'profile__age', 'locale__city'))
+        self.assertEqual(ulist,
+                         [(u'Lincoln de souza', 28, u'Belo Horizonte'),
+                          (u'Walter cruz', 30, u'Brasilia'),
+                          (u'Wilson Jr', 19, u'Corumba-GO'),
+                          (u'Gabriel Falcao', 23, u'New York')])
+
+    def test_scalar_decimal(self):
+        from decimal import Decimal
+        class Person(Document):
+            name = StringField()
+            rating = DecimalField()
+
+        Person.drop_collection()
+        Person(name="Wilson Jr", rating=Decimal('1.0')).save()
+
+        ulist = list(Person.objects.scalar('name', 'rating'))
+        self.assertEqual(ulist, [(u'Wilson Jr', Decimal('1.0'))])
+
+
+    def test_scalar_reference_field(self):
+        class State(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            state = ReferenceField(State)
+
+        State.drop_collection()
+        Person.drop_collection()
+
+        s1 = State(name="Goias")
+        s1.save()
+
+        Person(name="Wilson JR", state=s1).save()
+
+        plist = list(Person.objects.scalar('name', 'state'))
+        self.assertEqual(plist, [(u'Wilson JR', s1)])
+
+    def test_scalar_generic_reference_field(self):
+        class State(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            state = GenericReferenceField()
+
+        State.drop_collection()
+        Person.drop_collection()
+
+        s1 = State(name="Goias")
+        s1.save()
+
+        Person(name="Wilson JR", state=s1).save()
+
+        plist = list(Person.objects.scalar('name', 'state'))
+        self.assertEqual(plist, [(u'Wilson JR', s1)])
+
+    def test_scalar_db_field(self):
+
+        class TestDoc(Document):
+            x = IntField()
+            y = BooleanField()
+
+        TestDoc.drop_collection()
+
+        TestDoc(x=10, y=True).save()
+        TestDoc(x=20, y=False).save()
+        TestDoc(x=30, y=True).save()
+
+        plist = list(TestDoc.objects.scalar('x', 'y'))
+        self.assertEqual(len(plist), 3)
+        self.assertEqual(plist[0], (10, True))
+        self.assertEqual(plist[1], (20, False))
+        self.assertEqual(plist[2], (30, True))
+
+    def test_scalar_cursor_behaviour(self):
+        """Ensure that a query returns a valid set of results.
+        """
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Find all people in the collection
+        people = self.Person.objects.scalar('name')
+        self.assertEqual(len(people), 2)
+        results = list(people)
+        self.assertEqual(results[0], "User A")
+        self.assertEqual(results[1], "User B")
+
+        # Use a query to filter the people found to just person1
+        people = self.Person.objects(age=20).scalar('name')
+        self.assertEqual(len(people), 1)
+        person = people.next()
+        self.assertEqual(person, "User A")
+
+        # Test limit
+        people = list(self.Person.objects.limit(1).scalar('name'))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0], 'User A')
+
+        # Test skip
+        people = list(self.Person.objects.skip(1).scalar('name'))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0], 'User B')
+
+        person3 = self.Person(name="User C", age=40)
+        person3.save()
+
+        # Test slice limit
+        people = list(self.Person.objects[:2].scalar('name'))
+        self.assertEqual(len(people), 2)
+        self.assertEqual(people[0], 'User A')
+        self.assertEqual(people[1], 'User B')
+
+        # Test slice skip
+        people = list(self.Person.objects[1:].scalar('name'))
+        self.assertEqual(len(people), 2)
+        self.assertEqual(people[0], 'User B')
+        self.assertEqual(people[1], 'User C')
+
+        # Test slice limit and skip
+        people = list(self.Person.objects[1:2].scalar('name'))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0], 'User B')
+
+        people = list(self.Person.objects[1:1].scalar('name'))
+        self.assertEqual(len(people), 0)
+
+        # Test slice out of range
+        people = list(self.Person.objects.scalar('name')[80000:80001])
+        self.assertEqual(len(people), 0)
+
+        # Test larger slice __repr__
+        self.Person.objects.delete()
+        for i in xrange(55):
+            self.Person(name='A%s' % i, age=i).save()
+
+        self.assertEqual(len(self.Person.objects.scalar('name')), 55)
+        self.assertEqual("A0", "%s" % self.Person.objects.order_by('name').scalar('name').first())
+        self.assertEqual("A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
+        self.assertEqual("[u'A1', u'A2']",  "%s" % self.Person.objects.order_by('age').scalar('name')[1:3])
+        self.assertEqual("[u'A51', u'A52']",  "%s" % self.Person.objects.order_by('age').scalar('name')[51:53])
+
+        # with_id and in_bulk
+        person = self.Person.objects.order_by('name').first()
+        self.assertEqual("A0", "%s" % self.Person.objects.scalar('name').with_id(person.id))
+
+        pks = self.Person.objects.order_by('age').scalar('pk')[1:3]
+        self.assertEqual("[u'A1', u'A2']",  "%s" % sorted(self.Person.objects.scalar('name').in_bulk(list(pks)).values()))
+
 
 class QTest(unittest.TestCase):
 
@@ -2909,189 +3168,6 @@ class QueryFieldListTest(unittest.TestCase):
 
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
-
-    def test_scalar(self):
-
-        class Organization(Document):
-            id = ObjectIdField('_id')
-            name = StringField()
-
-        class User(Document):
-            id = ObjectIdField('_id')
-            name = StringField()
-            organization = ObjectIdField()
-
-        User.drop_collection()
-        Organization.drop_collection()
-
-        whitehouse = Organization(name="White House")
-        whitehouse.save()
-        User(name="Bob Dole", organization=whitehouse.id).save()
-
-        # Efficient way to get all unique organization names for a given
-        # set of users (Pretend this has additional filtering.)
-        user_orgs = set(User.objects.scalar('organization'))
-        orgs = Organization.objects(id__in=user_orgs).scalar('name')
-        self.assertEqual(list(orgs), ['White House'])
-
-        # Efficient for generating listings, too.
-        orgs = Organization.objects.scalar('name').in_bulk(list(user_orgs))
-        user_map = User.objects.scalar('name', 'organization')
-        user_listing = [(user, orgs[org]) for user, org in user_map]
-        self.assertEqual([("Bob Dole", "White House")], user_listing)
-
-    def test_scalar_simple(self):
-        class TestDoc(Document):
-            x = IntField()
-            y = BooleanField()
-
-        TestDoc.drop_collection()
-
-        TestDoc(x=10, y=True).save()
-        TestDoc(x=20, y=False).save()
-        TestDoc(x=30, y=True).save()
-
-        plist = list(TestDoc.objects.scalar('x', 'y'))
-
-        self.assertEqual(len(plist), 3)
-        self.assertEqual(plist[0], (10, True))
-        self.assertEqual(plist[1], (20, False))
-        self.assertEqual(plist[2], (30, True))
-
-        class UserDoc(Document):
-            name = StringField()
-            age = IntField()
-
-        UserDoc.drop_collection()
-
-        UserDoc(name="Wilson Jr", age=19).save()
-        UserDoc(name="Wilson", age=43).save()
-        UserDoc(name="Eliana", age=37).save()
-        UserDoc(name="Tayza", age=15).save()
-
-        ulist = list(UserDoc.objects.scalar('name', 'age'))
-
-        self.assertEqual(ulist, [
-                (u'Wilson Jr', 19),
-                (u'Wilson', 43),
-                (u'Eliana', 37),
-                (u'Tayza', 15)])
-
-        ulist = list(UserDoc.objects.scalar('name').order_by('age'))
-
-        self.assertEqual(ulist, [
-                (u'Tayza'),
-                (u'Wilson Jr'),
-                (u'Eliana'),
-                (u'Wilson')])
-
-    def test_scalar_embedded(self):
-        class Profile(EmbeddedDocument):
-            name = StringField()
-            age = IntField()
-
-        class Locale(EmbeddedDocument):
-            city = StringField()
-            country = StringField()
-
-        class Person(Document):
-            profile = EmbeddedDocumentField(Profile)
-            locale = EmbeddedDocumentField(Locale)
-
-        Person.drop_collection()
-
-        Person(profile=Profile(name="Wilson Jr", age=19),
-               locale=Locale(city="Corumba-GO", country="Brazil")).save()
-
-        Person(profile=Profile(name="Gabriel Falcao", age=23),
-               locale=Locale(city="New York", country="USA")).save()
-
-        Person(profile=Profile(name="Lincoln de souza", age=28),
-               locale=Locale(city="Belo Horizonte", country="Brazil")).save()
-
-        Person(profile=Profile(name="Walter cruz", age=30),
-               locale=Locale(city="Brasilia", country="Brazil")).save()
-
-        self.assertEqual(
-            list(Person.objects.order_by('profile__age').scalar('profile__name')),
-            [u'Wilson Jr', u'Gabriel Falcao', u'Lincoln de souza', u'Walter cruz'])
-
-        ulist = list(Person.objects.order_by('locale.city')
-                     .scalar('profile__name', 'profile__age', 'locale__city'))
-        self.assertEqual(ulist,
-                         [(u'Lincoln de souza', 28, u'Belo Horizonte'),
-                          (u'Walter cruz', 30, u'Brasilia'),
-                          (u'Wilson Jr', 19, u'Corumba-GO'),
-                          (u'Gabriel Falcao', 23, u'New York')])
-
-    def test_scalar_decimal(self):
-        from decimal import Decimal
-        class Person(Document):
-            name = StringField()
-            rating = DecimalField()
-
-        Person.drop_collection()
-        Person(name="Wilson Jr", rating=Decimal('1.0')).save()
-
-        ulist = list(Person.objects.scalar('name', 'rating'))
-        self.assertEqual(ulist, [(u'Wilson Jr', Decimal('1.0'))])
-
-
-    def test_scalar_reference_field(self):
-        class State(Document):
-            name = StringField()
-
-        class Person(Document):
-            name = StringField()
-            state = ReferenceField(State)
-
-        State.drop_collection()
-        Person.drop_collection()
-
-        s1 = State(name="Goias")
-        s1.save()
-
-        Person(name="Wilson JR", state=s1).save()
-
-        plist = list(Person.objects.scalar('name', 'state'))
-        self.assertEqual(plist, [(u'Wilson JR', s1)])
-
-    def test_scalar_generic_reference_field(self):
-        class State(Document):
-            name = StringField()
-
-        class Person(Document):
-            name = StringField()
-            state = GenericReferenceField()
-
-        State.drop_collection()
-        Person.drop_collection()
-
-        s1 = State(name="Goias")
-        s1.save()
-
-        Person(name="Wilson JR", state=s1).save()
-
-        plist = list(Person.objects.scalar('name', 'state'))
-        self.assertEqual(plist, [(u'Wilson JR', s1)])
-
-    def test_scalar_db_field(self):
-
-        class TestDoc(Document):
-            x = IntField()
-            y = BooleanField()
-
-        TestDoc.drop_collection()
-
-        TestDoc(x=10, y=True).save()
-        TestDoc(x=20, y=False).save()
-        TestDoc(x=30, y=True).save()
-
-        plist = list(TestDoc.objects.scalar('x', 'y'))
-        self.assertEqual(len(plist), 3)
-        self.assertEqual(plist[0], (10, True))
-        self.assertEqual(plist[1], (20, False))
-        self.assertEqual(plist[2], (30, True))
 
 
 if __name__ == '__main__':
