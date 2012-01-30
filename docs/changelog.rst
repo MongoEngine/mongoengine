@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added uri support for connections
 - Added scalar for efficiently returning partial data values (aliased to values_list)
 - Fixed limit skip bug
 - Improved Inheritance / Mixin

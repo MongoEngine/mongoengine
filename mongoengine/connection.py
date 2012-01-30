@@ -1,5 +1,5 @@
 import pymongo
-from pymongo import Connection
+from pymongo import Connection, uri_parser
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -38,6 +38,17 @@ def register_connection(alias, name, host='localhost', port=27017,
 
     """
     global _connection_settings
+
+    # Handle uri style connections
+    if "://" in host:
+        uri_dict = uri_parser.parse_uri(host)
+        if 'database' not in uri_dict:
+            raise ConnectionError("If using URI style connection include "\
+                                  "database name in string")
+        uri_dict['name'] = uri_dict.get('database')
+        _connection_settings[alias] = uri_dict
+        return
+
     _connection_settings[alias] = {
         'name': name,
         'host': host,
@@ -48,7 +59,9 @@ def register_connection(alias, name, host='localhost', port=27017,
         'password': password,
         'read_preference': read_preference
     }
+
     _connection_settings[alias].update(kwargs)
+
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
     global _connections
@@ -83,11 +96,12 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             conn_settings.pop('password')
         else:
             # Get all the slave connections
-            slaves = []
-            for slave_alias in conn_settings['slaves']:
-                slaves.append(get_connection(slave_alias))
-            conn_settings['slaves'] = slaves
-            conn_settings.pop('read_preference')
+            if 'slaves' in conn_settings:
+                slaves = []
+                for slave_alias in conn_settings['slaves']:
+                    slaves.append(get_connection(slave_alias))
+                conn_settings['slaves'] = slaves
+                conn_settings.pop('read_preference')
 
         try:
             _connections[alias] = Connection(**conn_settings)

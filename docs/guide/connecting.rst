@@ -20,6 +20,13 @@ provide :attr:`host` and :attr:`port` arguments to
 
     connect('project1', host='192.168.1.35', port=12345)
 
+Uri style connections are also supported as long as you include the database
+name - just supply the uri as the :attr:`host` to
+:func:`~mongoengine.connect`::
+
+    connect('project1', host='mongodb://localhost/database_name')
+
+
 
 Multiple Databases
 ==================

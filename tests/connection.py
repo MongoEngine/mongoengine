@@ -30,6 +30,19 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection('testdb')
         self.assertTrue(isinstance(conn, pymongo.connection.Connection))
 
+    def test_connect_uri(self):
+        """Ensure that the connect() method works properly with uri's
+        """
+
+        connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
+
+        conn = get_connection()
+        self.assertTrue(isinstance(conn, pymongo.connection.Connection))
+
+        db = get_db()
+        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertEqual(db.name, 'mongoenginetest')
+
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.
         """
