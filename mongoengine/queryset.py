@@ -399,12 +399,14 @@ class QuerySet(object):
         index_list = []
         use_types = doc_cls._meta.get('allow_inheritance', True)
         for key in spec['fields']:
-            # Get direction from + or -
+            # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
             direction = pymongo.ASCENDING
             if key.startswith("-"):
                 direction = pymongo.DESCENDING
-            if key.startswith(("+", "-")):
-                    key = key[1:]
+            elif key.startswith("*"):
+                direction = pymongo.GEO2D
+            if key.startswith(("+", "-", "*")):
+                key = key[1:]
 
             # Use real field name, do it manually because we need field
             # objects for the next part (list field checking)
@@ -421,7 +423,7 @@ class QuerySet(object):
         # If _types is being used, prepend it to every specified index
         index_types = doc_cls._meta.get('index_types', True)
         allow_inheritance = doc_cls._meta.get('allow_inheritance')
-        if spec.get('types', index_types) and allow_inheritance and use_types:
+        if spec.get('types', index_types) and allow_inheritance and use_types and direction is not pymongo.GEO2D:
             index_list.insert(0, ('_types', 1))
 
         spec['fields'] = index_list

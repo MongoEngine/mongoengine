@@ -658,6 +658,26 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_explicit_geo2d_index(self):
+        """Ensure that geo2d indexes work when created via meta[indexes]
+        """
+        class Place(Document):
+            location = DictField()
+            meta = {
+                'indexes': [
+                    '*location.point', 
+                ],
+            }
+        Place.drop_collection()
+
+        info = Place.objects._collection.index_information()
+        # Indexes are lazy so use list() to perform query
+        list(Place.objects)
+        info = Place.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+
+        self.assertTrue([('location.point', '2d')] in info)
+
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains dictionaries
         instead of lists.
