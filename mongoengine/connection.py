@@ -1,5 +1,5 @@
 import pymongo
-from pymongo import Connection, uri_parser
+from pymongo import Connection, ReplicaSetConnection, uri_parser
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -108,8 +108,11 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings['slaves'] = slaves
                 conn_settings.pop('read_preference')
 
+        connection_class = Connection
+        if 'replicaSet' in conn_settings:
+            connection_class = ReplicaSetConnection
         try:
-            _connections[alias] = Connection(**conn_settings)
+            _connections[alias] = connection_class(**conn_settings)
         except Exception, e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]

@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added replicaSet connection support
 - Updated deprecated imports from pymongo (safe for pymongo 2.2)
 - Added uri support for connections
 - Added scalar for efficiently returning partial data values (aliased to values_list)
