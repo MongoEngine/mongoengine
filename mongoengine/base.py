@@ -339,7 +339,7 @@ class ComplexBaseField(BaseField):
                     # _types / _cls data so make it a generic reference allows
                     # us to dereference
                     meta = getattr(v, 'meta', getattr(v, '_meta', {}))
-                    if meta and not meta['allow_inheritance'] and not self.field:
+                    if meta and not meta.get('allow_inheritance', True) and not self.field:
                         from fields import GenericReferenceField
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
