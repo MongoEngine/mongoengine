@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Updated deprecated imports from pymongo (safe for pymongo 2.2)
 - Added uri support for connections
 - Added scalar for efficiently returning partial data values (aliased to values_list)
 - Fixed limit skip bug
