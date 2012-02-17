@@ -1,15 +1,13 @@
-from connection import get_db
-from mongoengine import signals
-
 import pprint
-import pymongo
-import pymongo.code
-import pymongo.dbref
-import pymongo.objectid
 import re
 import copy
 import itertools
 import operator
+
+import pymongo
+from bson.code import Code
+
+from mongoengine import signals
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
@@ -935,9 +933,9 @@ class QuerySet(object):
         and :meth:`~mongoengine.tests.QuerySetTest.test_map_advanced`
         tests in ``tests.queryset.QuerySetTest`` for usage examples.
 
-        :param map_f: map function, as :class:`~pymongo.code.Code` or string
+        :param map_f: map function, as :class:`~bson.code.Code` or string
         :param reduce_f: reduce function, as
-                         :class:`~pymongo.code.Code` or string
+                         :class:`~bson.code.Code` or string
         :param output: output collection name, if set to 'inline' will try to
                        use :class:`~pymongo.collection.Collection.inline_map_reduce`
         :param finalize_f: finalize function, an optional function that
@@ -967,27 +965,27 @@ class QuerySet(object):
             raise NotImplementedError("Requires MongoDB >= 1.7.1")
 
         map_f_scope = {}
-        if isinstance(map_f, pymongo.code.Code):
+        if isinstance(map_f, Code):
             map_f_scope = map_f.scope
             map_f = unicode(map_f)
-        map_f = pymongo.code.Code(self._sub_js_fields(map_f), map_f_scope)
+        map_f = Code(self._sub_js_fields(map_f), map_f_scope)
 
         reduce_f_scope = {}
-        if isinstance(reduce_f, pymongo.code.Code):
+        if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
             reduce_f = unicode(reduce_f)
         reduce_f_code = self._sub_js_fields(reduce_f)
-        reduce_f = pymongo.code.Code(reduce_f_code, reduce_f_scope)
+        reduce_f = Code(reduce_f_code, reduce_f_scope)
 
         mr_args = {'query': self._query}
 
         if finalize_f:
             finalize_f_scope = {}
-            if isinstance(finalize_f, pymongo.code.Code):
+            if isinstance(finalize_f, Code):
                 finalize_f_scope = finalize_f.scope
                 finalize_f = unicode(finalize_f)
             finalize_f_code = self._sub_js_fields(finalize_f)
-            finalize_f = pymongo.code.Code(finalize_f_code, finalize_f_scope)
+            finalize_f = Code(finalize_f_code, finalize_f_scope)
             mr_args['finalize'] = finalize_f
 
         if scope:
@@ -1499,7 +1497,7 @@ class QuerySet(object):
             query['$where'] = self._where_clause
 
         scope['query'] = query
-        code = pymongo.code.Code(code, scope=scope)
+        code = Code(code, scope=scope)
 
         db = self._document._get_db()
         return db.eval(code, *fields)
@@ -1528,13 +1526,13 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
             with sharding.
         """
-        map_func = pymongo.code.Code("""
+        map_func = Code("""
             function() {
                 emit(1, this[field] || 0);
             }
         """, scope={'field': field})
 
-        reduce_func = pymongo.code.Code("""
+        reduce_func = Code("""
             function(key, values) {
                 var sum = 0;
                 for (var i in values) {
@@ -1558,14 +1556,14 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
             with sharding.
         """
-        map_func = pymongo.code.Code("""
+        map_func = Code("""
             function() {
                 if (this.hasOwnProperty(field))
                     emit(1, {t: this[field] || 0, c: 1});
             }
         """, scope={'field': field})
 
-        reduce_func = pymongo.code.Code("""
+        reduce_func = Code("""
             function(key, values) {
                 var out = {t: 0, c: 0};
                 for (var i in values) {
@@ -1577,7 +1575,7 @@ class QuerySet(object):
             }
         """)
 
-        finalize_func = pymongo.code.Code("""
+        finalize_func = Code("""
             function(key, value) {
                 return value.t / value.c;
             }
@@ -1719,7 +1717,7 @@ class QuerySet(object):
 
     def __repr__(self):
         limit = REPR_OUTPUT_SIZE + 1
-        start = ( 0 if self._skip is None else self._skip )
+        start = (0 if self._skip is None else self._skip)
         if self._limit is None:
             stop = start + limit
         if self._limit is not None:
@@ -1736,7 +1734,7 @@ class QuerySet(object):
         return repr(data)
 
     def select_related(self, max_depth=1):
-        """Handles dereferencing of :class:`~pymongo.dbref.DBRef` objects to
+        """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
         a maximum depth in order to cut down the number queries to mongodb.
 
         .. versionadded:: 0.5

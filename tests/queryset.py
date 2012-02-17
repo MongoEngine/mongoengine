@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 import pymongo
+from bson import ObjectId
 from datetime import datetime, timedelta
 
 from mongoengine.queryset import (QuerySet, QuerySetManager,
@@ -59,8 +60,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
-        self.assertTrue(isinstance(results[0].id, (pymongo.objectid.ObjectId,
-                                                   str, unicode)))
+        self.assertTrue(isinstance(results[0].id, (ObjectId, str, unicode)))
         self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
         self.assertEqual(results[1].name, "User B")

@@ -2,12 +2,10 @@ import datetime
 import time
 import decimal
 import gridfs
-import pymongo
-import pymongo.binary
-import pymongo.dbref
-import pymongo.son
 import re
 import uuid
+
+from bson import Binary, DBRef, SON, ObjectId
 
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document)
@@ -644,7 +642,7 @@ class ReferenceField(BaseField):
         # Get value from document instance if available
         value = instance._data.get(self.name)
         # Dereference DBRefs
-        if isinstance(value, (pymongo.dbref.DBRef)):
+        if isinstance(value, (DBRef)):
             value = self.document_type._get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
@@ -666,7 +664,7 @@ class ReferenceField(BaseField):
 
         id_ = id_field.to_mongo(id_)
         collection = self.document_type._get_collection_name()
-        return pymongo.dbref.DBRef(collection, id_)
+        return DBRef(collection, id_)
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -675,7 +673,7 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
-        if not isinstance(value, (self.document_type, pymongo.dbref.DBRef)):
+        if not isinstance(value, (self.document_type, DBRef)):
             self.error('A ReferenceField only accepts DBRef')
 
         if isinstance(value, Document) and value.id is None:
@@ -701,13 +699,13 @@ class GenericReferenceField(BaseField):
             return self
 
         value = instance._data.get(self.name)
-        if isinstance(value, (dict, pymongo.son.SON)):
+        if isinstance(value, (dict, SON)):
             instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 
     def validate(self, value):
-        if not isinstance(value, (Document, pymongo.dbref.DBRef)):
+        if not isinstance(value, (Document, DBRef)):
             self.error('GenericReferences can only contain documents')
 
         # We need the id from the saved object to create the DBRef
@@ -741,7 +739,7 @@ class GenericReferenceField(BaseField):
 
         id_ = id_field.to_mongo(id_)
         collection = document._get_collection_name()
-        ref = pymongo.dbref.DBRef(collection, id_)
+        ref = DBRef(collection, id_)
         return {'_cls': document._class_name, '_ref': ref}
 
     def prepare_query_value(self, op, value):
@@ -760,7 +758,7 @@ class BinaryField(BaseField):
         super(BinaryField, self).__init__(**kwargs)
 
     def to_mongo(self, value):
-        return pymongo.binary.Binary(value)
+        return Binary(value)
 
     def to_python(self, value):
         # Returns str not unicode as this is binary data
@@ -964,7 +962,7 @@ class FileField(BaseField):
         if value.grid_id is not None:
             if not isinstance(value, self.proxy_class):
                 self.error('FileField only accepts GridFSProxy values')
-            if not isinstance(value.grid_id, pymongo.objectid.ObjectId):
+            if not isinstance(value.grid_id, ObjectId):
                 self.error('Invalid GridFSProxy value')
 
 

@@ -1,10 +1,11 @@
+import pymongo
+from bson.dbref import DBRef
+
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList)
 from queryset import OperationError
 from connection import get_db, DEFAULT_CONNECTION_NAME
-
-import pymongo
 
 __all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError', 'InvalidCollectionError']
@@ -151,7 +152,7 @@ class Document(BaseDocument):
 
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using set / unset
-            Saves are cascaded and any :class:`~pymongo.dbref.DBRef` objects
+            Saves are cascaded and any :class:`~bson.dbref.DBRef` objects
             that have changes are saved as well.
         .. versionchanged:: 0.6
             Cascade saves are optional = defaults to True, if you want fine grain
@@ -271,7 +272,7 @@ class Document(BaseDocument):
         signals.post_delete.send(self.__class__, document=self)
 
     def select_related(self, max_depth=1):
-        """Handles dereferencing of :class:`~pymongo.dbref.DBRef` objects to
+        """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
         a maximum depth in order to cut down the number queries to mongodb.
 
         .. versionadded:: 0.5
@@ -313,12 +314,12 @@ class Document(BaseDocument):
         return value
 
     def to_dbref(self):
-        """Returns an instance of :class:`~pymongo.dbref.DBRef` useful in
+        """Returns an instance of :class:`~bson.dbref.DBRef` useful in
         `__raw__` queries."""
         if not self.pk:
             msg = "Only saved documents can have a valid dbref"
             raise OperationError(msg)
-        return pymongo.dbref.DBRef(self.__class__._get_collection_name(), self.pk)
+        return DBRef(self.__class__._get_collection_name(), self.pk)
 
     @classmethod
     def register_delete_rule(cls, document_cls, field_name, rule):
@@ -385,7 +386,7 @@ class MapReduceDocument(object):
 
     :param collection: An instance of :class:`~pymongo.Collection`
     :param key: Document/result key, often an instance of
-                :class:`~pymongo.objectid.ObjectId`. If supplied as
+                :class:`~bson.objectid.ObjectId`. If supplied as
                 an ``ObjectId`` found in the given ``collection``,
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.

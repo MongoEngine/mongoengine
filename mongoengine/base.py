@@ -6,9 +6,11 @@ from mongoengine import signals
 
 import sys
 import pymongo
-import pymongo.objectid
+from bson import ObjectId
 import operator
+
 from functools import partial
+from bson.dbref import DBRef
 
 
 class NotRegistered(Exception):
@@ -295,7 +297,7 @@ class ComplexBaseField(BaseField):
                         self.error('You can only reference documents once they'
                                    ' have been saved to the database')
                     collection = v._get_collection_name()
-                    value_dict[k] = pymongo.dbref.DBRef(collection, v.pk)
+                    value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, 'to_python'):
                     value_dict[k] = v.to_python()
                 else:
@@ -344,7 +346,7 @@ class ComplexBaseField(BaseField):
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
                         collection = v._get_collection_name()
-                        value_dict[k] = pymongo.dbref.DBRef(collection, v.pk)
+                        value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, 'to_mongo'):
                     value_dict[k] = v.to_mongo()
                 else:
@@ -447,9 +449,9 @@ class ObjectIdField(BaseField):
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, pymongo.objectid.ObjectId):
+        if not isinstance(value, ObjectId):
             try:
-                return pymongo.objectid.ObjectId(unicode(value))
+                return ObjectId(unicode(value))
             except Exception, e:
                 # e.message attribute has been deprecated since Python 2.6
                 self.error(unicode(e))
@@ -460,7 +462,7 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            pymongo.objectid.ObjectId(unicode(value))
+            ObjectId(unicode(value))
         except:
             self.error('Invalid Object ID')
 

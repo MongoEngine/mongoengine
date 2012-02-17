@@ -46,7 +46,12 @@ def register_connection(alias, name, host='localhost', port=27017,
             raise ConnectionError("If using URI style connection include "\
                                   "database name in string")
         uri_dict['name'] = uri_dict.get('database')
-        _connection_settings[alias] = uri_dict
+        _connection_settings[alias] = {
+            'host': host,
+            'name': uri_dict.get('database'),
+            'username': uri_dict.get('username'),
+            'password': uri_dict.get('password')
+        }
         return
 
     _connection_settings[alias] = {
@@ -89,11 +94,11 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings = _connection_settings[alias].copy()
 
         if hasattr(pymongo, 'version_tuple'):  # Support for 2.1+
-            conn_settings.pop('name')
-            conn_settings.pop('slaves')
-            conn_settings.pop('is_slave')
-            conn_settings.pop('username')
-            conn_settings.pop('password')
+            conn_settings.pop('name', None)
+            conn_settings.pop('slaves', None)
+            conn_settings.pop('is_slave', None)
+            conn_settings.pop('username', None)
+            conn_settings.pop('password', None)
         else:
             # Get all the slave connections
             if 'slaves' in conn_settings:
@@ -106,8 +111,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         try:
             _connections[alias] = Connection(**conn_settings)
         except Exception, e:
-            raise e
-            raise ConnectionError('Cannot connect to database %s' % alias)
+            raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]
 
 
@@ -120,7 +124,6 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
         _dbs[alias] = conn[conn_settings['name']]
-
         # Authenticate if necessary
         if conn_settings['username'] and conn_settings['password']:
             _dbs[alias].authenticate(conn_settings['username'],

@@ -4,7 +4,7 @@ import pymongo
 import mongoengine.connection
 
 from mongoengine import *
-from mongoengine.connection import get_db, get_connection
+from mongoengine.connection import get_db, get_connection, ConnectionError
 
 
 class ConnectionTest(unittest.TestCase):
@@ -33,6 +33,15 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_uri(self):
         """Ensure that the connect() method works properly with uri's
         """
+        c = connect(db='mongoenginetest', alias='admin')
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
+
+        c.admin.add_user("admin", "password")
+        c.admin.authenticate("admin", "password")
+        c.mongoenginetest.add_user("username", "password")
+
+        self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost/mongoenginetest')
 
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
 

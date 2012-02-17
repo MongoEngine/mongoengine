@@ -1,4 +1,4 @@
-import pymongo
+from bson import DBRef, SON
 
 from base import (BaseDict, BaseList, TopLevelDocumentMetaclass, get_document)
 from fields import ReferenceField
@@ -68,9 +68,9 @@ class DeReference(object):
             if hasattr(item, '_fields'):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
-                    if isinstance(v, (pymongo.dbref.DBRef)):
+                    if isinstance(v, (DBRef)):
                         reference_map.setdefault(field.document_type, []).append(v.id)
-                    elif isinstance(v, (dict, pymongo.son.SON)) and '_ref' in v:
+                    elif isinstance(v, (dict, SON)) and '_ref' in v:
                         reference_map.setdefault(get_document(v['_cls']), []).append(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
@@ -79,9 +79,9 @@ class DeReference(object):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, []).extend(refs)
-            elif isinstance(item, (pymongo.dbref.DBRef)):
+            elif isinstance(item, (DBRef)):
                 reference_map.setdefault(item.collection, []).append(item.id)
-            elif isinstance(item, (dict, pymongo.son.SON)) and '_ref' in item:
+            elif isinstance(item, (dict, SON)) and '_ref' in item:
                 reference_map.setdefault(get_document(item['_cls']), []).append(item['_ref'].id)
             elif isinstance(item, (dict, list, tuple)) and depth - 1 <= self.max_depth:
                 references = self._find_references(item, depth - 1)
@@ -138,7 +138,7 @@ class DeReference(object):
                 else:
                     return BaseList(items, instance, name)
 
-        if isinstance(items, (dict, pymongo.son.SON)):
+        if isinstance(items, (dict, SON)):
             if '_ref' in items:
                 return self.object_map.get(items['_ref'].id, items)
             elif '_types' in items and '_cls' in items:
@@ -167,9 +167,9 @@ class DeReference(object):
             elif hasattr(v, '_fields'):
                 for field_name, field in v._fields.iteritems():
                     v = data[k]._data.get(field_name, None)
-                    if isinstance(v, (pymongo.dbref.DBRef)):
+                    if isinstance(v, (DBRef)):
                         data[k]._data[field_name] = self.object_map.get(v.id, v)
-                    elif isinstance(v, (dict, pymongo.son.SON)) and '_ref' in v:
+                    elif isinstance(v, (dict, SON)) and '_ref' in v:
                         data[k]._data[field_name] = self.object_map.get(v['_ref'].id, v)
                     elif isinstance(v, dict) and depth <= self.max_depth:
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
