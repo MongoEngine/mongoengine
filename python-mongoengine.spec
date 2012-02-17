@@ -53,7 +53,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Thu Oct 27 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.3-1
 - Update to latest dev version
-* Add PIL dependency for ImageField
+- Add PIL dependency for ImageField
 * Wed Oct 12 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.2-1
 - Update version
 * Fri Sep 23 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.0-1
