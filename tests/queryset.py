@@ -1420,20 +1420,39 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def test_update_pull(self):
+    def test_update_push_and_pull(self):
         """Ensure that the 'pull' update operation works correctly.
         """
         class BlogPost(Document):
             slug = StringField()
             tags = ListField(StringField())
 
-        post = BlogPost(slug="test", tags=['code', 'mongodb', 'code'])
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
         post.save()
+
+        BlogPost.objects.filter(id=post.id).update(push__tags="code")
+        post.reload()
+        self.assertEqual(post.tags, ["code"])
+
+        BlogPost.objects.filter(id=post.id).update(push_all__tags=["mongodb", "code"])
+        post.reload()
+        self.assertEqual(post.tags, ["code", "mongodb", "code"])
 
         BlogPost.objects(slug="test").update(pull__tags="code")
         post.reload()
-        self.assertTrue('code' not in post.tags)
-        self.assertEqual(len(post.tags), 1)
+        self.assertEqual(post.tags, ["mongodb"])
+
+
+        BlogPost.objects(slug="test").update(pull_all__tags=["mongodb", "code"])
+        post.reload()
+        self.assertEqual(post.tags, [])
+
+        BlogPost.objects(slug="test").update(__raw__={"$addToSet": {"tags": {"$each": ["code", "mongodb", "code"]}}})
+        post.reload()
+        self.assertEqual(post.tags, ["code", "mongodb"])
+
 
     def test_update_one_pop_generic_reference(self):
 

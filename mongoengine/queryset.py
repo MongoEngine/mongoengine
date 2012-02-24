@@ -1279,6 +1279,9 @@ class QuerySet(object):
 
         mongo_update = {}
         for key, value in update.items():
+            if key == "__raw__":
+                mongo_update.update(value)
+                continue
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
