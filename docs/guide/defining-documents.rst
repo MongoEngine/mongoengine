@@ -431,10 +431,25 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be sparse.
 
-.. note::
 
-   Geospatial indexes will be automatically created for all
-   :class:`~mongoengine.GeoPointField`\ s
+Geospatial indexes
+---------------------------
+Geospatial indexes will be automatically created for all
+:class:`~mongoengine.GeoPointField`\ s
+
+It is also possible to explicitly define geospatial indexes. This is
+useful if you need to define a geospatial index on a subfield of a
+:class:`~mongoengine.DictField` or a custom field that contains a
+point. To create a geospatial index you must prefix the field with the
+***** sign. ::
+
+    class Place(Document):
+        location = DictField()
+        meta = {
+            'indexes': [
+                '*location.point', 
+            ],
+        }
 
 Ordering
 ========
