@@ -42,7 +42,7 @@ def register_connection(alias, name, host='localhost', port=27017,
     # Handle uri style connections
     if "://" in host:
         uri_dict = uri_parser.parse_uri(host)
-        if 'database' not in uri_dict:
+        if uri_dict.get('database') is None:
             raise ConnectionError("If using URI style connection include "\
                                   "database name in string")
         uri_dict['name'] = uri_dict.get('database')
