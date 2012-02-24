@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Added custom 2D index declarations
 - Added replicaSet connection support
 - Updated deprecated imports from pymongo (safe for pymongo 2.2)
 - Added uri support for connections
