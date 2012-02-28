@@ -45,14 +45,12 @@ def register_connection(alias, name, host='localhost', port=27017,
         if uri_dict.get('database') is None:
             raise ConnectionError("If using URI style connection include "\
                                   "database name in string")
-        uri_dict['name'] = uri_dict.get('database')
-        _connection_settings[alias] = {
-            'host': host,
-            'name': uri_dict.get('database'),
-            'username': uri_dict.get('username'),
-            'password': uri_dict.get('password')
-        }
-        return
+        node = uri_dict['nodelist'][0]
+        host = node[0]
+        port = node[1]
+        name = uri_dict.get('database')
+        username = uri_dict.get('username') or username
+        password = uri_dict.get('password') or password
 
     _connection_settings[alias] = {
         'name': name,
