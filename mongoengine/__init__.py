@@ -12,9 +12,7 @@ from signals import *
 __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
            queryset.__all__ + signals.__all__)
 
-__author__ = 'Harry Marr'
-
-VERSION = (0, 5, 3)
+VERSION = (0, 6, 0)
 
 
 def get_version():
