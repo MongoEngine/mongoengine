@@ -191,10 +191,11 @@ class Document(BaseDocument):
                     actual_key = self._db_field_map.get(k, k)
                     select_dict[actual_key] = doc[actual_key]
 
+                upsert = self._created
                 if updates:
-                    collection.update(select_dict, {"$set": updates}, upsert=True, safe=safe, **write_options)
+                    collection.update(select_dict, {"$set": updates}, upsert=upsert, safe=safe, **write_options)
                 if removals:
-                    collection.update(select_dict, {"$unset": removals}, upsert=True, safe=safe, **write_options)
+                    collection.update(select_dict, {"$unset": removals}, upsert=upsert, safe=safe, **write_options)
 
             cascade = self._meta.get('cascade', True) if cascade is None else cascade
             if cascade:
@@ -219,6 +220,7 @@ class Document(BaseDocument):
         self[id_field] = self._fields[id_field].to_python(object_id)
 
         self._changed_fields = []
+        self._created = False
         signals.post_save.send(self.__class__, document=self, created=created)
 
     def cascade_save(self, *args, **kwargs):

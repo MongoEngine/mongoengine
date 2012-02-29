@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- No longer always upsert on save for items with a '_id'
 - Error raised if update doesn't have an operation
 - DeReferencing is now thread safe
 - Errors raised if trying to perform a join in a query
