@@ -1432,6 +1432,12 @@ class DocumentTest(unittest.TestCase):
 
         self.assertRaises(OperationError, update_no_value_raises)
 
+        def update_no_op_raises():
+            person = self.Person.objects.first()
+            person.update(name="Dan")
+
+        self.assertRaises(InvalidQueryError, update_no_op_raises)
+
     def test_embedded_update(self):
         """
         Test update on `EmbeddedDocumentField` fields

@@ -1332,11 +1332,14 @@ class QuerySet(object):
 
             key = '.'.join(parts)
 
+            if not op:
+                raise InvalidQueryError("Updates must supply an operation eg: set__FIELD=value")
+
             if op:
                 value = {key: value}
                 key = '$' + op
 
-            if op is None or key not in mongo_update:
+            if key not in mongo_update:
                 mongo_update[key] = value
             elif key in mongo_update and isinstance(mongo_update[key], dict):
                 mongo_update[key].update(value)

@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Error raised if update doesn't have an operation
 - DeReferencing is now thread safe
 - Errors raised if trying to perform a join in a query
 - Updates can now take __raw__ queries
