@@ -431,6 +431,12 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be sparse.
 
+.. warning::
+
+
+   Inheritance adds extra indices.
+   If don't need inheritance for a document turn inheritance off - see :ref:`document-inheritance`.
+
 
 Geospatial indexes
 ---------------------------
@@ -447,7 +453,7 @@ point. To create a geospatial index you must prefix the field with the
         location = DictField()
         meta = {
             'indexes': [
-                '*location.point', 
+                '*location.point',
             ],
         }
 
@@ -510,6 +516,8 @@ This ensures that the shard key is sent with the query when calling the
         meta = {
             'shard_key': ('machine', 'timestamp',)
         }
+
+.. _document-inheritance:
 
 Document inheritance
 ====================

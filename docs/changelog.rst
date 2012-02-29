@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in dev
+Changes in 0.6
 ==============
 
 - No longer always upsert on save for items with a '_id'

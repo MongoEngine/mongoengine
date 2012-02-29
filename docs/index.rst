@@ -19,7 +19,7 @@ MongoDB. To install it, simply run
   The complete API documentation.
 
 :doc:`upgrade`
-  The Upgrade guide.
+  How to upgrade MongoEngine.
 
 :doc:`django`
   Using MongoEngine and Django
