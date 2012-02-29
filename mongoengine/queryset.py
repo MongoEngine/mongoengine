@@ -748,6 +748,7 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
+        self.limit(2)
         self.__call__(*q_objs, **query)
         try:
             result1 = self.next()
