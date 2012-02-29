@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- DeReferencing is now thread safe
 - Errors raised if trying to perform a join in a query
 - Updates can now take __raw__ queries
 - Added custom 2D index declarations
