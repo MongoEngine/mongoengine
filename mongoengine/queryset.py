@@ -610,6 +610,9 @@ class QuerySet(object):
                     raise InvalidQueryError('Cannot resolve field "%s"'
                                                 % field_name)
             else:
+                from mongoengine.fields import ReferenceField, GenericReferenceField
+                if isinstance(field, (ReferenceField, GenericReferenceField)):
+                    raise InvalidQueryError('Cannot perform join in mongoDB: %s' % '__'.join(parts))
                 # Look up subfield on the previous field
                 new_field = field.lookup_member(field_name)
                 from base import ComplexBaseField

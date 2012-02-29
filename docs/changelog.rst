@@ -5,6 +5,7 @@ Changelog
 Changes in dev
 ==============
 
+- Errors raised if trying to perform a join in a query
 - Updates can now take __raw__ queries
 - Added custom 2D index declarations
 - Added replicaSet connection support

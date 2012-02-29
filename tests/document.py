@@ -10,6 +10,7 @@ from fixtures import Base, Mixin, PickleEmbedded, PickleTest
 
 from mongoengine import *
 from mongoengine.base import NotRegistered, InvalidDocumentError
+from mongoengine.queryset import InvalidQueryError
 from mongoengine.connection import get_db
 
 
@@ -640,7 +641,7 @@ class DocumentTest(unittest.TestCase):
             location = DictField()
             meta = {
                 'indexes': [
-                    '*location.point', 
+                    '*location.point',
                 ],
             }
         Place.drop_collection()
@@ -2255,6 +2256,22 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(author.age, 25)
 
         BlogPost.drop_collection()
+
+    def test_cannot_perform_joins_references(self):
+
+        class BlogPost(Document):
+            author = ReferenceField(self.Person)
+            author2 = GenericReferenceField()
+
+        def test_reference():
+            list(BlogPost.objects(author__name="test"))
+
+        self.assertRaises(InvalidQueryError, test_reference)
+
+        def test_generic_reference():
+            list(BlogPost.objects(author2__name="test"))
+
+        self.assertRaises(InvalidQueryError, test_generic_reference)
 
     def test_duplicate_db_fields_raise_invalid_document_error(self):
         """Ensure a InvalidDocumentError is thrown if duplicate fields
