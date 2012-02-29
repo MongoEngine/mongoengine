@@ -186,5 +186,3 @@ class DeReference(object):
             return BaseDict(data, instance, name)
         depth += 1
         return data
-
-dereference = DeReference()

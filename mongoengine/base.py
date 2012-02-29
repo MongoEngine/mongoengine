@@ -234,8 +234,8 @@ class ComplexBaseField(BaseField):
             return self
 
         if not self._dereference and instance._initialised:
-            from dereference import dereference
-            self._dereference = dereference  # Cached
+            from dereference import DeReference
+            self._dereference = DeReference()  # Cached
             instance._data[self.name] = self._dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
