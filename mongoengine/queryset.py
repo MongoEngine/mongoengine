@@ -273,16 +273,20 @@ class Q(QNode):
 
 class QueryFieldList(object):
     """Object that handles combinations of .only() and .exclude() calls"""
-    ONLY = True
-    EXCLUDE = False
+    ONLY = 1
+    EXCLUDE = 0
 
     def __init__(self, fields=[], value=ONLY, always_include=[]):
         self.value = value
         self.fields = set(fields)
         self.always_include = set(always_include)
+        self._id = None
 
     def as_dict(self):
-        return dict((field, self.value) for field in self.fields)
+        field_list = dict((field, self.value) for field in self.fields)
+        if self._id is not None:
+            field_list['_id'] = self._id
+        return field_list
 
     def __add__(self, f):
         if not self.fields:
@@ -297,6 +301,9 @@ class QueryFieldList(object):
         elif self.value is self.EXCLUDE and f.value is self.ONLY:
             self.value = self.ONLY
             self.fields = f.fields - self.fields
+
+        if '_id' in f.fields:
+            self._id = f.value
 
         if self.always_include:
             if self.value is self.ONLY and self.fields:

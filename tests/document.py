@@ -714,7 +714,6 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(info.keys(), ['_types_1_user_guid_1', '_id_', '_types_1_name_1'])
         Person.drop_collection()
 
-
     def test_embedded_document_index(self):
         """Tests settings an index on an embedded document
         """
@@ -787,6 +786,34 @@ class DocumentTest(unittest.TestCase):
             location = GeoPointField()
 
         self.assertEquals(len(User._geo_indices()), 2)
+
+    def test_covered_index(self):
+        """Ensure that covered indexes can be used
+        """
+
+        class Test(Document):
+            a = IntField()
+
+            meta = {
+                'indexes': ['a'],
+                'allow_inheritance': False
+                }
+
+        Test.drop_collection()
+
+        obj = Test(a=1)
+        obj.save()
+
+        # Need to be explicit about covered indexes as mongoDB doesn't know if
+        # the documents returned might have more keys in that here.
+        query_plan = Test.objects(id=obj.id).exclude('a').explain()
+        self.assertFalse(query_plan['indexOnly'])
+
+        query_plan = Test.objects(id=obj.id).only('id').explain()
+        self.assertTrue(query_plan['indexOnly'])
+
+        query_plan = Test.objects(a=1).only('a').exclude('id').explain()
+        self.assertTrue(query_plan['indexOnly'])
 
     def test_hint(self):
 

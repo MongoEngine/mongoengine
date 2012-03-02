@@ -5,6 +5,7 @@ Changelog
 Changes in 0.6
 ==============
 
+- Added support for covered indexes when inheritance is off
 - No longer always upsert on save for items with a '_id'
 - Error raised if update doesn't have an operation
 - DeReferencing is now thread safe
