@@ -1599,14 +1599,16 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(doc._get_changed_fields(), ['embedded_field'])
 
         embedded_delta = {
-            '_types': ['Embedded'],
-            '_cls': 'Embedded',
             'string_field': 'hello',
             'int_field': 1,
             'dict_field': {'hello': 'world'},
             'list_field': ['1', 2, {'hello': 'world'}]
         }
         self.assertEquals(doc.embedded_field._delta(), (embedded_delta, {}))
+        embedded_delta.update({
+            '_types': ['Embedded'],
+            '_cls': 'Embedded',
+        })
         self.assertEquals(doc._delta(), ({'embedded_field': embedded_delta}, {}))
 
         doc.save()
@@ -1832,14 +1834,16 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(doc._get_changed_fields(), ['db_embedded_field'])
 
         embedded_delta = {
-            '_types': ['Embedded'],
-            '_cls': 'Embedded',
             'db_string_field': 'hello',
             'db_int_field': 1,
             'db_dict_field': {'hello': 'world'},
             'db_list_field': ['1', 2, {'hello': 'world'}]
         }
         self.assertEquals(doc.embedded_field._delta(), (embedded_delta, {}))
+        embedded_delta.update({
+            '_types': ['Embedded'],
+            '_cls': 'Embedded',
+        })
         self.assertEquals(doc._delta(), ({'db_embedded_field': embedded_delta}, {}))
 
         doc.save()
@@ -2163,6 +2167,30 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(employee_obj['age'], 50)
         # Ensure that the 'details' embedded object saved correctly
         self.assertEqual(employee_obj['details']['position'], 'Developer')
+
+    def test_embedded_update_after_save(self):
+        """
+        Test update of `EmbeddedDocumentField` attached to a newly saved
+        document.
+        """
+        class Page(EmbeddedDocument):
+            log_message = StringField(verbose_name="Log message",
+                                      required=True)
+
+        class Site(Document):
+            page = EmbeddedDocumentField(Page)
+
+
+        Site.drop_collection()
+        site = Site(page=Page(log_message="Warning: Dummy message"))
+        site.save()
+
+        # Update
+        site.page.log_message = "Error: Dummy message"
+        site.save()
+
+        site = Site.objects.first()
+        self.assertEqual(site.page.log_message, "Error: Dummy message")
 
     def test_updating_an_embedded_document(self):
         """Ensure that a document with an embedded document field may be

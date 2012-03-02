@@ -335,14 +335,16 @@ class DynamicDocTest(unittest.TestCase):
         self.assertEquals(doc._get_changed_fields(), ['embedded_field'])
 
         embedded_delta = {
-            '_types': ['Embedded'],
-            '_cls': 'Embedded',
             'string_field': 'hello',
             'int_field': 1,
             'dict_field': {'hello': 'world'},
             'list_field': ['1', 2, {'hello': 'world'}]
         }
         self.assertEquals(doc.embedded_field._delta(), (embedded_delta, {}))
+        embedded_delta.update({
+            '_types': ['Embedded'],
+            '_cls': 'Embedded',
+        })
         self.assertEquals(doc._delta(), ({'embedded_field': embedded_delta}, {}))
 
         doc.save()
