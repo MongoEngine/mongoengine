@@ -539,8 +539,8 @@ convenient and efficient retrieval of related documents::
     class DatedPage(Page):
         date = DateTimeField()
 
-.. note:: From 0.7 onwards you must declare `allow_inheritance` in the document
-meta.
+.. note:: From 0.7 onwards you must declare `allow_inheritance` in the document meta.
+
 
 Working with existing data
 --------------------------

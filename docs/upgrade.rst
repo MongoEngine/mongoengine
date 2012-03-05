@@ -25,7 +25,7 @@ There have been the following backwards incompatibilities from 0.4 to 0.5.  The
 main areas of changed are: choices in fields, map_reduce and collection names.
 
 Choice options:
---------------
+---------------
 
 Are now expected to be an iterable of tuples, with  the first element in each
 tuple being the actual value to be stored. The second element is the
