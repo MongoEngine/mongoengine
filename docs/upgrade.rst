@@ -15,6 +15,9 @@ Document._get_subclasses - Is no longer used and the class method has been remov
 
 Document.objects.with_id - now raises an InvalidQueryError if used with a filter.
 
+FutureWarning - A future warning has been added to all inherited classes that
+don't define `allow_inheritance` in their meta.
+
 0.4 to 0.5
 ===========
 

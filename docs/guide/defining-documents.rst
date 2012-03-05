@@ -533,9 +533,14 @@ convenient and efficient retrieval of related documents::
     class Page(Document):
         title = StringField(max_length=200, required=True)
 
+        meta = {'allow_inheritance': True}
+
     # Also stored in the collection named 'page'
     class DatedPage(Page):
         date = DateTimeField()
+
+.. note:: From 0.7 onwards you must declare `allow_inheritance` in the document
+meta.
 
 Working with existing data
 --------------------------
