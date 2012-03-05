@@ -508,6 +508,12 @@ class SortedListField(ListField):
     the database in order to ensure that a sorted list is always
     retrieved.
 
+    .. warning::
+        There is a potential race condition when handling lists.  If you set /
+        save the whole list then other processes trying to save the whole list
+        as well could overwrite changes.  The safest way to append to a list is
+        to perform a push operation.
+
     .. versionadded:: 0.4
     .. versionchanged:: 0.6 - added reverse keyword
     """
