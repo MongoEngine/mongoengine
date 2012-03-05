@@ -20,6 +20,7 @@ class QuerySetTest(unittest.TestCase):
         class Person(Document):
             name = StringField()
             age = IntField()
+            meta = {'allow_inheritance': True}
         self.Person = Person
 
     def test_initialisation(self):

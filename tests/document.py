@@ -23,10 +23,31 @@ class DocumentTest(unittest.TestCase):
         class Person(Document):
             name = StringField()
             age = IntField()
+
+            meta = {'allow_inheritance': True}
+
         self.Person = Person
 
     def tearDown(self):
         self.Person.drop_collection()
+
+    def test_future_warning(self):
+        """Add FutureWarning for future allow_inhertiance default change.
+        """
+
+        with warnings.catch_warnings(True) as errors:
+
+            class SimpleBase(Document):
+                a = IntField()
+
+            class InheritedClass(SimpleBase):
+                b = IntField()
+
+            InheritedClass()
+            self.assertEquals(len(errors), 1)
+            warning = errors[0]
+            self.assertEquals(FutureWarning, warning.category)
+            self.assertTrue("InheritedClass" in warning.message.message)
 
     def test_drop_collection(self):
         """Ensure that the collection may be dropped from the database.
@@ -145,7 +166,8 @@ class DocumentTest(unittest.TestCase):
     def test_get_superclasses(self):
         """Ensure that the correct list of superclasses is assembled.
         """
-        class Animal(Document): pass
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
         class Fish(Animal): pass
         class Mammal(Animal): pass
         class Human(Mammal): pass
@@ -194,7 +216,8 @@ class DocumentTest(unittest.TestCase):
 
     def test_polymorphic_queries(self):
         """Ensure that the correct subclasses are returned from a query"""
-        class Animal(Document): pass
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
         class Fish(Animal): pass
         class Mammal(Animal): pass
         class Human(Mammal): pass
@@ -223,7 +246,8 @@ class DocumentTest(unittest.TestCase):
         """Ensure that the correct subclasses are returned from a query when
         using references / generic references
         """
-        class Animal(Document): pass
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
         class Fish(Animal): pass
         class Mammal(Animal): pass
         class Human(Mammal): pass
@@ -302,7 +326,8 @@ class DocumentTest(unittest.TestCase):
                          self.Person._get_collection_name())
 
         # Ensure that MRO error is not raised
-        class A(Document): pass
+        class A(Document):
+            meta = {'allow_inheritance': True}
         class B(A): pass
         class C(B): pass
 
@@ -597,6 +622,7 @@ class DocumentTest(unittest.TestCase):
                     'tags',
                     ('category', '-date')
                 ],
+                'allow_inheritance': True
             }
 
         BlogPost.drop_collection()
@@ -996,6 +1022,8 @@ class DocumentTest(unittest.TestCase):
             username = StringField(primary_key=True)
             name = StringField()
 
+            meta = {'allow_inheritance': True}
+
         User.drop_collection()
 
         self.assertEqual(User._fields['username'].db_field, '_id')
@@ -1044,6 +1072,8 @@ class DocumentTest(unittest.TestCase):
 
         class Place(Document):
             name = StringField()
+
+            meta = {'allow_inheritance': True}
 
         class NicePlace(Place):
             pass

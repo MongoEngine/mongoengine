@@ -1,3 +1,5 @@
+import warnings
+
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
@@ -116,7 +118,6 @@ class BaseField(object):
                  validation=None, choices=None, verbose_name=None, help_text=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
-            import warnings
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
             warnings.warn(msg, DeprecationWarning)
         self.name = None
@@ -471,7 +472,6 @@ class DocumentMetaclass(type):
     """Metaclass for all documents.
     """
 
-
     def __new__(cls, name, bases, attrs):
         def _get_mixin_fields(base):
             attrs = {}
@@ -512,6 +512,13 @@ class DocumentMetaclass(type):
                 # inheritance may be disabled to remove dependency on
                 # additional fields _cls and _types
                 class_name.append(base._class_name)
+                if not base._meta.get('allow_inheritance_defined', True):
+                    warnings.warn(
+                        "%s uses inheritance, the default for allow_inheritance "
+                        "is changing to off by default.  Please add it to the "
+                        "document meta." % name,
+                        FutureWarning
+                    )
                 if base._meta.get('allow_inheritance', True) == False:
                     raise ValueError('Document %s may not be subclassed' %
                                      base.__name__)
@@ -673,6 +680,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'delete_rules': {},
             'allow_inheritance': True
         }
+
+        allow_inheritance_defined = ('allow_inheritance' in base_meta or
+                                     'allow_inheritance'in attrs.get('meta', {}))
+        meta['allow_inheritance_defined'] = allow_inheritance_defined
         meta.update(base_meta)
 
         # Apply document-defined meta options

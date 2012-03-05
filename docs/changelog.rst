@@ -5,6 +5,7 @@ Changelog
 Changes in 0.6
 ==============
 
+- Added FutureWarning to inherited classes not declaring 'allow_inheritance' as the default will change in 0.7
 - Added support for covered indexes when inheritance is off
 - No longer always upsert on save for items with a '_id'
 - Error raised if update doesn't have an operation

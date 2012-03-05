@@ -12,6 +12,7 @@ class DynamicDocTest(unittest.TestCase):
 
         class Person(DynamicDocument):
             name = StringField()
+            meta = {'allow_inheritance': True}
 
         Person.drop_collection()
 

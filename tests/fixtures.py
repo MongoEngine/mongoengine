@@ -20,4 +20,4 @@ class Mixin(object):
 
 
 class Base(Document):
-    pass
+    meta = {'allow_inheritance': True}
