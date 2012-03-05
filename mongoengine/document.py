@@ -24,6 +24,10 @@ class EmbeddedDocument(BaseDocument):
 
     __metaclass__ = DocumentMetaclass
 
+    def __init__(self, *args, **kwargs):
+        super(EmbeddedDocument, self).__init__(*args, **kwargs)
+        self._changed_fields = []
+
     def __delattr__(self, *args, **kwargs):
         """Handle deletions of fields"""
         field_name = args[0]
