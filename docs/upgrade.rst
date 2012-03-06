@@ -18,6 +18,8 @@ Document.objects.with_id - now raises an InvalidQueryError if used with a filter
 FutureWarning - A future warning has been added to all inherited classes that
 don't define `allow_inheritance` in their meta.
 
+You may need to update pyMongo to 2.0 for use with Sharding.
+
 0.4 to 0.5
 ===========
 
