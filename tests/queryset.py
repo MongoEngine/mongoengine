@@ -329,11 +329,11 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost(title="ABC", comments=[c1, c2]).save()
 
-        BlogPost.objects(comments__by="joe").update(inc__comments__S__votes=1)
+        BlogPost.objects(comments__by="jane").update(inc__comments__S__votes=1)
 
         post = BlogPost.objects.first()
-        self.assertEquals(post.comments[0].by, 'joe')
-        self.assertEquals(post.comments[0].votes, 4)
+        self.assertEquals(post.comments[1].by, 'jane')
+        self.assertEquals(post.comments[1].votes, 8)
 
         # Currently the $ operator only applies to the first matched item in
         # the query

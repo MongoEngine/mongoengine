@@ -1371,8 +1371,15 @@ class QuerySet(object):
             write_options = {}
 
         update = QuerySet._transform_update(self._document, **update)
+        query = self._query
+
+        # SERVER-5247 hack
+        remove_types = "_types" in query and ".$." in unicode(update)
+        if remove_types:
+            del query["_types"]
+
         try:
-            ret = self._collection.update(self._query, update, multi=multi,
+            ret = self._collection.update(query, update, multi=multi,
                                           upsert=upsert, safe=safe_update,
                                           **write_options)
             if ret is not None and 'n' in ret:
@@ -1400,10 +1407,17 @@ class QuerySet(object):
         if not write_options:
             write_options = {}
         update = QuerySet._transform_update(self._document, **update)
+        query = self._query
+
+        # SERVER-5247 hack
+        remove_types = "_types" in query and ".$." in unicode(update)
+        if remove_types:
+            del query["_types"]
+
         try:
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
-            ret = self._collection.update(self._query, update, multi=False,
+            ret = self._collection.update(query, update, multi=False,
                                           upsert=upsert, safe=safe_update,
                                            **write_options)
 

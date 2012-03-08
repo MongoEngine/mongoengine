@@ -5,7 +5,7 @@
 %define srcname mongoengine
 
 Name:           python-%{srcname}
-Version:        0.6.1
+Version:        0.6.2
 Release:        1%{?dist}
 Summary:        A Python Document-Object Mapper for working with MongoDB
 

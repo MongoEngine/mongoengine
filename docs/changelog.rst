@@ -2,7 +2,16 @@
 Changelog
 =========
 
-Changes in 0.6.x
+Changes in 0.6.2
+================
+- Updated documentation for ReplicaSet connections
+- Hack round _types issue with SERVER-5247 - querying other arrays may also cause problems.
+
+Changes in 0.6.1
+================
+- Fix for replicaSet connections
+
+Changes in 0.6
 ================
 
 - Added FutureWarning to inherited classes not declaring 'allow_inheritance' as the default will change in 0.7

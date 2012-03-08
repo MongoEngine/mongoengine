@@ -26,7 +26,12 @@ name - just supply the uri as the :attr:`host` to
 
     connect('project1', host='mongodb://localhost/database_name')
 
+ReplicaSets
+===========
 
+MongoEngine now supports :func:`~pymongo.replica_set_connection.ReplicaSetConnection`
+to use them please use a URI style connection and provide the `replicaSet` name in the
+connection kwargs.
 
 Multiple Databases
 ==================
