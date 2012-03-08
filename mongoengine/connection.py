@@ -109,6 +109,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
         connection_class = Connection
         if 'replicaSet' in conn_settings:
+            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
             connection_class = ReplicaSetConnection
         try:
             _connections[alias] = connection_class(**conn_settings)
