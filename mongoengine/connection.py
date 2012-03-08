@@ -5,71 +5,83 @@ __all__ = ['ConnectionError', 'connect']
 
 
 _connection_defaults = {
-    'host': 'localhost',
-    'port': 27017,
+    'host': 'localhost:27017',
+    'db_name': 'test'
 }
-_connection = {}
-_connection_settings = _connection_defaults.copy()
 
-_db_name = None
-_db_username = None
-_db_password = None
-_db = {}
+_connections = {}
+_connection_settings = { }
+_dbs = {}
 
 
 class ConnectionError(Exception):
     pass
 
 
-def _get_connection(reconnect=False):
-    global _connection
+def _get_connection(conn_name=None, reconnect=False):
+    global _connections, _connection_settings
     identity = get_identity()
+
+    if conn_name not in _connection_settings:
+        return None
+
+    if conn_name not in _connections:
+        _connections[conn_name] = {}
+
     # Connect to the database if not already connected
-    if _connection.get(identity) is None or reconnect:
+    if _connections[conn_name].get(identity) is None or reconnect:
         try:
-            _connection[identity] = Connection(**_connection_settings)
+            _connections[conn_name][identity] = Connection(_connection_settings[conn_name]['host'])
         except:
             raise ConnectionError('Cannot connect to the database')
-    return _connection[identity]
+    return _connections[conn_name][identity]
 
-def _get_db(reconnect=False):
-    global _db, _connection
+def _get_db(conn_name=None, reconnect=False):
+    global _dbs, _connections, _connection_settings
     identity = get_identity()
-    # Connect if not already connected
-    if _connection.get(identity) is None or reconnect:
-        _connection[identity] = _get_connection(reconnect=reconnect)
 
-    if _db.get(identity) is None or reconnect:
-        # _db_name will be None if the user hasn't called connect()
-        if _db_name is None:
-            raise ConnectionError('Not connected to the database')
+    if conn_name not in _connection_settings:
+        return None
 
-        # Get DB from current connection and authenticate if necessary
-        _db[identity] = _connection[identity][_db_name]
-        if _db_username and _db_password:
-            authenticated = _db[identity].authenticate(_db_username, _db_password)
+    if conn_name not in _dbs:
+        _dbs[conn_name] = {}
+
+    if identity not in _dbs[conn_name]:
+        settings = _connection_settings[conn_name]
+
+        conn = _get_connection(conn_name, reconnect)
+
+        db = conn[settings['db_name']]
+
+        if 'db_username' in settings and 'db_password' in settings:
+            authenticated = db.authenticate(settings['db_username'], settings['db_password'])
             # make sure authentication passes.
             if not authenticated:
-                raise ConnectionError('Authentication failed with username %s',
-                    _db_username)
+                raise ConnectionError('Authentication failed with username %s', settings['db_username'])
 
-    return _db[identity]
+        _dbs[conn_name][identity] = db
+
+    return _dbs[conn_name][identity]
 
 def get_identity():
     identity = multiprocessing.current_process()._identity
     identity = 0 if not identity else identity[0]
     return identity
-    
-def connect(db, username=None, password=None, **kwargs):
-    """Connect to the database specified by the 'db' argument. Connection 
+
+def connect(db, username=None, password=None, conn_name=None, **kwargs):
+    """Connect to the database specified by the 'db' argument. Connection
     settings may be provided here as well if the database is not running on
     the default port on localhost. If authentication is needed, provide
     username and password arguments as well.
     """
-    global _connection_settings, _db_name, _db_username, _db_password, _db
-    _connection_settings = dict(_connection_defaults, **kwargs)
-    _db_name = db
-    _db_username = username
-    _db_password = password
-    return _get_db(reconnect=True)
+    global _connection_settings
+    _connection_settings[conn_name] = _connection_defaults.copy()
+    _connection_settings[conn_name].update(kwargs)
+    _connection_settings[conn_name]['db_name'] = db
 
+    if username:
+        _connection_settings[conn_name]['db_username'] = username
+    if password:
+        _connection_settings[conn_name]['db_password'] = username
+
+    return _get_db(conn_name, reconnect=True)

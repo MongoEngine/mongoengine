@@ -1024,131 +1024,6 @@ class QuerySet(object):
 
         return re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
 
-    def exec_js(self, code, *fields, **options):
-        """Execute a Javascript function on the server. A list of fields may be
-        provided, which will be translated to their correct names and supplied
-        as the arguments to the function. A few extra variables are added to
-        the function's scope: ``collection``, which is the name of the
-        collection in use; ``query``, which is an object representing the
-        current query; and ``options``, which is an object containing any
-        options specified as keyword arguments.
-
-        As fields in MongoEngine may use different names in the database (set
-        using the :attr:`db_field` keyword argument to a :class:`Field`
-        constructor), a mechanism exists for replacing MongoEngine field names
-        with the database field names in Javascript code. When accessing a
-        field, use square-bracket notation, and prefix the MongoEngine field
-        name with a tilde (~).
-
-        :param code: a string of Javascript code to execute
-        :param fields: fields that you will be using in your function, which
-            will be passed in to your function as arguments
-        :param options: options that you want available to the function
-            (accessed in Javascript through the ``options`` object)
-        """
-        code = self._sub_js_fields(code)
-
-        fields = [QuerySet._translate_field_name(self._document, f)
-                  for f in fields]
-        collection = self._document._meta['collection']
-
-        scope = {
-            'collection': collection,
-            'options': options or {},
-        }
-
-        query = self._query
-        if self._where_clause:
-            query['$where'] = self._where_clause
-
-        scope['query'] = query
-        code = pymongo.code.Code(code, scope=scope)
-
-        db = _get_db()
-        return db.eval(code, *fields)
-
-    def sum(self, field):
-        """Sum over the values of the specified field.
-
-        :param field: the field to sum over; use dot-notation to refer to
-            embedded document fields
-        """
-        sum_func = """
-            function(sumField) {
-                var total = 0.0;
-                db[collection].find(query).forEach(function(doc) {
-                    total += (doc[sumField] || 0.0);
-                });
-                return total;
-            }
-        """
-        return self.exec_js(sum_func, field)
-
-    def average(self, field):
-        """Average over the values of the specified field.
-
-        :param field: the field to average over; use dot-notation to refer to
-            embedded document fields
-        """
-        average_func = """
-            function(averageField) {
-                var total = 0.0;
-                var num = 0;
-                db[collection].find(query).forEach(function(doc) {
-                    if (doc[averageField] !== undefined) {
-                        total += doc[averageField];
-                        num += 1;
-                    }
-                });
-                return total / num;
-            }
-        """
-        return self.exec_js(average_func, field)
-
-    def item_frequencies(self, field, normalize=False):
-        """Returns a dictionary of all items present in a field across
-        the whole queried set of documents, and their corresponding frequency.
-        This is useful for generating tag clouds, or searching documents.
-
-        If the field is a :class:`~mongoengine.ListField`, the items within
-        each list will be counted individually.
-
-        :param field: the field to use
-        :param normalize: normalize the results so they add to 1.0
-        """
-        freq_func = """
-            function(field) {
-                if (options.normalize) {
-                    var total = 0.0;
-                    db[collection].find(query).forEach(function(doc) {
-                        if (doc[field].constructor == Array) {
-                            total += doc[field].length;
-                        } else {
-                            total++;
-                        }
-                    });
-                }
-
-                var frequencies = {};
-                var inc = 1.0;
-                if (options.normalize) {
-                    inc /= total;
-                }
-                db[collection].find(query).forEach(function(doc) {
-                    if (doc[field].constructor == Array) {
-                        doc[field].forEach(function(item) {
-                            frequencies[item] = inc + (frequencies[item] || 0);
-                        });
-                    } else {
-                        var item = doc[field];
-                        frequencies[item] = inc + (frequencies[item] || 0);
-                    }
-                });
-                return frequencies;
-            }
-        """
-        return self.exec_js(freq_func, field, normalize=normalize)
-
     def __repr__(self):
         limit = REPR_OUTPUT_SIZE + 1
         if self._limit is not None and self._limit < limit:
@@ -1173,7 +1048,7 @@ class QuerySetManager(object):
             # Document class being used rather than a document object
             return self
 
-        db = _get_db()
+        db = _get_db(owner._meta['conn_name'])
         collection = owner._meta['collection']
         if (db, collection) not in self._collections:
             # Create collection as a capped collection if specified
