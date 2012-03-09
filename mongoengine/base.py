@@ -25,7 +25,15 @@ class InvalidDocumentError(Exception):
 
 class ValidationError(AssertionError):
     """Validation exception.
+
+    May represent an error validating a field or a
+    document containing fields with validation errors.
+
+    :ivar errors: A dictionary of errors for fields within this
+        document or list, or None if the error is for an
+        individual field.
     """
+
     errors = {}
     field_name = None
     _message = None
@@ -57,6 +65,13 @@ class ValidationError(AssertionError):
     message = property(_get_message, _set_message)
 
     def to_dict(self):
+        """Returns a dictionary of all errors within a document
+
+        Keys are field names or list indices and values are the
+        validation error messages, or a nested dictionary of
+        errors for an embedded document or list.
+        """
+
         def build_dict(source):
             errors_dict = {}
             if not source:

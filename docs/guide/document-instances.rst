@@ -91,5 +91,5 @@ is an alias to :attr:`id`::
 .. note::
 
    If you define your own primary key field, the field implicitly becomes
-   required, so a :class:`ValidationError` will be thrown if you don't provide
-   it.
+   required, so a :class:`~mongoengine.ValidationError` will be thrown if
+   you don't provide it.
