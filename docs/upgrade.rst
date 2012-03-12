@@ -76,7 +76,7 @@ To upgrade use a Mixin class to set meta like so ::
     class MyAceDocument(Document, BaseMixin):
         pass
 
-    MyAceDocument._get_collection_name() == myacedocument
+    MyAceDocument._get_collection_name() == "myacedocument"
 
 Alternatively, you can rename your collections eg ::
 

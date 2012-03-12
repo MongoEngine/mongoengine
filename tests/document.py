@@ -96,7 +96,7 @@ class DocumentTest(unittest.TestCase):
         # Ensure Document isn't treated like an actual document
         self.assertFalse(hasattr(Document, '_fields'))
 
-    def test_collection_name(self):
+    def test_collection_naming(self):
         """Ensure that a collection with a specified name may be used.
         """
 
@@ -157,11 +157,12 @@ class DocumentTest(unittest.TestCase):
             }
 
         class BaseDocument(Document, BaseMixin):
-            pass
+            meta = {'allow_inheritance': True}
 
         class MyDocument(BaseDocument):
             pass
-        self.assertEquals('mydocument', OldMixinNamingConvention._get_collection_name())
+
+        self.assertEquals('basedocument', MyDocument._get_collection_name())
 
     def test_get_superclasses(self):
         """Ensure that the correct list of superclasses is assembled.
