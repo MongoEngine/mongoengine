@@ -478,13 +478,18 @@ class DocumentMetaclass(type):
             attrs.update(dict([(k, v) for k, v in base.__dict__.items()
                                if issubclass(v.__class__, BaseField)]))
 
+            # Handle simple mixin's with meta
+            if hasattr(base, 'meta') and not isinstance(base, DocumentMetaclass):
+                meta = attrs.get('meta', {})
+                meta.update(base.meta)
+                attrs['meta'] = meta
+
             for p_base in base.__bases__:
                 #optimize :-)
                 if p_base in (object, BaseDocument):
                     continue
 
                 attrs.update(_get_mixin_fields(p_base))
-
             return attrs
 
         metaclass = attrs.get('__metaclass__')
@@ -498,6 +503,7 @@ class DocumentMetaclass(type):
         simple_class = True
 
         for base in bases:
+
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
@@ -526,7 +532,8 @@ class DocumentMetaclass(type):
                     simple_class = False
 
         doc_class_name = '.'.join(reversed(class_name))
-        meta = attrs.get('_meta', attrs.get('meta', {}))
+        meta = attrs.get('_meta', {})
+        meta.update(attrs.get('meta', {}))
 
         if 'allow_inheritance' not in meta:
             meta['allow_inheritance'] = True
