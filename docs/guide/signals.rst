@@ -5,15 +5,13 @@ Signals
 
 .. versionadded:: 0.5
 
-Signal support is provided by the excellent `blinker`_ library and
-will gracefully fall back if it is not available.
+..note ::
+
+  Signal support is provided by the excellent `blinker`_ library and
+  will gracefully fall back if it is not available.
 
 
-<<<<<<< HEAD
-The following document signals exist in MongoEngine and are pretty self explanatory:
-=======
 The following document signals exist in MongoEngine and are pretty self-explanatory:
->>>>>>> master
 
   * `mongoengine.signals.pre_init`
   * `mongoengine.signals.post_init`
