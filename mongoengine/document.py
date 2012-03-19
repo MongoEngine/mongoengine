@@ -74,6 +74,11 @@ class Document(BaseDocument):
     names. Index direction may be specified by prefixing the field names with
     a **+** or **-** sign.
 
+    Index creation can be disabled by specifying :attr:`index_allow_creation` in
+    the :attr:`meta` dictionary. If this is set to True then indexes will not be
+    created by MongoEngine. This is useful in production systems where index
+    creation is performed as part of a deployment system.
+
     By default, _types will be added to the start of every index (that
     doesn't contain a list) if allow_inheritence is True. This can be
     disabled by either setting types to False on the specific index or

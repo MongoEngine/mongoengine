@@ -481,13 +481,60 @@ class QuerySet(object):
         """Returns all documents."""
         return self.__call__()
 
+    def _ensure_indexes_exist(self):
+        background = self._document._meta.get('index_background', False)
+        drop_dups = self._document._meta.get('index_drop_dups', False)
+        index_opts = self._document._meta.get('index_options', {})
+        index_types = self._document._meta.get('index_types', True)
+
+        # determine if an index which we are creating includes
+        # _type as its first field; if so, we can avoid creating
+        # an extra index on _type, as mongodb will use the existing
+        # index to service queries against _type
+        types_indexed = False
+        def includes_types(fields):
+            first_field = None
+            if len(fields):
+                if isinstance(fields[0], basestring):
+                    first_field = fields[0]
+                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+                    first_field = fields[0][0]
+            return first_field == '_types'
+
+        # Ensure indexes created by uniqueness constraints
+        for index in self._document._meta['unique_indexes']:
+            types_indexed = types_indexed or includes_types(index)
+            self._collection.ensure_index(index, unique=True,
+                background=background, drop_dups=drop_dups, **index_opts)
+
+        # Ensure document-defined indexes are created
+        if self._document._meta['indexes']:
+            for spec in self._document._meta['indexes']:
+                types_indexed = types_indexed or includes_types(spec['fields'])
+                opts = index_opts.copy()
+                opts['unique'] = spec.get('unique', False)
+                opts['sparse'] = spec.get('sparse', False)
+                self._collection.ensure_index(spec['fields'],
+                    background=background, **opts)
+
+        # If _types is being used (for polymorphism), it needs an index,
+        # only if another index doesn't begin with _types
+        if index_types and '_types' in self._query and not types_indexed:
+            self._collection.ensure_index('_types',
+                background=background, **index_opts)
+
+        # Add geo indicies
+        for field in self._document._geo_indices():
+            index_spec = [(field.db_field, pymongo.GEO2D)]
+            self._collection.ensure_index(index_spec,
+                background=background, **index_opts)
+
     @property
     def _collection(self):
         """Property that returns the collection object. This allows us to
         perform operations only if the collection is accessed.
         """
         if self._document not in QuerySet.__already_indexed:
-
             # Ensure collection exists
             db = self._document._get_db()
             if self._collection_obj.name not in db.collection_names():
@@ -496,52 +543,8 @@ class QuerySet(object):
 
             QuerySet.__already_indexed.add(self._document)
 
-            background = self._document._meta.get('index_background', False)
-            drop_dups = self._document._meta.get('index_drop_dups', False)
-            index_opts = self._document._meta.get('index_options', {})
-            index_types = self._document._meta.get('index_types', True)
-
-            # determine if an index which we are creating includes
-            # _type as its first field; if so, we can avoid creating
-            # an extra index on _type, as mongodb will use the existing
-            # index to service queries against _type
-            types_indexed = False
-            def includes_types(fields):
-                first_field = None
-                if len(fields):
-                    if isinstance(fields[0], basestring):
-                        first_field = fields[0]
-                    elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
-                        first_field = fields[0][0]
-                return first_field == '_types'
-
-            # Ensure indexes created by uniqueness constraints
-            for index in self._document._meta['unique_indexes']:
-                types_indexed = types_indexed or includes_types(index)
-                self._collection.ensure_index(index, unique=True,
-                    background=background, drop_dups=drop_dups, **index_opts)
-
-            # Ensure document-defined indexes are created
-            if self._document._meta['indexes']:
-                for spec in self._document._meta['indexes']:
-                    types_indexed = types_indexed or includes_types(spec['fields'])
-                    opts = index_opts.copy()
-                    opts['unique'] = spec.get('unique', False)
-                    opts['sparse'] = spec.get('sparse', False)
-                    self._collection.ensure_index(spec['fields'],
-                        background=background, **opts)
-
-            # If _types is being used (for polymorphism), it needs an index,
-            # only if another index doesn't begin with _types
-            if index_types and '_types' in self._query and not types_indexed:
-                self._collection.ensure_index('_types',
-                    background=background, **index_opts)
-
-            # Add geo indicies
-            for field in self._document._geo_indices():
-                index_spec = [(field.db_field, pymongo.GEO2D)]
-                self._collection.ensure_index(index_spec,
-                    background=background, **index_opts)
+            if self._document._meta.get('index_allow_creation', True):
+                self._ensure_indexes_exist()
 
         return self._collection_obj
 
