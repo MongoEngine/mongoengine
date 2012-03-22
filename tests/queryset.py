@@ -1518,6 +1518,37 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+
+    def test_set_list_embedded_documents(self):
+
+        class Author(EmbeddedDocument):
+            name = StringField()
+
+        class Message(Document):
+            title = StringField()
+            authors = ListField(EmbeddedDocumentField('Author'))
+
+        Message.drop_collection()
+
+        message = Message(title="hello", authors=[Author(name="Harry")])
+        message.save()
+
+        Message.objects(authors__name="Harry").update_one(
+            set__authors__S=Author(name="Ross"))
+
+        message = message.reload()
+        self.assertEquals(message.authors[0].name, "Ross")
+
+        Message.objects(authors__name="Ross").update_one(
+            set__authors=[Author(name="Harry"),
+                          Author(name="Ross"),
+                          Author(name="Adam")])
+
+        message = message.reload()
+        self.assertEquals(message.authors[0].name, "Harry")
+        self.assertEquals(message.authors[1].name, "Ross")
+        self.assertEquals(message.authors[2].name, "Adam")
+
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
         """
