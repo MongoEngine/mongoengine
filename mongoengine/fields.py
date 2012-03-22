@@ -8,7 +8,7 @@ import uuid
 from bson import Binary, DBRef, SON, ObjectId
 
 from base import (BaseField, ComplexBaseField, ObjectIdField,
-                  ValidationError, get_document)
+                  ValidationError, get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
@@ -497,6 +497,7 @@ class ListField(ComplexBaseField):
     def prepare_query_value(self, op, value):
         if self.field:
             if op in ('set', 'unset') and (not isinstance(value, basestring)
+                and not isinstance(value, BaseDocument)
                 and hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)

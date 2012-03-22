@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+- Bug fix for collection naming and mixins
+
 Changes in 0.6.2
 ================
 - Updated documentation for ReplicaSet connections
