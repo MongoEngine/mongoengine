@@ -2,8 +2,9 @@
 Changelog
 =========
 
-Changes in 0.6.X
+Changes in 0.6.3
 ================
+- Updated sessions for Django 1.4
 - Bug fix for updates where listfields contain embedded documents
 - Bug fix for collection naming and mixins
 
