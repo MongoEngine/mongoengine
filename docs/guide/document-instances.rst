@@ -35,12 +35,22 @@ already exist, then any changes will be updated atomically.  For example::
     * ``list_field.pop(0)`` - *sets* the resulting list
     * ``del(list_field)``   - *unsets* whole list
 
-To delete a document, call the :meth:`~mongoengine.Document.delete` method.
-Note that this will only work if the document exists in the database and has a
-valide :attr:`id`.
-
 .. seealso::
     :ref:`guide-atomic-updates`
+
+Cascading Saves
+---------------
+If your document contains :class:`~mongoengine.ReferenceField` or
+:class:`~mongoengine.GenericReferenceField` objects, then by default the
+:meth:`~mongoengine.Document.save` method will automatically save any changes to
+those objects as well.  If this is not desired passing :attr:`cascade` as False
+to the save method turns this feature off.
+
+Deleting documents
+------------------
+To delete a document, call the :meth:`~mongoengine.Document.delete` method.
+Note that this will only work if the document exists in the database and has a
+valid :attr:`id`.
 
 Document IDs
 ============

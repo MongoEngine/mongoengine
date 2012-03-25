@@ -1,13 +1,14 @@
+import pymongo
+from bson.dbref import DBRef
+
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, BaseDict, BaseList)
+                  BaseDict, BaseList)
 from queryset import OperationError
-from connection import _get_db
+from connection import get_db, DEFAULT_CONNECTION_NAME
 
-import pymongo
-
-__all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
-           'OperationError', 'InvalidCollectionError']
+__all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
+           'DynamicEmbeddedDocument', 'OperationError', 'InvalidCollectionError']
 
 
 class InvalidCollectionError(Exception):
@@ -23,6 +24,10 @@ class EmbeddedDocument(BaseDocument):
 
     __metaclass__ = DocumentMetaclass
 
+    def __init__(self, *args, **kwargs):
+        super(EmbeddedDocument, self).__init__(*args, **kwargs)
+        self._changed_fields = []
+
     def __delattr__(self, *args, **kwargs):
         """Handle deletions of fields"""
         field_name = args[0]
@@ -33,7 +38,6 @@ class EmbeddedDocument(BaseDocument):
             setattr(self, field_name, default)
         else:
             super(EmbeddedDocument, self).__delattr__(*args, **kwargs)
-
 
 
 class Document(BaseDocument):
@@ -77,42 +81,57 @@ class Document(BaseDocument):
     """
     __metaclass__ = TopLevelDocumentMetaclass
 
-    @classmethod
-    def _get_collection(self):
-        """Returns the collection for the document."""
-        db = _get_db()
-        collection_name = self._get_collection_name()
+    @apply
+    def pk():
+        """Primary key alias
+        """
+        def fget(self):
+            return getattr(self, self._meta['id_field'])
+        def fset(self, value):
+            return setattr(self, self._meta['id_field'], value)
+        return property(fget, fset)
 
-        if not hasattr(self, '_collection') or self._collection is None:
+    @classmethod
+    def _get_db(cls):
+        """Some Model using other db_alias"""
+        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME ))
+
+    @classmethod
+    def _get_collection(cls):
+        """Returns the collection for the document."""
+        if not hasattr(cls, '_collection') or cls._collection is None:
+            db = cls._get_db()
+            collection_name = cls._get_collection_name()
             # Create collection as a capped collection if specified
-            if self._meta['max_size'] or self._meta['max_documents']:
+            if cls._meta['max_size'] or cls._meta['max_documents']:
                 # Get max document limit and max byte size from meta
-                max_size = self._meta['max_size'] or 10000000  # 10MB default
-                max_documents = self._meta['max_documents']
+                max_size = cls._meta['max_size'] or 10000000  # 10MB default
+                max_documents = cls._meta['max_documents']
 
                 if collection_name in db.collection_names():
-                    self._collection = db[collection_name]
+                    cls._collection = db[collection_name]
                     # The collection already exists, check if its capped
                     # options match the specified capped options
-                    options = self._collection.options()
+                    options = cls._collection.options()
                     if options.get('max') != max_documents or \
                        options.get('size') != max_size:
                         msg = ('Cannot create collection "%s" as a capped '
-                               'collection as it already exists') % self._collection
+                               'collection as it already exists') % cls._collection
                         raise InvalidCollectionError(msg)
                 else:
                     # Create the collection as a capped collection
                     opts = {'capped': True, 'size': max_size}
                     if max_documents:
                         opts['max'] = max_documents
-                    self._collection = db.create_collection(
+                    cls._collection = db.create_collection(
                         collection_name, **opts
                     )
             else:
-                self._collection = db[collection_name]
-        return self._collection
+                cls._collection = db[collection_name]
+        return cls._collection
 
-    def save(self, safe=True, force_insert=False, validate=True, write_options=None, _refs=None):
+    def save(self, safe=True, force_insert=False, validate=True, write_options=None,
+            cascade=None, cascade_kwargs=None, _refs=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -130,14 +149,22 @@ class Document(BaseDocument):
                 which will be used as options for the resultant ``getLastError`` command.
                 For example, ``save(..., w=2, fsync=True)`` will wait until at least two servers
                 have recorded the write and will force an fsync on each server being written to.
+        :param cascade: Sets the flag for cascading saves.  You can set a default by setting
+            "cascade" in the document __meta__
+        :param cascade_kwargs: optional kwargs dictionary to be passed throw to cascading saves
+        :param _refs: A list of processed references used in cascading saves
 
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using set / unset
-            Saves are cascaded and any :class:`~pymongo.dbref.DBRef` objects
+            Saves are cascaded and any :class:`~bson.dbref.DBRef` objects
             that have changes are saved as well.
-        """
-        from fields import ReferenceField, GenericReferenceField
+        .. versionchanged:: 0.6
+            Cascade saves are optional = defaults to True, if you want fine grain
+            control then you can turn off using document meta['cascade'] = False
+            Also you can pass different kwargs to the cascade save using cascade_kwargs
+            which overwrites the existing kwargs with custom values
 
+        """
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
@@ -148,11 +175,11 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        created = '_id' in doc
-        creation_mode = force_insert or not created
+        created = force_insert or '_id' not in doc
+
         try:
             collection = self.__class__.objects._collection
-            if creation_mode:
+            if created:
                 if force_insert:
                     object_id = collection.insert(doc, safe=safe, **write_options)
                 else:
@@ -160,21 +187,33 @@ class Document(BaseDocument):
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
-                if updates:
-                    collection.update({'_id': object_id}, {"$set": updates}, upsert=True, safe=safe, **write_options)
-                if removals:
-                    collection.update({'_id': object_id}, {"$unset": removals}, upsert=True, safe=safe, **write_options)
 
-            # Save any references / generic references
-            _refs = _refs or []
-            for name, cls in self._fields.items():
-                if isinstance(cls, (ReferenceField, GenericReferenceField)):
-                    ref = getattr(self, name)
-                    if ref and str(ref) not in _refs:
-                        _refs.append(str(ref))
-                        ref.save(safe=safe, force_insert=force_insert,
-                                 validate=validate, write_options=write_options,
-                                 _refs=_refs)
+                # Need to add shard key to query, or you get an error
+                select_dict = {'_id': object_id}
+                shard_key = self.__class__._meta.get('shard_key', tuple())
+                for k in shard_key:
+                    actual_key = self._db_field_map.get(k, k)
+                    select_dict[actual_key] = doc[actual_key]
+
+                upsert = self._created
+                if updates:
+                    collection.update(select_dict, {"$set": updates}, upsert=upsert, safe=safe, **write_options)
+                if removals:
+                    collection.update(select_dict, {"$unset": removals}, upsert=upsert, safe=safe, **write_options)
+
+            cascade = self._meta.get('cascade', True) if cascade is None else cascade
+            if cascade:
+                kwargs = {
+                    "safe": safe,
+                    "force_insert": force_insert,
+                    "validate": validate,
+                    "write_options": write_options,
+                    "cascade": cascade
+                }
+                if cascade_kwargs:  # Allow granular control over cascades
+                    kwargs.update(cascade_kwargs)
+                kwargs['_refs'] = _refs
+                self.cascade_save(**kwargs)
 
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
@@ -184,21 +223,26 @@ class Document(BaseDocument):
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
-        def reset_changed_fields(doc, inspected_docs=None):
-            """Loop through and reset changed fields lists"""
+        self._changed_fields = []
+        self._created = False
+        signals.post_save.send(self.__class__, document=self, created=created)
 
-            inspected_docs = inspected_docs or []
-            inspected_docs.append(doc)
-            if hasattr(doc, '_changed_fields'):
-                doc._changed_fields = []
-
-            for field_name in doc._fields:
-                field = getattr(doc, field_name)
-                if field not in inspected_docs and hasattr(field, '_changed_fields'):
-                    reset_changed_fields(field, inspected_docs)
-
-        reset_changed_fields(self)
-        signals.post_save.send(self.__class__, document=self, created=creation_mode)
+    def cascade_save(self, *args, **kwargs):
+        """Recursively saves any references / generic references on an object"""
+        from fields import ReferenceField, GenericReferenceField
+        _refs = kwargs.get('_refs', []) or []
+        for name, cls in self._fields.items():
+            if not isinstance(cls, (ReferenceField, GenericReferenceField)):
+                continue
+            ref = getattr(self, name)
+            if not ref:
+                continue
+            ref_id = "%s,%s" % (ref.__class__.__name__, str(ref._data))
+            if ref and ref_id not in _refs:
+                _refs.append(ref_id)
+                kwargs["_refs"] = _refs
+                ref.save(**kwargs)
+                ref._changed_fields = []
 
     def update(self, **kwargs):
         """Performs an update on the :class:`~mongoengine.Document`
@@ -210,7 +254,12 @@ class Document(BaseDocument):
         if not self.pk:
             raise OperationError('attempt to update a document not yet saved')
 
-        return self.__class__.objects(pk=self.pk).update_one(**kwargs)
+        # Need to add shard key to query, or you get an error
+        select_dict = {'pk': self.pk}
+        shard_key = self.__class__._meta.get('shard_key', tuple())
+        for k in shard_key:
+            select_dict[k] = getattr(self, k)
+        return self.__class__.objects(**select_dict).update_one(**kwargs)
 
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -220,10 +269,8 @@ class Document(BaseDocument):
         """
         signals.pre_delete.send(self.__class__, document=self)
 
-        id_field = self._meta['id_field']
-        object_id = self._fields[id_field].to_mongo(self[id_field])
         try:
-            self.__class__.objects(**{id_field: object_id}).delete(safe=safe)
+            self.__class__.objects(pk=self.pk).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
@@ -231,47 +278,54 @@ class Document(BaseDocument):
         signals.post_delete.send(self.__class__, document=self)
 
     def select_related(self, max_depth=1):
-        """Handles dereferencing of :class:`~pymongo.dbref.DBRef` objects to
+        """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
         a maximum depth in order to cut down the number queries to mongodb.
 
         .. versionadded:: 0.5
         """
-        from dereference import dereference
-        self._data = dereference(self._data, max_depth)
+        from dereference import DeReference
+        self._data = DeReference()(self._data, max_depth)
         return self
 
-    def reload(self):
+    def reload(self, max_depth=1):
         """Reloads all attributes from the database.
 
         .. versionadded:: 0.1.2
+        .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self.__class__.objects(**{id_field: self[id_field]}).first()
+        obj = self.__class__.objects(
+                **{id_field: self[id_field]}
+              ).first().select_related(max_depth=max_depth)
         for field in self._fields:
             setattr(self, field, self._reload(field, obj[field]))
-        self._changed_fields = []
+        if self._dynamic:
+            for name in self._dynamic_fields.keys():
+                setattr(self, name, self._reload(name, obj._data[name]))
+        self._changed_fields = obj._changed_fields
+        return obj
 
     def _reload(self, key, value):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the
         correct instance is linked to self.
         """
         if isinstance(value, BaseDict):
-            value = [(k, self._reload(k,v)) for k,v in value.items()]
-            value = BaseDict(value, instance=self, name=key)
+            value = [(k, self._reload(k, v)) for k, v in value.items()]
+            value = BaseDict(value, self, key)
         elif isinstance(value, BaseList):
             value = [self._reload(key, v) for v in value]
-            value = BaseList(value, instance=self, name=key)
-        elif isinstance(value, EmbeddedDocument):
+            value = BaseList(value, self, key)
+        elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._changed_fields = []
         return value
 
     def to_dbref(self):
-        """Returns an instance of :class:`~pymongo.dbref.DBRef` useful in
+        """Returns an instance of :class:`~bson.dbref.DBRef` useful in
         `__raw__` queries."""
         if not self.pk:
             msg = "Only saved documents can have a valid dbref"
             raise OperationError(msg)
-        return pymongo.dbref.DBRef(self.__class__._get_collection_name(), self.pk)
+        return DBRef(self.__class__._get_collection_name(), self.pk)
 
     @classmethod
     def register_delete_rule(cls, document_cls, field_name, rule):
@@ -285,8 +339,52 @@ class Document(BaseDocument):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
         """
-        db = _get_db()
+        from mongoengine.queryset import QuerySet
+        db = cls._get_db()
         db.drop_collection(cls._get_collection_name())
+        QuerySet._reset_already_indexed(cls)
+
+
+class DynamicDocument(Document):
+    """A Dynamic Document class allowing flexible, expandable and uncontrolled
+    schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
+    way as an ordinary document but has expando style properties.  Any data
+    passed or set against the :class:`~mongoengine.DynamicDocument` that is
+    not a field is automatically converted into a
+    :class:`~mongoengine.BaseDynamicField` and data can be attributed to that
+    field.
+
+    ..note::
+
+        There is one caveat on Dynamic Documents: fields cannot start with `_`
+    """
+    __metaclass__ = TopLevelDocumentMetaclass
+    _dynamic = True
+
+    def __delattr__(self, *args, **kwargs):
+        """Deletes the attribute by setting to None and allowing _delta to unset
+        it"""
+        field_name = args[0]
+        if field_name in self._dynamic_fields:
+            setattr(self, field_name, None)
+        else:
+            super(DynamicDocument, self).__delattr__(*args, **kwargs)
+
+
+class DynamicEmbeddedDocument(EmbeddedDocument):
+    """A Dynamic Embedded Document class allowing flexible, expandable and
+    uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
+    information about dynamic documents.
+    """
+
+    __metaclass__ = DocumentMetaclass
+    _dynamic = True
+
+    def __delattr__(self, *args, **kwargs):
+        """Deletes the attribute by setting to None and allowing _delta to unset
+        it"""
+        field_name = args[0]
+        setattr(self, field_name, None)
 
 
 class MapReduceDocument(object):
@@ -294,7 +392,7 @@ class MapReduceDocument(object):
 
     :param collection: An instance of :class:`~pymongo.Collection`
     :param key: Document/result key, often an instance of
-                :class:`~pymongo.objectid.ObjectId`. If supplied as
+                :class:`~bson.objectid.ObjectId`. If supplied as
                 an ``ObjectId`` found in the given ``collection``,
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.

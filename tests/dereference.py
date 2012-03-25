@@ -1,7 +1,7 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.connection import _get_db
+from mongoengine.connection import get_db
 from mongoengine.tests import query_counter
 
 
@@ -9,7 +9,7 @@ class FieldTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        self.db = _get_db()
+        self.db = get_db()
 
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
@@ -760,3 +760,53 @@ class FieldTest(unittest.TestCase):
         UserB.drop_collection()
         UserC.drop_collection()
         Group.drop_collection()
+
+    def test_multidirectional_lists(self):
+
+        class Asset(Document):
+            name = StringField(max_length=250, required=True)
+            parent = GenericReferenceField(default=None)
+            parents = ListField(GenericReferenceField())
+            children = ListField(GenericReferenceField())
+
+        Asset.drop_collection()
+
+        root = Asset(name='', path="/", title="Site Root")
+        root.save()
+
+        company = Asset(name='company', title='Company', parent=root, parents=[root])
+        company.save()
+
+        root.children = [company]
+        root.save()
+
+        root = root.reload()
+        self.assertEquals(root.children, [company])
+        self.assertEquals(company.parents, [root])
+
+    def test_dict_in_dbref_instance(self):
+
+        class Person(Document):
+            name = StringField(max_length=250, required=True)
+
+        class Room(Document):
+            number = StringField(max_length=250, required=True)
+            staffs_with_position = ListField(DictField())
+
+        Person.drop_collection()
+        Room.drop_collection()
+
+        bob = Person.objects.create(name='Bob')
+        bob.save()
+        sarah = Person.objects.create(name='Sarah')
+        sarah.save()
+
+        room_101 = Room.objects.create(number="101")
+        room_101.staffs_with_position = [
+            {'position_key': 'window', 'staff': sarah},
+            {'position_key': 'door', 'staff': bob.to_dbref()}]
+        room_101.save()
+
+        room = Room.objects.first().select_related()
+        self.assertEquals(room.staffs_with_position[0]['staff'], sarah)
+        self.assertEquals(room.staffs_with_position[1]['staff'], bob)

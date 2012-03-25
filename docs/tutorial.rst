@@ -167,6 +167,11 @@ To delete all the posts if a user is deleted set the rule::
 
 See :class:`~mongoengine.ReferenceField` for more information.
 
+..note::
+    MapFields and DictFields currently don't support automatic handling of
+    deleted references
+
+
 Adding data to our Tumblelog
 ============================
 Now that we've defined how our documents will be structured, let's start adding

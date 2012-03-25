@@ -5,13 +5,13 @@
 %define srcname mongoengine
 
 Name:           python-%{srcname}
-Version:        0.5.2
+Version:        0.6.3
 Release:        1%{?dist}
 Summary:        A Python Document-Object Mapper for working with MongoDB
 
 Group:          Development/Libraries
 License:        MIT
-URL:            https://github.com/namlook/mongoengine
+URL:            https://github.com/MongoEngine/mongoengine
 Source0:        %{srcname}-%{version}.tar.bz2
 
 BuildRequires:  python-devel
@@ -20,6 +20,8 @@ BuildRequires:  python-setuptools
 Requires:       mongodb
 Requires:       pymongo
 Requires:       python-blinker
+Requires:       python-imaging
+
 
 %description
 MongoEngine is an ORM-like layer on top of PyMongo.
@@ -49,8 +51,12 @@ rm -rf $RPM_BUILD_ROOT
 # %{python_sitearch}/*
 
 %changelog
+* Mon Mar 05 2012 Ross Lawley <ross.lawley@gmail.com> 0.6
+- 0.6 released
+* Thu Oct 27 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.3-1
+- Update to latest dev version
+- Add PIL dependency for ImageField
 * Wed Oct 12 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.2-1
-- Update to latest version
-
+- Update version
 * Fri Sep 23 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.0-1
 - Initial version

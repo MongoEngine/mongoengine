@@ -1,9 +1,6 @@
 from datetime import datetime
-import pymongo
 
 from mongoengine import *
-from mongoengine.base import BaseField
-from mongoengine.connection import _get_db
 
 
 class PickleEmbedded(EmbeddedDocument):
@@ -15,6 +12,7 @@ class PickleTest(Document):
     string = StringField(choices=(('One', '1'), ('Two', '2')))
     embedded = EmbeddedDocumentField(PickleEmbedded)
     lists = ListField(StringField())
+    photo = FileField()
 
 
 class Mixin(object):
@@ -22,4 +20,4 @@ class Mixin(object):
 
 
 class Base(Document):
-    pass
+    meta = {'allow_inheritance': True}

@@ -6,6 +6,7 @@ Connecting
 ==========
 
 .. autofunction:: mongoengine.connect
+.. autofunction:: mongoengine.register_connection
 
 Documents
 =========
@@ -19,6 +20,12 @@ Documents
       on access.
 
 .. autoclass:: mongoengine.EmbeddedDocument
+   :members:
+
+.. autoclass:: mongoengine.DynamicDocument
+   :members:
+
+.. autoclass:: mongoengine.DynamicEmbeddedDocument
    :members:
 
 .. autoclass:: mongoengine.document.MapReduceDocument

@@ -24,6 +24,34 @@ objects** as class attributes to the document class::
         title = StringField(max_length=200, required=True)
         date_modified = DateTimeField(default=datetime.datetime.now)
 
+Dynamic document schemas
+========================
+One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
+should be planned and organised (after all explicit is better than implicit!)
+there are scenarios where having dynamic / expando style documents is desirable.
+
+:class:`~mongoengine.DynamicDocument` documents work in the same way as
+:class:`~mongoengine.Document` but any data / attributes set to them will also
+be saved ::
+
+    from mongoengine import *
+
+    class Page(DynamicDocument):
+        title = StringField(max_length=200, required=True)
+
+    # Create a new page and add tags
+    >>> page = Page(title='Using MongoEngine')
+    >>> page.tags = ['mongodb', 'mongoengine']
+    >>> page.save()
+
+    >>> Page.objects(tags='mongoengine').count()
+    >>> 1
+
+..note::
+
+   There is one caveat on Dynamic Documents: fields cannot start with `_`
+
+
 Fields
 ======
 By default, fields are not required. To make a field mandatory, set the
@@ -107,12 +135,33 @@ arguments can be set on all fields:
     When True, use this field as a primary key for the collection.
 
 :attr:`choices` (Default: None)
-    An iterable of choices to which the value of this field should be limited.
+    An iterable (e.g. a list or tuple) of choices to which the value of this
+    field should be limited.
+
+    Can be either be a nested tuples of value (stored in mongo) and a
+    human readable key ::
+
+        SIZE = (('S', 'Small'),
+                ('M', 'Medium'),
+                ('L', 'Large'),
+                ('XL', 'Extra Large'),
+                ('XXL', 'Extra Extra Large'))
+
+
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=SIZE)
+
+    Or a flat iterable just containing values ::
+
+        SIZE = ('S', 'M', 'L', 'XL', 'XXL')
+
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=SIZE)
 
 :attr:`help_text` (Default: None)
     Optional help text to output with the field - used by form libraries
 
-:attr:`verbose` (Default: None)
+:attr:`verbose_name` (Default: None)
     Optional human-readable name for the field - used by form libraries
 
 
@@ -382,10 +431,31 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be sparse.
 
-.. note::
+.. warning::
 
-   Geospatial indexes will be automatically created for all
-   :class:`~mongoengine.GeoPointField`\ s
+
+   Inheritance adds extra indices.
+   If don't need inheritance for a document turn inheritance off - see :ref:`document-inheritance`.
+
+
+Geospatial indexes
+---------------------------
+Geospatial indexes will be automatically created for all
+:class:`~mongoengine.GeoPointField`\ s
+
+It is also possible to explicitly define geospatial indexes. This is
+useful if you need to define a geospatial index on a subfield of a
+:class:`~mongoengine.DictField` or a custom field that contains a
+point. To create a geospatial index you must prefix the field with the
+***** sign. ::
+
+    class Place(Document):
+        location = DictField()
+        meta = {
+            'indexes': [
+                '*location.point',
+            ],
+        }
 
 Ordering
 ========
@@ -427,8 +497,31 @@ subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
     first_post = BlogPost.objects.order_by("+published_date").first()
     assert first_post.title == "Blog Post #1"
 
+Shard keys
+==========
+
+If your collection is sharded, then you need to specify the shard key as a tuple,
+using the :attr:`shard_key` attribute of :attr:`-mongoengine.Document.meta`.
+This ensures that the shard key is sent with the query when calling the
+:meth:`~mongoengine.document.Document.save` or
+:meth:`~mongoengine.document.Document.update` method on an existing
+:class:`-mongoengine.Document` instance::
+
+    class LogEntry(Document):
+        machine = StringField()
+        app = StringField()
+        timestamp = DateTimeField()
+        data = StringField()
+
+        meta = {
+            'shard_key': ('machine', 'timestamp',)
+        }
+
+.. _document-inheritance:
+
 Document inheritance
 ====================
+
 To create a specialised type of a :class:`~mongoengine.Document` you have
 defined, you may subclass it and add any extra fields or methods you may need.
 As this is new class is not a direct subclass of
@@ -440,9 +533,14 @@ convenient and efficient retrieval of related documents::
     class Page(Document):
         title = StringField(max_length=200, required=True)
 
+        meta = {'allow_inheritance': True}
+
     # Also stored in the collection named 'page'
     class DatedPage(Page):
         date = DateTimeField()
+
+.. note:: From 0.7 onwards you must declare `allow_inheritance` in the document meta.
+
 
 Working with existing data
 --------------------------

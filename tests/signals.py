@@ -56,6 +56,18 @@ class SignalTests(unittest.TestCase):
             @classmethod
             def post_delete(cls, sender, document, **kwargs):
                 signal_output.append('post_delete signal, %s' % document)
+
+            @classmethod
+            def pre_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append('pre_bulk_insert signal, %s' % documents)
+
+            @classmethod
+            def post_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append('post_bulk_insert signal, %s' % documents)
+                if kwargs.get('loaded', False):
+                    signal_output.append('Is loaded')
+                else:
+                    signal_output.append('Not loaded')
         self.Author = Author
 
 
@@ -104,7 +116,9 @@ class SignalTests(unittest.TestCase):
             len(signals.pre_save.receivers),
             len(signals.post_save.receivers),
             len(signals.pre_delete.receivers),
-            len(signals.post_delete.receivers)
+            len(signals.post_delete.receivers),
+            len(signals.pre_bulk_insert.receivers),
+            len(signals.post_bulk_insert.receivers),
         )
 
         signals.pre_init.connect(Author.pre_init, sender=Author)
@@ -113,6 +127,8 @@ class SignalTests(unittest.TestCase):
         signals.post_save.connect(Author.post_save, sender=Author)
         signals.pre_delete.connect(Author.pre_delete, sender=Author)
         signals.post_delete.connect(Author.post_delete, sender=Author)
+        signals.pre_bulk_insert.connect(Author.pre_bulk_insert, sender=Author)
+        signals.post_bulk_insert.connect(Author.post_bulk_insert, sender=Author)
 
         signals.pre_init.connect(Another.pre_init, sender=Another)
         signals.post_init.connect(Another.post_init, sender=Another)
@@ -128,6 +144,8 @@ class SignalTests(unittest.TestCase):
         signals.pre_delete.disconnect(self.Author.pre_delete)
         signals.post_save.disconnect(self.Author.post_save)
         signals.pre_save.disconnect(self.Author.pre_save)
+        signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
+        signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
 
         signals.pre_init.disconnect(self.Another.pre_init)
         signals.post_init.disconnect(self.Another.post_init)
@@ -143,7 +161,9 @@ class SignalTests(unittest.TestCase):
             len(signals.pre_save.receivers),
             len(signals.post_save.receivers),
             len(signals.pre_delete.receivers),
-            len(signals.post_delete.receivers)
+            len(signals.post_delete.receivers),
+            len(signals.pre_bulk_insert.receivers),
+            len(signals.post_bulk_insert.receivers),
         )
 
         self.assertEqual(self.pre_signals, post_signals)
@@ -153,6 +173,14 @@ class SignalTests(unittest.TestCase):
 
         def create_author():
             a1 = self.Author(name='Bill Shakespeare')
+
+        def bulk_create_author_with_load():
+            a1 = self.Author(name='Bill Shakespeare')
+            self.Author.objects.insert([a1], load_bulk=True)
+
+        def bulk_create_author_without_load():
+            a1 = self.Author(name='Bill Shakespeare')
+            self.Author.objects.insert([a1], load_bulk=False)
 
         self.assertEqual(self.get_signal_output(create_author), [
             "pre_init signal, Author",
@@ -179,3 +207,24 @@ class SignalTests(unittest.TestCase):
             'pre_delete signal, William Shakespeare',
             'post_delete signal, William Shakespeare',
         ])
+
+        signal_output = self.get_signal_output(bulk_create_author_with_load)
+
+        # The output of this signal is not entirely deterministic. The reloaded
+        # object will have an object ID. Hence, we only check part of the output
+        self.assertEquals(signal_output[3],
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]")
+        self.assertEquals(signal_output[-2:],
+            ["post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+             "Is loaded",])
+
+        self.assertEqual(self.get_signal_output(bulk_create_author_without_load), [
+            "pre_init signal, Author",
+            "{'name': 'Bill Shakespeare'}",
+            "post_init signal, Bill Shakespeare",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Not loaded",
+        ])
+
+        self.Author.objects.delete()

@@ -18,6 +18,9 @@ MongoDB. To install it, simply run
 :doc:`apireference`
   The complete API documentation.
 
+:doc:`upgrade`
+  How to upgrade MongoEngine.
+
 :doc:`django`
   Using MongoEngine and Django
 
@@ -42,7 +45,8 @@ Also, you can join the developers' `mailing list
 
 Changes
 -------
-See the :doc:`changelog` for a full list of changes to MongoEngine.
+See the :doc:`changelog` for a full list of changes to MongoEngine and
+:doc:`upgrade` for upgrade information.
 
 .. toctree::
    :hidden:

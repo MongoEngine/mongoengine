@@ -2,6 +2,24 @@
 Upgrading
 =========
 
+0.5 to 0.6
+==========
+
+Embedded Documents - if you had a `pk` field you will have to rename it from `_id`
+to `pk` as pk is no longer a property of Embedded Documents.
+
+Reverse Delete Rules in Embedded Documents, MapFields and DictFields now throw
+an InvalidDocument error as they aren't currently supported.
+
+Document._get_subclasses - Is no longer used and the class method has been removed.
+
+Document.objects.with_id - now raises an InvalidQueryError if used with a filter.
+
+FutureWarning - A future warning has been added to all inherited classes that
+don't define `allow_inheritance` in their meta.
+
+You may need to update pyMongo to 2.0 for use with Sharding.
+
 0.4 to 0.5
 ===========
 
@@ -9,7 +27,7 @@ There have been the following backwards incompatibilities from 0.4 to 0.5.  The
 main areas of changed are: choices in fields, map_reduce and collection names.
 
 Choice options:
---------------
+---------------
 
 Are now expected to be an iterable of tuples, with  the first element in each
 tuple being the actual value to be stored. The second element is the
@@ -58,7 +76,7 @@ To upgrade use a Mixin class to set meta like so ::
     class MyAceDocument(Document, BaseMixin):
         pass
 
-    MyAceDocument._get_collection_name() == myacedocument
+    MyAceDocument._get_collection_name() == "myacedocument"
 
 Alternatively, you can rename your collections eg ::
 

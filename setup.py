@@ -38,7 +38,9 @@ setup(name='mongoengine',
       packages=find_packages(),
       author='Harry Marr',
       author_email='harry.marr@{nospam}gmail.com',
-      url='http://hmarr.com/mongoengine/',
+      maintainer="Ross Lawley",
+      maintainer_email="ross.lawley@{nospam}gmail.com",
+      url='http://mongoengine.org/',
       license='MIT',
       include_package_data=True,
       description=DESCRIPTION,
@@ -47,5 +49,5 @@ setup(name='mongoengine',
       classifiers=CLASSIFIERS,
       install_requires=['pymongo'],
       test_suite='tests',
-      tests_require=['blinker', 'django==1.3']
+      tests_require=['blinker', 'django>=1.3', 'PIL']
 )

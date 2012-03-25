@@ -1,22 +1,13 @@
 from mongoengine import *
 
-from django.utils.hashcompat import md5_constructor, sha_constructor
 from django.utils.encoding import smart_str
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.hashers import check_password, make_password
 from django.utils.translation import ugettext_lazy as _
 
 import datetime
 
 REDIRECT_FIELD_NAME = 'next'
-
-def get_hexdigest(algorithm, salt, raw_password):
-    raw_password, salt = smart_str(raw_password), smart_str(salt)
-    if algorithm == 'md5':
-        return md5_constructor(salt + raw_password).hexdigest()
-    elif algorithm == 'sha1':
-        return sha_constructor(salt + raw_password).hexdigest()
-    raise ValueError('Got unknown password algorithm type in password')
-
 
 class User(Document):
     """A User document that aims to mirror most of the API specified by Django
@@ -34,7 +25,7 @@ class User(Document):
     email = EmailField(verbose_name=_('e-mail address'))
     password = StringField(max_length=128,
                            verbose_name=_('password'),
-                           help_text=_("Use '[algo]$[salt]$[hexdigest]' or use the <a href=\"password/\">change password form</a>."))
+                           help_text=_("Use '[algo]$[iterations]$[salt]$[hexdigest]' or use the <a href=\"password/\">change password form</a>."))
     is_staff = BooleanField(default=False,
                             verbose_name=_('staff status'),
                             help_text=_("Designates whether the user can log into this admin site."))
@@ -75,11 +66,7 @@ class User(Document):
         assigning to :attr:`~mongoengine.django.auth.User.password` as the
         password is hashed before storage.
         """
-        from random import random
-        algo = 'sha1'
-        salt = get_hexdigest(algo, str(random()), str(random()))[:5]
-        hash = get_hexdigest(algo, salt, raw_password)
-        self.password = '%s$%s$%s' % (algo, salt, hash)
+        self.password = make_password(raw_password)
         self.save()
         return self
 
@@ -89,8 +76,7 @@ class User(Document):
         :attr:`~mongoengine.django.auth.User.password` as the password is
         hashed before storage.
         """
-        algo, salt, hash = self.password.split('$')
-        return hash == get_hexdigest(algo, salt, raw_password)
+        return check_password(raw_password, self.password)
 
     @classmethod
     def create_user(cls, username, password, email=None):

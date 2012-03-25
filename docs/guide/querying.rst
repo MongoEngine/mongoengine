@@ -76,6 +76,7 @@ expressions:
 * ``istartswith`` -- string field starts with value (case insensitive)
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
+* ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 There are a few special operators for performing geographical queries, that
 may used with :class:`~mongoengine.GeoPointField`\ s:
@@ -194,22 +195,6 @@ to be created::
     >>> a.name == b.name and a.age == b.age
     True
 
-Dereferencing results
----------------------
-When iterating the results of :class:`~mongoengine.ListField` or
-:class:`~mongoengine.DictField` we automatically dereference any
-:class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
-number the queries to mongo.
-
-There are times when that efficiency is not enough, documents that have
-:class:`~mongoengine.ReferenceField` objects or
-:class:`~mongoengine.GenericReferenceField` objects at the top level are
-expensive as the number of queries to MongoDB can quickly rise.
-
-To limit the number of queries use
-:func:`~mongoengine.queryset.QuerySet.select_related` which converts the
-QuerySet to a list and dereferences as efficiently as possible.
-
 Default Document queries
 ========================
 By default, the objects :attr:`~mongoengine.Document.objects` attribute on a
@@ -312,8 +297,16 @@ would be generating "tag-clouds"::
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
 
+
+Query efficiency and performance
+================================
+
+There are a couple of methods to improve efficiency when querying, reducing the
+information returned by the query or efficient dereferencing .
+
 Retrieving a subset of fields
-=============================
+-----------------------------
+
 Sometimes a subset of fields on a :class:`~mongoengine.Document` is required,
 and for efficiency only these should be retrieved from the database. This issue
 is especially important for MongoDB, as fields may often be extremely large
@@ -345,6 +338,27 @@ will be given::
 
 If you later need the missing fields, just call
 :meth:`~mongoengine.Document.reload` on your document.
+
+Getting related data
+--------------------
+
+When iterating the results of :class:`~mongoengine.ListField` or
+:class:`~mongoengine.DictField` we automatically dereference any
+:class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
+number the queries to mongo.
+
+There are times when that efficiency is not enough, documents that have
+:class:`~mongoengine.ReferenceField` objects or
+:class:`~mongoengine.GenericReferenceField` objects at the top level are
+expensive as the number of queries to MongoDB can quickly rise.
+
+To limit the number of queries use
+:func:`~mongoengine.queryset.QuerySet.select_related` which converts the
+QuerySet to a list and dereferences as efficiently as possible.  By default
+:func:`~mongoengine.queryset.QuerySet.select_related` only dereferences any
+references to the depth of 1 level.  If you have more complicated documents and
+want to dereference more of the object at once then increasing the :attr:`max_depth`
+will dereference more levels of the document.
 
 Advanced queries
 ================

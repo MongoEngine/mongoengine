@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import unittest
 import pymongo
+from bson import ObjectId
 from datetime import datetime, timedelta
 
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
                                   QueryFieldList)
 from mongoengine import *
-from mongoengine.connection import _get_connection
+from mongoengine.connection import get_connection
 from mongoengine.tests import query_counter
 
 
@@ -15,10 +16,11 @@ class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
-        
+
         class Person(Document):
             name = StringField()
             age = IntField()
+            meta = {'allow_inheritance': True}
         self.Person = Person
 
     def test_initialisation(self):
@@ -59,8 +61,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
-        self.assertTrue(isinstance(results[0].id, (pymongo.objectid.ObjectId,
-                                                   str, unicode)))
+        self.assertTrue(isinstance(results[0].id, (ObjectId, str, unicode)))
         self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
         self.assertEqual(results[1].name, "User B")
@@ -110,6 +111,16 @@ class QuerySetTest(unittest.TestCase):
         people = list(self.Person.objects[80000:80001])
         self.assertEqual(len(people), 0)
 
+        # Test larger slice __repr__
+        self.Person.objects.delete()
+        for i in xrange(55):
+            self.Person(name='A%s' % i, age=i).save()
+
+        self.assertEqual(len(self.Person.objects), 55)
+        self.assertEqual("Person object", "%s" % self.Person.objects[0])
+        self.assertEqual("[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[1:3])
+        self.assertEqual("[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[51:53])
+
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
         """
@@ -143,6 +154,8 @@ class QuerySetTest(unittest.TestCase):
         # Find a document using just the object id
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
+
+        self.assertRaises(InvalidQueryError, self.Person.objects(name="User A").with_id, person1.id)
 
     def test_find_only_one(self):
         """Ensure that a query using ``get`` returns at most one result.
@@ -316,11 +329,11 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost(title="ABC", comments=[c1, c2]).save()
 
-        BlogPost.objects(comments__by="joe").update(inc__comments__S__votes=1)
+        BlogPost.objects(comments__by="jane").update(inc__comments__S__votes=1)
 
         post = BlogPost.objects.first()
-        self.assertEquals(post.comments[0].by, 'joe')
-        self.assertEquals(post.comments[0].votes, 4)
+        self.assertEquals(post.comments[1].by, 'jane')
+        self.assertEquals(post.comments[1].votes, 8)
 
         # Currently the $ operator only applies to the first matched item in
         # the query
@@ -367,6 +380,34 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertRaises(OperationError, update_nested)
         Simple.drop_collection()
+
+    def test_update_using_positional_operator_embedded_document(self):
+        """Ensure that the embedded documents can be updated using the positional
+        operator."""
+
+        class Vote(EmbeddedDocument):
+            score = IntField()
+
+        class Comment(EmbeddedDocument):
+            by = StringField()
+            votes = EmbeddedDocumentField(Vote)
+
+        class BlogPost(Document):
+            title = StringField()
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        BlogPost.drop_collection()
+
+        c1 = Comment(by="joe", votes=Vote(score=3))
+        c2 = Comment(by="jane", votes=Vote(score=7))
+
+        BlogPost(title="ABC", comments=[c1, c2]).save()
+
+        BlogPost.objects(comments__by="joe").update(set__comments__S__votes=Vote(score=4))
+
+        post = BlogPost.objects.first()
+        self.assertEquals(post.comments[0].by, 'joe')
+        self.assertEquals(post.comments[0].votes.score, 4)
 
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""
@@ -455,6 +496,9 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+        # Recreates the collection
+        self.assertEqual(0, Blog.objects.count())
+
         with query_counter() as q:
             self.assertEqual(q, 0)
 
@@ -468,10 +512,10 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            self.assertEqual(q, 2) # 1 for the inital connection and 1 for the insert
+            self.assertEqual(q, 1) # 1 for the insert
 
             Blog.objects.insert(blogs)
-            self.assertEqual(q, 4) # 1 for insert, and 1 for in bulk
+            self.assertEqual(q, 3) # 1 for insert, and 1 for in bulk fetch (3 in total)
 
         Blog.drop_collection()
 
@@ -567,7 +611,13 @@ class QuerySetTest(unittest.TestCase):
         people1 = [person for person in queryset]
         people2 = [person for person in queryset]
 
+        # Check that it still works even if iteration is interrupted.
+        for person in queryset:
+            break
+        people3 = [person for person in queryset]
+
         self.assertEqual(people1, people2)
+        self.assertEqual(people1, people3)
 
     def test_repr_iteration(self):
         """Ensure that QuerySet __repr__ can handle loops
@@ -1371,20 +1421,39 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def test_update_pull(self):
+    def test_update_push_and_pull(self):
         """Ensure that the 'pull' update operation works correctly.
         """
         class BlogPost(Document):
             slug = StringField()
             tags = ListField(StringField())
 
-        post = BlogPost(slug="test", tags=['code', 'mongodb', 'code'])
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
         post.save()
+
+        BlogPost.objects.filter(id=post.id).update(push__tags="code")
+        post.reload()
+        self.assertEqual(post.tags, ["code"])
+
+        BlogPost.objects.filter(id=post.id).update(push_all__tags=["mongodb", "code"])
+        post.reload()
+        self.assertEqual(post.tags, ["code", "mongodb", "code"])
 
         BlogPost.objects(slug="test").update(pull__tags="code")
         post.reload()
-        self.assertTrue('code' not in post.tags)
-        self.assertEqual(len(post.tags), 1)
+        self.assertEqual(post.tags, ["mongodb"])
+
+
+        BlogPost.objects(slug="test").update(pull_all__tags=["mongodb", "code"])
+        post.reload()
+        self.assertEqual(post.tags, [])
+
+        BlogPost.objects(slug="test").update(__raw__={"$addToSet": {"tags": {"$each": ["code", "mongodb", "code"]}}})
+        post.reload()
+        self.assertEqual(post.tags, ["code", "mongodb"])
+
 
     def test_update_one_pop_generic_reference(self):
 
@@ -1448,6 +1517,37 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(post.tags), 1)
 
         BlogPost.drop_collection()
+
+
+    def test_set_list_embedded_documents(self):
+
+        class Author(EmbeddedDocument):
+            name = StringField()
+
+        class Message(Document):
+            title = StringField()
+            authors = ListField(EmbeddedDocumentField('Author'))
+
+        Message.drop_collection()
+
+        message = Message(title="hello", authors=[Author(name="Harry")])
+        message.save()
+
+        Message.objects(authors__name="Harry").update_one(
+            set__authors__S=Author(name="Ross"))
+
+        message = message.reload()
+        self.assertEquals(message.authors[0].name, "Ross")
+
+        Message.objects(authors__name="Ross").update_one(
+            set__authors=[Author(name="Harry"),
+                          Author(name="Ross"),
+                          Author(name="Adam")])
+
+        message = message.reload()
+        self.assertEquals(message.authors[0].name, "Harry")
+        self.assertEquals(message.authors[1].name, "Ross")
+        self.assertEquals(message.authors[2].name, "Adam")
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
@@ -1840,6 +1940,35 @@ class QuerySetTest(unittest.TestCase):
         freq = Person.objects.item_frequencies('city', normalize=True, map_reduce=True)
         self.assertEquals(freq, {'CRB': 0.5, None: 0.5})
 
+    def test_item_frequencies_with_null_embedded(self):
+        class Data(EmbeddedDocument):
+            name = StringField()
+
+        class Extra(EmbeddedDocument):
+            tag = StringField()
+
+        class Person(Document):
+            data = EmbeddedDocumentField(Data, required=True)
+            extra = EmbeddedDocumentField(Extra)
+
+
+        Person.drop_collection()
+
+        p = Person()
+        p.data = Data(name="Wilson Jr")
+        p.save()
+
+        p = Person()
+        p.data = Data(name="Wesley")
+        p.extra = Extra(tag="friend")
+        p.save()
+
+        ot = Person.objects.item_frequencies('extra.tag', map_reduce=False)
+        self.assertEquals(ot, {None: 1.0, u'friend': 1.0})
+
+        ot = Person.objects.item_frequencies('extra.tag', map_reduce=True)
+        self.assertEquals(ot, {None: 1.0, u'friend': 1.0})
+
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """
@@ -1881,6 +2010,24 @@ class QuerySetTest(unittest.TestCase):
                          set([20, 30]))
         self.assertEqual(set(self.Person.objects(age=30).distinct('name')),
                          set(['Mr Orange', 'Mr Pink']))
+
+    def test_distinct_handles_references(self):
+        class Foo(Document):
+            bar = ReferenceField("Bar")
+
+        class Bar(Document):
+            text = StringField()
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        bar = Bar(text="hi")
+        bar.save()
+
+        foo = Foo(bar=bar)
+        foo.save()
+
+        self.assertEquals(Foo.objects.distinct("bar"), [bar])
 
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
@@ -2197,10 +2344,10 @@ class QuerySetTest(unittest.TestCase):
         events = Event.objects(location__within_box=box)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0].id, event2.id)
-        
+
         # check that polygon works for users who have a server >= 1.9
         server_version = tuple(
-            _get_connection().server_info()['version'].split('.')
+            get_connection().server_info()['version'].split('.')
         )
         required_version = tuple("1.9.0".split("."))
         if server_version >= required_version:
@@ -2214,7 +2361,7 @@ class QuerySetTest(unittest.TestCase):
             events = Event.objects(location__within_polygon=polygon)
             self.assertEqual(events.count(), 1)
             self.assertEqual(events[0].id, event1.id)
-            
+
             polygon2 = [
                 (54.033586,-1.742249),
                 (52.792797,-1.225891),
@@ -2222,7 +2369,7 @@ class QuerySetTest(unittest.TestCase):
             ]
             events = Event.objects(location__within_polygon=polygon2)
             self.assertEqual(events.count(), 0)
-            
+
         Event.drop_collection()
 
     def test_spherical_geospatial_operators(self):
@@ -2569,6 +2716,265 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertRaises(TypeError, invalid_where)
 
+    def test_scalar(self):
+
+        class Organization(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+
+        class User(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+            organization = ObjectIdField()
+
+        User.drop_collection()
+        Organization.drop_collection()
+
+        whitehouse = Organization(name="White House")
+        whitehouse.save()
+        User(name="Bob Dole", organization=whitehouse.id).save()
+
+        # Efficient way to get all unique organization names for a given
+        # set of users (Pretend this has additional filtering.)
+        user_orgs = set(User.objects.scalar('organization'))
+        orgs = Organization.objects(id__in=user_orgs).scalar('name')
+        self.assertEqual(list(orgs), ['White House'])
+
+        # Efficient for generating listings, too.
+        orgs = Organization.objects.scalar('name').in_bulk(list(user_orgs))
+        user_map = User.objects.scalar('name', 'organization')
+        user_listing = [(user, orgs[org]) for user, org in user_map]
+        self.assertEqual([("Bob Dole", "White House")], user_listing)
+
+    def test_scalar_simple(self):
+        class TestDoc(Document):
+            x = IntField()
+            y = BooleanField()
+
+        TestDoc.drop_collection()
+
+        TestDoc(x=10, y=True).save()
+        TestDoc(x=20, y=False).save()
+        TestDoc(x=30, y=True).save()
+
+        plist = list(TestDoc.objects.scalar('x', 'y'))
+
+        self.assertEqual(len(plist), 3)
+        self.assertEqual(plist[0], (10, True))
+        self.assertEqual(plist[1], (20, False))
+        self.assertEqual(plist[2], (30, True))
+
+        class UserDoc(Document):
+            name = StringField()
+            age = IntField()
+
+        UserDoc.drop_collection()
+
+        UserDoc(name="Wilson Jr", age=19).save()
+        UserDoc(name="Wilson", age=43).save()
+        UserDoc(name="Eliana", age=37).save()
+        UserDoc(name="Tayza", age=15).save()
+
+        ulist = list(UserDoc.objects.scalar('name', 'age'))
+
+        self.assertEqual(ulist, [
+                (u'Wilson Jr', 19),
+                (u'Wilson', 43),
+                (u'Eliana', 37),
+                (u'Tayza', 15)])
+
+        ulist = list(UserDoc.objects.scalar('name').order_by('age'))
+
+        self.assertEqual(ulist, [
+                (u'Tayza'),
+                (u'Wilson Jr'),
+                (u'Eliana'),
+                (u'Wilson')])
+
+    def test_scalar_embedded(self):
+        class Profile(EmbeddedDocument):
+            name = StringField()
+            age = IntField()
+
+        class Locale(EmbeddedDocument):
+            city = StringField()
+            country = StringField()
+
+        class Person(Document):
+            profile = EmbeddedDocumentField(Profile)
+            locale = EmbeddedDocumentField(Locale)
+
+        Person.drop_collection()
+
+        Person(profile=Profile(name="Wilson Jr", age=19),
+               locale=Locale(city="Corumba-GO", country="Brazil")).save()
+
+        Person(profile=Profile(name="Gabriel Falcao", age=23),
+               locale=Locale(city="New York", country="USA")).save()
+
+        Person(profile=Profile(name="Lincoln de souza", age=28),
+               locale=Locale(city="Belo Horizonte", country="Brazil")).save()
+
+        Person(profile=Profile(name="Walter cruz", age=30),
+               locale=Locale(city="Brasilia", country="Brazil")).save()
+
+        self.assertEqual(
+            list(Person.objects.order_by('profile__age').scalar('profile__name')),
+            [u'Wilson Jr', u'Gabriel Falcao', u'Lincoln de souza', u'Walter cruz'])
+
+        ulist = list(Person.objects.order_by('locale.city')
+                     .scalar('profile__name', 'profile__age', 'locale__city'))
+        self.assertEqual(ulist,
+                         [(u'Lincoln de souza', 28, u'Belo Horizonte'),
+                          (u'Walter cruz', 30, u'Brasilia'),
+                          (u'Wilson Jr', 19, u'Corumba-GO'),
+                          (u'Gabriel Falcao', 23, u'New York')])
+
+    def test_scalar_decimal(self):
+        from decimal import Decimal
+        class Person(Document):
+            name = StringField()
+            rating = DecimalField()
+
+        Person.drop_collection()
+        Person(name="Wilson Jr", rating=Decimal('1.0')).save()
+
+        ulist = list(Person.objects.scalar('name', 'rating'))
+        self.assertEqual(ulist, [(u'Wilson Jr', Decimal('1.0'))])
+
+
+    def test_scalar_reference_field(self):
+        class State(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            state = ReferenceField(State)
+
+        State.drop_collection()
+        Person.drop_collection()
+
+        s1 = State(name="Goias")
+        s1.save()
+
+        Person(name="Wilson JR", state=s1).save()
+
+        plist = list(Person.objects.scalar('name', 'state'))
+        self.assertEqual(plist, [(u'Wilson JR', s1)])
+
+    def test_scalar_generic_reference_field(self):
+        class State(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            state = GenericReferenceField()
+
+        State.drop_collection()
+        Person.drop_collection()
+
+        s1 = State(name="Goias")
+        s1.save()
+
+        Person(name="Wilson JR", state=s1).save()
+
+        plist = list(Person.objects.scalar('name', 'state'))
+        self.assertEqual(plist, [(u'Wilson JR', s1)])
+
+    def test_scalar_db_field(self):
+
+        class TestDoc(Document):
+            x = IntField()
+            y = BooleanField()
+
+        TestDoc.drop_collection()
+
+        TestDoc(x=10, y=True).save()
+        TestDoc(x=20, y=False).save()
+        TestDoc(x=30, y=True).save()
+
+        plist = list(TestDoc.objects.scalar('x', 'y'))
+        self.assertEqual(len(plist), 3)
+        self.assertEqual(plist[0], (10, True))
+        self.assertEqual(plist[1], (20, False))
+        self.assertEqual(plist[2], (30, True))
+
+    def test_scalar_cursor_behaviour(self):
+        """Ensure that a query returns a valid set of results.
+        """
+        person1 = self.Person(name="User A", age=20)
+        person1.save()
+        person2 = self.Person(name="User B", age=30)
+        person2.save()
+
+        # Find all people in the collection
+        people = self.Person.objects.scalar('name')
+        self.assertEqual(len(people), 2)
+        results = list(people)
+        self.assertEqual(results[0], "User A")
+        self.assertEqual(results[1], "User B")
+
+        # Use a query to filter the people found to just person1
+        people = self.Person.objects(age=20).scalar('name')
+        self.assertEqual(len(people), 1)
+        person = people.next()
+        self.assertEqual(person, "User A")
+
+        # Test limit
+        people = list(self.Person.objects.limit(1).scalar('name'))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0], 'User A')
+
+        # Test skip
+        people = list(self.Person.objects.skip(1).scalar('name'))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0], 'User B')
+
+        person3 = self.Person(name="User C", age=40)
+        person3.save()
+
+        # Test slice limit
+        people = list(self.Person.objects[:2].scalar('name'))
+        self.assertEqual(len(people), 2)
+        self.assertEqual(people[0], 'User A')
+        self.assertEqual(people[1], 'User B')
+
+        # Test slice skip
+        people = list(self.Person.objects[1:].scalar('name'))
+        self.assertEqual(len(people), 2)
+        self.assertEqual(people[0], 'User B')
+        self.assertEqual(people[1], 'User C')
+
+        # Test slice limit and skip
+        people = list(self.Person.objects[1:2].scalar('name'))
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0], 'User B')
+
+        people = list(self.Person.objects[1:1].scalar('name'))
+        self.assertEqual(len(people), 0)
+
+        # Test slice out of range
+        people = list(self.Person.objects.scalar('name')[80000:80001])
+        self.assertEqual(len(people), 0)
+
+        # Test larger slice __repr__
+        self.Person.objects.delete()
+        for i in xrange(55):
+            self.Person(name='A%s' % i, age=i).save()
+
+        self.assertEqual(len(self.Person.objects.scalar('name')), 55)
+        self.assertEqual("A0", "%s" % self.Person.objects.order_by('name').scalar('name').first())
+        self.assertEqual("A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
+        self.assertEqual("[u'A1', u'A2']",  "%s" % self.Person.objects.order_by('age').scalar('name')[1:3])
+        self.assertEqual("[u'A51', u'A52']",  "%s" % self.Person.objects.order_by('age').scalar('name')[51:53])
+
+        # with_id and in_bulk
+        person = self.Person.objects.order_by('name').first()
+        self.assertEqual("A0", "%s" % self.Person.objects.scalar('name').with_id(person.id))
+
+        pks = self.Person.objects.order_by('age').scalar('pk')[1:3]
+        self.assertEqual("[u'A1', u'A2']",  "%s" % sorted(self.Person.objects.scalar('name').in_bulk(list(pks)).values()))
+
 
 class QTest(unittest.TestCase):
 
@@ -2789,6 +3195,30 @@ class QueryFieldListTest(unittest.TestCase):
         q = QueryFieldList()
         q += QueryFieldList(fields=['a'], value={"$slice": 5})
         self.assertEqual(q.as_dict(), {'a': {"$slice": 5}})
+
+    def test_elem_match(self):
+        class Foo(EmbeddedDocument):
+            shape = StringField()
+            color = StringField()
+            trick = BooleanField()
+            meta = {'allow_inheritance': False}
+
+        class Bar(Document):
+            foo = ListField(EmbeddedDocumentField(Foo))
+            meta = {'allow_inheritance': False}
+
+        Bar.drop_collection()
+
+        b1 = Bar(foo=[Foo(shape= "square", color ="purple", thick = False),
+                      Foo(shape= "circle", color ="red", thick = True)])
+        b1.save()
+
+        b2 = Bar(foo=[Foo(shape= "square", color ="red", thick = True),
+                      Foo(shape= "circle", color ="purple", thick = False)])
+        b2.save()
+
+        ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
+        self.assertEqual([b1], ak)
 
 
 if __name__ == '__main__':
