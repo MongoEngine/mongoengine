@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+
+- bug fix for unknown connection alias error message
+
 Changes in 0.6.3
 ================
 - Updated sessions for Django 1.4
