@@ -86,7 +86,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
     if alias not in _connections:
         if alias not in _connection_settings:
-            msg = 'Connection with alias "%s" has not been defined'
+            msg = 'Connection with alias "%s" has not been defined' % alias
             if alias == DEFAULT_CONNECTION_NAME:
                 msg = 'You have not defined a default connection'
             raise ConnectionError(msg)
