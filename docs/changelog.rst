@@ -5,6 +5,7 @@ Changelog
 Changes in 0.6.X
 ================
 
+- updated replicasetconnection - pop port if exists
 - bug fix for unknown connection alias error message
 
 Changes in 0.6.3
