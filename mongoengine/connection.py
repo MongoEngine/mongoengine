@@ -86,7 +86,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
     if alias not in _connections:
         if alias not in _connection_settings:
-            msg = 'Connection with alias "%s" has not been defined'
+            msg = 'Connection with alias "%s" has not been defined' % alias
             if alias == DEFAULT_CONNECTION_NAME:
                 msg = 'You have not defined a default connection'
             raise ConnectionError(msg)
@@ -105,11 +105,13 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 for slave_alias in conn_settings['slaves']:
                     slaves.append(get_connection(slave_alias))
                 conn_settings['slaves'] = slaves
-                conn_settings.pop('read_preference')
+                conn_settings.pop('read_preference', None)
 
         connection_class = Connection
         if 'replicaSet' in conn_settings:
             conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
+            # Discard port since it can't be used on ReplicaSetConnection
+            conn_settings.pop('port', None)
             connection_class = ReplicaSetConnection
         try:
             _connections[alias] = connection_class(**conn_settings)
