@@ -810,3 +810,22 @@ class FieldTest(unittest.TestCase):
         room = Room.objects.first().select_related()
         self.assertEquals(room.staffs_with_position[0]['staff'], sarah)
         self.assertEquals(room.staffs_with_position[1]['staff'], bob)
+    
+    def test_document_reload_no_inheritance(self):
+        class Foo(Document):
+            meta = {'allow_inheritance': False}
+            bar = ReferenceField('Bar')
+
+        class Bar(Document):
+            meta = {'allow_inheritance': False}
+            msg = StringField(required=True, default='Blammo!')
+
+        Foo.drop_collection()
+        Bar.drop_collection()
+
+        bar = Bar()
+        bar.save()
+        foo = Foo()
+        foo.bar = bar
+        foo.save()
+        foo.reload()

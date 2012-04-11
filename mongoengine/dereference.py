@@ -113,6 +113,9 @@ class DeReference(object):
                         if '_cls' in ref:
                             doc = get_document(ref["_cls"])._from_son(ref)
                         else:
+                            if doc_type is None:
+                                doc_type = get_document(
+                                        ''.join(x.capitalize() for x in col.split('_')))
                             doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
         return object_map
