@@ -657,6 +657,9 @@ class ReferenceField(BaseField):
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document):
+        if isinstance(document, DBRef):
+            return document
+        
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
 
