@@ -5,8 +5,9 @@ Changelog
 Changes in 0.6.X
 ================
 
-- updated replicasetconnection - pop port if exists
+- refactored connection / fixed replicasetconnection
 - bug fix for unknown connection alias error message
+- Sessions support Django 1.3 and Django 1.4
 
 Changes in 0.6.3
 ================
