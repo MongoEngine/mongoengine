@@ -39,22 +39,7 @@ def register_connection(alias, name, host='localhost', port=27017,
     """
     global _connection_settings
 
-    # Handle uri style connections
-    if "://" in host:
-        uri_dict = uri_parser.parse_uri(host)
-        if uri_dict.get('database') is None:
-            raise ConnectionError("If using URI style connection include "\
-                                  "database name in string")
-        _connection_settings[alias] = {
-            'host': host,
-            'name': uri_dict.get('database'),
-            'username': uri_dict.get('username'),
-            'password': uri_dict.get('password')
-        }
-        _connection_settings[alias].update(kwargs)
-        return
-
-    _connection_settings[alias] = {
+    conn_settings = {
         'name': name,
         'host': host,
         'port': port,
@@ -64,7 +49,22 @@ def register_connection(alias, name, host='localhost', port=27017,
         'password': password,
         'read_preference': read_preference
     }
-    _connection_settings[alias].update(kwargs)
+
+    # Handle uri style connections
+    if "://" in host:
+        uri_dict = uri_parser.parse_uri(host)
+        if uri_dict.get('database') is None:
+            raise ConnectionError("If using URI style connection include "\
+                                  "database name in string")
+        conn_settings.update({
+            'host': host,
+            'name': uri_dict.get('database'),
+            'username': uri_dict.get('username'),
+            'password': uri_dict.get('password'),
+            'read_preference': read_preference,
+        })
+
+    _connection_settings[alias] = conn_settings
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
