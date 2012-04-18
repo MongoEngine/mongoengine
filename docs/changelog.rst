@@ -2,12 +2,13 @@
 Changelog
 =========
 
-Changes in 0.6.X
+Changes in 0.6.4
 ================
 
-- refactored connection / fixed replicasetconnection
-- bug fix for unknown connection alias error message
+- Refactored connection / fixed replicasetconnection
+- Bug fix for unknown connection alias error message
 - Sessions support Django 1.3 and Django 1.4
+- Minor fix for ReferenceField
 
 Changes in 0.6.3
 ================
