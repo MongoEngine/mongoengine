@@ -10,6 +10,7 @@ try:
     from django.contrib.auth.hashers import check_password, make_password
 except ImportError:
     """Handle older versions of Django"""
+    from django.utils.hashcompat import md5_constructor, sha_constructor
 
     def get_hexdigest(algorithm, salt, raw_password):
         raw_password, salt = smart_str(raw_password), smart_str(salt)
