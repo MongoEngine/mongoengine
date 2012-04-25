@@ -5,7 +5,7 @@
 %define srcname mongoengine
 
 Name:           python-%{srcname}
-Version:        0.6.5
+Version:        0.6.6
 Release:        1%{?dist}
 Summary:        A Python Document-Object Mapper for working with MongoDB
 
@@ -51,6 +51,18 @@ rm -rf $RPM_BUILD_ROOT
 # %{python_sitearch}/*
 
 %changelog
+* Wed Apr 24 2012 Ross Lawley <ross.lawley@gmail.com> 0.6.5
+- 0.6.6 released
+* Wed Apr 18 2012 Ross Lawley <ross.lawley@gmail.com> 0.6.5
+- 0.6.5 released
+* Wed Apr 18 2012 Ross Lawley <ross.lawley@gmail.com> 0.6.5
+- 0.6.4 released
+* Wed Mar 24 2012 Ross Lawley <ross.lawley@gmail.com> 0.6.5
+- 0.6.3 released
+* Wed Mar 22 2012 Ross Lawley <ross.lawley@gmail.com> 0.6.5
+- 0.6.2 released
+* Wed Mar 05 2012 Ross Lawley <ross.lawley@gmail.com> 0.6.5
+- 0.6.1 released
 * Mon Mar 05 2012 Ross Lawley <ross.lawley@gmail.com> 0.6
 - 0.6 released
 * Thu Oct 27 2011 Pau Aliagas <linuxnow@gmail.com> 0.5.3-1
