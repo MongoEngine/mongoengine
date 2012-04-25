@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Added support for File like objects for GridFS
 - Fix for #473 - Dereferencing abstracts
 
 Changes in 0.6.6
