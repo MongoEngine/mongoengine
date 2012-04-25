@@ -2,6 +2,15 @@
 Changelog
 =========
 
+Changes in 0.6.6
+================
+- Django 1.4 fixed (finally)
+- Added tests for Django
+
+Changes in 0.6.5
+================
+- More Django updates
+
 Changes in 0.6.4
 ================
 
