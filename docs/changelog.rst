@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+- Fix for #473 - Dereferencing abstracts
+
 Changes in 0.6.6
 ================
 - Django 1.4 fixed (finally)
