@@ -2,6 +2,7 @@ import datetime
 import os
 import unittest
 import uuid
+import StringIO
 
 from decimal import Decimal
 
@@ -1481,6 +1482,21 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(result.file.read(), text)
         self.assertEquals(result.file.content_type, content_type)
         result.file.delete() # Remove file from GridFS
+        PutFile.objects.delete()
+
+        # Ensure file-like objects are stored
+        putfile = PutFile()
+        putstring = StringIO.StringIO()
+        putstring.write(text)
+        putstring.seek(0)
+        putfile.file.put(putstring, content_type=content_type)
+        putfile.save()
+        putfile.validate()
+        result = PutFile.objects.first()
+        self.assertTrue(putfile == result)
+        self.assertEquals(result.file.read(), text)
+        self.assertEquals(result.file.content_type, content_type)
+        result.file.delete()
 
         streamfile = StreamFile()
         streamfile.file.new_file(content_type=content_type)
