@@ -498,7 +498,7 @@ class QuerySet(object):
 
             background = self._document._meta.get('index_background', False)
             drop_dups = self._document._meta.get('index_drop_dups', False)
-            index_opts = self._document._meta.get('index_options', {})
+            index_opts = self._document._meta.get('index_opts', {})
             index_types = self._document._meta.get('index_types', True)
 
             # determine if an index which we are creating includes
@@ -824,11 +824,21 @@ class QuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True):
+    def insert(self, doc_or_docs, load_bulk=True, safe=False, write_options=None):
         """bulk insert documents
+
+        If ``safe=True`` and the operation is unsuccessful, an
+        :class:`~mongoengine.OperationError` will be raised.
 
         :param docs_or_doc: a document or list of documents to be inserted
         :param load_bulk (optional): If True returns the list of document instances
+        :param safe: check if the operation succeeded before returning
+        :param write_options: Extra keyword arguments are passed down to
+                :meth:`~pymongo.collection.Collection.insert`
+                which will be used as options for the resultant ``getLastError`` command.
+                For example, ``insert(..., {w: 2, fsync: True})`` will wait until at least two 
+                servers have recorded the write and will force an fsync on each server being 
+                written to.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
@@ -836,6 +846,10 @@ class QuerySet(object):
         .. versionadded:: 0.5
         """
         from document import Document
+
+        if not write_options:
+            write_options = {}
+        write_options.update({'safe': safe})
 
         docs = doc_or_docs
         return_one = False
@@ -854,7 +868,13 @@ class QuerySet(object):
             raw.append(doc.to_mongo())
 
         signals.pre_bulk_insert.send(self._document, documents=docs)
-        ids = self._collection.insert(raw)
+        try:
+            ids = self._collection.insert(raw, **write_options)
+        except pymongo.errors.OperationFailure, err:
+            message = 'Could not save document (%s)'
+            if u'duplicate key' in unicode(err):
+                message = u'Tried to save duplicate unique keys (%s)'
+            raise OperationError(message % unicode(err))
 
         if not load_bulk:
             signals.post_bulk_insert.send(
