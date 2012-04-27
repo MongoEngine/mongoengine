@@ -498,7 +498,7 @@ class QuerySet(object):
 
             background = self._document._meta.get('index_background', False)
             drop_dups = self._document._meta.get('index_drop_dups', False)
-            index_opts = self._document._meta.get('index_options', {})
+            index_opts = self._document._meta.get('index_opts', {})
             index_types = self._document._meta.get('index_types', True)
 
             # determine if an index which we are creating includes
