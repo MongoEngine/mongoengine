@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Added write concern options to inserts
+- Fixed typo in meta for index options
 - Bug fix Read preference now passed correctly
 - Added support for File like objects for GridFS
 - Fix for #473 - Dereferencing abstracts
