@@ -63,7 +63,8 @@ def register_connection(alias, name, host='localhost', port=27017,
             'password': uri_dict.get('password'),
             'read_preference': read_preference,
         })
-
+        if "replicaSet" in host:
+            conn_settings['replicaSet'] = True
     _connection_settings[alias] = conn_settings
 
 
@@ -112,7 +113,11 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
             # Discard port since it can't be used on ReplicaSetConnection
             conn_settings.pop('port', None)
+            # Discard replicaSet if not base string
+            if not isinstance(conn_settings['replicaSet'], basestring):
+                conn_settings.pop('replicaSet', None)
             connection_class = ReplicaSetConnection
+
         try:
             _connections[alias] = connection_class(**conn_settings)
         except Exception, e:

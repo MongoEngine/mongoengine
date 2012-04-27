@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Bug fix Read preference now passed correctly
 - Added support for File like objects for GridFS
 - Fix for #473 - Dereferencing abstracts
 
