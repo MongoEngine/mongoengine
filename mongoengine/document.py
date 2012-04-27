@@ -147,8 +147,9 @@ class Document(BaseDocument):
                 :meth:`~pymongo.collection.Collection.save` OR
                 :meth:`~pymongo.collection.Collection.insert`
                 which will be used as options for the resultant ``getLastError`` command.
-                For example, ``save(..., w=2, fsync=True)`` will wait until at least two servers
-                have recorded the write and will force an fsync on each server being written to.
+                For example, ``save(..., write_options={w: 2, fsync: True}, ...)`` will 
+                wait until at least two servers have recorded the write and will force an 
+                fsync on each server being written to.
         :param cascade: Sets the flag for cascading saves.  You can set a default by setting
             "cascade" in the document __meta__
         :param cascade_kwargs: optional kwargs dictionary to be passed throw to cascading saves
