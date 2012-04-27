@@ -480,7 +480,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User C")
 
     def test_bulk_insert(self):
-        """Ensure that query by array position works.
+        """Ensure that bulk insert works
         """
 
         class Comment(EmbeddedDocument):
@@ -490,7 +490,7 @@ class QuerySetTest(unittest.TestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
 
         class Blog(Document):
-            title = StringField()
+            title = StringField(unique=True)
             tags = ListField(StringField())
             posts = ListField(EmbeddedDocumentField(Post))
 
@@ -562,6 +562,23 @@ class QuerySetTest(unittest.TestCase):
         blog1 = Blog(title="code", posts=[post1, post2])
         obj_id = Blog.objects.insert(blog1, load_bulk=False)
         self.assertEquals(obj_id.__class__.__name__, 'ObjectId')
+
+        Blog.drop_collection()
+        post3 = Post(comments=[comment1, comment1])
+        blog1 = Blog(title="foo", posts=[post1, post2])
+        blog2 = Blog(title="bar", posts=[post2, post3])
+        blog3 = Blog(title="baz", posts=[post1, post2])
+        Blog.objects.insert([blog1, blog2])
+
+        def throw_operation_error_not_unique():
+            Blog.objects.insert([blog2, blog3], safe=True)
+        
+        self.assertRaises(OperationError, throw_operation_error_not_unique)
+        self.assertEqual(Blog.objects.count(), 2)
+
+        Blog.objects.insert([blog2, blog3], write_options={'continue_on_error': True})
+        self.assertEqual(Blog.objects.count(), 3)
+
 
     def test_slave_okay(self):
         """Ensures that a query can take slave_okay syntax
