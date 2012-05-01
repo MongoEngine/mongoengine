@@ -283,3 +283,5 @@ Changes in v0.1.2
 
 
 Changes in v0.1.1
+=================
+- Documents may now use capped collections
