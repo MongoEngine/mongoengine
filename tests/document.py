@@ -864,6 +864,26 @@ class DocumentTest(unittest.TestCase):
         query_plan = Test.objects(a=1).only('a').exclude('id').explain()
         self.assertTrue(query_plan['indexOnly'])
 
+    def test_index_on_id(self):
+
+        class BlogPost(Document):
+            meta = {
+                'indexes': [
+                    ['categories', 'id']
+                ],
+                'allow_inheritance': False
+            }
+
+            title = StringField(required=True)
+            description = StringField(required=True)
+            categories = ListField()
+
+        BlogPost.drop_collection()
+
+        indexes = BlogPost.objects._collection.index_information()
+        self.assertEquals(indexes['categories_1__id_1']['key'],
+                                 [('categories', 1), ('_id', 1)])
+
     def test_hint(self):
 
         class BlogPost(Document):

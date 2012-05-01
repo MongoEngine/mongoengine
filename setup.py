@@ -48,6 +48,6 @@ setup(name='mongoengine',
       platforms=['any'],
       classifiers=CLASSIFIERS,
       install_requires=['pymongo'],
-      test_suite='tests',
+      test_suite='tests.bugfix',
       tests_require=['blinker', 'django>=1.3', 'PIL']
 )

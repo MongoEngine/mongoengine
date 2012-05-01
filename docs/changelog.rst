@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixed indexing on '_id' or 'pk' or 'id'
 - Invalid data from the DB now raises a InvalidDocumentError
 - Cleaned up the Validation Error - docs and code
 - Added meta `auto_create_index` so you can disable index creation

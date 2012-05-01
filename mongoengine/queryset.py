@@ -394,61 +394,6 @@ class QuerySet(object):
             unique=index_spec.get('unique', False))
         return self
 
-    @classmethod
-    def _build_index_spec(cls, doc_cls, spec):
-        """Build a PyMongo index spec from a MongoEngine index spec.
-        """
-        if isinstance(spec, basestring):
-            spec = {'fields': [spec]}
-        if isinstance(spec, (list, tuple)):
-            spec = {'fields': spec}
-
-        index_list = []
-        use_types = doc_cls._meta.get('allow_inheritance', True)
-        for key in spec['fields']:
-            # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
-            direction = pymongo.ASCENDING
-            if key.startswith("-"):
-                direction = pymongo.DESCENDING
-            elif key.startswith("*"):
-                direction = pymongo.GEO2D
-            if key.startswith(("+", "-", "*")):
-                key = key[1:]
-
-            # Use real field name, do it manually because we need field
-            # objects for the next part (list field checking)
-            parts = key.split('.')
-            fields = QuerySet._lookup_field(doc_cls, parts)
-            parts = [field.db_field for field in fields]
-            key = '.'.join(parts)
-            index_list.append((key, direction))
-
-            # Check if a list field is being used, don't use _types if it is
-            if use_types and not all(f._index_with_types for f in fields):
-                use_types = False
-
-        # If _types is being used, prepend it to every specified index
-        index_types = doc_cls._meta.get('index_types', True)
-        allow_inheritance = doc_cls._meta.get('allow_inheritance')
-        if spec.get('types', index_types) and allow_inheritance and use_types and direction is not pymongo.GEO2D:
-            index_list.insert(0, ('_types', 1))
-
-        spec['fields'] = index_list
-
-        if spec.get('sparse', False) and len(spec['fields']) > 1:
-            raise ValueError(
-                'Sparse indexes can only have one field in them. '
-                'See https://jira.mongodb.org/browse/SERVER-2193')
-
-        return spec
-
-    @classmethod
-    def _reset_already_indexed(cls, document=None):
-        """Helper to reset already indexed, can be useful for testing purposes"""
-        if document:
-            cls.__already_indexed.discard(document)
-        cls.__already_indexed.clear()
-
     def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
@@ -534,6 +479,62 @@ class QuerySet(object):
             self._collection.ensure_index(index_spec,
                 background=background, **index_opts)
 
+
+    @classmethod
+    def _build_index_spec(cls, doc_cls, spec):
+        """Build a PyMongo index spec from a MongoEngine index spec.
+        """
+        if isinstance(spec, basestring):
+            spec = {'fields': [spec]}
+        if isinstance(spec, (list, tuple)):
+            spec = {'fields': spec}
+
+        index_list = []
+        use_types = doc_cls._meta.get('allow_inheritance', True)
+        for key in spec['fields']:
+            # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
+            direction = pymongo.ASCENDING
+            if key.startswith("-"):
+                direction = pymongo.DESCENDING
+            elif key.startswith("*"):
+                direction = pymongo.GEO2D
+            if key.startswith(("+", "-", "*")):
+                key = key[1:]
+
+            # Use real field name, do it manually because we need field
+            # objects for the next part (list field checking)
+            parts = key.split('.')
+            fields = QuerySet._lookup_field(doc_cls, parts)
+            parts = [field if field == '_id' else field.db_field for field in fields]
+            key = '.'.join(parts)
+            index_list.append((key, direction))
+
+            # Check if a list field is being used, don't use _types if it is
+            if use_types and not all(f._index_with_types for f in fields):
+                use_types = False
+
+        # If _types is being used, prepend it to every specified index
+        index_types = doc_cls._meta.get('index_types', True)
+        allow_inheritance = doc_cls._meta.get('allow_inheritance')
+        if spec.get('types', index_types) and allow_inheritance and use_types and direction is not pymongo.GEO2D:
+            index_list.insert(0, ('_types', 1))
+
+        spec['fields'] = index_list
+        if spec.get('sparse', False) and len(spec['fields']) > 1:
+            raise ValueError(
+                'Sparse indexes can only have one field in them. '
+                'See https://jira.mongodb.org/browse/SERVER-2193')
+
+        return spec
+
+    @classmethod
+    def _reset_already_indexed(cls, document=None):
+        """Helper to reset already indexed, can be useful for testing purposes"""
+        if document:
+            cls.__already_indexed.discard(document)
+        cls.__already_indexed.clear()
+
+
     @property
     def _collection(self):
         """Property that returns the collection object. This allows us to
@@ -613,10 +614,11 @@ class QuerySet(object):
                 continue
             if field is None:
                 # Look up first field from the document
-                if field_name == 'pk':
+                if field_name in ('pk', 'id', '_id'):
                     # Deal with "primary key" alias
-                    field_name = document._meta['id_field']
-                if field_name in document._fields:
+                    field_name = document._meta['id_field'] or '_id'
+                    field = "_id"
+                elif field_name in document._fields:
                     field = document._fields[field_name]
                 elif document._dynamic:
                     from base import BaseDynamicField
