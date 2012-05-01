@@ -31,6 +31,9 @@ Documents
 .. autoclass:: mongoengine.document.MapReduceDocument
   :members:
 
+.. autoclass:: mongoengine.ValidationError
+  :members:
+
 Querying
 ========
 
