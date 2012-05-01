@@ -2861,5 +2861,62 @@ class DocumentTest(unittest.TestCase):
                                         }
                                     ) ]), "1,2")
 
+
+class ValidatorErrorTest(unittest.TestCase):
+
+    def test_to_dict(self):
+        """Ensure a ValidationError handles error to_dict correctly.
+        """
+        error = ValidationError('root')
+        self.assertEquals(error.to_dict(), {})
+
+        # 1st level error schema
+        error.errors = {'1st': ValidationError('bad 1st'), }
+        self.assertTrue('1st' in error.to_dict())
+        self.assertEquals(error.to_dict()['1st'], 'bad 1st')
+
+        # 2nd level error schema
+        error.errors = {'1st': ValidationError('bad 1st', errors={
+            '2nd': ValidationError('bad 2nd'),
+        })}
+        self.assertTrue('1st' in error.to_dict())
+        self.assertTrue(isinstance(error.to_dict()['1st'], dict))
+        self.assertTrue('2nd' in error.to_dict()['1st'])
+        self.assertEquals(error.to_dict()['1st']['2nd'], 'bad 2nd')
+
+        # moar levels
+        error.errors = {'1st': ValidationError('bad 1st', errors={
+            '2nd': ValidationError('bad 2nd', errors={
+                '3rd': ValidationError('bad 3rd', errors={
+                    '4th': ValidationError('Inception'),
+                }),
+            }),
+        })}
+        self.assertTrue('1st' in error.to_dict())
+        self.assertTrue('2nd' in error.to_dict()['1st'])
+        self.assertTrue('3rd' in error.to_dict()['1st']['2nd'])
+        self.assertTrue('4th' in error.to_dict()['1st']['2nd']['3rd'])
+        self.assertEquals(error.to_dict()['1st']['2nd']['3rd']['4th'],
+                         'Inception')
+
+        self.assertEquals(error.message, "root:\n1st.2nd.3rd.4th: Inception")
+
+    def test_model_validation(self):
+
+        class User(Document):
+            username = StringField(primary_key=True)
+            name = StringField(required=True)
+
+        try:
+            User().validate()
+        except ValidationError, e:
+            expected_error_message = """Errors encountered validating document:
+username: Field is required ("username")
+name: Field is required ("name")"""
+            self.assertEquals(e.message, expected_error_message)
+            self.assertEquals(e.to_dict(), {
+                'username': 'Field is required ("username")',
+                'name': u'Field is required ("name")'})
+
 if __name__ == '__main__':
     unittest.main()

@@ -53,9 +53,9 @@ class ValidationError(AssertionError):
         message = super(ValidationError, self).__getattribute__(name)
         if name == 'message':
             if self.field_name:
-                message += ' ("%s")' % self.field_name
+                message = '%s ("%s")' % (message, self.field_name)
             if self.errors:
-                message += ':\n' + self._format_errors()
+                message = '%s:\n%s' % (message, self._format_errors())
         return message
 
     def _get_message(self):
@@ -94,12 +94,13 @@ class ValidationError(AssertionError):
         """Returns a string listing all errors within a document"""
 
         def format_error(field, value, prefix=''):
+            prefix = "%s.%s" % (prefix, field) if prefix else "%s" % field
             if isinstance(value, dict):
-                new_prefix = (prefix + '.' if prefix else '') + str(field)
+
                 return '\n'.join(
-                        [format_error(k, value[k], new_prefix) for k in value])
+                        [format_error(k, value[k], prefix) for k in value])
             else:
-                return (prefix + ": " if prefix else '') + str(value)
+                return "%s: %s" % (prefix, value)
 
         return '\n'.join(
                 [format_error(k, v) for k, v in self.to_dict().items()])
