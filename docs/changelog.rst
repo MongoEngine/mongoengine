@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.6.X
+Changes in 0.6.7
 ================
 - Fixed indexing on '_id' or 'pk' or 'id'
 - Invalid data from the DB now raises a InvalidDocumentError
