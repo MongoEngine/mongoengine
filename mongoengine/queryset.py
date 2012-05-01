@@ -504,9 +504,12 @@ class QuerySet(object):
             # Use real field name, do it manually because we need field
             # objects for the next part (list field checking)
             parts = key.split('.')
-            fields = QuerySet._lookup_field(doc_cls, parts)
-            parts = [field if field == '_id' else field.db_field for field in fields]
-            key = '.'.join(parts)
+            if parts in (['pk'], ['id'], ['_id']):
+                key = '_id'
+            else:
+                fields = QuerySet._lookup_field(doc_cls, parts)
+                parts = [field if field == '_id' else field.db_field for field in fields]
+                key = '.'.join(parts)
             index_list.append((key, direction))
 
             # Check if a list field is being used, don't use _types if it is
@@ -614,11 +617,10 @@ class QuerySet(object):
                 continue
             if field is None:
                 # Look up first field from the document
-                if field_name in ('pk', 'id', '_id'):
+                if field_name == 'pk':
                     # Deal with "primary key" alias
-                    field_name = document._meta['id_field'] or '_id'
-                    field = "_id"
-                elif field_name in document._fields:
+                    field_name = document._meta['id_field']
+                if field_name in document._fields:
                     field = document._fields[field_name]
                 elif document._dynamic:
                     from base import BaseDynamicField
