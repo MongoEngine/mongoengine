@@ -74,6 +74,12 @@ class Document(BaseDocument):
     names. Index direction may be specified by prefixing the field names with
     a **+** or **-** sign.
 
+    Automatic index creation can be disabled by specifying
+    attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
+    False then indexes will not be created by MongoEngine.  This is useful in
+    production systems where index creation is performed as part of a deployment
+    system.
+
     By default, _types will be added to the start of every index (that
     doesn't contain a list) if allow_inheritence is True. This can be
     disabled by either setting types to False on the specific index or
@@ -147,8 +153,8 @@ class Document(BaseDocument):
                 :meth:`~pymongo.collection.Collection.save` OR
                 :meth:`~pymongo.collection.Collection.insert`
                 which will be used as options for the resultant ``getLastError`` command.
-                For example, ``save(..., write_options={w: 2, fsync: True}, ...)`` will 
-                wait until at least two servers have recorded the write and will force an 
+                For example, ``save(..., write_options={w: 2, fsync: True}, ...)`` will
+                wait until at least two servers have recorded the write and will force an
                 fsync on each server being written to.
         :param cascade: Sets the flag for cascading saves.  You can set a default by setting
             "cascade" in the document __meta__

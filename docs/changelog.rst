@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Added meta `auto_create_index` so you can disable index creation
 - Added write concern options to inserts
 - Fixed typo in meta for index options
 - Bug fix Read preference now passed correctly

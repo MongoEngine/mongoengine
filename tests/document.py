@@ -741,6 +741,28 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(info.keys(), ['_types_1_user_guid_1', '_id_', '_types_1_name_1'])
         Person.drop_collection()
 
+    def test_disable_index_creation(self):
+        """Tests setting auto_create_index to False on the connection will
+        disable any index generation.
+        """
+        class User(Document):
+            meta = {
+                'indexes': ['user_guid'],
+                'auto_create_index': False
+            }
+            user_guid = StringField(required=True)
+
+
+        User.drop_collection()
+
+        u = User(user_guid='123')
+        u.save()
+
+        self.assertEquals(1, User.objects.count())
+        info = User.objects._collection.index_information()
+        self.assertEqual(info.keys(), ['_id_'])
+        User.drop_collection()
+
     def test_embedded_document_index(self):
         """Tests settings an index on an embedded document
         """
