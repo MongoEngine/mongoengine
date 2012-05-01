@@ -2398,6 +2398,22 @@ class DocumentTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
+    def test_invalid_son(self):
+        """Raise an error if loading invalid data"""
+        class Occurrence(EmbeddedDocument):
+            number = IntField()
+
+        class Word(Document):
+            stem = StringField()
+            count = IntField(default=1)
+            forms = ListField(StringField(), default=list)
+            occurs = ListField(EmbeddedDocumentField(Occurrence), default=list)
+
+        def raise_invalid_document():
+            Word._from_son({'stem': [1,2,3], 'forms': 1, 'count': 'one', 'occurs': {"hello": None}})
+
+        self.assertRaises(InvalidDocumentError, raise_invalid_document)
+
     def test_reverse_delete_rule_cascade_and_nullify(self):
         """Ensure that a referenced document is also deleted upon deletion.
         """

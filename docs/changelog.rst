@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Invalid data from the DB now raises a InvalidDocumentError
+- Cleaned up the Validation Error - docs and code
 - Added meta `auto_create_index` so you can disable index creation
 - Added write concern options to inserts
 - Fixed typo in meta for index options
@@ -281,5 +283,3 @@ Changes in v0.1.2
 
 
 Changes in v0.1.1
-=================
-- Documents may now use capped collections

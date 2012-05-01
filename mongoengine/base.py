@@ -979,8 +979,8 @@ class BaseDocument(object):
         """
         # get the class name from the document, falling back to the given
         # class if unavailable
-        class_name = son.get(u'_cls', cls._class_name)
-        data = dict((str(key), value) for key, value in son.items())
+        class_name = son.get('_cls', cls._class_name)
+        data = dict(("%s" % key, value) for key, value in son.items())
 
         if '_types' in data:
             del data['_types']
@@ -993,11 +993,16 @@ class BaseDocument(object):
             cls = get_document(class_name)
 
         changed_fields = []
+        errors_dict = {}
+
         for field_name, field in cls._fields.items():
             if field.db_field in data:
                 value = data[field.db_field]
-                data[field_name] = (value if value is None
+                try:
+                    data[field_name] = (value if value is None
                                     else field.to_python(value))
+                except (AttributeError, ValueError), e:
+                    errors_dict[field_name] = e
             elif field.default:
                 default = field.default
                 if callable(default):
@@ -1005,7 +1010,13 @@ class BaseDocument(object):
                 if isinstance(default, BaseDocument):
                     changed_fields.append(field_name)
 
+        if errors_dict:
+            errors = "\n".join(["%s - %s" % (k, v) for k, v in errors_dict.items()])
+            raise InvalidDocumentError("""
+Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, errors))
+
         obj = cls(**data)
+
         obj._changed_fields = changed_fields
         obj._created = False
         return obj
