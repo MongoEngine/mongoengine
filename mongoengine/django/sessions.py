@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase, CreateError
 from django.core.exceptions import SuspiciousOperation
 from django.utils.encoding import force_unicode
@@ -6,18 +9,18 @@ from mongoengine.document import Document
 from mongoengine import fields
 from mongoengine.queryset import OperationError
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
-from django.conf import settings
-from datetime import datetime
+
 
 MONGOENGINE_SESSION_DB_ALIAS = getattr(
     settings, 'MONGOENGINE_SESSION_DB_ALIAS',
     DEFAULT_CONNECTION_NAME)
 
+
 class MongoSession(Document):
     session_key = fields.StringField(primary_key=True, max_length=40)
     session_data = fields.StringField()
     expire_date = fields.DateTimeField()
-    
+
     meta = {'collection': 'django_session',
             'db_alias': MONGOENGINE_SESSION_DB_ALIAS,
             'allow_inheritance': False}
@@ -51,9 +54,9 @@ class SessionStore(SessionBase):
             return
 
     def save(self, must_create=False):
-        if self._session_key is None:
+        if self.session_key is None:
             self.create()
-        s = MongoSession(session_key=self._session_key)
+        s = MongoSession(session_key=self.session_key)
         s.session_data = self.encode(self._get_session(no_load=must_create))
         s.expire_date = self.get_expiry_date()
         try:

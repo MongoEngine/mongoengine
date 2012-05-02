@@ -657,6 +657,9 @@ class ReferenceField(BaseField):
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document):
+        if isinstance(document, DBRef):
+            return document
+        
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
 
@@ -872,10 +875,14 @@ class GridFSProxy(object):
         self.newfile.writelines(lines)
 
     def read(self, size=-1):
-        try:
-            return self.get().read(size)
-        except:
+        gridout = self.get()
+        if gridout is None:
             return None
+        else:
+            try:
+                return gridout.read(size)
+            except:
+                return ""
 
     def delete(self):
         # Delete file from GridFS, FileField still remains
@@ -932,7 +939,7 @@ class FileField(BaseField):
 
     def __set__(self, instance, value):
         key = self.name
-        if isinstance(value, file) or isinstance(value, str):
+        if (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or isinstance(value, str):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it

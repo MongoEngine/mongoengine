@@ -12,6 +12,10 @@ from django.core.paginator import Paginator
 
 settings.configure()
 
+from django.contrib.sessions.tests import SessionTestsMixin
+from mongoengine.django.sessions import SessionStore, MongoSession
+
+
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
@@ -88,3 +92,14 @@ class QuerySetTest(unittest.TestCase):
             end = p * 2
             start = end - 1
             self.assertEqual(t.render(Context(d)), u'%d:%d:' % (start, end))
+
+
+
+class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
+    backend = SessionStore
+
+    def setUp(self):
+        connect(db='mongoenginetest')
+        MongoSession.drop_collection()
+        super(MongoDBSessionTest, self).setUp()
+

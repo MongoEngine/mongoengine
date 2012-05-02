@@ -2,6 +2,7 @@ import datetime
 import os
 import unittest
 import uuid
+import StringIO
 
 from decimal import Decimal
 
@@ -1481,6 +1482,21 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(result.file.read(), text)
         self.assertEquals(result.file.content_type, content_type)
         result.file.delete() # Remove file from GridFS
+        PutFile.objects.delete()
+
+        # Ensure file-like objects are stored
+        putfile = PutFile()
+        putstring = StringIO.StringIO()
+        putstring.write(text)
+        putstring.seek(0)
+        putfile.file.put(putstring, content_type=content_type)
+        putfile.save()
+        putfile.validate()
+        result = PutFile.objects.first()
+        self.assertTrue(putfile == result)
+        self.assertEquals(result.file.read(), text)
+        self.assertEquals(result.file.content_type, content_type)
+        result.file.delete()
 
         streamfile = StreamFile()
         streamfile.file.new_file(content_type=content_type)
@@ -1884,44 +1900,6 @@ class FieldTest(unittest.TestCase):
 
         post.comments[1].content = 'here we go'
         post.validate()
-
-
-class ValidatorErrorTest(unittest.TestCase):
-
-    def test_to_dict(self):
-        """Ensure a ValidationError handles error to_dict correctly.
-        """
-        error = ValidationError('root')
-        self.assertEquals(error.to_dict(), {})
-
-        # 1st level error schema
-        error.errors = {'1st': ValidationError('bad 1st'), }
-        self.assertTrue('1st' in error.to_dict())
-        self.assertEquals(error.to_dict()['1st'], 'bad 1st')
-
-        # 2nd level error schema
-        error.errors = {'1st': ValidationError('bad 1st', errors={
-            '2nd': ValidationError('bad 2nd'),
-        })}
-        self.assertTrue('1st' in error.to_dict())
-        self.assertTrue(isinstance(error.to_dict()['1st'], dict))
-        self.assertTrue('2nd' in error.to_dict()['1st'])
-        self.assertEquals(error.to_dict()['1st']['2nd'], 'bad 2nd')
-
-        # moar levels
-        error.errors = {'1st': ValidationError('bad 1st', errors={
-            '2nd': ValidationError('bad 2nd', errors={
-                '3rd': ValidationError('bad 3rd', errors={
-                    '4th': ValidationError('Inception'),
-                }),
-            }),
-        })}
-        self.assertTrue('1st' in error.to_dict())
-        self.assertTrue('2nd' in error.to_dict()['1st'])
-        self.assertTrue('3rd' in error.to_dict()['1st']['2nd'])
-        self.assertTrue('4th' in error.to_dict()['1st']['2nd']['3rd'])
-        self.assertEquals(error.to_dict()['1st']['2nd']['3rd']['4th'],
-                          'Inception')
 
 
 if __name__ == '__main__':

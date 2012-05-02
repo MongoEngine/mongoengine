@@ -394,61 +394,6 @@ class QuerySet(object):
             unique=index_spec.get('unique', False))
         return self
 
-    @classmethod
-    def _build_index_spec(cls, doc_cls, spec):
-        """Build a PyMongo index spec from a MongoEngine index spec.
-        """
-        if isinstance(spec, basestring):
-            spec = {'fields': [spec]}
-        if isinstance(spec, (list, tuple)):
-            spec = {'fields': spec}
-
-        index_list = []
-        use_types = doc_cls._meta.get('allow_inheritance', True)
-        for key in spec['fields']:
-            # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
-            direction = pymongo.ASCENDING
-            if key.startswith("-"):
-                direction = pymongo.DESCENDING
-            elif key.startswith("*"):
-                direction = pymongo.GEO2D
-            if key.startswith(("+", "-", "*")):
-                key = key[1:]
-
-            # Use real field name, do it manually because we need field
-            # objects for the next part (list field checking)
-            parts = key.split('.')
-            fields = QuerySet._lookup_field(doc_cls, parts)
-            parts = [field.db_field for field in fields]
-            key = '.'.join(parts)
-            index_list.append((key, direction))
-
-            # Check if a list field is being used, don't use _types if it is
-            if use_types and not all(f._index_with_types for f in fields):
-                use_types = False
-
-        # If _types is being used, prepend it to every specified index
-        index_types = doc_cls._meta.get('index_types', True)
-        allow_inheritance = doc_cls._meta.get('allow_inheritance')
-        if spec.get('types', index_types) and allow_inheritance and use_types and direction is not pymongo.GEO2D:
-            index_list.insert(0, ('_types', 1))
-
-        spec['fields'] = index_list
-
-        if spec.get('sparse', False) and len(spec['fields']) > 1:
-            raise ValueError(
-                'Sparse indexes can only have one field in them. '
-                'See https://jira.mongodb.org/browse/SERVER-2193')
-
-        return spec
-
-    @classmethod
-    def _reset_already_indexed(cls, document=None):
-        """Helper to reset already indexed, can be useful for testing purposes"""
-        if document:
-            cls.__already_indexed.discard(document)
-        cls.__already_indexed.clear()
-
     def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
@@ -481,13 +426,124 @@ class QuerySet(object):
         """Returns all documents."""
         return self.__call__()
 
+    def _ensure_indexes(self):
+        """Checks the document meta data and ensures all the indexes exist.
+
+        .. note:: You can disable automatic index creation by setting
+                  `auto_create_index` to False in the documents meta data
+        """
+        background = self._document._meta.get('index_background', False)
+        drop_dups = self._document._meta.get('index_drop_dups', False)
+        index_opts = self._document._meta.get('index_opts', {})
+        index_types = self._document._meta.get('index_types', True)
+
+        # determine if an index which we are creating includes
+        # _type as its first field; if so, we can avoid creating
+        # an extra index on _type, as mongodb will use the existing
+        # index to service queries against _type
+        types_indexed = False
+        def includes_types(fields):
+            first_field = None
+            if len(fields):
+                if isinstance(fields[0], basestring):
+                    first_field = fields[0]
+                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+                    first_field = fields[0][0]
+            return first_field == '_types'
+
+        # Ensure indexes created by uniqueness constraints
+        for index in self._document._meta['unique_indexes']:
+            types_indexed = types_indexed or includes_types(index)
+            self._collection.ensure_index(index, unique=True,
+                background=background, drop_dups=drop_dups, **index_opts)
+
+        # Ensure document-defined indexes are created
+        if self._document._meta['indexes']:
+            for spec in self._document._meta['indexes']:
+                types_indexed = types_indexed or includes_types(spec['fields'])
+                opts = index_opts.copy()
+                opts['unique'] = spec.get('unique', False)
+                opts['sparse'] = spec.get('sparse', False)
+                self._collection.ensure_index(spec['fields'],
+                    background=background, **opts)
+
+        # If _types is being used (for polymorphism), it needs an index,
+        # only if another index doesn't begin with _types
+        if index_types and '_types' in self._query and not types_indexed:
+            self._collection.ensure_index('_types',
+                background=background, **index_opts)
+
+        # Add geo indicies
+        for field in self._document._geo_indices():
+            index_spec = [(field.db_field, pymongo.GEO2D)]
+            self._collection.ensure_index(index_spec,
+                background=background, **index_opts)
+
+
+    @classmethod
+    def _build_index_spec(cls, doc_cls, spec):
+        """Build a PyMongo index spec from a MongoEngine index spec.
+        """
+        if isinstance(spec, basestring):
+            spec = {'fields': [spec]}
+        if isinstance(spec, (list, tuple)):
+            spec = {'fields': spec}
+
+        index_list = []
+        use_types = doc_cls._meta.get('allow_inheritance', True)
+        for key in spec['fields']:
+            # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
+            direction = pymongo.ASCENDING
+            if key.startswith("-"):
+                direction = pymongo.DESCENDING
+            elif key.startswith("*"):
+                direction = pymongo.GEO2D
+            if key.startswith(("+", "-", "*")):
+                key = key[1:]
+
+            # Use real field name, do it manually because we need field
+            # objects for the next part (list field checking)
+            parts = key.split('.')
+            if parts in (['pk'], ['id'], ['_id']):
+                key = '_id'
+            else:
+                fields = QuerySet._lookup_field(doc_cls, parts)
+                parts = [field if field == '_id' else field.db_field for field in fields]
+                key = '.'.join(parts)
+            index_list.append((key, direction))
+
+            # Check if a list field is being used, don't use _types if it is
+            if use_types and not all(f._index_with_types for f in fields):
+                use_types = False
+
+        # If _types is being used, prepend it to every specified index
+        index_types = doc_cls._meta.get('index_types', True)
+        allow_inheritance = doc_cls._meta.get('allow_inheritance')
+        if spec.get('types', index_types) and allow_inheritance and use_types and direction is not pymongo.GEO2D:
+            index_list.insert(0, ('_types', 1))
+
+        spec['fields'] = index_list
+        if spec.get('sparse', False) and len(spec['fields']) > 1:
+            raise ValueError(
+                'Sparse indexes can only have one field in them. '
+                'See https://jira.mongodb.org/browse/SERVER-2193')
+
+        return spec
+
+    @classmethod
+    def _reset_already_indexed(cls, document=None):
+        """Helper to reset already indexed, can be useful for testing purposes"""
+        if document:
+            cls.__already_indexed.discard(document)
+        cls.__already_indexed.clear()
+
+
     @property
     def _collection(self):
         """Property that returns the collection object. This allows us to
         perform operations only if the collection is accessed.
         """
         if self._document not in QuerySet.__already_indexed:
-
             # Ensure collection exists
             db = self._document._get_db()
             if self._collection_obj.name not in db.collection_names():
@@ -496,52 +552,8 @@ class QuerySet(object):
 
             QuerySet.__already_indexed.add(self._document)
 
-            background = self._document._meta.get('index_background', False)
-            drop_dups = self._document._meta.get('index_drop_dups', False)
-            index_opts = self._document._meta.get('index_options', {})
-            index_types = self._document._meta.get('index_types', True)
-
-            # determine if an index which we are creating includes
-            # _type as its first field; if so, we can avoid creating
-            # an extra index on _type, as mongodb will use the existing
-            # index to service queries against _type
-            types_indexed = False
-            def includes_types(fields):
-                first_field = None
-                if len(fields):
-                    if isinstance(fields[0], basestring):
-                        first_field = fields[0]
-                    elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
-                        first_field = fields[0][0]
-                return first_field == '_types'
-
-            # Ensure indexes created by uniqueness constraints
-            for index in self._document._meta['unique_indexes']:
-                types_indexed = types_indexed or includes_types(index)
-                self._collection.ensure_index(index, unique=True,
-                    background=background, drop_dups=drop_dups, **index_opts)
-
-            # Ensure document-defined indexes are created
-            if self._document._meta['indexes']:
-                for spec in self._document._meta['indexes']:
-                    types_indexed = types_indexed or includes_types(spec['fields'])
-                    opts = index_opts.copy()
-                    opts['unique'] = spec.get('unique', False)
-                    opts['sparse'] = spec.get('sparse', False)
-                    self._collection.ensure_index(spec['fields'],
-                        background=background, **opts)
-
-            # If _types is being used (for polymorphism), it needs an index,
-            # only if another index doesn't begin with _types
-            if index_types and '_types' in self._query and not types_indexed:
-                self._collection.ensure_index('_types',
-                    background=background, **index_opts)
-
-            # Add geo indicies
-            for field in self._document._geo_indices():
-                index_spec = [(field.db_field, pymongo.GEO2D)]
-                self._collection.ensure_index(index_spec,
-                    background=background, **index_opts)
+            if self._document._meta.get('auto_create_index', True):
+                self._ensure_indexes()
 
         return self._collection_obj
 
@@ -824,11 +836,21 @@ class QuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True):
+    def insert(self, doc_or_docs, load_bulk=True, safe=False, write_options=None):
         """bulk insert documents
+
+        If ``safe=True`` and the operation is unsuccessful, an
+        :class:`~mongoengine.OperationError` will be raised.
 
         :param docs_or_doc: a document or list of documents to be inserted
         :param load_bulk (optional): If True returns the list of document instances
+        :param safe: check if the operation succeeded before returning
+        :param write_options: Extra keyword arguments are passed down to
+                :meth:`~pymongo.collection.Collection.insert`
+                which will be used as options for the resultant ``getLastError`` command.
+                For example, ``insert(..., {w: 2, fsync: True})`` will wait until at least two
+                servers have recorded the write and will force an fsync on each server being
+                written to.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
@@ -836,6 +858,10 @@ class QuerySet(object):
         .. versionadded:: 0.5
         """
         from document import Document
+
+        if not write_options:
+            write_options = {}
+        write_options.update({'safe': safe})
 
         docs = doc_or_docs
         return_one = False
@@ -854,7 +880,13 @@ class QuerySet(object):
             raw.append(doc.to_mongo())
 
         signals.pre_bulk_insert.send(self._document, documents=docs)
-        ids = self._collection.insert(raw)
+        try:
+            ids = self._collection.insert(raw, **write_options)
+        except pymongo.errors.OperationFailure, err:
+            message = 'Could not save document (%s)'
+            if u'duplicate key' in unicode(err):
+                message = u'Tried to save duplicate unique keys (%s)'
+            raise OperationError(message % unicode(err))
 
         if not load_bulk:
             signals.post_bulk_insert.send(

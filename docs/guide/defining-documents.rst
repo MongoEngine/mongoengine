@@ -98,7 +98,7 @@ arguments can be set on all fields:
 
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
-    :class:`~mongoengine.base.ValidationError` will be raised when the document is
+    :class:`~mongoengine.ValidationError` will be raised when the document is
     validated.
 
 :attr:`default` (Default: None)
