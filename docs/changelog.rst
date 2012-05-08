@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+- Django User document allows inheritance
+
 Changes in 0.6.7
 ================
 - Fixed indexing on '_id' or 'pk' or 'id'
