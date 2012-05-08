@@ -66,6 +66,7 @@ class User(Document):
                                 verbose_name=_('date joined'))
 
     meta = {
+        'allow_inheritance': True,
         'indexes': [
             {'fields': ['username'], 'unique': True}
         ]
