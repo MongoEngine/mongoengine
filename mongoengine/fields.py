@@ -946,12 +946,11 @@ class FileField(BaseField):
 
         # Check if a file already exists for this model
         grid_file = instance._data.get(self.name)
-        self.grid_file = grid_file
-        if isinstance(self.grid_file, self.proxy_class):
-            if not self.grid_file.key:
-                self.grid_file.key = self.name
-                self.grid_file.instance = instance
-            return self.grid_file
+        if isinstance(grid_file, self.proxy_class):
+            if not grid_file.key:
+                grid_file.key = self.name
+                grid_file.instance = instance
+            return grid_file
         return self.proxy_class(key=self.name, instance=instance,
                                 db_alias=self.db_alias,
                                 collection_name=self.collection_name)
