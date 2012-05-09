@@ -1380,9 +1380,18 @@ class QuerySet(object):
             if not op:
                 raise InvalidQueryError("Updates must supply an operation eg: set__FIELD=value")
 
-            if op:
+            if 'pull' in op and '.' in key:
+                # Dot operators don't work on pull operations
+                # it uses nested dict syntax
+                if op == 'pullAll':
+                    raise InvalidQueryError("pullAll operations only support a single field depth")
+
+                parts.reverse()
+                for key in parts:
+                    value = {key: value}
+            else:
                 value = {key: value}
-                key = '$' + op
+            key = '$' + op
 
             if key not in mongo_update:
                 mongo_update[key] = value

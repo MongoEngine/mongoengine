@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Added support for pull operations on nested EmbeddedDocuments
 - Added support for choices with GenericReferenceFields
 - Added support for choices with GenericEmbeddedDocumentFields
 - Fixed Django 1.4 sessions first save data loss

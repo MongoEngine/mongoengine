@@ -572,7 +572,7 @@ class QuerySetTest(unittest.TestCase):
 
         def throw_operation_error_not_unique():
             Blog.objects.insert([blog2, blog3], safe=True)
-        
+
         self.assertRaises(OperationError, throw_operation_error_not_unique)
         self.assertEqual(Blog.objects.count(), 2)
 
@@ -1471,6 +1471,35 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, ["code", "mongodb"])
 
+    def test_pull_nested(self):
+
+        class User(Document):
+            name = StringField()
+
+        class Collaborator(EmbeddedDocument):
+            user = StringField()
+
+            def __unicode__(self):
+                return '%s' % self.user
+
+        class Site(Document):
+            name = StringField(max_length=75, unique=True, required=True)
+            collaborators = ListField(EmbeddedDocumentField(Collaborator))
+
+
+        Site.drop_collection()
+
+        c = Collaborator(user='Esteban')
+        s = Site(name="test", collaborators=[c])
+        s.save()
+
+        Site.objects(id=s.id).update_one(pull__collaborators__user='Esteban')
+        self.assertEqual(Site.objects.first().collaborators, [])
+
+        def pull_all():
+            Site.objects(id=s.id).update_one(pull_all__collaborators__user=['Ross'])
+
+        self.assertRaises(InvalidQueryError, pull_all)
 
     def test_update_one_pop_generic_reference(self):
 
