@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixed FileField losing reference when no default set
 - Removed possible race condition from FileField (grid_file)
 - Added assignment to save, can now do: b = MyDoc(**kwargs).save()
 - Added support for pull operations on nested EmbeddedDocuments

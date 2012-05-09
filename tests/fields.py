@@ -3,6 +3,8 @@ import os
 import unittest
 import uuid
 import StringIO
+import tempfile
+import gridfs
 
 from decimal import Decimal
 
@@ -18,6 +20,10 @@ class FieldTest(unittest.TestCase):
     def setUp(self):
         connect(db='mongoenginetest')
         self.db = get_db()
+
+    def tearDown(self):
+        self.db.drop_collection('fs.files')
+        self.db.drop_collection('fs.chunks')
 
     def test_default_values(self):
         """Ensure that default field values are used when creating a document.
@@ -1646,6 +1652,48 @@ class FieldTest(unittest.TestCase):
 
         testimage.delete()
         self.assertFalse(testimage_fs.exists(testimage_grid_id))
+
+    def test_file_field_no_default(self):
+
+        class GridDocument(Document):
+            the_file = FileField()
+
+        GridDocument.drop_collection()
+
+        with tempfile.TemporaryFile() as f:
+            f.write("Hello World!")
+            f.flush()
+
+            # Test without default
+            doc_a = GridDocument()
+            doc_a.save()
+
+
+            doc_b = GridDocument.objects.with_id(doc_a.id)
+            doc_b.the_file.replace(f, filename='doc_b')
+            doc_b.save()
+            self.assertNotEquals(doc_b.the_file.grid_id, None)
+
+            # Test it matches
+            doc_c = GridDocument.objects.with_id(doc_b.id)
+            self.assertEquals(doc_b.the_file.grid_id, doc_c.the_file.grid_id)
+
+            # Test with default
+            doc_d = GridDocument(the_file='')
+            doc_d.save()
+
+            doc_e = GridDocument.objects.with_id(doc_d.id)
+            self.assertEquals(doc_d.the_file.grid_id, doc_e.the_file.grid_id)
+
+            doc_e.the_file.replace(f, filename='doc_e')
+            doc_e.save()
+
+            doc_f = GridDocument.objects.with_id(doc_e.id)
+            self.assertEquals(doc_e.the_file.grid_id, doc_f.the_file.grid_id)
+
+        db = GridDocument._get_db()
+        grid_fs = gridfs.GridFS(db)
+        self.assertEquals(['doc_b', 'doc_e'], grid_fs.list())
 
     def test_file_uniqueness(self):
         """Ensure that each instance of a FileField is unique
