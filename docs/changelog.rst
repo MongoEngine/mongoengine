@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.6.X
 ================
+- FileField now automatically delete files on .delete()
+- Fix for GenericReference to_mongo method
 - Fixed connection regression
 - Django User document allows inheritance
 
