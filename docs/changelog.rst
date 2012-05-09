@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixed connection regression
 - Django User document allows inheritance
 
 Changes in 0.6.7
