@@ -4,7 +4,8 @@ Changelog
 
 Changes in 0.6.X
 ================
-- Added choices for GenericEmbeddedDocuments
+- Added support for choices with GenericReferenceFields
+- Added support for choices with GenericEmbeddedDocumentFields
 - Fixed Django 1.4 sessions first save data loss
 - FileField now automatically delete files on .delete()
 - Fix for GenericReference to_mongo method

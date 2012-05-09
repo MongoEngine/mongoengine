@@ -223,11 +223,10 @@ class BaseField(object):
         pass
 
     def _validate(self, value):
-        from mongoengine import EmbeddedDocument
-
+        from mongoengine import Document, EmbeddedDocument
         # check choices
         if self.choices:
-            is_cls = isinstance(value, EmbeddedDocument)
+            is_cls = isinstance(value, (Document, EmbeddedDocument))
             value_to_check = value.__class__ if is_cls else value
             err_msg = 'an instance' if is_cls else 'one'
             if isinstance(self.choices[0], (list, tuple)):

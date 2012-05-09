@@ -441,6 +441,9 @@ class GenericEmbeddedDocumentField(BaseField):
     :class:`~mongoengine.EmbeddedDocument` to be stored.
 
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
+
+    ..note :: You can use the choices param to limit the acceptable
+    EmbeddedDocument types
     """
 
     def prepare_query_value(self, op, value):
@@ -700,6 +703,8 @@ class GenericReferenceField(BaseField):
 
     ..note ::  Any documents used as a generic reference must be registered in the
     document registry.  Importing the model will automatically register it.
+
+    ..note :: You can use the choices param to limit the acceptable Document types
 
     .. versionadded:: 0.3
     """

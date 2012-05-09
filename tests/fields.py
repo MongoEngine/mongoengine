@@ -1301,6 +1301,74 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(repr(Person.objects(city=None)),
                             "[<Person: Person object>]")
 
+
+    def test_generic_reference_choices(self):
+        """Ensure that a GenericReferenceField can handle choices
+        """
+        class Link(Document):
+            title = StringField()
+
+        class Post(Document):
+            title = StringField()
+
+        class Bookmark(Document):
+            bookmark_object = GenericReferenceField(choices=(Post,))
+
+        Link.drop_collection()
+        Post.drop_collection()
+        Bookmark.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+
+        bm = Bookmark(bookmark_object=link_1)
+        self.assertRaises(ValidationError, bm.validate)
+
+        bm = Bookmark(bookmark_object=post_1)
+        bm.save()
+
+        bm = Bookmark.objects.first()
+        self.assertEqual(bm.bookmark_object, post_1)
+
+    def test_generic_reference_list_choices(self):
+        """Ensure that a ListField properly dereferences generic references and
+        respects choices.
+        """
+        class Link(Document):
+            title = StringField()
+
+        class Post(Document):
+            title = StringField()
+
+        class User(Document):
+            bookmarks = ListField(GenericReferenceField(choices=(Post,)))
+
+        Link.drop_collection()
+        Post.drop_collection()
+        User.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+
+        user = User(bookmarks=[link_1])
+        self.assertRaises(ValidationError, user.validate)
+
+        user = User(bookmarks=[post_1])
+        user.save()
+
+        user = User.objects.first()
+        self.assertEqual(user.bookmarks, [post_1])
+
+        Link.drop_collection()
+        Post.drop_collection()
+        User.drop_collection()
+
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
@@ -1893,6 +1961,8 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(person.like, Dish))
 
     def test_generic_embedded_document_choices(self):
+        """Ensure you can limit GenericEmbeddedDocument choices
+        """
         class Car(EmbeddedDocument):
             name = StringField()
 
@@ -1917,6 +1987,9 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(person.like, Dish))
 
     def test_generic_list_embedded_document_choices(self):
+        """Ensure you can limit GenericEmbeddedDocument choices inside a list
+        field
+        """
         class Car(EmbeddedDocument):
             name = StringField()
 
