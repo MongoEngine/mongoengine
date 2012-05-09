@@ -659,7 +659,7 @@ class ReferenceField(BaseField):
     def to_mongo(self, document):
         if isinstance(document, DBRef):
             return document
-        
+
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
 
@@ -734,9 +734,9 @@ class GenericReferenceField(BaseField):
     def to_mongo(self, document):
         if document is None:
             return None
-        
+
         if isinstance(document, (dict, SON)):
-            return document                         
+            return document
 
         id_field_name = document.__class__._meta['id_field']
         id_field = document.__class__._fields[id_field_name]

@@ -223,16 +223,19 @@ class BaseField(object):
         pass
 
     def _validate(self, value):
+        from mongoengine import EmbeddedDocument
 
         # check choices
         if self.choices:
+            is_cls = isinstance(value, EmbeddedDocument)
+            value_to_check = value.__class__ if is_cls else value
+            err_msg = 'an instance' if is_cls else 'one'
             if isinstance(self.choices[0], (list, tuple)):
                 option_keys = [option_key for option_key, option_value in self.choices]
-                if value not in option_keys:
-                    self.error('Value must be one of %s' % unicode(option_keys))
-            else:
-                if value not in self.choices:
-                    self.error('Value must be one of %s' % unicode(self.choices))
+                if value_to_check not in option_keys:
+                    self.error('Value must be %s of %s' % (err_msg, unicode(option_keys)))
+            elif value_to_check not in self.choices:
+                self.error('Value must be %s of %s' % (err_msg, unicode(self.choices)))
 
         # check validation argument
         if self.validation is not None:
@@ -400,7 +403,7 @@ class ComplexBaseField(BaseField):
                 sequence = enumerate(value)
             for k, v in sequence:
                 try:
-                    self.field.validate(v)
+                    self.field._validate(v)
                 except (ValidationError, AssertionError), error:
                     if hasattr(error, 'errors'):
                         errors[k] = error.errors

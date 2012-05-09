@@ -1877,6 +1877,8 @@ class FieldTest(unittest.TestCase):
             name = StringField()
             like = GenericEmbeddedDocumentField()
 
+        Person.drop_collection()
+
         person = Person(name='Test User')
         person.like = Car(name='Fiat')
         person.save()
@@ -1889,6 +1891,54 @@ class FieldTest(unittest.TestCase):
 
         person = Person.objects.first()
         self.assertTrue(isinstance(person.like, Dish))
+
+    def test_generic_embedded_document_choices(self):
+        class Car(EmbeddedDocument):
+            name = StringField()
+
+        class Dish(EmbeddedDocument):
+            food = StringField(required=True)
+            number = IntField()
+
+        class Person(Document):
+            name = StringField()
+            like = GenericEmbeddedDocumentField(choices=(Dish,))
+
+        Person.drop_collection()
+
+        person = Person(name='Test User')
+        person.like = Car(name='Fiat')
+        self.assertRaises(ValidationError, person.validate)
+
+        person.like = Dish(food="arroz", number=15)
+        person.save()
+
+        person = Person.objects.first()
+        self.assertTrue(isinstance(person.like, Dish))
+
+    def test_generic_list_embedded_document_choices(self):
+        class Car(EmbeddedDocument):
+            name = StringField()
+
+        class Dish(EmbeddedDocument):
+            food = StringField(required=True)
+            number = IntField()
+
+        class Person(Document):
+            name = StringField()
+            likes = ListField(GenericEmbeddedDocumentField(choices=(Dish,)))
+
+        Person.drop_collection()
+
+        person = Person(name='Test User')
+        person.likes = [Car(name='Fiat')]
+        self.assertRaises(ValidationError, person.validate)
+
+        person.likes = [Dish(food="arroz", number=15)]
+        person.save()
+
+        person = Person.objects.first()
+        self.assertTrue(isinstance(person.likes[0], Dish))
 
     def test_recursive_validation(self):
         """Ensure that a validation result to_dict is available.
