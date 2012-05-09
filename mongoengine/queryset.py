@@ -793,6 +793,9 @@ class QuerySet(object):
         dictionary of default values for the new document may be provided as a
         keyword argument called :attr:`defaults`.
 
+        .. note:: This requires two separate operations and therefore a
+        potential race condition exists.
+
         :param write_options: optional extra keyword arguments used if we
             have to create a new document.
             Passes any write_options onto :meth:`~mongoengine.Document.save`
