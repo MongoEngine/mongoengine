@@ -233,6 +233,7 @@ class Document(BaseDocument):
         self._changed_fields = []
         self._created = False
         signals.post_save.send(self.__class__, document=self, created=created)
+        return self
 
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references / generic references on an object"""
