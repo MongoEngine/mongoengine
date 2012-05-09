@@ -65,6 +65,16 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest2')
 
+    def test_connection_kwargs(self):
+        """Ensure that connection kwargs get passed to pymongo.
+        """
+        connect('mongoenginetest', alias='t1', tz_aware=True)
+        conn = get_connection('t1')
+        self.assertTrue(conn.tz_aware)
+         
+        connect('mongoenginetest2', alias='t2')
+        conn = get_connection('t2')
+        self.assertFalse(conn.tz_aware)
 
 if __name__ == '__main__':
     unittest.main()
