@@ -1546,6 +1546,39 @@ class FieldTest(unittest.TestCase):
             file = FileField()
         DemoFile.objects.create()
 
+    def test_file_delete_cleanup(self):
+        """Ensure that the gridfs file is deleted when a document
+        with a GridFSProxied Field is deleted"""
+        class TestFile(Document):
+            file = FileField()
+
+        class TestImage(Document):
+            image = ImageField()
+
+        TestFile.drop_collection()
+
+        testfile = TestFile()
+        testfile.file.put('Hello, World!')
+        testfile.save()
+
+        testfile_grid_id = testfile.file.grid_id
+        testfile_fs = testfile.file.fs
+
+        testfile.delete()
+        self.assertFalse(testfile_fs.exists(testfile_grid_id))
+
+        TestImage.drop_collection()
+
+        testimage = TestImage()
+        testimage.image.put(open(TEST_IMAGE_PATH, 'r'))
+        testimage.save()
+
+        testimage_grid_id = testimage.image.grid_id
+        testimage_fs = testimage.image.fs
+
+        testimage.delete()
+        self.assertFalse(testimage_fs.exists(testimage_grid_id))
+
     def test_file_uniqueness(self):
         """Ensure that each instance of a FileField is unique
         """

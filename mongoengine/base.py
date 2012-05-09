@@ -616,6 +616,10 @@ class DocumentMetaclass(type):
                     raise InvalidDocumentError("Reverse delete rules are not supported for EmbeddedDocuments (field: %s)" % field.name)
                 f.document_type.register_delete_rule(new_class, field.name, delete_rule)
 
+            proxy_class = getattr(field, 'proxy_class', None)
+            if proxy_class is not None:
+                new_class.register_proxy_field(field.name, proxy_class)
+
             if field.name and hasattr(Document, field.name) and EmbeddedDocument not in new_class.mro():
                 raise InvalidDocumentError("%s is a document method and not a valid field name" % field.name)
 
@@ -717,6 +721,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'index_opts': {},
             'queryset_class': QuerySet,
             'delete_rules': {},
+            'proxy_fields': {},
             'allow_inheritance': True
         }
 
