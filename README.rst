@@ -22,7 +22,7 @@ setup.py install``.
 
 Dependencies
 ============
-- pymongo 1.1+
+- pymongo 2.1.1+
 - sphinx (optional - for documentation generation)
 
 Examples
