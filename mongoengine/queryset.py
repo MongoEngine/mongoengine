@@ -794,7 +794,9 @@ class QuerySet(object):
         keyword argument called :attr:`defaults`.
 
         .. note:: This requires two separate operations and therefore a
-        potential race condition exists.
+        race condition exists.  Because there are no transactions in mongoDB
+        other approaches should be investigated, to ensure you don't
+        accidently duplicate data when using this method.
 
         :param write_options: optional extra keyword arguments used if we
             have to create a new document.
