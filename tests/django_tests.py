@@ -103,3 +103,8 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         MongoSession.drop_collection()
         super(MongoDBSessionTest, self).setUp()
 
+    def test_first_save(self):
+        session = SessionStore()
+        session['test'] = True
+        session.save()
+        self.assertTrue('test' in session)
