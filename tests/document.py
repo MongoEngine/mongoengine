@@ -2988,5 +2988,21 @@ name: Field is required ("name")"""
                 'username': 'Field is required ("username")',
                 'name': u'Field is required ("name")'})
 
+    def test_spaces_in_keys(self):
+
+        class Embedded(DynamicEmbeddedDocument):
+            pass
+
+        class Doc(DynamicDocument):
+            pass
+
+        Doc.drop_collection()
+        doc = Doc()
+        setattr(doc, 'hello world', 1)
+        doc.save()
+
+        one = Doc.objects.filter(**{'hello world': 1}).count()
+        self.assertEqual(1, one)
+
 if __name__ == '__main__':
     unittest.main()
