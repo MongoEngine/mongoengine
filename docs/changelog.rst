@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.6.X
+Changes in 0.6.8
 ================
 - Fixed FileField losing reference when no default set
 - Removed possible race condition from FileField (grid_file)
