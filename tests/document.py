@@ -2496,6 +2496,40 @@ class DocumentTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
+    def test_two_way_reverse_delete_rule(self):
+        """Ensure that Bi-Directional relationships work with
+        reverse_delete_rule
+        """
+
+        class Bar(Document):
+            content = StringField()
+            foo = ReferenceField('Foo')
+
+        class Foo(Document):
+            content = StringField()
+            bar = ReferenceField(Bar)
+
+        Bar.register_delete_rule(Foo, 'bar', NULLIFY)
+        Foo.register_delete_rule(Bar, 'foo', NULLIFY)
+
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        b = Bar(content="Hello")
+        b.save()
+
+        f = Foo(content="world", bar=b)
+        f.save()
+
+        b.foo = f
+        b.save()
+
+        f.delete()
+
+        self.assertEqual(len(Bar.objects), 1)  # No effect on the BlogPost
+        self.assertEqual(Bar.objects.get().foo, None)
+
     def test_invalid_reverse_delete_rules_raise_errors(self):
 
         def throw_invalid_document_error():

@@ -616,6 +616,17 @@ class ReferenceField(BaseField):
       * CASCADE     - Deletes the documents associated with the reference.
       * DENY        - Prevent the deletion of the reference object.
 
+    Alternative syntax for registering delete rules (useful when implementing
+    bi-directional delete rules)
+
+    .. code-block:: python
+
+        class Bar(Document):
+            content = StringField()
+            foo = ReferenceField('Foo')
+
+        Bar.register_delete_rule(Foo, 'bar', NULLIFY)
+
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
