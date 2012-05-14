@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.9
 ================
+- Fixed sparse indexes on inherited docs
 - Removed FileField auto deletion, needs more work maybe 0.7
 
 Changes in 0.6.8

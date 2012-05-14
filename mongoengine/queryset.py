@@ -512,6 +512,10 @@ class QuerySet(object):
                 key = '.'.join(parts)
             index_list.append((key, direction))
 
+            # If sparse - dont include types
+            if spec.get('sparse', False):
+                use_types = False
+
             # Check if a list field is being used, don't use _types if it is
             if use_types and not all(f._index_with_types for f in fields):
                 use_types = False
