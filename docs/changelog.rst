@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.9
+================
+- Removed FileField auto deletion, needs more work maybe 0.7
+
 Changes in 0.6.8
 ================
 - Fixed FileField losing reference when no default set

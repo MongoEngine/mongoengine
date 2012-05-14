@@ -65,12 +65,13 @@ Deleting stored files is achieved with the :func:`delete` method::
 
     marmot.photo.delete()
 
-.. note::
+.. warning::
 
     The FileField in a Document actually only stores the ID of a file in a
-    separate GridFS collection. This means that `Animal.drop_collection()` will
-    not delete any files.  Care should be taken to manually remove associated
-    files before dropping a collection.
+    separate GridFS collection. This means that deleting a document
+    with a defined FileField does not actually delete the file. You must be
+    careful to delete any files in a Document as above before deleting the
+    Document itself.
 
 
 Replacing files

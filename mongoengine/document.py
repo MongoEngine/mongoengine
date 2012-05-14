@@ -278,11 +278,6 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            for field_name in self._meta['proxy_fields']:
-                proxy_class = self._meta['proxy_fields'][field_name]
-                if hasattr(proxy_class, 'delete'):
-                    proxy = getattr(self, field_name)
-                    proxy.delete()
             self.__class__.objects(pk=self.pk).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
@@ -346,13 +341,6 @@ class Document(BaseDocument):
         object.
         """
         cls._meta['delete_rules'][(document_cls, field_name)] = rule
-
-    @classmethod
-    def register_proxy_field(cls, field_name, proxy_class):
-        """This method registers fields with proxy classes to delete them when
-        removing this object.
-        """
-        cls._meta['proxy_fields'][field_name] = proxy_class
 
     @classmethod
     def drop_collection(cls):
