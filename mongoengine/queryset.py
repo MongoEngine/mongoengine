@@ -5,9 +5,11 @@ import pymongo
 import pymongo.code
 import pymongo.dbref
 import pymongo.objectid
+import pymongo.errors
 import re
 import copy
 import itertools
+import time
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError']
@@ -424,8 +426,16 @@ class QuerySet(object):
             }
             if self._loaded_fields:
                 cursor_args['fields'] = self._loaded_fields
-            self._cursor_obj = self._collection.find(self._query,
-                                                     **cursor_args)
+
+            try:
+                self._cursor_obj = self._collection.find(self._query,
+                                                         **cursor_args)
+            except pymongo.errors.AutoReconnect:
+                # if the primary changes, sleep for 100ms and try again
+                time.sleep(0.1)
+                self._cursor_obj = self._collection.find(self._query,
+                                                         **cursor_args)
+
             # Apply where clauses to cursor
             if self._where_clause:
                 self._cursor_obj.where(self._where_clause)
@@ -435,10 +445,20 @@ class QuerySet(object):
                 self.order_by(*self._document._meta['ordering'])
 
             if self._limit is not None:
-                self._cursor_obj.limit(self._limit)
+                try:
+                    self._cursor_obj.limit(self._limit)
+                except pymongo.errors.AutoReconnect:
+                    # if the primary changes, sleep for 100ms and try again
+                    time.sleep(0.1)
+                    self._cursor_obj.limit(self._limit)
 
             if self._skip is not None:
-                self._cursor_obj.skip(self._skip)
+                try:
+                    self._cursor_obj.skip(self._skip)
+                except pymongo.errors.AutoReconnect:
+                    # if the primary changes, sleep for 100ms and try again
+                    time.sleep(0.1)
+                    self._cursor_obj.skip(self._skip)
 
         return self._cursor_obj
 
@@ -627,7 +647,13 @@ class QuerySet(object):
         id_field = self._document._meta['id_field']
         object_id = self._document._fields[id_field].to_mongo(object_id)
 
-        result = self._collection.find_one({'_id': object_id})
+        try:
+            result = self._collection.find_one({'_id': object_id})
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            result = self._collection.find_one({'_id': object_id})
+
         if result is not None:
             result = self._document._from_son(result)
         return result
@@ -643,7 +669,13 @@ class QuerySet(object):
         """
         doc_map = {}
 
-        docs = self._collection.find({'_id': {'$in': object_ids}})
+        try:
+            docs = self._collection.find({'_id': {'$in': object_ids}})
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            docs = self._collection.find({'_id': {'$in': object_ids}})
+
         for doc in docs:
             doc_map[doc['_id']] = self._document._from_son(doc)
 
@@ -655,7 +687,12 @@ class QuerySet(object):
         try:
             if self._limit == 0:
                 raise StopIteration
-            return self._document._from_son(self._cursor.next())
+            try:
+                return self._document._from_son(self._cursor.next())
+            except pymongo.errors.AutoReconnect:
+                # if the primary changes, sleep for 100ms and try again
+                time.sleep(0.1)
+                return self._document._from_son(self._cursor.next())
         except StopIteration, e:
             self.rewind()
             raise e
@@ -665,14 +702,25 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
-        self._cursor.rewind()
+        try:
+            self._cursor.rewind()
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            self._cursor.rewind()
 
     def count(self):
         """Count the selected elements in the query.
         """
         if self._limit == 0:
             return 0
-        return self._cursor.count(with_limit_and_skip=True)
+        try:
+            return self._cursor.count(with_limit_and_skip=True)
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            return self._cursor.count(with_limit_and_skip=True)
+
 
     def __len__(self):
         return self.count()
@@ -759,9 +807,15 @@ class QuerySet(object):
         :param n: the maximum number of objects to return
         """
         if n == 0:
-            self._cursor.limit(1)
-        else:
+            n = 1
+
+        try:
             self._cursor.limit(n)
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            self._cursor.limit(n)
+
         self._limit = n
 
         # Return self to allow chaining
@@ -773,7 +827,13 @@ class QuerySet(object):
 
         :param n: the number of objects to skip before returning results
         """
-        self._cursor.skip(n)
+        try:
+            self._cursor.skip(n)
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            self._cursor.skip(n)
+
         self._skip = n
         return self
 
@@ -783,7 +843,13 @@ class QuerySet(object):
         # Slice provided
         if isinstance(key, slice):
             try:
-                self._cursor_obj = self._cursor[key]
+                try:
+                    self._cursor_obj = self._cursor[key]
+                except pymongo.errors.AutoReconnect:
+                    # if the primary changes, sleep for 100ms and try again
+                    time.sleep(0.1)
+                    self._cursor_obj = self._cursor[key]
+
                 self._skip, self._limit = key.start, key.stop
             except IndexError, err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
@@ -799,7 +865,13 @@ class QuerySet(object):
             return self
         # Integer index provided
         elif isinstance(key, int):
-            return self._document._from_son(self._cursor[key])
+            try:
+                return self._document._from_son(self._cursor[key])
+            except pymongo.errors.AutoReconnect:
+                # if the primary changes, sleep for 100ms and try again
+                time.sleep(0.1)
+                return self._document._from_son(self._cursor[key])
+
         raise AttributeError
 
     def distinct(self, field):
@@ -809,7 +881,12 @@ class QuerySet(object):
 
         .. versionadded:: 0.4
         """
-        return self._cursor.distinct(field)
+        try:
+            return self._cursor.distinct(field)
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            return self._cursor.distinct(field)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -854,7 +931,14 @@ class QuerySet(object):
             key_list.append((key, direction))
 
         self._ordering = key_list
-        self._cursor.sort(key_list)
+
+        try:
+            self._cursor.sort(key_list)
+        except pymongo.errors.AutoReconnect:
+            # if the primary changes, sleep for 100ms and try again
+            time.sleep(0.1)
+            self._cursor.sort(key_list)
+
         return self
 
     def explain(self, format=False):
