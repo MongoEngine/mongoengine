@@ -435,47 +435,6 @@ class ComplexBaseField(BaseField):
     owner_document = property(_get_owner_document, _set_owner_document)
 
 
-class BaseDynamicField(BaseField):
-    """Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
-
-    def to_mongo(self, value):
-        """Convert a Python type to a MongoDBcompatible type.
-        """
-
-        if isinstance(value, basestring):
-            return value
-
-        if hasattr(value, 'to_mongo'):
-            return value.to_mongo()
-
-        if not isinstance(value, (dict, list, tuple)):
-            return value
-
-        is_list = False
-        if not hasattr(value, 'items'):
-            is_list = True
-            value = dict([(k, v) for k, v in enumerate(value)])
-
-        data = {}
-        for k, v in value.items():
-            data[k] = self.to_mongo(v)
-
-        if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(data.items(), key=operator.itemgetter(0))]
-        else:
-            value = data
-        return value
-
-    def lookup_member(self, member_name):
-        return member_name
-
-    def prepare_query_value(self, op, value):
-        if isinstance(value, basestring):
-            from mongoengine.fields import StringField
-            return StringField().prepare_query_value(op, value)
-        return self.to_mongo(value)
-
-
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
     """
@@ -859,7 +818,8 @@ class BaseDocument(object):
 
             field = None
             if not hasattr(self, name) and not name.startswith('_'):
-                field = BaseDynamicField(db_field=name)
+                from fields import DynamicField
+                field = DynamicField(db_field=name)
                 field.name = name
                 self._dynamic_fields[name] = field
 

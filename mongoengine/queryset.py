@@ -627,8 +627,8 @@ class QuerySet(object):
                 if field_name in document._fields:
                     field = document._fields[field_name]
                 elif document._dynamic:
-                    from base import BaseDynamicField
-                    field = BaseDynamicField(db_field=field_name)
+                    from fields import DynamicField
+                    field = DynamicField(db_field=field_name)
                 else:
                     raise InvalidQueryError('Cannot resolve field "%s"'
                                                 % field_name)

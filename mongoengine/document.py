@@ -1,4 +1,5 @@
 import pymongo
+
 from bson.dbref import DBRef
 
 from mongoengine import signals
@@ -359,7 +360,7 @@ class DynamicDocument(Document):
     way as an ordinary document but has expando style properties.  Any data
     passed or set against the :class:`~mongoengine.DynamicDocument` that is
     not a field is automatically converted into a
-    :class:`~mongoengine.BaseDynamicField` and data can be attributed to that
+    :class:`~mongoengine.DynamicField` and data can be attributed to that
     field.
 
     ..note::

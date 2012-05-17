@@ -30,7 +30,7 @@ except ImportError:
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
-           'DecimalField', 'ComplexDateTimeField', 'URLField',
+           'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
            'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
@@ -471,6 +471,47 @@ class GenericEmbeddedDocumentField(BaseField):
         if not '_cls' in data:
             data['_cls'] = document._class_name
         return data
+
+
+class DynamicField(BaseField):
+    """Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
+
+    def to_mongo(self, value):
+        """Convert a Python type to a MongoDBcompatible type.
+        """
+
+        if isinstance(value, basestring):
+            return value
+
+        if hasattr(value, 'to_mongo'):
+            return value.to_mongo()
+
+        if not isinstance(value, (dict, list, tuple)):
+            return value
+
+        is_list = False
+        if not hasattr(value, 'items'):
+            is_list = True
+            value = dict([(k, v) for k, v in enumerate(value)])
+
+        data = {}
+        for k, v in value.items():
+            data[k] = self.to_mongo(v)
+
+        if is_list:  # Convert back to a list
+            value = [v for k, v in sorted(data.items(), key=itemgetter(0))]
+        else:
+            value = data
+        return value
+
+    def lookup_member(self, member_name):
+        return member_name
+
+    def prepare_query_value(self, op, value):
+        if isinstance(value, basestring):
+            from mongoengine.fields import StringField
+            return StringField().prepare_query_value(op, value)
+        return self.to_mongo(value)
 
 
 class ListField(ComplexBaseField):

@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.x
+================
+- Promoted BaseDynamicField to DynamicField
+
 Changes in 0.6.9
 ================
 - Fixed sparse indexes on inherited docs
