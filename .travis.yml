@@ -4,6 +4,9 @@ python:
     - 2.6
     - 2.7
 install:
+    - sudo apt-get install zlib1g zlib1g-dev
+    - sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib/
+    - pip install PIL --use-mirrors ; true
     - python setup.py install
 script:
     - python setup.py test

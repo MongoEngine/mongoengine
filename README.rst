@@ -97,4 +97,5 @@ The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_
 contribute to the project, fork it on GitHub and send a pull request, all
 contributions and suggestions are welcome!
 
-.. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png
+.. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
+  :target: http://travis-ci.org/MongoEngine/mongoengine
