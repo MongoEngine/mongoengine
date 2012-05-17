@@ -5,6 +5,9 @@ MongoEngine
 :Author: Harry Marr (http://github.com/hmarr)
 :Maintainer: Ross Lawley (http://github.com/rozza)
 
+.. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
+  :target: http://travis-ci.org/MongoEngine/mongoengine
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
@@ -97,5 +100,3 @@ The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_
 contribute to the project, fork it on GitHub and send a pull request, all
 contributions and suggestions are welcome!
 
-.. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
-  :target: http://travis-ci.org/MongoEngine/mongoengine
