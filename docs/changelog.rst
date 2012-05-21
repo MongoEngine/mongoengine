@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.x
 ================
+- Fixed basedict / baselist to return super(..)
 - Promoted BaseDynamicField to DynamicField
 
 Changes in 0.6.9
