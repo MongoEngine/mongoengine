@@ -1217,15 +1217,15 @@ class BaseList(list):
     def __init__(self, list_items, instance, name):
         self._instance = instance
         self._name = name
-        super(BaseList, self).__init__(list_items)
+        return super(BaseList, self).__init__(list_items)
 
     def __setitem__(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseList, self).__setitem__(*args, **kwargs)
+        return super(BaseList, self).__setitem__(*args, **kwargs)
 
     def __delitem__(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseList, self).__delitem__(*args, **kwargs)
+        return super(BaseList, self).__delitem__(*args, **kwargs)
 
     def __getstate__(self):
         self.observer = None
@@ -1279,23 +1279,23 @@ class BaseDict(dict):
     def __init__(self, dict_items, instance, name):
         self._instance = instance
         self._name = name
-        super(BaseDict, self).__init__(dict_items)
+        return super(BaseDict, self).__init__(dict_items)
 
     def __setitem__(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).__setitem__(*args, **kwargs)
+        return super(BaseDict, self).__setitem__(*args, **kwargs)
 
     def __delete__(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).__delete__(*args, **kwargs)
+        return super(BaseDict, self).__delete__(*args, **kwargs)
 
     def __delitem__(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).__delitem__(*args, **kwargs)
+        return super(BaseDict, self).__delitem__(*args, **kwargs)
 
     def __delattr__(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).__delattr__(*args, **kwargs)
+        return super(BaseDict, self).__delattr__(*args, **kwargs)
 
     def __getstate__(self):
         self.instance = None
@@ -1308,19 +1308,19 @@ class BaseDict(dict):
 
     def clear(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).clear(*args, **kwargs)
+        return super(BaseDict, self).clear(*args, **kwargs)
 
     def pop(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).pop(*args, **kwargs)
+        return super(BaseDict, self).pop(*args, **kwargs)
 
     def popitem(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).popitem(*args, **kwargs)
+        return super(BaseDict, self).popitem(*args, **kwargs)
 
     def update(self, *args, **kwargs):
         self._mark_as_changed()
-        super(BaseDict, self).update(*args, **kwargs)
+        return super(BaseDict, self).update(*args, **kwargs)
 
     def _mark_as_changed(self):
         if hasattr(self._instance, '_mark_as_changed'):
