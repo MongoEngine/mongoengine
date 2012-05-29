@@ -6,7 +6,7 @@ import warnings
 
 from datetime import datetime
 
-from fixtures import Base, Mixin, PickleEmbedded, PickleTest
+from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
 
 from mongoengine import *
 from mongoengine.base import NotRegistered, InvalidDocumentError
