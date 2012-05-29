@@ -48,6 +48,5 @@ setup(name='mongoengine',
       platforms=['any'],
       classifiers=CLASSIFIERS,
       install_requires=['pymongo'],
-      # use python setup.py nosetests to test
-      setup_requires=['nose', 'coverage', 'blinker', 'django>=1.3', 'PIL']
+      tests_require=['nose', 'coverage', 'blinker', 'django>=1.3', 'PIL']
 )
