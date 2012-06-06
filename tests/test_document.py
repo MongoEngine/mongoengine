@@ -1,3 +1,4 @@
+import os
 import pickle
 import pymongo
 import bson
@@ -12,6 +13,8 @@ from mongoengine import *
 from mongoengine.base import NotRegistered, InvalidDocumentError
 from mongoengine.queryset import InvalidQueryError
 from mongoengine.connection import get_db
+
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
 
 class DocumentTest(unittest.TestCase):
@@ -1327,6 +1330,30 @@ class DocumentTest(unittest.TestCase):
         p0 = Person.objects.first()
         p0.name = 'wpjunior'
         p0.save()
+
+    def test_save_max_recursion_not_hit_with_file_field(self):
+
+        class Foo(Document):
+            name = StringField()
+            file = FileField()
+            bar = ReferenceField('self')
+
+        Foo.drop_collection()
+
+        a = Foo(name='hello')
+        a.save()
+
+        a.bar = a
+        a.file = open(TEST_IMAGE_PATH, 'rb')
+        a.save()
+
+        # Confirm can save and it resets the changed fields without hitting
+        # max recursion error
+        b = Foo.objects.with_id(a.id)
+        b.name='world'
+        b.save()
+
+        self.assertEquals(b.file, b.bar.file, b.bar.bar.file)
 
     def test_save_cascades(self):
 
