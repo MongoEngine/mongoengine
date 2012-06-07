@@ -10,7 +10,7 @@ from bson.code import Code
 from mongoengine import signals
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
-           'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY']
+           'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL']
 
 
 # The maximum number of items to display in a QuerySet.__repr__
@@ -21,6 +21,7 @@ DO_NOTHING = 0
 NULLIFY = 1
 CASCADE = 2
 DENY = 3
+PULL = 4
 
 
 class DoesNotExist(Exception):
@@ -1319,6 +1320,10 @@ class QuerySet(object):
                 document_cls.objects(**{field_name + '__in': self}).update(
                         safe_update=safe,
                         **{'unset__%s' % field_name: 1})
+            elif rule == PULL:
+                document_cls.objects(**{field_name + '__in': self}).update(
+                        safe_update=safe,
+                        **{'pull_all__%s' % field_name: self})
 
         self._collection.remove(self._query, safe=safe)
 
