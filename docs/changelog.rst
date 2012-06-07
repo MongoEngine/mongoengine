@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.x
+=================
+- PULL reverse_delete_rule
+
 Changes in 0.6.10
 =================
 - Fixed basedict / baselist to return super(..)
