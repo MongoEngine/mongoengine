@@ -1388,6 +1388,36 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertRaises(OperationError, self.Person.objects.delete)
 
+    def test_reverse_delete_rule_pull(self):
+        """Ensure pulling of references to deleted documents.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            authors = ListField(ReferenceField(self.Person,
+                reverse_delete_rule=PULL))
+
+        BlogPost.drop_collection()
+        self.Person.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
+
+        post = BlogPost(content='Watching TV', authors=[me, someoneelse])
+        post.save()
+
+        another = BlogPost(content='Chilling Out', authors=[someoneelse])
+        another.save()
+
+        someoneelse.delete()
+        post.reload()
+        another.reload()
+
+        self.assertEqual(post.authors, [me])
+        self.assertEqual(another.authors, [])
+
     def test_update(self):
         """Ensure that atomic updates work properly.
         """
