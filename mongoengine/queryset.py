@@ -1314,7 +1314,9 @@ class QuerySet(object):
             document_cls, field_name = rule_entry
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
-                document_cls.objects(**{field_name + '__in': self}).delete(safe=safe)
+                ref_q = document_cls.objects(**{field_name + '__in': self})
+                if doc != document_cls or (doc == document_cls and ref_q.count() > 0):
+                    ref_q.delete(safe=safe)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
                         safe_update=safe,
