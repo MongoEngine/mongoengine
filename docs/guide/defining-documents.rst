@@ -289,6 +289,10 @@ Its value can take any of the following constants:
 :const:`mongoengine.CASCADE`
   Any object containing fields that are refererring to the object being deleted
   are deleted first.
+:const:`mongoengine.PULL`
+  Removes the reference to the object (using MongoDB's "pull" operation)
+  from any object's fields of
+  :class:`~mongoengine.ListField` (:class:`~mongoengine.ReferenceField`).
 
 
 .. warning::

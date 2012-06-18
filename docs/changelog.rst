@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Added PULL reverse_delete_rule
 - Fixed CASCADE delete bug
 - Fixed db_field data load error
 - Fixed recursive save with FileField
