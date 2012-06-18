@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixed db_field data load error
 - Fixed recursive save with FileField
 
 Changes in 0.6.10

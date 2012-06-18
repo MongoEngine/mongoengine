@@ -664,6 +664,26 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_db_field_load(self):
+        """Ensure we load data correctly
+        """
+        class Person(Document):
+            name = StringField(required=True)
+            _rank = StringField(required=False, db_field="rank")
+
+            @property
+            def rank(self):
+                return self._rank or "Private"
+
+        Person.drop_collection()
+
+        Person(name="Jack", _rank="Corporal").save()
+
+        Person(name="Fred").save()
+
+        self.assertEquals(Person.objects.get(name="Jack").rank, "Corporal")
+        self.assertEquals(Person.objects.get(name="Fred").rank, "Private")
+
     def test_explicit_geo2d_index(self):
         """Ensure that geo2d indexes work when created via meta[indexes]
         """

@@ -13,5 +13,5 @@ env/
 .settings
 .project
 .pydevproject
-tests/bugfix.py
+tests/test_bugfix.py
 htmlcov/
