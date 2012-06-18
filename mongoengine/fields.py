@@ -889,6 +889,13 @@ class GridFSProxy(object):
         self_dict['_fs'] = None
         return self_dict
 
+    def __repr__(self):
+        return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
+
+    def __cmp__(self, other):
+        return cmp((self.grid_id, self.collection_name, self.db_alias),
+                   (other.grid_id, other.collection_name, other.db_alias))
+
     @property
     def fs(self):
         if not self._fs:

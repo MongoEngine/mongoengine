@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+- Fixed recursive save with FileField
+
 Changes in 0.6.10
 =================
 - Fixed basedict / baselist to return super(..)

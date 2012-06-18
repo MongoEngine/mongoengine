@@ -1335,7 +1335,7 @@ class DocumentTest(unittest.TestCase):
 
         class Foo(Document):
             name = StringField()
-            file = FileField()
+            picture = FileField()
             bar = ReferenceField('self')
 
         Foo.drop_collection()
@@ -1344,7 +1344,7 @@ class DocumentTest(unittest.TestCase):
         a.save()
 
         a.bar = a
-        a.file = open(TEST_IMAGE_PATH, 'rb')
+        a.picture = open(TEST_IMAGE_PATH, 'rb')
         a.save()
 
         # Confirm can save and it resets the changed fields without hitting
@@ -1353,7 +1353,7 @@ class DocumentTest(unittest.TestCase):
         b.name='world'
         b.save()
 
-        self.assertEquals(b.file, b.bar.file, b.bar.bar.file)
+        self.assertEquals(b.picture, b.bar.picture, b.bar.bar.picture)
 
     def test_save_cascades(self):
 
