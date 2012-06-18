@@ -10,7 +10,7 @@ class MongoTestCase(TestCase):
     """
     db_name = 'test_%s' % settings.MONGO_DATABASE_NAME
     def __init__(self, methodName='runtest'):
-        self.db = connect(self.db_name)
+        self.db = connect(self.db_name).get_db()
         super(MongoTestCase, self).__init__(methodName)
 
     def _post_teardown(self):
