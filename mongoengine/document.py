@@ -40,6 +40,11 @@ class EmbeddedDocument(BaseDocument):
         else:
             super(EmbeddedDocument, self).__delattr__(*args, **kwargs)
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self._data == other._data
+        return False
+
 
 class Document(BaseDocument):
     """The base class used for defining the structure and properties of
