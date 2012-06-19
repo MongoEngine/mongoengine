@@ -1638,6 +1638,35 @@ class DocumentTest(unittest.TestCase):
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
 
+    def test_circular_reference_deltas(self):
+
+        class Person(Document):
+            name = StringField()
+            owns = ListField(ReferenceField('Organization'))
+
+        class Organization(Document):
+            name = StringField()
+            owner = ReferenceField('Person')
+
+        Person.drop_collection()
+        Organization.drop_collection()
+
+        person = Person(name="owner")
+        person.save()
+        organization = Organization(name="company")
+        organization.save()
+
+        person.owns.append(organization)
+        organization.owner = person
+
+        person.save()
+        organization.save()
+
+        p = Person.objects[0].select_related()
+        o = Organization.objects.first()
+        self.assertEquals(p.owns[0], o)
+        self.assertEquals(o.owner, p)
+
     def test_delta(self):
 
         class Doc(Document):
