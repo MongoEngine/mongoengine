@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+- Fixes error with _delta handling DBRefs
+
 Changes in 0.6.11
 ==================
 - Fixed inconsistency handling None values field attrs

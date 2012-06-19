@@ -226,7 +226,7 @@ class Document(BaseDocument):
                 if cascade_kwargs:  # Allow granular control over cascades
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
-                self._changed_fields = []
+                #self._changed_fields = []
                 self.cascade_save(**kwargs)
 
         except pymongo.errors.OperationFailure, err:
@@ -246,6 +246,7 @@ class Document(BaseDocument):
         """Recursively saves any references / generic references on an object"""
         from fields import ReferenceField, GenericReferenceField
         _refs = kwargs.get('_refs', []) or []
+
         for name, cls in self._fields.items():
             if not isinstance(cls, (ReferenceField, GenericReferenceField)):
                 continue

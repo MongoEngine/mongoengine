@@ -1667,6 +1667,48 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(p.owns[0], o)
         self.assertEquals(o.owner, p)
 
+    def test_circular_reference_deltas_2(self):
+
+        class Person( Document ):
+           name = StringField()
+           owns = ListField( ReferenceField( 'Organization' ) )
+           employer = ReferenceField( 'Organization' )
+
+        class Organization( Document ):
+           name = StringField()
+           owner = ReferenceField( 'Person' )
+           employees = ListField( ReferenceField( 'Person' ) )
+
+        Person.drop_collection()
+        Organization.drop_collection()
+
+        person = Person( name="owner" )
+        person.save()
+
+        employee = Person( name="employee" )
+        employee.save()
+
+        organization = Organization( name="company" )
+        organization.save()
+
+        person.owns.append( organization )
+        organization.owner = person
+
+        organization.employees.append( employee )
+        employee.employer = organization
+
+        person.save()
+        organization.save()
+        employee.save()
+
+        p = Person.objects.get(name="owner")
+        e = Person.objects.get(name="employee")
+        o = Organization.objects.first()
+
+        self.assertEquals(p.owns[0], o)
+        self.assertEquals(o.owner, p)
+        self.assertEquals(e.employer, o)
+
     def test_delta(self):
 
         class Doc(Document):
