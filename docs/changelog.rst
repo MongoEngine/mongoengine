@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Changes in 0.6.X
-================
+Changes in 0.6.12
+=================
 - Fixes scalar lookups for primary_key
 - Fixes error with _delta handling DBRefs
 
