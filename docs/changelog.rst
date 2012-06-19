@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixed map_field embedded db_field issue
 - Fixed .save() _delta issue with DbRefs
 - Fixed Django TestCase
 - Added cmp to Embedded Document

@@ -620,6 +620,7 @@ class QuerySet(object):
                         "Can't use index on unsubscriptable field (%s)" % err)
                 fields.append(field_name)
                 continue
+
             if field is None:
                 # Look up first field from the document
                 if field_name == 'pk':
@@ -637,8 +638,11 @@ class QuerySet(object):
                 from mongoengine.fields import ReferenceField, GenericReferenceField
                 if isinstance(field, (ReferenceField, GenericReferenceField)):
                     raise InvalidQueryError('Cannot perform join in mongoDB: %s' % '__'.join(parts))
-                # Look up subfield on the previous field
-                new_field = field.lookup_member(field_name)
+                if getattr(field, 'field', None):
+                    new_field = field.field.lookup_member(field_name)
+                else:
+                   # Look up subfield on the previous field
+                    new_field = field.lookup_member(field_name)
                 from base import ComplexBaseField
                 if not new_field and isinstance(field, ComplexBaseField):
                     fields.append(field_name)
