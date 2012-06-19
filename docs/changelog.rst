@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Changes in 0.6.X
-================
+Changes in 0.6.11
+==================
 - Fixed inconsistency handling None values field attrs
 - Fixed map_field embedded db_field issue
 - Fixed .save() _delta issue with DbRefs
