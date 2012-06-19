@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixed .save() _delta issue with DbRefs
+- Fixed Django TestCase
 - Added cmp to Embedded Document
 - Added PULL reverse_delete_rule
 - Fixed CASCADE delete bug
@@ -317,4 +319,4 @@ Changes in v0.1.2
 
 Changes in v0.1.1
 =================
-- Documents may now use capped collections
+- 
