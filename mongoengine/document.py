@@ -87,7 +87,7 @@ class Document(BaseDocument):
     system.
 
     By default, _types will be added to the start of every index (that
-    doesn't contain a list) if allow_inheritence is True. This can be
+    doesn't contain a list) if allow_inheritance is True. This can be
     disabled by either setting types to False on the specific index or
     by setting index_types to False on the meta dictionary for the document.
     """
