@@ -369,7 +369,7 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_string(data)
 
     def __set__(self, instance, value):
-        value = self._convert_from_datetime(value)
+        value = self._convert_from_datetime(value) if value else value
         return super(ComplexDateTimeField, self).__set__(instance, value)
 
     def validate(self, value):

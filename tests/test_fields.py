@@ -82,7 +82,6 @@ class FieldTest(unittest.TestCase):
 
         # Retrive data from db and verify it.
         ret = HandleNoneFields.objects.all()[0]
-
         self.assertEqual(ret.str_fld, None)
         self.assertEqual(ret.int_fld, None)
         self.assertEqual(ret.flt_fld, None)
