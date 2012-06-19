@@ -1496,8 +1496,6 @@ class QuerySet(object):
         def lookup(obj, name):
             chunks = name.split('__')
             for chunk in chunks:
-                if hasattr(obj, '_db_field_map'):
-                    chunk = obj._db_field_map.get(chunk, chunk)
                 obj = getattr(obj, chunk)
             return obj
 

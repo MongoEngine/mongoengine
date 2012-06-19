@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Fixes scalar lookups for primary_key
 - Fixes error with _delta handling DBRefs
 
 Changes in 0.6.11
