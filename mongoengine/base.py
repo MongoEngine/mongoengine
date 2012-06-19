@@ -1043,18 +1043,12 @@ Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, error
             for path in set_fields:
                 parts = path.split('.')
                 d = doc
-                dbref = False
                 for p in parts:
-                    if isinstance(d, DBRef):
-                        dbref = True
-                    elif hasattr(d, '__getattr__'):
-                        d = getattr(p, d)
-                    elif p.isdigit():
+                    if p.isdigit():
                         d = d[int(p)]
                     else:
                         d = d.get(p)
-                if not dbref:
-                    set_data[path] = d
+                set_data[path] = d
         else:
             set_data = doc
             if '_id' in set_data:
