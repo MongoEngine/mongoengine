@@ -798,7 +798,6 @@ class BaseDocument(object):
                     dynamic_data[key] = value
         else:
             for key, value in values.items():
-                key = self._reverse_db_field_map.get(key, key)
                 setattr(self, key, value)
 
         # Set any get_fieldname_display methods
@@ -957,6 +956,8 @@ class BaseDocument(object):
                 try:
                     data[field_name] = (value if value is None
                                     else field.to_python(value))
+                    if field_name != field.db_field:
+                        del data[field.db_field]
                 except (AttributeError, ValueError), e:
                     errors_dict[field_name] = e
             elif field.default:

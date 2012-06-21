@@ -683,6 +683,29 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEquals(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEquals(Person.objects.get(name="Fred").rank, "Private")
+    
+    def test_db_embedded_doc_field_load(self):
+        """Ensure we load embedded document data correctly
+        """
+        class Rank(EmbeddedDocument):
+            title = StringField(required=True)
+
+        class Person(Document):
+            name = StringField(required=True)
+            rank_ = EmbeddedDocumentField(Rank, required=False, db_field='rank')
+
+            @property
+            def rank(self):
+                return self.rank_.title if self.rank_ is not None else "Private"
+
+        Person.drop_collection()
+
+        Person(name="Jack", rank_=Rank(title="Corporal")).save()
+
+        Person(name="Fred").save()
+
+        self.assertEquals(Person.objects.get(name="Jack").rank, "Corporal")
+        self.assertEquals(Person.objects.get(name="Fred").rank, "Private")
 
     def test_explicit_geo2d_index(self):
         """Ensure that geo2d indexes work when created via meta[indexes]
