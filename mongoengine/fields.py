@@ -49,10 +49,13 @@ class StringField(BaseField):
         super(StringField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        return unicode(value)
+        if isinstance(value, unicode):
+            return value
+        else:
+            return value.decode('utf-8')
 
     def validate(self, value):
-        if not isinstance(value, (str, unicode)):
+        if not isinstance(value, basestring):
             self.error('StringField only accepts string values')
 
         if self.max_length is not None and len(value) > self.max_length:
