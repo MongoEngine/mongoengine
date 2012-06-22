@@ -341,6 +341,7 @@ class QuerySet(object):
         self._timeout = True
         self._class_check = True
         self._slave_okay = False
+        self._iter = False
         self._scalar = []
 
         # If inheritance is allowed, only return instances and instances of
@@ -953,6 +954,7 @@ class QuerySet(object):
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
+        self._iter = True
         try:
             if self._limit == 0:
                 raise StopIteration
@@ -969,6 +971,7 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
+        self._iter = False
         self._cursor.rewind()
 
     def count(self):
@@ -1808,21 +1811,24 @@ class QuerySet(object):
         return data
 
     def __repr__(self):
-        limit = REPR_OUTPUT_SIZE + 1
-        start = (0 if self._skip is None else self._skip)
-        if self._limit is None:
-            stop = start + limit
-        if self._limit is not None:
-            if self._limit - start > limit:
-                stop = start + limit
-            else:
-                stop = self._limit
-        try:
-            data = list(self[start:stop])
-        except pymongo.errors.InvalidOperation:
-            return ".. queryset mid-iteration .."
+        """Provides the string representation of the QuerySet
+
+        .. versionchanged:: 0.6.13 Now doesnt modify the cursor
+        """
+
+        if self._iter:
+            return '.. queryset mid-iteration ..'
+
+        data = []
+        for i in xrange(REPR_OUTPUT_SIZE + 1):
+            try:
+                data.append(self.next())
+            except StopIteration:
+                break
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = "...(remaining elements truncated)..."
+
+        self.rewind()
         return repr(data)
 
     def select_related(self, max_depth=1):

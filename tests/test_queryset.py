@@ -636,17 +636,38 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(people1, people2)
         self.assertEqual(people1, people3)
 
-    def test_repr_iteration(self):
-        """Ensure that QuerySet __repr__ can handle loops
-        """
-        self.Person(name='Person 1').save()
-        self.Person(name='Person 2').save()
+    def test_repr(self):
+        """Test repr behavior isnt destructive"""
 
-        queryset = self.Person.objects
-        self.assertEquals('[<Person: Person object>, <Person: Person object>]', repr(queryset))
-        for person in queryset:
-            self.assertEquals('.. queryset mid-iteration ..', repr(queryset))
+        class Doc(Document):
+            number = IntField()
 
+            def __repr__(self):
+               return "<Doc: %s>" % self.number
+
+        Doc.drop_collection()
+
+        for i in xrange(1000):
+            Doc(number=i).save()
+
+        docs = Doc.objects.order_by('number')
+
+        self.assertEquals(docs.count(), 1000)
+        self.assertEquals(len(docs), 1000)
+
+        docs_string = "%s" % docs
+        self.assertTrue("Doc: 0" in docs_string)
+
+        self.assertEquals(docs.count(), 1000)
+        self.assertEquals(len(docs), 1000)
+
+        # Limit and skip
+        self.assertEquals('[<Doc: 1>, <Doc: 2>, <Doc: 3>]', "%s" % docs[1:4])
+
+        self.assertEquals(docs.count(), 3)
+        self.assertEquals(len(docs), 3)
+        for doc in docs:
+            self.assertEqual('.. queryset mid-iteration ..', repr(docs))
 
     def test_regex_query_shortcuts(self):
         """Ensure that contains, startswith, endswith, etc work.

@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+
+- Fixes __repr__ modifying the cursor
+
 Changes in 0.6.12
 =================
 - Fixes scalar lookups for primary_key
