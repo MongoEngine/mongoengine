@@ -4,7 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
-
+- Fixed StringField unicode issue
 - Fixes __repr__ modifying the cursor
 
 Changes in 0.6.12
