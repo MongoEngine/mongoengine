@@ -957,6 +957,8 @@ class BaseDocument(object):
                 try:
                     data[field_name] = (value if value is None
                                     else field.to_python(value))
+                    if field_name != field.db_field:
+                        del data[field.db_field]
                 except (AttributeError, ValueError), e:
                     errors_dict[field_name] = e
             elif field.default:

@@ -2,8 +2,9 @@
 Changelog
 =========
 
-Changes in 0.6.X
+Changes in 0.6.13
 ================
+- Fixed EmbeddedDocument db_field validation issue
 - Fixed StringField unicode issue
 - Fixes __repr__ modifying the cursor
 

@@ -1282,6 +1282,22 @@ class DocumentTest(unittest.TestCase):
         comment.date = datetime.now()
         comment.validate()
 
+    def test_embedded_db_field_validate(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField()
+
+        class Doc(Document):
+            e = EmbeddedDocumentField(SubDoc, db_field='eb')
+
+        Doc.drop_collection()
+
+        Doc(e=SubDoc(val=15)).save()
+
+        doc = Doc.objects.first()
+        doc.validate()
+        self.assertEquals([None, 'e'], doc._data.keys())
+
     def test_save(self):
         """Ensure that a document may be saved in the database.
         """
