@@ -1373,7 +1373,7 @@ class QuerySet(object):
                 cleaned_fields = []
                 for field in fields:
                     append_field = True
-                    if isinstance(field, str):
+                    if isinstance(field, basestring):
                         # Convert the S operator to $
                         if field == 'S':
                             field = '$'
