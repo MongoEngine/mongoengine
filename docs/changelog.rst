@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.14
 =================
+- Exclude tests from installation
 - Allow tuples for index meta
 - Fixed use of str in instance checks
 - Fixed unicode support in transform update
