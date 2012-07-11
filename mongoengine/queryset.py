@@ -702,7 +702,7 @@ class QuerySet(object):
                 cleaned_fields = []
                 for field in fields:
                     append_field = True
-                    if isinstance(field, str):
+                    if isinstance(field, basestring):
                         parts.append(field)
                         append_field = False
                     else:

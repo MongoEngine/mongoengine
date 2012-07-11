@@ -838,11 +838,10 @@ class BinaryField(BaseField):
         return Binary(value)
 
     def to_python(self, value):
-        # Returns str not unicode as this is binary data
-        return str(value)
+        return "%s" % value
 
     def validate(self, value):
-        if not isinstance(value, str):
+        if not isinstance(value, basestring):
             self.error('BinaryField only accepts string values')
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
@@ -1014,7 +1013,7 @@ class FileField(BaseField):
 
     def __set__(self, instance, value):
         key = self.name
-        if (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or isinstance(value, str):
+        if (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or isinstance(value, basestring):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
