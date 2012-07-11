@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.14
 =================
+- Fixed error dict with nested validation
 - Fixed Int/Float fields and not equals None
 - Exclude tests from installation
 - Allow tuples for index meta
