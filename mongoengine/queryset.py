@@ -492,6 +492,7 @@ class QuerySet(object):
             spec = {'fields': spec}
 
         index_list = []
+        direction = None
         use_types = doc_cls._meta.get('allow_inheritance', True)
         for key in spec['fields']:
             # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *

@@ -706,7 +706,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             meta['queryset_class'] = manager.queryset_class
         new_class.objects = manager
 
-        indicies = meta['indexes'] + abstract_base_indexes
+        indicies = [meta['indexes']] + abstract_base_indexes
         user_indexes = [QuerySet._build_index_spec(new_class, spec)
                         for spec in indicies] + base_indexes
         new_class._meta['indexes'] = user_indexes
