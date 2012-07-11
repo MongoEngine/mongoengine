@@ -167,6 +167,9 @@ class IntField(BaseField):
             self.error('Integer value is too large')
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        
         return int(value)
 
 
@@ -194,6 +197,9 @@ class FloatField(BaseField):
             self.error('Float value is too large')
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        
         return float(value)
 
 
