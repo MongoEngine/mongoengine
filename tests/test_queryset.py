@@ -1520,7 +1520,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def test_update_push_and_pull(self):
+    def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """
         class BlogPost(Document):
@@ -1552,6 +1552,23 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.objects(slug="test").update(__raw__={"$addToSet": {"tags": {"$each": ["code", "mongodb", "code"]}}})
         post.reload()
         self.assertEqual(post.tags, ["code", "mongodb"])
+
+    def test_add_to_set_each(self):
+        class Item(Document):
+            name = StringField(required=True)
+            description = StringField(max_length=50)
+            parents = ListField(ReferenceField('self'))
+
+        Item.drop_collection()
+
+        item = Item(name='test item').save()
+        parent_1 = Item(name='parent 1').save()
+        parent_2 = Item(name='parent 2').save()
+
+        item.update(add_to_set__parents=[parent_1, parent_2, parent_1])
+        item.reload()
+
+        self.assertEqual([parent_1, parent_2], item.parents)
 
     def test_pull_nested(self):
 

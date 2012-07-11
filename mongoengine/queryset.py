@@ -1387,11 +1387,16 @@ class QuerySet(object):
                 # Convert value to proper value
                 field = cleaned_fields[-1]
 
-                if op in (None, 'set', 'push', 'pull', 'addToSet'):
+                if op in (None, 'set', 'push', 'pull'):
                     if field.required or value is not None:
                         value = field.prepare_query_value(op, value)
                 elif op in ('pushAll', 'pullAll'):
                     value = [field.prepare_query_value(op, v) for v in value]
+                elif op == 'addToSet':
+                    if isinstance(value, (list, tuple, set)):
+                        value = [field.prepare_query_value(op, v) for v in value]
+                    elif field.required or value is not None:
+                        value = field.prepare_query_value(op, value)
 
             key = '.'.join(parts)
 
@@ -1407,6 +1412,8 @@ class QuerySet(object):
                 parts.reverse()
                 for key in parts:
                     value = {key: value}
+            elif op == 'addToSet' and isinstance(value, list):
+                value = {key: {"$each": value}}
             else:
                 value = {key: value}
             key = '$' + op
