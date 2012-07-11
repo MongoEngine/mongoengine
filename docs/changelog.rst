@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.6.14
 =================
+- Allow tuples for index meta
+- Fixed use of str in instance checks
 - Fixed unicode support in transform update
 - Added support for add_to_set and each
 
