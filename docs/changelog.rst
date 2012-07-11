@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.14
 =================
+- Fixed unicode support in transform update
 - Added support for add_to_set and each
 
 Changes in 0.6.13
