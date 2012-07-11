@@ -267,8 +267,10 @@ class ComplexBaseField(BaseField):
         if instance is None:
             # Document class being used rather than a document object
             return self
-
-        if not self._dereference and instance._initialised:
+        from fields import GenericReferenceField, ReferenceField
+        dereference = self.field is None or isinstance(self.field,
+            (GenericReferenceField, ReferenceField))
+        if not self._dereference and instance._initialised and dereference:
             from dereference import DeReference
             self._dereference = DeReference()  # Cached
             instance._data[self.name] = self._dereference(
