@@ -127,6 +127,19 @@ class FieldTest(unittest.TestCase):
 
         self.assertRaises(ValidationError, ret.validate)
 
+    def test_int_and_float_ne_operator(self):
+        class TestDocument(Document):
+            int_fld = IntField()
+            float_fld = FloatField()
+
+        TestDocument.drop_collection()
+
+        TestDocument(int_fld=None, float_fld=None).save()
+        TestDocument(int_fld=1, float_fld=1).save()
+
+        self.assertEqual(1, TestDocument.objects(int_fld__ne=None).count())
+        self.assertEqual(1, TestDocument.objects(float_fld__ne=None).count())
+
     def test_object_id_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """
