@@ -62,28 +62,31 @@ not provided. Default values may optionally be a callable, which will be called
 to retrieve the value (such as in the above example). The field types available
 are as follows:
 
-* :class:`~mongoengine.StringField`
-* :class:`~mongoengine.URLField`
-* :class:`~mongoengine.EmailField`
-* :class:`~mongoengine.IntField`
-* :class:`~mongoengine.FloatField`
-* :class:`~mongoengine.DecimalField`
-* :class:`~mongoengine.DateTimeField`
+* :class:`~mongoengine.BinaryField`
+* :class:`~mongoengine.BooleanField`
 * :class:`~mongoengine.ComplexDateTimeField`
-* :class:`~mongoengine.ListField`
-* :class:`~mongoengine.SortedListField`
+* :class:`~mongoengine.DateTimeField`
+* :class:`~mongoengine.DecimalField`
 * :class:`~mongoengine.DictField`
+* :class:`~mongoengine.DynamicField`
+* :class:`~mongoengine.EmailField`
+* :class:`~mongoengine.EmbeddedDocumentField`
+* :class:`~mongoengine.FileField`
+* :class:`~mongoengine.FloatField`
+* :class:`~mongoengine.GenericEmbeddedDocumentField`
+* :class:`~mongoengine.GenericReferenceField`
+* :class:`~mongoengine.GeoPointField`
+* :class:`~mongoengine.ImageField`
+* :class:`~mongoengine.IntField`
+* :class:`~mongoengine.ListField`
 * :class:`~mongoengine.MapField`
 * :class:`~mongoengine.ObjectIdField`
 * :class:`~mongoengine.ReferenceField`
-* :class:`~mongoengine.GenericReferenceField`
-* :class:`~mongoengine.EmbeddedDocumentField`
-* :class:`~mongoengine.GenericEmbeddedDocumentField`
-* :class:`~mongoengine.BooleanField`
-* :class:`~mongoengine.FileField`
-* :class:`~mongoengine.BinaryField`
-* :class:`~mongoengine.GeoPointField`
 * :class:`~mongoengine.SequenceField`
+* :class:`~mongoengine.SortedListField`
+* :class:`~mongoengine.StringField`
+* :class:`~mongoengine.URLField`
+* :class:`~mongoengine.UUIDField`
 
 Field arguments
 ---------------
