@@ -405,11 +405,11 @@ class ComplexBaseField(BaseField):
             for k, v in sequence:
                 try:
                     self.field._validate(v)
-                except (ValidationError, AssertionError), error:
-                    if hasattr(error, 'errors'):
-                        errors[k] = error.errors
-                    else:
-                        errors[k] = error
+                except ValidationError, error:
+                    errors[k] = error.errors or error
+                except (ValueError, AssertionError), error:
+                    errors[k] = error
+
             if errors:
                 field_class = self.field.__class__.__name__
                 self.error('Invalid %s item (%s)' % (field_class, value),
