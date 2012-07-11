@@ -477,7 +477,10 @@ class GenericEmbeddedDocumentField(BaseField):
 
 
 class DynamicField(BaseField):
-    """Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
+    """A tryly dynamic field type capable of handling different and varying
+    types of data.
+
+    Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
     def to_mongo(self, value):
         """Convert a Python type to a MongoDBcompatible type.
