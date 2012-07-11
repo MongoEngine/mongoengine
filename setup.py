@@ -35,7 +35,7 @@ CLASSIFIERS = [
 
 setup(name='mongoengine',
       version=VERSION,
-      packages=find_packages(),
+      packages=find_packages(exclude=('tests',)),
       author='Harry Marr',
       author_email='harry.marr@{nospam}gmail.com',
       maintainer="Ross Lawley",
