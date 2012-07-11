@@ -263,7 +263,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'ordering': [], # default ordering applied at runtime
             'indexes': [], # indexes to be ensured at runtime
             'id_field': id_field,
-            'index_background': False,
+            'index_background': True,
             'index_drop_dups': False,
             'index_opts': {},
             'queryset_class': QuerySet,

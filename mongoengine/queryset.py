@@ -275,6 +275,9 @@ class QuerySet(object):
     providing :class:`~mongoengine.Document` objects as the results.
     """
 
+    _index_specs = {}
+    _allow_index_creation = True
+
     def __init__(self, document, collection):
         self._document = document
         self._collection_obj = collection
@@ -388,20 +391,38 @@ class QuerySet(object):
         if not self._accessed_collection:
             self._accessed_collection = True
 
-            background = self._document._meta.get('index_background', False)
+            background = self._document._meta.get('index_background', True)
             drop_dups = self._document._meta.get('index_drop_dups', False)
             index_opts = self._document._meta.get('index_options', {})
+
+            if self._collection.full_name not in QuerySet._index_specs:
+                index_info = self._collection.index_information()
+                QuerySet._index_specs[self._collection.full_name] = \
+                        [i['key'] for i in index_info.itervalues()]
+
+            index_specs = QuerySet._index_specs[self._collection.full_name]
 
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
-                    self._collection.ensure_index(key_or_list,
-                        background=background, **index_opts)
+                    if key_or_list not in index_specs:
+                        if QuerySet._allow_index_creation:
+                            self._collection.ensure_index(key_or_list,
+                                background=background, **index_opts)
+                        else:
+                            raise InvalidCollectionError("Index %s does not "
+                                                         "exist" % key_or_list)
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
-                self._collection.ensure_index(index, unique=True,
-                    background=background, drop_dups=drop_dups, **index_opts)
+                if index not in index_specs:
+                    if QuerySet._allow_index_creation:
+                        self._collection.ensure_index(index, unique=True,
+                            background=background, drop_dups=drop_dups,
+                            **index_opts)
+                    else:
+                        raise InvalidCollectionError("Index %s does not exist"
+                                                     % index)
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
