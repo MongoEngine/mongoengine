@@ -3161,5 +3161,19 @@ name: Field is required ("name")"""
         one = Doc.objects.filter(**{'hello world': 1}).count()
         self.assertEqual(1, one)
 
+
+    def test_fields_rewrite(self):
+        class BasePerson(Document):
+            name = StringField()
+            age = IntField()
+            meta = {'abstract': True}
+
+        class Person(BasePerson):
+            name = StringField(required=True)
+        
+
+        p = Person(age=15)
+        self.assertRaises(ValidationError, p.validate)
+
 if __name__ == '__main__':
     unittest.main()
