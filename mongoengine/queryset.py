@@ -813,11 +813,10 @@ class QuerySet(object):
             have to create a new document.
             Passes any write_options onto :meth:`~mongoengine.Document.save`
 
-        .. versionadded:: 0.3
-
         :param auto_save: if the object is to be saved automatically if not found.
 
-        .. versionadded:: 0.6
+        .. versionadded:: 0.3
+        .. versionupdated:: 0.6 - added `auto_save`
         """
         defaults = query.get('defaults', {})
         if 'defaults' in query:

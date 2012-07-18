@@ -810,7 +810,7 @@ class FieldTest(unittest.TestCase):
         room = Room.objects.first().select_related()
         self.assertEquals(room.staffs_with_position[0]['staff'], sarah)
         self.assertEquals(room.staffs_with_position[1]['staff'], bob)
-    
+
     def test_document_reload_no_inheritance(self):
         class Foo(Document):
             meta = {'allow_inheritance': False}
@@ -841,3 +841,25 @@ class FieldTest(unittest.TestCase):
 
         self.assertEquals(type(foo.bar), Bar)
         self.assertEquals(type(foo.baz), Baz)
+
+    def test_list_lookup_not_checked_in_map(self):
+        """Ensure we dereference list data correctly
+        """
+        class Comment(Document):
+            id = IntField(primary_key=True)
+            text = StringField()
+
+        class Message(Document):
+            id = IntField(primary_key=True)
+            comments = ListField(ReferenceField(Comment))
+
+        Comment.drop_collection()
+        Message.drop_collection()
+
+        c1 = Comment(id=0, text='zero').save()
+        c2 = Comment(id=1, text='one').save()
+        Message(id=1, comments=[c1, c2]).save()
+
+        msg = Message.objects.get(id=1)
+        self.assertEqual(0, msg.comments[0].id)
+        self.assertEqual(1, msg.comments[1].id)

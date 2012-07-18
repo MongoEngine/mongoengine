@@ -166,7 +166,7 @@ class DeReference(object):
             else:
                 data[k] = v
 
-            if k in self.object_map:
+            if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
             elif hasattr(v, '_fields'):
                 for field_name, field in v._fields.iteritems():
