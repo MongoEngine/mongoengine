@@ -20,10 +20,25 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
-           'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField']
+           'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField',
+           'ArbitraryField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
+class ArbitraryField(BaseField):
+    """
+        This is meant as a sentinal value in query parsing for cases where the
+        value can't be validated and anything should be accepted (e.g. inside
+        DictFields)
+
+        Don't use this to actually design a schema.
+    """
+
+    def validate(self, value):
+        return True
+
+    def to_python(self, value):
+        return value
 
 class StringField(BaseField):
     """A unicode string field.

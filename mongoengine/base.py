@@ -371,6 +371,7 @@ class BaseDocument(object):
             elif field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
 
+
     @classmethod
     def _get_subclasses(cls):
         """Return a dictionary of all subclasses (found recursively).
