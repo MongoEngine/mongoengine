@@ -1718,10 +1718,11 @@ class QuerySet(object):
     def _item_frequencies_map_reduce(self, field, normalize=False):
         map_func = """
             function() {
-                path = '{{~%(field)s}}'.split('.');
-                field = this;
+                var path = '{{~%(field)s}}'.split('.');
+                var field = this;
+                
                 for (p in path) {
-                    if (field)
+                    if (typeof field != 'undefined')
                        field = field[path[p]];
                     else
                        break;
@@ -1730,7 +1731,7 @@ class QuerySet(object):
                     field.forEach(function(item) {
                         emit(item, 1);
                     });
-                } else if (field) {
+                } else if (typeof field != 'undefined') {
                     emit(field, 1);
                 } else {
                     emit(null, 1);
@@ -1754,12 +1755,11 @@ class QuerySet(object):
             if isinstance(key, float):
                 if int(key) == key:
                     key = int(key)
-                key = str(key)
-            frequencies[key] = f.value
+            frequencies[key] = int(f.value)
 
         if normalize:
             count = sum(frequencies.values())
-            frequencies = dict([(k, v / count) for k, v in frequencies.items()])
+            frequencies = dict([(k, float(v) / count) for k, v in frequencies.items()])
 
         return frequencies
 
@@ -1767,31 +1767,28 @@ class QuerySet(object):
         """Uses exec_js to execute"""
         freq_func = """
             function(path) {
-                path = path.split('.');
+                var path = path.split('.');
 
-                if (options.normalize) {
-                    var total = 0.0;
-                    db[collection].find(query).forEach(function(doc) {
-                        field = doc;
-                        for (p in path) {
-                            if (field)
-                                field = field[path[p]];
-                            else
-                                break;
-                        }
-                        if (field && field.constructor == Array) {
-                            total += field.length;
-                        } else {
-                            total++;
-                        }
-                    });
-                }
-
+                var total = 0.0;
+                db[collection].find(query).forEach(function(doc) {
+                    var field = doc;
+                    for (p in path) {
+                        if (field)
+                            field = field[path[p]];
+                         else
+                            break;
+                    }
+                    if (field && field.constructor == Array) {
+                       total += field.length;
+                    } else {
+                       total++;
+                    }
+                });
+                
                 var frequencies = {};
+                var types = {};
                 var inc = 1.0;
-                if (options.normalize) {
-                    inc /= total;
-                }
+
                 db[collection].find(query).forEach(function(doc) {
                     field = doc;
                     for (p in path) {
@@ -1806,17 +1803,28 @@ class QuerySet(object):
                         });
                     } else {
                         var item = field;
+                        types[item] = item;
                         frequencies[item] = inc + (isNaN(frequencies[item]) ? 0: frequencies[item]);
                     }
                 });
-                return frequencies;
+                return [total, frequencies, types];
             }
         """
-        data = self.exec_js(freq_func, field, normalize=normalize)
-        if 'undefined' in data:
-            data[None] = data['undefined']
-            del(data['undefined'])
-        return data
+        total, data, types = self.exec_js(freq_func, field)
+        values = dict([(types.get(k), int(v)) for k, v in data.iteritems()])
+        
+        if normalize:
+            values = dict([(k, float(v) / total) for k, v in values.items()])
+        
+        frequencies = {}
+        for k, v in values.iteritems():
+            if isinstance(k, float):
+                if int(k) == k:
+                    k = int(k)
+                    
+            frequencies[k] = v
+            
+        return frequencies
 
     def __repr__(self):
         """Provides the string representation of the QuerySet

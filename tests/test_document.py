@@ -3175,5 +3175,28 @@ name: Field is required ("name")"""
         p = Person(age=15)
         self.assertRaises(ValidationError, p.validate)
 
+    def test_cascated_save_wrong_reference(self):
+        class ADocument(Document):
+            val = IntField()
+
+        class BDocument(Document):
+            a = ReferenceField(ADocument)
+
+        ADocument.drop_collection()
+        BDocument.drop_collection()
+        
+        a = ADocument()
+        a.val = 15
+        a.save()
+        
+        b = BDocument()
+        b.a = a
+        b.save()
+
+        a.delete()
+
+        b = BDocument.objects.first()
+        b.save(cascade=True)
+        
 if __name__ == '__main__':
     unittest.main()
