@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.15
 =================
+- Fixed cascade save edge case
 - Fixed geo index creation through reference fields
 - Added support for args / kwargs when using @queryset_manager
 - Deref list custom id fix

@@ -248,11 +248,16 @@ class Document(BaseDocument):
         _refs = kwargs.get('_refs', []) or []
 
         for name, cls in self._fields.items():
+
             if not isinstance(cls, (ReferenceField, GenericReferenceField)):
                 continue
+
             ref = getattr(self, name)
             if not ref:
                 continue
+            if isinstance(ref, DBRef):
+                continue
+
             ref_id = "%s,%s" % (ref.__class__.__name__, str(ref._data))
             if ref and ref_id not in _refs:
                 _refs.append(ref_id)
