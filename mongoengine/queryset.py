@@ -483,7 +483,6 @@ class QuerySet(object):
             self._collection.ensure_index(index_spec,
                 background=background, **index_opts)
 
-
     @classmethod
     def _build_index_spec(cls, doc_cls, spec):
         """Build a PyMongo index spec from a MongoEngine index spec.

@@ -872,15 +872,26 @@ class DocumentTest(unittest.TestCase):
 
     def test_geo_indexes_recursion(self):
 
-        class User(Document):
-            channel = ReferenceField('Channel')
+        class Location(Document):
+            name = StringField()
             location = GeoPointField()
 
-        class Channel(Document):
-            user = ReferenceField('User')
-            location = GeoPointField()
+        class Parent(Document):
+            name = StringField()
+            location = ReferenceField(Location)
 
-        self.assertEquals(len(User._geo_indices()), 2)
+        Location.drop_collection()
+        Parent.drop_collection()
+
+        list(Parent.objects)
+
+        collection = Parent._get_collection()
+        info = collection.index_information()
+
+        self.assertFalse('location_2d' in info)
+
+        self.assertEquals(len(Parent._geo_indices()), 0)
+        self.assertEquals(len(Location._geo_indices()), 1)
 
     def test_covered_index(self):
         """Ensure that covered indexes can be used
@@ -3170,7 +3181,7 @@ name: Field is required ("name")"""
 
         class Person(BasePerson):
             name = StringField(required=True)
-        
+
 
         p = Person(age=15)
         self.assertRaises(ValidationError, p.validate)

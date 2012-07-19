@@ -1113,7 +1113,11 @@ Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, error
         inspected = inspected or []
         geo_indices = []
         inspected.append(cls)
+
+        from fields import EmbeddedDocumentField, GeoPointField
         for field in cls._fields.values():
+            if not isinstance(field, (EmbeddedDocumentField, GeoPointField)):
+                continue
             if hasattr(field, 'document_type'):
                 field_cls = field.document_type
                 if field_cls in inspected:
