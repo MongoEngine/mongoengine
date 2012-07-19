@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.15
 =================
+- Added support for args / kwargs when using @queryset_manager
 - Deref list custom id fix
 
 Changes in 0.6.14
