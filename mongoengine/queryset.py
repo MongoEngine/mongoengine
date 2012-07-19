@@ -4,6 +4,8 @@ import copy
 import itertools
 import operator
 
+from functools import partial
+
 import pymongo
 from bson.code import Code
 
@@ -1871,10 +1873,13 @@ class QuerySetManager(object):
         queryset_class = owner._meta['queryset_class'] or QuerySet
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
-            if self.get_queryset.func_code.co_argcount == 1:
+            var_names = self.get_queryset.func_code.co_varnames
+            if var_names == ('queryset',):
                 queryset = self.get_queryset(queryset)
-            else:
+            elif var_names == ('doc_cls', 'queryset',):
                 queryset = self.get_queryset(owner, queryset)
+            else:
+                queryset = partial(self.get_queryset, owner, queryset)
         return queryset
 
 

@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.15
+=================
+- Deref list custom id fix
+
 Changes in 0.6.14
 =================
 - Fixed error dict with nested validation
