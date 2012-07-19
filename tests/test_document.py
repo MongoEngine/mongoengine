@@ -3137,7 +3137,7 @@ class ValidatorErrorTest(unittest.TestCase):
         self.assertEquals(error.to_dict()['1st']['2nd']['3rd']['4th'],
                          'Inception')
 
-        self.assertEquals(error.message, "root:\n1st.2nd.3rd.4th: Inception")
+        self.assertEquals(error.message, "root(2nd.3rd.4th.Inception: ['1st'])")
 
     def test_model_validation(self):
 
@@ -3148,13 +3148,11 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             User().validate()
         except ValidationError, e:
-            expected_error_message = """Errors encountered validating document:
-username: Field is required ("username")
-name: Field is required ("name")"""
+            expected_error_message = """ValidationError(Field is required: ['username', 'name'])"""
             self.assertEquals(e.message, expected_error_message)
             self.assertEquals(e.to_dict(), {
-                'username': 'Field is required ("username")',
-                'name': u'Field is required ("name")'})
+                'username': 'Field is required',
+                'name': 'Field is required'})
 
     def test_spaces_in_keys(self):
 

@@ -1,4 +1,5 @@
 import warnings
+from collections import defaultdict
 
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
@@ -53,9 +54,9 @@ class ValidationError(AssertionError):
         message = super(ValidationError, self).__getattribute__(name)
         if name == 'message':
             if self.field_name:
-                message = '%s ("%s")' % (message, self.field_name)
+                message = '%s' % message
             if self.errors:
-                message = '%s:\n%s' % (message, self._format_errors())
+                message = '%s(%s)' % (message, self._format_errors())
         return message
 
     def _get_message(self):
@@ -93,17 +94,20 @@ class ValidationError(AssertionError):
     def _format_errors(self):
         """Returns a string listing all errors within a document"""
 
-        def format_error(field, value, prefix=''):
-            prefix = "%s.%s" % (prefix, field) if prefix else "%s" % field
+        def generate_key(value, prefix=''):
+            if isinstance(value, list):
+                value = ' '.join([generate_key(k) for k in value])
             if isinstance(value, dict):
+                value = ' '.join(
+                        [generate_key(v, k) for k, v in value.iteritems()])
 
-                return '\n'.join(
-                        [format_error(k, value[k], prefix) for k in value])
-            else:
-                return "%s: %s" % (prefix, value)
+            results = "%s.%s" % (prefix, value) if prefix else value
+            return results
 
-        return '\n'.join(
-                [format_error(k, v) for k, v in self.to_dict().items()])
+        error_dict = defaultdict(list)
+        for k, v in self.to_dict().iteritems():
+            error_dict[generate_key(v)].append(k)
+        return ' '.join(["%s: %s" % (k, v) for k, v in error_dict.iteritems()])
 
 
 _document_registry = {}
@@ -899,8 +903,7 @@ class BaseDocument(object):
                 errors[field.name] = ValidationError('Field is required',
                                                      field_name=field.name)
         if errors:
-            raise ValidationError('Errors encountered validating document',
-                                  errors=errors)
+            raise ValidationError('ValidationError', errors=errors)
 
     def to_mongo(self):
         """Return data dictionary ready for use with MongoDB.

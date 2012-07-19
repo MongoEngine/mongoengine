@@ -2122,7 +2122,7 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(1 in error_dict['comments'])
         self.assertTrue('content' in error_dict['comments'][1])
         self.assertEquals(error_dict['comments'][1]['content'],
-                          u'Field is required ("content")')
+                          'Field is required')
 
         post.comments[1].content = 'here we go'
         post.validate()
