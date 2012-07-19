@@ -1994,9 +1994,9 @@ class QuerySetTest(unittest.TestCase):
 
         # Check item_frequencies works for non-list fields
         def test_assertions(f):
-            self.assertEqual(set(['1', '2']), set(f.keys()))
-            self.assertEqual(f['1'], 1)
-            self.assertEqual(f['2'], 2)
+            self.assertEqual(set([1, 2]), set(f.keys()))
+            self.assertEqual(f[1], 1)
+            self.assertEqual(f[2], 2)
 
         exec_js = BlogPost.objects.item_frequencies('hits')
         map_reduce = BlogPost.objects.item_frequencies('hits', map_reduce=True)
@@ -2096,7 +2096,6 @@ class QuerySetTest(unittest.TestCase):
             data = EmbeddedDocumentField(Data, required=True)
             extra = EmbeddedDocumentField(Extra)
 
-
         Person.drop_collection()
 
         p = Person()
@@ -2113,6 +2112,52 @@ class QuerySetTest(unittest.TestCase):
 
         ot = Person.objects.item_frequencies('extra.tag', map_reduce=True)
         self.assertEquals(ot, {None: 1.0, u'friend': 1.0})
+
+    def test_item_frequencies_with_0_values(self):
+        class Test(Document):
+            val = IntField()
+
+        Test.drop_collection()
+        t = Test()
+        t.val = 0
+        t.save()
+
+        ot = Test.objects.item_frequencies('val', map_reduce=True)
+        self.assertEquals(ot, {0: 1})
+        ot = Test.objects.item_frequencies('val', map_reduce=False)
+        self.assertEquals(ot, {0: 1})
+
+    def test_item_frequencies_with_False_values(self):
+        class Test(Document):
+            val = BooleanField()
+
+        Test.drop_collection()
+        t = Test()
+        t.val = False
+        t.save()
+
+        ot = Test.objects.item_frequencies('val', map_reduce=True)
+        self.assertEquals(ot, {False: 1})
+        ot = Test.objects.item_frequencies('val', map_reduce=False)
+        self.assertEquals(ot, {False: 1})
+
+    def test_item_frequencies_normalize(self):
+        class Test(Document):
+            val = IntField()
+
+        Test.drop_collection()
+
+        for i in xrange(50):
+            Test(val=1).save()
+
+        for i in xrange(20):
+            Test(val=2).save()
+
+        freqs = Test.objects.item_frequencies('val', map_reduce=False, normalize=True)
+        self.assertEquals(freqs, {1: 50.0/70, 2: 20.0/70})
+
+        freqs = Test.objects.item_frequencies('val', map_reduce=True, normalize=True)
+        self.assertEquals(freqs, {1: 50.0/70, 2: 20.0/70})
 
     def test_average(self):
         """Ensure that field can be averaged correctly.

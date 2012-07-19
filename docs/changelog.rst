@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.15
 =================
+- Added support for null / zero / false values in item_frequencies
 - Fixed cascade save edge case
 - Fixed geo index creation through reference fields
 - Added support for args / kwargs when using @queryset_manager
