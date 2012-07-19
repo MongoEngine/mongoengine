@@ -358,24 +358,6 @@ class FieldTest(unittest.TestCase):
         self.assertNotEquals(log.date, d1)
         self.assertEquals(log.date, d2)
 
-        # Pre UTC microseconds above 1000 is wonky.
-        # log.date has an invalid microsecond value so I can't construct
-        # a date to compare.
-        #
-        # However, the timedelta is predicable with pre UTC timestamps
-        # It always adds 16 seconds and [777216-776217] microseconds
-        for i in xrange(1001, 3113, 33):
-            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i)
-            log.date = d1
-            log.save()
-            log.reload()
-            self.assertNotEquals(log.date, d1)
-
-            delta = log.date - d1
-            self.assertEquals(delta.seconds, 16)
-            microseconds = 777216 - (i % 1000)
-            self.assertEquals(delta.microseconds, microseconds)
-
         LogEntry.drop_collection()
 
     def test_complexdatetime_storage(self):
