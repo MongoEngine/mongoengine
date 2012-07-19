@@ -804,7 +804,6 @@ class BaseDocument(object):
                     dynamic_data[key] = value
         else:
             for key, value in values.items():
-                key = self._reverse_db_field_map.get(key, key)
                 setattr(self, key, value)
 
         # Set any get_fieldname_display methods
