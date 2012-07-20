@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime
+import bson
 import pymongo
 
 from mongoengine import *
@@ -7,7 +8,7 @@ from mongoengine.connection import _get_db
 
 
 class DocumentTest(unittest.TestCase):
-    
+
     def setUp(self):
         connect(db='mongoenginetest')
         self.db = _get_db()
@@ -38,7 +39,7 @@ class DocumentTest(unittest.TestCase):
             name = name_field
             age = age_field
             non_field = True
-        
+
         self.assertEqual(Person._fields['name'], name_field)
         self.assertEqual(Person._fields['age'], age_field)
         self.assertFalse('non_field' in Person._fields)
@@ -60,7 +61,7 @@ class DocumentTest(unittest.TestCase):
 
         mammal_superclasses = {'Animal': Animal}
         self.assertEqual(Mammal._superclasses, mammal_superclasses)
-        
+
         dog_superclasses = {
             'Animal': Animal,
             'Animal.Mammal': Mammal,
@@ -68,7 +69,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Dog._superclasses, dog_superclasses)
 
     def test_get_subclasses(self):
-        """Ensure that the correct list of subclasses is retrieved by the 
+        """Ensure that the correct list of subclasses is retrieved by the
         _get_subclasses method.
         """
         class Animal(Document): pass
@@ -78,15 +79,15 @@ class DocumentTest(unittest.TestCase):
         class Dog(Mammal): pass
 
         mammal_subclasses = {
-            'Animal.Mammal.Dog': Dog, 
+            'Animal.Mammal.Dog': Dog,
             'Animal.Mammal.Human': Human
         }
         self.assertEqual(Mammal._get_subclasses(), mammal_subclasses)
-        
+
         animal_subclasses = {
             'Animal.Fish': Fish,
             'Animal.Mammal': Mammal,
-            'Animal.Mammal.Dog': Dog, 
+            'Animal.Mammal.Dog': Dog,
             'Animal.Mammal.Human': Human
         }
         self.assertEqual(Animal._get_subclasses(), animal_subclasses)
@@ -124,7 +125,7 @@ class DocumentTest(unittest.TestCase):
 
         self.assertTrue('name' in Employee._fields)
         self.assertTrue('salary' in Employee._fields)
-        self.assertEqual(Employee._meta['collection'], 
+        self.assertEqual(Employee._meta['collection'],
                          self.Person._meta['collection'])
 
         # Ensure that MRO error is not raised
@@ -146,7 +147,7 @@ class DocumentTest(unittest.TestCase):
             class Dog(Animal):
                 pass
         self.assertRaises(ValueError, create_dog_class)
-        
+
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name='dog')
         dog.save()
@@ -161,7 +162,7 @@ class DocumentTest(unittest.TestCase):
             class Employee(self.Person):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
-        
+
         # Test the same for embedded documents
         class Comment(EmbeddedDocument):
             content = StringField()
@@ -186,7 +187,7 @@ class DocumentTest(unittest.TestCase):
         class Person(Document):
             name = StringField()
             meta = {'collection': collection}
-        
+
         user = Person(name="Test User")
         user.save()
         self.assertTrue(collection in self.db.collection_names())
@@ -280,7 +281,7 @@ class DocumentTest(unittest.TestCase):
             tags = ListField(StringField())
             meta = {
                 'indexes': [
-                    '-date', 
+                    '-date',
                     'tags',
                     ('category', '-date')
                 ],
@@ -296,12 +297,12 @@ class DocumentTest(unittest.TestCase):
         list(BlogPost.objects)
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
+        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)]
                         in info)
         self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         # tags is a list field so it shouldn't have _types in the index
         self.assertTrue([('tags', 1)] in info)
-        
+
         class ExtendedBlogPost(BlogPost):
             title = StringField()
             meta = {'indexes': ['title']}
@@ -311,7 +312,7 @@ class DocumentTest(unittest.TestCase):
         list(ExtendedBlogPost.objects)
         info = ExtendedBlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)] 
+        self.assertTrue([('_types', 1), ('category', 1), ('addDate', -1)]
                         in info)
         self.assertTrue([('_types', 1), ('addDate', -1)] in info)
         self.assertTrue([('_types', 1), ('title', 1)] in info)
@@ -380,7 +381,7 @@ class DocumentTest(unittest.TestCase):
 
         class EmailUser(User):
             email = StringField()
-        
+
         user = User(username='test', name='test user')
         user.save()
 
@@ -391,20 +392,20 @@ class DocumentTest(unittest.TestCase):
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'test')
         self.assertTrue('username' not in user_son['_id'])
-        
+
         User.drop_collection()
-        
+
         user = User(pk='mongo', name='mongo user')
         user.save()
-        
+
         user_obj = User.objects.first()
         self.assertEqual(user_obj.id, 'mongo')
         self.assertEqual(user_obj.pk, 'mongo')
-        
+
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'mongo')
         self.assertTrue('username' not in user_son['_id'])
-        
+
         User.drop_collection()
 
     def test_creation(self):
@@ -457,18 +458,18 @@ class DocumentTest(unittest.TestCase):
         """
         class Comment(EmbeddedDocument):
             content = StringField()
-        
+
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
         self.assertFalse('collection' in Comment._meta)
-    
+
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.
         """
         class Comment(EmbeddedDocument):
             date = DateTimeField()
             content = StringField(required=True)
-        
+
         comment = Comment()
         self.assertRaises(ValidationError, comment.validate)
 
@@ -496,7 +497,7 @@ class DocumentTest(unittest.TestCase):
         # Test skipping validation on save
         class Recipient(Document):
             email = EmailField(required=True)
-        
+
         recipient = Recipient(email='root@localhost')
         self.assertRaises(ValidationError, recipient.save)
         try:
@@ -517,19 +518,19 @@ class DocumentTest(unittest.TestCase):
         """Ensure that a document may be saved with a custom _id.
         """
         # Create person object and save it to the database
-        person = self.Person(name='Test User', age=30, 
+        person = self.Person(name='Test User', age=30,
                              id='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
         collection = self.db[self.Person._meta['collection']]
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
-        
+
     def test_save_custom_pk(self):
         """Ensure that a document may be saved with a custom _id using pk alias.
         """
         # Create person object and save it to the database
-        person = self.Person(name='Test User', age=30, 
+        person = self.Person(name='Test User', age=30,
                              pk='497ce96f395f2f052a494fd4')
         person.save()
         # Ensure that the object is in the database with the correct _id
@@ -565,7 +566,7 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_save_embedded_document(self):
-        """Ensure that a document with an embedded document field may be 
+        """Ensure that a document with an embedded document field may be
         saved in the database.
         """
         class EmployeeDetails(EmbeddedDocument):
@@ -591,7 +592,7 @@ class DocumentTest(unittest.TestCase):
     def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.
         """
-        
+
         class BlogPost(Document):
             meta = {'collection': 'blogpost_1'}
             content = StringField()
@@ -610,8 +611,8 @@ class DocumentTest(unittest.TestCase):
         post_obj = BlogPost.objects.first()
 
         # Test laziness
-        self.assertTrue(isinstance(post_obj._data['author'], 
-                                   pymongo.dbref.DBRef))
+        self.assertTrue(isinstance(post_obj._data['author'],
+                                   bson.dbref.DBRef))
         self.assertTrue(isinstance(post_obj.author, self.Person))
         self.assertEqual(post_obj.author.name, 'Test User')
 

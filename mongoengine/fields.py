@@ -5,9 +5,9 @@ from operator import itemgetter
 
 import re
 import pymongo
-import pymongo.dbref
-import pymongo.son
-import pymongo.binary
+import bson.dbref
+import bson.son
+import bson.binary
 import datetime
 import decimal
 import gridfs
@@ -300,13 +300,13 @@ class ListField(BaseField):
 
         if isinstance(self.field, ReferenceField):
             referenced_type = self.field.document_type
-            # Get value from document instance if available 
+            # Get value from document instance if available
             value_list = instance._data.get(self.name)
             if value_list:
                 deref_list = []
                 for value in value_list:
                     # Dereference DBRefs
-                    if isinstance(value, (pymongo.dbref.DBRef)):
+                    if isinstance(value, (bson.dbref.DBRef)):
                         value = _get_db().dereference(value)
                         deref_list.append(referenced_type._from_son(value))
                     else:
@@ -319,7 +319,7 @@ class ListField(BaseField):
                 deref_list = []
                 for value in value_list:
                     # Dereference DBRefs
-                    if isinstance(value, (dict, pymongo.son.SON)):
+                    if isinstance(value, (dict, bson.son.SON)):
                         deref_list.append(self.field.dereference(value))
                     else:
                         deref_list.append(value)
@@ -444,7 +444,7 @@ class ReferenceField(BaseField):
         # Get value from document instance if available
         value = instance._data.get(self.name)
         # Dereference DBRefs
-        if isinstance(value, (pymongo.dbref.DBRef)):
+        if isinstance(value, (bson.dbref.DBRef)):
             value = _get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
@@ -466,13 +466,13 @@ class ReferenceField(BaseField):
 
         id_ = id_field.to_mongo(id_)
         collection = self.document_type._meta['collection']
-        return pymongo.dbref.DBRef(collection, id_)
+        return bson.dbref.DBRef(collection, id_)
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
     def validate(self, value):
-        assert isinstance(value, (self.document_type, pymongo.dbref.DBRef))
+        assert isinstance(value, (self.document_type, bson.dbref.DBRef))
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -490,7 +490,7 @@ class GenericReferenceField(BaseField):
             return self
 
         value = instance._data.get(self.name)
-        if isinstance(value, (dict, pymongo.son.SON)):
+        if isinstance(value, (dict, bson.son.SON)):
             instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
@@ -518,7 +518,7 @@ class GenericReferenceField(BaseField):
 
         id_ = id_field.to_mongo(id_)
         collection = document._meta['collection']
-        ref = pymongo.dbref.DBRef(collection, id_)
+        ref = bson.dbref.DBRef(collection, id_)
         return {'_cls': document.__class__.__name__, '_ref': ref}
 
     def prepare_query_value(self, op, value):
@@ -534,7 +534,7 @@ class BinaryField(BaseField):
         super(BinaryField, self).__init__(**kwargs)
 
     def to_mongo(self, value):
-        return pymongo.binary.Binary(value)
+        return bson.binary.Binary(value)
 
     def to_python(self, value):
         # Returns str not unicode as this is binary data
@@ -603,7 +603,7 @@ class GridFSProxy(object):
         if not self.newfile:
             self.new_file()
             self.grid_id = self.newfile._id
-        self.newfile.writelines(lines) 
+        self.newfile.writelines(lines)
 
     def read(self):
         try:
@@ -680,7 +680,7 @@ class FileField(BaseField):
     def validate(self, value):
         if value.grid_id is not None:
             assert isinstance(value, GridFSProxy)
-            assert isinstance(value.grid_id, pymongo.objectid.ObjectId)
+            assert isinstance(value.grid_id, bson.objectid.ObjectId)
 
 
 class GeoPointField(BaseField):

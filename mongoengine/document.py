@@ -40,16 +40,16 @@ class Document(BaseDocument):
     presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
     ``False`` in the :attr:`meta` dictionary.
 
-    A :class:`~mongoengine.Document` may use a **Capped Collection** by 
+    A :class:`~mongoengine.Document` may use a **Capped Collection** by
     specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
     dictionary. :attr:`max_documents` is the maximum number of documents that
-    is allowed to be stored in the collection, and :attr:`max_size` is the 
-    maximum size of the collection in bytes. If :attr:`max_size` is not 
-    specified and :attr:`max_documents` is, :attr:`max_size` defaults to 
+    is allowed to be stored in the collection, and :attr:`max_size` is the
+    maximum size of the collection in bytes. If :attr:`max_size` is not
+    specified and :attr:`max_documents` is, :attr:`max_size` defaults to
     10000000 bytes (10MB).
 
     Indexes may be created by specifying :attr:`indexes` in the :attr:`meta`
-    dictionary. The value should be a list of field names or tuples of field 
+    dictionary. The value should be a list of field names or tuples of field
     names. Index direction may be specified by prefixing the field names with
     a **+** or **-** sign.
     """
@@ -61,11 +61,11 @@ class Document(BaseDocument):
         document already exists, it will be updated, otherwise it will be
         created.
 
-        If ``safe=True`` and the operation is unsuccessful, an 
+        If ``safe=True`` and the operation is unsuccessful, an
         :class:`~mongoengine.OperationError` will be raised.
 
         :param safe: check if the operation succeeded before returning
-        :param force_insert: only try to create a new document, don't allow 
+        :param force_insert: only try to create a new document, don't allow
             updates of existing documents
         :param validate: validates the document; set to ``False`` for skiping
         """
@@ -123,9 +123,9 @@ class MapReduceDocument(object):
     """A document returned from a map/reduce query.
 
     :param collection: An instance of :class:`~pymongo.Collection`
-    :param key: Document/result key, often an instance of 
-                :class:`~pymongo.objectid.ObjectId`. If supplied as 
-                an ``ObjectId`` found in the given ``collection``, 
+    :param key: Document/result key, often an instance of
+                :class:`~bson.objectid.ObjectId`. If supplied as
+                an ``ObjectId`` found in the given ``collection``,
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.
 
@@ -140,7 +140,7 @@ class MapReduceDocument(object):
 
     @property
     def object(self):
-        """Lazy-load the object referenced by ``self.key``. ``self.key`` 
+        """Lazy-load the object referenced by ``self.key``. ``self.key``
         should be the ``primary_key``.
         """
         id_field = self._document()._meta['id_field']

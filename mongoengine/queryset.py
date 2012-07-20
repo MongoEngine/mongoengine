@@ -2,9 +2,9 @@ from connection import _get_db
 
 import pprint
 import pymongo
-import pymongo.code
-import pymongo.dbref
-import pymongo.objectid
+import bson.code
+import bson.dbref
+import bson.objectid
 import re
 import copy
 import itertools
@@ -424,7 +424,7 @@ class QuerySet(object):
             }
             if self._loaded_fields:
                 cursor_args['fields'] = self._loaded_fields
-            self._cursor_obj = self._collection.find(self._query, 
+            self._cursor_obj = self._collection.find(self._query,
                                                      **cursor_args)
             # Apply where clauses to cursor
             if self._where_clause:
@@ -476,8 +476,8 @@ class QuerySet(object):
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists', 'not']
         geo_operators = ['within_distance', 'within_box', 'near']
-        match_operators = ['contains', 'icontains', 'startswith', 
-                           'istartswith', 'endswith', 'iendswith', 
+        match_operators = ['contains', 'icontains', 'startswith',
+                           'istartswith', 'endswith', 'iendswith',
                            'exact', 'iexact']
 
         mongo_query = {}
@@ -563,8 +563,8 @@ class QuerySet(object):
                                               % self._document._class_name)
 
     def get_or_create(self, *q_objs, **query):
-        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of 
-        ``(object, created)``, where ``object`` is the retrieved or created object 
+        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
+        ``(object, created)``, where ``object`` is the retrieved or created object
         and ``created`` is a boolean specifying whether a new object was created. Raises
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` if multiple results are found.
@@ -667,8 +667,8 @@ class QuerySet(object):
     def __len__(self):
         return self.count()
 
-    def map_reduce(self, map_f, reduce_f, finalize_f=None, limit=None,
-                   scope=None, keep_temp=False):
+    def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
+                   scope=None):
         """Perform a map/reduce query using the current query spec
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
         it must be the last call made, as it does not return a maleable
@@ -678,52 +678,61 @@ class QuerySet(object):
         and :meth:`~mongoengine.tests.QuerySetTest.test_map_advanced`
         tests in ``tests.queryset.QuerySetTest`` for usage examples.
 
-        :param map_f: map function, as :class:`~pymongo.code.Code` or string
+        :param map_f: map function, as :class:`~bson.code.Code` or string
         :param reduce_f: reduce function, as
-                         :class:`~pymongo.code.Code` or string
+                         :class:`~bson.code.Code` or string
+        :param output: output collection name, if set to 'inline' will try to
+                       use :class:`~pymongo.collection.Collection.inline_map_reduce`
+                       This can also be a dictionary containing output options
+                       see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
         :param limit: number of objects from current query to provide
                       to map/reduce method
-        :param keep_temp: keep temporary table (boolean, default ``True``)
 
         Returns an iterator yielding
         :class:`~mongoengine.document.MapReduceDocument`.
 
-        .. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
-           :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-           PyMongo version **>= 1.2**.
+        .. note::
+
+            Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
+            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
+            PyMongo version **>= 1.11**.
+
+        .. versionchanged:: 0.5
+           - removed ``keep_temp`` keyword argument, which was only relevant
+             for MongoDB server versions older than 1.7.4
 
         .. versionadded:: 0.3
         """
         from document import MapReduceDocument
 
         if not hasattr(self._collection, "map_reduce"):
-            raise NotImplementedError("Requires MongoDB >= 1.1.1")
+            raise NotImplementedError("Requires MongoDB >= 1.7.1")
 
         map_f_scope = {}
-        if isinstance(map_f, pymongo.code.Code):
+        if isinstance(map_f, bson.code.Code):
             map_f_scope = map_f.scope
             map_f = unicode(map_f)
-        map_f = pymongo.code.Code(self._sub_js_fields(map_f), map_f_scope)
+        map_f = bson.code.Code(self._sub_js_fields(map_f), map_f_scope)
 
         reduce_f_scope = {}
-        if isinstance(reduce_f, pymongo.code.Code):
+        if isinstance(reduce_f, bson.code.Code):
             reduce_f_scope = reduce_f.scope
             reduce_f = unicode(reduce_f)
         reduce_f_code = self._sub_js_fields(reduce_f)
-        reduce_f = pymongo.code.Code(reduce_f_code, reduce_f_scope)
+        reduce_f = bson.code.Code(reduce_f_code, reduce_f_scope)
 
-        mr_args = {'query': self._query, 'keeptemp': keep_temp}
+        mr_args = {'query': self._query}
 
         if finalize_f:
             finalize_f_scope = {}
-            if isinstance(finalize_f, pymongo.code.Code):
+            if isinstance(finalize_f, bson.code.Code):
                 finalize_f_scope = finalize_f.scope
                 finalize_f = unicode(finalize_f)
             finalize_f_code = self._sub_js_fields(finalize_f)
-            finalize_f = pymongo.code.Code(finalize_f_code, finalize_f_scope)
+            finalize_f = bson.code.Code(finalize_f_code, finalize_f_scope)
             mr_args['finalize'] = finalize_f
 
         if scope:
@@ -732,8 +741,16 @@ class QuerySet(object):
         if limit:
             mr_args['limit'] = limit
 
-        results = self._collection.map_reduce(map_f, reduce_f, **mr_args)
-        results = results.find()
+        if output == 'inline' and not self._ordering:
+            map_reduce_function = 'inline_map_reduce'
+        else:
+            map_reduce_function = 'map_reduce'
+            mr_args['out'] = output
+
+        results = getattr(self._collection, map_reduce_function)(map_f, reduce_f, **mr_args)
+
+        if map_reduce_function == 'map_reduce':
+            results = results.find()
 
         if self._ordering:
             results = results.sort(self._ordering)
@@ -777,7 +794,7 @@ class QuerySet(object):
                 self._skip, self._limit = key.start, key.stop
             except IndexError, err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
-                # bin it, kill it. 
+                # bin it, kill it.
                 start = key.start or 0
                 if start >= 0 and key.stop >= 0 and key.step is None:
                     if start == key.stop:
@@ -933,7 +950,7 @@ class QuerySet(object):
         return mongo_update
 
     def update(self, safe_update=True, upsert=False, **update):
-        """Perform an atomic update on the fields matched by the query. When 
+        """Perform an atomic update on the fields matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe: check if the operation succeeded before returning
@@ -957,7 +974,7 @@ class QuerySet(object):
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
     def update_one(self, safe_update=True, upsert=False, **update):
-        """Perform an atomic update on first field matched by the query. When 
+        """Perform an atomic update on first field matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe: check if the operation succeeded before returning
@@ -985,8 +1002,8 @@ class QuerySet(object):
         return self
 
     def _sub_js_fields(self, code):
-        """When fields are specified with [~fieldname] syntax, where 
-        *fieldname* is the Python name of a field, *fieldname* will be 
+        """When fields are specified with [~fieldname] syntax, where
+        *fieldname* is the Python name of a field, *fieldname* will be
         substituted for the MongoDB name of the field (specified using the
         :attr:`name` keyword argument in a field's constructor).
         """
@@ -1009,9 +1026,9 @@ class QuerySet(object):
         options specified as keyword arguments.
 
         As fields in MongoEngine may use different names in the database (set
-        using the :attr:`db_field` keyword argument to a :class:`Field` 
+        using the :attr:`db_field` keyword argument to a :class:`Field`
         constructor), a mechanism exists for replacing MongoEngine field names
-        with the database field names in Javascript code. When accessing a 
+        with the database field names in Javascript code. When accessing a
         field, use square-bracket notation, and prefix the MongoEngine field
         name with a tilde (~).
 
@@ -1037,7 +1054,7 @@ class QuerySet(object):
             query['$where'] = self._where_clause
 
         scope['query'] = query
-        code = pymongo.code.Code(code, scope=scope)
+        code = bson.code.Code(code, scope=scope)
 
         db = _get_db()
         return db.eval(code, *fields)
