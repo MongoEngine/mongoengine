@@ -2,9 +2,14 @@
 Changelog
 =========
 
+
+Changes in 0.6.16
+=================
+- Fixed issue where db_alias wasn't inherited
+
 Changes in 0.6.15
 =================
-- Updated validation error message
+- Updated validation error messages
 - Added support for null / zero / false values in item_frequencies
 - Fixed cascade save edge case
 - Fixed geo index creation through reference fields
