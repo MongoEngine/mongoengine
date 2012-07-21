@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import itertools
 import urlparse
@@ -30,10 +31,10 @@ class GridFSStorage(Storage):
         """Deletes the specified file from the storage system.
         """
         if self.exists(name):
-            doc = self.document.objects.first()
+            doc = self._get_doc_with_name(name)
             field = getattr(doc, self.field)
-            self._get_doc_with_name(name).delete()  # Delete the FileField
-            field.delete()                          # Delete the FileDocument
+            field.delete()# Delete the FileField
+            doc.delete()# Delete the FileDocument
 
     def exists(self, name):
         """Returns True if a file referened by the given name already exists in the
