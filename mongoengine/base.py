@@ -198,7 +198,8 @@ class BaseField(object):
         """Descriptor for assigning a value to a field in a document.
         """
         instance._data[self.name] = value
-        instance._mark_as_changed(self.name)
+        if instance._initialised:
+            instance._mark_as_changed(self.name)
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
@@ -791,6 +792,8 @@ class BaseDocument(object):
 
         # Assign default values to instance
         for attr_name, field in self._fields.items():
+            if self._db_field_map.get(attr_name, attr_name) in values:
+                continue
             value = getattr(self, attr_name, None)
             setattr(self, attr_name, value)
 
@@ -821,6 +824,8 @@ class BaseDocument(object):
         signals.post_init.send(self.__class__, document=self)
 
     def __setattr__(self, name, value):
+        if not self._initialised:
+            return super(BaseDocument, self).__setattr__(name, value)
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
 
