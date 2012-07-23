@@ -1289,7 +1289,7 @@ class SequenceField(IntField):
             instance._data[self.name] = value
             instance._mark_as_changed(self.name)
 
-        return value
+        return int(value) if value else None
 
     def __set__(self, instance, value):
 
