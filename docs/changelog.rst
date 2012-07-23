@@ -27,7 +27,7 @@ Changes in 0.6.14
 - Added support for add_to_set and each
 
 Changes in 0.6.13
-================
+=================
 - Fixed EmbeddedDocument db_field validation issue
 - Fixed StringField unicode issue
 - Fixes __repr__ modifying the cursor

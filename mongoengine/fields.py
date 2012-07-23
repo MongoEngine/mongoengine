@@ -169,7 +169,7 @@ class IntField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return value
-        
+
         return int(value)
 
 
@@ -199,7 +199,7 @@ class FloatField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return value
-        
+
         return float(value)
 
 
@@ -529,6 +529,8 @@ class DynamicField(BaseField):
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
+
+    If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
