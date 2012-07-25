@@ -14,7 +14,7 @@ class FileDocument(Document):
     A document used to store a single file in GridFS.
     """
     file = FileField()
-    filename = StringField(unique = True)
+    filename = StringField()
     meta = {
         'indexes':['file'],
         }
@@ -116,6 +116,6 @@ class GridFSStorage(Storage):
     def _save(self, name, content):
         doc = self.document()
         getattr(doc, self.field).put(content, filename=name)
-        doc.save()
         doc.filename = name
+        doc.save()
         return name
