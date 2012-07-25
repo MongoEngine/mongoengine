@@ -10,10 +10,14 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 class FileDocument(Document):
-    """A document used to store a single file in GridFS.
+    """
+    A document used to store a single file in GridFS.
     """
     file = FileField()
-
+    filename = StringField(unique = True)
+    meta = {
+        'indexes':['file'],
+        }
 
 class GridFSStorage(Storage):
     """A custom storage backend to store files in GridFS
@@ -76,11 +80,15 @@ class GridFSStorage(Storage):
     def _get_doc_with_name(self, name):
         """Find the documents in the store with the given name
         """
-        docs = self.document.objects
-        doc = [d for d in docs if getattr(d, self.field).name == name]
-        if doc:
-            return doc[0]
-        else:
+        try:
+            doc = self.document.objects.get(filename = name)
+            try:
+                getattr(doc, self.field)
+                return doc
+            except:
+                doc.delete()
+                return None
+        except:
             return None
 
     def _open(self, name, mode='rb'):
@@ -109,5 +117,5 @@ class GridFSStorage(Storage):
         doc = self.document()
         getattr(doc, self.field).put(content, filename=name)
         doc.save()
-
+        doc.filename = name
         return name
