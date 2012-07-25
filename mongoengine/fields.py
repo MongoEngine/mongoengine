@@ -483,7 +483,7 @@ class GenericEmbeddedDocumentField(BaseField):
 
 
 class DynamicField(BaseField):
-    """A tryly dynamic field type capable of handling different and varying
+    """A truly dynamic field type capable of handling different and varying
     types of data.
 
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
