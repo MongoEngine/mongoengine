@@ -2228,28 +2228,28 @@ class QuerySetTest(unittest.TestCase):
             date = DateTimeField(default=datetime.now)
 
             @queryset_manager
-            def objects(doc_cls, queryset):
-                return queryset(deleted=False)
+            def objects(cls, qryset):
+                return qryset(deleted=False)
 
             @queryset_manager
-            def music_posts(doc_cls, queryset):
-                return queryset(tags='music', deleted=False).order_by('-date')
+            def music_posts(doc_cls, queryset, deleted=False):
+                return queryset(tags='music',
+                                deleted=deleted).order_by('date')
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(tags=['music', 'film'])
-        post1.save()
-        post2 = BlogPost(tags=['music'])
-        post2.save()
-        post3 = BlogPost(tags=['film', 'actors'])
-        post3.save()
-        post4 = BlogPost(tags=['film', 'actors'], deleted=True)
-        post4.save()
+        post1 = BlogPost(tags=['music', 'film']).save()
+        post2 = BlogPost(tags=['music']).save()
+        post3 = BlogPost(tags=['film', 'actors']).save()
+        post4 = BlogPost(tags=['film', 'actors', 'music'], deleted=True).save()
 
-        self.assertEqual([p.id for p in BlogPost.objects],
+        self.assertEqual([p.id for p in BlogPost.objects()],
                          [post1.id, post2.id, post3.id])
-        self.assertEqual([p.id for p in BlogPost.music_posts],
-                         [post2.id, post1.id])
+        self.assertEqual([p.id for p in BlogPost.music_posts()],
+                         [post1.id, post2.id])
+
+        self.assertEqual([p.id for p in BlogPost.music_posts(True)],
+                         [post4.id])
 
         BlogPost.drop_collection()
 

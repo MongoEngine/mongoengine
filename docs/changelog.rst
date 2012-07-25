@@ -3,6 +3,10 @@ Changelog
 =========
 
 
+Changes in 0.6.17
+=================
+- Fixed issue with custom queryset manager expecting explict variable names
+
 Changes in 0.6.16
 =================
 - Fixed issue where db_alias wasn't inherited

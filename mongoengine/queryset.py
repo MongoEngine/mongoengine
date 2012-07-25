@@ -1882,9 +1882,9 @@ class QuerySetManager(object):
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
             var_names = self.get_queryset.func_code.co_varnames
-            if var_names == ('queryset',):
+            if len(var_names) == 1:
                 queryset = self.get_queryset(queryset)
-            elif var_names == ('doc_cls', 'queryset',):
+            elif len(var_names) == 2:
                 queryset = self.get_queryset(owner, queryset)
             else:
                 queryset = partial(self.get_queryset, owner, queryset)
