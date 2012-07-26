@@ -1012,9 +1012,10 @@ Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, error
             field_list.update(self._dynamic_fields)
 
         for field_name in field_list:
+
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
-            field = getattr(self, field_name, None)
+            field = self._data.get(field_name, None)
             if hasattr(field, 'id'):
                 if field.id in inspected:
                     continue

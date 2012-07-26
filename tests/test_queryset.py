@@ -579,6 +579,64 @@ class QuerySetTest(unittest.TestCase):
         Blog.objects.insert([blog2, blog3], write_options={'continue_on_error': True})
         self.assertEqual(Blog.objects.count(), 3)
 
+    def test_get_changed_fields_query_count(self):
+
+        class Person(Document):
+            name = StringField()
+            owns = ListField(ReferenceField('Organization'))
+            projects = ListField(ReferenceField('Project'))
+
+        class Organization(Document):
+            name = StringField()
+            owner = ReferenceField('Person')
+            employees = ListField(ReferenceField('Person'))
+
+        class Project(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Organization.drop_collection()
+        Project.drop_collection()
+
+        r1 = Project(name="r1").save()
+        r2 = Project(name="r2").save()
+        r3 = Project(name="r3").save()
+        p1 = Person(name="p1", projects=[r1, r2]).save()
+        p2 = Person(name="p2", projects=[r2]).save()
+        o1 = Organization(name="o1", employees=[p1]).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            self.assertEqual(1, q)
+            fresh_o1._get_changed_fields()
+            self.assertEqual(1, q)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.save()
+
+            self.assertEquals(q, 2)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.save(cascade=False)
+
+            self.assertEquals(q, 2)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.employees.append(p2)
+            fresh_o1.save(cascade=False)
+
+            self.assertEquals(q, 3)
 
     def test_slave_okay(self):
         """Ensures that a query can take slave_okay syntax

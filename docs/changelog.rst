@@ -3,6 +3,10 @@ Changelog
 =========
 
 
+Changes in 0.6.18
+=================
+- Fixed recursion loading bug in _get_changed_fields
+
 Changes in 0.6.17
 =================
 - Fixed issue with custom queryset manager expecting explict variable names
