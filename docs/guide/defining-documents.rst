@@ -259,6 +259,35 @@ as the constructor's argument::
         content = StringField()
 
 
+.. _one-to-many-with-listfields:
+
+One to Many with ListFields
+'''''''''''''''''''''''''''
+
+If you are implementing a one to many relationship via a list of references,
+then the references are stored as DBRefs and to query you need to pass an
+instance of the object to the query::
+
+    class User(Document):
+        name = StringField()
+
+    class Page(Document):
+        content = StringField()
+        authors = ListField(ReferenceField(User))
+
+    bob = User(name="Bob Jones").save()
+    john = User(name="John Smith").save()
+
+    Page(content="Test Page", authors=[bob, john]).save()
+    Page(content="Another Page", authors=[john]).save()
+
+    # Find all pages Bob authored
+    Page.objects(authors__in=[bob])
+
+    # Find all pages that both Bob and John have authored
+    Page.objects(authors__all=[bob, john])
+
+
 Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
 By default, MongoDB doesn't check the integrity of your data, so deleting

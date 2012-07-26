@@ -806,9 +806,9 @@ class QuerySet(object):
         keyword argument called :attr:`defaults`.
 
         .. note:: This requires two separate operations and therefore a
-        race condition exists.  Because there are no transactions in mongoDB
-        other approaches should be investigated, to ensure you don't
-        accidently duplicate data when using this method.
+            race condition exists.  Because there are no transactions in mongoDB
+            other approaches should be investigated, to ensure you don't
+            accidently duplicate data when using this method.
 
         :param write_options: optional extra keyword arguments used if we
             have to create a new document.
@@ -816,8 +816,8 @@ class QuerySet(object):
 
         :param auto_save: if the object is to be saved automatically if not found.
 
+        .. versionchanged:: 0.6 - added `auto_save`
         .. versionadded:: 0.3
-        .. versionupdated:: 0.6 - added `auto_save`
         """
         defaults = query.get('defaults', {})
         if 'defaults' in query:
@@ -1882,9 +1882,9 @@ class QuerySetManager(object):
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
             var_names = self.get_queryset.func_code.co_varnames
-            if var_names == ('queryset',):
+            if len(var_names) == 1:
                 queryset = self.get_queryset(queryset)
-            elif var_names == ('doc_cls', 'queryset',):
+            elif len(var_names) == 2:
                 queryset = self.get_queryset(owner, queryset)
             else:
                 queryset = partial(self.get_queryset, owner, queryset)

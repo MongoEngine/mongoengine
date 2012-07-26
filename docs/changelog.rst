@@ -3,6 +3,14 @@ Changelog
 =========
 
 
+Changes in 0.6.18
+=================
+- Fixed recursion loading bug in _get_changed_fields
+
+Changes in 0.6.17
+=================
+- Fixed issue with custom queryset manager expecting explict variable names
+
 Changes in 0.6.16
 =================
 - Fixed issue where db_alias wasn't inherited
@@ -27,7 +35,7 @@ Changes in 0.6.14
 - Added support for add_to_set and each
 
 Changes in 0.6.13
-================
+=================
 - Fixed EmbeddedDocument db_field validation issue
 - Fixed StringField unicode issue
 - Fixes __repr__ modifying the cursor

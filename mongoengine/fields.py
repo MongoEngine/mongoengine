@@ -169,7 +169,7 @@ class IntField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return value
-        
+
         return int(value)
 
 
@@ -199,7 +199,7 @@ class FloatField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return value
-        
+
         return float(value)
 
 
@@ -451,7 +451,7 @@ class GenericEmbeddedDocumentField(BaseField):
 
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
 
-    ..note :: You can use the choices param to limit the acceptable
+    .. note:: You can use the choices param to limit the acceptable
     EmbeddedDocument types
     """
 
@@ -483,7 +483,7 @@ class GenericEmbeddedDocumentField(BaseField):
 
 
 class DynamicField(BaseField):
-    """A tryly dynamic field type capable of handling different and varying
+    """A truly dynamic field type capable of handling different and varying
     types of data.
 
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
@@ -529,6 +529,8 @@ class DynamicField(BaseField):
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
+
+    If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
@@ -766,10 +768,10 @@ class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
-    ..note ::  Any documents used as a generic reference must be registered in the
+    .. note:: Any documents used as a generic reference must be registered in the
     document registry.  Importing the model will automatically register it.
 
-    ..note :: You can use the choices param to limit the acceptable Document types
+    .. note:: You can use the choices param to limit the acceptable Document types
 
     .. versionadded:: 0.3
     """

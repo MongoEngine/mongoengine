@@ -579,6 +579,64 @@ class QuerySetTest(unittest.TestCase):
         Blog.objects.insert([blog2, blog3], write_options={'continue_on_error': True})
         self.assertEqual(Blog.objects.count(), 3)
 
+    def test_get_changed_fields_query_count(self):
+
+        class Person(Document):
+            name = StringField()
+            owns = ListField(ReferenceField('Organization'))
+            projects = ListField(ReferenceField('Project'))
+
+        class Organization(Document):
+            name = StringField()
+            owner = ReferenceField('Person')
+            employees = ListField(ReferenceField('Person'))
+
+        class Project(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Organization.drop_collection()
+        Project.drop_collection()
+
+        r1 = Project(name="r1").save()
+        r2 = Project(name="r2").save()
+        r3 = Project(name="r3").save()
+        p1 = Person(name="p1", projects=[r1, r2]).save()
+        p2 = Person(name="p2", projects=[r2]).save()
+        o1 = Organization(name="o1", employees=[p1]).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            self.assertEqual(1, q)
+            fresh_o1._get_changed_fields()
+            self.assertEqual(1, q)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.save()
+
+            self.assertEquals(q, 2)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.save(cascade=False)
+
+            self.assertEquals(q, 2)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.employees.append(p2)
+            fresh_o1.save(cascade=False)
+
+            self.assertEquals(q, 3)
 
     def test_slave_okay(self):
         """Ensures that a query can take slave_okay syntax
@@ -2228,28 +2286,28 @@ class QuerySetTest(unittest.TestCase):
             date = DateTimeField(default=datetime.now)
 
             @queryset_manager
-            def objects(doc_cls, queryset):
-                return queryset(deleted=False)
+            def objects(cls, qryset):
+                return qryset(deleted=False)
 
             @queryset_manager
-            def music_posts(doc_cls, queryset):
-                return queryset(tags='music', deleted=False).order_by('-date')
+            def music_posts(doc_cls, queryset, deleted=False):
+                return queryset(tags='music',
+                                deleted=deleted).order_by('date')
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(tags=['music', 'film'])
-        post1.save()
-        post2 = BlogPost(tags=['music'])
-        post2.save()
-        post3 = BlogPost(tags=['film', 'actors'])
-        post3.save()
-        post4 = BlogPost(tags=['film', 'actors'], deleted=True)
-        post4.save()
+        post1 = BlogPost(tags=['music', 'film']).save()
+        post2 = BlogPost(tags=['music']).save()
+        post3 = BlogPost(tags=['film', 'actors']).save()
+        post4 = BlogPost(tags=['film', 'actors', 'music'], deleted=True).save()
 
-        self.assertEqual([p.id for p in BlogPost.objects],
+        self.assertEqual([p.id for p in BlogPost.objects()],
                          [post1.id, post2.id, post3.id])
-        self.assertEqual([p.id for p in BlogPost.music_posts],
-                         [post2.id, post1.id])
+        self.assertEqual([p.id for p in BlogPost.music_posts()],
+                         [post1.id, post2.id])
+
+        self.assertEqual([p.id for p in BlogPost.music_posts(True)],
+                         [post4.id])
 
         BlogPost.drop_collection()
 
