@@ -375,7 +375,7 @@ class DynamicDocument(Document):
     :class:`~mongoengine.DynamicField` and data can be attributed to that
     field.
 
-    ..note::
+    .. note::
 
         There is one caveat on Dynamic Documents: fields cannot start with `_`
     """
