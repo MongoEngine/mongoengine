@@ -765,8 +765,22 @@ class QuerySet(object):
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
                 mongo_query[key] = value
-            elif key in mongo_query and isinstance(mongo_query[key], dict):
-                mongo_query[key].update(value)
+            elif key in mongo_query:
+                if isinstance(mongo_query[key], dict) and isinstance(value, dict):
+                    mongo_query[key].update(value)
+                elif isinstance(mongo_query[key], list):
+                    mongo_query[key].append(value)
+                else:
+                    mongo_query[key] = [mongo_query[key], value]
+
+        for k, v in mongo_query.items():
+            if isinstance(v, list):
+                value = [{k:val} for val in v]
+                if '$and' in mongo_query.keys():
+                    mongo_query['$and'].append(value)
+                else:
+                    mongo_query['$and'] = value
+                del mongo_query[k]
 
         return mongo_query
 
