@@ -111,6 +111,7 @@ class ValidationError(AssertionError):
 
 
 _document_registry = {}
+_module_registry = {}
 
 
 def get_document(name):
@@ -503,7 +504,6 @@ class DocumentMetaclass(type):
         simple_class = True
 
         for base in bases:
-
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
@@ -549,7 +549,7 @@ class DocumentMetaclass(type):
 
         # Add the document's fields to the _fields attribute
         field_names = {}
-        for attr_name, attr_value in attrs.items():
+        for attr_name, attr_value in attrs.iteritems():
             if hasattr(attr_value, "__class__") and \
                issubclass(attr_value.__class__, BaseField):
                 attr_value.name = attr_name
@@ -565,7 +565,15 @@ class DocumentMetaclass(type):
         attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k != v.db_field])
         attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
 
-        from mongoengine import Document, EmbeddedDocument, DictField
+        if 'Document' not in _module_registry:
+            from mongoengine import Document, EmbeddedDocument, DictField
+            _module_registry['Document'] = Document
+            _module_registry['EmbeddedDocument'] = EmbeddedDocument
+            _module_registry['DictField'] = DictField
+        else:
+            Document = _module_registry.get('Document')
+            EmbeddedDocument = _module_registry.get('EmbeddedDocument')
+            DictField = _module_registry.get('DictField')
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
