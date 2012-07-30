@@ -15,7 +15,6 @@ import operator
 from functools import partial
 from bson.dbref import DBRef
 
-
 class NotRegistered(Exception):
     pass
 
@@ -474,6 +473,7 @@ class DocumentMetaclass(type):
     """
 
     def __new__(cls, name, bases, attrs):
+
         def _get_mixin_fields(base):
             attrs = {}
             attrs.update(dict([(k, v) for k, v in base.__dict__.items()
@@ -502,7 +502,6 @@ class DocumentMetaclass(type):
         class_name = [name]
         superclasses = {}
         simple_class = True
-
         for base in bases:
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
@@ -543,20 +542,18 @@ class DocumentMetaclass(type):
         if not simple_class and not meta['allow_inheritance'] and not meta['abstract']:
             raise ValueError('Only direct subclasses of Document may set '
                              '"allow_inheritance" to False')
-        attrs['_meta'] = meta
-        attrs['_class_name'] = doc_class_name
-        attrs['_superclasses'] = superclasses
 
         # Add the document's fields to the _fields attribute
         field_names = {}
         for attr_name, attr_value in attrs.iteritems():
-            if hasattr(attr_value, "__class__") and \
-               issubclass(attr_value.__class__, BaseField):
-                attr_value.name = attr_name
-                if not attr_value.db_field:
-                    attr_value.db_field = attr_name
-                doc_fields[attr_name] = attr_value
-                field_names[attr_value.db_field] = field_names.get(attr_value.db_field, 0) + 1
+            if not isinstance(attr_value, BaseField):
+                continue
+            attr_value.name = attr_name
+            if not attr_value.db_field:
+                attr_value.db_field = attr_name
+            doc_fields[attr_name] = attr_value
+
+            field_names[attr_value.db_field] = field_names.get(attr_value.db_field, 0) + 1
 
         duplicate_db_fields = [k for k, v in field_names.items() if v > 1]
         if duplicate_db_fields:
@@ -564,6 +561,9 @@ class DocumentMetaclass(type):
         attrs['_fields'] = doc_fields
         attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k != v.db_field])
         attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
+        attrs['_meta'] = meta
+        attrs['_class_name'] = doc_class_name
+        attrs['_superclasses'] = superclasses
 
         if 'Document' not in _module_registry:
             from mongoengine import Document, EmbeddedDocument, DictField
@@ -576,7 +576,8 @@ class DocumentMetaclass(type):
             DictField = _module_registry.get('DictField')
 
         new_class = super_new(cls, name, bases, attrs)
-        for field in new_class._fields.values():
+
+        for field in new_class._fields.itervalues():
             field.owner_document = new_class
 
             delete_rule = getattr(field, 'reverse_delete_rule', DO_NOTHING)
@@ -728,7 +729,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         unique_indexes = cls._unique_with_indexes(new_class)
         new_class._meta['unique_indexes'] = unique_indexes
 
-        for field_name, field in new_class._fields.items():
+        for field_name, field in new_class._fields.iteritems():
             # Check for custom primary key
             if field.primary_key:
                 current_pk = new_class._meta['id_field']
@@ -799,7 +800,7 @@ class BaseDocument(object):
         self._data = {}
 
         # Assign default values to instance
-        for key, field in self._fields.items():
+        for key, field in self._fields.iteritems():
             if self._db_field_map.get(key, key) in values:
                 continue
             value = getattr(self, key, None)
@@ -809,13 +810,13 @@ class BaseDocument(object):
         if self._dynamic:
             self._dynamic_fields = {}
             dynamic_data = {}
-            for key, value in values.items():
+            for key, value in values.iteritems():
                 if key in self._fields or key == '_id':
                     setattr(self, key, value)
                 elif self._dynamic:
                     dynamic_data[key] = value
         else:
-            for key, value in values.items():
+            for key, value in values.iteritems():
                 key = self._reverse_db_field_map.get(key, key)
                 setattr(self, key, value)
 
@@ -824,7 +825,7 @@ class BaseDocument(object):
 
         if self._dynamic:
             self._dynamic_lock = False
-            for key, value in dynamic_data.items():
+            for key, value in dynamic_data.iteritems():
                 setattr(self, key, value)
 
         # Flag initialised
