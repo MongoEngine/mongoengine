@@ -791,11 +791,11 @@ class BaseDocument(object):
         self._data = {}
 
         # Assign default values to instance
-        for attr_name, field in self._fields.items():
-            if self._db_field_map.get(attr_name, attr_name) in values:
+        for key, field in self._fields.items():
+            if self._db_field_map.get(key, key) in values:
                 continue
-            value = getattr(self, attr_name, None)
-            setattr(self, attr_name, value)
+            value = getattr(self, key, None)
+            setattr(self, key, value)
 
         # Set passed values after initialisation
         if self._dynamic:
@@ -824,8 +824,6 @@ class BaseDocument(object):
         signals.post_init.send(self.__class__, document=self)
 
     def __setattr__(self, name, value):
-        if not self._initialised:
-            return super(BaseDocument, self).__setattr__(name, value)
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
 
