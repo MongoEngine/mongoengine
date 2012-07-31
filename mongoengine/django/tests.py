@@ -1,15 +1,15 @@
 #coding: utf-8
 from django.conf import settings
 from django.db.models.loading import cache
-from django.test import TestCase
 from django.test.simple import DjangoTestSuiteRunner
 from django.test.simple import build_suite, build_test, reorder_suite
+from django.test.testcases import SimpleTestCase
 from django.utils import unittest
 from mongoengine import connect
 from mongoengine.connection import get_db
 
 
-class MongoTestCase(TestCase):
+class MongoTestCase(SimpleTestCase):
     """
     TestCase class that clear the collection between the tests
     """
@@ -75,7 +75,7 @@ class MongoengineTestSuiteRunner(DjangoTestSuiteRunner):
             for test in extra_tests:
                 suite.addTest(test)
 
-        return reorder_suite(suite, (TestCase,))
+        return reorder_suite(suite, (SimpleTestCase,))
 
     def get_apps(self):
         """
