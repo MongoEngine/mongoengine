@@ -259,6 +259,27 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(p1.age, 10)
         self.assertEquals(p1.name, None)
 
+    def testQueryIn(self):
+        query = {'_id': {'$in': [ObjectId(), ObjectId(), ObjectId()] } }
+        self.assertEquals(self.User._transform_value(query, self.User), query)
+
+    def testAutoObjId(self):
+        obj_ids = [ObjectId(), ObjectId(), ObjectId()]
+        in_query = {'_id': {'$in': [str(o) for o in obj_ids]}}
+
+        out_query = self.User._transform_value(in_query, self.User)
+
+        self.assertEquals(out_query['_id']['$in'], obj_ids)
+
+        u1 = self.User(id=ObjectId())
+        u1.save()
+        u2 = self.User(id=ObjectId())
+        u2.save()
+
+        users = self.User.find({'_id': {'$in': [str(u1.id), str(u2.id)]}})
+
+        self.assertEquals(users, [u1, u2])
+
 
 if __name__ == '__main__':
     unittest.main()
