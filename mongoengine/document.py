@@ -545,8 +545,10 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
         VALIDATE_OPS = ['$set', '$inc', None]
         LIST_VALIDATE_OPS = ['$addToSet', '$push', '$pull']
-        LIST_VALIDATE_ALL_OPS = ['$pushAll', '$pullAll', '$each']
-        NO_VALIDATE_OPS = ['$unset', '$pop', '$rename', '$bit']
+        LIST_VALIDATE_ALL_OPS = ['$pushAll', '$pullAll', '$each', '$in',
+                                 '$nin', '$all']
+        NO_VALIDATE_OPS = ['$unset', '$pop', '$rename', '$bit',
+                           '$all', '$and', '$or', '$exists']
 
         # recurse on dict, unless we're at a DictField
         if isinstance(value, dict) and not isinstance(context, DictField):
@@ -566,8 +568,13 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
         # else, validate & return
         else:
             # automatically encode ObjectIds (they're often strings)
-            if isinstance(context, ObjectIdField):
+            if isinstance(context, ObjectIdField) and op in VALIDATE_OPS:
                 value = ObjectId(value)
+
+            # automatically encode ObjectIds in lists too...
+            elif isinstance(context, ObjectIdField) and \
+               (op in LIST_VALIDATE_OPS or op in LIST_VALIDATE_ALL_OPS):
+                value = [ObjectId(v) for v in value]
 
             if validate:
                 if op in VALIDATE_OPS:
@@ -576,7 +583,10 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
                     context.field.validate(value)
                 elif op in LIST_VALIDATE_ALL_OPS:
                     for entry in value:
-                        context.field.validate(entry)
+                        if isinstance(context, ListField):
+                            context.field.validate(entry)
+                        else:
+                            context.validate(entry)
                 elif op not in NO_VALIDATE_OPS:
                     raise ValidationError("Unknown atomic operator %s" % op)
 
