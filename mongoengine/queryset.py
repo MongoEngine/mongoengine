@@ -329,6 +329,7 @@ class QuerySet(object):
     """
 
     __already_indexed = set()
+    __dereference = False
 
     def __init__(self, document, collection):
         self._document = document
@@ -600,7 +601,6 @@ class QuerySet(object):
 
             if self._hint != -1:
                 self._cursor_obj.hint(self._hint)
-
         return self._cursor_obj
 
     @classmethod
@@ -1153,8 +1153,7 @@ class QuerySet(object):
         .. versionadded:: 0.4
         .. versionchanged:: 0.5 - Fixed handling references
         """
-        from dereference import DeReference
-        return DeReference()(self._cursor.distinct(field), 1)
+        return self._dereference(self._cursor.distinct(field), 1)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -1854,10 +1853,16 @@ class QuerySet(object):
 
         .. versionadded:: 0.5
         """
-        from dereference import DeReference
         # Make select related work the same for querysets
         max_depth += 1
-        return DeReference()(self, max_depth=max_depth)
+        return self._dereference(self, max_depth=max_depth)
+
+    @property
+    def _dereference(self):
+        if not self.__dereference:
+            from dereference import DeReference
+            self.__dereference = DeReference()  # Cached
+        return self.__dereference
 
 
 class QuerySetManager(object):

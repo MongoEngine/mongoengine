@@ -264,7 +264,7 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
-    _dereference = False
+    __dereference = False
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
@@ -276,8 +276,6 @@ class ComplexBaseField(BaseField):
         dereference = self.field is None or isinstance(self.field,
             (GenericReferenceField, ReferenceField))
         if not self._dereference and instance._initialised and dereference:
-            from dereference import DeReference
-            self._dereference = DeReference()  # Cached
             instance._data[self.name] = self._dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
@@ -293,14 +291,13 @@ class ComplexBaseField(BaseField):
             value = BaseDict(value, instance, self.name)
             instance._data[self.name] = value
 
-        if self._dereference and instance._initialised and \
-            isinstance(value, (BaseList, BaseDict)) and not value._dereferenced:
+        if (instance._initialised and isinstance(value, (BaseList, BaseDict))
+            and not value._dereferenced):
             value = self._dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )
             value._dereferenced = True
             instance._data[self.name] = value
-
         return value
 
     def __set__(self, instance, value):
@@ -441,6 +438,13 @@ class ComplexBaseField(BaseField):
 
     owner_document = property(_get_owner_document, _set_owner_document)
 
+    @property
+    def _dereference(self,):
+        if not self.__dereference:
+            from dereference import DeReference
+            self.__dereference = DeReference()  # Cached
+        return self.__dereference
+
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
@@ -493,8 +497,9 @@ class DocumentMetaclass(type):
                 attrs.update(_get_mixin_fields(p_base))
             return attrs
 
-        metaclass = attrs.get('__metaclass__')
         super_new = super(DocumentMetaclass, cls).__new__
+
+        metaclass = attrs.get('__metaclass__')
         if metaclass and issubclass(metaclass, DocumentMetaclass):
             return super_new(cls, name, bases, attrs)
 
@@ -566,7 +571,8 @@ class DocumentMetaclass(type):
         attrs['_superclasses'] = superclasses
 
         if 'Document' not in _module_registry:
-            from mongoengine import Document, EmbeddedDocument, DictField
+            from mongoengine.document import Document, EmbeddedDocument
+            from mongoengine.fields import DictField
             _module_registry['Document'] = Document
             _module_registry['EmbeddedDocument'] = EmbeddedDocument
             _module_registry['DictField'] = DictField
