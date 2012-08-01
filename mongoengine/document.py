@@ -253,12 +253,16 @@ class Document(BaseDocument):
         from fields import DictField, EmbeddedDocumentField, ListField, \
                             ObjectIdField
 
-        VALIDATE_OPS = ['$set', '$inc', None]
+        VALIDATE_OPS = ['$set', '$inc', None, '$eq', '$gte', '$lte', '$lt',
+                        '$gt', '$ne']
         LIST_VALIDATE_OPS = ['$addToSet', '$push', '$pull']
         LIST_VALIDATE_ALL_OPS = ['$pushAll', '$pullAll', '$each', '$in',
                                  '$nin', '$all']
         NO_VALIDATE_OPS = ['$unset', '$pop', '$rename', '$bit',
-                           '$all', '$and', '$or', '$exists']
+                           '$all', '$and', '$or', '$exists', '$mod',
+                           '$elemMatch', '$size', '$type', '$not', '$returnKey',
+                           '$maxScan', '$orderby', '$explain', '$snapshot',
+                           '$max', '$min', '$showDiskLoc', '$hint', '$comment']
 
         # recurse on dict, unless we're at a DictField
         if isinstance(value, dict) and not isinstance(context, DictField):
