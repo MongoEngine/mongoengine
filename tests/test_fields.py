@@ -272,25 +272,54 @@ class FieldTest(unittest.TestCase):
         person.admin = 'Yes'
         self.assertRaises(ValidationError, person.validate)
 
-    def test_uuid_validation(self):
-        """Ensure that invalid values cannot be assigned to UUID fields.
+    def test_uuid_field_string(self):
+        """Test UUID fields storing as String
         """
         class Person(Document):
-            api_key = UUIDField()
+            api_key = UUIDField(binary=False)
+
+        Person.drop_collection()
+
+        uu = uuid.uuid4()
+        Person(api_key=uu).save()
+        self.assertEqual(1, Person.objects(api_key=uu).count())
 
         person = Person()
-        # any uuid type is valid
-        person.api_key = uuid.uuid4()
-        person.validate()
-        person.api_key = uuid.uuid1()
-        person.validate()
+        valid = (uuid.uuid4(), uuid.uuid1())
+        for api_key in valid:
+            person.api_key = api_key
+            person.validate()
 
-        # last g cannot belong to an hex number
-        person.api_key = '9d159858-549b-4975-9f98-dd2f987c113g'
-        self.assertRaises(ValidationError, person.validate)
-        # short strings don't validate
-        person.api_key = '9d159858-549b-4975-9f98-dd2f987c113'
-        self.assertRaises(ValidationError, person.validate)
+        invalid = ('9d159858-549b-4975-9f98-dd2f987c113g',
+                   '9d159858-549b-4975-9f98-dd2f987c113')
+        for api_key in invalid:
+            person.api_key = api_key
+            self.assertRaises(ValidationError, person.validate)
+
+    def test_uuid_field_binary(self):
+        """Test UUID fields storing as Binary object
+        """
+        class Person(Document):
+            api_key = UUIDField(binary=True)
+
+        Person.drop_collection()
+
+        uu = uuid.uuid4()
+        Person(api_key=uu).save()
+        self.assertEqual(1, Person.objects(api_key=uu).count())
+
+        person = Person()
+        valid = (uuid.uuid4(), uuid.uuid1())
+        for api_key in valid:
+            person.api_key = api_key
+            person.validate()
+
+        invalid = ('9d159858-549b-4975-9f98-dd2f987c113g',
+                   '9d159858-549b-4975-9f98-dd2f987c113')
+        for api_key in invalid:
+            person.api_key = api_key
+            self.assertRaises(ValidationError, person.validate)
+
 
     def test_datetime_validation(self):
         """Ensure that invalid values cannot be assigned to datetime fields.
@@ -937,7 +966,7 @@ class FieldTest(unittest.TestCase):
             visited = MapField(DateTimeField())
 
         Log.drop_collection()
-        Log(name="wilson", visited={'friends': datetime.now()}).save()
+        Log(name="wilson", visited={'friends': datetime.datetime.now()}).save()
 
         self.assertEqual(1, Log.objects(
                                 visited__friends__exists=True).count())

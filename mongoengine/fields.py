@@ -4,9 +4,9 @@ import decimal
 import gridfs
 import re
 import uuid
+import warnings
 
 from bson import Binary, DBRef, SON, ObjectId
-
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
@@ -1308,17 +1308,40 @@ class UUIDField(BaseField):
 
     .. versionadded:: 0.6
     """
+    _binary = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, binary=None, **kwargs):
+        """
+        Store UUID data in the database
+
+        :param binary: (optional) boolean store as binary.
+
+        .. versionchanged:: 0.6.19
+        """
+        if binary is None:
+            binary = False
+            msg = ("UUIDFields will soon default to store as binary, please "
+                  "configure binary=False if you wish to store as a string")
+            warnings.warn(msg, FutureWarning)
+        self._binary = binary
         super(UUIDField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        if not isinstance(value, basestring):
-            value = unicode(value)
-        return uuid.UUID(value)
+        if not self.binary:
+            if not isinstance(value, basestring):
+                value = unicode(value)
+            return uuid.UUID(value)
+        return value
 
     def to_mongo(self, value):
-        return unicode(value)
+        if not self._binary:
+            return unicode(value)
+        return value
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return None
+        return self.to_mongo(value)
 
     def validate(self, value):
         if not isinstance(value, uuid.UUID):
