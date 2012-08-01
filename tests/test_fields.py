@@ -929,6 +929,19 @@ class FieldTest(unittest.TestCase):
         doc = self.db.test.find_one()
         self.assertEqual(doc['x']['DICTIONARY_KEY']['i'], 2)
 
+    def test_map_field_lookup(self):
+        """Ensure MapField lookups succeed on Fields without a lookup method"""
+
+        class Log(Document):
+            name = StringField()
+            visited = MapField(DateTimeField())
+
+        Log.drop_collection()
+        Log(name="wilson", visited={'friends': datetime.now()}).save()
+
+        self.assertEqual(1, Log.objects(
+                                visited__friends__exists=True).count())
+
     def test_embedded_db_field(self):
 
         class Embedded(EmbeddedDocument):

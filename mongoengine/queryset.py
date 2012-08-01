@@ -641,7 +641,7 @@ class QuerySet(object):
                 from mongoengine.fields import ReferenceField, GenericReferenceField
                 if isinstance(field, (ReferenceField, GenericReferenceField)):
                     raise InvalidQueryError('Cannot perform join in mongoDB: %s' % '__'.join(parts))
-                if getattr(field, 'field', None):
+                if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
                 else:
                    # Look up subfield on the previous field
