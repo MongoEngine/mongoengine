@@ -1567,13 +1567,13 @@ class FieldTest(unittest.TestCase):
         """Ensure that file fields can be written to and their data retrieved
         """
         class PutFile(Document):
-            file = FileField()
+            the_file = FileField()
 
         class StreamFile(Document):
-            file = FileField()
+            the_file = FileField()
 
         class SetFile(Document):
-            file = FileField()
+            the_file = FileField()
 
         text = 'Hello, World!'
         more_text = 'Foo Bar'
@@ -1584,14 +1584,14 @@ class FieldTest(unittest.TestCase):
         SetFile.drop_collection()
 
         putfile = PutFile()
-        putfile.file.put(text, content_type=content_type)
+        putfile.the_file.put(text, content_type=content_type)
         putfile.save()
         putfile.validate()
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
-        self.assertEquals(result.file.read(), text)
-        self.assertEquals(result.file.content_type, content_type)
-        result.file.delete() # Remove file from GridFS
+        self.assertEquals(result.the_file.read(), text)
+        self.assertEquals(result.the_file.content_type, content_type)
+        result.the_file.delete() # Remove file from GridFS
         PutFile.objects.delete()
 
         # Ensure file-like objects are stored
@@ -1599,53 +1599,53 @@ class FieldTest(unittest.TestCase):
         putstring = StringIO.StringIO()
         putstring.write(text)
         putstring.seek(0)
-        putfile.file.put(putstring, content_type=content_type)
+        putfile.the_file.put(putstring, content_type=content_type)
         putfile.save()
         putfile.validate()
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
-        self.assertEquals(result.file.read(), text)
-        self.assertEquals(result.file.content_type, content_type)
-        result.file.delete()
+        self.assertEquals(result.the_file.read(), text)
+        self.assertEquals(result.the_file.content_type, content_type)
+        result.the_file.delete()
 
         streamfile = StreamFile()
-        streamfile.file.new_file(content_type=content_type)
-        streamfile.file.write(text)
-        streamfile.file.write(more_text)
-        streamfile.file.close()
+        streamfile.the_file.new_file(content_type=content_type)
+        streamfile.the_file.write(text)
+        streamfile.the_file.write(more_text)
+        streamfile.the_file.close()
         streamfile.save()
         streamfile.validate()
         result = StreamFile.objects.first()
         self.assertTrue(streamfile == result)
-        self.assertEquals(result.file.read(), text + more_text)
-        self.assertEquals(result.file.content_type, content_type)
-        result.file.seek(0)
-        self.assertEquals(result.file.tell(), 0)
-        self.assertEquals(result.file.read(len(text)), text)
-        self.assertEquals(result.file.tell(), len(text))
-        self.assertEquals(result.file.read(len(more_text)), more_text)
-        self.assertEquals(result.file.tell(), len(text + more_text))
-        result.file.delete()
+        self.assertEquals(result.the_file.read(), text + more_text)
+        self.assertEquals(result.the_file.content_type, content_type)
+        result.the_file.seek(0)
+        self.assertEquals(result.the_file.tell(), 0)
+        self.assertEquals(result.the_file.read(len(text)), text)
+        self.assertEquals(result.the_file.tell(), len(text))
+        self.assertEquals(result.the_file.read(len(more_text)), more_text)
+        self.assertEquals(result.the_file.tell(), len(text + more_text))
+        result.the_file.delete()
 
         # Ensure deleted file returns None
-        self.assertTrue(result.file.read() == None)
+        self.assertTrue(result.the_file.read() == None)
 
         setfile = SetFile()
-        setfile.file = text
+        setfile.the_file = text
         setfile.save()
         setfile.validate()
         result = SetFile.objects.first()
         self.assertTrue(setfile == result)
-        self.assertEquals(result.file.read(), text)
+        self.assertEquals(result.the_file.read(), text)
 
         # Try replacing file with new one
-        result.file.replace(more_text)
+        result.the_file.replace(more_text)
         result.save()
         result.validate()
         result = SetFile.objects.first()
         self.assertTrue(setfile == result)
-        self.assertEquals(result.file.read(), more_text)
-        result.file.delete()
+        self.assertEquals(result.the_file.read(), more_text)
+        result.the_file.delete()
 
         PutFile.drop_collection()
         StreamFile.drop_collection()
@@ -1653,7 +1653,7 @@ class FieldTest(unittest.TestCase):
 
         # Make sure FileField is optional and not required
         class DemoFile(Document):
-            file = FileField()
+            the_file = FileField()
         DemoFile.objects.create()
 
 
@@ -1704,20 +1704,20 @@ class FieldTest(unittest.TestCase):
         """
         class TestFile(Document):
             name = StringField()
-            file = FileField()
+            the_file = FileField()
 
         # First instance
-        testfile = TestFile()
-        testfile.name = "Hello, World!"
-        testfile.file.put('Hello, World!')
-        testfile.save()
+        test_file = TestFile()
+        test_file.name = "Hello, World!"
+        test_file.the_file.put('Hello, World!')
+        test_file.save()
 
         # Second instance
-        testfiledupe = TestFile()
-        data = testfiledupe.file.read() # Should be None
+        test_file_dupe = TestFile()
+        data = test_file_dupe.the_file.read() # Should be None
 
-        self.assertTrue(testfile.name != testfiledupe.name)
-        self.assertTrue(testfile.file.read() != data)
+        self.assertTrue(test_file.name != test_file_dupe.name)
+        self.assertTrue(test_file.the_file.read() != data)
 
         TestFile.drop_collection()
 
@@ -1725,16 +1725,24 @@ class FieldTest(unittest.TestCase):
         """Ensure that a boolean test of a FileField indicates its presence
         """
         class TestFile(Document):
-            file = FileField()
+            the_file = FileField()
 
-        testfile = TestFile()
-        self.assertFalse(bool(testfile.file))
-        testfile.file = 'Hello, World!'
-        testfile.file.content_type = 'text/plain'
-        testfile.save()
-        self.assertTrue(bool(testfile.file))
+        test_file = TestFile()
+        self.assertFalse(bool(test_file.the_file))
+        test_file.the_file = 'Hello, World!'
+        test_file.the_file.content_type = 'text/plain'
+        test_file.save()
+        self.assertTrue(bool(test_file.the_file))
 
         TestFile.drop_collection()
+
+    def test_file_cmp(self):
+        """Test comparing against other types"""
+        class TestFile(Document):
+            the_file = FileField()
+
+        test_file = TestFile()
+        self.assertFalse(test_file.the_file in [{"test": 1}])
 
     def test_image_field(self):
 
@@ -1799,30 +1807,30 @@ class FieldTest(unittest.TestCase):
 
 
     def test_file_multidb(self):
-        register_connection('testfiles', 'testfiles')
+        register_connection('test_files', 'test_files')
         class TestFile(Document):
             name = StringField()
-            file = FileField(db_alias="testfiles",
-                             collection_name="macumba")
+            the_file = FileField(db_alias="test_files",
+                                 collection_name="macumba")
 
         TestFile.drop_collection()
 
         # delete old filesystem
-        get_db("testfiles").macumba.files.drop()
-        get_db("testfiles").macumba.chunks.drop()
+        get_db("test_files").macumba.files.drop()
+        get_db("test_files").macumba.chunks.drop()
 
         # First instance
-        testfile = TestFile()
-        testfile.name = "Hello, World!"
-        testfile.file.put('Hello, World!',
+        test_file = TestFile()
+        test_file.name = "Hello, World!"
+        test_file.the_file.put('Hello, World!',
                           name="hello.txt")
-        testfile.save()
+        test_file.save()
 
-        data = get_db("testfiles").macumba.files.find_one()
+        data = get_db("test_files").macumba.files.find_one()
         self.assertEquals(data.get('name'), 'hello.txt')
 
-        testfile = TestFile.objects.first()
-        self.assertEquals(testfile.file.read(),
+        test_file = TestFile.objects.first()
+        self.assertEquals(test_file.the_file.read(),
                           'Hello, World!')
 
     def test_geo_indexes(self):

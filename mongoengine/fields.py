@@ -907,6 +907,8 @@ class GridFSProxy(object):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
     def __cmp__(self, other):
+        if not isinstance(other, GridFSProxy):
+            return -1
         return cmp((self.grid_id, self.collection_name, self.db_alias),
                    (other.grid_id, other.collection_name, other.db_alias))
 

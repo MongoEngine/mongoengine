@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+
+- Fixed FileField comparision (hmarr/mongoengine#547)
 
 Changes in 0.6.18
 =================
