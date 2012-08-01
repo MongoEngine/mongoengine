@@ -1881,10 +1881,10 @@ class QuerySetManager(object):
         queryset_class = owner._meta['queryset_class'] or QuerySet
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
-            var_names = self.get_queryset.func_code.co_varnames
-            if len(var_names) == 1:
+            arg_count = self.get_queryset.func_code.co_argcount
+            if arg_count == 1:
                 queryset = self.get_queryset(queryset)
-            elif len(var_names) == 2:
+            elif arg_count == 2:
                 queryset = self.get_queryset(owner, queryset)
             else:
                 queryset = partial(self.get_queryset, owner, queryset)

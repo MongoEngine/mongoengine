@@ -2287,7 +2287,8 @@ class QuerySetTest(unittest.TestCase):
 
             @queryset_manager
             def objects(cls, qryset):
-                return qryset(deleted=False)
+                opts = {"deleted": False}
+                return qryset(**opts)
 
             @queryset_manager
             def music_posts(doc_cls, queryset, deleted=False):
