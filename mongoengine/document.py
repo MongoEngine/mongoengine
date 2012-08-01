@@ -1,9 +1,9 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError, get_document)
 from queryset import OperationError
-from connection import _get_db
 
 import pymongo
+import time
 from bson import SON, ObjectId
 
 
@@ -87,7 +87,7 @@ class Document(BaseDocument):
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
-    def delete(self, safe=False):
+    def delete(self, safe=True):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
@@ -127,7 +127,7 @@ class Document(BaseDocument):
         spec = cls._transform_value(spec, cls)
 
         # transform fields to include
-        if isinstance(fields, list):
+        if isinstance(fields, list) or isinstance(fields, tuple):
             fields = [cls._transform_key(f, cls)[0] for f in fields]
         elif isinstance(fields, dict):
             fields = dict([[cls._transform_key(f, cls)[0], fields[f]] for f in
@@ -148,13 +148,20 @@ class Document(BaseDocument):
             read_preference = pymongo.ReadPreference.PRIMARY
 
 
-        if find_one:
-            return cls._pymongo().find_one(spec, fields, skip=skip, sort=sort,
-                                   read_preference=read_preference, **kwargs)
-        else:
-            return cls._pymongo().find(spec, fields, skip=skip, limit=limit,
-                                   sort=sort, read_preference=read_preference,
-                                   **kwargs)
+        for i in xrange(2):
+            try:
+                if find_one:
+                    return cls._pymongo().find_one(spec, fields, skip=skip, sort=sort,
+                                           read_preference=read_preference, **kwargs)
+                else:
+                    return cls._pymongo().find(spec, fields, skip=skip, limit=limit,
+                                           sort=sort, read_preference=read_preference,
+                                           **kwargs)
+                break
+            # delay & retry once on AutoReconnect error
+            except pymongo.errors.AutoReconnect:
+                time.sleep(0.1)
+
 
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,

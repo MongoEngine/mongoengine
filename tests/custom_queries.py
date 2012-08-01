@@ -32,6 +32,7 @@ class DocumentTest(unittest.TestCase):
 
         class User(Document):
             id = ObjectIdField(primary_key=True)
+            name = StringField()
 
         self.Person = Person
         self.Colour = Colour
@@ -280,6 +281,29 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEquals(users, [u1, u2])
 
+    def testOnlyId(self):
+        p = self.Person(name="Adam")
+        p.save()
+
+        p1 = self.Person.find_one({'name': 'Adam'}, fields=['id'])
+        self.assertEquals(p1.name, None)
+        self.assertEquals(p1.id, p.id)
+
+        p2 = self.Person.find_one({'name': 'Adam'}, fields=['_id'])
+        self.assertEquals(p2.name, None)
+        self.assertEquals(p2.id, p.id)
+
+        # test where ID is defined explicitly
+        u = self.User(name="Adam", id=ObjectId())
+        u.save()
+
+        u2 = self.User.find_one({'name': 'Adam'}, fields=['_id'])
+        self.assertEquals(u2.name, None)
+        self.assertEquals(u2.id, u.id)
+
+        u2 = self.User.find_one({'name': 'Adam'}, fields=['id'])
+        self.assertEquals(u2.name, None)
+        self.assertEquals(u2.id, u.id)
 
 if __name__ == '__main__':
     unittest.main()
