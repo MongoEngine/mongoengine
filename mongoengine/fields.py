@@ -362,7 +362,7 @@ class ListField(BaseField):
             raise ValidationError('Invalid ListField item (%s)' % str(item))
 
     def prepare_query_value(self, op, value):
-        if op in ('set', 'unset'):
+        if op in ('set', 'unset') and value is not None:
             return [self.field.prepare_query_value(op, v) for v in value]
         return self.field.prepare_query_value(op, value)
 
