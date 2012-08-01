@@ -845,12 +845,9 @@ class BinaryField(BaseField):
     def to_mongo(self, value):
         return Binary(value)
 
-    def to_python(self, value):
-        return "%s" % value
-
     def validate(self, value):
-        if not isinstance(value, basestring):
-            self.error('BinaryField only accepts string values')
+        if not isinstance(value, (basestring, Binary)):
+            self.error('BinaryField only accepts string or bson Binary values')
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')

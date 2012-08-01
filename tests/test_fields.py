@@ -6,6 +6,7 @@ import StringIO
 import tempfile
 import gridfs
 
+from bson import Binary
 from decimal import Decimal
 
 from mongoengine import *
@@ -1428,7 +1429,7 @@ class FieldTest(unittest.TestCase):
 
         attachment_1 = Attachment.objects().first()
         self.assertEqual(MIME_TYPE, attachment_1.content_type)
-        self.assertEqual(BLOB, attachment_1.blob)
+        self.assertEqual(BLOB, str(attachment_1.blob))
 
         Attachment.drop_collection()
 
@@ -1455,7 +1456,7 @@ class FieldTest(unittest.TestCase):
 
         attachment_required = AttachmentRequired()
         self.assertRaises(ValidationError, attachment_required.validate)
-        attachment_required.blob = '\xe6\x00\xc4\xff\x07'
+        attachment_required.blob = Binary('\xe6\x00\xc4\xff\x07')
         attachment_required.validate()
 
         attachment_size_limit = AttachmentSizeLimit(blob='\xe6\x00\xc4\xff\x07')
@@ -1466,6 +1467,18 @@ class FieldTest(unittest.TestCase):
         Attachment.drop_collection()
         AttachmentRequired.drop_collection()
         AttachmentSizeLimit.drop_collection()
+
+    def test_binary_field_primary(self):
+
+        class Attachment(Document):
+            id = BinaryField(primary_key=True)
+
+        Attachment.drop_collection()
+
+        att = Attachment(id=uuid.uuid4().bytes).save()
+        att.delete()
+
+        self.assertEqual(0, Attachment.objects.count())
 
     def test_choices_validation(self):
         """Ensure that value is in a container of allowed values.

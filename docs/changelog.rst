@@ -5,6 +5,7 @@ Changelog
 Changes in 0.6.X
 ================
 
+- Fixed BinaryField python value issue (MongoEngine/mongoengine#48)
 - Fixed queryset manager issue (MongoEngine/mongoengine#52)
 - Fixed FileField comparision (hmarr/mongoengine#547)
 
