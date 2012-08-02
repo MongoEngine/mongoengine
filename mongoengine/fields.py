@@ -1,18 +1,23 @@
 import datetime
-import time
 import decimal
-import gridfs
 import re
+import sys 
+import time
 import uuid
 import warnings
 
+from operator import itemgetter
+
+import gridfs
 from bson import Binary, DBRef, SON, ObjectId
+
+from mongoengine.python3_support import (PY3, b, bin_type,
+                                         txt_type, str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
-from operator import itemgetter
 
 
 try:
@@ -20,12 +25,6 @@ try:
 except ImportError:
     Image = None
     ImageOps = None
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
-
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
@@ -846,8 +845,9 @@ class BinaryField(BaseField):
         return Binary(value)
 
     def validate(self, value):
-        if not isinstance(value, (basestring, Binary)):
-            self.error('BinaryField only accepts string or bson Binary values')
+        if not isinstance(value, (bin_type, txt_type, Binary)):
+            self.error("BinaryField only accepts instances of "
+                       "(%s, %s, Binary)" % (bin_type.__name__,txt_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -903,12 +903,14 @@ class GridFSProxy(object):
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
-    def __cmp__(self, other):
-        if not isinstance(other, GridFSProxy):
-            return -1
-        return cmp((self.grid_id, self.collection_name, self.db_alias),
-                   (other.grid_id, other.collection_name, other.db_alias))
-
+    def __eq__(self, other):
+        if isinstance(other, GridFSProxy):
+            return  ((self.grid_id == other.grid_id) and 
+                     (self.collection_name == other.collection_name) and 
+                     (self.db_alias == other.db_alias))
+        else:
+            return False
+            
     @property
     def fs(self):
         if not self._fs:
@@ -1020,7 +1022,8 @@ class FileField(BaseField):
 
     def __set__(self, instance, value):
         key = self.name
-        if (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or isinstance(value, basestring):
+        if ((hasattr(value, 'read') and not 
+             isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
@@ -1211,7 +1214,7 @@ class ImageField(FileField):
         for att_name, att in extra_args.items():
             if att and (isinstance(att, tuple) or isinstance(att, list)):
                 setattr(self, att_name, dict(
-                        map(None, params_size, att)))
+                        zip(params_size, att)))
             else:
                 setattr(self, att_name, None)
 

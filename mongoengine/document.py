@@ -2,7 +2,7 @@ import pymongo
 
 from bson.dbref import DBRef
 
-from mongoengine import signals
+from mongoengine import signals, queryset
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList)
 from queryset import OperationError
@@ -23,6 +23,9 @@ class EmbeddedDocument(BaseDocument):
     :class:`~mongoengine.EmbeddedDocumentField` field type.
     """
 
+    # The __metaclass__ attribute is removed by 2to3 when running with Python3
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass  = DocumentMetaclass 
     __metaclass__ = DocumentMetaclass
 
     def __init__(self, *args, **kwargs):
@@ -91,9 +94,12 @@ class Document(BaseDocument):
     disabled by either setting types to False on the specific index or
     by setting index_types to False on the meta dictionary for the document.
     """
+
+    # The __metaclass__ attribute is removed by 2to3 when running with Python3
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass  = TopLevelDocumentMetaclass 
     __metaclass__ = TopLevelDocumentMetaclass
 
-    @apply
     def pk():
         """Primary key alias
         """
@@ -102,6 +108,7 @@ class Document(BaseDocument):
         def fset(self, value):
             return setattr(self, self._meta['id_field'], value)
         return property(fget, fset)
+    pk = pk()
 
     @classmethod
     def _get_db(cls):
@@ -244,12 +251,11 @@ class Document(BaseDocument):
 
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references / generic references on an object"""
-        from fields import ReferenceField, GenericReferenceField
+        import fields
         _refs = kwargs.get('_refs', []) or []
 
         for name, cls in self._fields.items():
-
-            if not isinstance(cls, (ReferenceField, GenericReferenceField)):
+            if not isinstance(cls, (fields.ReferenceField, fields.GenericReferenceField)):
                 continue
 
             ref = getattr(self, name)
@@ -304,8 +310,8 @@ class Document(BaseDocument):
 
         .. versionadded:: 0.5
         """
-        from dereference import DeReference
-        self._data = DeReference()(self._data, max_depth)
+        import dereference
+        self._data = dereference.DeReference()(self._data, max_depth)
         return self
 
     def reload(self, max_depth=1):
@@ -360,10 +366,9 @@ class Document(BaseDocument):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
         """
-        from mongoengine.queryset import QuerySet
         db = cls._get_db()
         db.drop_collection(cls._get_collection_name())
-        QuerySet._reset_already_indexed(cls)
+        queryset.QuerySet._reset_already_indexed(cls)
 
 
 class DynamicDocument(Document):
@@ -379,7 +384,12 @@ class DynamicDocument(Document):
 
         There is one caveat on Dynamic Documents: fields cannot start with `_`
     """
+
+    # The __metaclass__ attribute is removed by 2to3 when running with Python3
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass  = TopLevelDocumentMetaclass 
     __metaclass__ = TopLevelDocumentMetaclass
+
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
@@ -398,7 +408,11 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     information about dynamic documents.
     """
 
+    # The __metaclass__ attribute is removed by 2to3 when running with Python3
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass  = DocumentMetaclass 
     __metaclass__ = DocumentMetaclass
+
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):

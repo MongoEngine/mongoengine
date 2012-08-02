@@ -1,4 +1,5 @@
 import unittest
+
 import pymongo
 from pymongo import ReadPreference, ReplicaSetConnection
 
@@ -26,7 +27,7 @@ class ConnectionTest(unittest.TestCase):
         if not isinstance(conn, ReplicaSetConnection):
             return
 
-        self.assertEquals(conn.read_preference, ReadPreference.SECONDARY_ONLY)
+        self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_ONLY)
 
 if __name__ == '__main__':
     unittest.main()
