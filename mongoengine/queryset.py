@@ -3,7 +3,7 @@ import re
 import copy
 import itertools
 import operator
-
+import functools
 from functools import partial
 
 import pymongo
@@ -121,12 +121,12 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
             # that ANDs the necessary part with the $or part.
             clauses = []
             for or_group in itertools.product(*or_groups):
-                q_object = reduce(lambda a, b: a & b, and_parts, Q())
-                q_object = reduce(lambda a, b: a & b, or_group, q_object)
+                q_object = functools.reduce(lambda a, b: a & b, and_parts, Q())
+                q_object = functools.reduce(lambda a, b: a & b, or_group, q_object)
                 clauses.append(q_object)
             # Finally, $or the generated clauses in to one query. Each of the
             # clauses is sufficient for the query to succeed.
-            return reduce(lambda a, b: a | b, clauses, Q())
+            return functools.reduce(lambda a, b: a | b, clauses, Q())
 
         if combination.operation == combination.OR:
             children = []

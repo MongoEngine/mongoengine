@@ -1,18 +1,19 @@
+import operator
+import sys 
 import warnings
+
 from collections import defaultdict
+from functools import partial
 
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
 
 from mongoengine import signals
+from mongoengine.python3_support import PY3, txt_type
 
-import sys
 import pymongo
 from bson import ObjectId
-import operator
-
-from functools import partial
 from bson.dbref import DBRef
 
 
@@ -402,7 +403,7 @@ class ComplexBaseField(BaseField):
         """
         errors = {}
         if self.field:
-            if hasattr(value, 'iteritems'):
+            if hasattr(value, 'iteritems') or hasattr(value, 'items'):
                 sequence = value.iteritems()
             else:
                 sequence = enumerate(value)
@@ -491,7 +492,7 @@ class DocumentMetaclass(type):
                 attrs.update(_get_mixin_fields(p_base))
             return attrs
 
-        metaclass = attrs.get('__metaclass__')
+        metaclass = attrs.get('my_metaclass')
         super_new = super(DocumentMetaclass, cls).__new__
         if metaclass and issubclass(metaclass, DocumentMetaclass):
             return super_new(cls, name, bases, attrs)
@@ -583,7 +584,9 @@ class DocumentMetaclass(type):
                     raise InvalidDocumentError("Reverse delete rules are not supported for EmbeddedDocuments (field: %s)" % field.name)
                 f.document_type.register_delete_rule(new_class, field.name, delete_rule)
 
-            if field.name and hasattr(Document, field.name) and EmbeddedDocument not in new_class.mro():
+            if (field.name and
+                hasattr(Document, field.name) and
+                EmbeddedDocument not in new_class.mro()):
                 raise InvalidDocumentError("%s is a document method and not a valid field name" % field.name)
 
         module = attrs.get('__module__')
@@ -601,6 +604,22 @@ class DocumentMetaclass(type):
 
         global _document_registry
         _document_registry[doc_class_name] = new_class
+
+        # in Python 2, User-defined methods objects have special read-only 
+        # attributes 'im_func' and 'im_self' which contain the function obj 
+        # and class instance object respectively.  With Python 3 these special
+        # attributes have been replaced by __func__ and __self__.  The Blinker
+        # module continues to use im_func and im_self, so the code below
+        # copies __func__ into im_func and __self__ into im_self for 
+        # classmethod objects in Document derived classes.
+        if PY3:
+            for key, val in new_class.__dict__.items():
+                if isinstance(val, classmethod):
+                    f = val.__get__(new_class)
+                    if hasattr(f, '__func__') and not hasattr(f, 'im_func'):
+                        f.__dict__.update({'im_func':getattr(f, '__func__')})
+                    if hasattr(f, '__self__') and not hasattr(f, 'im_self'):
+                        f.__dict__.update({'im_self':getattr(f, '__self__')})
 
         return new_class
 
@@ -623,7 +642,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         #
         # Also assume a class is abstract if it has abstract set to True in
         # its meta dictionary. This allows custom Document superclasses.
-        if (attrs.get('__metaclass__') == TopLevelDocumentMetaclass or
+        if (attrs.get('my_metaclass') == TopLevelDocumentMetaclass or
             ('meta' in attrs and attrs['meta'].get('abstract', False))):
             # Make sure no base class was non-abstract
             non_abstract_bases = [b for b in bases
@@ -1189,14 +1208,17 @@ Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, error
 
     def __repr__(self):
         try:
-            u = unicode(self).encode('utf-8')
+            u = txt_type(self)
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = '[Bad Unicode data]'
         return '<%s: %s>' % (self.__class__.__name__, u)
 
     def __str__(self):
         if hasattr(self, '__unicode__'):
-            return unicode(self).encode('utf-8')
+            if PY3:
+                return self.__unicode__()
+            else:
+                return unicode(self).encode('utf-8')
         return '%s object' % self.__class__.__name__
 
     def __eq__(self, other):
@@ -1338,10 +1360,9 @@ class BaseDict(dict):
 
 if sys.version_info < (2, 5):
     # Prior to Python 2.5, Exception was an old-style class
-    import types
     def subclass_exception(name, parents, unused):
-        import types
-        return types.ClassType(name, parents, {})
+        from types import ClassType
+        return ClassType(name, parents, {})
 else:
     def subclass_exception(name, parents, module):
         return type(name, parents, {'__module__': module})

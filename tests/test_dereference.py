@@ -109,10 +109,10 @@ class FieldTest(unittest.TestCase):
             peter = Employee.objects.with_id(peter.id).select_related()
             self.assertEqual(q, 2)
 
-            self.assertEquals(peter.boss, bill)
+            self.assertEqual(peter.boss, bill)
             self.assertEqual(q, 2)
 
-            self.assertEquals(peter.friends, friends)
+            self.assertEqual(peter.friends, friends)
             self.assertEqual(q, 2)
 
         # Queryset select_related
@@ -123,10 +123,10 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 2)
 
             for employee in employees:
-                self.assertEquals(employee.boss, bill)
+                self.assertEqual(employee.boss, bill)
                 self.assertEqual(q, 2)
 
-                self.assertEquals(employee.friends, friends)
+                self.assertEqual(employee.friends, friends)
                 self.assertEqual(q, 2)
 
     def test_circular_reference(self):
@@ -160,7 +160,7 @@ class FieldTest(unittest.TestCase):
         daughter.relations.append(self_rel)
         daughter.save()
 
-        self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
+        self.assertEqual("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
 
     def test_circular_reference_on_self(self):
         """Ensure you can handle circular references
@@ -186,7 +186,7 @@ class FieldTest(unittest.TestCase):
         daughter.relations.append(daughter)
         daughter.save()
 
-        self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
+        self.assertEqual("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
 
     def test_circular_tree_reference(self):
         """Ensure you can handle circular references with more than one level
@@ -228,7 +228,7 @@ class FieldTest(unittest.TestCase):
         anna.other.name = "Anna's friends"
         anna.save()
 
-        self.assertEquals(
+        self.assertEqual(
             "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]",
             "%s" % Person.objects()
         )
@@ -781,8 +781,8 @@ class FieldTest(unittest.TestCase):
         root.save()
 
         root = root.reload()
-        self.assertEquals(root.children, [company])
-        self.assertEquals(company.parents, [root])
+        self.assertEqual(root.children, [company])
+        self.assertEqual(company.parents, [root])
 
     def test_dict_in_dbref_instance(self):
 
@@ -808,8 +808,8 @@ class FieldTest(unittest.TestCase):
         room_101.save()
 
         room = Room.objects.first().select_related()
-        self.assertEquals(room.staffs_with_position[0]['staff'], sarah)
-        self.assertEquals(room.staffs_with_position[1]['staff'], bob)
+        self.assertEqual(room.staffs_with_position[0]['staff'], sarah)
+        self.assertEqual(room.staffs_with_position[1]['staff'], bob)
 
     def test_document_reload_no_inheritance(self):
         class Foo(Document):
@@ -839,8 +839,8 @@ class FieldTest(unittest.TestCase):
         foo.save()
         foo.reload()
 
-        self.assertEquals(type(foo.bar), Bar)
-        self.assertEquals(type(foo.baz), Baz)
+        self.assertEqual(type(foo.bar), Bar)
+        self.assertEqual(type(foo.baz), Baz)
 
     def test_list_lookup_not_checked_in_map(self):
         """Ensure we dereference list data correctly
