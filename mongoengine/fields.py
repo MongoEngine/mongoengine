@@ -1,17 +1,16 @@
 import datetime
 import decimal
 import re
-import sys 
 import time
 import uuid
 import warnings
-
+import itertools
 from operator import itemgetter
 
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
 
-from mongoengine.python3_support import (PY3, b, bin_type,
+from mongoengine.python3_support import (PY3, bin_type,
                                          txt_type, str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document, BaseDocument)
@@ -905,12 +904,12 @@ class GridFSProxy(object):
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
-            return  ((self.grid_id == other.grid_id) and 
-                     (self.collection_name == other.collection_name) and 
+            return  ((self.grid_id == other.grid_id) and
+                     (self.collection_name == other.collection_name) and
                      (self.db_alias == other.db_alias))
         else:
             return False
-            
+
     @property
     def fs(self):
         if not self._fs:
@@ -1022,7 +1021,7 @@ class FileField(BaseField):
 
     def __set__(self, instance, value):
         key = self.name
-        if ((hasattr(value, 'read') and not 
+        if ((hasattr(value, 'read') and not
              isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
@@ -1212,11 +1211,15 @@ class ImageField(FileField):
         params_size = ('width', 'height', 'force')
         extra_args = dict(size=size, thumbnail_size=thumbnail_size)
         for att_name, att in extra_args.items():
-            if att and (isinstance(att, tuple) or isinstance(att, list)):
-                setattr(self, att_name, dict(
-                        zip(params_size, att)))
-            else:
-                setattr(self, att_name, None)
+            value = None
+            if isinstance(att, (tuple, list)):
+                if PY3:
+                    value = dict(itertools.zip_longest(params_size, att,
+                                                        fillvalue=None))
+                else:
+                    value = dict(map(None, params_size, att))
+
+            setattr(self, att_name, value)
 
         super(ImageField, self).__init__(
             collection_name=collection_name,
