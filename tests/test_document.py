@@ -1330,7 +1330,10 @@ class DocumentTest(unittest.TestCase):
 
         doc = Doc.objects.first()
         doc.validate()
-        self.assertEqual([None, 'e'], list(doc._data.keys()))
+        keys = doc._data.keys()
+        self.assertEqual(2, len(keys))
+        self.assertTrue(None in keys)
+        self.assertTrue('e' in keys)
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
