@@ -1330,7 +1330,7 @@ class DocumentTest(unittest.TestCase):
 
         doc = Doc.objects.first()
         doc.validate()
-        self.assertEqual([None, 'e'], doc._data.keys())
+        self.assertEqual([None, 'e'], list(doc._data.keys()))
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
@@ -1954,7 +1954,7 @@ class DocumentTest(unittest.TestCase):
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field, [2, {'hello': 'world'}, 1])
 
-        doc.embedded_field.list_field[2].list_field.sort(key=str) 
+        doc.embedded_field.list_field[2].list_field.sort(key=str)
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field, [1, 2, {'hello': 'world'}])
@@ -2189,7 +2189,7 @@ class DocumentTest(unittest.TestCase):
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field, [2, {'hello': 'world'}, 1])
 
-        doc.embedded_field.list_field[2].list_field.sort(key=str) 
+        doc.embedded_field.list_field[2].list_field.sort(key=str)
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field, [1, 2, {'hello': 'world'}])
