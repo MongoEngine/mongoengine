@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+from __future__ import with_statement
 import unittest
 from nose.plugins.skip import SkipTest
 from mongoengine.python3_support import PY3
@@ -16,7 +16,7 @@ try:
 
     from django.contrib.sessions.tests import SessionTestsMixin
     from mongoengine.django.sessions import SessionStore, MongoSession
-except Exception as err:
+except Exception, err:
     if PY3:
         SessionTestsMixin = type #dummy value so no error
         SessionStore = None #dummy value so no error
