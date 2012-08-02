@@ -1861,6 +1861,17 @@ class QuerySet(object):
 
 
 class QuerySetManager(object):
+    """
+    The default QuerySet Manager.
+
+    Custom QuerySet Manager functions can extend this class and users can
+    add extra queryset functionality.  Any custom manager methods must accept a
+    :class:`~mongoengine.Document` class as its first argument, and a
+    :class:`~mongoengine.queryset.QuerySet` as its second argument.
+
+    The method function should return a :class:`~mongoengine.queryset.QuerySet`
+    , probably the same one that was passed in, but modified in some way.
+    """
 
     get_queryset = None
 
