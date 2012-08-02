@@ -1,10 +1,13 @@
+from __future__ import with_statement
 import os
 import pickle
 import pymongo
 import bson
 import unittest
 import warnings
+import sys
 
+from nose.plugins.skip import SkipTest
 from datetime import datetime
 
 from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
@@ -37,6 +40,8 @@ class DocumentTest(unittest.TestCase):
     def test_future_warning(self):
         """Add FutureWarning for future allow_inhertiance default change.
         """
+        if (sys.version_info < (2,6,0)):
+            raise SkipTest('catch warnings as errors only available in 2.6+')
 
         with warnings.catch_warnings(record=True) as errors:
 
@@ -131,18 +136,21 @@ class DocumentTest(unittest.TestCase):
             meta = {'collection': 'wibble'}
         self.assertEqual('wibble', InheritedAbstractNamingTest._get_collection_name())
 
-        with warnings.catch_warnings(record=True) as w:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always")
 
-            class NonAbstractBase(Document):
-                pass
+        # catch_warnings only available in python 2.6+
+        if sys.version_info > (2,6,0): 
+            with warnings.catch_warnings(record=True) as w:
+                # Cause all warnings to always be triggered.
+                warnings.simplefilter("always")
 
-            class InheritedDocumentFailTest(NonAbstractBase):
-                meta = {'collection': 'fail'}
+                class NonAbstractBase(Document):
+                    pass
 
-            self.assertTrue(issubclass(w[0].category, SyntaxWarning))
-            self.assertEqual('non_abstract_base', InheritedDocumentFailTest._get_collection_name())
+                class InheritedDocumentFailTest(NonAbstractBase):
+                    meta = {'collection': 'fail'}
+
+                self.assertTrue(issubclass(w[0].category, SyntaxWarning))
+                self.assertEqual('non_abstract_base', InheritedDocumentFailTest._get_collection_name())
 
         # Mixin tests
         class BaseMixin(object):
@@ -539,6 +547,11 @@ class DocumentTest(unittest.TestCase):
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents' collections.
         """
+
+        # catch_warnings only available in Python 2.6+
+        if (sys.version_info < (2,6,0)):
+            raise SkipTest('catch warnings as errors only available in python 2.6+')
+        
         with warnings.catch_warnings(record=True) as w:
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
