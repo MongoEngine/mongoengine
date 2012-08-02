@@ -4,7 +4,6 @@ python:
     - 2.6
     - 2.7
     - 3.2
-    - 3.3
 install:
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo apt-get install zlib1g zlib1g-dev; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib/; fi
