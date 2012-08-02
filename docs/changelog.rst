@@ -2,6 +2,15 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+
+- Added Binary support to UUID (MongoEngine/mongoengine#47)
+- Fixed MapField lookup for fields without declared lookups (MongoEngine/mongoengine#46)
+- Fixed BinaryField python value issue (MongoEngine/mongoengine#48)
+- Fixed SequenceField non numeric value lookup (MongoEngine/mongoengine#41)
+- Fixed queryset manager issue (MongoEngine/mongoengine#52)
+- Fixed FileField comparision (hmarr/mongoengine#547)
 
 Changes in 0.6.18
 =================

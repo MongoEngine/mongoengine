@@ -641,7 +641,7 @@ class QuerySet(object):
                 from mongoengine.fields import ReferenceField, GenericReferenceField
                 if isinstance(field, (ReferenceField, GenericReferenceField)):
                     raise InvalidQueryError('Cannot perform join in mongoDB: %s' % '__'.join(parts))
-                if getattr(field, 'field', None):
+                if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
                 else:
                    # Look up subfield on the previous field
@@ -1886,10 +1886,10 @@ class QuerySetManager(object):
         queryset_class = owner._meta['queryset_class'] or QuerySet
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
-            var_names = self.get_queryset.func_code.co_varnames
-            if len(var_names) == 1:
+            arg_count = self.get_queryset.func_code.co_argcount
+            if arg_count == 1:
                 queryset = self.get_queryset(queryset)
-            elif len(var_names) == 2:
+            elif arg_count == 2:
                 queryset = self.get_queryset(owner, queryset)
             else:
                 queryset = partial(self.get_queryset, owner, queryset)

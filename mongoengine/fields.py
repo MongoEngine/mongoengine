@@ -4,9 +4,9 @@ import decimal
 import gridfs
 import re
 import uuid
+import warnings
 
 from bson import Binary, DBRef, SON, ObjectId
-
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
@@ -845,12 +845,9 @@ class BinaryField(BaseField):
     def to_mongo(self, value):
         return Binary(value)
 
-    def to_python(self, value):
-        return "%s" % value
-
     def validate(self, value):
-        if not isinstance(value, basestring):
-            self.error('BinaryField only accepts string values')
+        if not isinstance(value, (basestring, Binary)):
+            self.error('BinaryField only accepts string or bson Binary values')
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -907,6 +904,8 @@ class GridFSProxy(object):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
     def __cmp__(self, other):
+        if not isinstance(other, GridFSProxy):
+            return -1
         return cmp((self.grid_id, self.collection_name, self.db_alias),
                    (other.grid_id, other.collection_name, other.db_alias))
 
@@ -1289,7 +1288,7 @@ class SequenceField(IntField):
             instance._data[self.name] = value
             instance._mark_as_changed(self.name)
 
-        return value
+        return int(value) if value else None
 
     def __set__(self, instance, value):
 
@@ -1309,17 +1308,40 @@ class UUIDField(BaseField):
 
     .. versionadded:: 0.6
     """
+    _binary = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, binary=None, **kwargs):
+        """
+        Store UUID data in the database
+
+        :param binary: (optional) boolean store as binary.
+
+        .. versionchanged:: 0.6.19
+        """
+        if binary is None:
+            binary = False
+            msg = ("UUIDFields will soon default to store as binary, please "
+                  "configure binary=False if you wish to store as a string")
+            warnings.warn(msg, FutureWarning)
+        self._binary = binary
         super(UUIDField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        if not isinstance(value, basestring):
-            value = unicode(value)
-        return uuid.UUID(value)
+        if not self.binary:
+            if not isinstance(value, basestring):
+                value = unicode(value)
+            return uuid.UUID(value)
+        return value
 
     def to_mongo(self, value):
-        return unicode(value)
+        if not self._binary:
+            return unicode(value)
+        return value
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return None
+        return self.to_mongo(value)
 
     def validate(self, value):
         if not isinstance(value, uuid.UUID):
