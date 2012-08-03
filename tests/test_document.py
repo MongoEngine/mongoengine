@@ -40,6 +40,8 @@ class DocumentTest(unittest.TestCase):
     def test_future_warning(self):
         """Add FutureWarning for future allow_inhertiance default change.
         """
+        if (sys.version_info < (2,6,0)):
+            raise SkipTest('catch warnings as errors only available in 2.6+')
 
         self.warning_list = []
         showwarning_default = warnings.showwarning
