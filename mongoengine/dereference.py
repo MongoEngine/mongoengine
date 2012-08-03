@@ -110,7 +110,7 @@ class DeReference(object):
                         doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
                 else:
-                    references = self._document.get_db()[col].find({'_id': {'$in': refs}})
+                    references = self._document._get_db()[col].find({'_id': {'$in': refs}})
                     for ref in references:
                         if '_cls' in ref:
                             doc = get_document(ref["_cls"])._from_son(ref)
