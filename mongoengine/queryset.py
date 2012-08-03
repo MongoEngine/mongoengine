@@ -1154,7 +1154,7 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - Fixed handling references
         """
         from dereference import DeReference
-        return DeReference()(self._cursor.distinct(field), 1)
+        return DeReference(self._document)(self._cursor.distinct(field), 1)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -1857,7 +1857,7 @@ class QuerySet(object):
         from dereference import DeReference
         # Make select related work the same for querysets
         max_depth += 1
-        return DeReference()(self, max_depth=max_depth)
+        return DeReference(self._document)(self, max_depth=max_depth)
 
 
 class QuerySetManager(object):

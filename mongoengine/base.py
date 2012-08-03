@@ -276,7 +276,7 @@ class ComplexBaseField(BaseField):
             (GenericReferenceField, ReferenceField))
         if not self._dereference and instance._initialised and dereference:
             from dereference import DeReference
-            self._dereference = DeReference()  # Cached
+            self._dereference = DeReference(owner)  # Cached
             instance._data[self.name] = self._dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
