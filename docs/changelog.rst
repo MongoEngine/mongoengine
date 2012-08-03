@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Changes in 0.6.X
-================
+Changes in 0.6.19
+=================
 
 - Added Binary support to UUID (MongoEngine/mongoengine#47)
 - Fixed MapField lookup for fields without declared lookups (MongoEngine/mongoengine#46)
