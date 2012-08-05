@@ -985,7 +985,7 @@ class DocumentTest(unittest.TestCase):
 
         # Two posts with the same slug is not allowed
         post2 = BlogPost(title='test2', slug='test')
-        self.assertRaises(OperationError, post2.save)
+        self.assertRaises(NotUniqueError, post2.save)
 
     def test_unique_with(self):
         """Ensure that unique_with constraints are applied to fields.
@@ -1035,7 +1035,7 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same sub.slug
         post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
-        self.assertRaises(OperationError, post3.save)
+        self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
 
@@ -1062,11 +1062,11 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same sub.slug
         post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
-        self.assertRaises(OperationError, post3.save)
+        self.assertRaises(NotUniqueError, post3.save)
 
         # Now there will be two docs with the same title and year
         post3 = BlogPost(title='test1', sub=SubDocument(year=2009, slug='test-1'))
-        self.assertRaises(OperationError, post3.save)
+        self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
 
@@ -1089,7 +1089,7 @@ class DocumentTest(unittest.TestCase):
         try:
             cust_dupe.save()
             raise AssertionError, "We saved a dupe!"
-        except OperationError:
+        except NotUniqueError:
             pass
         Customer.drop_collection()
 

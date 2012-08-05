@@ -573,7 +573,7 @@ class QuerySetTest(unittest.TestCase):
         def throw_operation_error_not_unique():
             Blog.objects.insert([blog2, blog3], safe=True)
 
-        self.assertRaises(OperationError, throw_operation_error_not_unique)
+        self.assertRaises(NotUniqueError, throw_operation_error_not_unique)
         self.assertEqual(Blog.objects.count(), 2)
 
         Blog.objects.insert([blog2, blog3], write_options={'continue_on_error': True})

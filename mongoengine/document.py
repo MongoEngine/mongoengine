@@ -1,15 +1,17 @@
 import pymongo
+import re
 
 from bson.dbref import DBRef
 
 from mongoengine import signals
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList)
-from queryset import OperationError
+from queryset import OperationError, NotUniqueError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
 __all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
-           'DynamicEmbeddedDocument', 'OperationError', 'InvalidCollectionError']
+           'DynamicEmbeddedDocument', 'OperationError', 'InvalidCollectionError',
+           'NotUniqueError']
 
 
 class InvalidCollectionError(Exception):
@@ -231,8 +233,11 @@ class Document(BaseDocument):
 
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
-            if u'duplicate key' in unicode(err):
+            if re.match('^E1100[01] duplicate key', unicode(err)):
+                # E11000 - duplicate key error index
+                # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
+                raise NotUniqueError(message % unicode(err))
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
