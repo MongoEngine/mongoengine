@@ -42,6 +42,11 @@ class OperationError(Exception):
     pass
 
 
+# Inherits from OperationError for backwards compatibility
+class NotUniqueError(OperationError):
+    pass
+
+
 RE_TYPE = type(re.compile(''))
 
 
@@ -900,8 +905,11 @@ class QuerySet(object):
             ids = self._collection.insert(raw, **write_options)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
-            if u'duplicate key' in unicode(err):
+            if re.match('^E1100[01] duplicate key', unicode(err)):
+                # E11000 - duplicate key error index
+                # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
+                raise NotUniqueError(message % unicode(err))
             raise OperationError(message % unicode(err))
 
         if not load_bulk:
