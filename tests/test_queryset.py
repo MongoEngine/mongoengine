@@ -827,7 +827,11 @@ class QuerySetTest(unittest.TestCase):
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """
+        class Blog(Document):
+            id = StringField(unique=True, primary_key=True)
+
         class BlogPost(Document):
+            blog = ReferenceField(Blog)
             title = StringField()
             is_published = BooleanField()
             published_date = DateTimeField()
@@ -836,13 +840,24 @@ class QuerySetTest(unittest.TestCase):
             def published(doc_cls, queryset):
                 return queryset(is_published=True)
 
-        blog_post_1 = BlogPost(title="Blog Post #1",
+        Blog.drop_collection()
+        BlogPost.drop_collection()
+
+        blog_1 = Blog(id="1")
+        blog_2 = Blog(id="2")
+        blog_3 = Blog(id="3")
+
+        blog_1.save()
+        blog_2.save()
+        blog_3.save()
+
+        blog_post_1 = BlogPost(blog=blog_1, title="Blog Post #1",
                                is_published = True,
                                published_date=datetime(2010, 1, 5, 0, 0 ,0))
-        blog_post_2 = BlogPost(title="Blog Post #2",
+        blog_post_2 = BlogPost(blog=blog_2, title="Blog Post #2",
                                is_published = True,
                                published_date=datetime(2010, 1, 6, 0, 0 ,0))
-        blog_post_3 = BlogPost(title="Blog Post #3",
+        blog_post_3 = BlogPost(blog=blog_3, title="Blog Post #3",
                                is_published = True,
                                published_date=datetime(2010, 1, 7, 0, 0 ,0))
 
@@ -856,7 +871,14 @@ class QuerySetTest(unittest.TestCase):
             published_date__lt=datetime(2010, 1, 7, 0, 0 ,0))
         self.assertEqual(published_posts.count(), 2)
 
+
+        blog_posts = BlogPost.objects
+        blog_posts = blog_posts.filter(blog__in=[blog_1, blog_2])
+        blog_posts = blog_posts.filter(blog=blog_3)
+        self.assertEqual(blog_posts.count(), 0)
+
         BlogPost.drop_collection()
+        Blog.drop_collection()
 
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
@@ -2265,6 +2287,28 @@ class QuerySetTest(unittest.TestCase):
 
         class Bar(Document):
             text = StringField()
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        bar = Bar(text="hi")
+        bar.save()
+
+        foo = Foo(bar=bar)
+        foo.save()
+
+        self.assertEquals(Foo.objects.distinct("bar"), [bar])
+
+    def test_distinct_handles_references_to_alias(self):
+        register_connection('testdb', 'mongoenginetest2')
+
+        class Foo(Document):
+            bar = ReferenceField("Bar")
+            meta = {'db_alias': 'testdb'}
+
+        class Bar(Document):
+            text = StringField()
+            meta = {'db_alias': 'testdb'}
 
         Bar.drop_collection()
         Foo.drop_collection()

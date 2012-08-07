@@ -2,6 +2,7 @@
 MongoEngine
 ===========
 :Info: MongoEngine is an ORM-like layer on top of PyMongo.
+:Repository: https://github.com/MongoEngine/mongoengine
 :Author: Harry Marr (http://github.com/hmarr)
 :Maintainer: Ross Lawley (http://github.com/rozza)
 

@@ -2,8 +2,14 @@
 Changelog
 =========
 
-Changes in 0.6.X
-================
+Changes in 0.6.20
+=================
+- Added support for distinct and db_alias (MongoEngine/mongoengine#59)
+- Improved support for chained querysets when constraining the same fields (hmarr/mongoengine#554)
+- Fixed BinaryField lookup re (MongoEngine/mongoengine#48)
+
+Changes in 0.6.19
+=================
 
 - Added Binary support to UUID (MongoEngine/mongoengine#47)
 - Fixed MapField lookup for fields without declared lookups (MongoEngine/mongoengine#46)
