@@ -3220,5 +3220,82 @@ class ValidatorErrorTest(unittest.TestCase):
         b = BDocument.objects.first()
         b.save(cascade=True)
 
+
+    def test_document_clean(self):
+        class TestDocument(Document):
+            status = StringField()
+            pub_date = DateTimeField()
+
+            def clean(self):
+                if self.status == 'draft' and self.pub_date is not None:
+                    raise ValidationError('Draft entries may not have a publication date.')
+                # Set the pub_date for published items if it hasn't been set already.
+                if self.status == 'published' and self.pub_date is None:
+                    self.pub_date = datetime.now()
+        
+        TestDocument.drop_collection()
+        
+        t = TestDocument(status="draft", pub_date=datetime.now())
+
+        try:
+            t.save()
+        except ValidationError, e:
+            expected_error_message = u"ValidationError(Draft entries may not have a publication date.: ['__all__'])"
+            self.assertEquals(e.message, expected_error_message)
+            self.assertEquals(e.to_dict(), {
+                    '__all__': u'Draft entries may not have a publication date.'})
+
+        t = TestDocument(status="published")
+        t.save(clean=False)
+
+        self.assertEquals(t.pub_date, None)
+
+        t = TestDocument(status="published")
+        t.save(clean=True)
+
+        self.assertEquals(type(t.pub_date), datetime)
+
+    def test_document_embedded_clean(self):
+        class TestEmbeddedDocument(EmbeddedDocument):
+            x = IntField(required=True)
+            y = IntField(required=True)
+            z = IntField(required=True)
+
+            meta = {'allow_inheritance': False}
+
+            def clean(self):
+                if self.z:
+                    if self.z != self.x + self.y:
+                        raise ValidationError('Value of z != x + y')
+                else:
+                    self.z = self.x + self.y
+
+        class TestDocument(Document):
+            doc = EmbeddedDocumentField(TestEmbeddedDocument)
+            status = StringField()
+
+        TestDocument.drop_collection()
+        t = TestDocument(doc=TestEmbeddedDocument(x=10, y=15, z=25))
+        t.save()
+
+        t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
+
+        try:
+            t.save()
+        except ValidationError, e:
+            expected_error_message = u"ValidationError(__all__.Value of z != x + y: ['doc'])"
+            self.assertEquals(e.message, expected_error_message)
+            self.assertEquals(e.to_dict(), {
+                    'doc': {'__all__': u'Value of z != x + y'}})
+
+        t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25))
+        t.save()
+
+        self.assertEquals(t.doc.z, 35)
+
+        # Asserts not raises
+        t = TestDocument(doc=TestEmbeddedDocument(x=15, y=35, z=5))
+        t.save(clean=False)
+            
 if __name__ == '__main__':
     unittest.main()
