@@ -329,6 +329,7 @@ class QuerySet(object):
     """
 
     __already_indexed = set()
+    __dereference = False
 
     def __init__(self, document, collection):
         self._document = document
@@ -600,7 +601,6 @@ class QuerySet(object):
 
             if self._hint != -1:
                 self._cursor_obj.hint(self._hint)
-
         return self._cursor_obj
 
     @classmethod
@@ -765,8 +765,22 @@ class QuerySet(object):
             key = '.'.join(parts)
             if op is None or key not in mongo_query:
                 mongo_query[key] = value
-            elif key in mongo_query and isinstance(mongo_query[key], dict):
-                mongo_query[key].update(value)
+            elif key in mongo_query:
+                if isinstance(mongo_query[key], dict) and isinstance(value, dict):
+                    mongo_query[key].update(value)
+                elif isinstance(mongo_query[key], list):
+                    mongo_query[key].append(value)
+                else:
+                    mongo_query[key] = [mongo_query[key], value]
+
+        for k, v in mongo_query.items():
+            if isinstance(v, list):
+                value = [{k:val} for val in v]
+                if '$and' in mongo_query.keys():
+                    mongo_query['$and'].append(value)
+                else:
+                    mongo_query['$and'] = value
+                del mongo_query[k]
 
         return mongo_query
 
@@ -1152,9 +1166,10 @@ class QuerySet(object):
 
         .. versionadded:: 0.4
         .. versionchanged:: 0.5 - Fixed handling references
+        .. versionchanged:: 0.6 - Improved db_field refrence handling
         """
-        from dereference import DeReference
-        return DeReference()(self._cursor.distinct(field), 1)
+        return self._dereference(self._cursor.distinct(field), 1,
+                                 name=field, instance=self._document)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -1854,13 +1869,30 @@ class QuerySet(object):
 
         .. versionadded:: 0.5
         """
-        from dereference import DeReference
         # Make select related work the same for querysets
         max_depth += 1
-        return DeReference()(self, max_depth=max_depth)
+        return self._dereference(self, max_depth=max_depth)
+
+    @property
+    def _dereference(self):
+        if not self.__dereference:
+            from dereference import DeReference
+            self.__dereference = DeReference()  # Cached
+        return self.__dereference
 
 
 class QuerySetManager(object):
+    """
+    The default QuerySet Manager.
+
+    Custom QuerySet Manager functions can extend this class and users can
+    add extra queryset functionality.  Any custom manager methods must accept a
+    :class:`~mongoengine.Document` class as its first argument, and a
+    :class:`~mongoengine.queryset.QuerySet` as its second argument.
+
+    The method function should return a :class:`~mongoengine.queryset.QuerySet`
+    , probably the same one that was passed in, but modified in some way.
+    """
 
     get_queryset = None
 

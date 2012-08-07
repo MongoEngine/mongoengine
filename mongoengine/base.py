@@ -1,5 +1,5 @@
 import operator
-import sys 
+import sys
 import warnings
 
 from collections import defaultdict
@@ -15,7 +15,6 @@ from mongoengine.python3_support import PY3, txt_type
 import pymongo
 from bson import ObjectId
 from bson.dbref import DBRef
-
 
 class NotRegistered(Exception):
     pass
@@ -112,6 +111,7 @@ class ValidationError(AssertionError):
 
 
 _document_registry = {}
+_module_registry = {}
 
 
 def get_document(name):
@@ -199,7 +199,8 @@ class BaseField(object):
         """Descriptor for assigning a value to a field in a document.
         """
         instance._data[self.name] = value
-        instance._mark_as_changed(self.name)
+        if instance._initialised:
+            instance._mark_as_changed(self.name)
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
@@ -264,7 +265,7 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
-    _dereference = False
+    __dereference = False
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
@@ -276,8 +277,6 @@ class ComplexBaseField(BaseField):
         dereference = self.field is None or isinstance(self.field,
             (GenericReferenceField, ReferenceField))
         if not self._dereference and instance._initialised and dereference:
-            from dereference import DeReference
-            self._dereference = DeReference()  # Cached
             instance._data[self.name] = self._dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
@@ -293,14 +292,13 @@ class ComplexBaseField(BaseField):
             value = BaseDict(value, instance, self.name)
             instance._data[self.name] = value
 
-        if self._dereference and instance._initialised and \
-            isinstance(value, (BaseList, BaseDict)) and not value._dereferenced:
+        if (instance._initialised and isinstance(value, (BaseList, BaseDict))
+            and not value._dereferenced):
             value = self._dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )
             value._dereferenced = True
             instance._data[self.name] = value
-
         return value
 
     def __set__(self, instance, value):
@@ -441,6 +439,13 @@ class ComplexBaseField(BaseField):
 
     owner_document = property(_get_owner_document, _set_owner_document)
 
+    @property
+    def _dereference(self,):
+        if not self.__dereference:
+            from dereference import DeReference
+            self.__dereference = DeReference()  # Cached
+        return self.__dereference
+
 
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
@@ -473,6 +478,7 @@ class DocumentMetaclass(type):
     """
 
     def __new__(cls, name, bases, attrs):
+
         def _get_mixin_fields(base):
             attrs = {}
             attrs.update(dict([(k, v) for k, v in base.__dict__.items()
@@ -501,9 +507,7 @@ class DocumentMetaclass(type):
         class_name = [name]
         superclasses = {}
         simple_class = True
-
         for base in bases:
-
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
@@ -543,20 +547,18 @@ class DocumentMetaclass(type):
         if not simple_class and not meta['allow_inheritance'] and not meta['abstract']:
             raise ValueError('Only direct subclasses of Document may set '
                              '"allow_inheritance" to False')
-        attrs['_meta'] = meta
-        attrs['_class_name'] = doc_class_name
-        attrs['_superclasses'] = superclasses
 
         # Add the document's fields to the _fields attribute
         field_names = {}
-        for attr_name, attr_value in attrs.items():
-            if hasattr(attr_value, "__class__") and \
-               issubclass(attr_value.__class__, BaseField):
-                attr_value.name = attr_name
-                if not attr_value.db_field:
-                    attr_value.db_field = attr_name
-                doc_fields[attr_name] = attr_value
-                field_names[attr_value.db_field] = field_names.get(attr_value.db_field, 0) + 1
+        for attr_name, attr_value in attrs.iteritems():
+            if not isinstance(attr_value, BaseField):
+                continue
+            attr_value.name = attr_name
+            if not attr_value.db_field:
+                attr_value.db_field = attr_name
+            doc_fields[attr_name] = attr_value
+
+            field_names[attr_value.db_field] = field_names.get(attr_value.db_field, 0) + 1
 
         duplicate_db_fields = [k for k, v in field_names.items() if v > 1]
         if duplicate_db_fields:
@@ -564,11 +566,24 @@ class DocumentMetaclass(type):
         attrs['_fields'] = doc_fields
         attrs['_db_field_map'] = dict([(k, v.db_field) for k, v in doc_fields.items() if k != v.db_field])
         attrs['_reverse_db_field_map'] = dict([(v, k) for k, v in attrs['_db_field_map'].items()])
+        attrs['_meta'] = meta
+        attrs['_class_name'] = doc_class_name
+        attrs['_superclasses'] = superclasses
 
-        from mongoengine import Document, EmbeddedDocument, DictField
+        if 'Document' not in _module_registry:
+            from mongoengine.document import Document, EmbeddedDocument
+            from mongoengine.fields import DictField
+            _module_registry['Document'] = Document
+            _module_registry['EmbeddedDocument'] = EmbeddedDocument
+            _module_registry['DictField'] = DictField
+        else:
+            Document = _module_registry.get('Document')
+            EmbeddedDocument = _module_registry.get('EmbeddedDocument')
+            DictField = _module_registry.get('DictField')
 
         new_class = super_new(cls, name, bases, attrs)
-        for field in new_class._fields.values():
+
+        for field in new_class._fields.itervalues():
             field.owner_document = new_class
 
             delete_rule = getattr(field, 'reverse_delete_rule', DO_NOTHING)
@@ -605,12 +620,12 @@ class DocumentMetaclass(type):
         global _document_registry
         _document_registry[doc_class_name] = new_class
 
-        # in Python 2, User-defined methods objects have special read-only 
-        # attributes 'im_func' and 'im_self' which contain the function obj 
+        # in Python 2, User-defined methods objects have special read-only
+        # attributes 'im_func' and 'im_self' which contain the function obj
         # and class instance object respectively.  With Python 3 these special
         # attributes have been replaced by __func__ and __self__.  The Blinker
         # module continues to use im_func and im_self, so the code below
-        # copies __func__ into im_func and __self__ into im_self for 
+        # copies __func__ into im_func and __self__ into im_self for
         # classmethod objects in Document derived classes.
         if PY3:
             for key, val in new_class.__dict__.items():
@@ -738,7 +753,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         unique_indexes = cls._unique_with_indexes(new_class)
         new_class._meta['unique_indexes'] = unique_indexes
 
-        for field_name, field in new_class._fields.items():
+        for field_name, field in new_class._fields.iteritems():
             # Check for custom primary key
             if field.primary_key:
                 current_pk = new_class._meta['id_field']
@@ -809,21 +824,23 @@ class BaseDocument(object):
         self._data = {}
 
         # Assign default values to instance
-        for attr_name, field in self._fields.items():
-            value = getattr(self, attr_name, None)
-            setattr(self, attr_name, value)
+        for key, field in self._fields.iteritems():
+            if self._db_field_map.get(key, key) in values:
+                continue
+            value = getattr(self, key, None)
+            setattr(self, key, value)
 
         # Set passed values after initialisation
         if self._dynamic:
             self._dynamic_fields = {}
             dynamic_data = {}
-            for key, value in values.items():
+            for key, value in values.iteritems():
                 if key in self._fields or key == '_id':
                     setattr(self, key, value)
                 elif self._dynamic:
                     dynamic_data[key] = value
         else:
-            for key, value in values.items():
+            for key, value in values.iteritems():
                 key = self._reverse_db_field_map.get(key, key)
                 setattr(self, key, value)
 
@@ -832,7 +849,7 @@ class BaseDocument(object):
 
         if self._dynamic:
             self._dynamic_lock = False
-            for key, value in dynamic_data.items():
+            for key, value in dynamic_data.iteritems():
                 setattr(self, key, value)
 
         # Flag initialised

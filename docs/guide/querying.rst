@@ -232,7 +232,7 @@ custom manager methods as you like::
     BlogPost(title='test1', published=False).save()
     BlogPost(title='test2', published=True).save()
     assert len(BlogPost.objects) == 2
-    assert len(BlogPost.live_posts) == 1
+    assert len(BlogPost.live_posts()) == 1
 
 Custom QuerySets
 ================
@@ -243,10 +243,15 @@ a document, set ``queryset_class`` to the custom class in a
 :class:`~mongoengine.Document`\ s ``meta`` dictionary::
 
     class AwesomerQuerySet(QuerySet):
-        pass
+
+        def get_awesome(self):
+            return self.filter(awesome=True)
 
     class Page(Document):
         meta = {'queryset_class': AwesomerQuerySet}
+
+    # To call:
+    Page.objects.get_awesome()
 
 .. versionadded:: 0.4
 

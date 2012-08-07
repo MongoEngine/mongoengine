@@ -34,7 +34,9 @@ class DeReference(object):
 
         doc_type = None
         if instance and instance._fields:
-            doc_type = instance._fields[name].field
+            doc_type = instance._fields[name]
+            if hasattr(doc_type, 'field'):
+                doc_type = doc_type.field
 
             if isinstance(doc_type, ReferenceField):
                 doc_type = doc_type.document_type
