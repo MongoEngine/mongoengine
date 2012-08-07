@@ -1378,11 +1378,6 @@ class BaseDict(dict):
         if hasattr(self._instance, '_mark_as_changed'):
             self._instance._mark_as_changed(self._name)
 
-if sys.version_info < (2, 5):
-    # Prior to Python 2.5, Exception was an old-style class
-    def subclass_exception(name, parents, unused):
-        from types import ClassType
-        return ClassType(name, parents, {})
-else:
-    def subclass_exception(name, parents, module):
-        return type(name, parents, {'__module__': module})
+
+def subclass_exception(name, parents, module):
+    return type(name, parents, {'__module__': module})
