@@ -235,7 +235,9 @@ class Document(BaseDocument):
                 message = u'Tried to save duplicate unique keys (%s)'
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
-        self[id_field] = self._fields[id_field].to_python(object_id)
+        # don't update the id field if it's the shard_key (because it's immutable and will raise an error)
+        if id_field not in self._meta.get('shard_key', ()):
+            self[id_field] = self._fields[id_field].to_python(object_id)
 
         self._changed_fields = []
         self._created = False
