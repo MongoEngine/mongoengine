@@ -208,11 +208,20 @@ class Document(BaseDocument):
                     actual_key = self._db_field_map.get(k, k)
                     select_dict[actual_key] = doc[actual_key]
 
+                def is_new_object(last_error):
+                    if last_error is not None:
+                        updated = last_error.get("updatedExisting")
+                        if updated is not None:
+                            return not updated
+                    return created
+
                 upsert = self._created
                 if updates:
-                    collection.update(select_dict, {"$set": updates}, upsert=upsert, safe=safe, **write_options)
+                    last_error = collection.update(select_dict, {"$set": updates}, upsert=upsert, safe=safe, **write_options)
+                    created = is_new_object(last_error)
                 if removals:
-                    collection.update(select_dict, {"$unset": removals}, upsert=upsert, safe=safe, **write_options)
+                    last_error = collection.update(select_dict, {"$unset": removals}, upsert=upsert, safe=safe, **write_options)
+                    created = created or is_new_object(last_error)
 
             cascade = self._meta.get('cascade', True) if cascade is None else cascade
             if cascade:
