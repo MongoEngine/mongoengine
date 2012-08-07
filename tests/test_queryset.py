@@ -871,7 +871,7 @@ class QuerySetTest(unittest.TestCase):
             published_date__lt=datetime(2010, 1, 7, 0, 0 ,0))
         self.assertEqual(published_posts.count(), 2)
 
-        
+
         blog_posts = BlogPost.objects
         blog_posts = blog_posts.filter(blog__in=[blog_1, blog_2])
         blog_posts = blog_posts.filter(blog=blog_3)
@@ -2287,6 +2287,28 @@ class QuerySetTest(unittest.TestCase):
 
         class Bar(Document):
             text = StringField()
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        bar = Bar(text="hi")
+        bar.save()
+
+        foo = Foo(bar=bar)
+        foo.save()
+
+        self.assertEquals(Foo.objects.distinct("bar"), [bar])
+
+    def test_distinct_handles_references_to_alias(self):
+        register_connection('testdb', 'mongoenginetest2')
+
+        class Foo(Document):
+            bar = ReferenceField("Bar")
+            meta = {'db_alias': 'testdb'}
+
+        class Bar(Document):
+            text = StringField()
+            meta = {'db_alias': 'testdb'}
 
         Bar.drop_collection()
         Foo.drop_collection()

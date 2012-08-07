@@ -1168,7 +1168,8 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - Fixed handling references
         """
         from dereference import DeReference
-        return DeReference()(self._cursor.distinct(field), 1)
+        return DeReference()(self._cursor.distinct(field), 1,
+                             name=field, instance=self._document)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
