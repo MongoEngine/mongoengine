@@ -283,6 +283,7 @@ class FieldTest(unittest.TestCase):
         uu = uuid.uuid4()
         Person(api_key=uu).save()
         self.assertEqual(1, Person.objects(api_key=uu).count())
+        self.assertEqual(uu, Person.objects.first().api_key)
 
         person = Person()
         valid = (uuid.uuid4(), uuid.uuid1())
@@ -307,6 +308,7 @@ class FieldTest(unittest.TestCase):
         uu = uuid.uuid4()
         Person(api_key=uu).save()
         self.assertEqual(1, Person.objects(api_key=uu).count())
+        self.assertEqual(uu, Person.objects.first().api_key)
 
         person = Person()
         valid = (uuid.uuid4(), uuid.uuid1())

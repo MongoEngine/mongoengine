@@ -1327,7 +1327,7 @@ class UUIDField(BaseField):
         super(UUIDField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        if not self.binary:
+        if not self._binary:
             if not isinstance(value, basestring):
                 value = unicode(value)
             return uuid.UUID(value)

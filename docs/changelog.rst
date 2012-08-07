@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.6.X
+================
+- Fixed BinaryField lookup re (MongoEngine/mongoengine#48)
+
 Changes in 0.6.19
 =================
 
