@@ -8,6 +8,8 @@ from document import Document
 
 
 class DeReference(object):
+    def __init__(self, document):
+        self._document = document
 
     def __call__(self, items, max_depth=1, instance=None, name=None):
         """
@@ -108,7 +110,7 @@ class DeReference(object):
                         doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
                 else:
-                    references = get_db()[col].find({'_id': {'$in': refs}})
+                    references = self._document._get_db()[col].find({'_id': {'$in': refs}})
                     for ref in references:
                         if '_cls' in ref:
                             doc = get_document(ref["_cls"])._from_son(ref)

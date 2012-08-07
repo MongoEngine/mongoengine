@@ -2299,6 +2299,28 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEquals(Foo.objects.distinct("bar"), [bar])
 
+    def test_distinct_handles_references_to_alias(self):
+        register_connection('testdb', 'mongoenginetest2')
+
+        class Foo(Document):
+            bar = ReferenceField("Bar")
+            meta = {'db_alias': 'testdb'}
+
+        class Bar(Document):
+            text = StringField()
+            meta = {'db_alias': 'testdb'}
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        bar = Bar(text="hi")
+        bar.save()
+
+        foo = Foo(bar=bar)
+        foo.save()
+
+        self.assertEquals(Foo.objects.distinct("bar"), [bar])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """

@@ -305,7 +305,7 @@ class Document(BaseDocument):
         .. versionadded:: 0.5
         """
         from dereference import DeReference
-        self._data = DeReference()(self._data, max_depth)
+        self._data = DeReference(self)(self._data, max_depth)
         return self
 
     def reload(self, max_depth=1):
