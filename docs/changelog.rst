@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.6.X
 ================
+- Improved support for chained querysets when constraining the same fields (hmarr/mongoengine#554)
 - Fixed BinaryField lookup re (MongoEngine/mongoengine#48)
 
 Changes in 0.6.19
