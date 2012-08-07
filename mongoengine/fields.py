@@ -10,8 +10,8 @@ from operator import itemgetter
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
 
-from mongoengine.python3_support import (PY3, bin_type,
-                                         txt_type, str_types, StringIO)
+from mongoengine.python_support import (PY3, bin_type, txt_type,
+                                        str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
@@ -840,13 +840,20 @@ class BinaryField(BaseField):
         self.max_bytes = max_bytes
         super(BinaryField, self).__init__(**kwargs)
 
+    def __set__(self, instance, value):
+        """Handle bytearrays in python 3.1"""
+        if PY3 and isinstance(value, bytearray):
+            value = bin_type(value)
+        return super(BinaryField, self).__set__(instance, value)
+
     def to_mongo(self, value):
         return Binary(value)
 
     def validate(self, value):
         if not isinstance(value, (bin_type, txt_type, Binary)):
             self.error("BinaryField only accepts instances of "
-                       "(%s, %s, Binary)" % (bin_type.__name__,txt_type.__name__))
+                       "(%s, %s, Binary)" % (
+                        bin_type.__name__, txt_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -1270,9 +1277,9 @@ class SequenceField(IntField):
         """
         Generate and Increment the counter
         """
-        sequence_id = "%s.%s"%(self.owner_document._get_collection_name(),
-                               self.name)
-        collection = get_db(alias = self.db_alias )[self.collection_name]
+        sequence_id = "%s.%s" % (self.owner_document._get_collection_name(),
+                                 self.name)
+        collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
                                              update={"$inc": {"next": 1}},
                                              new=True,

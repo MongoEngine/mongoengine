@@ -1,6 +1,6 @@
-from setuptools import setup, find_packages
 import os
 import sys
+from setuptools import setup, find_packages
 
 # Hack to silence atexit traceback in newer python versions
 try:
@@ -15,6 +15,7 @@ try:
     LONG_DESCRIPTION = open('README.rst').read()
 except:
     pass
+
 
 def get_version(version_tuple):
     version = '%s.%s' % (version_tuple[0], version_tuple[1])
@@ -38,7 +39,13 @@ CLASSIFIERS = [
     'Operating System :: OS Independent',
     'Programming Language :: Python',
     "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 2.5",
+    "Programming Language :: Python :: 2.6",
+    "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.1",
+    "Programming Language :: Python :: 3.2",
+    "Programming Language :: Python :: Implementation :: CPython",
     'Topic :: Database',
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]

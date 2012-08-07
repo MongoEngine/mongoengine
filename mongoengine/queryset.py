@@ -3,9 +3,9 @@ import re
 import copy
 import itertools
 import operator
-import functools
-import sys
+
 from functools import partial
+from mongoengine.python_support import product, reduce
 
 import pymongo
 from bson.code import Code
@@ -14,18 +14,6 @@ from mongoengine import signals
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL']
-
-if sys.version_info < (2,6,0):
-    def product(*args, **kwds):
-        pools = map(tuple, args) * kwds.get('repeat', 1)
-        result = [[]]
-        for pool in pools:
-            result = [x+[y] for x in result for y in pool]
-        for prod in result:
-            yield tuple(prod)
-else:
-    from itertools import product
-    from functools import reduce
 
 
 # The maximum number of items to display in a QuerySet.__repr__

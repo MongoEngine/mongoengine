@@ -1,7 +1,7 @@
 from __future__ import with_statement
 import unittest
 from nose.plugins.skip import SkipTest
-from mongoengine.python3_support import PY3
+from mongoengine.python_support import PY3
 from mongoengine import *
 
 try:

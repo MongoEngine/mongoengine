@@ -10,7 +10,7 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
 
 from mongoengine import signals
-from mongoengine.python3_support import PY3, txt_type
+from mongoengine.python_support import PY3, PY25, txt_type
 
 import pymongo
 from bson import ObjectId
@@ -894,10 +894,8 @@ class BaseDocument(object):
 
         if not is_list and '_cls' in value:
             cls = get_document(value['_cls'])
-            # Make keys str instead of unicode
-            for key,val in value.items():
-                del value[key]
-                value[str(key)] = val
+            if PY25:
+                value = dict([(str(k), v) for k, v in value.items()])
             value = cls(**value)
             value._dynamic = True
             value._changed_fields = []
@@ -1019,12 +1017,9 @@ class BaseDocument(object):
             raise InvalidDocumentError("""
 Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, errors))
 
-        # Make all keys str instead of unicode
-        for key,val in data.items():
-            del data[key]
-            data[str(key)] = val
+        if PY25:
+            data = dict([(str(k), v) for k, v in data.items()])
         obj = cls(**data)
-
         obj._changed_fields = changed_fields
         obj._created = False
         return obj

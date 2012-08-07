@@ -14,7 +14,7 @@ from nose.plugins.skip import SkipTest
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import _document_registry, NotRegistered
-from mongoengine.python3_support import PY3, b, StringIO, bin_type
+from mongoengine.python_support import PY3, b, StringIO, bin_type
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
@@ -383,7 +383,7 @@ class FieldTest(unittest.TestCase):
         self.assertNotEqual(log.date, d1)
         self.assertEqual(log.date, d2)
 
-        if not PY3: 
+        if not PY3:
             # Pre UTC dates microseconds below 1000 are dropped
             # This does not seem to be true in PY3
             d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
@@ -1744,7 +1744,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(doc_b.the_file.grid_id, doc_c.the_file.grid_id)
 
             # Test with default
-            doc_d = GridDocument(the_file=b('')) 
+            doc_d = GridDocument(the_file=b(''))
             doc_d.save()
 
             doc_e = GridDocument.objects.with_id(doc_d.id)
@@ -2157,11 +2157,11 @@ class FieldTest(unittest.TestCase):
         post = Post(title='hello world')
         post.comments.append(Comment(content='hello', author=bob))
         post.comments.append(Comment(author=bob))
-        
+
         self.assertRaises(ValidationError, post.validate)
         try:
             post.validate()
-        except ValidationError, error: 
+        except ValidationError, error:
             # ValidationError.errors property
             self.assertTrue(hasattr(error, 'errors'))
             self.assertTrue(isinstance(error.errors, dict))

@@ -43,7 +43,7 @@ class DocumentTest(unittest.TestCase):
 
         self.warning_list = []
         showwarning_default = warnings.showwarning
-        
+
         def append_to_warning_list(message,category, *args):
             self.warning_list.append({"message":message, "category":category})
 
@@ -55,7 +55,7 @@ class DocumentTest(unittest.TestCase):
 
         class InheritedClass(SimpleBase):
             b = IntField()
-        
+
         # restore default handling of warnings
         warnings.showwarning = showwarning_default
 
@@ -150,7 +150,7 @@ class DocumentTest(unittest.TestCase):
 
         def append_to_warning_list(message, category, *args):
             self.warning_list.append({'message':message, 'category':category})
-        
+
         # add warnings to self.warning_list instead of stderr
         warnings.showwarning = append_to_warning_list
         warnings.simplefilter("always")
@@ -208,7 +208,6 @@ class DocumentTest(unittest.TestCase):
             'Animal.Mammal': Mammal,
         }
         self.assertEqual(Dog._superclasses, dog_superclasses)
-
 
     def test_external_superclasses(self):
         """Ensure that the correct list of sub and super classes is assembled.
@@ -568,22 +567,22 @@ class DocumentTest(unittest.TestCase):
 
         class Drinker(Document):
             drink = GenericReferenceField()
-        
+
         try:
             warnings.simplefilter("error")
-            
+
             class AcloholicDrink(Drink):
                 meta = {'collection': 'booze'}
-        
+
         except SyntaxWarning, w:
             warnings.simplefilter("ignore")
-        
+
             class AlcoholicDrink(Drink):
                 meta = {'collection': 'booze'}
-        
+
         else:
             raise AssertionError("SyntaxWarning should be triggered")
-        
+
         warnings.resetwarnings()
 
         Drink.drop_collection()

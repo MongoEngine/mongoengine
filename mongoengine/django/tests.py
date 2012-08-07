@@ -1,7 +1,7 @@
 #coding: utf-8
 from nose.plugins.skip import SkipTest
 
-from mongoengine.python3_support import PY3
+from mongoengine.python_support import PY3
 from mongoengine import connect
 
 try:
@@ -18,7 +18,7 @@ except Exception as err:
 
 
 class MongoTestCase(TestCase):
-    
+
     def setUp(self):
         if PY3:
             raise SkipTest('django does not have Python 3 support')

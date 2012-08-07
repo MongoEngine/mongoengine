@@ -9,7 +9,7 @@ from bson import ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_connection
-from mongoengine.python3_support import PY3
+from mongoengine.python_support import PY3
 from mongoengine.tests import query_counter
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
@@ -1454,6 +1454,8 @@ class QuerySetTest(unittest.TestCase):
         class Category(Document):
             name = StringField()
             parent = ReferenceField('self', reverse_delete_rule=CASCADE)
+
+        Category.drop_collection()
 
         num_children = 3
         base = Category(name='Root')
