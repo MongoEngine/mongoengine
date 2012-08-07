@@ -688,6 +688,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 keys_to_propogate = (
                     'index_background', 'index_drop_dups', 'index_opts',
                     'allow_inheritance', 'queryset_class', 'db_alias',
+                    'shard_key'
                 )
                 for key in keys_to_propogate:
                     if key in base._meta:
