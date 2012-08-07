@@ -1,10 +1,13 @@
+from __future__ import with_statement
 import os
 import pickle
 import pymongo
 import bson
 import unittest
 import warnings
+import sys
 
+from nose.plugins.skip import SkipTest
 from datetime import datetime
 
 from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
@@ -38,19 +41,29 @@ class DocumentTest(unittest.TestCase):
         """Add FutureWarning for future allow_inhertiance default change.
         """
 
-        with warnings.catch_warnings(record=True) as errors:
+        self.warning_list = []
+        showwarning_default = warnings.showwarning
+        
+        def append_to_warning_list(message,category, *args):
+            self.warning_list.append({"message":message, "category":category})
 
-            class SimpleBase(Document):
-                a = IntField()
+        # add warnings to self.warning_list instead of stderr
+        warnings.showwarning = append_to_warning_list
 
-            class InheritedClass(SimpleBase):
-                b = IntField()
+        class SimpleBase(Document):
+            a = IntField()
 
-            InheritedClass()
-            self.assertEqual(len(errors), 1)
-            warning = errors[0]
-            self.assertEqual(FutureWarning, warning.category)
-            self.assertTrue("InheritedClass" in str(warning.message))
+        class InheritedClass(SimpleBase):
+            b = IntField()
+        
+        # restore default handling of warnings
+        warnings.showwarning = showwarning_default
+
+        InheritedClass()
+        self.assertEqual(len(self.warning_list), 1)
+        warning = self.warning_list[0]
+        self.assertEqual(FutureWarning, warning["category"])
+        self.assertTrue("InheritedClass" in str(warning["message"]))
 
     def test_drop_collection(self):
         """Ensure that the collection may be dropped from the database.
@@ -131,18 +144,28 @@ class DocumentTest(unittest.TestCase):
             meta = {'collection': 'wibble'}
         self.assertEqual('wibble', InheritedAbstractNamingTest._get_collection_name())
 
-        with warnings.catch_warnings(record=True) as w:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always")
+        # set up for redirecting warnings
+        self.warning_list = []
+        showwarning_default = warnings.showwarning
 
-            class NonAbstractBase(Document):
-                pass
+        def append_to_warning_list(message, category, *args):
+            self.warning_list.append({'message':message, 'category':category})
+        
+        # add warnings to self.warning_list instead of stderr
+        warnings.showwarning = append_to_warning_list
+        warnings.simplefilter("always")
 
-            class InheritedDocumentFailTest(NonAbstractBase):
-                meta = {'collection': 'fail'}
+        class NonAbstractBase(Document):
+            pass
 
-            self.assertTrue(issubclass(w[0].category, SyntaxWarning))
-            self.assertEqual('non_abstract_base', InheritedDocumentFailTest._get_collection_name())
+        class InheritedDocumentFailTest(NonAbstractBase):
+            meta = {'collection': 'fail'}
+
+        # restore default handling of warnings
+        warnings.showwarning = showwarning_default
+
+        self.assertTrue(issubclass(self.warning_list[0]["category"], SyntaxWarning))
+        self.assertEqual('non_abstract_base', InheritedDocumentFailTest._get_collection_name())
 
         # Mixin tests
         class BaseMixin(object):
@@ -539,21 +562,29 @@ class DocumentTest(unittest.TestCase):
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents' collections.
         """
-        with warnings.catch_warnings(record=True) as w:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always")
 
-            class Drink(Document):
-                name = StringField()
+        class Drink(Document):
+            name = StringField()
 
+        class Drinker(Document):
+            drink = GenericReferenceField()
+        
+        try:
+            warnings.simplefilter("error")
+            
+            class AcloholicDrink(Drink):
+                meta = {'collection': 'booze'}
+        
+        except SyntaxWarning, w:
+            warnings.simplefilter("ignore")
+        
             class AlcoholicDrink(Drink):
                 meta = {'collection': 'booze'}
-
-            class Drinker(Document):
-                drink = GenericReferenceField()
-
-            # Confirm we triggered a SyntaxWarning
-            assert issubclass(w[0].category, SyntaxWarning)
+        
+        else:
+            raise AssertionError("SyntaxWarning should be triggered")
+        
+        warnings.resetwarnings()
 
         Drink.drop_collection()
         AlcoholicDrink.drop_collection()

@@ -894,6 +894,10 @@ class BaseDocument(object):
 
         if not is_list and '_cls' in value:
             cls = get_document(value['_cls'])
+            # Make keys str instead of unicode
+            for key,val in value.items():
+                del value[key]
+                value[str(key)] = val
             value = cls(**value)
             value._dynamic = True
             value._changed_fields = []
@@ -1015,6 +1019,10 @@ class BaseDocument(object):
             raise InvalidDocumentError("""
 Invalid data to create a `%s` instance.\n%s""".strip() % (cls._class_name, errors))
 
+        # Make all keys str instead of unicode
+        for key,val in data.items():
+            del data[key]
+            data[str(key)] = val
         obj = cls(**data)
 
         obj._changed_fields = changed_fields

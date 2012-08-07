@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+from __future__ import with_statement
 import unittest
 
 from datetime import datetime, timedelta
@@ -499,7 +499,7 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
-        # Recreates the collection
+        # Recreates the collection
         self.assertEqual(0, Blog.objects.count())
 
         with query_counter() as q:

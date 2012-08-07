@@ -1270,8 +1270,8 @@ class SequenceField(IntField):
         """
         Generate and Increment the counter
         """
-        sequence_id = "{0}.{1}".format(self.owner_document._get_collection_name(),
-                                       self.name)
+        sequence_id = "%s.%s"%(self.owner_document._get_collection_name(),
+                               self.name)
         collection = get_db(alias = self.db_alias )[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
                                              update={"$inc": {"next": 1}},
