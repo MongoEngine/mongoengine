@@ -417,12 +417,30 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     def _pymongo(cls):
         return cls.objects._collection
 
+    def _update_one_key(self):
+        """
+            Designed to be overloaded in children when a shard key needs to be
+            included in update_one() queries
+        """
+        return {'_id': self.id}
+
+    @classmethod
+    def _by_id_key(cls, doc_id):
+        """
+            Designed to be overloaded in children when a shard key needs to be
+            included in a by_id()
+        """
+        return {'_id': doc_id}
 
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
+
+        # handle queries with inheritance
+        if cls._meta.get('allow_inheritance'):
+            spec['_types'] = cls._class_name
 
         # transform fields to include
         if isinstance(fields, list) or isinstance(fields, tuple):
@@ -444,7 +462,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
             read_preference = pymongo.ReadPreference.SECONDARY
         else:
             read_preference = pymongo.ReadPreference.PRIMARY
-
 
         for i in xrange(2):
             try:
@@ -469,6 +486,15 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
         return [cls._from_son(d) for d in cur]
 
     @classmethod
+    def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
+             slave_ok=False, timeout=False, **kwargs):
+        cur = cls.find_raw(spec, fields, skip, limit,
+                           sort, timeout=False, **kwargs)
+
+        for doc in cur:
+            yield cls._from_son(doc)
+
+    @classmethod
     def find_one(cls, spec, fields=None, skip=0, sort=None,
                  slave_ok=False, **kwargs):
         d = cls.find_raw(spec, fields, skip=skip, sort=sort,
@@ -478,6 +504,24 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
             return cls._from_son(d)
         else:
             return None
+
+    @classmethod
+    def count(cls, spec, slave_ok=False, **kwargs):
+        cur = cls.find_raw(spec, slave_ok=slave_ok, **kwargs)
+        return cur.count()
+
+    @classmethod
+    def update(cls, spec, document, upsert=False, multi=True, **kwargs):
+        document = cls._transform_value(document, cls)
+        spec = cls._transform_value(spec, cls)
+
+        # handle queries with inheritance
+        if cls._meta.get('allow_inheritance'):
+            spec['_types'] = cls._class_name
+
+        result = cls._pymongo().update(spec, document, upsert=upsert,
+                                        multi=multi, safe=True, **kwargs)
+        return result
 
     def update_one(self, document, spec=None, upsert=False, **kwargs):
         ops = {}
@@ -514,14 +558,15 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
                                 ops[field] = self[field][:] + [val]
 
         document = self._transform_value(document, type(self))
-        query_spec = {'_id': self.id}
+        query_spec = self._update_one_key()
 
         if spec:
-            spec = self._transform_value(spec, type(self))
             query_spec.update(spec)
 
-        result = self._pymongo().update(query_spec, document,
-                                        upsert=upsert, safe=True, **kwargs)
+        query_spec = self._transform_value(query_spec, type(self))
+
+        result = self._pymongo().update(query_spec, document, upsert=upsert,
+                                        safe=True, multi=False, **kwargs)
 
         # do in-memory updates on the object if the query succeeded
         if result['n'] == 1:
