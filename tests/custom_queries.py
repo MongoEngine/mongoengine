@@ -5,7 +5,7 @@ import warnings
 from mongoengine import *
 from mongoengine.connection import _get_db
 
-from bson import ObjectId
+from bson import ObjectId, DBRef
 
 class DocumentTest(unittest.TestCase):
 
@@ -22,6 +22,9 @@ class DocumentTest(unittest.TestCase):
             number_list = ListField(IntField())
             arbitrary_dict = DictField()
             some_id = ObjectIdField()
+            id_list = ListField(ObjectIdField())
+            user = ReferenceField("User")
+            friends = ListField(ReferenceField("Person"))
 
         class Colour(EmbeddedDocument):
             meta = {'allow_inheritance': False}
@@ -31,6 +34,7 @@ class DocumentTest(unittest.TestCase):
                 return self.name
 
         class User(Document):
+            meta = {'allow_inheritance': False}
             id = ObjectIdField(primary_key=True)
             name = StringField()
 
@@ -422,6 +426,137 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(self.Person.count({'age': {'$lte': 35}}), 3)
         self.assertEquals(self.Person.count({'age': {'$lte': 0}}), 0)
         self.assertEquals(self.Person.count({'age': 10}), 1)
+
+    def testReferences(self):
+        user = self.User(id=ObjectId(), name="Adam A Flynn")
+        user.save()
+        person = self.Person(user=user, name="Adam")
+        person.save()
+
+        spec = self.Person._transform_value({'user': user}, self.Person)
+        self.assertEquals(spec, {'user': DBRef('user', user.id)})
+
+        p = self.Person.find_one({'user': user})
+        self.assertEquals(p.user.id, user.id)
+        self.assertEquals(p.user.name, "Adam A Flynn")
+        self.assertEquals(p.name, "Adam")
+
+    def testReferenceList(self):
+        adam = self.Person(name="Adam")
+        adam.save()
+        josh = self.Person(name="Josh")
+        josh.save()
+        chu = self.Person(name="Chu")
+        chu.save()
+        danny = self.Person(name="Danny", friends=[adam, josh])
+        danny.save()
+
+        q = self.Person._transform_value({'friends': chu}, self.Person)
+        self.assertEquals(q['friends'], DBRef("person", chu.id))
+
+        q = self.Person._transform_value({'friends': DBRef("person", chu.id)}, self.Person)
+        self.assertEquals(q['friends'], DBRef("person", chu.id))
+
+        q = self.Person._transform_value({'friends': {'$in': (DBRef("person", chu.id), adam)}}, self.Person)
+        self.assertEquals(len(q['friends']['$in']), 2)
+        self.assertTrue(DBRef("person", chu.id) in q['friends']['$in'])
+        self.assertTrue(DBRef("person", adam.id) in q['friends']['$in'])
+
+        # make sure tuple & list versions behave the same way
+        q2 = self.Person._transform_value({'friends': {'$in': [DBRef("person", chu.id), adam]}}, self.Person)
+        self.assertEquals(q2, q)
+
+        self.assertEquals(self.Person.count({'friends': chu}), 0)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+        self.assertEquals(self.Person.count({'friends': josh}), 1)
+        danny.add_to_set(friends=chu)
+        self.assertEquals(self.Person.count({'friends': chu}), 1)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+        self.assertEquals(self.Person.count({'friends': josh}), 1)
+
+        danny.set(friends=[adam])
+        self.assertEquals(self.Person.count({'friends': josh}), 0)
+        self.assertEquals(self.Person.count({'friends': chu}), 0)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+
+        danny.push(friends=DBRef("person", chu.id))
+        self.assertEquals(self.Person.count({'friends': josh}), 0)
+        self.assertEquals(self.Person.count({'friends': chu}), 1)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+
+        danny.update_one({'$pull': {'friends': josh}})
+        self.assertEquals(self.Person.count({'friends': josh}), 0)
+        self.assertEquals(self.Person.count({'friends': chu}), 1)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+
+        danny.update_one({'$pull': {'friends': DBRef("person", chu.id)}})
+        self.assertEquals(self.Person.count({'friends': josh}), 0)
+        self.assertEquals(self.Person.count({'friends': chu}), 0)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+
+        danny.set(friends=[DBRef("person", adam.id), josh])
+        self.assertEquals(self.Person.count({'friends': josh}), 1)
+        self.assertEquals(self.Person.count({'friends': chu}), 0)
+        self.assertEquals(self.Person.count({'friends': adam}), 1)
+
+        d = self.Person.find_one({'_id': danny.id})
+        self.assertEquals(d.friends, [adam, josh])
+
+    def testIdToString(self):
+        u = self.Person(id=ObjectId(), some_id=ObjectId())
+        u.save()
+
+        self.assertEquals(self.Person.find_one({'_id': u.id}), u)
+        self.assertEquals(self.Person.find_one({'_id': str(u.id)}), u)
+        self.assertEquals(self.Person.find_one({'_id': ObjectId()}), None)
+
+        new_id = ObjectId()
+        ret = self.Person.update({'_id': str(u.id)}, {'$set': {'some_id': str(new_id)} })
+        self.assertEquals(ret['n'], 1)
+
+        p = self.Person.find_one({'_id': u.id})
+        self.assertEquals(p.some_id, new_id)
+
+        self.assertEquals(self.Person.find_one({'some_id': u.some_id}), None)
+        self.assertEquals(self.Person.count({'some_id': new_id}), 1)
+        self.assertEquals(self.Person.count({'some_id': str(new_id)}), 1)
+        p = self.Person.find_one({'some_id': new_id})
+        self.assertTrue(isinstance(p.some_id, ObjectId))
+
+        new_id2 = ObjectId()
+        q = self.Person._transform_value({'$addToSet': {'id_list': str(new_id2)}}, self.Person)
+        self.assertEquals(q['$addToSet']['id_list'], new_id2)
+        ret = self.Person.update({'_id': u.id}, {'$addToSet': {'id_list': str(new_id2) } })
+
+        self.assertEquals(ret['n'], 1)
+        q = self.Person._transform_value({'$addToSet': {'id_list': new_id2}}, self.Person)
+        self.assertEquals(q['$addToSet']['id_list'], new_id2)
+
+        ret = self.Person.update({'_id': u.id}, {'$addToSet': {'id_list': new_id2 } })
+        self.assertEquals(ret['n'], 1)
+
+        ret = self.Person.update({'_id': u.id}, {'$addToSet': {'id_list': new_id } })
+        self.assertEquals(ret['n'], 1)
+
+        p = self.Person.find_one({'_id': u.id})
+        self.assertEquals(len(p.id_list), 2)
+        self.assertTrue(new_id in p.id_list)
+        self.assertTrue(new_id2 in p.id_list)
+        self.assertFalse(str(new_id2) in p.id_list)
+        self.assertFalse(str(new_id) in p.id_list)
+
+        new_id3 = ObjectId()
+        new_id4 = ObjectId()
+        ret = self.Person.update({'_id': u.id}, {'$set': {'id_list': [str(new_id3), new_id4]}})
+        self.assertEquals(ret['n'], 1)
+
+        self.assertEquals(self.Person.count({'id_list': new_id3}), 1)
+        self.assertEquals(self.Person.count({'id_list': str(new_id4)}), 1)
+        q = self.Person._transform_value({'id_list': str(new_id4)}, self.Person)
+        self.assertEquals(q['id_list'], new_id4)
+
+        p = self.Person.find_one({'_id': u.id})
+        self.assertEquals(p.id_list, [new_id3, new_id4])
 
 if __name__ == '__main__':
     unittest.main()
