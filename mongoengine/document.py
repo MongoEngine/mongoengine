@@ -8,7 +8,7 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
 from queryset import OperationError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 import time
-from bson import SON, ObjectId
+from bson import SON, ObjectId, DBRef
 
 
 __all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
@@ -593,8 +593,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
     @staticmethod
     def _transform_value(value, context, op=None, validate=True):
-        from fields import DictField, EmbeddedDocumentField, ListField, \
-                            ObjectIdField
+        from fields import DictField, EmbeddedDocumentField, ListField
 
         VALIDATE_OPS = ['$set', '$inc', None, '$eq', '$gte', '$lte', '$lt',
                         '$gt', '$ne']
@@ -624,20 +623,29 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
             return transformed_value
         # else, validate & return
         else:
-            # automatically encode ObjectIds (they're often strings)
-            if isinstance(context, ObjectIdField) and op in VALIDATE_OPS:
-                value = ObjectId(value)
+            op_type = None
+            # there's a special case here, since a None op (find) on a list
+            # behaves like a LIST_VALIDATE_OP (i.e. it has "x in list" instead
+            # of "x = list" semantics)
+            if op in LIST_VALIDATE_OPS or \
+                   (op is None and isinstance(context, ListField)):
+                op_type = 'list'
+            elif op in VALIDATE_OPS:
+                op_type = 'value'
+            elif op in LIST_VALIDATE_ALL_OPS:
+                op_type = 'list_all'
 
-            # automatically encode ObjectIds in lists too...
-            elif isinstance(context, ObjectIdField) and \
-               (op in LIST_VALIDATE_OPS or op in LIST_VALIDATE_ALL_OPS):
-                value = [ObjectId(v) for v in value]
+            value = Document._transform_id_reference_value(value, context,
+                                                           op_type)
 
             if validate:
-                if op in VALIDATE_OPS:
-                    context.validate(value)
-                elif op in LIST_VALIDATE_OPS:
+                # same special case as above. find op on list has semantic
+                # exception
+                if op in LIST_VALIDATE_OPS or \
+                      (op is None and isinstance(context, ListField)):
                     context.field.validate(value)
+                elif op in VALIDATE_OPS:
+                    context.validate(value)
                 elif op in LIST_VALIDATE_ALL_OPS:
                     for entry in value:
                         if isinstance(context, ListField):
@@ -663,6 +671,91 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
                         value[k] = v.to_mongo()
 
             return value
+
+    @staticmethod
+    def _transform_id_reference_value(value, context, op_type):
+        """
+            Transform strings/documents into ObjectIds / DBRefs when appropriate
+
+            This is slightly tricky because there are List(ReferenceField) and
+            List(ObjectIdField) and you sometimes get lists of documents/strings
+            that need conversion.
+
+            op_type is 'value' (if it's an individual value), 'list_all' (if it's a
+            list of values), 'list' (if it's going into a list but is an individual
+            value), or None (if it's neither).
+
+            If no conversion is necessary, just return the original value
+        """
+
+        from fields import ReferenceField, ObjectIdField, ListField
+
+        # not an op we can work with
+        if not op_type:
+            return value
+
+        if isinstance(context, ListField):
+            f = context.field
+        else:
+            f = context
+
+        if not isinstance(f, ObjectIdField) and \
+           not isinstance(f, ReferenceField):
+            return value
+
+        # the logic is a bit complicated here. there are a few different
+        # variables at work. the op can be value, list, or list_all and it can
+        # be done on a list or on a single value. the actions are either we do
+        # single conversion or we need to convert each element in a list.
+        #
+        # see _transform_value for the logic on what's a value, list, or
+        # list_all.
+        #
+        # here's the matrix:
+        #
+        # op         type     outcome
+        # --------   ------   -----------
+        # value      list     convert all
+        # list       list     convert one
+        # list_all   list     convert all
+        # value      single   convert one
+        # list       single   invalid
+        # list_all   single   convert all
+
+        if not isinstance(context, ListField) and op_type == 'list':
+            raise ValidationError("Can't do list operations on non-lists")
+
+        if op_type == 'list_all' or \
+           (isinstance(context, ListField) and op_type == 'value'):
+            if not isinstance(value, list) and not isinstance(value, tuple):
+                raise ValidationError("Expecting list, not value")
+
+            if isinstance(f, ReferenceField):
+                new_value = []
+
+                for v in value:
+                    if isinstance(v, DBRef):
+                        new_value.append(v)
+                    elif isinstance(v, Document):
+                        new_value.append(DBRef(type(v)._meta['collection'], v.id))
+                    else:
+                        raise ValidationError("Invalid ReferenceField value")
+
+                return new_value
+            else:
+                return [ObjectId(v) for v in value]
+        else:
+            if isinstance(value, list) or isinstance(value, tuple):
+                raise ValidationError("Expecting value, not list")
+
+            if isinstance(f, ReferenceField):
+                if isinstance(value, DBRef):
+                    return value
+                return DBRef(type(value)._meta['collection'], value.id)
+            else:
+                return ObjectId(value)
+
+        raise AssertionError("Failed to convert")
 
     @staticmethod
     def _transform_key(key, context, prefix=''):
