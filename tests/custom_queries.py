@@ -34,9 +34,34 @@ class DocumentTest(unittest.TestCase):
             id = ObjectIdField(primary_key=True)
             name = StringField()
 
+        class Vehicle(Document):
+            name = StringField()
+
+        class Bike(Vehicle):
+            has_bell = BooleanField()
+
+        class Scooter(Vehicle):
+            cc = IntField()
+
+        class Shard(Document):
+            hash = IntField(db_field='h')
+            name = StringField()
+
+            def _update_one_key(self):
+                return {'_id': self.id, 'hash': 12}
+
+        Person._pymongo().drop()
+        User._pymongo().drop()
+        Vehicle._pymongo().drop()
+        Shard._pymongo().drop()
+
         self.Person = Person
         self.Colour = Colour
         self.User = User
+        self.Vehicle = Vehicle
+        self.Bike = Bike
+        self.Scooter = Scooter
+        self.Shard = Shard
 
     def tearDown(self):
         self.Person.objects.delete()
@@ -304,6 +329,99 @@ class DocumentTest(unittest.TestCase):
         u2 = self.User.find_one({'name': 'Adam'}, fields=['id'])
         self.assertEquals(u2.name, None)
         self.assertEquals(u2.id, u.id)
+
+    def testInheritanceBaseClass(self):
+        v = self.Vehicle(name="Honda")
+        b = self.Bike(name="Fixie")
+        s = self.Scooter(name="Zoom", cc=110)
+        v.save()
+        b.save()
+        s.save()
+
+        self.assertEquals(self.Vehicle.count({}), 3)
+        self.assertEquals(self.Vehicle.count({'name': "Fixie"}), 1)
+        self.assertEquals(self.Vehicle.count({'name': "Honda"}), 1)
+        ret = self.Scooter.update({'name': "Zoom"}, {'$set': {'cc': 400}})
+        self.assertEquals(ret['n'], 1)
+        s2 = self.Vehicle.find_one({'name': "Zoom"})
+        self.assertEquals(s2.cc, 400)
+
+    def testInheritanceSubClass(self):
+        v = self.Vehicle(name="Honda")
+        b = self.Bike(name="Fixie")
+        b2 = self.Bike(name="Honda")
+        s = self.Scooter(name="Zoom", cc=110)
+        v.save()
+        b.save()
+        b2.save()
+        s.save()
+
+        self.assertEquals(self.Vehicle.count({}), 4)
+        self.assertEquals(self.Bike.count({}), 2)
+        self.assertEquals(self.Scooter.count({}), 1)
+        self.assertEquals(self.Vehicle.count({'name': "Fixie"}), 1)
+        self.assertEquals(self.Bike.count({'name': "Fixie"}), 1)
+        self.assertEquals(self.Vehicle.count({'name': "Honda"}), 2)
+        self.assertEquals(self.Bike.count({'name': "Honda"}), 1)
+
+        ret = self.Bike.update({'name': "Honda"}, {'$set': {'name': 'Sarengetti'}})
+        self.assertEquals(ret['n'], 1)
+        self.assertEquals(self.Vehicle.count({'name': "Honda"}), 1)
+        self.assertEquals(self.Vehicle.count({'name': "Sarengetti"}), 1)
+        self.assertEquals(self.Bike.count({'name': "Honda"}), 0)
+        self.assertEquals(self.Bike.count({'name': "Sarengetti"}), 1)
+
+    def testShardKey(self):
+        s1 = self.Shard(hash=14, name="s1")
+        s2 = self.Shard(hash=12, name="s2")
+        s1.save()
+        s2.save()
+
+        # hacked the shard key lookup to add hash=12 to spec
+        ret = s1.update_one({'$set': {'name': 'changed'}})
+        self.assertEquals(ret['n'], 0)
+
+        ret = s2.update_one({'$set': {'name': 'changed'}})
+        self.assertEquals(ret['n'], 1)
+
+    def testFindIter(self):
+        people = [self.Person(age=a) for a in [10, 15, 20]]
+        for p in people:
+            p.save()
+
+        for i, p in enumerate(self.Person.find_iter({}, sort=[('age', 1)])):
+            self.assertEquals(p, people[i])
+
+        for i, p in enumerate(self.Person.find_iter({'age': {'$lte': 15}}, sort=[('age', 1)])):
+            self.assertEquals(p, people[i])
+
+    def testMultiUpdate(self):
+        people = [self.Person(age=a) for a in [10, 15, 20]]
+        for p in people:
+            p.save()
+
+        self.assertEquals(self.Person.count({'age': {'$lte': 15}}), 2)
+
+        ret = self.Person.update({'age': {'$lte': 15}}, {'$set': {'name': 'Adam'}}, multi=False)
+        self.assertEquals(ret['n'], 1)
+
+        ret = self.Person.update({'age': {'$lte': 15}}, {'$set': {'name': 'Adam'}})
+        self.assertEquals(ret['n'], 2)
+
+        for p in people:
+            p.reload()
+            self.assertEquals(p.name, "Adam" if p.age <= 15 else None)
+
+    def testCount(self):
+        people = [self.Person(age=a) for a in [10, 15, 20]]
+        for p in people:
+            p.save()
+
+        self.assertEquals(self.Person.count({'age': {'$lte': 15}}), 2)
+        self.assertEquals(self.Person.count({'name': 'Adam'}), 0)
+        self.assertEquals(self.Person.count({'age': {'$lte': 35}}), 3)
+        self.assertEquals(self.Person.count({'age': {'$lte': 0}}), 0)
+        self.assertEquals(self.Person.count({'age': 10}), 1)
 
 if __name__ == '__main__':
     unittest.main()
