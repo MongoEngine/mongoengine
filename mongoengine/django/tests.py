@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db.models.loading import cache
 from django.test.simple import DjangoTestSuiteRunner
 from django.test.simple import build_suite, build_test, reorder_suite
-from django.test.testcases import SimpleTestCase
+from django.test.testcases import SimpleTestCase, TransactionTestCase
 from django.utils import unittest
 from mongoengine import connect
 from mongoengine.connection import get_db, disconnect
@@ -22,19 +22,26 @@ class MongoTestCase(SimpleTestCase):
             db.drop_collection(collection)
 
 
+class MongoHybridTestCase(MongoTestCase, TransactionTestCase):
+
+    def tearDown(self):
+        MongoTestCase.tearDown(self)
+        TransactionTestCase.tearDown(self)
+
+
 class MongoTestSuiteRunner(DjangoTestSuiteRunner):
     """
     TestRunner that could be set as TEST_RUNNER in Django settings module to
-    test MongoEngine projects.
+    test MongoEngine projects that do not use RDBMS.
     """
     db_name = 'test_%s' % settings.MONGO_DATABASE_NAME
 
     def run_tests(self, test_labels, extra_tests=None, **kwargs):
         self.setup_test_environment()
-        connection = self.setup_databases()
+        teardown_data = self.setup_databases()
         suite = self.build_suite(test_labels, extra_tests)
         result = self.run_suite(suite)
-        self.teardown_databases(connection)
+        self.teardown_databases(teardown_data)
         self.teardown_test_environment()
         return self.suite_result(suite, result)
 
@@ -77,3 +84,23 @@ class MongoTestSuiteRunner(DjangoTestSuiteRunner):
         return filter(
             lambda app: app.__name__.split('.', 1)[0] != 'django',
             cache.get_apps())
+
+
+class MongoHybridTestSuiteRunner(MongoTestSuiteRunner):
+    """
+    Hybrid TestRunner that could be set as TEST_RUNNER in Django settings
+    module to test MongoEngine projects that use both Mongoengine and Django
+    built in RDBMS features.
+    """
+
+    def setup_databases(self):
+        return {
+            'connection': MongoTestSuiteRunner.setup_databases(self),
+            'old_config': DjangoTestSuiteRunner.setup_databases(self),
+        }
+
+    def teardown_databases(self, teardown_data, **kwargs):
+        MongoTestSuiteRunner.teardown_databases(
+            self, teardown_data['connection'], **kwargs)
+        DjangoTestSuiteRunner.teardown_databases(
+            self, teardown_data['old_config'], **kwargs)
