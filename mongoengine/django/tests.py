@@ -9,7 +9,7 @@ from mongoengine import connect
 from mongoengine.connection import get_db, disconnect
 
 
-class MongoengineTestCase(SimpleTestCase):
+class MongoTestCase(SimpleTestCase):
     """
     TestCase class that drops all collections the collections between the tests
     """
@@ -22,7 +22,7 @@ class MongoengineTestCase(SimpleTestCase):
             db.drop_collection(collection)
 
 
-class MongoengineTestSuiteRunner(DjangoTestSuiteRunner):
+class MongoTestSuiteRunner(DjangoTestSuiteRunner):
     """
     TestRunner that could be set as TEST_RUNNER in Django settings module to
     test MongoEngine projects.
