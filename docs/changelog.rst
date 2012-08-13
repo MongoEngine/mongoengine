@@ -2,6 +2,13 @@
 Changelog
 =========
 
+Changes in 0.7.X
+=================
+- Fixed Dynamic Documents and Embedded Documents (hmarr/mongoengine#561)
+- Fixed abstract classes and shard keys (MongoEngine/mongoengine#64)
+- Fixed Python 2.5 support
+- Added Python 3 support (thanks to Laine Heron)
+
 Changes in 0.6.20
 =================
 - Added support for distinct and db_alias (MongoEngine/mongoengine#59)

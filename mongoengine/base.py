@@ -897,10 +897,7 @@ class BaseDocument(object):
             cls = get_document(value['_cls'])
             if PY25:
                 value = dict([(str(k), v) for k, v in value.items()])
-            value = cls(**value)
-            value._dynamic = True
-            value._changed_fields = []
-            return value
+            return cls(**value)
 
         data = {}
         for k, v in value.items():
