@@ -4,7 +4,9 @@ import copy
 import itertools
 import operator
 
+from collections import defaultdict
 from functools import partial
+
 from mongoengine.python_support import product, reduce
 
 import pymongo
@@ -679,6 +681,7 @@ class QuerySet(object):
         custom_operators = ['match']
 
         mongo_query = {}
+        merge_query = defaultdict(list)
         for key, value in query.items():
             if key == "__raw__":
                 mongo_query.update(value)
@@ -767,21 +770,22 @@ class QuerySet(object):
             if op is None or key not in mongo_query:
                 mongo_query[key] = value
             elif key in mongo_query:
-                if isinstance(mongo_query[key], dict) and isinstance(value, dict):
+                if key in mongo_query and isinstance(mongo_query[key], dict):
                     mongo_query[key].update(value)
-                elif isinstance(mongo_query[key], list):
-                    mongo_query[key].append(value)
                 else:
-                    mongo_query[key] = [mongo_query[key], value]
+                    # Store for manually merging later
+                    merge_query[key].append(value)
 
-        for k, v in mongo_query.items():
+        # The queryset has been filter in such a way we must manually merge
+        for k, v in merge_query.items():
+            merge_query[k].append(mongo_query[k])
+            del mongo_query[k]
             if isinstance(v, list):
                 value = [{k:val} for val in v]
                 if '$and' in mongo_query.keys():
                     mongo_query['$and'].append(value)
                 else:
                     mongo_query['$and'] = value
-                del mongo_query[k]
 
         return mongo_query
 

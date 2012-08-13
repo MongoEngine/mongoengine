@@ -883,6 +883,21 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         Blog.drop_collection()
 
+    def test_raw_and_merging(self):
+        class Doc(Document):
+            pass
+
+        raw_query = Doc.objects(__raw__={'deleted': False,
+                                'scraped': 'yes',
+                                '$nor': [{'views.extracted': 'no'},
+                                         {'attachments.views.extracted':'no'}]
+                                })._query
+
+        expected = {'deleted': False, '_types': 'Doc', 'scraped': 'yes',
+                    '$nor': [{'views.extracted': 'no'},
+                             {'attachments.views.extracted': 'no'}]}
+        self.assertEqual(expected, raw_query)
+
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """
