@@ -500,3 +500,34 @@ class DynamicDocTest(unittest.TestCase):
         self.assertTrue([('_types', 1), ('category', 1), ('date', -1)]
                         in info)
         self.assertTrue([('_types', 1), ('date', -1)] in info)
+
+    def test_dynamic_and_embedded(self):
+        """Ensure embedded documents play nicely"""
+
+        class Address(EmbeddedDocument):
+            city = StringField()
+
+        class Person(DynamicDocument):
+            name = StringField()
+            meta = {'allow_inheritance': True}
+
+        Person.drop_collection()
+
+        Person(name="Ross", address=Address(city="London")).save()
+
+        person = Person.objects.first()
+        person.address.city = "Lundenne"
+        person.save()
+
+        self.assertEqual(Person.objects.first().address.city, "Lundenne")
+
+        person = Person.objects.first()
+        person.address = Address(city="Londinium")
+        person.save()
+
+        self.assertEqual(Person.objects.first().address.city, "Londinium")
+
+        person = Person.objects.first()
+        person.age = 35
+        person.save()
+        self.assertEqual(Person.objects.first().age, 35)
