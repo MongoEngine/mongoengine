@@ -25,7 +25,7 @@ class EmbeddedDocument(BaseDocument):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = DocumentMetaclass 
+    my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
     def __init__(self, *args, **kwargs):
@@ -97,7 +97,7 @@ class Document(BaseDocument):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = TopLevelDocumentMetaclass 
+    my_metaclass  = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
     def pk():
@@ -242,7 +242,8 @@ class Document(BaseDocument):
                 message = u'Tried to save duplicate unique keys (%s)'
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
-        self[id_field] = self._fields[id_field].to_python(object_id)
+        if id_field not in self._meta.get('shard_key', []):
+            self[id_field] = self._fields[id_field].to_python(object_id)
 
         self._changed_fields = []
         self._created = False
@@ -387,7 +388,7 @@ class DynamicDocument(Document):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = TopLevelDocumentMetaclass 
+    my_metaclass  = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
@@ -410,7 +411,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = DocumentMetaclass 
+    my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
     _dynamic = True
