@@ -3254,5 +3254,52 @@ class ValidatorErrorTest(unittest.TestCase):
         b = BDocument.objects.first()
         b.save(cascade=True)
 
+    def test_shard_key(self):
+        class LogEntry(Document):
+            machine = StringField()
+            log = StringField()
+
+            meta = {
+                'shard_key': ('machine',)
+            }
+
+        LogEntry.drop_collection()
+
+        log = LogEntry()
+        log.machine = "Localhost"
+        log.save()
+
+        log.log = "Saving"
+        log.save()
+
+        def change_shard_key():
+            log.machine = "127.0.0.1"
+
+        self.assertRaises(OperationError, change_shard_key)
+
+    def test_shard_key_primary(self):
+        class LogEntry(Document):
+            machine = StringField(primary_key=True)
+            log = StringField()
+
+            meta = {
+                'shard_key': ('machine',)
+            }
+
+        LogEntry.drop_collection()
+
+        log = LogEntry()
+        log.machine = "Localhost"
+        log.save()
+
+        log.log = "Saving"
+        log.save()
+
+        def change_shard_key():
+            log.machine = "127.0.0.1"
+
+        self.assertRaises(OperationError, change_shard_key)
+
+
 if __name__ == '__main__':
     unittest.main()
