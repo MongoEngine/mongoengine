@@ -1,6 +1,7 @@
 import operator
 import sys
 import warnings
+import weakref
 
 from collections import defaultdict
 from functools import partial
@@ -1265,7 +1266,7 @@ class BaseList(list):
     _name = None
 
     def __init__(self, list_items, instance, name):
-        self._instance = instance
+        self._instance = weakref.proxy(instance)
         self._name = name
         return super(BaseList, self).__init__(list_items)
 
@@ -1327,7 +1328,7 @@ class BaseDict(dict):
     _name = None
 
     def __init__(self, dict_items, instance, name):
-        self._instance = instance
+        self._instance = weakref.proxy(instance)
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
 
