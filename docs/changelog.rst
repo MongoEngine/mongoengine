@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.X
 =================
+- Improved queryset filtering (hmarr/mongoengine#554)
 - Fixed Dynamic Documents and Embedded Documents (hmarr/mongoengine#561)
 - Fixed abstract classes and shard keys (MongoEngine/mongoengine#64)
 - Fixed Python 2.5 support
