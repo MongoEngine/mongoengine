@@ -54,7 +54,8 @@ class StringField(BaseField):
         return unicode(value)
 
     def validate(self, value):
-        assert isinstance(value, (str, unicode))
+        assert isinstance(value, (str, unicode)), \
+            "type of '%s' is not str or unicode" % value
 
         if self.max_length is not None and len(value) > self.max_length:
             raise ValidationError('String value is too long')
