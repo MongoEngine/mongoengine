@@ -512,7 +512,10 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True, **kwargs):
-        document = cls._transform_value(document, cls)
+        # updates behave like set instead of find (None)... this is relevant for
+        # setting list values since you're setting the value of the whole list,
+        # not an element inside the list (like in find)
+        document = cls._transform_value(document, cls, op='$set')
         spec = cls._transform_value(spec, cls)
 
         # handle queries with inheritance

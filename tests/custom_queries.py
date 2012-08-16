@@ -558,5 +558,28 @@ class DocumentTest(unittest.TestCase):
         p = self.Person.find_one({'_id': u.id})
         self.assertEquals(p.id_list, [new_id3, new_id4])
 
+    def testListUpdate(self):
+        u = self.Person(id=ObjectId(), some_id=ObjectId())
+        u.save()
+
+        ret = self.Person.update({'some_id': u.some_id}, {'some_id': u.some_id, 'number_list': range(3)}, multi=False)
+        self.assertEquals(ret['n'], 1)
+
+        u.reload()
+        self.assertEquals(u.number_list, range(3))
+
+        ret = self.Person.update({'some_id': u.some_id}, {'$set': {'number_list': range(5)}}, multi=False)
+        self.assertEquals(ret['n'], 1)
+
+        u.reload()
+        self.assertEquals(u.number_list, range(5))
+
+        ret = self.Person.update({'some_id': u.some_id}, {'some_id': u.some_id, 'name': 'Adam'}, multi=False)
+        self.assertEquals(ret['n'], 1)
+
+        u.reload()
+        self.assertEquals(u.number_list, [])
+        self.assertEquals(u.name, "Adam")
+
 if __name__ == '__main__':
     unittest.main()
