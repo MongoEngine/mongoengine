@@ -11,7 +11,8 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
 
 from mongoengine import signals
-from mongoengine.python_support import PY3, PY25, txt_type
+from mongoengine.python_support import (PY3, PY25, txt_type,
+                                        to_str_keys_recursive)
 
 import pymongo
 from bson import ObjectId
@@ -961,8 +962,6 @@ class BaseDocument(object):
 
         if not is_list and '_cls' in value:
             cls = get_document(value['_cls'])
-            if PY25:
-                value = dict([(str(k), v) for k, v in value.items()])
             return cls(**value)
 
         data = {}
@@ -1046,6 +1045,10 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
         data = dict(("%s" % key, value) for key, value in son.items())
+        if PY25:
+            # PY25 cannot handle unicode keys passed to class constructor
+            # example: cls(**data)
+            to_str_keys_recursive(data)
 
         if '_types' in data:
             del data['_types']
@@ -1084,8 +1087,6 @@ class BaseDocument(object):
                    % (cls._class_name, errors))
             raise InvalidDocumentError(msg)
 
-        if PY25:
-            data = dict([(str(k), v) for k, v in data.items()])
         obj = cls(**data)
         obj._changed_fields = changed_fields
         obj._created = False

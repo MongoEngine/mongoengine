@@ -41,3 +41,20 @@ if PY25:
 else:
     from itertools import product
     from functools import reduce
+
+
+# For use with Python 2.5
+# converts all keys from unicode to str for d and all nested dictionaries
+def to_str_keys_recursive(d):
+    if isinstance(d, list):
+        for val in d:
+            if isinstance(val, (dict, list)):
+                to_str_keys_recursive(val)
+    elif isinstance(d, dict):
+        for key, val in d.items():
+            if isinstance(val, (dict, list)):
+                to_str_keys_recursive(val)
+            if isinstance(key, unicode):
+                d[str(key)] = d.pop(key)
+    else:
+        raise ValueError("non list/dict parameter not allowed")
