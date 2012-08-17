@@ -2665,14 +2665,14 @@ class DocumentTest(unittest.TestCase):
         complex fields.
         """
 
-        class BlogPost2(Document):
+        class BlogPost(Document):
             content = StringField()
             authors = ListField(ReferenceField(self.Person, reverse_delete_rule=CASCADE))
             reviewers = ListField(ReferenceField(self.Person, reverse_delete_rule=NULLIFY))
 
         self.Person.drop_collection()
 
-        BlogPost2.drop_collection()
+        BlogPost.drop_collection()
 
         author = self.Person(name='Test User')
         author.save()
@@ -2680,19 +2680,19 @@ class DocumentTest(unittest.TestCase):
         reviewer = self.Person(name='Re Viewer')
         reviewer.save()
 
-        post = BlogPost2(content='Watched some TV')
+        post = BlogPost(content='Watched some TV')
         post.authors = [author]
         post.reviewers = [reviewer]
         post.save()
 
-        # Deleting the reviewer should have no effect on the BlogPost2
+        # Deleting the reviewer should have no effect on the BlogPost
         reviewer.delete()
-        self.assertEqual(len(BlogPost2.objects), 1)
-        self.assertEqual(BlogPost2.objects.get().reviewers, [])
+        self.assertEqual(len(BlogPost.objects), 1)
+        self.assertEqual(BlogPost.objects.get().reviewers, [])
 
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
-        self.assertEqual(len(BlogPost2.objects), 0)
+        self.assertEqual(len(BlogPost.objects), 0)
 
     def test_two_way_reverse_delete_rule(self):
         """Ensure that Bi-Directional relationships work with

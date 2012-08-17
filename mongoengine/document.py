@@ -394,7 +394,6 @@ class DynamicDocument(Document):
     __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
-    meta = {'abstract': True}
 
     def __delattr__(self, *args, **kwargs):
         """Deletes the attribute by setting to None and allowing _delta to unset
