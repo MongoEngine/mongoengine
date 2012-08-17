@@ -207,7 +207,6 @@ class Document(BaseDocument):
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
-
                 # Need to add shard key to query, or you get an error
                 select_dict = {'_id': object_id}
                 shard_key = self.__class__._meta.get('shard_key', tuple())

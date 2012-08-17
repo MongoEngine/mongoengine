@@ -49,8 +49,11 @@ class StringField(BaseField):
     def to_python(self, value):
         if isinstance(value, unicode):
             return value
-        else:
-            return value.decode('utf-8')
+        try:
+            value = value.decode('utf-8')
+        except:
+            pass
+        return value
 
     def validate(self, value):
         if not isinstance(value, basestring):
@@ -150,7 +153,11 @@ class IntField(BaseField):
         super(IntField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        return int(value)
+        try:
+            value = int(value)
+        except ValueError:
+            pass
+        return value
 
     def validate(self, value):
         try:
@@ -180,7 +187,11 @@ class FloatField(BaseField):
         super(FloatField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        return float(value)
+        try:
+            value = float(value)
+        except ValueError:
+            pass
+        return value
 
     def validate(self, value):
         if isinstance(value, int):
@@ -212,9 +223,14 @@ class DecimalField(BaseField):
         super(DecimalField, self).__init__(**kwargs)
 
     def to_python(self, value):
+        original_value = value
         if not isinstance(value, basestring):
             value = unicode(value)
-        return decimal.Decimal(value)
+        try:
+            value = decimal.Decimal(value)
+        except ValueError:
+            return original_value
+        return value
 
     def to_mongo(self, value):
         return unicode(value)
@@ -242,7 +258,11 @@ class BooleanField(BaseField):
     """
 
     def to_python(self, value):
-        return bool(value)
+        try:
+            value = bool(value)
+        except ValueError:
+            pass
+        return value
 
     def validate(self, value):
         if not isinstance(value, bool):
@@ -385,7 +405,11 @@ class ComplexDateTimeField(StringField):
                        'ComplexDateTimeField')
 
     def to_python(self, value):
-        return self._convert_from_string(value)
+        original_value = value
+        try:
+            return self._convert_from_string(value)
+        except:
+            return original_value
 
     def to_mongo(self, value):
         return self._convert_from_datetime(value)
@@ -1340,9 +1364,13 @@ class UUIDField(BaseField):
 
     def to_python(self, value):
         if not self._binary:
-            if not isinstance(value, basestring):
-                value = unicode(value)
-            return uuid.UUID(value)
+            original_value = value
+            try:
+                if not isinstance(value, basestring):
+                    value = unicode(value)
+                return uuid.UUID(value)
+            except:
+                return original_value
         return value
 
     def to_mongo(self, value):

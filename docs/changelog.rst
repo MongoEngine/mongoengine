@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.X
 =================
+- Add flexibility for fields handling bad data (MongoEngine/mongoengine#78)
 - Embedded Documents no longer handle meta definitions
 - Use weakref proxies in base lists / dicts (MongoEngine/mongoengine#74)
 - Improved queryset filtering (hmarr/mongoengine#554)
