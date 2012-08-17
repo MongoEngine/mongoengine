@@ -7,6 +7,7 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList, ValidationError, get_document)
 from queryset import OperationError
 from connection import get_db, DEFAULT_CONNECTION_NAME
+import time
 from bson import SON, ObjectId
 
 
@@ -424,7 +425,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
         spec = cls._transform_value(spec, cls)
 
         # transform fields to include
-        if isinstance(fields, list):
+        if isinstance(fields, list) or isinstance(fields, tuple):
             fields = [cls._transform_key(f, cls)[0] for f in fields]
         elif isinstance(fields, dict):
             fields = dict([[cls._transform_key(f, cls)[0], fields[f]] for f in
@@ -445,13 +446,20 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
             read_preference = pymongo.ReadPreference.PRIMARY
 
 
-        if find_one:
-            return cls._pymongo().find_one(spec, fields, skip=skip, sort=sort,
-                                   read_preference=read_preference, **kwargs)
-        else:
-            return cls._pymongo().find(spec, fields, skip=skip, limit=limit,
-                                   sort=sort, read_preference=read_preference,
-                                   **kwargs)
+        for i in xrange(2):
+            try:
+                if find_one:
+                    return cls._pymongo().find_one(spec, fields, skip=skip, sort=sort,
+                                           read_preference=read_preference, **kwargs)
+                else:
+                    return cls._pymongo().find(spec, fields, skip=skip, limit=limit,
+                                           sort=sort, read_preference=read_preference,
+                                           **kwargs)
+                break
+            # delay & retry once on AutoReconnect error
+            except pymongo.errors.AutoReconnect:
+                time.sleep(0.1)
+
 
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
