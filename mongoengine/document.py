@@ -360,7 +360,9 @@ class Document(BaseDocument):
         """This method registers the delete rules to apply when removing this
         object.
         """
-        cls._meta['delete_rules'][(document_cls, field_name)] = rule
+        delete_rules = cls._meta.get('delete_rules') or {}
+        delete_rules[(document_cls, field_name)] = rule
+        cls._meta['delete_rules'] = delete_rules
 
     @classmethod
     def drop_collection(cls):
@@ -392,6 +394,7 @@ class DynamicDocument(Document):
     __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
+    meta = {'abstract': True}
 
     def __delattr__(self, *args, **kwargs):
         """Deletes the attribute by setting to None and allowing _delta to unset

@@ -18,8 +18,8 @@ try:
     from mongoengine.django.sessions import SessionStore, MongoSession
 except Exception, err:
     if PY3:
-        SessionTestsMixin = type #dummy value so no error
-        SessionStore = None #dummy value so no error
+        SessionTestsMixin = type  # dummy value so no error
+        SessionStore = None  # dummy value so no error
     else:
         raise err
 

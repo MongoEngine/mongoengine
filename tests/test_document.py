@@ -387,19 +387,6 @@ class DocumentTest(unittest.TestCase):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
 
-        # Test the same for embedded documents
-        class Comment(EmbeddedDocument):
-            content = StringField()
-            meta = {'allow_inheritance': False}
-
-        def create_special_comment():
-            class SpecialComment(Comment):
-                pass
-        self.assertRaises(ValueError, create_special_comment)
-
-        comment = Comment(content='test')
-        self.assertFalse('_cls' in comment.to_mongo())
-        self.assertFalse('_types' in comment.to_mongo())
 
     def test_allow_inheritance_abstract_document(self):
         """Ensure that abstract documents can set inheritance rules and that
@@ -491,9 +478,20 @@ class DocumentTest(unittest.TestCase):
         """Ensure that a document superclass can be marked as abstract
         thereby not using it as the name for the collection."""
 
+        defaults = {'index_background': True,
+                    'index_drop_dups': True,
+                    'index_opts': {'hello': 'world'},
+                    'allow_inheritance': True,
+                    'queryset_class': 'QuerySet',
+                    'db_alias': 'myDB',
+                    'shard_key': ('hello', 'world')}
+
+        meta_settings = {'abstract': True}
+        meta_settings.update(defaults)
+
         class Animal(Document):
             name = StringField()
-            meta = {'abstract': True}
+            meta = meta_settings
 
         class Fish(Animal): pass
         class Guppy(Fish): pass
@@ -501,6 +499,10 @@ class DocumentTest(unittest.TestCase):
         class Mammal(Animal):
             meta = {'abstract': True}
         class Human(Mammal): pass
+
+        for k, v in defaults.iteritems():
+            for cls in [Animal, Fish, Guppy]:
+                self.assertEqual(cls._meta[k], v)
 
         self.assertFalse('collection' in Animal._meta)
         self.assertFalse('collection' in Mammal._meta)
@@ -564,6 +566,7 @@ class DocumentTest(unittest.TestCase):
 
         class Drink(Document):
             name = StringField()
+            meta = {'allow_inheritance': True}
 
         class Drinker(Document):
             drink = GenericReferenceField()
@@ -798,7 +801,6 @@ class DocumentTest(unittest.TestCase):
             }
 
             user_guid = StringField(required=True)
-
 
         class Person(UserBase):
             meta = {
@@ -1325,7 +1327,6 @@ class DocumentTest(unittest.TestCase):
 
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
-        self.assertFalse('collection' in Comment._meta)
 
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.
@@ -2504,32 +2505,24 @@ class DocumentTest(unittest.TestCase):
 
     def test_mixins_dont_add_to_types(self):
 
-        class Bob(Document): name = StringField()
-
-        Bob.drop_collection()
-
-        p = Bob(name="Rozza")
-        p.save()
-        Bob.drop_collection()
+        class Mixin(object):
+            name = StringField()
 
         class Person(Document, Mixin):
             pass
 
         Person.drop_collection()
 
-        p = Person(name="Rozza")
-        p.save()
-        self.assertEqual(p._fields.keys(), ['name', 'id'])
+        self.assertEqual(Person._fields.keys(), ['name', 'id'])
+
+        Person(name="Rozza").save()
 
         collection = self.db[Person._get_collection_name()]
         obj = collection.find_one()
         self.assertEqual(obj['_cls'], 'Person')
         self.assertEqual(obj['_types'], ['Person'])
 
-
-
         self.assertEqual(Person.objects.count(), 1)
-        rozza = Person.objects.get(name="Rozza")
 
         Person.drop_collection()
 
@@ -2668,16 +2661,18 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(len(BlogPost.objects), 0)
 
     def test_reverse_delete_rule_cascade_and_nullify_complex_field(self):
-        """Ensure that a referenced document is also deleted upon deletion.
+        """Ensure that a referenced document is also deleted upon deletion for
+        complex fields.
         """
 
-        class BlogPost(Document):
+        class BlogPost2(Document):
             content = StringField()
             authors = ListField(ReferenceField(self.Person, reverse_delete_rule=CASCADE))
             reviewers = ListField(ReferenceField(self.Person, reverse_delete_rule=NULLIFY))
 
         self.Person.drop_collection()
-        BlogPost.drop_collection()
+
+        BlogPost2.drop_collection()
 
         author = self.Person(name='Test User')
         author.save()
@@ -2685,18 +2680,19 @@ class DocumentTest(unittest.TestCase):
         reviewer = self.Person(name='Re Viewer')
         reviewer.save()
 
-        post = BlogPost(content= 'Watched some TV')
+        post = BlogPost2(content='Watched some TV')
         post.authors = [author]
         post.reviewers = [reviewer]
         post.save()
 
+        # Deleting the reviewer should have no effect on the BlogPost2
         reviewer.delete()
-        self.assertEqual(len(BlogPost.objects), 1)  # No effect on the BlogPost
-        self.assertEqual(BlogPost.objects.get().reviewers, [])
+        self.assertEqual(len(BlogPost2.objects), 1)
+        self.assertEqual(BlogPost2.objects.get().reviewers, [])
 
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
-        self.assertEqual(len(BlogPost.objects), 0)
+        self.assertEqual(len(BlogPost2.objects), 0)
 
     def test_two_way_reverse_delete_rule(self):
         """Ensure that Bi-Directional relationships work with
@@ -3074,7 +3070,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual('testdb-1', B._meta.get('db_alias'))
 
     def test_db_ref_usage(self):
-        """ DB Ref usage in __raw__ queries """
+        """ DB Ref usage  in dict_fields"""
 
         class User(Document):
             name = StringField()
@@ -3216,7 +3212,6 @@ class ValidatorErrorTest(unittest.TestCase):
         one = Doc.objects.filter(**{'hello world': 1}).count()
         self.assertEqual(1, one)
 
-
     def test_fields_rewrite(self):
         class BasePerson(Document):
             name = StringField()
@@ -3225,7 +3220,6 @@ class ValidatorErrorTest(unittest.TestCase):
 
         class Person(BasePerson):
             name = StringField(required=True)
-
 
         p = Person(age=15)
         self.assertRaises(ValidationError, p.validate)

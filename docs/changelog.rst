@@ -4,6 +4,9 @@ Changelog
 
 Changes in 0.7.X
 =================
+- Embedded Documents dont care about inheritance
+
+
 - Use weakref proxies in base lists / dicts (MongoEngine/mongoengine#74)
 - Improved queryset filtering (hmarr/mongoengine#554)
 - Fixed Dynamic Documents and Embedded Documents (hmarr/mongoengine#561)

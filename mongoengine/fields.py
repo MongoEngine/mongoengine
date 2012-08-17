@@ -747,7 +747,6 @@ class ReferenceField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return None
-
         return self.to_mongo(value)
 
     def validate(self, value):

@@ -352,7 +352,7 @@ class QuerySet(object):
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
-        if document._meta.get('allow_inheritance'):
+        if document._meta.get('allow_inheritance') != False:
             self._initial_query = {'_types': self._document._class_name}
             self._loaded_fields = QueryFieldList(always_include=['_cls'])
         self._cursor_obj = None
@@ -442,7 +442,7 @@ class QuerySet(object):
         """
         background = self._document._meta.get('index_background', False)
         drop_dups = self._document._meta.get('index_drop_dups', False)
-        index_opts = self._document._meta.get('index_opts', {})
+        index_opts = self._document._meta.get('index_opts') or {}
         index_types = self._document._meta.get('index_types', True)
 
         # determine if an index which we are creating includes
@@ -450,6 +450,7 @@ class QuerySet(object):
         # an extra index on _type, as mongodb will use the existing
         # index to service queries against _type
         types_indexed = False
+
         def includes_types(fields):
             first_field = None
             if len(fields):
@@ -466,8 +467,8 @@ class QuerySet(object):
                 background=background, drop_dups=drop_dups, **index_opts)
 
         # Ensure document-defined indexes are created
-        if self._document._meta['indexes']:
-            for spec in self._document._meta['indexes']:
+        if self._document._meta['index_specs']:
+            for spec in self._document._meta['index_specs']:
                 types_indexed = types_indexed or includes_types(spec['fields'])
                 opts = index_opts.copy()
                 opts['unique'] = spec.get('unique', False)
@@ -498,7 +499,10 @@ class QuerySet(object):
 
         index_list = []
         direction = None
-        use_types = doc_cls._meta.get('allow_inheritance', True)
+
+        allow_inheritance = doc_cls._meta.get('allow_inheritance') != False
+        use_types = allow_inheritance
+
         for key in spec['fields']:
             # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
             direction = pymongo.ASCENDING
@@ -516,7 +520,8 @@ class QuerySet(object):
                 key = '_id'
             else:
                 fields = QuerySet._lookup_field(doc_cls, parts)
-                parts = [field if field == '_id' else field.db_field for field in fields]
+                parts = [field if field == '_id' else field.db_field
+                         for field in fields]
                 key = '.'.join(parts)
             index_list.append((key, direction))
 
@@ -530,8 +535,9 @@ class QuerySet(object):
 
         # If _types is being used, prepend it to every specified index
         index_types = doc_cls._meta.get('index_types', True)
-        allow_inheritance = doc_cls._meta.get('allow_inheritance')
-        if spec.get('types', index_types) and allow_inheritance and use_types and direction is not pymongo.GEO2D:
+
+        if (spec.get('types', index_types) and allow_inheritance and use_types
+            and direction is not pymongo.GEO2D):
             index_list.insert(0, ('_types', 1))
 
         spec['fields'] = index_list
@@ -1329,9 +1335,10 @@ class QuerySet(object):
         """
         doc = self._document
 
+        delete_rules = doc._meta.get('delete_rules') or {}
         # Check for DENY rules before actually deleting/nullifying any other
         # references
-        for rule_entry in doc._meta['delete_rules']:
+        for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == DENY and document_cls.objects(**{field_name + '__in': self}).count() > 0:
@@ -1339,12 +1346,14 @@ class QuerySet(object):
                         (document_cls.__name__, field_name)
                 raise OperationError(msg)
 
-        for rule_entry in doc._meta['delete_rules']:
+        for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
                 ref_q = document_cls.objects(**{field_name + '__in': self})
-                if doc != document_cls or (doc == document_cls and ref_q.count() > 0):
+                ref_q_count = ref_q.count()
+                if (doc != document_cls and ref_q_count > 0
+                    or (doc == document_cls and ref_q_count > 0)):
                     ref_q.delete(safe=safe)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
@@ -1915,7 +1924,7 @@ class QuerySetManager(object):
             return self
 
         # owner is the document that contains the QuerySetManager
-        queryset_class = owner._meta['queryset_class'] or QuerySet
+        queryset_class = owner._meta.get('queryset_class') or QuerySet
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
             arg_count = self.get_queryset.func_code.co_argcount

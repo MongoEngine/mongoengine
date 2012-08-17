@@ -24,6 +24,8 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
             age = IntField()
             meta = {'allow_inheritance': True}
+
+        Person.drop_collection()
         self.Person = Person
 
     def test_initialisation(self):
