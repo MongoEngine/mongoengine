@@ -1851,6 +1851,29 @@ class FieldTest(unittest.TestCase):
 
         t.image.delete()
 
+    def test_image_field_resize_force(self):
+        if PY3:
+            raise SkipTest('PIL does not have Python 3 support')
+
+        class TestImage(Document):
+            image = ImageField(size=(185, 37, True))
+
+        TestImage.drop_collection()
+
+        t = TestImage()
+        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.save()
+
+        t = TestImage.objects.first()
+
+        self.assertEquals(t.image.format, 'PNG')
+        w, h = t.image.size
+
+        self.assertEquals(w, 185)
+        self.assertEquals(h, 37)
+
+        t.image.delete()
+
     def test_image_field_thumbnail(self):
         if PY3:
             raise SkipTest('PIL does not have Python 3 support')
