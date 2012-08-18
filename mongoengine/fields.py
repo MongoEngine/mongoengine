@@ -1108,6 +1108,7 @@ class ImageGridFsProxy(GridFSProxy):
 
         try:
             img = Image.open(file_obj)
+            img_format = img.format
         except:
             raise ValidationError('Invalid image')
 
@@ -1142,20 +1143,20 @@ class ImageGridFsProxy(GridFSProxy):
 
         if thumbnail:
             thumb_id = self._put_thumbnail(thumbnail,
-                                          img.format)
+                                          img_format)
         else:
             thumb_id = None
 
         w, h = img.size
 
         io = StringIO()
-        img.save(io, img.format)
+        img.save(io, img_format)
         io.seek(0)
 
         return super(ImageGridFsProxy, self).put(io,
                                                  width=w,
                                                  height=h,
-                                                 format=img.format,
+                                                 format=img_format,
                                                  thumbnail_id=thumb_id,
                                                  **kwargs)
 
