@@ -4,7 +4,8 @@ Changelog
 
 Changes in 0.7.X
 =================
-- Fixed ImageField resizing when forcing size
+- Added example of indexing embedded document fields (MongoEngine/mongoengine#75)
+- Fixed ImageField resizing when forcing size (MongoEngine/mongoengine#80)
 - Add flexibility for fields handling bad data (MongoEngine/mongoengine#78)
 - Embedded Documents no longer handle meta definitions
 - Use weakref proxies in base lists / dicts (MongoEngine/mongoengine#74)

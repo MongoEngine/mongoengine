@@ -740,6 +740,30 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
 
+    def test_embedded_document_index_meta(self):
+        """Ensure that embedded document indexes are created explicitly
+        """
+        class Rank(EmbeddedDocument):
+            title = StringField(required=True)
+
+        class Person(Document):
+            name = StringField(required=True)
+            rank = EmbeddedDocumentField(Rank, required=False)
+
+            meta = {
+                'indexes': [
+                    'rank.title',
+                ],
+            }
+
+        Person.drop_collection()
+
+        # Indexes are lazy so use list() to perform query
+        list(Person.objects)
+        info = Person.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('rank.title', '1')] in info)
+
     def test_explicit_geo2d_index(self):
         """Ensure that geo2d indexes work when created via meta[indexes]
         """
@@ -770,7 +794,7 @@ class DocumentTest(unittest.TestCase):
             tags = ListField(StringField())
             meta = {
                 'indexes': [
-                    { 'fields': ['-date'], 'unique': True,
+                    {'fields': ['-date'], 'unique': True,
                       'sparse': True, 'types': False },
                 ],
             }
