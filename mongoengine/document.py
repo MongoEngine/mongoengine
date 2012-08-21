@@ -1,15 +1,18 @@
+import warnings
+
 import pymongo
 
 from bson.dbref import DBRef
-
 from mongoengine import signals, queryset
+
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList)
 from queryset import OperationError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
 __all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
-           'DynamicEmbeddedDocument', 'OperationError', 'InvalidCollectionError']
+           'DynamicEmbeddedDocument', 'OperationError',
+           'InvalidCollectionError']
 
 
 class InvalidCollectionError(Exception):
@@ -134,8 +137,9 @@ class Document(BaseDocument):
                     options = cls._collection.options()
                     if options.get('max') != max_documents or \
                        options.get('size') != max_size:
-                        msg = ('Cannot create collection "%s" as a capped '
-                               'collection as it already exists') % cls._collection
+                        msg = (('Cannot create collection "%s" as a capped '
+                               'collection as it already exists')
+                                % cls._collection)
                         raise InvalidCollectionError(msg)
                 else:
                     # Create the collection as a capped collection
@@ -149,8 +153,9 @@ class Document(BaseDocument):
                 cls._collection = db[collection_name]
         return cls._collection
 
-    def save(self, safe=True, force_insert=False, validate=True, write_options=None,
-            cascade=None, cascade_kwargs=None, _refs=None):
+    def save(self, safe=True, force_insert=False, validate=True,
+             write_options=None,  cascade=None, cascade_kwargs=None,
+             _refs=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -163,27 +168,30 @@ class Document(BaseDocument):
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
         :param write_options: Extra keyword arguments are passed down to
-                :meth:`~pymongo.collection.Collection.save` OR
-                :meth:`~pymongo.collection.Collection.insert`
-                which will be used as options for the resultant ``getLastError`` command.
-                For example, ``save(..., write_options={w: 2, fsync: True}, ...)`` will
-                wait until at least two servers have recorded the write and will force an
-                fsync on each server being written to.
-        :param cascade: Sets the flag for cascading saves.  You can set a default by setting
-            "cascade" in the document __meta__
-        :param cascade_kwargs: optional kwargs dictionary to be passed throw to cascading saves
+            :meth:`~pymongo.collection.Collection.save` OR
+            :meth:`~pymongo.collection.Collection.insert`
+            which will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_options={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param cascade: Sets the flag for cascading saves.  You can set a
+            default by setting "cascade" in the document __meta__
+        :param cascade_kwargs: optional kwargs dictionary to be passed throw
+            to cascading saves
         :param _refs: A list of processed references used in cascading saves
 
         .. versionchanged:: 0.5
-            In existing documents it only saves changed fields using set / unset
-            Saves are cascaded and any :class:`~bson.dbref.DBRef` objects
-            that have changes are saved as well.
+            In existing documents it only saves changed fields using
+            set / unset.  Saves are cascaded and any
+            :class:`~bson.dbref.DBRef` objects that have changes are
+            saved as well.
         .. versionchanged:: 0.6
-            Cascade saves are optional = defaults to True, if you want fine grain
-            control then you can turn off using document meta['cascade'] = False
-            Also you can pass different kwargs to the cascade save using cascade_kwargs
-            which overwrites the existing kwargs with custom values
-
+            Cascade saves are optional = defaults to True, if you want
+            fine grain control then you can turn off using document
+            meta['cascade'] = False  Also you can pass different kwargs to
+            the cascade save using cascade_kwargs which overwrites the
+            existing kwargs with custom values
         """
         signals.pre_save.send(self.__class__, document=self)
 
@@ -201,9 +209,11 @@ class Document(BaseDocument):
             collection = self.__class__.objects._collection
             if created:
                 if force_insert:
-                    object_id = collection.insert(doc, safe=safe, **write_options)
+                    object_id = collection.insert(doc, safe=safe,
+                                                  **write_options)
                 else:
-                    object_id = collection.save(doc, safe=safe, **write_options)
+                    object_id = collection.save(doc, safe=safe,
+                                                **write_options)
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
@@ -216,11 +226,15 @@ class Document(BaseDocument):
 
                 upsert = self._created
                 if updates:
-                    collection.update(select_dict, {"$set": updates}, upsert=upsert, safe=safe, **write_options)
+                    collection.update(select_dict, {"$set": updates},
+                        upsert=upsert, safe=safe, **write_options)
                 if removals:
-                    collection.update(select_dict, {"$unset": removals}, upsert=upsert, safe=safe, **write_options)
+                    collection.update(select_dict, {"$unset": removals},
+                        upsert=upsert, safe=safe, **write_options)
 
-            cascade = self._meta.get('cascade', True) if cascade is None else cascade
+            warn_cascade = not cascade and 'cascade' not in self._meta
+            cascade = (self._meta.get('cascade', True)
+                       if cascade is None else cascade)
             if cascade:
                 kwargs = {
                     "safe": safe,
@@ -232,8 +246,7 @@ class Document(BaseDocument):
                 if cascade_kwargs:  # Allow granular control over cascades
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
-                #self._changed_fields = []
-                self.cascade_save(**kwargs)
+                self.cascade_save(warn_cascade=warn_cascade, **kwargs)
 
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
@@ -249,23 +262,27 @@ class Document(BaseDocument):
         signals.post_save.send(self.__class__, document=self, created=created)
         return self
 
-    def cascade_save(self, *args, **kwargs):
-        """Recursively saves any references / generic references on an object"""
+    def cascade_save(self, warn_cascade=None, *args, **kwargs):
+        """Recursively saves any references /
+           generic references on an objects"""
         import fields
         _refs = kwargs.get('_refs', []) or []
 
         for name, cls in self._fields.items():
-            if not isinstance(cls, (fields.ReferenceField, fields.GenericReferenceField)):
+            if not isinstance(cls, (fields.ReferenceField,
+                                    fields.GenericReferenceField)):
                 continue
 
             ref = getattr(self, name)
-            if not ref:
-                continue
-            if isinstance(ref, DBRef):
+            if not ref or isinstance(ref, DBRef):
                 continue
 
             ref_id = "%s,%s" % (ref.__class__.__name__, str(ref._data))
             if ref and ref_id not in _refs:
+                if warn_cascade:
+                    msg = ("Cascading saves will default to off in 0.8, "
+                          "please  explicitly set `.save(cascade=True)`")
+                    warnings.warn(msg, FutureWarning)
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
                 ref.save(**kwargs)

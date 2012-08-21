@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.X
 =================
+- Added FutureWarning - save will default to `cascade=False` in 0.8
 - Added example of indexing embedded document fields (MongoEngine/mongoengine#75)
 - Fixed ImageField resizing when forcing size (MongoEngine/mongoengine#80)
 - Add flexibility for fields handling bad data (MongoEngine/mongoengine#78)
@@ -99,7 +100,7 @@ Changes in 0.6.8
 ================
 - Fixed FileField losing reference when no default set
 - Removed possible race condition from FileField (grid_file)
-- Added assignment to save, can now do: b = MyDoc(**kwargs).save()
+- Added assignment to save, can now do: `b = MyDoc(**kwargs).save()`
 - Added support for pull operations on nested EmbeddedDocuments
 - Added support for choices with GenericReferenceFields
 - Added support for choices with GenericEmbeddedDocumentFields

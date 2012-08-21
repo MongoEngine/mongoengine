@@ -2,6 +2,20 @@
 Upgrading
 =========
 
+0.6 to 0.7
+==========
+
+Saves will raise a `FutureWarning` if they cascade and cascade hasn't been set to
+True.  This is because in 0.8 it will default to False.  If you require cascading
+saves then either set it in the `meta` or pass via `save` ::
+
+    # At the class level:
+    class Person(Document):
+        meta = {'cascade': True}
+
+    # Or in code:
+    my_document.save(cascade=True)
+
 0.5 to 0.6
 ==========
 

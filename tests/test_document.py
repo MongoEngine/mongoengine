@@ -1508,6 +1508,40 @@ class DocumentTest(unittest.TestCase):
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
+    def test_cascade_warning(self):
+
+        self.warning_list = []
+        showwarning_default = warnings.showwarning
+
+        def append_to_warning_list(message, category, *args):
+            self.warning_list.append({"message": message,
+                                      "category": category})
+
+        # add warnings to self.warning_list instead of stderr
+        warnings.showwarning = append_to_warning_list
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self')
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.parent = None
+        p1.save()
+
+        p2 = Person(name="Wilson Jr")
+        p2.parent = p1
+        p2.save()
+
+        # restore default handling of warnings
+        warnings.showwarning = showwarning_default
+        self.assertEqual(len(self.warning_list), 1)
+        warning = self.warning_list[0]
+        self.assertEqual(FutureWarning, warning["category"])
+        self.assertTrue("Cascading saves will default to off in 0.8"
+                        in str(warning["message"]))
+
     def test_save_cascade_kwargs(self):
 
         class Person(Document):
