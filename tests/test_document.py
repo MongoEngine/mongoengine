@@ -754,6 +754,7 @@ class DocumentTest(unittest.TestCase):
                 'indexes': [
                     'rank.title',
                 ],
+                'allow_inheritance': False
             }
 
         Person.drop_collection()
@@ -762,7 +763,7 @@ class DocumentTest(unittest.TestCase):
         list(Person.objects)
         info = Person.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('rank.title', '1')] in info)
+        self.assertTrue([('rank.title', 1)] in info)
 
     def test_explicit_geo2d_index(self):
         """Ensure that geo2d indexes work when created via meta[indexes]
