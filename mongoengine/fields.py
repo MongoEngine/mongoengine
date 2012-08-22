@@ -693,7 +693,8 @@ class ReferenceField(BaseField):
       * NULLIFY     - Updates the reference to null.
       * CASCADE     - Deletes the documents associated with the reference.
       * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.ListField` of references
+      * PULL        - Pull the reference from a :class:`~mongoengine.ListField`
+                      of references
 
     Alternative syntax for registering delete rules (useful when implementing
     bi-directional delete rules)
@@ -709,9 +710,12 @@ class ReferenceField(BaseField):
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
-    def __init__(self, document_type, reverse_delete_rule=DO_NOTHING, **kwargs):
+    def __init__(self, document_type, dbref=None,
+                 reverse_delete_rule=DO_NOTHING, **kwargs):
         """Initialises the Reference Field.
 
+        :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
+          or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
         """
@@ -719,6 +723,13 @@ class ReferenceField(BaseField):
             if not issubclass(document_type, (Document, basestring)):
                 self.error('Argument to ReferenceField constructor must be a '
                            'document class or a string')
+
+        if dbref is None:
+            msg = ("ReferenceFields will default to using ObjectId "
+                   " strings in 0.8, set DBRef=True if this isn't desired")
+            warnings.warn(msg, FutureWarning)
+
+        self.dbref = dbref if dbref is not None else True  # To change in 0.8
         self.document_type_obj = document_type
         self.reverse_delete_rule = reverse_delete_rule
         super(ReferenceField, self).__init__(**kwargs)
@@ -741,8 +752,9 @@ class ReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
+
         # Dereference DBRefs
-        if isinstance(value, (DBRef)):
+        if isinstance(value, DBRef):
             value = self.document_type._get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
@@ -751,6 +763,10 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document):
         if isinstance(document, DBRef):
+            if not self.dbref:
+                return "%s" % DBRef.id
+            return document
+        elif not self.dbref and isinstance(document, basestring):
             return document
 
         id_field_name = self.document_type._meta['id_field']
@@ -766,8 +782,20 @@ class ReferenceField(BaseField):
             id_ = document
 
         id_ = id_field.to_mongo(id_)
-        collection = self.document_type._get_collection_name()
-        return DBRef(collection, id_)
+        if self.dbref:
+            collection = self.document_type._get_collection_name()
+            return DBRef(collection, id_)
+
+        return "%s" % id_
+
+    def to_python(self, value):
+        """Convert a MongoDB-compatible type to a Python type.
+        """
+        if (not self.dbref and
+            not isinstance(value, (DBRef, Document, EmbeddedDocument))):
+            collection = self.document_type._get_collection_name()
+            value = DBRef(collection, self.document_type.id.to_python(value))
+        return value
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -775,8 +803,9 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
+
         if not isinstance(value, (self.document_type, DBRef)):
-            self.error('A ReferenceField only accepts DBRef')
+            self.error("A ReferenceField only accepts DBRef or documents")
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '

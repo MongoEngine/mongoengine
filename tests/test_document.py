@@ -1729,7 +1729,7 @@ class DocumentTest(unittest.TestCase):
 
     def test_circular_reference_deltas_2(self):
 
-        class Person( Document ):
+        class Person(Document):
            name = StringField()
            owns = ListField( ReferenceField( 'Organization' ) )
            employer = ReferenceField( 'Organization' )

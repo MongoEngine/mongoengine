@@ -4,6 +4,9 @@ Changelog
 
 Changes in 0.7.X
 =================
+
+- Updated ReferenceField's to optionally store ObjectId strings
+  this will become the default in 0.8 (MongoEngine/mongoengine#89)
 - Added FutureWarning - save will default to `cascade=False` in 0.8
 - Added example of indexing embedded document fields (MongoEngine/mongoengine#75)
 - Fixed ImageField resizing when forcing size (MongoEngine/mongoengine#80)

@@ -277,6 +277,9 @@ class Document(BaseDocument):
             if not ref or isinstance(ref, DBRef):
                 continue
 
+            if not getattr(ref, '_changed_fields', True):
+                continue
+
             ref_id = "%s,%s" % (ref.__class__.__name__, str(ref._data))
             if ref and ref_id not in _refs:
                 if warn_cascade:

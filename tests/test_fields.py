@@ -7,7 +7,7 @@ import tempfile
 
 from decimal import Decimal
 
-from bson import Binary
+from bson import Binary, DBRef
 import gridfs
 
 from nose.plugins.skip import SkipTest
@@ -1086,6 +1086,42 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         BlogPost.drop_collection()
 
+    def test_dbref_reference_fields(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self', dbref=True)
+
+        Person.drop_collection()
+
+        p1 = Person(name="John").save()
+        Person(name="Ross", parent=p1).save()
+
+        col = Person._get_collection()
+        data = col.find_one({'name': 'Ross'})
+        self.assertEqual(data['parent'], DBRef('person', p1.pk))
+
+        p = Person.objects.get(name="Ross")
+        self.assertEqual(p.parent, p1)
+
+    def test_str_reference_fields(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self', dbref=False)
+
+        Person.drop_collection()
+
+        p1 = Person(name="John").save()
+        Person(name="Ross", parent=p1).save()
+
+        col = Person._get_collection()
+        data = col.find_one({'name': 'Ross'})
+        self.assertEqual(data['parent'], "%s" % p1.pk)
+
+        p = Person.objects.get(name="Ross")
+        self.assertEqual(p.parent, p1)
+
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
@@ -1122,6 +1158,7 @@ class FieldTest(unittest.TestCase):
             boss = ReferenceField('self')
             friends = ListField(ReferenceField('self'))
 
+        Employee.drop_collection()
         bill = Employee(name='Bill Lumbergh')
         bill.save()
 
@@ -1245,7 +1282,41 @@ class FieldTest(unittest.TestCase):
 
         class BlogPost(Document):
             title = StringField()
-            author = ReferenceField(Member)
+            author = ReferenceField(Member, dbref=False)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2).first()
+        self.assertEqual(post.id, post2.id)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+    def test_reference_query_conversion_dbref(self):
+        """Ensure that ReferenceFields can be queried using objects and values
+        of the type of the primary key of the referenced object.
+        """
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = ReferenceField(Member, dbref=True)
 
         Member.drop_collection()
         BlogPost.drop_collection()

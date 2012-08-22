@@ -39,9 +39,26 @@ class DeReference(object):
                 doc_type = doc_type.field
 
             if isinstance(doc_type, ReferenceField):
+                field = doc_type
                 doc_type = doc_type.document_type
-                if all([i.__class__ == doc_type for i in items]):
+                is_list = not hasattr(items, 'items')
+
+                if is_list and all([i.__class__ == doc_type for i in items]):
                     return items
+                elif not is_list and all([i.__class__ == doc_type
+                                         for i in items.values()]):
+                    return items
+                elif not field.dbref:
+                    if not hasattr(items, 'items'):
+                        items = [field.to_python(v)
+                             if not isinstance(v, (DBRef, Document)) else v
+                             for v in items]
+                    else:
+                        items = dict([
+                            (k, field.to_python(v))
+                            if not isinstance(v, (DBRef, Document)) else (k, v)
+                            for k, v in items.iteritems()]
+                        )
 
         self.reference_map = self._find_references(items)
         self.object_map = self._fetch_objects(doc_type=doc_type)
