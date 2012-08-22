@@ -1037,6 +1037,7 @@ class BaseDocument(object):
             data[name] = field.to_mongo(self._data.get(name, None))
         return data
 
+
     @classmethod
     def _get_collection_name(cls):
         """Returns the collection name for this class.
