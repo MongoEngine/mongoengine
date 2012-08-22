@@ -302,6 +302,7 @@ class Document(BaseDocument):
 
         VALIDATE_OPS = ['$set', '$inc', None, '$eq', '$gte', '$lte', '$lt',
                         '$gt', '$ne']
+        SINGLE_LIST_OPS = [None, '$gt', '$lt', '$gte', '$lte', '$ne']
         LIST_VALIDATE_OPS = ['$addToSet', '$push', '$pull']
         LIST_VALIDATE_ALL_OPS = ['$pushAll', '$pullAll', '$each', '$in',
                                  '$nin', '$all']
@@ -329,11 +330,11 @@ class Document(BaseDocument):
         # else, validate & return
         else:
             op_type = None
-            # there's a special case here, since a None op (find) on a list
+            # there's a special case here, since some ops on lists
             # behaves like a LIST_VALIDATE_OP (i.e. it has "x in list" instead
-            # of "x = list" semantics)
+            # of "x = list" semantics or x not in list, etc)
             if op in LIST_VALIDATE_OPS or \
-                   (op is None and isinstance(context, ListField)):
+                   (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
                 op_type = 'list'
             elif op in VALIDATE_OPS:
                 op_type = 'value'
@@ -347,7 +348,7 @@ class Document(BaseDocument):
                 # same special case as above. find op on list has semantic
                 # exception
                 if op in LIST_VALIDATE_OPS or \
-                      (op is None and isinstance(context, ListField)):
+                      (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
                     context.field.validate(value)
                 elif op in VALIDATE_OPS:
                     context.validate(value)
