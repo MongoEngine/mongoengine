@@ -2585,6 +2585,21 @@ class DocumentTest(unittest.TestCase):
 
         Person.drop_collection()
 
+    def test_object_mixins(self):
+
+        class NameMixin(object):
+            name = StringField()
+
+        class Foo(EmbeddedDocument, NameMixin):
+            quantity = IntField()
+
+        self.assertEqual(['name', 'quantity'], sorted(Foo._fields.keys()))
+
+        class Bar(Document, NameMixin):
+            widgets = StringField()
+
+        self.assertEqual(['id', 'name', 'widgets'], sorted(Bar._fields.keys()))
+
     def test_mixin_inheritance(self):
         class BaseMixIn(object):
             count = IntField()

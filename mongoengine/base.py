@@ -514,6 +514,18 @@ class DocumentMetaclass(type):
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
 
+            # Standard object mixin - merge in any Fields
+            if not hasattr(base, '_meta'):
+                base_fields = {}
+                for attr_name, attr_value in base.__dict__.iteritems():
+                    if not isinstance(attr_value, BaseField):
+                        continue
+                    attr_value.name = attr_name
+                    if not attr_value.db_field:
+                        attr_value.db_field = attr_name
+                    base_fields[attr_name] = attr_value
+                doc_fields.update(base_fields)
+
         # Discover any document fields
         field_names = {}
         for attr_name, attr_value in attrs.iteritems():
@@ -537,9 +549,8 @@ class DocumentMetaclass(type):
 
         # Set _fields and db_field maps
         attrs['_fields'] = doc_fields
-        attrs['_db_field_map'] = dict(
-            ((k, v.db_field) for k, v in doc_fields.items()
-             if k != v.db_field))
+        attrs['_db_field_map'] = dict([(k, getattr(v, 'db_field', k))
+                                        for k, v in doc_fields.iteritems()])
         attrs['_reverse_db_field_map'] = dict(
                 (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
@@ -756,11 +767,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 collection = meta.get('collection', None)
                 if callable(collection):
                     meta['collection'] = collection(base)
-
-            # Standard object mixin - merge in any Fields
-            if not hasattr(base, '_meta'):
-                attrs.update(dict([(k, v) for k, v in base.__dict__.items()
-                               if issubclass(v.__class__, BaseField)]))
 
         meta.merge(attrs.get('_meta', {}))  # Top level meta
 
