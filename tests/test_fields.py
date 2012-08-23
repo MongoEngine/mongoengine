@@ -1749,8 +1749,8 @@ class FieldTest(unittest.TestCase):
         streamfile.validate()
         result = StreamFile.objects.first()
         self.assertTrue(streamfile == result)
-        self.assertEquals(result.the_file.read(), text + more_text)
-        self.assertEquals(result.the_file.content_type, content_type)
+        self.assertEqual(result.the_file.read(), text + more_text)
+        self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.seek(0)
         self.assertEqual(result.the_file.tell(), 0)
         self.assertEqual(result.the_file.read(len(text)), text)
@@ -1891,11 +1891,11 @@ class FieldTest(unittest.TestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEquals(t.image.format, 'PNG')
+        self.assertEqual(t.image.format, 'PNG')
 
         w, h = t.image.size
-        self.assertEquals(w, 371)
-        self.assertEquals(h, 76)
+        self.assertEqual(w, 371)
+        self.assertEqual(h, 76)
 
         t.image.delete()
 
@@ -1914,11 +1914,11 @@ class FieldTest(unittest.TestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEquals(t.image.format, 'PNG')
+        self.assertEqual(t.image.format, 'PNG')
         w, h = t.image.size
 
-        self.assertEquals(w, 185)
-        self.assertEquals(h, 37)
+        self.assertEqual(w, 185)
+        self.assertEqual(h, 37)
 
         t.image.delete()
 
@@ -1937,11 +1937,11 @@ class FieldTest(unittest.TestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEquals(t.image.format, 'PNG')
+        self.assertEqual(t.image.format, 'PNG')
         w, h = t.image.size
 
-        self.assertEquals(w, 185)
-        self.assertEquals(h, 37)
+        self.assertEqual(w, 185)
+        self.assertEqual(h, 37)
 
         t.image.delete()
 
@@ -1960,9 +1960,9 @@ class FieldTest(unittest.TestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEquals(t.image.thumbnail.format, 'PNG')
-        self.assertEquals(t.image.thumbnail.width, 92)
-        self.assertEquals(t.image.thumbnail.height, 18)
+        self.assertEqual(t.image.thumbnail.format, 'PNG')
+        self.assertEqual(t.image.thumbnail.width, 92)
+        self.assertEqual(t.image.thumbnail.height, 18)
 
         t.image.delete()
 
@@ -1987,7 +1987,7 @@ class FieldTest(unittest.TestCase):
         test_file.save()
 
         data = get_db("test_files").macumba.files.find_one()
-        self.assertEquals(data.get('name'), 'hello.txt')
+        self.assertEqual(data.get('name'), 'hello.txt')
 
         test_file = TestFile.objects.first()
         self.assertEqual(test_file.the_file.read(),
