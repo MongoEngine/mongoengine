@@ -1324,7 +1324,7 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, db_alias = None, sequence_name = None *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
