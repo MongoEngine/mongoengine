@@ -1,6 +1,8 @@
 from __future__ import with_statement
 import unittest
 
+from bson import DBRef
+
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.tests import query_counter
