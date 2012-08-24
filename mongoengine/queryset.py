@@ -501,7 +501,9 @@ class QuerySet(object):
         direction = None
 
         allow_inheritance = doc_cls._meta.get('allow_inheritance') != False
-        use_types = allow_inheritance
+
+        # If sparse - dont include types
+        use_types = allow_inheritance and not spec.get('sparse', False)
 
         for key in spec['fields']:
             # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
@@ -518,16 +520,13 @@ class QuerySet(object):
             parts = key.split('.')
             if parts in (['pk'], ['id'], ['_id']):
                 key = '_id'
+                fields = []
             else:
                 fields = QuerySet._lookup_field(doc_cls, parts)
                 parts = [field if field == '_id' else field.db_field
                          for field in fields]
                 key = '.'.join(parts)
             index_list.append((key, direction))
-
-            # If sparse - dont include types
-            if spec.get('sparse', False):
-                use_types = False
 
             # Check if a list field is being used, don't use _types if it is
             if use_types and not all(f._index_with_types for f in fields):
@@ -536,7 +535,7 @@ class QuerySet(object):
         # If _types is being used, prepend it to every specified index
         index_types = doc_cls._meta.get('index_types', True)
 
-        if (spec.get('types', index_types) and allow_inheritance and use_types
+        if (spec.get('types', index_types) and use_types
             and direction is not pymongo.GEO2D):
             index_list.insert(0, ('_types', 1))
 

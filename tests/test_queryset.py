@@ -2524,6 +2524,24 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_types_index_with_pk(self):
+
+        class Comment(EmbeddedDocument):
+            comment_id = IntField(required=True)
+
+        try:
+            class BlogPost(Document):
+                comments = EmbeddedDocumentField(Comment)
+                meta = {'indexes': [{'fields': ['pk', 'comments.comment_id'],
+                    'unique': True}]}
+        except UnboundLocalError:
+            self.fail('Unbound local error at types index + pk definition')
+
+        info = BlogPost.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        index_item = [(u'_types', 1), (u'_id', 1), (u'comments.comment_id', 1)]
+        self.assertTrue(index_item in info)
+
     def test_dict_with_custom_baseclass(self):
         """Ensure DictField working with custom base clases.
         """
