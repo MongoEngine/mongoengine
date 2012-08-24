@@ -52,6 +52,15 @@ migrate ::
             g.save()
 
 
+item_frequencies
+----------------
+
+In the 0.6 series we added support for null / zero / false values in
+item_frequencies.  A side effect was to return keys in the value they are
+stored in rather than as string representations.  Your code may need to be
+updated to handle native types rather than strings keys for the results of
+item frequency queries.
+
 0.5 to 0.6
 ==========
 
