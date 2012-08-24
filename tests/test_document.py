@@ -365,6 +365,27 @@ class DocumentTest(unittest.TestCase):
 
         Animal.drop_collection()
 
+    def test_document_inheritance(self):
+        """Ensure mutliple inheritance of abstract docs works
+        """
+        class DateCreatedDocument(Document):
+            meta = {
+                'allow_inheritance': True,
+                'abstract': True,
+            }
+            
+        class DateUpdatedDocument(Document):
+            meta = {
+                'allow_inheritance': True,
+                'abstract': True,
+            }
+
+        def create_my_document():
+            class MyDocument(DateCreatedDocument, DateUpdatedDocument):
+                pass
+
+        create_my_document()
+
     def test_how_to_turn_off_inheritance(self):
         """Demonstrates migrating from allow_inheritance = True to False.
         """
