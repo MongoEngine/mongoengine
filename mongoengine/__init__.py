@@ -16,9 +16,8 @@ VERSION = (0, 6, 20)
 
 
 def get_version():
-    version = '%s.%s' % (VERSION[0], VERSION[1])
-    if VERSION[2]:
-        version = '%s.%s' % (version, VERSION[2])
-    return version
+    if isinstance(VERSION[-1], basestring):
+        return '.'.join(map(str, VERSION[:-1])) + VERSION[-1]
+    return '.'.join(map(str, VERSIONs))
 
 __version__ = get_version()

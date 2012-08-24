@@ -18,10 +18,9 @@ except:
 
 
 def get_version(version_tuple):
-    version = '%s.%s' % (version_tuple[0], version_tuple[1])
-    if version_tuple[2]:
-        version = '%s.%s' % (version, version_tuple[2])
-    return version
+    if isinstance(version_tuple[-1], basestring):
+        return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
+    return '.'.join(map(str, version_tuple))
 
 # Dirty hack to get version number from monogengine/__init__.py - we can't
 # import it as it depends on PyMongo and PyMongo isn't installed until this
