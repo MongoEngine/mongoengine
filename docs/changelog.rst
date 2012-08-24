@@ -5,6 +5,7 @@ Changelog
 Changes in 0.7.X
 =================
 
+- Added custom collection / sequence naming for SequenceFields (MongoEngine/mongoengine#92)
 - Fixed UnboundLocalError in composite index with pk field (MongoEngine/mongoengine#88)
 - Updated ReferenceField's to optionally store ObjectId strings
   this will become the default in 0.8 (MongoEngine/mongoengine#89)
