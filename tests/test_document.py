@@ -1,11 +1,12 @@
 from __future__ import with_statement
+import bson
 import os
 import pickle
 import pymongo
-import bson
-import unittest
-import warnings
 import sys
+import unittest
+import uuid
+import warnings
 
 from nose.plugins.skip import SkipTest
 from datetime import datetime
@@ -1653,15 +1654,15 @@ class DocumentTest(unittest.TestCase):
             int_field = IntField(default=1)
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
-            datetime_field = DateTimeField(default=datetime.datetime.now)
+            datetime_field = DateTimeField(default=datetime.now)
             embedded_document_field = EmbeddedDocumentField(EmbeddedDoc, default=lambda: EmbeddedDoc())
             list_field = ListField(default=lambda: [1, 2, 3])
             dict_field = DictField(default=lambda: {"hello": "world"})
-            objectid_field = ObjectIdField(default=ObjectId)
+            objectid_field = ObjectIdField(default=bson.ObjectId)
             reference_field = ReferenceField(Simple, default=lambda: Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
-            complex_datetime_field = ComplexDateTimeField(default=datetime.datetime.now)
+            complex_datetime_field = ComplexDateTimeField(default=datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(default=lambda: Simple().save())
