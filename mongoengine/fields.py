@@ -774,7 +774,7 @@ class ReferenceField(BaseField):
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
-            id_ = document.id
+            id_ = document.pk
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
