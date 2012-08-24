@@ -366,8 +366,7 @@ class DocumentTest(unittest.TestCase):
         Animal.drop_collection()
 
     def test_document_inheritance(self):
-        """
-
+        """Ensure mutliple inheritance of abstract docs works
         """
         class DateCreatedDocument(Document):
             meta = {
