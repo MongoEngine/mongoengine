@@ -1324,17 +1324,18 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, db_alias = None, *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
+        self.sequence_name = sequence_name
         return super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate_new_value(self):
         """
         Generate and Increment the counter
         """
-        sequence_id = "%s.%s" % (self.owner_document._get_collection_name(),
-                                 self.name)
+        sequence_name = self.sequence_name or self.owner_document._get_collection_name()
+        sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
                                              update={"$inc": {"next": 1}},
