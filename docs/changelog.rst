@@ -5,6 +5,7 @@ Changelog
 Changes in 0.7.X
 =================
 
+- Fixed UnboundLocalError in composite index with pk field (MongoEngine/mongoengine#88)
 - Updated ReferenceField's to optionally store ObjectId strings
   this will become the default in 0.8 (MongoEngine/mongoengine#89)
 - Added FutureWarning - save will default to `cascade=False` in 0.8
