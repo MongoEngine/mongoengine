@@ -373,18 +373,18 @@ class DocumentTest(unittest.TestCase):
                 'allow_inheritance': True,
                 'abstract': True,
             }
-            
+
         class DateUpdatedDocument(Document):
             meta = {
                 'allow_inheritance': True,
                 'abstract': True,
             }
 
-        def create_my_document():
+        try:
             class MyDocument(DateCreatedDocument, DateUpdatedDocument):
                 pass
-
-        create_my_document()
+        except:
+            self.assertTrue(False, "Couldn't create MyDocument class")
 
     def test_how_to_turn_off_inheritance(self):
         """Demonstrates migrating from allow_inheritance = True to False.

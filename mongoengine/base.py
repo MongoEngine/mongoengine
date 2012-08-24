@@ -498,7 +498,7 @@ class DocumentMetaclass(type):
     """
 
     def __new__(cls, name, bases, attrs):
-        bases = cls._get_bases(bases)
+        flattened_bases = cls._get_bases(bases)
         super_new = super(DocumentMetaclass, cls).__new__
 
         # If a base class just call super
@@ -512,7 +512,7 @@ class DocumentMetaclass(type):
 
         # Merge all fields from subclasses
         doc_fields = {}
-        for base in bases[::-1]:
+        for base in flattened_bases[::-1]:
             if hasattr(base, '_fields'):
                 doc_fields.update(base._fields)
 
@@ -561,7 +561,7 @@ class DocumentMetaclass(type):
         #
         superclasses = {}
         class_name = [name]
-        for base in bases:
+        for base in flattened_bases:
             if (not getattr(base, '_is_base_cls', True) and
                 not getattr(base, '_meta', {}).get('abstract', True)):
                 # Collate heirarchy for _cls and _types
@@ -614,7 +614,7 @@ class DocumentMetaclass(type):
         module = attrs.get('__module__')
         for exc in exceptions_to_merge:
             name = exc.__name__
-            parents = tuple(getattr(base, name) for base in bases
+            parents = tuple(getattr(base, name) for base in flattened_bases
                          if hasattr(base, name)) or (exc,)
             # Create new exception and set to new_class
             exception = type(name, parents, {'__module__': module})
@@ -676,8 +676,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     """
 
     def __new__(cls, name, bases, attrs):
-
-        bases = cls._get_bases(bases)
+        flattened_bases = cls._get_bases(bases)
         super_new = super(TopLevelDocumentMetaclass, cls).__new__
 
         # Set default _meta data if base class, otherwise get user defined meta
@@ -718,7 +717,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             del(attrs['meta'])
 
         # Find the parent document class
-        parent_doc_cls = [b for b in bases
+        parent_doc_cls = [b for b in flattened_bases
                         if b.__class__ == TopLevelDocumentMetaclass]
         parent_doc_cls = None if not parent_doc_cls else parent_doc_cls[0]
 
@@ -741,7 +740,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Merge base class metas.
         # Uses a special MetaDict that handles various merging rules
         meta = MetaDict()
-        for base in bases[::-1]:
+        for base in flattened_bases[::-1]:
             # Add any mixin metadata from plain objects
             if hasattr(base, 'meta'):
                 meta.merge(base.meta)
@@ -775,7 +774,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Only simple classes (direct subclasses of Document)
         # may set allow_inheritance to False
         simple_class = all([b._meta.get('abstract')
-                            for b in bases if hasattr(b, '_meta')])
+                            for b in flattened_bases if hasattr(b, '_meta')])
         if (not simple_class and meta['allow_inheritance'] == False and
             not meta['abstract']):
             raise ValueError('Only direct subclasses of Document may set '
