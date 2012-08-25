@@ -18,7 +18,12 @@ except:
 
 
 def get_version(version_tuple):
-    if isinstance(version_tuple[-1], basestring):
+    def is_string(s):
+        try:
+            return isinstance(s, basestring) 
+        except NameError:
+            return isinstance(s, str)
+    if is_string(version_tuple[-1]):
         return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
     return '.'.join(map(str, version_tuple))
 
