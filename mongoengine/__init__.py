@@ -16,8 +16,13 @@ VERSION = (0, 6, 20)
 
 
 def get_version():
-    if isinstance(VERSION[-1], basestring):
+    def is_string(s):
+        try:
+            return isinstance(s, basestring) 
+        except NameError:
+            return isinstance(s, str)
+    if is_string(VERSION[-1]):
         return '.'.join(map(str, VERSION[:-1])) + VERSION[-1]
-    return '.'.join(map(str, VERSIONs))
+    return '.'.join(map(str, VERSION))
 
 __version__ = get_version()
