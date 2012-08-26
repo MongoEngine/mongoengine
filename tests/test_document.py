@@ -1250,9 +1250,15 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 20)
 
+        person.reload(fields=['age'])
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 21)
+
         person.reload()
         self.assertEqual(person.name, "Mr Test User")
         self.assertEqual(person.age, 21)
+
+
 
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly
