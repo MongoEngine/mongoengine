@@ -45,6 +45,10 @@ class OperationError(Exception):
     pass
 
 
+class NotUniqueError(OperationError):
+    pass
+
+
 RE_TYPE = type(re.compile(''))
 
 
@@ -924,8 +928,11 @@ class QuerySet(object):
             ids = self._collection.insert(raw, **write_options)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
-            if u'duplicate key' in unicode(err):
+            if re.match('^E1100[01] duplicate key', unicode(err)):
+                # E11000 - duplicate key error index
+                # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
+                raise NotUniqueError(message % unicode(err))
             raise OperationError(message % unicode(err))
 
         if not load_bulk:
@@ -1025,6 +1032,8 @@ class QuerySet(object):
                          :class:`~bson.code.Code` or string
         :param output: output collection name, if set to 'inline' will try to
                        use :class:`~pymongo.collection.Collection.inline_map_reduce`
+                       This can also be a dictionary containing output options
+                       see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.

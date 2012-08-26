@@ -578,7 +578,7 @@ class QuerySetTest(unittest.TestCase):
         def throw_operation_error_not_unique():
             Blog.objects.insert([blog2, blog3], safe=True)
 
-        self.assertRaises(OperationError, throw_operation_error_not_unique)
+        self.assertRaises(NotUniqueError, throw_operation_error_not_unique)
         self.assertEqual(Blog.objects.count(), 2)
 
         Blog.objects.insert([blog2, blog3], write_options={'continue_on_error': True})
@@ -1268,7 +1268,6 @@ class QuerySetTest(unittest.TestCase):
         published_posts = (post1, post2, post3, post5, post6)
         self.assertTrue(all(obj.id in posts for obj in published_posts))
 
-
         # Check Q object combination
         date = datetime(2010, 1, 10)
         q = BlogPost.objects(Q(publish_date__lte=date) | Q(published=True))
@@ -1326,6 +1325,27 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(BlogPost.objects(Q(tags='python'))), 2)
 
         BlogPost.drop_collection()
+
+    def test_raw_query_and_Q_objects(self):
+        """
+        Test raw plays nicely
+        """
+        class Foo(Document):
+            name = StringField()
+            a = StringField()
+            b = StringField()
+            c = StringField()
+
+            meta = {
+                'allow_inheritance': False
+            }
+
+        query = Foo.objects(__raw__={'$nor': [{'name': 'bar'}]})._query
+        self.assertEqual(query, {'$nor': [{'name': 'bar'}]})
+
+        q1 = {'$or': [{'a': 1}, {'b': 1}]}
+        query = Foo.objects(Q(__raw__=q1) & Q(c=1))._query
+        self.assertEqual(query, {'$or': [{'a': 1}, {'b': 1}], 'c': 1})
 
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.

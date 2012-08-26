@@ -393,6 +393,8 @@ class ComplexDateTimeField(StringField):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
         if data == None:
             return datetime.datetime.now()
+        if isinstance(data, datetime.datetime):
+            return data
         return self._convert_from_string(data)
 
     def __set__(self, instance, value):

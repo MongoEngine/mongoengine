@@ -4,7 +4,7 @@ Changelog
 
 Changes in 0.7.X
 =================
-
+- Added NotUniqueError for duplicate keys (MongoEngine/mongoengine#62)
 - Added custom collection / sequence naming for SequenceFields (MongoEngine/mongoengine#92)
 - Fixed UnboundLocalError in composite index with pk field (MongoEngine/mongoengine#88)
 - Updated ReferenceField's to optionally store ObjectId strings
