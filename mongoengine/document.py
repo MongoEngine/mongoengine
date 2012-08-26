@@ -334,21 +334,33 @@ class Document(BaseDocument):
         self._data = dereference.DeReference()(self._data, max_depth)
         return self
 
-    def reload(self, max_depth=1):
-        """Reloads all attributes from the database.
+    def reload(self, max_depth=1, fields=None):
+        """Reloads attributes from the database.
 
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
+        the keyword argument fields used to reload only particular fields
+        from the database. So, i'd like to use it like:
+        obj.reload('one', 'two' ...) however, we already have an argument
+        max_depth, so we have to use it like that to keep
+        backward compatibility.
+        To resolve it just made it:
+        def reload(self, *fields, max_depth=1):
+
         """
+        if fields is None:
+            fields = ()
         id_field = self._meta['id_field']
         obj = self.__class__.objects(
                 **{id_field: self[id_field]}
-              ).first().select_related(max_depth=max_depth)
+              ).only(*fields).first().select_related(max_depth=max_depth)
         for field in self._fields:
-            setattr(self, field, self._reload(field, obj[field]))
+            if not fields or field in fields:
+                setattr(self, field, self._reload(field, obj[field]))
         if self._dynamic:
             for name in self._dynamic_fields.keys():
-                setattr(self, name, self._reload(name, obj._data[name]))
+                if not fields or field in fields:
+                    setattr(self, name, self._reload(name, obj._data[name]))
         self._changed_fields = obj._changed_fields
         return obj
 
