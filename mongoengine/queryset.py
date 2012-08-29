@@ -432,11 +432,11 @@ class QuerySet(object):
     def filter(self, *q_objs, **query):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
-        return self.__call__(*q_objs, **query)
+        return self(*q_objs, **query)
 
     def all(self):
         """Returns all documents."""
-        return self.__call__()
+        return self()
 
     def _ensure_indexes(self):
         """Checks the document meta data and ensures all the indexes exist.
@@ -808,7 +808,7 @@ class QuerySet(object):
         .. versionadded:: 0.3
         """
         self.limit(2)
-        self.__call__(*q_objs, **query)
+        self(*q_objs, **query)
         try:
             result1 = self.next()
         except StopIteration:
