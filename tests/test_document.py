@@ -1226,6 +1226,17 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person.name, "Mr Test User")
         self.assertEqual(person.age, 21)
 
+    def test_reload_sharded(self):
+        class Animal(Document):
+            superphylum = StringField()
+            meta = {'shard_key': ('superphylum',)}
+
+        Animal.drop_collection()
+        doc = Animal(superphylum = 'Deuterostomia')
+        doc.save()
+        doc.reload()
+        Animal.drop_collection()
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly
         """
