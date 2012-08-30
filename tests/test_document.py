@@ -17,6 +17,7 @@ from mongoengine import *
 from mongoengine.base import NotRegistered, InvalidDocumentError
 from mongoengine.queryset import InvalidQueryError
 from mongoengine.connection import get_db
+from mongoengine import signals
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
@@ -2877,6 +2878,49 @@ class DocumentTest(unittest.TestCase):
 
         self.Person.drop_collection()
         BlogPost.drop_collection()
+
+    def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
+        ''' ensure the pre_delete signal is triggered upon a cascading deletion
+        setup a blog post with content, an author and editor
+        delete the author which triggers deletion of blogpost via cascade
+        blog post's pre_delete signal alters an editor attribute
+        '''
+        class Editor(self.Person):
+            review_queue = IntField(default=0)
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+            editor = ReferenceField(Editor)
+
+            @classmethod
+            def pre_delete(cls, sender, document, **kwargs):
+                # decrement the docs-to-review count
+                document.editor.update(dec__review_queue = 1)
+
+        signals.pre_delete.connect(BlogPost.pre_delete, sender=BlogPost)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name='Will S.')
+        author.save()
+
+        editor = Editor(name='Max P.')
+        editor.save()
+
+        post = BlogPost(content = 'wrote some books')
+        post.author = author
+        post.editor = editor
+        post.save()
+
+        editor.update(inc__review_queue = 1)
+
+        # delete the author, the post is also deleted due to the CASCADE rule
+        author.delete()
+        # the pre-delete signal should have decremented the editor's queue
+        editor = Editor.objects(name='Max P.')[0]
+        self.assertEqual(editor.review_queue, 0)
 
     def subclasses_and_unique_keys_works(self):
 
