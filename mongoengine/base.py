@@ -840,7 +840,7 @@ class BaseDocument(object):
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
 
-        if not self._created and name in self._meta.get('shard_key', tuple()):
+        if not self._created and name in self._meta.get('shard_key', tuple()) and self._data[name] != value:
             from queryset import OperationError
             raise OperationError("Shard Keys are immutable. Tried to update %s" % name)
 
