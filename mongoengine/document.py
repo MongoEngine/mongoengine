@@ -113,7 +113,12 @@ class Document(BaseDocument):
     @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME ))
+        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME ), _target_db=cls._meta.get("_target_db", None ),)
+
+    @classmethod
+    def switchDatabase(cls, _db):
+        """Puts new target database into connection meta """
+        cls._meta['_target_db'] = _db
 
     @classmethod
     def _get_collection(cls):
