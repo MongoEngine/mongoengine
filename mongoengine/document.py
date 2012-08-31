@@ -123,7 +123,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
-        if not hasattr(cls, '_collection') or cls._collection is None:
+        if not hasattr(cls, '_collection') or cls._collection is None or cls._meta.get("_target_db", None ):
             db = cls._get_db()
             collection_name = cls._get_collection_name()
             # Create collection as a capped collection if specified
