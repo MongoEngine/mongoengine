@@ -116,42 +116,47 @@ class Document(BaseDocument):
         return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME ), _target_db=cls._meta.get("_target_db", None ),)
 
     @classmethod
-    def switchDatabase(cls, _db):
+    def switch_db(cls, _db):
         """Puts new target database into connection meta """
         cls._meta['_target_db'] = _db
+        cls._pick_collection()
+
+    @classmethod
+    def _pick_collection(cls):
+        db = cls._get_db()
+        collection_name = cls._get_collection_name()
+        # Create collection as a capped collection if specified
+        if cls._meta['max_size'] or cls._meta['max_documents']:
+            # Get max document limit and max byte size from meta
+            max_size = cls._meta['max_size'] or 10000000  # 10MB default
+            max_documents = cls._meta['max_documents']
+
+            if collection_name in db.collection_names():
+                cls._collection = db[collection_name]
+                # The collection already exists, check if its capped
+                # options match the specified capped options
+                options = cls._collection.options()
+                if options.get('max') != max_documents or\
+                   options.get('size') != max_size:
+                    msg = ('Cannot create collection "%s" as a capped '
+                           'collection as it already exists') % cls._collection
+                    raise InvalidCollectionError(msg)
+            else:
+                # Create the collection as a capped collection
+                opts = {'capped': True, 'size': max_size}
+                if max_documents:
+                    opts['max'] = max_documents
+                cls._collection = db.create_collection(
+                    collection_name, **opts
+                )
+        else:
+            cls._collection = db[collection_name]
 
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
-        if not hasattr(cls, '_collection') or cls._collection is None or cls._meta.get("_target_db", None ):
-            db = cls._get_db()
-            collection_name = cls._get_collection_name()
-            # Create collection as a capped collection if specified
-            if cls._meta['max_size'] or cls._meta['max_documents']:
-                # Get max document limit and max byte size from meta
-                max_size = cls._meta['max_size'] or 10000000  # 10MB default
-                max_documents = cls._meta['max_documents']
-
-                if collection_name in db.collection_names():
-                    cls._collection = db[collection_name]
-                    # The collection already exists, check if its capped
-                    # options match the specified capped options
-                    options = cls._collection.options()
-                    if options.get('max') != max_documents or \
-                       options.get('size') != max_size:
-                        msg = ('Cannot create collection "%s" as a capped '
-                               'collection as it already exists') % cls._collection
-                        raise InvalidCollectionError(msg)
-                else:
-                    # Create the collection as a capped collection
-                    opts = {'capped': True, 'size': max_size}
-                    if max_documents:
-                        opts['max'] = max_documents
-                    cls._collection = db.create_collection(
-                        collection_name, **opts
-                    )
-            else:
-                cls._collection = db[collection_name]
+        if not hasattr(cls, '_collection') or cls._collection is None:
+            cls._pick_collection()
         return cls._collection
 
     def save(self, safe=True, force_insert=False, validate=True, write_options=None,
