@@ -132,14 +132,19 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False, _target_db=None):
     if reconnect:
         disconnect(alias)
 
-    if alias not in _dbs:
+    # if switch database called, we need to force to use _target_db
+    if _target_db:
         conn = get_connection(alias)
-        conn_settings = _connection_settings[alias]
-        _dbs[alias] = conn[_target_db] if _target_db else conn[conn_settings['name']]
-        # Authenticate if necessary
-        if conn_settings['username'] and conn_settings['password']:
-            _dbs[alias].authenticate(conn_settings['username'],
-                                     conn_settings['password'])
+        _dbs[alias] = conn[_target_db]
+    else:
+        if alias not in _dbs:
+            conn = get_connection(alias)
+            conn_settings = _connection_settings[alias]
+            _dbs[alias] = conn[_target_db] if _target_db else conn[conn_settings['name']]
+            # Authenticate if necessary
+            if conn_settings['username'] and conn_settings['password']:
+                _dbs[alias].authenticate(conn_settings['username'],
+                                         conn_settings['password'])
     return _dbs[alias]
 
 
