@@ -33,6 +33,38 @@ Examples
 ========
 Some simple examples of what MongoEngine code looks like::
 
+Switch database option::
+
+        class User(Document):
+            email = StringField(required=True)
+            first_name = StringField(max_length=50)
+            last_name = StringField(max_length=50)
+
+            meta = {'collection': 'users', 'allow_inheritance': False, '_target_db': 'some_target_database'}
+
+
+        # create a user instance
+        user = User()
+        # switch database to company_users
+        user.switch_db('company_users')
+        user.email = 'ted@companyusers.com'
+        user.first_name = 'Ted'
+        user.last_name = 'Mosby'
+        user.save()
+
+        user = User()
+        # switch database to goliath_users!
+        user.switch_db('goliath_users')
+        user.email = 'barney@coolshark.com'
+        user.first_name = 'Barney'
+        user.last_name = 'Stinson'
+        user.save()
+
+        # Each user saved to different databases
+
+
+Regular usage ::
+
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
         posted = DateTimeField(default=datetime.datetime.now)
@@ -81,6 +113,7 @@ Some simple examples of what MongoEngine code looks like::
     2
     >>> len(BlogPost.objects(tags='mongodb'))
     1
+
 
 Tests
 =====
