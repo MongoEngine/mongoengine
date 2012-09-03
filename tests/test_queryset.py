@@ -1501,7 +1501,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, BlogPost.objects.count())
 
     def test_reverse_delete_rule_cascade_self_referencing(self):
-        """Ensure self-referencing CASCADE deletes do not result in infinite loop
+        """Ensure self-referencing CASCADE deletes do not result in infinite
+        loop
         """
         class Category(Document):
             name = StringField()
@@ -1606,6 +1607,40 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(post.authors, [me])
         self.assertEqual(another.authors, [])
+
+    def test_delete_with_limits(self):
+
+        class Log(Document):
+            pass
+
+        Log.drop_collection()
+
+        for i in xrange(10):
+            Log().save()
+
+        Log.objects()[3:5].delete()
+        self.assertEqual(8, Log.objects.count())
+
+    def test_delete_with_limit_handles_delete_rules(self):
+        """Ensure cascading deletion of referring documents from the database.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+        BlogPost.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
+
+        BlogPost(content='Watching TV', author=me).save()
+        BlogPost(content='Chilling out', author=me).save()
+        BlogPost(content='Pro Testing', author=someoneelse).save()
+
+        self.assertEqual(3, BlogPost.objects.count())
+        self.Person.objects()[:1].delete()
+        self.assertEqual(1, BlogPost.objects.count())
 
     def test_update(self):
         """Ensure that atomic updates work properly.
@@ -2534,30 +2569,30 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that index_types will, when disabled, prevent _types
         being added to all indices.
         """
-        class BlogPost(Document):
+        class BloggPost(Document):
             date = DateTimeField()
             meta = {'index_types': False,
                     'indexes': ['-date']}
 
         # Indexes are lazy so use list() to perform query
-        list(BlogPost.objects)
-        info = BlogPost.objects._collection.index_information()
+        list(BloggPost.objects)
+        info = BloggPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('_types', 1)] not in info)
         self.assertTrue([('date', -1)] in info)
 
-        BlogPost.drop_collection()
+        BloggPost.drop_collection()
 
-        class BlogPost(Document):
+        class BloggPost(Document):
             title = StringField()
             meta = {'allow_inheritance': False}
 
         # _types is not used on objects where allow_inheritance is False
-        list(BlogPost.objects)
-        info = BlogPost.objects._collection.index_information()
+        list(BloggPost.objects)
+        info = BloggPost.objects._collection.index_information()
         self.assertFalse([('_types', 1)] in info.values())
 
-        BlogPost.drop_collection()
+        BloggPost.drop_collection()
 
     def test_types_index_with_pk(self):
 

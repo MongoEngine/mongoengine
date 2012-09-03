@@ -1343,6 +1343,12 @@ class QuerySet(object):
         """
         doc = self._document
 
+        # Handle deletes where skips or limits have been applied
+        if self._skip or self._limit:
+            for doc in self:
+                doc.delete()
+            return
+
         delete_rules = doc._meta.get('delete_rules') or {}
         # Check for DENY rules before actually deleting/nullifying any other
         # references
