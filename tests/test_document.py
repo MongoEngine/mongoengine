@@ -16,7 +16,7 @@ from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
 from mongoengine import *
 from mongoengine.base import NotRegistered, InvalidDocumentError
 from mongoengine.queryset import InvalidQueryError
-from mongoengine.connection import get_db
+from mongoengine.connection import get_db, get_connection
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
@@ -1101,6 +1101,32 @@ class DocumentTest(unittest.TestCase):
         self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
+
+    def test_ttl_indexes(self):
+
+        class Log(Document):
+            created = DateTimeField(default=datetime.now)
+            meta = {
+                'indexes': [
+                    {'fields': ['created'], 'expireAfterSeconds': 3600}
+                ]
+            }
+
+        Log.drop_collection()
+
+        if pymongo.version_tuple[0] < 2 and pymongo.version_tuple[1] < 3:
+            raise SkipTest('pymongo needs to be 2.3 or higher for this test')
+
+        connection = get_connection()
+        version_array = connection.server_info()['versionArray']
+        if version_array[0] < 2 and version_array[1] < 2:
+            raise SkipTest('MongoDB needs to be 2.2 or higher for this test')
+
+        # Indexes are lazy so use list() to perform query
+        list(Log.objects)
+        info = Log.objects._collection.index_information()
+        self.assertEqual(3600,
+                info['_types_1_created_1']['expireAfterSeconds'])
 
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
