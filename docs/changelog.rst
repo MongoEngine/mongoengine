@@ -4,6 +4,10 @@ Changelog
 
 Changes in 0.7.X
 =================
+- Updated queryset.delete so you can use with skip / limit (MongoEngine/mongoengine#107)
+- Updated index creation allows kwargs to be passed through refs (MongoEngine/mongoengine#104)
+- Fixed Q object merge edge case (MongoEngine/mongoengine#109)
+- Fixed reloading on sharded documents (hmarr/mongoengine#569)
 - Added NotUniqueError for duplicate keys (MongoEngine/mongoengine#62)
 - Added custom collection / sequence naming for SequenceFields (MongoEngine/mongoengine#92)
 - Fixed UnboundLocalError in composite index with pk field (MongoEngine/mongoengine#88)

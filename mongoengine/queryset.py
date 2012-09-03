@@ -218,7 +218,7 @@ class QNode(object):
     def _combine(self, other, operation):
         """Combine this node with another node into a QCombination object.
         """
-        if other.empty:
+        if getattr(other, 'empty', True):
             return self
 
         if self.empty:
@@ -398,12 +398,12 @@ class QuerySet(object):
             or a **-** to determine the index ordering
         """
         index_spec = QuerySet._build_index_spec(self._document, key_or_list)
-        self._collection.ensure_index(
-            index_spec['fields'],
-            drop_dups=drop_dups,
-            background=background,
-            sparse=index_spec.get('sparse', False),
-            unique=index_spec.get('unique', False))
+        fields = index_spec.pop('fields')
+        index_spec['drop_dups'] = drop_dups
+        index_spec['background'] = background
+        index_spec.update(kwargs)
+
+        self._collection.ensure_index(fields, **index_spec)
         return self
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
@@ -473,11 +473,11 @@ class QuerySet(object):
         # Ensure document-defined indexes are created
         if self._document._meta['index_specs']:
             for spec in self._document._meta['index_specs']:
-                types_indexed = types_indexed or includes_types(spec['fields'])
+                fields = spec.pop('fields')
+                types_indexed = types_indexed or includes_types(fields)
                 opts = index_opts.copy()
-                opts['unique'] = spec.get('unique', False)
-                opts['sparse'] = spec.get('sparse', False)
-                self._collection.ensure_index(spec['fields'],
+                opts.update(spec)
+                self._collection.ensure_index(fields,
                     background=background, **opts)
 
         # If _types is being used (for polymorphism), it needs an index,
@@ -1342,6 +1342,12 @@ class QuerySet(object):
         :param safe: check if the operation succeeded before returning
         """
         doc = self._document
+
+        # Handle deletes where skips or limits have been applied
+        if self._skip or self._limit:
+            for doc in self:
+                doc.delete()
+            return
 
         delete_rules = doc._meta.get('delete_rules') or {}
         # Check for DENY rules before actually deleting/nullifying any other

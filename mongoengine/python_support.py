@@ -4,6 +4,7 @@ import sys
 
 PY3 = sys.version_info[0] == 3
 PY25 = sys.version_info[:2] == (2, 5)
+UNICODE_KWARGS = int(''.join([str(x) for x in sys.version_info[:3]])) > 264
 
 if PY3:
     import codecs
