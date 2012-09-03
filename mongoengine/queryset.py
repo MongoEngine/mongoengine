@@ -218,7 +218,7 @@ class QNode(object):
     def _combine(self, other, operation):
         """Combine this node with another node into a QCombination object.
         """
-        if other.empty:
+        if getattr(other, 'empty', True):
             return self
 
         if self.empty:

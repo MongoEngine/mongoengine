@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.X
 =================
+- Fixed Q object merge edge case (MongoEngine/mongoengine#109)
 - Fixed reloading on sharded documents (hmarr/mongoengine#569)
 - Added NotUniqueError for duplicate keys (MongoEngine/mongoengine#62)
 - Added custom collection / sequence naming for SequenceFields (MongoEngine/mongoengine#92)

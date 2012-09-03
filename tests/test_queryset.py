@@ -1347,6 +1347,21 @@ class QuerySetTest(unittest.TestCase):
         query = Foo.objects(Q(__raw__=q1) & Q(c=1))._query
         self.assertEqual(query, {'$or': [{'a': 1}, {'b': 1}], 'c': 1})
 
+    def test_q_merge_queries_edge_case(self):
+
+        class User(Document):
+            email = EmailField(required=False)
+            name = StringField()
+
+        User.drop_collection()
+        pk = ObjectId()
+        User(email='example@example.com', pk=pk).save()
+
+        self.assertEqual(1, User.objects.filter(
+                                Q(email='example@example.com') |
+                                Q(name='John Doe')
+                                ).limit(2).filter(pk=pk).count())
+
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
         """
