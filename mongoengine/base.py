@@ -949,8 +949,10 @@ class BaseDocument(object):
                 self._data[name] = value
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
+
         if (self._is_document and not self._created and
-            name in self._meta.get('shard_key', tuple())):
+            name in self._meta.get('shard_key', tuple()) and
+            self._data.get(name) != value):
             OperationError = _import_class('OperationError')
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
