@@ -11,7 +11,7 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 from queryset import DO_NOTHING
 
 from mongoengine import signals
-from mongoengine.python_support import (PY3, PY25, txt_type,
+from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
                                         to_str_keys_recursive)
 
 import pymongo
@@ -1054,9 +1054,9 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
         data = dict(("%s" % key, value) for key, value in son.items())
-        if PY25:
-            # PY25 cannot handle unicode keys passed to class constructor
-            # example: cls(**data)
+        if not UNICODE_KWARGS:
+            # python 2.6.4 and lower cannot handle unicode keys
+            # passed to class constructor example: cls(**data)
             to_str_keys_recursive(data)
 
         if '_types' in data:
