@@ -22,3 +22,7 @@ script:
     - python setup.py test
 notifications:
   irc: "irc.freenode.org#mongoengine"
+branches:
+  only:
+    - master
+    - 0.7
