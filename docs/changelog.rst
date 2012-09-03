@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.7.X
+Changes in 0.7.0
 =================
 - Updated queryset.delete so you can use with skip / limit (MongoEngine/mongoengine#107)
 - Updated index creation allows kwargs to be passed through refs (MongoEngine/mongoengine#104)
