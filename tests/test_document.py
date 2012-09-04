@@ -669,6 +669,25 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_inherited_index(self):
+        """Ensure index specs are inhertited correctly"""
+
+        class A(Document):
+            title = StringField()
+            meta = {
+                'indexes': [
+                        {
+                        'fields': ('title',),
+                        },
+                ],
+                'allow_inheritance': True,
+                }
+
+        class B(A):
+            description = StringField()
+
+        self.assertEqual(A._meta['index_specs'], B._meta['index_specs'])
+
     def test_db_field_load(self):
         """Ensure we load data correctly
         """

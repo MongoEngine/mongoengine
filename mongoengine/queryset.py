@@ -510,6 +510,10 @@ class QuerySet(object):
         use_types = allow_inheritance and not spec.get('sparse', False)
 
         for key in spec['fields']:
+            # If inherited spec continue
+            if isinstance(key, (list, tuple)):
+                continue
+
             # Get ASCENDING direction from +, DESCENDING from -, and GEO2D from *
             direction = pymongo.ASCENDING
             if key.startswith("-"):

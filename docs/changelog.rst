@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.1
+=================
+- Fixed index spec inheritance (MongoEngine/mongoengine#111)
+
 Changes in 0.7.0
 =================
 - Updated queryset.delete so you can use with skip / limit (MongoEngine/mongoengine#107)
