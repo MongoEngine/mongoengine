@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.X
+================
+- Update index spec generation so its not destructive (MongoEngine/mongoengine#113)
+
 Changes in 0.7.1
 =================
 - Fixed index spec inheritance (MongoEngine/mongoengine#111)

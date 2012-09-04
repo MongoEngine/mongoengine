@@ -688,6 +688,25 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEqual(A._meta['index_specs'], B._meta['index_specs'])
 
+    def test_build_index_spec_is_not_destructive(self):
+
+        class MyDoc(Document):
+            keywords = StringField()
+
+            meta = {
+                'indexes': ['keywords'],
+                'allow_inheritance': False
+            }
+
+        self.assertEqual(MyDoc._meta['index_specs'],
+                         [{'fields': [('keywords', 1)]}])
+
+        # Force index creation
+        MyDoc.objects._ensure_indexes()
+
+        self.assertEqual(MyDoc._meta['index_specs'],
+                        [{'fields': [('keywords', 1)]}])
+
     def test_db_field_load(self):
         """Ensure we load data correctly
         """

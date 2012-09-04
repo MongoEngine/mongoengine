@@ -398,6 +398,7 @@ class QuerySet(object):
             or a **-** to determine the index ordering
         """
         index_spec = QuerySet._build_index_spec(self._document, key_or_list)
+        index_spec = index_spec.copy()
         fields = index_spec.pop('fields')
         index_spec['drop_dups'] = drop_dups
         index_spec['background'] = background
@@ -472,7 +473,9 @@ class QuerySet(object):
 
         # Ensure document-defined indexes are created
         if self._document._meta['index_specs']:
-            for spec in self._document._meta['index_specs']:
+            index_spec = self._document._meta['index_specs']
+            for spec in index_spec:
+                spec = spec.copy()
                 fields = spec.pop('fields')
                 types_indexed = types_indexed or includes_types(fields)
                 opts = index_opts.copy()
