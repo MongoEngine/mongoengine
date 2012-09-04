@@ -8,8 +8,8 @@ try:
 except ImportError:
     pass
 
-DESCRIPTION = "A Python Document-Object Mapper for working with MongoDB"
-
+DESCRIPTION = """MongoEngine is a Python Object-Document
+Mapper for working with MongoDB."""
 LONG_DESCRIPTION = None
 try:
     LONG_DESCRIPTION = open('README.rst').read()
@@ -68,6 +68,7 @@ setup(name='mongoengine',
       maintainer="Ross Lawley",
       maintainer_email="ross.lawley@{nospam}gmail.com",
       url='http://mongoengine.org/',
+      download_url='https://github.com/MongoEngine/mongoengine/tarball/master',
       license='MIT',
       include_package_data=True,
       description=DESCRIPTION,
