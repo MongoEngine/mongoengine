@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.7.X
+Changes in 0.7.2
 ================
 - Update index spec generation so its not destructive (MongoEngine/mongoengine#113)
 
