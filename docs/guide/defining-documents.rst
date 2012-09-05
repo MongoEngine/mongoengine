@@ -467,11 +467,16 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be sparse.
 
+.. note ::
+
+    To index embedded files / dictionary fields use 'dot' notation eg:
+    `rank.title`
+
 .. warning::
 
-
-   Inheritance adds extra indices.
-   If don't need inheritance for a document turn inheritance off - see :ref:`document-inheritance`.
+    Inheritance adds extra indices.
+    If don't need inheritance for a document turn inheritance off -
+    see :ref:`document-inheritance`.
 
 
 Geospatial indexes

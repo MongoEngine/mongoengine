@@ -1,24 +1,34 @@
-# -*- coding: utf-8 -*-
-
+from __future__ import with_statement
 import unittest
-
+from nose.plugins.skip import SkipTest
+from mongoengine.python_support import PY3
 from mongoengine import *
-from mongoengine.django.shortcuts import get_document_or_404
 
-from django.http import Http404
-from django.template import Context, Template
-from django.conf import settings
-from django.core.paginator import Paginator
+try:
+    from mongoengine.django.shortcuts import get_document_or_404
 
-settings.configure()
+    from django.http import Http404
+    from django.template import Context, Template
+    from django.conf import settings
+    from django.core.paginator import Paginator
 
-from django.contrib.sessions.tests import SessionTestsMixin
-from mongoengine.django.sessions import SessionStore, MongoSession
+    settings.configure()
+
+    from django.contrib.sessions.tests import SessionTestsMixin
+    from mongoengine.django.sessions import SessionStore, MongoSession
+except Exception, err:
+    if PY3:
+        SessionTestsMixin = type  # dummy value so no error
+        SessionStore = None  # dummy value so no error
+    else:
+        raise err
 
 
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
+        if PY3:
+            raise SkipTest('django does not have Python 3 support')
         connect(db='mongoenginetest')
 
         class Person(Document):
@@ -99,6 +109,8 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
     backend = SessionStore
 
     def setUp(self):
+        if PY3:
+            raise SkipTest('django does not have Python 3 support')
         connect(db='mongoenginetest')
         MongoSession.drop_collection()
         super(MongoDBSessionTest, self).setUp()
