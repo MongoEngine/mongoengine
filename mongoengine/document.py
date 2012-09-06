@@ -320,7 +320,7 @@ class Document(BaseDocument):
                 if key[0] == '$':
                     op = key
 
-                new_key, value_context = Document._transform_key(key, context)
+                new_key, value_context = Document._transform_key(key, context, is_find=(op is None))
 
                 transformed_value[new_key] = \
                     Document._transform_value(subvalue, value_context,
@@ -464,7 +464,7 @@ class Document(BaseDocument):
         raise AssertionError("Failed to convert")
 
     @staticmethod
-    def _transform_key(key, context, prefix=''):
+    def _transform_key(key, context, prefix='', is_find=False):
         from fields import BaseField, DictField, ListField, \
                             EmbeddedDocumentField, ArbitraryField
 
@@ -477,7 +477,7 @@ class Document(BaseDocument):
             rest = None
 
         # a key as a digit means a list index... set context as the list's value
-        if first_part.isdigit():
+        if first_part.isdigit() or first_part == '$':
             if isinstance(context.field, basestring):
                 context = get_document(context.field)
             elif isinstance(context.field, BaseField):
@@ -494,7 +494,7 @@ class Document(BaseDocument):
                 new_prefix = first_part
 
             if rest:
-                return Document._transform_key(rest, context, prefix=new_prefix)
+                return Document._transform_key(rest, context, prefix=new_prefix, is_find=is_find)
             else:
                 return new_prefix, context
 
@@ -522,6 +522,7 @@ class Document(BaseDocument):
                 field = context.field
             else:
                 raise ValueError("Can't parse field %s" % first_part)
+
         # if we hit a DictField, values can be anything, so use the sentinal
         # ArbitraryField value (I prefer this over None, since None can be
         # introduced in other ways that would be considered errors & should not
@@ -534,8 +535,23 @@ class Document(BaseDocument):
         if not field:
             raise ValueError("Can't find field %s" % first_part)
 
+        # another unfortunate hack... in find queries "list.field_name" means
+        # field_name inside of the list's field... but in updates,
+        # list.0.field_name means that... need to differentiate here
+        list_field_name = None
+        if is_subclass_or_instance(field, ListField) and is_find:
+            list_field_name = field.db_field
+            if is_subclass_or_instance(field.field, basestring):
+                field = get_document(field.field)
+            elif is_subclass_or_instance(field.field, BaseField):
+                field = field.field
+            else:
+                raise ValueError("Can't parse field %s" % first_part)
+
         if is_subclass_or_instance(field, ArbitraryField):
             db_field = first_part
+        elif list_field_name:
+            db_field = list_field_name
         else:
             db_field = field.db_field
 
@@ -545,7 +561,7 @@ class Document(BaseDocument):
             result = db_field
 
         if rest:
-            return Document._transform_key(rest, field, prefix=result)
+            return Document._transform_key(rest, field, prefix=result, is_find=is_find)
         else:
             return result, field
 

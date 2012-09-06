@@ -7,7 +7,7 @@ from mongoengine.connection import _get_db
 
 from bson import ObjectId, DBRef
 
-class DocumentTest(unittest.TestCase):
+class CustomQueryTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
@@ -583,6 +583,40 @@ class DocumentTest(unittest.TestCase):
         u.reload()
         self.assertEquals(u.number_list, [])
         self.assertEquals(u.name, "Adam")
+
+    def testPositionalOperator(self):
+        red = self.Colour(name='Red')
+        blue = self.Colour(name='Blue')
+        green = self.Colour(name='Green')
+        p = self.Person(other_colours=[red, blue, green])
+        p.save()
+
+        query = self.Person._transform_value({'$set': {'other_colours.$.name': 'Maroon'}}, self.Person)
+        self.assertEquals(dict(query), {'$set': {'o.$.n': 'Maroon'}})
+
+        query = self.Person._transform_value({'other_colours.name': 'Maroon'}, self.Person)
+        self.assertEquals(dict(query), {'o.n': 'Maroon'})
+
+        p2 = self.Person.find_one({'_id': p.id, 'other_colours.name': 'Red'})
+        self.assertEquals(p.id, p2.id)
+
+        resp = self.Person.update({'_id': p.id}, {'$set': {'other_colours.1.name': 'Aqua'}}, multi=False)
+        self.assertEquals(resp['n'], 1)
+
+        p.reload()
+        self.assertEquals(p.other_colours[0].name, "Red")
+        self.assertEquals(p.other_colours[1].name, "Aqua")
+        self.assertEquals(p.other_colours[2].name, "Green")
+
+        resp = self.Person.update({'_id': p.id, 'other_colours.name': 'Red'},
+                                  {'$set': {'other_colours.$.name': 'Maroon'}},
+                                  multi=False)
+        self.assertEquals(resp['n'], 1)
+
+        p.reload()
+        self.assertEquals(p.other_colours[0].name, "Maroon")
+        self.assertEquals(p.other_colours[1].name, "Aqua")
+        self.assertEquals(p.other_colours[2].name, "Green")
 
 if __name__ == '__main__':
     unittest.main()
