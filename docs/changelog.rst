@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.3
+================
+- Reverted EmbeddedDocuments meta handling - now can turn off inheritance (MongoEngine/mongoengine#119)
+
 Changes in 0.7.2
 ================
 - Update index spec generation so its not destructive (MongoEngine/mongoengine#113)

@@ -508,6 +508,10 @@ class DocumentMetaclass(type):
 
         attrs['_is_document'] = attrs.get('_is_document', False)
 
+        # EmbeddedDocuments could have meta data for inheritance
+        if 'meta' in attrs:
+            attrs['_meta'] = attrs.pop('meta')
+
         # Handle document Fields
 
         # Merge all fields from subclasses
@@ -570,6 +574,24 @@ class DocumentMetaclass(type):
                 # Get superclasses from superclass
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
+
+            if hasattr(base, '_meta'):
+                # Warn if allow_inheritance isn't set and prevent
+                # inheritance of classes where inheritance is set to False
+                allow_inheritance = base._meta.get('allow_inheritance',
+                                                    ALLOW_INHERITANCE)
+                if (not getattr(base, '_is_base_cls', True)
+                    and allow_inheritance is None):
+                    warnings.warn(
+                        "%s uses inheritance, the default for "
+                        "allow_inheritance is changing to off by default. "
+                        "Please add it to the document meta." % name,
+                        FutureWarning
+                    )
+                elif (allow_inheritance == False and
+                      not base._meta.get('abstract')):
+                    raise ValueError('Document %s may not be subclassed' %
+                                      base.__name__)
 
         attrs['_class_name'] = '.'.join(reversed(class_name))
         attrs['_superclasses'] = superclasses
@@ -745,21 +767,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             if hasattr(base, 'meta'):
                 meta.merge(base.meta)
             elif hasattr(base, '_meta'):
-                # Warn if allow_inheritance isn't set and prevent
-                # inheritance of classes where inheritance is set to False
-                allow_inheritance = base._meta.get('allow_inheritance',
-                                                    ALLOW_INHERITANCE)
-                if not base._is_base_cls and allow_inheritance is None:
-                    warnings.warn(
-                        "%s uses inheritance, the default for "
-                        "allow_inheritance is changing to off by default. "
-                        "Please add it to the document meta." % name,
-                        FutureWarning
-                    )
-                elif (allow_inheritance == False and
-                      not base._meta.get('abstract')):
-                    raise ValueError('Document %s may not be subclassed' %
-                                      base.__name__)
                 meta.merge(base._meta)
 
             # Set collection in the meta if its callable

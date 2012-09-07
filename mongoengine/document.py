@@ -25,6 +25,14 @@ class EmbeddedDocument(BaseDocument):
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
     :class:`~mongoengine.EmbeddedDocumentField` field type.
+
+    A :class:`~mongoengine.EmbeddedDocument` subclass may be itself subclassed,
+    to create a specialised version of the embedded document that will be
+    stored in the same collection. To facilitate this behaviour, `_cls` and
+    `_types` fields are added to documents (hidden though the MongoEngine
+    interface though). To disable this behaviour and remove the dependence on
+    the presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
+    ``False`` in the :attr:`meta` dictionary.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3

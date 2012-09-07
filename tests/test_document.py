@@ -338,7 +338,6 @@ class DocumentTest(unittest.TestCase):
                 meta = {'allow_inheritance': False}
         self.assertRaises(ValueError, create_employee_class)
 
-
     def test_allow_inheritance_abstract_document(self):
         """Ensure that abstract documents can set inheritance rules and that
         _cls and _types will not be used.
@@ -365,6 +364,31 @@ class DocumentTest(unittest.TestCase):
         self.assertFalse('_types' in obj)
 
         Animal.drop_collection()
+
+    def test_allow_inheritance_embedded_document(self):
+
+        # Test the same for embedded documents
+        class Comment(EmbeddedDocument):
+            content = StringField()
+            meta = {'allow_inheritance': False}
+
+        def create_special_comment():
+            class SpecialComment(Comment):
+                pass
+
+        self.assertRaises(ValueError, create_special_comment)
+
+        comment = Comment(content='test')
+        self.assertFalse('_cls' in comment.to_mongo())
+        self.assertFalse('_types' in comment.to_mongo())
+
+        class Comment(EmbeddedDocument):
+            content = StringField()
+            meta = {'allow_inheritance': True}
+
+        comment = Comment(content='test')
+        self.assertTrue('_cls' in comment.to_mongo())
+        self.assertTrue('_types' in comment.to_mongo())
 
     def test_document_inheritance(self):
         """Ensure mutliple inheritance of abstract docs works
