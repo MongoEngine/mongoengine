@@ -2,6 +2,7 @@ import operator
 import sys
 import warnings
 import weakref
+from copy import deepcopy
 
 from collections import defaultdict
 from functools import partial
@@ -800,7 +801,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Set index specifications
         meta['index_specs'] = [QuerySet._build_index_spec(new_class, spec)
-                           for spec in meta['indexes']]
+                           for spec in deepcopy(meta['indexes'])]
         unique_indexes = cls._unique_with_indexes(new_class)
         new_class._meta['unique_indexes'] = unique_indexes
 
@@ -1122,8 +1123,7 @@ class BaseDocument(object):
         """Returns a list of all fields that have explicitly been changed.
         """
         from mongoengine import EmbeddedDocument, DynamicEmbeddedDocument
-        _changed_fields = []
-        _changed_fields += getattr(self, '_changed_fields', [])
+        _changed_fields = getattr(self, '_changed_fields', [])
 
         inspected = inspected or set()
         if hasattr(self, 'id'):
@@ -1139,7 +1139,7 @@ class BaseDocument(object):
 
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
-            field = self._data.get(field_name, None)
+            field = self._data.get(field_name)
             if hasattr(field, 'id'):
                 if field.id in inspected:
                     continue
