@@ -228,6 +228,18 @@ class Document(BaseDocument):
                                         multi=multi, safe=True, **kwargs)
         return result
 
+    @classmethod
+    def remove(cls, spec, **kwargs):
+        # transform query
+        spec = cls._transform_value(spec, cls)
+
+        # handle queries with inheritance
+        if cls._meta.get('allow_inheritance'):
+            spec['_types'] = cls._class_name
+
+        result = cls._pymongo().remove(spec, safe=True, **kwargs)
+        return result
+
     def update_one(self, document, spec=None, upsert=False, **kwargs):
         ops = {}
 

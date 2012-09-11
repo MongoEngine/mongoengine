@@ -618,5 +618,20 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEquals(p.other_colours[1].name, "Aqua")
         self.assertEquals(p.other_colours[2].name, "Green")
 
+    def testRemove(self):
+        adam = self.Person(name="Adam")
+        adam.save()
+        josh = self.Person(name="Josh")
+        josh.save()
+        chu = self.Person(name="Chu")
+        chu.save()
+        danny = self.Person(name="Danny", friends=[adam, josh])
+        danny.save()
+
+        self.assertEquals(self.Person.count({}), 4)
+        self.Person.remove({'name': {'$in': ['Adam', 'Josh']}})
+        self.assertEquals(self.Person.count({}), 2)
+        self.assertEquals(self.Person.count({'name': 'Adam'}), 0)
+
 if __name__ == '__main__':
     unittest.main()
