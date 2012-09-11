@@ -2,6 +2,11 @@
 Changelog
 =========
 
+
+Changes in 0.7.4
+================
+- Fixed index inheritance issues - firmed up testcases (MongoEngine/mongoengine#123) (MongoEngine/mongoengine#125)
+
 Changes in 0.7.3
 ================
 - Reverted EmbeddedDocuments meta handling - now can turn off inheritance (MongoEngine/mongoengine#119)

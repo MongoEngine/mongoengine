@@ -501,8 +501,10 @@ class QuerySet(object):
         """
         if isinstance(spec, basestring):
             spec = {'fields': [spec]}
-        if isinstance(spec, (list, tuple)):
-            spec = {'fields': spec}
+        elif isinstance(spec, (list, tuple)):
+            spec = {'fields': list(spec)}
+        elif isinstance(spec, dict):
+            spec = dict(spec)
 
         index_list = []
         direction = None
