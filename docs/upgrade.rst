@@ -61,6 +61,13 @@ stored in rather than as string representations.  Your code may need to be
 updated to handle native types rather than strings keys for the results of
 item frequency queries.
 
+BinaryFields
+------------
+
+Binary fields have been updated so that they are native binary types.  If you
+previously were doing `str` comparisons with binary field values you will have
+to update and wrap the value in a `str`.
+
 0.5 to 0.6
 ==========
 
