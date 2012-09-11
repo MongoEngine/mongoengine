@@ -711,6 +711,8 @@ class DocumentTest(unittest.TestCase):
             description = StringField()
 
         self.assertEqual(A._meta['index_specs'], B._meta['index_specs'])
+        self.assertEqual(A._meta['index_specs'],
+                [{'fields': [('_types', 1), ('title', 1)]}])
 
     def test_build_index_spec_is_not_destructive(self):
 
