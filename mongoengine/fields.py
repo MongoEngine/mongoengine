@@ -31,6 +31,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
+           'CappedListField', 'CappedSortedListField',
            'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -617,6 +618,27 @@ class SortedListField(ListField):
         if self._ordering is not None:
             return sorted(value, key=itemgetter(self._ordering), reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
+
+
+class CappedListField(ListField):
+    """A ListField that is capped at a given number of items before writing to
+    the database.
+    """
+
+    def __init__(self, field, cap, **kwargs):
+        self.cap = cap
+        super(CappedListField, self).__init__(field, **kwargs)
+
+    def to_mongo(self, value):
+        value = super(CappedListField, self).to_mongo(value)
+        return value[:self.cap]
+
+
+class CappedSortedListField(CappedListField, SortedListField):
+    """A SortedListField that is capped at a given number of items after sorting and 
+    before writing to the database.
+    """
+    pass
 
 
 class DictField(ComplexBaseField):

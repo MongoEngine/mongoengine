@@ -2298,6 +2298,36 @@ class FieldTest(unittest.TestCase):
         post.comments[1].content = 'here we go'
         post.validate()
 
+    def test_capped_list_capping(self):
+        """Ensure that a capped list field properly caps values.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            tags = CappedListField(StringField(), cap=3)
+
+        post = BlogPost(content='Programming is fun')
+        post.save()
+
+        post.tags = ['python', 'java', 'c++', 'ruby', 'perl']
+        post.save()
+        post.reload()
+        self.assertEqual(post.tags, ['python', 'java', 'c++'])
+
+    def test_capped_sorted_list_capping(self):
+        """Ensure that a capped, sorted list field properly caps values.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            tags = CappedSortedListField(StringField(), cap=3)
+
+        post = BlogPost(content='Programming is fun')
+        post.save()
+
+        post.tags = ['python', 'java', 'c++', 'ruby', 'perl']
+        post.save()
+        post.reload()
+        self.assertEqual(post.tags, ['c++', 'java', 'perl'])
+
 
 if __name__ == '__main__':
     unittest.main()
