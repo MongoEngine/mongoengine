@@ -344,6 +344,10 @@ Its value can take any of the following constants:
    their :file:`models.py` in the :const:`INSTALLED_APPS` tuple.
 
 
+.. warning::
+   Signals are not triggered when doing cascading updates / deletes - if this
+   is required you must manually handle the update / delete.
+
 Generic reference fields
 ''''''''''''''''''''''''
 A second kind of reference field also exists,
