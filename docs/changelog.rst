@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.5
+================
+- ReferenceFields with dbref=False use ObjectId instead of strings (MongoEngine/mongoengine#134)
+  See ticket for upgrade notes (https://github.com/MongoEngine/mongoengine/issues/134)
 
 Changes in 0.7.4
 ================

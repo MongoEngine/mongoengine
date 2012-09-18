@@ -792,7 +792,7 @@ class ReferenceField(BaseField):
             collection = self.document_type._get_collection_name()
             return DBRef(collection, id_)
 
-        return "%s" % id_
+        return id_
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.

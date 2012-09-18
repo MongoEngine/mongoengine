@@ -7,7 +7,7 @@ import tempfile
 
 from decimal import Decimal
 
-from bson import Binary, DBRef
+from bson import Binary, DBRef, ObjectId
 import gridfs
 
 from nose.plugins.skip import SkipTest
@@ -1104,7 +1104,7 @@ class FieldTest(unittest.TestCase):
         p = Person.objects.get(name="Ross")
         self.assertEqual(p.parent, p1)
 
-    def test_str_reference_fields(self):
+    def test_objectid_reference_fields(self):
 
         class Person(Document):
             name = StringField()
@@ -1117,7 +1117,7 @@ class FieldTest(unittest.TestCase):
 
         col = Person._get_collection()
         data = col.find_one({'name': 'Ross'})
-        self.assertEqual(data['parent'], "%s" % p1.pk)
+        self.assertEqual(data['parent'], p1.pk)
 
         p = Person.objects.get(name="Ross")
         self.assertEqual(p.parent, p1)
