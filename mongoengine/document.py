@@ -265,7 +265,7 @@ class Document(BaseDocument):
                     elif operator == '$pushAll':
                         ops[field] = self[field][:] + new_val
                     elif operator == '$addToSet':
-                        if '$each' in new_val:
+                        if isinstance(new_val, dict) and '$each' in new_val:
                             vals_to_add = new_val['$each']
                         else:
                             vals_to_add = [new_val]

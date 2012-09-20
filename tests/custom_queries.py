@@ -33,6 +33,9 @@ class CustomQueryTest(unittest.TestCase):
             def __str__(self):
                 return self.name
 
+            def __eq__(self, other):
+                return isinstance(other, Colour) and self.name == other.name
+
         class User(Document):
             meta = {'allow_inheritance': False}
             id = ObjectIdField(primary_key=True)
@@ -632,6 +635,29 @@ class CustomQueryTest(unittest.TestCase):
         self.Person.remove({'name': {'$in': ['Adam', 'Josh']}})
         self.assertEquals(self.Person.count({}), 2)
         self.assertEquals(self.Person.count({'name': 'Adam'}), 0)
+
+    def testAddToSet(self):
+        adam = self.Person(name="Adam")
+        adam.save()
+        red = self.Colour(name='Red')
+        blue = self.Colour(name='Blue')
+        green = self.Colour(name='Green')
+
+        adam.add_to_set(other_colours=red)
+        adam.reload()
+        self.assertEquals(adam.other_colours, [red])
+        adam.add_to_set(other_colours=red)
+        adam.reload()
+        self.assertEquals(adam.other_colours, [red])
+
+        adam.add_to_set(other_colours=blue)
+        adam.reload()
+        self.assertEquals(adam.other_colours, [red, blue])
+
+        adam.update_one({'$addToSet': {'other_colours': {'$each': [red, green, blue]}}})
+        adam.reload()
+
+        self.assertEquals(adam.other_colours, [red, blue, green])
 
 if __name__ == '__main__':
     unittest.main()
