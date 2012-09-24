@@ -84,6 +84,7 @@ class FieldTest(unittest.TestCase):
 
         group = Group(members=User.objects)
         group.save()
+        group.reload()  # Confirm reload works
 
         with query_counter() as q:
             self.assertEqual(q, 0)

@@ -31,10 +31,10 @@ class DeReference(object):
             items = [i for i in items]
 
         self.max_depth = max_depth
-
         doc_type = None
+
         if instance and instance._fields:
-            doc_type = instance._fields[name]
+            doc_type = instance._fields.get(name)
             if hasattr(doc_type, 'field'):
                 doc_type = doc_type.field
 
@@ -134,7 +134,7 @@ class DeReference(object):
                         elif doc_type is None:
                             doc = get_document(
                                 ''.join(x.capitalize()
-                                        for x in col.split('_')))._from_son(ref)
+                                    for x in col.split('_')))._from_son(ref)
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
@@ -166,7 +166,7 @@ class DeReference(object):
                 return self.object_map.get(items['_ref'].id, items)
             elif '_types' in items and '_cls' in items:
                 doc = get_document(items['_cls'])._from_son(items)
-                doc._data = self._attach_objects(doc._data, depth, doc, name)
+                doc._data = self._attach_objects(doc._data, depth, doc, None)
                 return doc
 
         if not hasattr(items, 'items'):

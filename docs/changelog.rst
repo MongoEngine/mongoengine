@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.X
+================
+- Fixed reload issue with ReferenceField where dbref=False (MongoEngine/mongoengine#138)
+
 Changes in 0.7.5
 ================
 - ReferenceFields with dbref=False use ObjectId instead of strings (MongoEngine/mongoengine#134)
