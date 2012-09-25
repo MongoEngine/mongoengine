@@ -148,6 +148,7 @@ class BaseField(object):
     # Fields may have _types inserted into indexes by default
     _index_with_types = True
     _geo_index = False
+    _parent = None
 
     # These track each time a Field instance is created. Used to retain order.
     # The auto_creation_counter is used for fields that MongoEngine implicitly
@@ -199,6 +200,10 @@ class BaseField(object):
             if callable(value):
                 value = value()
 
+        if isinstance(value, BaseDocument):
+            # if the field is an EmbeddedDocument, set the parent document
+            value._parent = instance
+
         return value
 
     def __set__(self, instance, value):
@@ -207,6 +212,10 @@ class BaseField(object):
         instance._data[self.name] = value
         if instance._initialised:
             instance._mark_as_changed(self.name)
+
+        if isinstance(value, BaseDocument):
+            # if the field is an EmbeddedDocument, set the parent document
+            value._parent = instance
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.

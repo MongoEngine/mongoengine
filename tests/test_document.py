@@ -2680,6 +2680,34 @@ class DocumentTest(unittest.TestCase):
         promoted_employee.reload()
         self.assertEqual(promoted_employee.details, None)
 
+    def test_embedded_document_parents(self):
+        """Ensure that embedded documents provide a _parent property
+        """
+        class Position(EmbeddedDocument):
+            name = StringField()
+
+        class Employee(self.Person):
+            salary = IntField()
+            position = EmbeddedDocumentField(Position)
+            previous_positions = ListField(EmbeddedDocumentField(Position))
+
+        # assert _position is populated on __set__
+        employee = Employee(name='Test Employee', salary=20000)
+        position = Position(name='Developer')
+        employee.position = position
+        self.assertEqual(position._parent, employee)
+
+        # assert _position is populated on __get__
+        employee.save()
+        employee.reload()
+
+        self.assertEqual(employee.position._parent, employee)
+
+        # TODO get this working for list fields
+        employee.previous_positions = [Position(name='Analyst'),
+                                       Position(name='Intern')]
+        #self.assertEqual(employee.previous_positions[0]._parent, employee)
+
     def test_mixins_dont_add_to_types(self):
 
         class Mixin(object):
