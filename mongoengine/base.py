@@ -635,17 +635,6 @@ class DocumentMetaclass(type):
                        "field name" % field.name)
                 raise InvalidDocumentError(msg)
 
-        # Merge in exceptions with parent hierarchy
-        exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
-        module = attrs.get('__module__')
-        for exc in exceptions_to_merge:
-            name = exc.__name__
-            parents = tuple(getattr(base, name) for base in flattened_bases
-                         if hasattr(base, name)) or (exc,)
-            # Create new exception and set to new_class
-            exception = type(name, parents, {'__module__': module})
-            setattr(new_class, name, exception)
-
         # Add class to the _document_registry
         _document_registry[new_class._class_name] = new_class
 
@@ -835,6 +824,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class.id = new_class._fields['id']
+
+        # Merge in exceptions with parent hierarchy
+        exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
+        module = attrs.get('__module__')
+        for exc in exceptions_to_merge:
+            name = exc.__name__
+            parents = tuple(getattr(base, name) for base in flattened_bases
+                         if hasattr(base, name)) or (exc,)
+            # Create new exception and set to new_class
+            exception = type(name, parents, {'__module__': module})
+            setattr(new_class, name, exception)
 
         return new_class
 
