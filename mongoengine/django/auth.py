@@ -5,6 +5,7 @@ from mongoengine import *
 from django.utils.encoding import smart_str
 from django.db import models
 from django.contrib.contenttypes.models import ContentTypeManager
+from django.contrib import auth
 from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import ugettext_lazy as _
 
@@ -175,51 +176,6 @@ class UserManager(models.Manager):
         return ''.join([choice(allowed_chars) for i in range(length)])
 
 
-# A few helper functions for common logic between User and AnonymousUser.
-def _user_get_all_permissions(user, obj):
-    permissions = set()
-    anon = user.is_anonymous()
-    for backend in auth.get_backends():
-        if not anon or backend.supports_anonymous_user:
-            if hasattr(backend, "get_all_permissions"):
-                if obj is not None:
-                    if backend.supports_object_permissions:
-                        permissions.update(
-                            backend.get_all_permissions(user, obj)
-                        )
-                else:
-                    permissions.update(backend.get_all_permissions(user))
-    return permissions
-
-
-def _user_has_perm(user, perm, obj):
-    anon = user.is_anonymous()
-    active = user.is_active
-    for backend in auth.get_backends():
-        if (not active and not anon and backend.supports_inactive_user) or \
-                    (not anon or backend.supports_anonymous_user):
-            if hasattr(backend, "has_perm"):
-                if obj is not None:
-                    if (backend.supports_object_permissions and
-                        backend.has_perm(user, perm, obj)):
-                            return True
-                else:
-                    if backend.has_perm(user, perm):
-                        return True
-    return False
-
-
-def _user_has_module_perms(user, app_label):
-    anon = user.is_anonymous()
-    active = user.is_active
-    for backend in auth.get_backends():
-        if (not active and not anon and backend.supports_inactive_user) or \
-                    (not anon or backend.supports_anonymous_user):
-            if hasattr(backend, "has_module_perms"):
-                if backend.has_module_perms(user, app_label):
-                    return True
-    return False
-
 
 class User(Document):
     """A User document that aims to mirror most of the API specified by Django
@@ -313,8 +269,110 @@ class User(Document):
         user.save()
         return user
 
+    def get_all_permissions(self, obj=None):
+        permissions = set()
+        anon = self.is_anonymous()
+        for backend in auth.get_backends():
+            if not anon or backend.supports_anonymous_user:
+                if hasattr(backend, "get_all_permissions"):
+                    if obj is not None:
+                        if backend.supports_object_permissions:
+                            permissions.update(
+                                backend.get_all_permissions(user, obj)
+                            )
+                    else:
+                        permissions.update(backend.get_all_permissions(self))
+        return permissions
+
     def get_and_delete_messages(self):
         return []
+
+    def has_perm(self, perm, obj=None):
+        anon = self.is_anonymous()
+        active = self.is_active
+        for backend in auth.get_backends():
+            if (not active and not anon and backend.supports_inactive_user) or \
+                        (not anon or backend.supports_anonymous_user):
+                if hasattr(backend, "has_perm"):
+                    if obj is not None:
+                        if (backend.supports_object_permissions and
+                            backend.has_perm(self, perm, obj)):
+                                return True
+                    else:
+                        if backend.has_perm(self, perm):
+                            return True
+        return False
+
+    def has_perms(self, perm_list, obj=None):
+        """
+        Returns True if the user has each of the specified permissions.
+        If object is passed, it checks if the user has all required perms
+        for this object.
+        """
+        for perm in perm_list:
+            if not self.has_perm(perm, obj):
+                return False
+        return True
+
+    def has_module_perms(self, app_label):
+        anon = self.is_anonymous()
+        active = self.is_active
+        for backend in auth.get_backends():
+            if (not active and not anon and backend.supports_inactive_user) or \
+                        (not anon or backend.supports_anonymous_user):
+                if hasattr(backend, "has_module_perms"):
+                    if backend.has_module_perms(self, app_label):
+                        return True
+        return False
+
+    def get_and_delete_messages(self):
+        messages = []
+        for m in self.message_set.all():
+            messages.append(m.message)
+            m.delete()
+        return messages
+
+    def email_user(self, subject, message, from_email=None):
+        "Sends an e-mail to this User."
+        from django.core.mail import send_mail
+        send_mail(subject, message, from_email, [self.email])
+
+    def get_profile(self):
+        """
+        Returns site-specific profile for this user. Raises
+        SiteProfileNotAvailable if this site does not allow profiles.
+        """
+        if not hasattr(self, '_profile_cache'):
+            from django.conf import settings
+            if not getattr(settings, 'AUTH_PROFILE_MODULE', False):
+                raise SiteProfileNotAvailable('You need to set AUTH_PROFILE_MO'
+                                              'DULE in your project settings')
+            try:
+                app_label, model_name = settings.AUTH_PROFILE_MODULE.split('.')
+            except ValueError:
+                raise SiteProfileNotAvailable('app_label and model_name should'
+                        ' be separated by a dot in the AUTH_PROFILE_MODULE set'
+                        'ting')
+
+            try:
+                model = models.get_model(app_label, model_name)
+                if model is None:
+                    raise SiteProfileNotAvailable('Unable to load the profile '
+                        'model, check AUTH_PROFILE_MODULE in your project sett'
+                        'ings')
+                self._profile_cache = model._default_manager.using(self._state.db).get(user__id__exact=self.id)
+                self._profile_cache.user = self
+            except (ImportError, ImproperlyConfigured):
+                raise SiteProfileNotAvailable
+        return self._profile_cache
+
+    def _get_message_set(self):
+        import warnings
+        warnings.warn('The user messaging API is deprecated. Please update'
+                      ' your code to use the new messages framework.',
+                      category=DeprecationWarning)
+        return self._message_set
+    message_set = property(_get_message_set)
 
 
 class MongoEngineBackend(object):
@@ -329,6 +387,8 @@ class MongoEngineBackend(object):
         user = User.objects(username=username).first()
         if user:
             if password and user.check_password(password):
+                backend = auth.get_backends()[0]
+                user.backend = "%s.%s" % (backend.__module__, backend.__class__.__name__)
                 return user
         return None
 
