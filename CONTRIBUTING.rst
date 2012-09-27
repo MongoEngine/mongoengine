@@ -54,8 +54,8 @@ Documentation
 To contribute to the `API documentation
 <http://docs.mongoengine.org/en/latest/apireference.html>`_
 just make your changes to the inline documentation of the appropriate
-`source code <https://github.com/mongoengine/MongoEngine>`_ or `rst file
-<https://github.com/mongoengine/MongoEngine/tree/master/docs>`_ in a
+`source code <https://github.com/MongoEngine/mongoengine>`_ or `rst file
+<https://github.com/MongoEngine/mongoengine/tree/master/docs>`_ in a
 branch and submit a `pull request <https://help.github.com/articles/using-pull-requests>`_.
 You might also use the github `Edit <https://github.com/blog/844-forking-with-the-edit-button>`_
 button.
