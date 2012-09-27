@@ -469,7 +469,7 @@ If a dictionary is passed then the following options are available:
     Whether the index should be sparse.
 
 :attr:`unique` (Default: False)
-    Whether the index should be sparse.
+    Whether the index should be unique.
 
 .. note ::
 
