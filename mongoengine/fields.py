@@ -1317,7 +1317,7 @@ class GeoPointField(BaseField):
             self.error('Both values in point must be float or int')
 
 
-class SequenceField(IntField):
+class SequenceField(BaseField):
     """Provides a sequental counter (see http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers)
 
     .. note::
@@ -1328,12 +1328,25 @@ class SequenceField(IntField):
              cluster of machines, it is easier to create an object ID than have
              global, uniformly increasing sequence numbers.
 
+    Use any callable as `value_decorator` to transform calculated counter into
+    any value suitable for your needs, e.g. string or hexadecimal
+    representation of the default integer counter value.
+
     .. versionadded:: 0.5
+
+    .. versionchanged:: 0.8 added `value_decorator`
+
     """
-    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
-        self.collection_name = collection_name or 'mongoengine.counters'
+    COLLECTION_NAME = 'mongoengine.counters'
+    VALUE_DECORATOR = int
+
+    def __init__(self, collection_name=None, db_alias=None,
+            sequence_name=None, value_decorator=None, *args, **kwargs):
+        self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
+        self.value_decorator = (callable(value_decorator) and
+            value_decorator or self.VALUE_DECORATOR)
         return super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate_new_value(self):
@@ -1347,24 +1360,17 @@ class SequenceField(IntField):
                                              update={"$inc": {"next": 1}},
                                              new=True,
                                              upsert=True)
-        return counter['next']
+        return self.value_decorator(counter['next'])
 
     def __get__(self, instance, owner):
+        value = BaseField.__get__(self, instance, owner)
 
-        if instance is None:
-            return self
-
-        if not instance._data:
-            return
-
-        value = instance._data.get(self.name)
-
-        if not value and instance._initialised:
+        if value is None and instance._initialised:
             value = self.generate_new_value()
             instance._data[self.name] = value
             instance._mark_as_changed(self.name)
 
-        return int(value) if value else None
+        return value
 
     def __set__(self, instance, value):
 
