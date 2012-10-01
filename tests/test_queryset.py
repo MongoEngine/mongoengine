@@ -414,6 +414,30 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
 
+    def test_updates_can_have_match_operators(self):
+
+        class Post(Document):
+            title = StringField(required=True)
+            tags = ListField(StringField())
+            comments = ListField(EmbeddedDocumentField("Comment"))
+
+        class Comment(EmbeddedDocument):
+            content = StringField()
+            name = StringField(max_length=120)
+            vote = IntField()
+
+        Post.drop_collection()
+
+        comm1 = Comment(content="very funny indeed", name="John S", vote=1)
+        comm2 = Comment(content="kind of funny", name="Mark P", vote=0)
+
+        Post(title='Fun with MongoEngine', tags=['mongodb', 'mongoengine'],
+             comments=[comm1, comm2]).save()
+
+        Post.objects().update_one(pull__comments__vote__lt=1)
+
+        self.assertEqual(1, len(Post.objects.first().comments))
+
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""
         class Member(EmbeddedDocument):

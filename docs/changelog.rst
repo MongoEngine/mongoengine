@@ -4,7 +4,8 @@ Changelog
 
 Changes in 0.7.X
 ================
-- Updated URLField - can have a custom validator (MongoEngine/mongoengine#136)
+- Allow updates with match operators (MongoEngine/mongoengine#144)
+- Updated URLField - now can have a override the regex (MongoEngine/mongoengine#136)
 - Allow Django AuthenticationBackends to work with Django user (hmarr/mongoengine#573)
 - Fixed reload issue with ReferenceField where dbref=False (MongoEngine/mongoengine#138)
 

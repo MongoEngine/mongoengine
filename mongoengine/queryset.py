@@ -1395,6 +1395,8 @@ class QuerySet(object):
         """
         operators = ['set', 'unset', 'inc', 'dec', 'pop', 'push', 'push_all',
                      'pull', 'pull_all', 'add_to_set']
+        match_operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
+                           'all', 'size', 'exists', 'not']
 
         mongo_update = {}
         for key, value in update.items():
@@ -1417,6 +1419,10 @@ class QuerySet(object):
                         value = -value
                 elif op == 'add_to_set':
                     op = op.replace('_to_set', 'ToSet')
+
+            match = None
+            if parts[-1] in match_operators:
+                match = parts.pop()
 
             if _doc_cls:
                 # Switch field names to proper names [set in Field(name='foo')]
@@ -1451,16 +1457,22 @@ class QuerySet(object):
                     elif field.required or value is not None:
                         value = field.prepare_query_value(op, value)
 
+            if match:
+                match = '$' + match
+                value = {match: value}
+
             key = '.'.join(parts)
 
             if not op:
-                raise InvalidQueryError("Updates must supply an operation eg: set__FIELD=value")
+                raise InvalidQueryError("Updates must supply an operation "
+                                        "eg: set__FIELD=value")
 
             if 'pull' in op and '.' in key:
                 # Dot operators don't work on pull operations
                 # it uses nested dict syntax
                 if op == 'pullAll':
-                    raise InvalidQueryError("pullAll operations only support a single field depth")
+                    raise InvalidQueryError("pullAll operations only support "
+                                            "a single field depth")
 
                 parts.reverse()
                 for key in parts:
