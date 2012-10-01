@@ -230,6 +230,30 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+    def test_chaining(self):
+        class A(Document):
+            pass
+
+        class B(Document):
+            a = ReferenceField(A)
+
+        A.drop_collection()
+        B.drop_collection()
+
+        a1 = A().save()
+        a2 = A().save()
+
+        B(a=a1).save()
+
+        # Works
+        q1 = B.objects.filter(a__in=[a1, a2], a=a1)._query
+
+        # Doesn't work
+        q2 = B.objects.filter(a__in=[a1, a2])
+        q2 = q2.filter(a=a1)._query
+
+        self.assertEqual(q1, q2)
+
     def test_update_write_options(self):
         """Test that passing write_options works"""
 
