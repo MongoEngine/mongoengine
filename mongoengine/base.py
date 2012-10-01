@@ -1333,10 +1333,11 @@ class BaseDocument(object):
 
     def __repr__(self):
         try:
-            u = txt_type(self)
+            u = self.__str__()
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = '[Bad Unicode data]'
-        return '<%s: %s>' % (self.__class__.__name__, u)
+        repr_type = type(u)
+        return repr_type('<%s: %s>' % (self.__class__.__name__, u))
 
     def __str__(self):
         if hasattr(self, '__unicode__'):
@@ -1344,7 +1345,7 @@ class BaseDocument(object):
                 return self.__unicode__()
             else:
                 return unicode(self).encode('utf-8')
-        return '%s object' % self.__class__.__name__
+        return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):

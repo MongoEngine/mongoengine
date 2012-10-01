@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.X
 ================
+- Unicode fix for repr (MongoEngine/mongoengine#133)
 - Allow updates with match operators (MongoEngine/mongoengine#144)
 - Updated URLField - now can have a override the regex (MongoEngine/mongoengine#136)
 - Allow Django AuthenticationBackends to work with Django user (hmarr/mongoengine#573)

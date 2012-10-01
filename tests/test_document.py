@@ -85,6 +85,22 @@ class DocumentTest(unittest.TestCase):
         # Ensure Document isn't treated like an actual document
         self.assertFalse(hasattr(Document, '_fields'))
 
+    def test_repr(self):
+        """Ensure that unicode representation works
+        """
+        class Article(Document):
+            title = StringField()
+
+            def __unicode__(self):
+                return self.title
+
+        Article.drop_collection()
+
+        Article(title=u'привет мир').save()
+
+        self.assertEqual('<Article: привет мир>', repr(Article.objects.first()))
+        self.assertEqual('[<Article: привет мир>]', repr(Article.objects.all()))
+
     def test_collection_naming(self):
         """Ensure that a collection with a specified name may be used.
         """
