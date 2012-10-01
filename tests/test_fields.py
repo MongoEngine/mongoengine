@@ -199,6 +199,9 @@ class FieldTest(unittest.TestCase):
         link.url = 'http://www.google.com:8080'
         link.validate()
 
+        link.url = u'http://президент.рф'
+        self.assertTrue(link.validate())
+
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """

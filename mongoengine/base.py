@@ -52,7 +52,7 @@ class ValidationError(AssertionError):
         self.field_name = kwargs.get('field_name')
         self.message = message
 
-    def __str__(self):
+    def __unicode__(self):
         return self.message
 
     def __repr__(self):
@@ -1338,13 +1338,13 @@ class BaseDocument(object):
             u = '[Bad Unicode data]'
         return '<%s: %s>' % (self.__class__.__name__, u)
 
-    def __str__(self):
+    def __unicode__(self):
         if hasattr(self, '__unicode__'):
             if PY3:
                 return self.__unicode__()
             else:
                 return unicode(self).encode('utf-8')
-        return '%s object' % self.__class__.__name__
+        return unicode('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):

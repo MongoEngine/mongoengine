@@ -1,10 +1,12 @@
 import datetime
 import decimal
+import itertools
 import re
 import time
+import urllib2
+import urlparse
 import uuid
 import warnings
-import itertools
 from operator import itemgetter
 
 import gridfs
@@ -101,25 +103,33 @@ class URLField(StringField):
     .. versionadded:: 0.3
     """
 
-    URL_REGEX = re.compile(
-        r'^https?://'
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
-        r'localhost|'
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
-        r'(?::\d+)?'
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE
-    )
+    _URL_REGEX = re.compile(
+        r'^(?:http|ftp)s?://' # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+        r'localhost|' #localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?' # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
-    def __init__(self, verify_exists=False, **kwargs):
+    def __init__(self, verify_exists=False, url_regex=None, **kwargs):
         self.verify_exists = verify_exists
+        self.url_regex = url_regex or self._URL_REGEX
         super(URLField, self).__init__(**kwargs)
 
     def validate(self, value):
-        if not URLField.URL_REGEX.match(value):
-            self.error('Invalid URL: %s' % value)
+        if not self.url_regex.match(value):
+            scheme, netloc, path, query, fragment = urlparse.urlsplit(value)
+            try:
+                netloc = netloc.encode('idna') # IDN -> ACE
+            except UnicodeError: # invalid domain part
+                self.error('Invalid URL: %s' % value)
 
         if self.verify_exists:
-            import urllib2
+            warnings.warn(
+                "The URLField verify_exists argument has intractable security "
+                "and performance issues. Accordingly, it has been deprecated.",
+            DeprecationWarning
+            )
             try:
                 request = urllib2.Request(value)
                 urllib2.urlopen(request)
