@@ -1338,7 +1338,7 @@ class BaseDocument(object):
             u = '[Bad Unicode data]'
         return '<%s: %s>' % (self.__class__.__name__, u)
 
-    def __unicode__(self):
+    def __str__(self):
         if hasattr(self, '__unicode__'):
             if PY3:
                 return self.__unicode__()
