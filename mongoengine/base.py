@@ -52,8 +52,8 @@ class ValidationError(AssertionError):
         self.field_name = kwargs.get('field_name')
         self.message = message
 
-    def __unicode__(self):
-        return self.message
+    def __str__(self):
+        return txt_type(self.message)
 
     def __repr__(self):
         return '%s(%s,)' % (self.__class__.__name__, self.message)
