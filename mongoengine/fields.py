@@ -118,11 +118,8 @@ class URLField(StringField):
 
     def validate(self, value):
         if not self.url_regex.match(value):
-            scheme, netloc, path, query, fragment = urlparse.urlsplit(value)
-            try:
-                netloc = netloc.encode('idna') # IDN -> ACE
-            except UnicodeError: # invalid domain part
-                self.error('Invalid URL: %s' % value)
+            self.error('Invalid URL: %s' % value)
+            return
 
         if self.verify_exists:
             warnings.warn(

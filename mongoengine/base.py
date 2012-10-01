@@ -1344,7 +1344,7 @@ class BaseDocument(object):
                 return self.__unicode__()
             else:
                 return unicode(self).encode('utf-8')
-        return unicode('%s object' % self.__class__.__name__)
+        return '%s object' % self.__class__.__name__
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):
