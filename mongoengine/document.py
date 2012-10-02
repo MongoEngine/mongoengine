@@ -220,6 +220,9 @@ class Document(BaseDocument):
         document = cls._transform_value(document, cls, op='$set')
         spec = cls._transform_value(spec, cls)
 
+        if not document:
+            raise ValueError("Cannot do empty updates")
+
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
@@ -242,6 +245,9 @@ class Document(BaseDocument):
 
     def update_one(self, document, spec=None, upsert=False, **kwargs):
         ops = {}
+
+        if not document:
+            raise ValueError("Cannot do empty updates")
 
         for operator, operand in document.iteritems():
             # safety check - these updates should only have atomic ops in them

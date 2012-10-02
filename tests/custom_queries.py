@@ -636,7 +636,7 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEquals(self.Person.count({}), 2)
         self.assertEquals(self.Person.count({'name': 'Adam'}), 0)
 
-    def testAddToSet(self):
+    def testAddToSet2(self):
         adam = self.Person(name="Adam")
         adam.save()
         red = self.Colour(name='Red')
@@ -658,6 +658,18 @@ class CustomQueryTest(unittest.TestCase):
         adam.reload()
 
         self.assertEquals(adam.other_colours, [red, blue, green])
+
+    def testEmptyUpdates(self):
+        adam = self.Person(name="Adam")
+        adam.save()
+
+        self.assertRaises(ValueError, adam.update_one, {})
+        self.assertRaises(ValueError, self.Person.update, {'name': 'Adam'}, {})
+
+        adam.reload()
+
+        self.assertEquals(adam.name, "Adam")
+
 
 if __name__ == '__main__':
     unittest.main()
