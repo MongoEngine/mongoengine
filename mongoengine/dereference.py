@@ -164,7 +164,7 @@ class DeReference(object):
         if isinstance(items, (dict, SON)):
             if '_ref' in items:
                 return self.object_map.get(items['_ref'].id, items)
-            elif '_types' in items and '_cls' in items:
+            elif '_cls' in items:
                 doc = get_document(items['_cls'])._from_son(items)
                 doc._data = self._attach_objects(doc._data, depth, doc, None)
                 return doc

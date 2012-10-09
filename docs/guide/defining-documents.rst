@@ -461,9 +461,10 @@ If a dictionary is passed then the following options are available:
 :attr:`fields` (Default: None)
     The fields to index. Specified in the same format as described above.
 
-:attr:`types` (Default: True)
-    Whether the index should have the :attr:`_types` field added automatically
-    to the start of the index.
+:attr:`cls` (Default: True)
+    If you have polymorphic models that inherit and have `allow_inheritance`
+    turned on, you can configure whether the index should have the
+    :attr:`_cls` field added automatically to the start of the index.
 
 :attr:`sparse` (Default: False)
     Whether the index should be sparse.
@@ -590,14 +591,14 @@ convenient and efficient retrieval of related documents::
 Working with existing data
 --------------------------
 To enable correct retrieval of documents involved in this kind of heirarchy,
-two extra attributes are stored on each document in the database: :attr:`_cls`
-and :attr:`_types`. These are hidden from the user through the MongoEngine
-interface, but may not be present if you are trying to use MongoEngine with
-an existing database. For this reason, you may disable this inheritance
-mechansim, removing the dependency of :attr:`_cls` and :attr:`_types`, enabling
-you to work with existing databases. To disable inheritance on a document
-class, set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
-dictionary::
+an extra attribute is stored on each document in the database: :attr:`_cls`.
+These are hidden from the user through the MongoEngine interface, but may not
+be present if you are trying to use MongoEngine with an existing database.
+
+For this reason, you may disable this inheritance mechansim, removing the
+dependency of :attr:`_cls`, enabling you to work with existing databases.
+To disable inheritance on a document class, set :attr:`allow_inheritance` to
+``False`` in the :attr:`meta` dictionary::
 
     # Will work with data in an existing collection named 'cmsPage'
     class Page(Document):

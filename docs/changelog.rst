@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Changes in 0.8
+==============
+- Remove _types and just use _cls for inheritance (MongoEngine/mongoengine#148)
+
+
 Changes in 0.7.X
 ================
 - Unicode fix for repr (MongoEngine/mongoengine#133)

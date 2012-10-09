@@ -11,9 +11,12 @@ from mongoengine import *
 from mongoengine.connection import get_connection
 from mongoengine.python_support import PY3
 from mongoengine.tests import query_counter
-from mongoengine.queryset import (QuerySet, QuerySetManager,
+from mongoengine.queryset import (Q, QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
-                                  QueryFieldList)
+                                  QueryFieldList, queryset_manager)
+from mongoengine.queryset import transform
+from mongoengine.errors import InvalidQueryError
+
 
 class QuerySetTest(unittest.TestCase):
 
@@ -40,18 +43,33 @@ class QuerySetTest(unittest.TestCase):
     def test_transform_query(self):
         """Ensure that the _transform_query function operates correctly.
         """
-        self.assertEqual(QuerySet._transform_query(name='test', age=30),
+        self.assertEqual(transform.query(name='test', age=30),
                          {'name': 'test', 'age': 30})
-        self.assertEqual(QuerySet._transform_query(age__lt=30),
+        self.assertEqual(transform.query(age__lt=30),
                          {'age': {'$lt': 30}})
-        self.assertEqual(QuerySet._transform_query(age__gt=20, age__lt=50),
+        self.assertEqual(transform.query(age__gt=20, age__lt=50),
                          {'age': {'$gt': 20, '$lt': 50}})
-        self.assertEqual(QuerySet._transform_query(age=20, age__gt=50),
+        self.assertEqual(transform.query(age=20, age__gt=50),
                          {'age': 20})
-        self.assertEqual(QuerySet._transform_query(friend__age__gte=30),
+        self.assertEqual(transform.query(friend__age__gte=30),
                          {'friend.age': {'$gte': 30}})
-        self.assertEqual(QuerySet._transform_query(name__exists=True),
+        self.assertEqual(transform.query(name__exists=True),
                          {'name': {'$exists': True}})
+
+    def test_cannot_perform_joins_references(self):
+
+        class BlogPost(Document):
+            author = ReferenceField(self.Person)
+            author2 = GenericReferenceField()
+
+        def test_reference():
+            list(BlogPost.objects(author__name="test"))
+
+        self.assertRaises(InvalidQueryError, test_reference)
+
+        def test_generic_reference():
+            list(BlogPost.objects(author2__name="test"))
+
 
     def test_find(self):
         """Ensure that a query returns a valid set of results.
@@ -921,9 +939,8 @@ class QuerySetTest(unittest.TestCase):
         # find all published blog posts before 2010-01-07
         published_posts = BlogPost.published()
         published_posts = published_posts.filter(
-            published_date__lt=datetime(2010, 1, 7, 0, 0 ,0))
+            published_date__lt=datetime(2010, 1, 7, 0, 0, 0))
         self.assertEqual(published_posts.count(), 2)
-
 
         blog_posts = BlogPost.objects
         blog_posts = blog_posts.filter(blog__in=[blog_1, blog_2])
@@ -935,7 +952,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_raw_and_merging(self):
         class Doc(Document):
-            pass
+            meta = {'allow_inheritance': False}
 
         raw_query = Doc.objects(__raw__={'deleted': False,
                                 'scraped': 'yes',
@@ -943,7 +960,7 @@ class QuerySetTest(unittest.TestCase):
                                          {'attachments.views.extracted':'no'}]
                                 })._query
 
-        expected = {'deleted': False, '_types': 'Doc', 'scraped': 'yes',
+        expected = {'deleted': False, 'scraped': 'yes',
                     '$nor': [{'views.extracted': 'no'},
                              {'attachments.views.extracted': 'no'}]}
         self.assertEqual(expected, raw_query)
@@ -2598,68 +2615,6 @@ class QuerySetTest(unittest.TestCase):
 
         Group.drop_collection()
 
-    def test_types_index(self):
-        """Ensure that and index is used when '_types' is being used in a
-        query.
-        """
-        class BlogPost(Document):
-            date = DateTimeField()
-            meta = {'indexes': ['-date']}
-
-        # Indexes are lazy so use list() to perform query
-        list(BlogPost.objects)
-        info = BlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('_types', 1)] in info)
-        self.assertTrue([('_types', 1), ('date', -1)] in info)
-
-    def test_dont_index_types(self):
-        """Ensure that index_types will, when disabled, prevent _types
-        being added to all indices.
-        """
-        class BloggPost(Document):
-            date = DateTimeField()
-            meta = {'index_types': False,
-                    'indexes': ['-date']}
-
-        # Indexes are lazy so use list() to perform query
-        list(BloggPost.objects)
-        info = BloggPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('_types', 1)] not in info)
-        self.assertTrue([('date', -1)] in info)
-
-        BloggPost.drop_collection()
-
-        class BloggPost(Document):
-            title = StringField()
-            meta = {'allow_inheritance': False}
-
-        # _types is not used on objects where allow_inheritance is False
-        list(BloggPost.objects)
-        info = BloggPost.objects._collection.index_information()
-        self.assertFalse([('_types', 1)] in info.values())
-
-        BloggPost.drop_collection()
-
-    def test_types_index_with_pk(self):
-
-        class Comment(EmbeddedDocument):
-            comment_id = IntField(required=True)
-
-        try:
-            class BlogPost(Document):
-                comments = EmbeddedDocumentField(Comment)
-                meta = {'indexes': [{'fields': ['pk', 'comments.comment_id'],
-                    'unique': True}]}
-        except UnboundLocalError:
-            self.fail('Unbound local error at types index + pk definition')
-
-        info = BlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
-        index_item = [(u'_types', 1), (u'_id', 1), (u'comments.comment_id', 1)]
-        self.assertTrue(index_item in info)
-
     def test_dict_with_custom_baseclass(self):
         """Ensure DictField working with custom base clases.
         """
@@ -3116,6 +3071,7 @@ class QuerySetTest(unittest.TestCase):
         """
         class Comment(Document):
             message = StringField()
+            meta = {'allow_inheritance': True}
 
         Comment.objects.ensure_index('message')
 
@@ -3124,7 +3080,7 @@ class QuerySetTest(unittest.TestCase):
                  value.get('unique', False),
                  value.get('sparse', False))
                 for key, value in info.iteritems()]
-        self.assertTrue(([('_types', 1), ('message', 1)], False, False) in info)
+        self.assertTrue(([('_cls', 1), ('message', 1)], False, False) in info)
 
     def test_where(self):
         """Ensure that where clauses work.

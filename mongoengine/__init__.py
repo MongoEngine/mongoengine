@@ -9,10 +9,10 @@ from queryset import *
 import signals
 from signals import *
 
-__all__ = (document.__all__ + fields.__all__ + connection.__all__ +
-           queryset.__all__ + signals.__all__)
+__all__ = (list(document.__all__) + fields.__all__ + connection.__all__ +
+           list(queryset.__all__) + signals.__all__)
 
-VERSION = (0, 7, 5)
+VERSION = (0, 8, 0, '+')
 
 
 def get_version():

@@ -11,9 +11,9 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
 from queryset import OperationError, NotUniqueError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
-__all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
+__all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
-           'InvalidCollectionError', 'NotUniqueError']
+           'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
 
 
 class InvalidCollectionError(Exception):
@@ -28,11 +28,11 @@ class EmbeddedDocument(BaseDocument):
 
     A :class:`~mongoengine.EmbeddedDocument` subclass may be itself subclassed,
     to create a specialised version of the embedded document that will be
-    stored in the same collection. To facilitate this behaviour, `_cls` and
-    `_types` fields are added to documents (hidden though the MongoEngine
-    interface though). To disable this behaviour and remove the dependence on
-    the presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
-    ``False`` in the :attr:`meta` dictionary.
+    stored in the same collection. To facilitate this behaviour a `_cls`
+    field is added to documents (hidden though the MongoEngine interface).
+    To disable this behaviour and remove the dependence on the presence of
+    `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
+    dictionary.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
@@ -76,11 +76,11 @@ class Document(BaseDocument):
 
     A :class:`~mongoengine.Document` subclass may be itself subclassed, to
     create a specialised version of the document that will be stored in the
-    same collection. To facilitate this behaviour, `_cls` and `_types`
-    fields are added to documents (hidden though the MongoEngine interface
-    though). To disable this behaviour and remove the dependence on the
-    presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
-    ``False`` in the :attr:`meta` dictionary.
+    same collection. To facilitate this behaviour a `_cls`
+    field is added to documents (hidden though the MongoEngine interface).
+    To disable this behaviour and remove the dependence on the presence of
+    `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
+    dictionary.
 
     A :class:`~mongoengine.Document` may use a **Capped Collection** by
     specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
@@ -101,10 +101,10 @@ class Document(BaseDocument):
     production systems where index creation is performed as part of a deployment
     system.
 
-    By default, _types will be added to the start of every index (that
+    By default, _cls will be added to the start of every index (that
     doesn't contain a list) if allow_inheritance is True. This can be
     disabled by either setting types to False on the specific index or
-    by setting index_types to False on the meta dictionary for the document.
+    by setting index_cls to False on the meta dictionary for the document.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3

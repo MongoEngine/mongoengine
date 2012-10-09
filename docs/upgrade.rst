@@ -2,6 +2,45 @@
 Upgrading
 =========
 
+0.7 to 0.8
+==========
+
+Inheritance
+-----------
+
+The inheritance model has changed, we no longer need to store an array of
+`types` with the model we can just use the classname in `_cls`.  This means
+that you will have to update your indexes for each of your inherited classes
+like so:
+
+    # 1. Declaration of the class
+    class Animal(Document):
+        name = StringField()
+        meta = {
+            'allow_inheritance': True,
+            'indexes': ['name']
+        }
+
+    # 2. Remove _types
+    collection = Animal._get_collection()
+    collection.update({}, {"$unset": {"_types": 1}}, multi=True)
+
+    # 3. Confirm extra data is removed
+    count = collection.find({'_types': {"$exists": True}}).count()
+    assert count == 0
+
+    # 4. Remove indexes
+    info = collection.index_information()
+    indexes_to_drop = [key for key, value in info.iteritems()
+                       if '_types' in dict(value['key'])]
+    for index in indexes_to_drop:
+        collection.drop_index(index)
+
+    # 5. Recreate indexes
+    Animal.objects._ensure_indexes()
+
+
+
 0.6 to 0.7
 ==========
 

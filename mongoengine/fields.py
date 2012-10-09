@@ -12,10 +12,11 @@ from operator import itemgetter
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
 
+from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
-                  ValidationError, get_document, BaseDocument)
+                  get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
@@ -567,9 +568,6 @@ class ListField(ComplexBaseField):
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
     """
-
-    # ListFields cannot be indexed with _types - MongoDB doesn't support this
-    _index_with_types = False
 
     def __init__(self, field=None, **kwargs):
         self.field = field

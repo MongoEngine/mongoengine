@@ -14,10 +14,11 @@ import gridfs
 from nose.plugins.skip import SkipTest
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.base import _document_registry, NotRegistered
+from mongoengine.base import _document_registry
+from mongoengine.errors import NotRegistered
 from mongoengine.python_support import PY3, b, StringIO, bin_type
 
-TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'document/mongoengine.png')
 
 class FieldTest(unittest.TestCase):
 
