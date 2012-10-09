@@ -243,45 +243,54 @@ class Document(BaseDocument):
         result = cls._pymongo().remove(spec, safe=True, **kwargs)
         return result
 
-    def update_one(self, document, spec=None, upsert=False, **kwargs):
+    def update_one(self, document, spec=None, upsert=False,
+                   criteria=None, **kwargs):
         ops = {}
 
         if not document:
             raise ValueError("Cannot do empty updates")
 
-        for operator, operand in document.iteritems():
-            # safety check - these updates should only have atomic ops in them
-            if operator[0] != '$':
-                raise ValueError("All updates should be atomic operators")
+        # only do in-memory updates if criteria is None since the updates may
+        # not be correct otherwise (since we don't know if the criteria is
+        # matched)
+        if not criteria:
+            for operator, operand in document.iteritems():
+                # safety check - these updates should only have atomic ops
+                if operator[0] != '$':
+                    raise ValueError("All updates should be atomic operators")
 
-            if '.' not in operand:
-                for field, new_val in operand.iteritems():
-                    # for now, skip doing in-memory sets on dicts
-                    if '.' in field:
-                        continue
+                if '.' not in operand:
+                    for field, new_val in operand.iteritems():
+                        # for now, skip doing in-memory sets on dicts
+                        if '.' in field:
+                            continue
 
-                    if operator == '$set':
-                        ops[field] = new_val
-                    elif operator == '$unset':
-                        ops[field] = None
-                    elif operator == '$inc':
-                        ops[field] = self[field] + new_val
-                    elif operator == '$push':
-                        ops[field] = self[field][:] + [new_val]
-                    elif operator == '$pushAll':
-                        ops[field] = self[field][:] + new_val
-                    elif operator == '$addToSet':
-                        if isinstance(new_val, dict) and '$each' in new_val:
-                            vals_to_add = new_val['$each']
-                        else:
-                            vals_to_add = [new_val]
+                        if operator == '$set':
+                            ops[field] = new_val
+                        elif operator == '$unset':
+                            ops[field] = None
+                        elif operator == '$inc':
+                            ops[field] = self[field] + new_val
+                        elif operator == '$push':
+                            ops[field] = self[field][:] + [new_val]
+                        elif operator == '$pushAll':
+                            ops[field] = self[field][:] + new_val
+                        elif operator == '$addToSet':
+                            if isinstance(new_val, dict) and '$each' in new_val:
+                                vals_to_add = new_val['$each']
+                            else:
+                                vals_to_add = [new_val]
 
-                        for val in vals_to_add:
-                            if new_val not in self[field]:
-                                ops[field] = self[field][:] + [val]
+                            for val in vals_to_add:
+                                if new_val not in self[field]:
+                                    ops[field] = self[field][:] + [val]
 
         document = self._transform_value(document, type(self))
         query_spec = self._update_one_key()
+
+        # add in extra criteria, if it exists
+        if criteria:
+            query_spec.update(criteria)
 
         if spec:
             query_spec.update(spec)

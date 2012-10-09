@@ -670,6 +670,49 @@ class CustomQueryTest(unittest.TestCase):
 
         self.assertEquals(adam.name, "Adam")
 
+    def testDictQueries(self):
+        adam = self.Person(name="Adam", arbitrary_dict={'likes': 'boats'})
+        adam.save()
+        josh = self.Person(name="Josh", arbitrary_dict={'likes': 'fishing'})
+        josh.save()
+
+        p = self.Person.find({'arbitrary_dict.likes': 'boats'})
+        self.assertEquals(len(p), 1)
+        self.assertEquals(p[0].name, "Adam")
+
+        p = self.Person.find({'arbitrary_dict.likes': 'fishing'})
+        self.assertEquals(len(p), 1)
+        self.assertEquals(p[0].name, "Josh")
+
+        p = self.Person.find({'arbitrary_dict.likes': 'boring stuff'})
+        self.assertEquals(len(p), 0)
+
+        p = self.Person.find({'arbitrary_dict.hates': 'the world'})
+        self.assertEquals(len(p), 0)
+
+    def testExtraUpdateCriteria(self):
+        adam = self.Person(name="Adam", age=23)
+        adam.save()
+
+        resp = adam.update_one({"$set": {"age": 27}}, criteria={"age": 25})
+        self.assertEquals(resp['n'], 0)
+
+        # confirm no in-mem transformation
+        self.assertEquals(adam.age, 23)
+
+        # confirm no DB change
+        adam.reload()
+        self.assertEquals(adam.age, 23)
+
+        resp = adam.update_one({"$set": {"age": 27}}, criteria={"age": 23})
+        self.assertEquals(resp['n'], 1)
+
+        # confirm no in-mem transformation
+        self.assertEquals(adam.age, 23)
+
+        # confirm no DB change
+        adam.reload()
+        self.assertEquals(adam.age, 27)
 
 if __name__ == '__main__':
     unittest.main()
