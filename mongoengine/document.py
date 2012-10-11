@@ -325,7 +325,8 @@ class Document(BaseDocument):
 
     @staticmethod
     def _transform_value(value, context, op=None, validate=True):
-        from fields import DictField, EmbeddedDocumentField, ListField
+        from fields import DictField, EmbeddedDocumentField, ListField, \
+                           ArbitraryField
 
         VALIDATE_OPS = ['$set', '$inc', None, '$eq', '$gte', '$lte', '$lt',
                         '$gt', '$ne']
@@ -371,7 +372,7 @@ class Document(BaseDocument):
             value = Document._transform_id_reference_value(value, context,
                                                            op_type)
 
-            if validate:
+            if validate and not isinstance(context, ArbitraryField):
                 # same special case as above. find op on list has semantic
                 # exception
                 if op in LIST_VALIDATE_OPS or \
