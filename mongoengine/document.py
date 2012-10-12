@@ -506,7 +506,9 @@ class Document(BaseDocument):
 
         # a key as a digit means a list index... set context as the list's value
         if first_part.isdigit() or first_part == '$':
-            if isinstance(context.field, basestring):
+            if isinstance(context, DictField):
+                context = ArbitraryField()
+            elif isinstance(context.field, basestring):
                 context = get_document(context.field)
             elif isinstance(context.field, BaseField):
                 context = context.field
