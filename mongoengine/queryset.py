@@ -28,6 +28,14 @@ CASCADE = 2
 DENY = 3
 PULL = 4
 
+QUERY_TERMS = {
+    'operators': ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod', 'all', 'size', 'exists', 'not'), 
+    'geo_operators': ('within_distance', 'within_spherical_distance', 'within_box',  'within_polygon', 'near', 'near_sphere'),
+    'match_operators': ('contains', 'icontains', 'startswith',  'istartswith', 'endswith', 'iendswith', 'exact', 'iexact'), 
+    'custom_operators': ('match',) 
+}
+
+QUERY_TERMS_ALL = sum(QUERY_TERMS.values(), ())
 
 class DoesNotExist(Exception):
     pass
@@ -690,14 +698,6 @@ class QuerySet(object):
     def _transform_query(cls, _doc_cls=None, _field_operation=False, **query):
         """Transform a query from Django-style format to Mongo format.
         """
-        operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                     'all', 'size', 'exists', 'not']
-        geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'within_polygon', 'near', 'near_sphere']
-        match_operators = ['contains', 'icontains', 'startswith',
-                           'istartswith', 'endswith', 'iendswith',
-                           'exact', 'iexact']
-        custom_operators = ['match']
-
         mongo_query = {}
         merge_query = defaultdict(list)
         for key, value in query.items():
@@ -710,7 +710,7 @@ class QuerySet(object):
             parts = [part for part in parts if not part.isdigit()]
             # Check for an operator and transform to mongo-style if there is
             op = None
-            if parts[-1] in operators + match_operators + geo_operators + custom_operators:
+            if parts[-1] in QUERY_TERMS_ALL:
                 op = parts.pop()
 
             negate = False
@@ -738,7 +738,7 @@ class QuerySet(object):
                 field = cleaned_fields[-1]
 
                 singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte', 'not']
-                singular_ops += match_operators
+                singular_ops += QUERY_TERMS['match_operators']
                 if op in singular_ops:
                     if isinstance(field, basestring):
                         if op in match_operators and isinstance(value, basestring):
@@ -754,7 +754,7 @@ class QuerySet(object):
 
             # if op and op not in match_operators:
             if op:
-                if op in geo_operators:
+                if op in QUERY_TERMS['geo_operators']:
                     if op == "within_distance":
                         value = {'$within': {'$center': value}}
                     elif op == "within_spherical_distance":
@@ -770,13 +770,13 @@ class QuerySet(object):
                     else:
                         raise NotImplementedError("Geo method '%s' has not "
                                                   "been implemented" % op)
-                elif op in custom_operators:
+                elif op in QUERY_TERMS['custom_operators']:
                     if op == 'match':
                         value = {"$elemMatch": value}
                     else:
                         NotImplementedError("Custom method '%s' has not "
                                             "been implemented" % op)
-                elif op not in match_operators:
+                elif op not in QUERY_TERMS['match_operators']:
                     value = {'$' + op: value}
 
             if negate:
