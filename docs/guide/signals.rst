@@ -50,4 +50,11 @@ Example usage::
     signals.post_save.connect(Author.post_save, sender=Author)
 
 
+ReferenceFields and signals
+---------------------------
+
+Currently `reverse_delete_rules` do not trigger signals on the other part of
+the relationship.  If this is required you must manually handled the
+reverse deletion.
+
 .. _blinker: http://pypi.python.org/pypi/blinker

@@ -1,4 +1,7 @@
+from __future__ import with_statement
 import unittest
+
+from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -63,6 +66,131 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
+    def test_list_item_dereference_dref_false(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            members = ListField(ReferenceField(User, dbref=False))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            user = User(name='user %s' % i)
+            user.save()
+
+        group = Group(members=User.objects)
+        group.save()
+        group.reload()  # Confirm reload works
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            [m for m in group_obj.members]
+            self.assertEqual(q, 2)
+
+        # Document select_related
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first().select_related()
+
+            self.assertEqual(q, 2)
+            [m for m in group_obj.members]
+            self.assertEqual(q, 2)
+
+        # Queryset select_related
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            group_objs = Group.objects.select_related()
+            self.assertEqual(q, 2)
+            for group_obj in group_objs:
+                [m for m in group_obj.members]
+                self.assertEqual(q, 2)
+
+        User.drop_collection()
+        Group.drop_collection()
+
+    def test_handle_old_style_references(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            members = ListField(ReferenceField(User, dbref=True))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 26):
+            user = User(name='user %s' % i)
+            user.save()
+
+        group = Group(members=User.objects)
+        group.save()
+
+        group = Group._get_collection().find_one()
+
+        # Update the model to change the reference
+        class Group(Document):
+            members = ListField(ReferenceField(User, dbref=False))
+
+        group = Group.objects.first()
+        group.members.append(User(name="String!").save())
+        group.save()
+
+        group = Group.objects.first()
+        self.assertEqual(group.members[0].name, 'user 1')
+        self.assertEqual(group.members[-1].name, 'String!')
+
+    def test_migrate_references(self):
+        """Example of migrating ReferenceField storage
+        """
+
+        # Create some sample data
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            author = ReferenceField(User, dbref=True)
+            members = ListField(ReferenceField(User, dbref=True))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user = User(name="Ross").save()
+        group = Group(author=user, members=[user]).save()
+
+        raw_data = Group._get_collection().find_one()
+        self.assertTrue(isinstance(raw_data['author'], DBRef))
+        self.assertTrue(isinstance(raw_data['members'][0], DBRef))
+
+        # Migrate the model definition
+        class Group(Document):
+            author = ReferenceField(User, dbref=False)
+            members = ListField(ReferenceField(User, dbref=False))
+
+        # Migrate the data
+        for g in Group.objects():
+            g.author = g.author
+            g.members = g.members
+            g.save()
+
+        group = Group.objects.first()
+        self.assertEqual(group.author, user)
+        self.assertEqual(group.members, [user])
+
+        raw_data = Group._get_collection().find_one()
+        self.assertTrue(isinstance(raw_data['author'], ObjectId))
+        self.assertTrue(isinstance(raw_data['members'][0], ObjectId))
+
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
         """
@@ -109,10 +237,10 @@ class FieldTest(unittest.TestCase):
             peter = Employee.objects.with_id(peter.id).select_related()
             self.assertEqual(q, 2)
 
-            self.assertEquals(peter.boss, bill)
+            self.assertEqual(peter.boss, bill)
             self.assertEqual(q, 2)
 
-            self.assertEquals(peter.friends, friends)
+            self.assertEqual(peter.friends, friends)
             self.assertEqual(q, 2)
 
         # Queryset select_related
@@ -123,10 +251,10 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 2)
 
             for employee in employees:
-                self.assertEquals(employee.boss, bill)
+                self.assertEqual(employee.boss, bill)
                 self.assertEqual(q, 2)
 
-                self.assertEquals(employee.friends, friends)
+                self.assertEqual(employee.friends, friends)
                 self.assertEqual(q, 2)
 
     def test_circular_reference(self):
@@ -160,7 +288,7 @@ class FieldTest(unittest.TestCase):
         daughter.relations.append(self_rel)
         daughter.save()
 
-        self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
+        self.assertEqual("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
 
     def test_circular_reference_on_self(self):
         """Ensure you can handle circular references
@@ -186,7 +314,7 @@ class FieldTest(unittest.TestCase):
         daughter.relations.append(daughter)
         daughter.save()
 
-        self.assertEquals("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
+        self.assertEqual("[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects())
 
     def test_circular_tree_reference(self):
         """Ensure you can handle circular references with more than one level
@@ -228,7 +356,7 @@ class FieldTest(unittest.TestCase):
         anna.other.name = "Anna's friends"
         anna.save()
 
-        self.assertEquals(
+        self.assertEqual(
             "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]",
             "%s" % Person.objects()
         )
@@ -781,8 +909,8 @@ class FieldTest(unittest.TestCase):
         root.save()
 
         root = root.reload()
-        self.assertEquals(root.children, [company])
-        self.assertEquals(company.parents, [root])
+        self.assertEqual(root.children, [company])
+        self.assertEqual(company.parents, [root])
 
     def test_dict_in_dbref_instance(self):
 
@@ -808,8 +936,8 @@ class FieldTest(unittest.TestCase):
         room_101.save()
 
         room = Room.objects.first().select_related()
-        self.assertEquals(room.staffs_with_position[0]['staff'], sarah)
-        self.assertEquals(room.staffs_with_position[1]['staff'], bob)
+        self.assertEqual(room.staffs_with_position[0]['staff'], sarah)
+        self.assertEqual(room.staffs_with_position[1]['staff'], bob)
 
     def test_document_reload_no_inheritance(self):
         class Foo(Document):
@@ -839,8 +967,8 @@ class FieldTest(unittest.TestCase):
         foo.save()
         foo.reload()
 
-        self.assertEquals(type(foo.bar), Bar)
-        self.assertEquals(type(foo.baz), Baz)
+        self.assertEqual(type(foo.bar), Bar)
+        self.assertEqual(type(foo.baz), Baz)
 
     def test_list_lookup_not_checked_in_map(self):
         """Ensure we dereference list data correctly

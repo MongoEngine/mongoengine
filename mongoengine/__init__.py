@@ -12,13 +12,12 @@ from signals import *
 __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
            queryset.__all__ + signals.__all__)
 
-VERSION = (0, 6, 19)
+VERSION = (0, 7, 5)
 
 
 def get_version():
-    version = '%s.%s' % (VERSION[0], VERSION[1])
-    if VERSION[2]:
-        version = '%s.%s' % (version, VERSION[2])
-    return version
+    if isinstance(VERSION[-1], basestring):
+        return '.'.join(map(str, VERSION[:-1])) + VERSION[-1]
+    return '.'.join(map(str, VERSION))
 
 __version__ = get_version()

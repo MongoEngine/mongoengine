@@ -1,12 +1,29 @@
 # http://travis-ci.org/#!/MongoEngine/mongoengine
 language: python
+services: mongodb
 python:
+    - 2.5
     - 2.6
     - 2.7
+    - 3.1
+    - 3.2
+env:
+  - PYMONGO=dev
+  - PYMONGO=2.3
+  - PYMONGO=2.2
 install:
-    - sudo apt-get install zlib1g zlib1g-dev
-    - sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib/
-    - pip install PIL --use-mirrors ; true
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo apt-get install zlib1g zlib1g-dev; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib/; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install PIL --use-mirrors ; true; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install PIL --use-mirrors ; true; fi
+    - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
+    - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO --use-mirrors; true; fi
     - python setup.py install
 script:
     - python setup.py test
+notifications:
+  irc: "irc.freenode.org#mongoengine"
+branches:
+  only:
+    - master
+    - 0.7
