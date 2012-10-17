@@ -727,7 +727,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that the list fields can handle the complex types."""
 
         class SettingBase(EmbeddedDocument):
-            pass
+            meta = {'allow_inheritance': True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -743,8 +743,9 @@ class FieldTest(unittest.TestCase):
         e.mapping.append(StringSetting(value='foo'))
         e.mapping.append(IntegerSetting(value=42))
         e.mapping.append({'number': 1, 'string': 'Hi!', 'float': 1.001,
-                          'complex': IntegerSetting(value=42), 'list':
-                          [IntegerSetting(value=42), StringSetting(value='foo')]})
+                          'complex': IntegerSetting(value=42),
+                          'list': [IntegerSetting(value=42),
+                                   StringSetting(value='foo')]})
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
@@ -844,7 +845,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that the dict field can handle the complex types."""
 
         class SettingBase(EmbeddedDocument):
-            pass
+            meta = {'allow_inheritance': True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -859,9 +860,11 @@ class FieldTest(unittest.TestCase):
         e = Simple()
         e.mapping['somestring'] = StringSetting(value='foo')
         e.mapping['someint'] = IntegerSetting(value=42)
-        e.mapping['nested_dict'] = {'number': 1, 'string': 'Hi!', 'float': 1.001,
-                                 'complex': IntegerSetting(value=42), 'list':
-                                [IntegerSetting(value=42), StringSetting(value='foo')]}
+        e.mapping['nested_dict'] = {'number': 1, 'string': 'Hi!',
+                                    'float': 1.001,
+                                    'complex': IntegerSetting(value=42),
+                                    'list': [IntegerSetting(value=42),
+                                             StringSetting(value='foo')]}
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
@@ -915,7 +918,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that the MapField can handle complex declared types."""
 
         class SettingBase(EmbeddedDocument):
-            pass
+            meta = {"allow_inheritance": True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -951,7 +954,8 @@ class FieldTest(unittest.TestCase):
             number = IntField(default=0, db_field='i')
 
         class Test(Document):
-            my_map = MapField(field=EmbeddedDocumentField(Embedded), db_field='x')
+            my_map = MapField(field=EmbeddedDocumentField(Embedded),
+                                    db_field='x')
 
         Test.drop_collection()
 
@@ -1038,6 +1042,8 @@ class FieldTest(unittest.TestCase):
         class User(EmbeddedDocument):
             name = StringField()
 
+            meta = {'allow_inheritance': True}
+
         class PowerUser(User):
             power = IntField()
 
@@ -1046,8 +1052,10 @@ class FieldTest(unittest.TestCase):
             author = EmbeddedDocumentField(User)
 
         post = BlogPost(content='What I did today...')
-        post.author = User(name='Test User')
         post.author = PowerUser(name='Test User', power=47)
+        post.save()
+
+        self.assertEqual(47, BlogPost.objects.first().author.power)
 
     def test_reference_validation(self):
         """Ensure that invalid docment objects cannot be assigned to reference
@@ -2117,12 +2125,12 @@ class FieldTest(unittest.TestCase):
     def test_sequence_fields_reload(self):
         class Animal(Document):
             counter = SequenceField()
-            type = StringField()
+            name = StringField()
 
         self.db['mongoengine.counters'].drop()
         Animal.drop_collection()
 
-        a = Animal(type="Boi")
+        a = Animal(name="Boi")
         a.save()
 
         self.assertEqual(a.counter, 1)

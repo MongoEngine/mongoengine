@@ -8,10 +8,13 @@ Upgrading
 Inheritance
 -----------
 
+Data Model
+~~~~~~~~~~
+
 The inheritance model has changed, we no longer need to store an array of
-`types` with the model we can just use the classname in `_cls`.  This means
-that you will have to update your indexes for each of your inherited classes
-like so:
+:attr:`types` with the model we can just use the classname in :attr:`_cls`.
+This means that you will have to update your indexes for each of your
+inherited classes like so:
 
     # 1. Declaration of the class
     class Animal(Document):
@@ -39,6 +42,19 @@ like so:
     # 5. Recreate indexes
     Animal.objects._ensure_indexes()
 
+
+Document Definition
+~~~~~~~~~~~~~~~~~~~
+
+The default for inheritance has changed - its now off by default and
+:attr:`_cls` will not be stored automatically with the class.  So if you extend
+your :class:`~mongoengine.Document` or :class:`~mongoengine.EmbeddedDocuments`
+you will need to declare :attr:`allow_inheritance` in the meta data like so:
+
+    class Animal(Document):
+        name = StringField()
+
+        meta = {'allow_inheritance': True}
 
 
 0.6 to 0.7
@@ -123,7 +139,7 @@ Document.objects.with_id - now raises an InvalidQueryError if used with a
 filter.
 
 FutureWarning - A future warning has been added to all inherited classes that
-don't define `allow_inheritance` in their meta.
+don't define :attr:`allow_inheritance` in their meta.
 
 You may need to update pyMongo to 2.0 for use with Sharding.
 

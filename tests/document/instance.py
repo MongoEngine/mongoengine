@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
+
 import bson
 import os
 import pickle
-import pymongo
-import sys
 import unittest
 import uuid
-import warnings
 
-from nose.plugins.skip import SkipTest
 from datetime import datetime
-
-from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
+from tests.fixtures import PickleEmbedded, PickleTest
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError)
 from mongoengine.queryset import NULLIFY, Q
-from mongoengine.connection import get_db, get_connection
+from mongoengine.connection import get_db
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
@@ -461,7 +459,7 @@ class InstanceTest(unittest.TestCase):
         doc.validate()
         keys = doc._data.keys()
         self.assertEqual(2, len(keys))
-        self.assertTrue(None in keys)
+        self.assertTrue('id' in keys)
         self.assertTrue('e' in keys)
 
     def test_save(self):
@@ -656,8 +654,8 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(p1.name, p.parent.name)
 
     def test_update(self):
-        """Ensure that an existing document is updated instead of be overwritten.
-        """
+        """Ensure that an existing document is updated instead of be
+        overwritten."""
         # Create person object and save it to the database
         person = self.Person(name='Test User', age=30)
         person.save()
@@ -753,30 +751,33 @@ class InstanceTest(unittest.TestCase):
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
             datetime_field = DateTimeField(default=datetime.now)
-            embedded_document_field = EmbeddedDocumentField(EmbeddedDoc, default=lambda: EmbeddedDoc())
+            embedded_document_field = EmbeddedDocumentField(EmbeddedDoc,
+                                        default=lambda: EmbeddedDoc())
             list_field = ListField(default=lambda: [1, 2, 3])
             dict_field = DictField(default=lambda: {"hello": "world"})
             objectid_field = ObjectIdField(default=bson.ObjectId)
-            reference_field = ReferenceField(Simple, default=lambda: Simple().save())
+            reference_field = ReferenceField(Simple, default=lambda:
+                                                        Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
             complex_datetime_field = ComplexDateTimeField(default=datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
-            generic_reference_field = GenericReferenceField(default=lambda: Simple().save())
-            sorted_list_field = SortedListField(IntField(), default=lambda: [1, 2, 3])
+            generic_reference_field = GenericReferenceField(
+                                            default=lambda: Simple().save())
+            sorted_list_field = SortedListField(IntField(),
+                                                default=lambda: [1, 2, 3])
             email_field = EmailField(default="ross@example.com")
             geo_point_field = GeoPointField(default=lambda: [1, 2])
             sequence_field = SequenceField()
             uuid_field = UUIDField(default=uuid.uuid4)
-            generic_embedded_document_field = GenericEmbeddedDocumentField(default=lambda: EmbeddedDoc())
-
+            generic_embedded_document_field = GenericEmbeddedDocumentField(
+                                        default=lambda: EmbeddedDoc())
 
         Simple.drop_collection()
         Doc.drop_collection()
 
         Doc().save()
-
         my_doc = Doc.objects.only("string_field").first()
         my_doc.string_field = "string"
         my_doc.save()
@@ -1707,9 +1708,12 @@ class InstanceTest(unittest.TestCase):
         peter = User.objects.create(name="Peter")
 
         # Bob
-        Book.objects.create(name="1", author=bob, extra={"a": bob.to_dbref(), "b": [karl.to_dbref(), susan.to_dbref()]})
-        Book.objects.create(name="2", author=bob, extra={"a": bob.to_dbref(), "b": karl.to_dbref()})
-        Book.objects.create(name="3", author=bob, extra={"a": bob.to_dbref(), "c": [jon.to_dbref(), peter.to_dbref()]})
+        Book.objects.create(name="1", author=bob, extra={
+            "a": bob.to_dbref(), "b": [karl.to_dbref(), susan.to_dbref()]})
+        Book.objects.create(name="2", author=bob, extra={
+            "a": bob.to_dbref(), "b": karl.to_dbref()})
+        Book.objects.create(name="3", author=bob, extra={
+            "a": bob.to_dbref(), "c": [jon.to_dbref(), peter.to_dbref()]})
         Book.objects.create(name="4", author=bob)
 
         # Jon
@@ -1717,23 +1721,26 @@ class InstanceTest(unittest.TestCase):
         Book.objects.create(name="6", author=peter)
         Book.objects.create(name="7", author=jon)
         Book.objects.create(name="8", author=jon)
-        Book.objects.create(name="9", author=jon, extra={"a": peter.to_dbref()})
+        Book.objects.create(name="9", author=jon,
+                            extra={"a": peter.to_dbref()})
 
         # Checks
-        self.assertEqual(u",".join([str(b) for b in Book.objects.all()]) , "1,2,3,4,5,6,7,8,9")
+        self.assertEqual(",".join([str(b) for b in Book.objects.all()]),
+                            "1,2,3,4,5,6,7,8,9")
         # bob related books
-        self.assertEqual(u",".join([str(b) for b in Book.objects.filter(
+        self.assertEqual(",".join([str(b) for b in Book.objects.filter(
                                     Q(extra__a=bob) |
                                     Q(author=bob) |
-                                    Q(extra__b=bob))]) ,
+                                    Q(extra__b=bob))]),
                                     "1,2,3,4")
 
         # Susan & Karl related books
-        self.assertEqual(u",".join([str(b) for b in Book.objects.filter(
+        self.assertEqual(",".join([str(b) for b in Book.objects.filter(
                                     Q(extra__a__all=[karl, susan]) |
-                                    Q(author__all=[karl, susan ]) |
-                                    Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
-                                   ) ]) , "1")
+                                    Q(author__all=[karl, susan]) |
+                                    Q(extra__b__all=[
+                                        karl.to_dbref(), susan.to_dbref()]))
+                                ]), "1")
 
         # $Where
         self.assertEqual(u",".join([str(b) for b in Book.objects.filter(
@@ -1743,7 +1750,7 @@ class InstanceTest(unittest.TestCase):
                                                 return this.name == '1' ||
                                                        this.name == '2';}"""
                                         }
-                                   ) ]), "1,2")
+                                   )]), "1,2")
 
 
 class ValidatorErrorTest(unittest.TestCase):

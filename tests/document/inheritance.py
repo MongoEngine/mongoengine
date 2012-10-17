@@ -203,7 +203,6 @@ class InheritanceTest(unittest.TestCase):
 
         class Animal(Document):
             name = StringField()
-            meta = {'allow_inheritance': False}
 
         def create_dog_class():
             class Dog(Animal):
@@ -258,7 +257,6 @@ class InheritanceTest(unittest.TestCase):
 
         class Comment(EmbeddedDocument):
             content = StringField()
-            meta = {'allow_inheritance': False}
 
         def create_special_comment():
             class SpecialComment(Comment):

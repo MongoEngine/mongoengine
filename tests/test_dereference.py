@@ -331,14 +331,10 @@ class FieldTest(unittest.TestCase):
                 return "<Person: %s>" % self.name
 
         Person.drop_collection()
-        paul = Person(name="Paul")
-        paul.save()
-        maria = Person(name="Maria")
-        maria.save()
-        julia = Person(name='Julia')
-        julia.save()
-        anna = Person(name='Anna')
-        anna.save()
+        paul = Person(name="Paul").save()
+        maria = Person(name="Maria").save()
+        julia = Person(name='Julia').save()
+        anna = Person(name='Anna').save()
 
         paul.other.friends = [maria, julia, anna]
         paul.other.name = "Paul's friends"

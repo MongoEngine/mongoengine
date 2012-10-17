@@ -29,22 +29,6 @@ class AllWarnings(unittest.TestCase):
         # restore default handling of warnings
         warnings.showwarning = self.showwarning_default
 
-    def test_allow_inheritance_future_warning(self):
-        """Add FutureWarning for future allow_inhertiance default change.
-        """
-
-        class SimpleBase(Document):
-            a = IntField()
-
-        class InheritedClass(SimpleBase):
-            b = IntField()
-
-        InheritedClass()
-        self.assertEqual(len(self.warning_list), 1)
-        warning = self.warning_list[0]
-        self.assertEqual(FutureWarning, warning["category"])
-        self.assertTrue("InheritedClass" in str(warning["message"]))
-
     def test_dbref_reference_field_future_warning(self):
 
         class Person(Document):
@@ -93,7 +77,7 @@ class AllWarnings(unittest.TestCase):
     def test_document_collection_syntax_warning(self):
 
         class NonAbstractBase(Document):
-            pass
+            meta = {'allow_inheritance': True}
 
         class InheritedDocumentFailTest(NonAbstractBase):
             meta = {'collection': 'fail'}

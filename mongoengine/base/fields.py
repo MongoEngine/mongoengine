@@ -21,6 +21,7 @@ class BaseField(object):
 
     name = None
     _geo_index = False
+    _auto_gen = False  # Call `generate` to generate a value
 
     # These track each time a Field instance is created. Used to retain order.
     # The auto_creation_counter is used for fields that MongoEngine implicitly
@@ -36,7 +37,6 @@ class BaseField(object):
         if name:
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
             warnings.warn(msg, DeprecationWarning)
-        self.name = None
         self.required = required or primary_key
         self.default = default
         self.unique = bool(unique or unique_with)
@@ -62,7 +62,6 @@ class BaseField(object):
         if instance is None:
             # Document class being used rather than a document object
             return self
-
         # Get value from document instance if available, if not use default
         value = instance._data.get(self.name)
 
@@ -241,12 +240,21 @@ class ComplexBaseField(BaseField):
         """Convert a Python type to a MongoDB-compatible type.
         """
         Document = _import_class("Document")
+        EmbeddedDocument = _import_class("EmbeddedDocument")
+        GenericReferenceField = _import_class("GenericReferenceField")
 
         if isinstance(value, basestring):
             return value
 
         if hasattr(value, 'to_mongo'):
-            return value.to_mongo()
+            if isinstance(value, Document):
+                return GenericReferenceField().to_mongo(value)
+            cls = value.__class__
+            val = value.to_mongo()
+            # If we its a document thats not inherited add _cls
+            if (isinstance(value, EmbeddedDocument)):
+                val['_cls'] = cls.__name__
+            return val
 
         is_list = False
         if not hasattr(value, 'items'):
@@ -258,10 +266,10 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_mongo(item))
-                                for key, item in value.items()])
+                                for key, item in value.iteritems()])
         else:
             value_dict = {}
-            for k, v in value.items():
+            for k, v in value.iteritems():
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -274,16 +282,19 @@ class ComplexBaseField(BaseField):
                     meta = getattr(v, '_meta', {})
                     allow_inheritance = (
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
-                        == False)
-                    if allow_inheritance and not self.field:
-                        GenericReferenceField = _import_class(
-                                                    "GenericReferenceField")
+                        == True)
+                    if not allow_inheritance and not self.field:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
                         collection = v._get_collection_name()
                         value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, 'to_mongo'):
-                    value_dict[k] = v.to_mongo()
+                    cls = v.__class__
+                    val = v.to_mongo()
+                    # If we its a document thats not inherited add _cls
+                    if (isinstance(v, (Document, EmbeddedDocument))):
+                        val['_cls'] = cls.__name__
+                    value_dict[k] = val
                 else:
                     value_dict[k] = self.to_mongo(v)
 

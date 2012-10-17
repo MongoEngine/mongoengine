@@ -462,9 +462,10 @@ If a dictionary is passed then the following options are available:
     The fields to index. Specified in the same format as described above.
 
 :attr:`cls` (Default: True)
-    If you have polymorphic models that inherit and have `allow_inheritance`
-    turned on, you can configure whether the index should have the
-    :attr:`_cls` field added automatically to the start of the index.
+    If you have polymorphic models that inherit and have
+    :attr:`allow_inheritance` turned on, you can configure whether the index
+    should have the :attr:`_cls` field added automatically to the start of the
+    index.
 
 :attr:`sparse` (Default: False)
     Whether the index should be sparse.
@@ -573,7 +574,9 @@ defined, you may subclass it and add any extra fields or methods you may need.
 As this is new class is not a direct subclass of
 :class:`~mongoengine.Document`, it will not be stored in its own collection; it
 will use the same collection as its superclass uses. This allows for more
-convenient and efficient retrieval of related documents::
+convenient and efficient retrieval of related documents - all you need do is
+set :attr:`allow_inheritance` to True in the :attr:`meta` data for a
+document.::
 
     # Stored in a collection named 'page'
     class Page(Document):
@@ -585,25 +588,20 @@ convenient and efficient retrieval of related documents::
     class DatedPage(Page):
         date = DateTimeField()
 
-.. note:: From 0.7 onwards you must declare `allow_inheritance` in the document meta.
+.. note:: From 0.8 onwards you must declare :attr:`allow_inheritance` defaults
+          to False, meaning you must set it to True to use inheritance.
 
 
 Working with existing data
 --------------------------
-To enable correct retrieval of documents involved in this kind of heirarchy,
-an extra attribute is stored on each document in the database: :attr:`_cls`.
-These are hidden from the user through the MongoEngine interface, but may not
-be present if you are trying to use MongoEngine with an existing database.
-
-For this reason, you may disable this inheritance mechansim, removing the
-dependency of :attr:`_cls`, enabling you to work with existing databases.
-To disable inheritance on a document class, set :attr:`allow_inheritance` to
-``False`` in the :attr:`meta` dictionary::
+As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
+easily get working with existing data.  Just define the document to match
+the expected schema in your database.  If you have wildly varying schemas then
+a :class:`~mongoengine.DynamicDocument` might be more appropriate.
 
     # Will work with data in an existing collection named 'cmsPage'
     class Page(Document):
         title = StringField(max_length=200, required=True)
         meta = {
-            'collection': 'cmsPage',
-            'allow_inheritance': False,
+            'collection': 'cmsPage'
         }

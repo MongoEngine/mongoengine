@@ -16,11 +16,10 @@ from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
-                  get_document, BaseDocument)
+                  get_document, BaseDocument, ALLOW_INHERITANCE)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
-
 
 try:
     from PIL import Image, ImageOps
@@ -314,16 +313,16 @@ class DateTimeField(BaseField):
             usecs = 0
         kwargs = {'microsecond': usecs}
         try:  # Seconds are optional, so try converting seconds first.
-            return datetime.datetime(*time.strptime(value, '%Y-%m-%d %H:%M:%S')[:6],
-                                     **kwargs)
+            return datetime.datetime(*time.strptime(value,
+                                      '%Y-%m-%d %H:%M:%S')[:6], **kwargs)
         except ValueError:
             try:  # Try without seconds.
-                return datetime.datetime(*time.strptime(value, '%Y-%m-%d %H:%M')[:5],
-                                         **kwargs)
+                return datetime.datetime(*time.strptime(value,
+                                         '%Y-%m-%d %H:%M')[:5], **kwargs)
             except ValueError:  # Try without hour/minutes/seconds.
                 try:
-                    return datetime.datetime(*time.strptime(value, '%Y-%m-%d')[:3],
-                                             **kwargs)
+                    return datetime.datetime(*time.strptime(value,
+                                             '%Y-%m-%d')[:3], **kwargs)
                 except ValueError:
                     return None
 
@@ -410,6 +409,7 @@ class ComplexDateTimeField(StringField):
         return super(ComplexDateTimeField, self).__set__(instance, value)
 
     def validate(self, value):
+        value = self.to_python(value)
         if not isinstance(value, datetime.datetime):
             self.error('Only datetime objects may used in a '
                        'ComplexDateTimeField')
@@ -422,6 +422,7 @@ class ComplexDateTimeField(StringField):
             return original_value
 
     def to_mongo(self, value):
+        value = self.to_python(value)
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
@@ -529,7 +530,12 @@ class DynamicField(BaseField):
             return value
 
         if hasattr(value, 'to_mongo'):
-            return value.to_mongo()
+            cls = value.__class__
+            val = value.to_mongo()
+            # If we its a document thats not inherited add _cls
+            if (isinstance(value, (Document, EmbeddedDocument))):
+                val['_cls'] = cls.__name__
+            return val
 
         if not isinstance(value, (dict, list, tuple)):
             return value
@@ -540,13 +546,12 @@ class DynamicField(BaseField):
             value = dict([(k, v) for k, v in enumerate(value)])
 
         data = {}
-        for k, v in value.items():
+        for k, v in value.iteritems():
             data[k] = self.to_mongo(v)
 
+        value = data
         if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(data.items(), key=itemgetter(0))]
-        else:
-            value = data
+            value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
         return value
 
     def lookup_member(self, member_name):
@@ -666,7 +671,6 @@ class DictField(ComplexBaseField):
 
         if op in match_operators and isinstance(value, basestring):
             return StringField().prepare_query_value(op, value)
-
         return super(DictField, self).prepare_query_value(op, value)
 
 
@@ -1323,7 +1327,8 @@ class GeoPointField(BaseField):
 
 
 class SequenceField(IntField):
-    """Provides a sequental counter (see http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers)
+    """Provides a sequental counter see:
+     http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
 
     .. note::
 
@@ -1335,17 +1340,21 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
+    _auto_gen = True
+
+    def __init__(self, collection_name=None, db_alias=None,
+                 sequence_name=None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
         return super(SequenceField, self).__init__(*args, **kwargs)
 
-    def generate_new_value(self):
+    def generate(self):
         """
         Generate and Increment the counter
         """
-        sequence_name = self.sequence_name or self.owner_document._get_collection_name()
+        sequence_name = (self.sequence_name or
+                         self.owner_document._get_collection_name())
         sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
@@ -1365,7 +1374,7 @@ class SequenceField(IntField):
         value = instance._data.get(self.name)
 
         if not value and instance._initialised:
-            value = self.generate_new_value()
+            value = self.generate()
             instance._data[self.name] = value
             instance._mark_as_changed(self.name)
 
@@ -1374,13 +1383,13 @@ class SequenceField(IntField):
     def __set__(self, instance, value):
 
         if value is None and instance._initialised:
-            value = self.generate_new_value()
+            value = self.generate()
 
         return super(SequenceField, self).__set__(instance, value)
 
     def to_python(self, value):
         if value is None:
-            value = self.generate_new_value()
+            value = self.generate()
         return value
 
 

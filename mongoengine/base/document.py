@@ -50,7 +50,6 @@ class BaseDocument(object):
             for key, value in values.iteritems():
                 key = self._reverse_db_field_map.get(key, key)
                 setattr(self, key, value)
-
         # Set any get_fieldname_display methods
         self.__set_field_display()
 
@@ -82,6 +81,11 @@ class BaseDocument(object):
                 self._data[name] = value
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
+
+        # Check if the user has created a new instance of a class
+        if (self._is_document and self._initialised
+            and self._created and name == self._meta['id_field']):
+                super(BaseDocument, self).__setattr__('_created', False)
 
         if (self._is_document and not self._created and
             name in self._meta.get('shard_key', tuple()) and
@@ -171,14 +175,24 @@ class BaseDocument(object):
         """Return data dictionary ready for use with MongoDB.
         """
         data = {}
-        for field_name, field in self._fields.items():
-            value = getattr(self, field_name, None)
+        for field_name, field in self._fields.iteritems():
+            value = self._data.get(field_name, None)
             if value is not None:
-                data[field.db_field] = field.to_mongo(value)
-        # Only add _cls if allow_inheritance is not False
-        if not (hasattr(self, '_meta') and
-           self._meta.get('allow_inheritance', ALLOW_INHERITANCE) == False):
+                value = field.to_mongo(value)
+
+            # Handle self generating fields
+            if value is None and field._auto_gen:
+                value = field.generate()
+                self._data[field_name] = value
+
+            if value is not None:
+                data[field.db_field] = value
+
+        # Only add _cls if allow_inheritance is True
+        if (hasattr(self, '_meta') and
+            self._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
             data['_cls'] = self._class_name
+
         if '_id' in data and data['_id'] is None:
             del data['_id']
 
@@ -194,7 +208,7 @@ class BaseDocument(object):
         are present.
         """
         # Get a list of tuples of field names and their current values
-        fields = [(field, getattr(self, name))
+        fields = [(field, self._data.get(name))
                   for name, field in self._fields.items()]
 
         # Ensure that each field is matched to a valid value
@@ -207,7 +221,7 @@ class BaseDocument(object):
                     errors[field.name] = error.errors or error
                 except (ValueError, AttributeError, AssertionError), error:
                     errors[field.name] = error
-            elif field.required:
+            elif field.required and not getattr(field, '_auto_gen', False):
                 errors[field.name] = ValidationError('Field is required',
                                                      field_name=field.name)
         if errors:
@@ -313,6 +327,7 @@ class BaseDocument(object):
         """
         # Handles cases where not loaded from_son but has _id
         doc = self.to_mongo()
+
         set_fields = self._get_changed_fields()
         set_data = {}
         unset_data = {}
@@ -370,7 +385,6 @@ class BaseDocument(object):
                 if hasattr(d, '_fields'):
                     field_name = d._reverse_db_field_map.get(db_field_name,
                                                              db_field_name)
-
                     if field_name in d._fields:
                         default = d._fields.get(field_name).default
                     else:
@@ -379,6 +393,7 @@ class BaseDocument(object):
             if default is not None:
                 if callable(default):
                     default = default()
+
             if default != value:
                 continue
 
@@ -399,14 +414,11 @@ class BaseDocument(object):
         # get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
-        data = dict(("%s" % key, value) for key, value in son.items())
+        data = dict(("%s" % key, value) for key, value in son.iteritems())
         if not UNICODE_KWARGS:
             # python 2.6.4 and lower cannot handle unicode keys
             # passed to class constructor example: cls(**data)
             to_str_keys_recursive(data)
-
-        if '_cls' in data:
-            del data['_cls']
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
@@ -415,7 +427,7 @@ class BaseDocument(object):
         changed_fields = []
         errors_dict = {}
 
-        for field_name, field in cls._fields.items():
+        for field_name, field in cls._fields.iteritems():
             if field.db_field in data:
                 value = data[field.db_field]
                 try:

@@ -2,7 +2,7 @@ from mongoengine.errors import NotRegistered
 
 __all__ = ('ALLOW_INHERITANCE', 'get_document', '_document_registry')
 
-ALLOW_INHERITANCE = True
+ALLOW_INHERITANCE = False
 
 _document_registry = {}
 

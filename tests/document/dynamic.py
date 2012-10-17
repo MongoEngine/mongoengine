@@ -1,4 +1,7 @@
 import unittest
+import sys
+
+sys.path[0:0] = [""]
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -161,7 +164,7 @@ class DynamicTest(unittest.TestCase):
         embedded_1.list_field = ['1', 2, {'hello': 'world'}]
         doc.embedded_field = embedded_1
 
-        self.assertEqual(doc.to_mongo(), {"_cls": "Doc",
+        self.assertEqual(doc.to_mongo(), {
             "embedded_field": {
                 "_cls": "Embedded",
                 "string_field": "hello",
@@ -205,7 +208,7 @@ class DynamicTest(unittest.TestCase):
         embedded_1.list_field = ['1', 2, embedded_2]
         doc.embedded_field = embedded_1
 
-        self.assertEqual(doc.to_mongo(), {"_cls": "Doc",
+        self.assertEqual(doc.to_mongo(), {
             "embedded_field": {
                 "_cls": "Embedded",
                 "string_field": "hello",
@@ -246,7 +249,6 @@ class DynamicTest(unittest.TestCase):
 
         class Person(DynamicDocument):
             name = StringField()
-            meta = {'allow_inheritance': True}
 
         Person.drop_collection()
 
@@ -268,3 +270,7 @@ class DynamicTest(unittest.TestCase):
         person.age = 35
         person.save()
         self.assertEqual(Person.objects.first().age, 35)
+
+
+if __name__ == '__main__':
+    unittest.main()

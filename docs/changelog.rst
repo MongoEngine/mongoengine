@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8
 ==============
+- Inheritance is off by default (MongoEngine/mongoengine#122)
 - Remove _types and just use _cls for inheritance (MongoEngine/mongoengine#148)
 
 

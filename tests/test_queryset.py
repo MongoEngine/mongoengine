@@ -647,7 +647,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(NotUniqueError, throw_operation_error_not_unique)
         self.assertEqual(Blog.objects.count(), 2)
 
-        Blog.objects.insert([blog2, blog3], write_options={'continue_on_error': True})
+        Blog.objects.insert([blog2, blog3], write_options={
+                                                'continue_on_error': True})
         self.assertEqual(Blog.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):
@@ -673,7 +674,7 @@ class QuerySetTest(unittest.TestCase):
         r2 = Project(name="r2").save()
         r3 = Project(name="r3").save()
         p1 = Person(name="p1", projects=[r1, r2]).save()
-        p2 = Person(name="p2", projects=[r2]).save()
+        p2 = Person(name="p2", projects=[r2, r3]).save()
         o1 = Organization(name="o1", employees=[p1]).save()
 
         with query_counter() as q:
@@ -688,24 +689,24 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             fresh_o1 = Organization.objects.get(id=o1.id)
-            fresh_o1.save()
+            fresh_o1.save()   # No changes, does nothing
 
-            self.assertEqual(q, 2)
-
-        with query_counter() as q:
-            self.assertEqual(q, 0)
-
-            fresh_o1 = Organization.objects.get(id=o1.id)
-            fresh_o1.save(cascade=False)
-
-            self.assertEqual(q, 2)
+            self.assertEqual(q, 1)
 
         with query_counter() as q:
             self.assertEqual(q, 0)
 
             fresh_o1 = Organization.objects.get(id=o1.id)
-            fresh_o1.employees.append(p2)
-            fresh_o1.save(cascade=False)
+            fresh_o1.save(cascade=False)  # No changes, does nothing
+
+            self.assertEqual(q, 1)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            fresh_o1 = Organization.objects.get(id=o1.id)
+            fresh_o1.employees.append(p2)  # Dereferences
+            fresh_o1.save(cascade=False)   # Saves
 
             self.assertEqual(q, 3)
 

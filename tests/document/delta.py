@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import sys
+sys.path[0:0] = [""]
 import unittest
 
 from mongoengine import *
@@ -126,9 +128,6 @@ class DeltaTest(unittest.TestCase):
             'list_field': ['1', 2, {'hello': 'world'}]
         }
         self.assertEqual(doc.embedded_field._delta(), (embedded_delta, {}))
-        embedded_delta.update({
-            '_cls': 'Embedded',
-        })
         self.assertEqual(doc._delta(),
             ({'embedded_field': embedded_delta}, {}))
 
@@ -162,6 +161,7 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field = ['1', 2, embedded_2]
         self.assertEqual(doc._get_changed_fields(),
             ['embedded_field.list_field'])
+
         self.assertEqual(doc.embedded_field._delta(), ({
             'list_field': ['1', 2, {
                 '_cls': 'Embedded',
@@ -175,10 +175,10 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._delta(), ({
             'embedded_field.list_field': ['1', 2, {
                 '_cls': 'Embedded',
-                 'string_field': 'hello',
-                 'dict_field': {'hello': 'world'},
-                 'int_field': 1,
-                 'list_field': ['1', 2, {'hello': 'world'}],
+                'string_field': 'hello',
+                'dict_field': {'hello': 'world'},
+                'int_field': 1,
+                'list_field': ['1', 2, {'hello': 'world'}],
             }]
         }, {}))
         doc.save()
@@ -467,9 +467,6 @@ class DeltaTest(unittest.TestCase):
             'db_list_field': ['1', 2, {'hello': 'world'}]
         }
         self.assertEqual(doc.embedded_field._delta(), (embedded_delta, {}))
-        embedded_delta.update({
-            '_cls': 'Embedded',
-        })
         self.assertEqual(doc._delta(),
             ({'db_embedded_field': embedded_delta}, {}))
 
@@ -520,10 +517,10 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._delta(), ({
             'db_embedded_field.db_list_field': ['1', 2, {
                 '_cls': 'Embedded',
-                 'db_string_field': 'hello',
-                 'db_dict_field': {'hello': 'world'},
-                 'db_int_field': 1,
-                 'db_list_field': ['1', 2, {'hello': 'world'}],
+                'db_string_field': 'hello',
+                'db_dict_field': {'hello': 'world'},
+                'db_int_field': 1,
+                'db_list_field': ['1', 2, {'hello': 'world'}],
             }]
         }, {}))
         doc.save()
@@ -686,3 +683,7 @@ class DeltaTest(unittest.TestCase):
         doc.list_field = []
         self.assertEqual(doc._get_changed_fields(), ['list_field'])
         self.assertEqual(doc._delta(), ({}, {'list_field': 1}))
+
+
+if __name__ == '__main__':
+    unittest.main()

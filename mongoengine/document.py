@@ -117,6 +117,7 @@ class Document(BaseDocument):
         """
         def fget(self):
             return getattr(self, self._meta['id_field'])
+
         def fset(self, value):
             return setattr(self, self._meta['id_field'], value)
         return property(fget, fset)
@@ -125,7 +126,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME ))
+        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
 
     @classmethod
     def _get_collection(cls):
@@ -212,11 +213,11 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        created = force_insert or '_id' not in doc
+        find_delta = ('_id' not in doc or self._created or force_insert)
 
         try:
             collection = self.__class__.objects._collection
-            if created:
+            if find_delta:
                 if force_insert:
                     object_id = collection.insert(doc, safe=safe,
                                                   **write_options)
@@ -271,7 +272,8 @@ class Document(BaseDocument):
 
         self._changed_fields = []
         self._created = False
-        signals.post_save.send(self.__class__, document=self, created=created)
+        signals.post_save.send(self.__class__, document=self,
+                               created=find_delta)
         return self
 
     def cascade_save(self, warn_cascade=None, *args, **kwargs):
@@ -373,6 +375,7 @@ class Document(BaseDocument):
             for name in self._dynamic_fields.keys():
                 setattr(self, name, self._reload(name, obj._data[name]))
         self._changed_fields = obj._changed_fields
+        self._created = False
         return obj
 
     def _reload(self, key, value):
@@ -464,7 +467,13 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
         """Deletes the attribute by setting to None and allowing _delta to unset
         it"""
         field_name = args[0]
-        setattr(self, field_name, None)
+        if field_name in self._fields:
+            default = self._fields[field_name].default
+            if callable(default):
+                default = default()
+            setattr(self, field_name, default)
+        else:
+            setattr(self, field_name, None)
 
 
 class MapReduceDocument(object):

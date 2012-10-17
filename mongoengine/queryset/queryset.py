@@ -58,7 +58,7 @@ class QuerySet(object):
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
-        if document._meta.get('allow_inheritance') != False:
+        if document._meta.get('allow_inheritance') == True:
             self._initial_query = {"_cls": {"$in": self._document._subclasses}}
             self._loaded_fields = QueryFieldList(always_include=['_cls'])
         self._cursor_obj = None

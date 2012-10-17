@@ -34,6 +34,17 @@ class DocumentMetaclass(type):
         if 'meta' in attrs:
             attrs['_meta'] = attrs.pop('meta')
 
+        # EmbeddedDocuments should inherit meta data
+        if '_meta' not in attrs:
+            meta = MetaDict()
+            for base in flattened_bases[::-1]:
+                # Add any mixin metadata from plain objects
+                if hasattr(base, 'meta'):
+                    meta.merge(base.meta)
+                elif hasattr(base, '_meta'):
+                    meta.merge(base._meta)
+            attrs['_meta'] = meta
+
         # Handle document Fields
 
         # Merge all fields from subclasses
@@ -52,6 +63,7 @@ class DocumentMetaclass(type):
                     if not attr_value.db_field:
                         attr_value.db_field = attr_name
                     base_fields[attr_name] = attr_value
+
                 doc_fields.update(base_fields)
 
         # Discover any document fields
@@ -98,15 +110,7 @@ class DocumentMetaclass(type):
                 # inheritance of classes where inheritance is set to False
                 allow_inheritance = base._meta.get('allow_inheritance',
                                                     ALLOW_INHERITANCE)
-                if (not getattr(base, '_is_base_cls', True)
-                    and allow_inheritance is None):
-                    warnings.warn(
-                        "%s uses inheritance, the default for "
-                        "allow_inheritance is changing to off by default. "
-                        "Please add it to the document meta." % name,
-                        FutureWarning
-                    )
-                elif (allow_inheritance == False and
+                if (allow_inheritance != True and
                       not base._meta.get('abstract')):
                     raise ValueError('Document %s may not be subclassed' %
                                       base.__name__)
@@ -353,6 +357,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if not new_class._meta.get('id_field'):
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
+            new_class._fields['id'].name = 'id'
             new_class.id = new_class._fields['id']
 
         # Merge in exceptions with parent hierarchy
