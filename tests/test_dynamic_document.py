@@ -245,6 +245,29 @@ class DynamicDocTest(unittest.TestCase):
         self.assertEqual(embedded_field.dict_field, {'hello': 'world'})
         self.assertEqual(embedded_field.list_field, ['1', 2, {'hello': 'world'}])
 
+    def test_complex_embedded_document_validation(self):
+        """Ensure embedded dynamic documents may be validated"""
+        class Embedded(DynamicEmbeddedDocument):
+            content = URLField()
+
+        class Doc(DynamicDocument):
+            pass
+
+        Doc.drop_collection()
+        doc = Doc()
+
+        embedded_doc_1 = Embedded(content='http://mongoengine.org')
+        embedded_doc_1.validate()
+
+        embedded_doc_2 = Embedded(content='this is not a url')
+        with self.assertRaises(ValidationError):
+            embedded_doc_2.validate()
+
+        doc.embedded_field_1 = embedded_doc_1
+        doc.embedded_field_2 = embedded_doc_2
+        with self.assertRaises(ValidationError):
+            doc.save()
+
     def test_delta_for_dynamic_documents(self):
         p = self.Person()
         p.name = "Dean"
