@@ -348,7 +348,8 @@ class Document(BaseDocument):
                 if key[0] == '$':
                     op = key
 
-                new_key, value_context = Document._transform_key(key, context, is_find=(op is None))
+                new_key, value_context = Document._transform_key(key, context,
+                                             is_find=(op is None))
 
                 transformed_value[new_key] = \
                     Document._transform_value(subvalue, value_context,
@@ -360,7 +361,7 @@ class Document(BaseDocument):
             op_type = None
             # there's a special case here, since some ops on lists
             # behaves like a LIST_VALIDATE_OP (i.e. it has "x in list" instead
-            # of "x = list" semantics or x not in list, etc)
+            # of "x = list" semantics or x not in list, etc).
             if op in LIST_VALIDATE_OPS or \
                    (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
                 op_type = 'list'
@@ -373,19 +374,29 @@ class Document(BaseDocument):
                                                            op_type)
 
             if validate and not isinstance(context, ArbitraryField):
-                # same special case as above. find op on list has semantic
-                # exception
-                if op in LIST_VALIDATE_OPS or \
-                      (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
-                    context.field.validate(value)
-                elif op in VALIDATE_OPS:
-                    context.validate(value)
-                elif op in LIST_VALIDATE_ALL_OPS:
+                # the caveat to the above is that those semantics are modified if
+                # the value is a list. technically this isn't completely correct
+                # since passing a list has a semantic of field == value OR value
+                # IN field (the underlying implementation is probably that all
+                # queries have (== or IN) semantics, but it's only relevant for
+                # lists). so, this code won't work in a list of lists case where
+                # you want to match lists on value
+                if op in LIST_VALIDATE_ALL_OPS or \
+                        (op is None and
+                         context._in_list and
+                         (isinstance(value, list) or
+                          isinstance(value, tuple))):
                     for entry in value:
                         if isinstance(context, ListField):
                             context.field.validate(entry)
                         else:
                             context.validate(entry)
+                # same special case as above (for {list: x} meaning "x in list")
+                elif op in LIST_VALIDATE_OPS or \
+                      (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
+                    context.field.validate(value)
+                elif op in VALIDATE_OPS:
+                    context.validate(value)
                 elif op not in NO_VALIDATE_OPS:
                     raise ValidationError("Unknown atomic operator %s" % op)
 
@@ -552,6 +563,7 @@ class Document(BaseDocument):
                 field = context.field
             else:
                 raise ValueError("Can't parse field %s" % first_part)
+            field._in_list = True
 
         # if we hit a DictField, values can be anything, so use the sentinal
         # ArbitraryField value (I prefer this over None, since None can be
@@ -577,6 +589,7 @@ class Document(BaseDocument):
                 field = field.field
             else:
                 raise ValueError("Can't parse field %s" % first_part)
+            field._in_list = True
 
         if is_subclass_or_instance(field, ArbitraryField):
             db_field = first_part

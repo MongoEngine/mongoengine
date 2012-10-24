@@ -41,6 +41,7 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
+        self._in_list = False
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do

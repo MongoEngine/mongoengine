@@ -181,6 +181,14 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEqual(result['$set']['name'], 'Chu')
         self.assertEqual(result['$set']['o'], [{'n': 'Red'}, {'n': 'Blue'}])
 
+        query = {'name': 'Chu', 'age': 20, 'other_colours': red}
+        result = self.Person._transform_value(query, self.Person)
+
+        self.assertEqual(set(result.keys()), set(['name', 'a', 'o']))
+
+        self.assertEqual(result['name'], 'Chu')
+        self.assertEqual(result['o'], {'n': 'Red'})
+
     def testTransformQueryListIndex(self):
         blue = self.Colour(name='Blue')
         query = {'$set': {'other_colours.1': blue}}
@@ -713,6 +721,18 @@ class CustomQueryTest(unittest.TestCase):
         # confirm no DB change
         adam.reload()
         self.assertEquals(adam.age, 27)
+
+    def testList(self):
+        adam = self.Person(name="Adam", number_list=[1, 2, 3])
+        adam.save()
+
+        self.assertEquals(self.Person.count({'number_list': [1, 2, 3]}), 1)
+        self.assertEquals(self.Person.count({'number_list': 1}), 1)
+        self.assertEquals(self.Person.count({'number_list': 4}), 0)
+        self.assertEquals(self.Person.count({'number_list': 2}), 1)
+        self.assertEquals(self.Person.count({'number_list': [1, 2, 3, 4]}), 0)
+        self.assertEquals(self.Person.count({'number_list': [1, 3, 2]}), 0)
+        self.assertEquals(self.Person.count({'number_list': [1, 2]}), 0)
 
 if __name__ == '__main__':
     unittest.main()
