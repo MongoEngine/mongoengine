@@ -362,13 +362,17 @@ class Document(BaseDocument):
             # there's a special case here, since some ops on lists
             # behaves like a LIST_VALIDATE_OP (i.e. it has "x in list" instead
             # of "x = list" semantics or x not in list, etc).
-            if op in LIST_VALIDATE_OPS or \
+            if op in LIST_VALIDATE_ALL_OPS or \
+                        (op is None and
+                         context._in_list and
+                         (isinstance(value, list) or
+                          isinstance(value, tuple))):
+                op_type = 'list_all'
+            elif op in LIST_VALIDATE_OPS or \
                    (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
                 op_type = 'list'
             elif op in VALIDATE_OPS:
                 op_type = 'value'
-            elif op in LIST_VALIDATE_ALL_OPS:
-                op_type = 'list_all'
 
             value = Document._transform_id_reference_value(value, context,
                                                            op_type)
