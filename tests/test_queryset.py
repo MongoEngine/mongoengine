@@ -230,6 +230,30 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+    def test_chaining(self):
+        class A(Document):
+            pass
+
+        class B(Document):
+            a = ReferenceField(A)
+
+        A.drop_collection()
+        B.drop_collection()
+
+        a1 = A().save()
+        a2 = A().save()
+
+        B(a=a1).save()
+
+        # Works
+        q1 = B.objects.filter(a__in=[a1, a2], a=a1)._query
+
+        # Doesn't work
+        q2 = B.objects.filter(a__in=[a1, a2])
+        q2 = q2.filter(a=a1)._query
+
+        self.assertEqual(q1, q2)
+
     def test_update_write_options(self):
         """Test that passing write_options works"""
 
@@ -413,6 +437,30 @@ class QuerySetTest(unittest.TestCase):
         post = BlogPost.objects.first()
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
+
+    def test_updates_can_have_match_operators(self):
+
+        class Post(Document):
+            title = StringField(required=True)
+            tags = ListField(StringField())
+            comments = ListField(EmbeddedDocumentField("Comment"))
+
+        class Comment(EmbeddedDocument):
+            content = StringField()
+            name = StringField(max_length=120)
+            vote = IntField()
+
+        Post.drop_collection()
+
+        comm1 = Comment(content="very funny indeed", name="John S", vote=1)
+        comm2 = Comment(content="kind of funny", name="Mark P", vote=0)
+
+        Post(title='Fun with MongoEngine', tags=['mongodb', 'mongoengine'],
+             comments=[comm1, comm2]).save()
+
+        Post.objects().update_one(pull__comments__vote__lt=1)
+
+        self.assertEqual(1, len(Post.objects.first().comments))
 
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""

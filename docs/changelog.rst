@@ -2,6 +2,23 @@
 Changelog
 =========
 
+Changes in 0.7.X
+================
+- Unicode fix for repr (MongoEngine/mongoengine#133)
+- Allow updates with match operators (MongoEngine/mongoengine#144)
+- Updated URLField - now can have a override the regex (MongoEngine/mongoengine#136)
+- Allow Django AuthenticationBackends to work with Django user (hmarr/mongoengine#573)
+- Fixed reload issue with ReferenceField where dbref=False (MongoEngine/mongoengine#138)
+
+Changes in 0.7.5
+================
+- ReferenceFields with dbref=False use ObjectId instead of strings (MongoEngine/mongoengine#134)
+  See ticket for upgrade notes (https://github.com/MongoEngine/mongoengine/issues/134)
+
+Changes in 0.7.4
+================
+- Fixed index inheritance issues - firmed up testcases (MongoEngine/mongoengine#123) (MongoEngine/mongoengine#125)
+
 Changes in 0.7.3
 ================
 - Reverted EmbeddedDocuments meta handling - now can turn off inheritance (MongoEngine/mongoengine#119)

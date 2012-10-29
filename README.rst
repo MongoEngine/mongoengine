@@ -92,6 +92,4 @@ Community
 
 Contributing
 ============
-The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_ - to
-contribute to the project, fork it on GitHub and send a pull request, all
-contributions and suggestions are welcome!
+We welcome contributions! see  the`Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_

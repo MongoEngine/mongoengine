@@ -1,7 +1,7 @@
 from __future__ import with_statement
 import unittest
 
-from bson import DBRef
+from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -84,6 +84,7 @@ class FieldTest(unittest.TestCase):
 
         group = Group(members=User.objects)
         group.save()
+        group.reload()  # Confirm reload works
 
         with query_counter() as q:
             self.assertEqual(q, 0)
@@ -187,8 +188,8 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(group.members, [user])
 
         raw_data = Group._get_collection().find_one()
-        self.assertTrue(isinstance(raw_data['author'], basestring))
-        self.assertTrue(isinstance(raw_data['members'][0], basestring))
+        self.assertTrue(isinstance(raw_data['author'], ObjectId))
+        self.assertTrue(isinstance(raw_data['members'][0], ObjectId))
 
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.

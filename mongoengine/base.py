@@ -53,7 +53,7 @@ class ValidationError(AssertionError):
         self.message = message
 
     def __str__(self):
-        return self.message
+        return txt_type(self.message)
 
     def __repr__(self):
         return '%s(%s,)' % (self.__class__.__name__, self.message)
@@ -235,7 +235,8 @@ class BaseField(object):
         pass
 
     def _validate(self, value):
-        from mongoengine import Document, EmbeddedDocument
+        Document = _import_class('Document')
+        EmbeddedDocument = _import_class('EmbeddedDocument')
         # check choices
         if self.choices:
             is_cls = isinstance(value, (Document, EmbeddedDocument))
@@ -283,7 +284,9 @@ class ComplexBaseField(BaseField):
         if instance is None:
             # Document class being used rather than a document object
             return self
-        from fields import GenericReferenceField, ReferenceField
+
+        ReferenceField = _import_class('ReferenceField')
+        GenericReferenceField = _import_class('GenericReferenceField')
         dereference = self.field is None or isinstance(self.field,
             (GenericReferenceField, ReferenceField))
         if not self._dereference and instance._initialised and dereference:
@@ -310,6 +313,7 @@ class ComplexBaseField(BaseField):
             )
             value._dereferenced = True
             instance._data[self.name] = value
+
         return value
 
     def __set__(self, instance, value):
@@ -321,7 +325,7 @@ class ComplexBaseField(BaseField):
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
-        from mongoengine import Document
+        Document = _import_class('Document')
 
         if isinstance(value, basestring):
             return value
@@ -363,7 +367,7 @@ class ComplexBaseField(BaseField):
     def to_mongo(self, value):
         """Convert a Python type to a MongoDB-compatible type.
         """
-        from mongoengine import Document
+        Document = _import_class("Document")
 
         if isinstance(value, basestring):
             return value
@@ -399,7 +403,7 @@ class ComplexBaseField(BaseField):
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
                         == False)
                     if allow_inheritance and not self.field:
-                        from fields import GenericReferenceField
+                        GenericReferenceField = _import_class("GenericReferenceField")
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
                         collection = v._get_collection_name()
@@ -460,7 +464,7 @@ class ComplexBaseField(BaseField):
     @property
     def _dereference(self,):
         if not self.__dereference:
-            from dereference import DeReference
+            DeReference = _import_class("DeReference")
             self.__dereference = DeReference()  # Cached
         return self.__dereference
 
@@ -630,17 +634,6 @@ class DocumentMetaclass(type):
                 msg = ("%s is a document method and not a valid "
                        "field name" % field.name)
                 raise InvalidDocumentError(msg)
-
-        # Merge in exceptions with parent hierarchy
-        exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
-        module = attrs.get('__module__')
-        for exc in exceptions_to_merge:
-            name = exc.__name__
-            parents = tuple(getattr(base, name) for base in flattened_bases
-                         if hasattr(base, name)) or (exc,)
-            # Create new exception and set to new_class
-            exception = type(name, parents, {'__module__': module})
-            setattr(new_class, name, exception)
 
         # Add class to the _document_registry
         _document_registry[new_class._class_name] = new_class
@@ -832,6 +825,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class.id = new_class._fields['id']
 
+        # Merge in exceptions with parent hierarchy
+        exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
+        module = attrs.get('__module__')
+        for exc in exceptions_to_merge:
+            name = exc.__name__
+            parents = tuple(getattr(base, name) for base in flattened_bases
+                         if hasattr(base, name)) or (exc,)
+            # Create new exception and set to new_class
+            exception = type(name, parents, {'__module__': module})
+            setattr(new_class, name, exception)
+
         return new_class
 
     @classmethod
@@ -943,7 +947,7 @@ class BaseDocument(object):
 
             field = None
             if not hasattr(self, name) and not name.startswith('_'):
-                from fields import DynamicField
+                DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name)
                 field.name = name
                 self._dynamic_fields[name] = field
@@ -1121,7 +1125,8 @@ class BaseDocument(object):
     def _get_changed_fields(self, key='', inspected=None):
         """Returns a list of all fields that have explicitly been changed.
         """
-        from mongoengine import EmbeddedDocument, DynamicEmbeddedDocument
+        EmbeddedDocument = _import_class("EmbeddedDocument")
+        DynamicEmbeddedDocument = _import_class("DynamicEmbeddedDocument")
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
 
@@ -1252,7 +1257,9 @@ class BaseDocument(object):
         geo_indices = []
         inspected.append(cls)
 
-        from fields import EmbeddedDocumentField, GeoPointField
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        GeoPointField = _import_class("GeoPointField")
+
         for field in cls._fields.values():
             if not isinstance(field, (EmbeddedDocumentField, GeoPointField)):
                 continue
@@ -1326,10 +1333,11 @@ class BaseDocument(object):
 
     def __repr__(self):
         try:
-            u = txt_type(self)
+            u = self.__str__()
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = '[Bad Unicode data]'
-        return '<%s: %s>' % (self.__class__.__name__, u)
+        repr_type = type(u)
+        return repr_type('<%s: %s>' % (self.__class__.__name__, u))
 
     def __str__(self):
         if hasattr(self, '__unicode__'):
@@ -1337,7 +1345,7 @@ class BaseDocument(object):
                 return self.__unicode__()
             else:
                 return unicode(self).encode('utf-8')
-        return '%s object' % self.__class__.__name__
+        return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):
@@ -1486,14 +1494,30 @@ def _import_class(cls_name):
     """Cached mechanism for imports"""
     if cls_name in _class_registry:
         return _class_registry.get(cls_name)
-    if cls_name == 'Document':
-        from mongoengine.document import Document as cls
-    elif cls_name == 'EmbeddedDocument':
-        from mongoengine.document import EmbeddedDocument as cls
-    elif cls_name == 'DictField':
-        from mongoengine.fields import DictField as cls
-    elif cls_name == 'OperationError':
-        from queryset import OperationError as cls
 
-    _class_registry[cls_name] = cls
-    return cls
+    doc_classes = ['Document', 'DynamicEmbeddedDocument', 'EmbeddedDocument']
+    field_classes = ['DictField', 'DynamicField', 'EmbeddedDocumentField',
+                     'GenericReferenceField', 'GeoPointField',
+                     'ReferenceField']
+    queryset_classes = ['OperationError']
+    deref_classes = ['DeReference']
+
+    if cls_name in doc_classes:
+        from mongoengine import document as module
+        import_classes = doc_classes
+    elif cls_name in field_classes:
+        from mongoengine import fields as module
+        import_classes = field_classes
+    elif cls_name in queryset_classes:
+        from mongoengine import queryset as module
+        import_classes = queryset_classes
+    elif cls_name in deref_classes:
+        from mongoengine import dereference as module
+        import_classes = deref_classes
+    else:
+        raise ValueError('No import set for: ' % cls_name)
+
+    for cls in import_classes:
+        _class_registry[cls] = getattr(module, cls)
+
+    return _class_registry.get(cls_name)

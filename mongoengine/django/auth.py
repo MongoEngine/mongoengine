@@ -3,6 +3,8 @@ import datetime
 from mongoengine import *
 
 from django.utils.encoding import smart_str
+from django.contrib.auth.models import _user_get_all_permissions
+from django.contrib.auth.models import _user_has_perm
 from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import ugettext_lazy as _
 
@@ -103,6 +105,25 @@ class User(Document):
         hashed before storage.
         """
         return check_password(raw_password, self.password)
+
+    def get_all_permissions(self, obj=None):
+        return _user_get_all_permissions(self, obj)
+
+    def has_perm(self, perm, obj=None):
+        """
+        Returns True if the user has the specified permission. This method
+        queries all available auth backends, but returns immediately if any
+        backend returns True. Thus, a user who has permission from a single
+        auth backend is assumed to have permission in general. If an object is
+        provided, permissions for this specific object are checked.
+        """
+
+        # Active superusers have all permissions.
+        if self.is_active and self.is_superuser:
+            return True
+
+        # Otherwise we need to check the backends.
+        return _user_has_perm(self, perm, obj)
 
     @classmethod
     def create_user(cls, username, password, email=None):

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import with_statement
 import bson
 import os
@@ -84,6 +85,22 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue('name' in fields and 'age' in fields)
         # Ensure Document isn't treated like an actual document
         self.assertFalse(hasattr(Document, '_fields'))
+
+    def test_repr(self):
+        """Ensure that unicode representation works
+        """
+        class Article(Document):
+            title = StringField()
+
+            def __unicode__(self):
+                return self.title
+
+        Article.drop_collection()
+
+        Article(title=u'привет мир').save()
+
+        self.assertEqual('<Article: привет мир>', repr(Article.objects.first()))
+        self.assertEqual('[<Article: привет мир>]', repr(Article.objects.all()))
 
     def test_collection_naming(self):
         """Ensure that a collection with a specified name may be used.
@@ -420,6 +437,9 @@ class DocumentTest(unittest.TestCase):
                 'indexes': ['name']
             }
 
+        self.assertEqual(Animal._meta['index_specs'],
+                         [{'fields': [('_types', 1), ('name', 1)]}])
+
         Animal.drop_collection()
 
         dog = Animal(name='dog')
@@ -441,6 +461,9 @@ class DocumentTest(unittest.TestCase):
                 'allow_inheritance': False,
                 'indexes': ['name']
             }
+
+        self.assertEqual(Animal._meta['index_specs'],
+                         [{'fields': [('name', 1)]}])
         collection.update({}, {"$unset": {"_types": 1, "_cls": 1}},  multi=True)
 
         # Confirm extra data is removed
@@ -658,6 +681,12 @@ class DocumentTest(unittest.TestCase):
                 'allow_inheritance': True
             }
 
+        self.assertEqual(BlogPost._meta['index_specs'],
+                         [{'fields': [('_types', 1), ('addDate', -1)]},
+                          {'fields': [('tags', 1)]},
+                          {'fields': [('_types', 1), ('category', 1),
+                                      ('addDate', -1)]}])
+
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
@@ -680,6 +709,13 @@ class DocumentTest(unittest.TestCase):
         class ExtendedBlogPost(BlogPost):
             title = StringField()
             meta = {'indexes': ['title']}
+
+        self.assertEqual(ExtendedBlogPost._meta['index_specs'],
+                         [{'fields': [('_types', 1), ('addDate', -1)]},
+                          {'fields': [('tags', 1)]},
+                          {'fields': [('_types', 1), ('category', 1),
+                                      ('addDate', -1)]},
+                          {'fields': [('_types', 1), ('title', 1)]}])
 
         BlogPost.drop_collection()
 
@@ -711,6 +747,8 @@ class DocumentTest(unittest.TestCase):
             description = StringField()
 
         self.assertEqual(A._meta['index_specs'], B._meta['index_specs'])
+        self.assertEqual([{'fields': [('_types', 1), ('title', 1)]}],
+                         A._meta['index_specs'])
 
     def test_build_index_spec_is_not_destructive(self):
 
@@ -791,6 +829,9 @@ class DocumentTest(unittest.TestCase):
                 'allow_inheritance': False
             }
 
+        self.assertEqual([{'fields': [('rank.title', 1)]}],
+                        Person._meta['index_specs'])
+
         Person.drop_collection()
 
         # Indexes are lazy so use list() to perform query
@@ -809,6 +850,10 @@ class DocumentTest(unittest.TestCase):
                     '*location.point',
                 ],
             }
+
+        self.assertEqual([{'fields': [('location.point', '2d')]}],
+                        Place._meta['index_specs'])
+
         Place.drop_collection()
 
         info = Place.objects._collection.index_information()
@@ -833,6 +878,10 @@ class DocumentTest(unittest.TestCase):
                       'sparse': True, 'types': False },
                 ],
             }
+
+        self.assertEqual([{'fields': [('addDate', -1)], 'unique': True,
+                          'sparse': True, 'types': False}],
+                        BlogPost._meta['index_specs'])
 
         BlogPost.drop_collection()
 
