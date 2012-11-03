@@ -4,6 +4,7 @@ from queryset import OperationError
 
 import pymongo
 import time
+import datetime
 from bson import SON, ObjectId, DBRef
 
 
@@ -160,7 +161,10 @@ class Document(BaseDocument):
 
             sort = new_sort
 
-        if slave_ok:
+        # no secondary queries during backups ~3am
+        time_now = datetime.datetime.now().time()
+        if slave_ok and time_now > datetime.time(3,15) and \
+                time_now < datetime.time(2,55):
             read_preference = pymongo.ReadPreference.SECONDARY
         else:
             read_preference = pymongo.ReadPreference.PRIMARY
