@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.7.X
+Changes in 0.7.6
 ================
 - Unicode fix for repr (MongoEngine/mongoengine#133)
 - Allow updates with match operators (MongoEngine/mongoengine#144)
