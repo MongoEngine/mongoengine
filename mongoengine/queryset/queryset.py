@@ -53,6 +53,7 @@ class QuerySet(object):
         self._timeout = True
         self._class_check = True
         self._slave_okay = False
+        self._read_preference = None
         self._iter = False
         self._scalar = []
 
@@ -75,7 +76,8 @@ class QuerySet(object):
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
                     '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint')
+                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint',
+                    '_read_preference')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -109,7 +111,8 @@ class QuerySet(object):
         self._collection.ensure_index(fields, **index_spec)
         return self
 
-    def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
+    def __call__(self, q_obj=None, class_check=True, slave_okay=False, read_preference=None,
+                 **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -121,6 +124,8 @@ class QuerySet(object):
             querying collection
         :param slave_okay: if True, allows this query to be run against a
             replica secondary.
+        :params read_preference: if set, overrides connection-level 
+            read_preference from `ReplicaSetConnection`.
         :param query: Django-style query keyword arguments
         """
         query = Q(**query)
@@ -129,6 +134,8 @@ class QuerySet(object):
         self._query_obj &= query
         self._mongo_query = None
         self._cursor_obj = None
+        if read_preference is not None:
+            self._read_preference = read_preference
         self._class_check = class_check
         return self
 
@@ -229,8 +236,10 @@ class QuerySet(object):
         cursor_args = {
             'snapshot': self._snapshot,
             'timeout': self._timeout,
-            'slave_okay': self._slave_okay
+            'slave_okay': self._slave_okay,
         }
+        if self._read_preference is not None:
+            cursor_args['read_preference'] = self._read_preference
         if self._loaded_fields:
             cursor_args['fields'] = self._loaded_fields.as_dict()
         return cursor_args
@@ -800,6 +809,15 @@ class QuerySet(object):
         :param enabled: whether or not the slave_okay is enabled
         """
         self._slave_okay = enabled
+        return self
+
+    def read_preference(self, read_preference):
+        """Change the read_preference when querying.
+
+        :param read_preference: override ReplicaSetConnection-level
+            preference.
+        """
+        self._read_preference = read_preference
         return self
 
     def delete(self, safe=False):
