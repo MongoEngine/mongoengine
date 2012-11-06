@@ -6,6 +6,7 @@ import operator
 
 import pymongo
 from bson.code import Code
+from pymongo.common import validate_read_preference
 
 from mongoengine import signals
 from mongoengine.common import _import_class
@@ -68,7 +69,8 @@ class QuerySet(object):
         self._hint = -1  # Using -1 as None is a valid value for hint
 
     def clone(self):
-        """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`
+        """Creates a copy of the current
+          :class:`~mongoengine.queryset.QuerySet`
 
         .. versionadded:: 0.5
         """
@@ -111,8 +113,8 @@ class QuerySet(object):
         self._collection.ensure_index(fields, **index_spec)
         return self
 
-    def __call__(self, q_obj=None, class_check=True, slave_okay=False, read_preference=None,
-                 **query):
+    def __call__(self, q_obj=None, class_check=True, slave_okay=False,
+                 read_preference=None, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -124,7 +126,7 @@ class QuerySet(object):
             querying collection
         :param slave_okay: if True, allows this query to be run against a
             replica secondary.
-        :params read_preference: if set, overrides connection-level 
+        :params read_preference: if set, overrides connection-level
             read_preference from `ReplicaSetConnection`.
         :param query: Django-style query keyword arguments
         """
@@ -135,7 +137,7 @@ class QuerySet(object):
         self._mongo_query = None
         self._cursor_obj = None
         if read_preference is not None:
-            self._read_preference = read_preference
+            self.read_preference(read_preference)
         self._class_check = class_check
         return self
 
@@ -282,39 +284,43 @@ class QuerySet(object):
         self.limit(2)
         self.__call__(*q_objs, **query)
         try:
-            result1 = self.next()
+            result = self.next()
         except StopIteration:
-            raise self._document.DoesNotExist("%s matching query does not exist."
-                                              % self._document._class_name)
+            msg = ("%s matching query does not exist."
+                    % self._document._class_name)
+            raise self._document.DoesNotExist(msg)
         try:
-            result2 = self.next()
+            self.next()
         except StopIteration:
-            return result1
+            return result
 
         self.rewind()
         message = u'%d items returned, instead of 1' % self.count()
         raise self._document.MultipleObjectsReturned(message)
 
-    def get_or_create(self, write_options=None, auto_save=True, *q_objs, **query):
-        """Retrieve unique object or create, if it doesn't exist. Returns a tuple of
-        ``(object, created)``, where ``object`` is the retrieved or created object
-        and ``created`` is a boolean specifying whether a new object was created. Raises
+    def get_or_create(self, write_options=None, auto_save=True,
+                      *q_objs, **query):
+        """Retrieve unique object or create, if it doesn't exist. Returns a
+        tuple of ``(object, created)``, where ``object`` is the retrieved or
+        created object and ``created`` is a boolean specifying whether a new
+        object was created. Raises
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` if multiple results are found.
         A new document will be created if the document doesn't exists; a
         dictionary of default values for the new document may be provided as a
         keyword argument called :attr:`defaults`.
 
-        .. note:: This requires two separate operations and therefore a
-            race condition exists.  Because there are no transactions in mongoDB
-            other approaches should be investigated, to ensure you don't
-            accidently duplicate data when using this method.
+        .. warning:: This requires two separate operations and therefore a
+            race condition exists.  Because there are no transactions in
+            mongoDB other approaches should be investigated, to ensure you
+            don't accidently duplicate data when using this method.
 
         :param write_options: optional extra keyword arguments used if we
             have to create a new document.
             Passes any write_options onto :meth:`~mongoengine.Document.save`
 
-        :param auto_save: if the object is to be saved automatically if not found.
+        :param auto_save: if the object is to be saved automatically if
+            not found.
 
         .. versionchanged:: 0.6 - added `auto_save`
         .. versionadded:: 0.3
@@ -352,21 +358,24 @@ class QuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True, safe=False, write_options=None):
+    def insert(self, doc_or_docs, load_bulk=True, safe=False,
+               write_options=None):
         """bulk insert documents
 
         If ``safe=True`` and the operation is unsuccessful, an
         :class:`~mongoengine.OperationError` will be raised.
 
         :param docs_or_doc: a document or list of documents to be inserted
-        :param load_bulk (optional): If True returns the list of document instances
+        :param load_bulk (optional): If True returns the list of document
+            instances
         :param safe: check if the operation succeeded before returning
         :param write_options: Extra keyword arguments are passed down to
                 :meth:`~pymongo.collection.Collection.insert`
-                which will be used as options for the resultant ``getLastError`` command.
-                For example, ``insert(..., {w: 2, fsync: True})`` will wait until at least two
-                servers have recorded the write and will force an fsync on each server being
-                written to.
+                which will be used as options for the resultant
+                ``getLastError`` command.  For example,
+                ``insert(..., {w: 2, fsync: True})`` will wait until at least
+                two servers have recorded the write and will force an fsync on
+                each server being written to.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
@@ -388,7 +397,8 @@ class QuerySet(object):
         raw = []
         for doc in docs:
             if not isinstance(doc, self._document):
-                msg = "Some documents inserted aren't instances of %s" % str(self._document)
+                msg = ("Some documents inserted aren't instances of %s"
+                        % str(self._document))
                 raise OperationError(msg)
             if doc.pk:
                 msg = "Some documents have ObjectIds use doc.update() instead"
@@ -429,7 +439,8 @@ class QuerySet(object):
         .. versionchanged:: 0.6 Raises InvalidQueryError if filter has been set
         """
         if not self._query_obj.empty:
-            raise InvalidQueryError("Cannot use a filter whilst using `with_id`")
+            msg = "Cannot use a filter whilst using `with_id`"
+            raise InvalidQueryError(msg)
         return self.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
@@ -503,9 +514,9 @@ class QuerySet(object):
         :param reduce_f: reduce function, as
                          :class:`~bson.code.Code` or string
         :param output: output collection name, if set to 'inline' will try to
-                       use :class:`~pymongo.collection.Collection.inline_map_reduce`
-                       This can also be a dictionary containing output options
-                       see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
+           use :class:`~pymongo.collection.Collection.inline_map_reduce`
+           This can also be a dictionary containing output options
+           see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
@@ -568,7 +579,8 @@ class QuerySet(object):
             map_reduce_function = 'map_reduce'
             mr_args['out'] = output
 
-        results = getattr(self._collection, map_reduce_function)(map_f, reduce_f, **mr_args)
+        results = getattr(self._collection, map_reduce_function)(
+                            map_f, reduce_f, **mr_args)
 
         if map_reduce_function == 'map_reduce':
             results = results.find()
@@ -609,9 +621,9 @@ class QuerySet(object):
         """Added 'hint' support, telling Mongo the proper index to use for the
         query.
 
-        Judicious use of hints can greatly improve query performance. When doing
-        a query on multiple fields (at least one of which is indexed) pass the
-        indexed field as a hint to the query.
+        Judicious use of hints can greatly improve query performance. When
+        doing a query on multiple fields (at least one of which is indexed)
+        pass the indexed field as a hint to the query.
 
         Hinting will not do anything if the corresponding index does not exist.
         The last hint applied to this cursor takes precedence over all others.
@@ -695,9 +707,9 @@ class QuerySet(object):
         Retrieving a Subrange of Array Elements:
 
         You can use the $slice operator to retrieve a subrange of elements in
-        an array ::
+        an array. For example to get the first 5 comments::
 
-            post = BlogPost.objects(...).fields(slice__comments=5) // first 5 comments
+            post = BlogPost.objects(...).fields(slice__comments=5)
 
         :param kwargs: A dictionary identifying what to include
 
@@ -724,9 +736,10 @@ class QuerySet(object):
         return self
 
     def all_fields(self):
-        """Include all fields. Reset all previously calls of .only() and .exclude(). ::
+        """Include all fields. Reset all previously calls of .only() or
+        .exclude(). ::
 
-            post = BlogPost.objects(...).exclude("comments").only("title").all_fields()
+            post = BlogPost.objects.exclude("comments").all_fields()
 
         .. versionadded:: 0.5
         """
@@ -817,6 +830,7 @@ class QuerySet(object):
         :param read_preference: override ReplicaSetConnection-level
             preference.
         """
+        validate_read_preference('read_preference', read_preference)
         self._read_preference = read_preference
         return self
 
@@ -839,9 +853,10 @@ class QuerySet(object):
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             rule = doc._meta['delete_rules'][rule_entry]
-            if rule == DENY and document_cls.objects(**{field_name + '__in': self}).count() > 0:
-                msg = u'Could not delete document (at least %s.%s refers to it)' % \
-                        (document_cls.__name__, field_name)
+            if rule == DENY and document_cls.objects(
+                    **{field_name + '__in': self}).count() > 0:
+                msg = ("Could not delete document (%s.%s refers to it)"
+                        % (document_cls.__name__, field_name))
                 raise OperationError(msg)
 
         for rule_entry in delete_rules:
@@ -864,13 +879,15 @@ class QuerySet(object):
 
         self._collection.remove(self._query, safe=safe)
 
-    def update(self, safe_update=True, upsert=False, multi=True, write_options=None, **update):
+    def update(self, safe_update=True, upsert=False, multi=True,
+               write_options=None, **update):
         """Perform an atomic update on the fields matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe_update: check if the operation succeeded before returning
         :param upsert: Any existing document with that "_id" is overwritten.
-        :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
+        :param write_options: extra keyword arguments for
+            :meth:`~pymongo.collection.Collection.update`
 
         .. versionadded:: 0.2
         """
@@ -895,13 +912,15 @@ class QuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-    def update_one(self, safe_update=True, upsert=False, write_options=None, **update):
+    def update_one(self, safe_update=True, upsert=False, write_options=None,
+                   **update):
         """Perform an atomic update on first field matched by the query. When
         ``safe_update`` is used, the number of affected documents is returned.
 
         :param safe_update: check if the operation succeeded before returning
         :param upsert: Any existing document with that "_id" is overwritten.
-        :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
+        :param write_options: extra keyword arguments for
+            :meth:`~pymongo.collection.Collection.update`
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
@@ -970,7 +989,8 @@ class QuerySet(object):
             return ".".join([f.db_field for f in fields])
 
         code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
-        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub, code)
+        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
+                code)
         return code
 
     def exec_js(self, code, *fields, **options):
@@ -1094,7 +1114,8 @@ class QuerySet(object):
             }
         """)
 
-        for result in self.map_reduce(map_func, reduce_func, finalize_f=finalize_func, output='inline'):
+        for result in self.map_reduce(map_func, reduce_func,
+                            finalize_f=finalize_func, output='inline'):
             return result.value
         else:
             return 0
@@ -1122,7 +1143,8 @@ class QuerySet(object):
                             document lookups
         """
         if map_reduce:
-            return self._item_frequencies_map_reduce(field, normalize=normalize)
+            return self._item_frequencies_map_reduce(field,
+                                                     normalize=normalize)
         return self._item_frequencies_exec_js(field, normalize=normalize)
 
     def _item_frequencies_map_reduce(self, field, normalize=False):

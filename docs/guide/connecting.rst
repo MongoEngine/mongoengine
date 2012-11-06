@@ -33,6 +33,12 @@ MongoEngine now supports :func:`~pymongo.replica_set_connection.ReplicaSetConnec
 to use them please use a URI style connection and provide the `replicaSet` name in the
 connection kwargs.
 
+Read preferences are supported throught the connection or via individual
+queries by passing the read_preference ::
+
+    Bar.objects().read_preference(ReadPreference.PRIMARY)
+    Bar.objects(read_preference=ReadPreference.PRIMARY)
+
 Multiple Databases
 ==================
 

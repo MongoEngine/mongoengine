@@ -1,9 +1,13 @@
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
 import unittest
 
 from datetime import datetime, timedelta
 
 import pymongo
+from pymongo.errors import ConfigurationError
+from pymongo.read_preferences import ReadPreference
 
 from bson import ObjectId
 
@@ -3647,6 +3651,18 @@ class QueryFieldListTest(unittest.TestCase):
 
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
+
+    def test_read_preference(self):
+        class Bar(Document):
+            pass
+
+        Bar.drop_collection()
+        bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
+        self.assertEqual([], bars)
+
+        self.assertRaises(ConfigurationError, Bar.objects,
+                            read_preference='Primary')
+
 
 
 if __name__ == '__main__':
