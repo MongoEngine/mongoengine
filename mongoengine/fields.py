@@ -625,7 +625,8 @@ class SortedListField(ListField):
     def to_mongo(self, value):
         value = super(SortedListField, self).to_mongo(value)
         if self._ordering is not None:
-            return sorted(value, key=itemgetter(self._ordering), reverse=self._order_reverse)
+            return sorted(value, key=itemgetter(self._ordering),
+                                 reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
 
@@ -655,7 +656,9 @@ class DictField(ComplexBaseField):
             self.error('Only dictionaries may be used in a DictField')
 
         if any(k for k in value.keys() if not isinstance(k, basestring)):
-            self.error('Invalid dictionary key - documents must have only string keys')
+            msg = ("Invalid dictionary key - documents must "
+                   "have only string keys")
+            self.error(msg)
         if any(('.' in k or '$' in k) for k in value.keys()):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')

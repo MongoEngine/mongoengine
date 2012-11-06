@@ -40,6 +40,8 @@ class EmbeddedDocument(BaseDocument):
     my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
+    _instance = None
+
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
         self._changed_fields = []

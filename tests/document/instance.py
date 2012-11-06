@@ -183,9 +183,6 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(list_stats, CompareStats.objects.first().stats)
 
-
-
-
     def test_db_field_load(self):
         """Ensure we load data correctly
         """
@@ -214,23 +211,23 @@ class InstanceTest(unittest.TestCase):
 
         class Person(Document):
             name = StringField(required=True)
-            rank_ = EmbeddedDocumentField(Rank, required=False, db_field='rank')
+            rank_ = EmbeddedDocumentField(Rank,
+                                          required=False,
+                                          db_field='rank')
 
             @property
             def rank(self):
-                return self.rank_.title if self.rank_ is not None else "Private"
+                if self.rank_ is None:
+                    return "Private"
+                return self.rank_.title
 
         Person.drop_collection()
 
         Person(name="Jack", rank_=Rank(title="Corporal")).save()
-
         Person(name="Fred").save()
 
         self.assertEqual(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
-
-
-
 
     def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
@@ -247,7 +244,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(User._meta['id_field'], 'username')
 
         def create_invalid_user():
-            User(name='test').save() # no primary key field
+            User(name='test').save()  # no primary key field
         self.assertRaises(ValidationError, create_invalid_user)
 
         def define_invalid_user():
@@ -424,6 +421,36 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
 
+    def test_embedded_document_instance(self):
+        """Ensure that embedded documents can reference parent instance
+        """
+        class Embedded(EmbeddedDocument):
+            string = StringField()
+
+        class Doc(Document):
+            embedded_field = EmbeddedDocumentField(Embedded)
+
+        Doc.drop_collection()
+        Doc(embedded_field=Embedded(string="Hi")).save()
+
+        doc = Doc.objects.get()
+        self.assertEqual(doc, doc.embedded_field._instance)
+
+    def test_embedded_document_complex_instance(self):
+        """Ensure that embedded documents in complex fields can reference
+        parent instance"""
+        class Embedded(EmbeddedDocument):
+            string = StringField()
+
+        class Doc(Document):
+            embedded_field = ListField(EmbeddedDocumentField(Embedded))
+
+        Doc.drop_collection()
+        Doc(embedded_field=[Embedded(string="Hi")]).save()
+
+        doc = Doc.objects.get()
+        self.assertEqual(doc, doc.embedded_field[0]._instance)
+
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.
         """
@@ -442,6 +469,7 @@ class InstanceTest(unittest.TestCase):
 
         comment.date = datetime.now()
         comment.validate()
+        self.assertEqual(comment._instance, None)
 
     def test_embedded_db_field_validate(self):
 
@@ -475,11 +503,13 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person_obj['age'], 30)
         self.assertEqual(person_obj['_id'], person.id)
         # Test skipping validation on save
+
         class Recipient(Document):
             email = EmailField(required=True)
 
         recipient = Recipient(email='root@localhost')
         self.assertRaises(ValidationError, recipient.save)
+
         try:
             recipient.save(validate=False)
         except ValidationError:

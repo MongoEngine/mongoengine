@@ -1,5 +1,6 @@
 import operator
 import warnings
+import weakref
 
 from bson import DBRef, ObjectId
 
@@ -71,6 +72,9 @@ class BaseField(object):
             if callable(value):
                 value = value()
 
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+        if isinstance(value, EmbeddedDocument) and value._instance is None:
+            value._instance = weakref.proxy(instance)
         return value
 
     def __set__(self, instance, value):

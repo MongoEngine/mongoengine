@@ -1,4 +1,5 @@
 import weakref
+from mongoengine.common import _import_class
 
 __all__ = ("BaseDict", "BaseList")
 
@@ -15,6 +16,14 @@ class BaseDict(dict):
         self._instance = weakref.proxy(instance)
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
+
+    def __getitem__(self, *args, **kwargs):
+        value = super(BaseDict, self).__getitem__(*args, **kwargs)
+
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+        if isinstance(value, EmbeddedDocument) and value._instance is None:
+            value._instance = self._instance
+        return value
 
     def __setitem__(self, *args, **kwargs):
         self._mark_as_changed()
@@ -75,6 +84,14 @@ class BaseList(list):
         self._name = name
         return super(BaseList, self).__init__(list_items)
 
+    def __getitem__(self, *args, **kwargs):
+        value = super(BaseList, self).__getitem__(*args, **kwargs)
+
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+        if isinstance(value, EmbeddedDocument) and value._instance is None:
+            value._instance = self._instance
+        return value
+
     def __setitem__(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseList, self).__setitem__(*args, **kwargs)
@@ -84,7 +101,8 @@ class BaseList(list):
         return super(BaseList, self).__delitem__(*args, **kwargs)
 
     def __getstate__(self):
-        self.observer = None
+        self.instance = None
+        self._dereferenced = False
         return self
 
     def __setstate__(self, state):
