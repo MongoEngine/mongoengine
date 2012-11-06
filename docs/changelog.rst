@@ -7,8 +7,7 @@ Changes in 0.8
 - Inheritance is off by default (MongoEngine/mongoengine#122)
 - Remove _types and just use _cls for inheritance (MongoEngine/mongoengine#148)
 
-
-Changes in 0.7.X
+Changes in 0.7.6
 ================
 - Unicode fix for repr (MongoEngine/mongoengine#133)
 - Allow updates with match operators (MongoEngine/mongoengine#144)
