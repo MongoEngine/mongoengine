@@ -80,7 +80,7 @@ class InstanceTest(unittest.TestCase):
                                       ('addDate', -1)]}]
         self.assertEqual(expected_specs, BlogPost._meta['index_specs'])
 
-        BlogPost.objects._ensure_indexes()
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         # NB: there is no index on _cls by itself, since
@@ -100,7 +100,7 @@ class InstanceTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        ExtendedBlogPost.objects._ensure_indexes()
+        ExtendedBlogPost.ensure_indexes()
         info = ExtendedBlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         for expected in expected_specs:
@@ -141,7 +141,7 @@ class InstanceTest(unittest.TestCase):
                          [{'fields': [('keywords', 1)]}])
 
         # Force index creation
-        MyDoc.objects._ensure_indexes()
+        MyDoc.ensure_indexes()
 
         self.assertEqual(MyDoc._meta['index_specs'],
                         [{'fields': [('keywords', 1)]}])
@@ -189,7 +189,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual([{'fields': [('location.point', '2d')]}],
                         Place._meta['index_specs'])
 
-        Place.objects()._ensure_indexes()
+        Place.ensure_indexes()
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', '2d')] in info)
@@ -335,7 +335,7 @@ class InstanceTest(unittest.TestCase):
             recursive_obj = EmbeddedDocumentField(RecursiveObject)
             meta = {'allow_inheritance': True}
 
-        RecursiveDocument.objects._ensure_indexes()
+        RecursiveDocument.ensure_indexes()
         info = RecursiveDocument._get_collection().index_information()
         self.assertEqual(info.keys(), ['_id_', '_cls_1'])
 

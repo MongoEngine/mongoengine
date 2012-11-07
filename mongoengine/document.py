@@ -7,7 +7,7 @@ from bson.dbref import DBRef
 from mongoengine import signals, queryset
 
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  BaseDict, BaseList)
+                  BaseDict, BaseList, ALLOW_INHERITANCE)
 from queryset import OperationError, NotUniqueError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
@@ -163,6 +163,8 @@ class Document(BaseDocument):
                     )
             else:
                 cls._collection = db[collection_name]
+            if cls._meta.get('auto_create_index', True):
+                cls.ensure_indexes()
         return cls._collection
 
     def save(self, safe=True, force_insert=False, validate=True, clean=True,
@@ -418,9 +420,86 @@ class Document(BaseDocument):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
         """
+        cls._collection = None
         db = cls._get_db()
         db.drop_collection(cls._get_collection_name())
-        queryset.QuerySet._reset_already_indexed(cls)
+
+    @classmethod
+    def ensure_index(cls, key_or_list, drop_dups=False, background=False,
+        **kwargs):
+        """Ensure that the given indexes are in place.
+
+        :param key_or_list: a single index key or a list of index keys (to
+            construct a multi-field index); keys may be prefixed with a **+**
+            or a **-** to determine the index ordering
+        """
+        index_spec = cls._build_index_spec(key_or_list)
+        index_spec = index_spec.copy()
+        fields = index_spec.pop('fields')
+        index_spec['drop_dups'] = drop_dups
+        index_spec['background'] = background
+        index_spec.update(kwargs)
+
+        return cls._get_collection().ensure_index(fields, **index_spec)
+
+    @classmethod
+    def ensure_indexes(cls):
+        """Checks the document meta data and ensures all the indexes exist.
+
+        .. note:: You can disable automatic index creation by setting
+                  `auto_create_index` to False in the documents meta data
+        """
+        background = cls._meta.get('index_background', False)
+        drop_dups = cls._meta.get('index_drop_dups', False)
+        index_opts = cls._meta.get('index_opts') or {}
+        index_cls = cls._meta.get('index_cls', True)
+
+        collection = cls._get_collection()
+
+        # determine if an index which we are creating includes
+        # _cls as its first field; if so, we can avoid creating
+        # an extra index on _cls, as mongodb will use the existing
+        # index to service queries against _cls
+        cls_indexed = False
+
+        def includes_cls(fields):
+            first_field = None
+            if len(fields):
+                if isinstance(fields[0], basestring):
+                    first_field = fields[0]
+                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+                    first_field = fields[0][0]
+            return first_field == '_cls'
+
+        # Ensure indexes created by uniqueness constraints
+        for index in cls._meta['unique_indexes']:
+            cls_indexed = cls_indexed or includes_cls(index)
+            collection.ensure_index(index, unique=True, background=background,
+                                           drop_dups=drop_dups, **index_opts)
+
+        # Ensure document-defined indexes are created
+        if cls._meta['index_specs']:
+            index_spec = cls._meta['index_specs']
+            for spec in index_spec:
+                spec = spec.copy()
+                fields = spec.pop('fields')
+                cls_indexed = cls_indexed or includes_cls(fields)
+                opts = index_opts.copy()
+                opts.update(spec)
+                collection.ensure_index(fields, background=background, **opts)
+
+        # If _cls is being used (for polymorphism), it needs an index,
+        # only if another index doesn't begin with _cls
+        if (index_cls and not cls_indexed and
+            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
+            collection.ensure_index('_cls', background=background,
+                                    **index_opts)
+
+        # Add geo indicies
+        for field in cls._geo_indices():
+            index_spec = [(field.db_field, pymongo.GEO2D)]
+            collection.ensure_index(index_spec, background=background,
+                                    **index_opts)
 
 
 class DynamicDocument(Document):

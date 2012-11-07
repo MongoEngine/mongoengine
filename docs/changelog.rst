@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8
 ==============
+- Updated index creation now tied to Document class ((MongoEngine/mongoengine#102)
 - Added none() to queryset (MongoEngine/mongoengine#127)
 - Updated SequenceFields to allow post processing of the calculated counter value (MongoEngine/mongoengine#141)
 - Added clean method to documents for pre validation data cleaning (MongoEngine/mongoengine#60)

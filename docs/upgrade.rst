@@ -40,7 +40,7 @@ inherited classes like so:
         collection.drop_index(index)
 
     # 5. Recreate indexes
-    Animal.objects._ensure_indexes()
+    Animal.ensure_indexes()
 
 
 Document Definition
@@ -56,6 +56,13 @@ you will need to declare :attr:`allow_inheritance` in the meta data like so:
 
         meta = {'allow_inheritance': True}
 
+Indexes
+-------
+
+Index methods are no longer tied to querysets but rather to the document class.
+Although `QuerySet._ensure_indexes` and `QuerySet.ensure_index` still exist.
+They should be replaced with :func:`~mongoengine.Document.ensure_indexes` /
+:func:`~mongoengine.Document.ensure_index`.
 
 SequenceFields
 --------------

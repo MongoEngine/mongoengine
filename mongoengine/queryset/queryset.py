@@ -1,11 +1,12 @@
-import pprint
-import re
 import copy
 import itertools
 import operator
+import pprint
+import re
+import warnings
 
-import pymongo
 from bson.code import Code
+import pymongo
 from pymongo.common import validate_read_preference
 
 from mongoengine import signals
@@ -37,8 +38,6 @@ class QuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
     """
-
-    __already_indexed = set()
     __dereference = False
 
     def __init__(self, document, collection):
@@ -95,24 +94,6 @@ class QuerySet(object):
                 self._mongo_query.update(self._initial_query)
         return self._mongo_query
 
-    def ensure_index(self, key_or_list, drop_dups=False, background=False,
-        **kwargs):
-        """Ensure that the given indexes are in place.
-
-        :param key_or_list: a single index key or a list of index keys (to
-            construct a multi-field index); keys may be prefixed with a **+**
-            or a **-** to determine the index ordering
-        """
-        index_spec = self._document._build_index_spec(key_or_list)
-        index_spec = index_spec.copy()
-        fields = index_spec.pop('fields')
-        index_spec['drop_dups'] = drop_dups
-        index_spec['background'] = background
-        index_spec.update(kwargs)
-
-        self._collection.ensure_index(fields, **index_spec)
-        return self
-
     def __call__(self, q_obj=None, class_check=True, slave_okay=False,
                  read_preference=None, **query):
         """Filter the selected documents by calling the
@@ -150,87 +131,26 @@ class QuerySet(object):
         """Returns all documents."""
         return self.__call__()
 
+    def ensure_index(self, **kwargs):
+        """Deprecated use :func:`~Document.ensure_index`"""
+        msg = ("Doc.objects()._ensure_index() is deprecated. "
+              "Use Doc.ensure_index() instead.")
+        warnings.warn(msg, DeprecationWarning)
+        self._document.__class__.ensure_index(**kwargs)
+        return self
+
     def _ensure_indexes(self):
-        """Checks the document meta data and ensures all the indexes exist.
-
-        .. note:: You can disable automatic index creation by setting
-                  `auto_create_index` to False in the documents meta data
-        """
-        background = self._document._meta.get('index_background', False)
-        drop_dups = self._document._meta.get('index_drop_dups', False)
-        index_opts = self._document._meta.get('index_opts') or {}
-        index_cls = self._document._meta.get('index_cls', True)
-
-        # determine if an index which we are creating includes
-        # _cls as its first field; if so, we can avoid creating
-        # an extra index on _cls, as mongodb will use the existing
-        # index to service queries against _cls
-        cls_indexed = False
-
-        def includes_cls(fields):
-            first_field = None
-            if len(fields):
-                if isinstance(fields[0], basestring):
-                    first_field = fields[0]
-                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
-                    first_field = fields[0][0]
-            return first_field == '_cls'
-
-        # Ensure indexes created by uniqueness constraints
-        for index in self._document._meta['unique_indexes']:
-            cls_indexed = cls_indexed or includes_cls(index)
-            self._collection.ensure_index(index, unique=True,
-                background=background, drop_dups=drop_dups, **index_opts)
-
-        # Ensure document-defined indexes are created
-        if self._document._meta['index_specs']:
-            index_spec = self._document._meta['index_specs']
-            for spec in index_spec:
-                spec = spec.copy()
-                fields = spec.pop('fields')
-                cls_indexed = cls_indexed or includes_cls(fields)
-                opts = index_opts.copy()
-                opts.update(spec)
-                self._collection.ensure_index(fields,
-                    background=background, **opts)
-
-        # If _cls is being used (for polymorphism), it needs an index,
-        # only if another index doesn't begin with _cls
-        if index_cls and '_cls' in self._query and not cls_indexed:
-            self._collection.ensure_index('_cls',
-                background=background, **index_opts)
-
-        # Add geo indicies
-        for field in self._document._geo_indices():
-            index_spec = [(field.db_field, pymongo.GEO2D)]
-            self._collection.ensure_index(index_spec,
-                background=background, **index_opts)
-
-    @classmethod
-    def _reset_already_indexed(cls, document=None):
-        """Helper to reset already indexed, can be useful for testing purposes
-        """
-        if document:
-            cls.__already_indexed.discard(document)
-        cls.__already_indexed.clear()
+        """Deprecated use :func:`~Document.ensure_indexes`"""
+        msg = ("Doc.objects()._ensure_indexes() is deprecated. "
+              "Use Doc.ensure_indexes() instead.")
+        warnings.warn(msg, DeprecationWarning)
+        self._document.__class__.ensure_indexes()
 
     @property
     def _collection(self):
         """Property that returns the collection object. This allows us to
         perform operations only if the collection is accessed.
         """
-        if self._document not in QuerySet.__already_indexed:
-            # Ensure collection exists
-            db = self._document._get_db()
-            if self._collection_obj.name not in db.collection_names():
-                self._document._collection = None
-                self._collection_obj = self._document._get_collection()
-
-            QuerySet.__already_indexed.add(self._document)
-
-            if self._document._meta.get('auto_create_index', True):
-                self._ensure_indexes()
-
         return self._collection_obj
 
     @property

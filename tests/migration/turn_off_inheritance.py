@@ -59,4 +59,4 @@ class TurnOffInheritanceTest(unittest.TestCase):
             collection.drop_index(index)
 
         # 5. Recreate indexes
-        Animal.objects._ensure_indexes()
+        Animal.ensure_indexes()
