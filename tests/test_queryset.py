@@ -252,6 +252,14 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+    def test_none(self):
+        class A(Document):
+            pass
+
+        A.drop_collection()
+        A().save()
+        self.assertEqual(A.objects.none(), [])
+
     def test_chaining(self):
         class A(Document):
             pass

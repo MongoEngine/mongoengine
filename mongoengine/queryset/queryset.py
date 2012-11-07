@@ -489,6 +489,10 @@ class QuerySet(object):
         self._iter = False
         self._cursor.rewind()
 
+    def none(self):
+        """Helper that just returns a list"""
+        return []
+
     def count(self):
         """Count the selected elements in the query.
         """
