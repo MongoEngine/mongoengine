@@ -54,8 +54,4 @@ def queryset_manager(func):
     function should return a :class:`~mongoengine.queryset.QuerySet`, probably
     the same one that was passed in, but modified in some way.
     """
-    if func.func_code.co_argcount == 1:
-        import warnings
-        msg = 'Methods decorated with queryset_manager should take 2 arguments'
-        warnings.warn(msg, DeprecationWarning)
     return QuerySetManager(func)
