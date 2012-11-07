@@ -57,6 +57,13 @@ you will need to declare :attr:`allow_inheritance` in the meta data like so:
         meta = {'allow_inheritance': True}
 
 
+SequenceFields
+--------------
+
+:class:`~mongoengine.fields.SequenceField`s now inherit from `BaseField` to
+allow flexible storage of the calculated value.  As such MIN and MAX settings
+are no longer handled.
+
 0.6 to 0.7
 ==========
 
