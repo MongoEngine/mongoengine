@@ -258,7 +258,9 @@ class QuerySetTest(unittest.TestCase):
 
         A.drop_collection()
         A().save()
-        self.assertEqual(A.objects.none(), [])
+
+        self.assertEqual(list(A.objects.none()), [])
+        self.assertEqual(list(A.objects.none().all()), [])
 
     def test_chaining(self):
         class A(Document):

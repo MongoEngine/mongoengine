@@ -39,6 +39,7 @@ class QuerySet(object):
     providing :class:`~mongoengine.Document` objects as the results.
     """
     __dereference = False
+    __none = False
 
     def __init__(self, document, collection):
         self._document = document
@@ -391,7 +392,7 @@ class QuerySet(object):
         """
         self._iter = True
         try:
-            if self._limit == 0:
+            if self._limit == 0 or self.__none:
                 raise StopIteration
             if self._scalar:
                 return self._get_scalar(self._document._from_son(
@@ -411,7 +412,8 @@ class QuerySet(object):
 
     def none(self):
         """Helper that just returns a list"""
-        return []
+        self.__none = True
+        return self
 
     def count(self):
         """Count the selected elements in the query.
