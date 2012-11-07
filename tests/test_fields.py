@@ -2175,6 +2175,27 @@ class FieldTest(unittest.TestCase):
         c = self.db['mongoengine.counters'].find_one({'_id': 'animal.id'})
         self.assertEqual(c['next'], 10)
 
+    def test_sequence_field_value_decorator(self):
+        class Person(Document):
+            id = SequenceField(primary_key=True, value_decorator=str)
+            name = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+
+        for x in xrange(10):
+            p = Person(name="Person %s" % x)
+            p.save()
+
+        c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
+        self.assertEqual(c['next'], 10)
+
+        ids = [i.id for i in Person.objects]
+        self.assertEqual(ids, map(str, range(1, 11)))
+
+        c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
+        self.assertEqual(c['next'], 10)
+
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()
