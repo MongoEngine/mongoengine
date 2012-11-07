@@ -9,8 +9,8 @@ def _import_class(cls_name):
     doc_classes = ('Document', 'DynamicEmbeddedDocument', 'EmbeddedDocument',
                    'MapReduceDocument')
     field_classes = ('DictField', 'DynamicField', 'EmbeddedDocumentField',
-                     'GenericReferenceField', 'GeoPointField',
-                     'ReferenceField', 'StringField')
+                     'GenericReferenceField', 'GenericEmbeddedDocumentField',
+                     'GeoPointField', 'ReferenceField', 'StringField')
     queryset_classes = ('OperationError',)
     deref_classes = ('DeReference',)
 

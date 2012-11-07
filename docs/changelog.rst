@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8
 ==============
+- Added clean method to documents for pre validation data cleaning (MongoEngine/mongoengine#60)
 - Added support setting for read prefrence at a query level (MongoEngine/mongoengine#157)
 - Added _instance to EmbeddedDocuments pointing to the parent (MongoEngine/mongoengine#139)
 - Inheritance is off by default (MongoEngine/mongoengine#122)

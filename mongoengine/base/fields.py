@@ -105,12 +105,12 @@ class BaseField(object):
         """
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Perform validation on a value.
         """
         pass
 
-    def _validate(self, value):
+    def _validate(self, value, **kwargs):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
         # check choices
@@ -138,7 +138,7 @@ class BaseField(object):
                 raise ValueError('validation argument for "%s" must be a '
                                  'callable.' % self.name)
 
-        self.validate(value)
+        self.validate(value, **kwargs)
 
 
 class ComplexBaseField(BaseField):

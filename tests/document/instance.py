@@ -490,6 +490,76 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue('id' in keys)
         self.assertTrue('e' in keys)
 
+    def test_document_clean(self):
+        class TestDocument(Document):
+            status = StringField()
+            pub_date = DateTimeField()
+
+            def clean(self):
+                if self.status == 'draft' and self.pub_date is not None:
+                    msg = 'Draft entries may not have a publication date.'
+                    raise ValidationError(msg)
+                # Set the pub_date for published items if not set.
+                if self.status == 'published' and self.pub_date is None:
+                    self.pub_date = datetime.now()
+
+        TestDocument.drop_collection()
+
+        t = TestDocument(status="draft", pub_date=datetime.now())
+
+        try:
+            t.save()
+        except ValidationError, e:
+            expect_msg = "Draft entries may not have a publication date."
+            self.assertTrue(expect_msg in e.message)
+            self.assertEqual(e.to_dict(), {'__all__': expect_msg})
+
+        t = TestDocument(status="published")
+        t.save(clean=False)
+
+        self.assertEquals(t.pub_date, None)
+
+        t = TestDocument(status="published")
+        t.save(clean=True)
+
+        self.assertEquals(type(t.pub_date), datetime)
+
+    def test_document_embedded_clean(self):
+        class TestEmbeddedDocument(EmbeddedDocument):
+            x = IntField(required=True)
+            y = IntField(required=True)
+            z = IntField(required=True)
+
+            meta = {'allow_inheritance': False}
+
+            def clean(self):
+                if self.z:
+                    if self.z != self.x + self.y:
+                        raise ValidationError('Value of z != x + y')
+                else:
+                    self.z = self.x + self.y
+
+        class TestDocument(Document):
+            doc = EmbeddedDocumentField(TestEmbeddedDocument)
+            status = StringField()
+
+        TestDocument.drop_collection()
+
+        t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
+        try:
+            t.save()
+        except ValidationError, e:
+            expect_msg = "Value of z != x + y"
+            self.assertTrue(expect_msg in e.message)
+            self.assertEqual(e.to_dict(), {'doc': {'__all__': expect_msg}})
+
+        t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25)).save()
+        self.assertEquals(t.doc.z, 35)
+
+        # Asserts not raises
+        t = TestDocument(doc=TestEmbeddedDocument(x=15, y=35, z=5))
+        t.save(clean=False)
+
     def test_save(self):
         """Ensure that a document may be saved in the database.
         """
@@ -1934,8 +2004,6 @@ class ValidatorErrorTest(unittest.TestCase):
             log.machine = "127.0.0.1"
 
         self.assertRaises(OperationError, change_shard_key)
-
-
 
 if __name__ == '__main__':
     unittest.main()

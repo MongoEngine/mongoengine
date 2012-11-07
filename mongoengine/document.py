@@ -100,8 +100,8 @@ class Document(BaseDocument):
     Automatic index creation can be disabled by specifying
     attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
     False then indexes will not be created by MongoEngine.  This is useful in
-    production systems where index creation is performed as part of a deployment
-    system.
+    production systems where index creation is performed as part of a
+    deployment system.
 
     By default, _cls will be added to the start of every index (that
     doesn't contain a list) if allow_inheritance is True. This can be
@@ -165,7 +165,7 @@ class Document(BaseDocument):
                 cls._collection = db[collection_name]
         return cls._collection
 
-    def save(self, safe=True, force_insert=False, validate=True,
+    def save(self, safe=True, force_insert=False, validate=True, clean=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
              _refs=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
@@ -179,6 +179,8 @@ class Document(BaseDocument):
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
+        :param clean: call the document clean method, requires `validate` to be
+            True.
         :param write_options: Extra keyword arguments are passed down to
             :meth:`~pymongo.collection.Collection.save` OR
             :meth:`~pymongo.collection.Collection.insert`
@@ -208,7 +210,7 @@ class Document(BaseDocument):
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
-            self.validate()
+            self.validate(clean=clean)
 
         if not write_options:
             write_options = {}

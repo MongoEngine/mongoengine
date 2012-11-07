@@ -15,7 +15,9 @@ from .common import get_document, ALLOW_INHERITANCE
 from .datastructures import BaseDict, BaseList
 from .fields import ComplexBaseField
 
-__all__ = ('BaseDocument', )
+__all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
+
+NON_FIELD_ERRORS = '__all__'
 
 
 class BaseDocument(object):
@@ -82,17 +84,17 @@ class BaseDocument(object):
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
 
-        # Check if the user has created a new instance of a class
-        if (self._is_document and self._initialised
-            and self._created and name == self._meta['id_field']):
-                super(BaseDocument, self).__setattr__('_created', False)
-
         if (self._is_document and not self._created and
             name in self._meta.get('shard_key', tuple()) and
             self._data.get(name) != value):
             OperationError = _import_class('OperationError')
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
+
+        # Check if the user has created a new instance of a class
+        if (self._is_document and self._initialised
+            and self._created and name == self._meta['id_field']):
+                super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
 
@@ -171,6 +173,16 @@ class BaseDocument(object):
         else:
             return hash(self.pk)
 
+    def clean(self):
+        """
+        Hook for doing document level data cleaning before validation is run.
+
+        Any ValidationError raised by this method will not be associated with
+        a particular field; it will have a special-case association with the
+        field defined by NON_FIELD_ERRORS.
+        """
+        pass
+
     def to_mongo(self):
         """Return data dictionary ready for use with MongoDB.
         """
@@ -203,20 +215,33 @@ class BaseDocument(object):
             data[name] = field.to_mongo(self._data.get(name, None))
         return data
 
-    def validate(self):
+    def validate(self, clean=True):
         """Ensure that all fields' values are valid and that required fields
         are present.
         """
+        # Ensure that each field is matched to a valid value
+        errors = {}
+        if clean:
+            try:
+                self.clean()
+            except ValidationError, error:
+                errors[NON_FIELD_ERRORS] = error
+
         # Get a list of tuples of field names and their current values
         fields = [(field, self._data.get(name))
                   for name, field in self._fields.items()]
 
-        # Ensure that each field is matched to a valid value
-        errors = {}
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
+
         for field, value in fields:
             if value is not None:
                 try:
-                    field._validate(value)
+                    if isinstance(field, (EmbeddedDocumentField,
+                                           GenericEmbeddedDocumentField)):
+                        field._validate(value, clean=clean)
+                    else:
+                        field._validate(value)
                 except ValidationError, error:
                     errors[field.name] = error.errors or error
                 except (ValueError, AttributeError, AssertionError), error:
@@ -224,6 +249,7 @@ class BaseDocument(object):
             elif field.required and not getattr(field, '_auto_gen', False):
                 errors[field.name] = ValidationError('Field is required',
                                                      field_name=field.name)
+
         if errors:
             raise ValidationError('ValidationError', errors=errors)
 

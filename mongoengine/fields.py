@@ -461,7 +461,7 @@ class EmbeddedDocumentField(BaseField):
             return value
         return self.document_type.to_mongo(value)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
@@ -469,7 +469,7 @@ class EmbeddedDocumentField(BaseField):
         if not isinstance(value, self.document_type):
             self.error('Invalid embedded document instance provided to an '
                        'EmbeddedDocumentField')
-        self.document_type.validate(value)
+        self.document_type.validate(value, clean)
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -499,12 +499,12 @@ class GenericEmbeddedDocumentField(BaseField):
 
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, EmbeddedDocument):
             self.error('Invalid embedded document instance provided to an '
                        'GenericEmbeddedDocumentField')
 
-        value.validate()
+        value.validate(clean=clean)
 
     def to_mongo(self, document):
         if document is None:
