@@ -64,7 +64,7 @@ document values for example::
 
 .. note::
     Cleaning is only called if validation is turned on and when calling
-:meth:`~mongoengine.Document.save`.
+    :meth:`~mongoengine.Document.save`.
 
 Cascading Saves
 ---------------

@@ -597,7 +597,7 @@ Working with existing data
 As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
 easily get working with existing data.  Just define the document to match
 the expected schema in your database.  If you have wildly varying schemas then
-a :class:`~mongoengine.DynamicDocument` might be more appropriate.
+a :class:`~mongoengine.DynamicDocument` might be more appropriate. ::
 
     # Will work with data in an existing collection named 'cmsPage'
     class Page(Document):

@@ -14,7 +14,7 @@ Data Model
 The inheritance model has changed, we no longer need to store an array of
 :attr:`types` with the model we can just use the classname in :attr:`_cls`.
 This means that you will have to update your indexes for each of your
-inherited classes like so:
+inherited classes like so: ::
 
     # 1. Declaration of the class
     class Animal(Document):
@@ -49,7 +49,7 @@ Document Definition
 The default for inheritance has changed - its now off by default and
 :attr:`_cls` will not be stored automatically with the class.  So if you extend
 your :class:`~mongoengine.Document` or :class:`~mongoengine.EmbeddedDocuments`
-you will need to declare :attr:`allow_inheritance` in the meta data like so:
+you will need to declare :attr:`allow_inheritance` in the meta data like so: ::
 
     class Animal(Document):
         name = StringField()
@@ -67,7 +67,7 @@ They should be replaced with :func:`~mongoengine.Document.ensure_indexes` /
 SequenceFields
 --------------
 
-:class:`~mongoengine.fields.SequenceField`s now inherit from `BaseField` to
+:class:`~mongoengine.fields.SequenceField` now inherits from `BaseField` to
 allow flexible storage of the calculated value.  As such MIN and MAX settings
 are no longer handled.
 
