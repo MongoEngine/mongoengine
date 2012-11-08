@@ -3741,6 +3741,25 @@ class QueryFieldListTest(unittest.TestCase):
 
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))
 
+    def test_upsert_includes_cls(self):
+        """Upserts should include _cls information for inheritable classes
+        """
+
+        class Test(Document):
+            test = StringField()
+
+        Test.drop_collection()
+        Test.objects(test='foo').update_one(upsert=True, set__test='foo')
+        self.assertFalse('_cls' in Test._collection.find_one())
+
+        class Test(Document):
+            meta = {'allow_inheritance': True}
+            test = StringField()
+
+        Test.drop_collection()
+
+        Test.objects(test='foo').update_one(upsert=True, set__test='foo')
+        self.assertTrue('_cls' in Test._collection.find_one())
 
 if __name__ == '__main__':
     unittest.main()

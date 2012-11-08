@@ -824,8 +824,16 @@ class QuerySet(object):
         if not write_options:
             write_options = {}
 
-        update = transform.update(self._document, **update)
         query = self._query
+        update = transform.update(self._document, **update)
+
+        # If doing an atomic upsert on an inheritable class
+        # then ensure we add _cls to the update operation
+        if upsert and '_cls' in query:
+            if '$set' in update:
+                update["$set"]["_cls"] = self._document._class_name
+            else:
+                update["$set"] = {"_cls": self._document._class_name}
 
         try:
             ret = self._collection.update(query, update, multi=multi,
@@ -852,7 +860,7 @@ class QuerySet(object):
 
         .. versionadded:: 0.2
         """
-        return self.update(safe_update=True, upsert=False, multi=False,
+        return self.update(safe_update=True, upsert=upsert, multi=False,
                            write_options=None, **update)
 
     def __iter__(self):
