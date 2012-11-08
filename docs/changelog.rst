@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8
 ==============
+- Added support for creating documents with embedded documents in a single operation (MongoEngine/mongoengine#6)
 - Added to_json and from_json to Document (MongoEngine/mongoengine#1)
 - Added to_json and from_json to QuerySet (MongoEngine/mongoengine#131)
 - Updated index creation now tied to Document class (MongoEngine/mongoengine#102)

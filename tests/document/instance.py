@@ -2005,5 +2005,41 @@ class ValidatorErrorTest(unittest.TestCase):
 
         self.assertRaises(OperationError, change_shard_key)
 
+    def test_kwargs_simple(self):
+
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        class Doc(Document):
+            doc_name = StringField()
+            doc = EmbeddedDocumentField(Embedded)
+
+        classic_doc = Doc(doc_name="my doc", doc=Embedded(name="embedded doc"))
+        dict_doc = Doc(**{"doc_name": "my doc",
+                          "doc": {"name": "embedded doc"}})
+
+        self.assertEqual(classic_doc, dict_doc)
+        self.assertEqual(classic_doc._data, dict_doc._data)
+
+    def test_kwargs_complex(self):
+
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        class Doc(Document):
+            doc_name = StringField()
+            docs = ListField(EmbeddedDocumentField(Embedded))
+
+        classic_doc = Doc(doc_name="my doc", docs=[
+                            Embedded(name="embedded doc1"),
+                            Embedded(name="embedded doc2")])
+        dict_doc = Doc(**{"doc_name": "my doc",
+                          "docs": [{"name": "embedded doc1"},
+                                   {"name": "embedded doc2"}]})
+
+        self.assertEqual(classic_doc, dict_doc)
+        self.assertEqual(classic_doc._data, dict_doc._data)
+
+
 if __name__ == '__main__':
     unittest.main()

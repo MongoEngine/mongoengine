@@ -28,7 +28,14 @@ class BaseDocument(object):
     _dynamic_lock = True
     _initialised = False
 
-    def __init__(self, **values):
+    def __init__(self, __auto_convert=True, **values):
+        """
+        Initialise a document or embedded document
+
+        :param __auto_convert: Try and will cast python objects to Object types
+        :param values: A dictionary of values for the document
+        """
+
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
@@ -50,9 +57,16 @@ class BaseDocument(object):
                 elif self._dynamic:
                     dynamic_data[key] = value
         else:
+            FileField = _import_class('FileField')
             for key, value in values.iteritems():
                 key = self._reverse_db_field_map.get(key, key)
+                if (value is not None and __auto_convert and
+                    key in self._fields):
+                    field = self._fields.get(key)
+                    if not isinstance(field, FileField):
+                        value = field.to_python(value)
                 setattr(self, key, value)
+
         # Set any get_fieldname_display methods
         self.__set_field_display()
 
@@ -487,7 +501,7 @@ class BaseDocument(object):
                    % (cls._class_name, errors))
             raise InvalidDocumentError(msg)
 
-        obj = cls(**data)
+        obj = cls(__auto_convert=False, **data)
         obj._changed_fields = changed_fields
         obj._created = False
         return obj
