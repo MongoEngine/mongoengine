@@ -346,7 +346,7 @@ class InstanceTest(unittest.TestCase):
             meta = {'shard_key': ('superphylum',)}
 
         Animal.drop_collection()
-        doc = Animal(superphylum = 'Deuterostomia')
+        doc = Animal(superphylum='Deuterostomia')
         doc.save()
         doc.reload()
         Animal.drop_collection()

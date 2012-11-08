@@ -606,7 +606,8 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class CategoryList(Document):
-            categories = SortedListField(EmbeddedDocumentField(Category), ordering='count', reverse=True)
+            categories = SortedListField(EmbeddedDocumentField(Category),
+                                         ordering='count', reverse=True)
             name = StringField()
 
         catlist = CategoryList(name="Top categories")
@@ -1616,8 +1617,9 @@ class FieldTest(unittest.TestCase):
         """Ensure that value is in a container of allowed values.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            size = StringField(max_length=3, choices=(
+                ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
 
         Shirt.drop_collection()
 
@@ -1633,12 +1635,15 @@ class FieldTest(unittest.TestCase):
         Shirt.drop_collection()
 
     def test_choices_get_field_display(self):
-        """Test dynamic helper for returning the display value of a choices field.
+        """Test dynamic helper for returning the display value of a choices
+        field.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
-            style = StringField(max_length=3, choices=(('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
+            size = StringField(max_length=3, choices=(
+                    ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                    ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            style = StringField(max_length=3, choices=(
+                ('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
 
         Shirt.drop_collection()
 
@@ -1665,7 +1670,8 @@ class FieldTest(unittest.TestCase):
         """Ensure that value is in a container of allowed values.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=('S', 'M', 'L', 'XL', 'XXL'))
+            size = StringField(max_length=3,
+                              choices=('S', 'M', 'L', 'XL', 'XXL'))
 
         Shirt.drop_collection()
 
@@ -1681,11 +1687,15 @@ class FieldTest(unittest.TestCase):
         Shirt.drop_collection()
 
     def test_simple_choices_get_field_display(self):
-        """Test dynamic helper for returning the display value of a choices field.
+        """Test dynamic helper for returning the display value of a choices
+        field.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=('S', 'M', 'L', 'XL', 'XXL'))
-            style = StringField(max_length=3, choices=('Small', 'Baggy', 'wide'), default='Small')
+            size = StringField(max_length=3,
+                               choices=('S', 'M', 'L', 'XL', 'XXL'))
+            style = StringField(max_length=3,
+                                choices=('Small', 'Baggy', 'wide'),
+                                default='Small')
 
         Shirt.drop_collection()
 
@@ -1736,7 +1746,7 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(putfile == result)
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
-        result.the_file.delete() # Remove file from GridFS
+        result.the_file.delete()  # Remove file from GridFS
         PutFile.objects.delete()
 
         # Ensure file-like objects are stored
@@ -1801,7 +1811,6 @@ class FieldTest(unittest.TestCase):
             the_file = FileField()
         DemoFile.objects.create()
 
-
     def test_file_field_no_default(self):
 
         class GridDocument(Document):
@@ -1816,7 +1825,6 @@ class FieldTest(unittest.TestCase):
             # Test without default
             doc_a = GridDocument()
             doc_a.save()
-
 
             doc_b = GridDocument.objects.with_id(doc_a.id)
             doc_b.the_file.replace(f, filename='doc_b')
@@ -1859,7 +1867,7 @@ class FieldTest(unittest.TestCase):
 
         # Second instance
         test_file_dupe = TestFile()
-        data = test_file_dupe.the_file.read() # Should be None
+        data = test_file_dupe.the_file.read()  # Should be None
 
         self.assertTrue(test_file.name != test_file_dupe.name)
         self.assertTrue(test_file.the_file.read() != data)
@@ -2327,7 +2335,6 @@ class FieldTest(unittest.TestCase):
             self.assertTrue('content' in error_dict['comments'][1])
             self.assertEqual(error_dict['comments'][1]['content'],
                               u'Field is required')
-
 
         post.comments[1].content = 'here we go'
         post.validate()
