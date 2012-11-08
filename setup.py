@@ -42,11 +42,12 @@ setup(name='mongoengine',
       maintainer_email="ross.lawley@{nospam}gmail.com",
       url='http://mongoengine.org/',
       license='MIT',
+      require=['IPy'],
       include_package_data=True,
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       platforms=['any'],
       classifiers=CLASSIFIERS,
       install_requires=['pymongo'],
-      tests_require=['nose', 'coverage', 'blinker', 'django>=1.3', 'PIL']
+      tests_require=['nose', 'coverage', 'blinker', 'django>=1.3', 'PIL', 'IPy']
 )

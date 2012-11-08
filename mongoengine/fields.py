@@ -14,6 +14,8 @@ from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
 from operator import itemgetter
 
+from IPy import IP
+
 
 try:
     from PIL import Image, ImageOps
@@ -33,7 +35,8 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
-           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
+           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField',
+           'IPv4Field', 'IPv6Field', 'IPv4NetworkField', 'IPv6NetworkField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -1351,3 +1354,118 @@ class UUIDField(BaseField):
                 value = uuid.UUID(value)
             except Exception, exc:
                 self.error('Could not convert to UUID: %s' % exc)
+
+
+class IPField(BaseField):
+    """An IP field.
+    """
+    def __init__(self, v=4, **kwargs):
+        if v not in (4, 6):
+            raise ValueError("IP version must be 4 or 6")
+        self.v = v
+        super(IPField, self).__init__(**kwargs)
+
+    def __get__(self, instance, owner):
+        value = super(IPField, self).__get__(instance, owner)
+        if value is not None:
+            value = IP(value)
+        return value
+
+    def validate(self, value):
+        if value.version() != self.v:
+            self.error("IP version mismatch")
+
+    def to_mongo(self, value):
+        if self.v == 4:
+            return IP(value).int()
+        else:
+            return IP(value).strHex()
+
+    def to_python(self, value):
+        return IP(value)
+
+    def prepare_query_value(self, op, value):
+        if self.v == 4:
+            return IP(value).int()
+        return IP(value).strHex()
+
+
+class IPv4Field(IPField):
+    """An IPv4 field.
+    """
+    def __init__(self, **kwargs):
+        super(IPv4Field, self).__init__(v=4, **kwargs)
+
+
+class IPv6Field(IPField):
+    """An IPv6 field.
+    """
+    def __init__(self, **kwargs):
+        super(IPv6Field, self).__init__(v=6, **kwargs)
+
+
+class IPNetworkField(BaseField):
+    """An IP network field.
+    """
+    def __init__(self, v=4, **kwargs):
+        if v not in (4, 6):
+            raise ValueError("IP version must be 4 or 6")
+        self.v = v
+        super(IPNetworkField, self).__init__(**kwargs)
+
+    def __get__(self, instance, owner):
+        value = super(IPNetworkField, self).__get__(instance, owner)
+        if value is not None:
+            value = self.to_python(value)
+        return value
+
+    def validate(self, value):
+        if value.version() != self.v:
+            self.error("IP version mismatch")
+
+    def to_mongo(self, value):
+        value = IP(value)
+        if self.v == 4:
+            return {
+                "net$prefix": value.prefixlen(),
+                "net$lower": value[0].int(),
+                "net$upper": value[-1].int(),
+            }
+        return {
+            "net$prefix": value.prefixlen(),
+            "net$lower": value[0].strHex(),
+            "net$upper": value[-1].strHex(),
+        }
+
+    def to_python(self, value):
+        if isinstance(value, dict):
+            value = "%s/%i" % (value["net$lower"], value["net$prefix"])
+        return IP(value)
+
+    def prepare_query_value(self, op, value):
+        if self.v == 4:
+            value = IP(value).int()
+        else:
+            value = IP(value).strHex()
+        if op == "contains":
+            value = {
+                "net$lower": {"$lte": value},
+                "net$upper": {"$gte": value},
+            }
+        return value
+
+
+class IPv4NetworkField(IPNetworkField):
+    """An IPv6 network field.
+    """
+    def __init__(self, **kwargs):
+        super(IPv4NetworkField, self).__init__(v=4, **kwargs)
+
+
+class IPv6NetworkField(IPNetworkField):
+    """An IPv6 network field.
+    """
+    def __init__(self, **kwargs):
+        super(IPv6NetworkField, self).__init__(v=6, **kwargs)
+
+

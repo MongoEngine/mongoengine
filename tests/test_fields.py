@@ -9,6 +9,8 @@ import gridfs
 from bson import Binary
 from decimal import Decimal
 
+from IPy import IP
+
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import _document_registry, NotRegistered
@@ -2173,6 +2175,246 @@ class FieldTest(unittest.TestCase):
 
         post.comments[1].content = 'here we go'
         post.validate()
+
+    def test_ipv4_field(self):
+        """Ensure that an IPv4 field works as expected.
+        """
+        class Host(Document):
+            name = StringField(required=True)
+            ip = IPv4Field(required=True)
+
+        Host.drop_collection()
+
+        ip1 = "192.168.0.1"
+        # given as string
+        host1 = Host(name="foo", ip=ip1)
+        self.assertEquals(host1.ip, IP(ip1))
+        host1 = host1.save()
+        self.assertEquals(host1.ip, IP(ip1))
+
+        loaded = Host.objects()[0]
+        self.assertEquals(loaded.ip, IP(ip1))
+
+        ip2 = "192.168.0.2"
+        # given as IP object
+        host2 = Host(name="bar", ip=IP(ip2))
+        host2.save()
+
+        # search with IP object
+        result = Host.objects(ip=IP(ip1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # lower than
+        result = Host.objects(ip__lt=IP(ip2))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # greater than
+        result = Host.objects(ip__gt=IP(ip1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "bar")
+
+        ip3 = "192.168.0.3"
+        host3 = Host(name="baz", ip=IP(ip3))
+        host3.save()
+
+        # lower than equals
+        result = Host.objects(ip__lte=IP(ip2)).order_by("name")
+        self.assertEquals(len(result), 2)
+        self.assertEquals(result[0].name, "bar")
+        self.assertEquals(result[1].name, "foo")
+
+        # greater than equals
+        result = Host.objects(ip__gte=IP(ip2)).order_by("name")
+        self.assertEquals(len(result), 2)
+        self.assertEquals(result[0].name, "bar")
+        self.assertEquals(result[1].name, "baz")
+
+        # fail on wrong IP version
+        host4 = Host(name="fail")
+        host4.ip = IP("2001:0db8:85a3:08d3:1319:8a2e:0370:7344")
+        self.assertRaises(ValidationError, host4.validate)
+
+        ip4 = "172.30.1.2"
+        host4 = Host(name="boo", ip=IP(ip4))
+        host4.save()
+
+        net4 = "172.30.0.0/16"
+
+        # in network
+        result = Host.objects(ip__in=IP(net4))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "boo")
+
+        # nin network
+        result = Host.objects(ip__nin=IP(net4)).order_by("name")
+        self.assertEquals(len(result), 3)
+        self.assertEquals(result[0].name, "bar")
+        self.assertEquals(result[1].name, "baz")
+        self.assertEquals(result[2].name, "foo")
+
+        # not in network
+        result = Host.objects(ip__not__in=IP(net4)).order_by("name")
+        self.assertEquals(len(result), 3)
+        self.assertEquals(result[0].name, "bar")
+        self.assertEquals(result[1].name, "baz")
+        self.assertEquals(result[2].name, "foo")
+
+    def test_ipv6_field(self):
+        """Ensure that an IPv6 field works as expected.
+        """
+        class Host(Document):
+            name = StringField(required=True)
+            ip = IPv6Field(required=True)
+
+        Host.drop_collection()
+
+        ip1 = "2001:0db8:85a3:08d3:1319:8a2e:0370:0001"
+        # given as string
+        host1 = Host(name="foo", ip=ip1)
+        self.assertEquals(host1.ip, IP(ip1))
+        host1 = host1.save()
+        self.assertEquals(host1.ip, IP(ip1))
+
+        loaded = Host.objects()[0]
+        self.assertEquals(loaded.ip, IP(ip1))
+
+        ip2 = "2001:0db8:85a3:08d3:1319:8a2e:0370:0002"
+        # given as IP object
+        host2 = Host(name="bar", ip=IP(ip2))
+        host2.save()
+
+        # search with IP object
+        result = Host.objects(ip=IP(ip1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # lower than
+        result = Host.objects(ip__lt=IP(ip2))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # greater than
+        result = Host.objects(ip__gt=IP(ip1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "bar")
+
+        ip3 = "2001:0db8:85a3:08d3:1319:8a2e:0370:0003"
+        host3 = Host(name="baz", ip=IP(ip3))
+        host3.save()
+
+        # lower than equals
+        result = Host.objects(ip__lte=IP(ip2)).order_by("name")
+        self.assertEquals(len(result), 2)
+        self.assertEquals(result[0].name, "bar")
+        self.assertEquals(result[1].name, "foo")
+
+        # greater than equals
+        result = Host.objects(ip__gte=IP(ip2)).order_by("name")
+        self.assertEquals(len(result), 2)
+        self.assertEquals(result[0].name, "bar")
+        self.assertEquals(result[1].name, "baz")
+
+        # fail on wrong IP version
+        host4 = Host(name="fail")
+        host4.ip = IP("192.168.0.1")
+        self.assertRaises(ValidationError, host4.validate)
+
+    def test_ipv4_network_field(self):
+        """Ensure that an IPv4 network field works as expected.
+        """
+        class Site(Document):
+            name = StringField(required=True)
+            network = IPv4NetworkField(required=True)
+
+        Site.drop_collection()
+
+        network1 = "192.168.0.0/24"
+        site1 = Site(name="foo", network=network1)
+        self.assertEquals(site1.network, IP(network1))
+        site1 = site1.save()
+        self.assertEquals(site1.network, IP(network1))
+
+        # search with IP object
+        result = Site.objects(network=IP(network1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        network2 = "172.30.0.0/16"
+        # add with IP object
+        site2 = Site(name="bar", network=IP(network2))
+        self.assertEquals(site2.network, IP(network2))
+        site2 = site2.save()
+        self.assertEquals(site2.network, IP(network2))
+
+        # search network
+        result = Site.objects(network=IP(network1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # search not network
+        result = Site.objects(network__ne=IP(network2))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # search network by containing IP
+        result = Site.objects(network__contains=IP("172.30.1.2"))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "bar")
+
+        # search network by NOT containing IP
+        result = Site.objects(network__not__contains=IP("172.30.1.2"))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+    def test_ipv6_network_field(self):
+        """Ensure that an IPv6 network field works as expected.
+        """
+        class Site(Document):
+            name = StringField(required=True)
+            network = IPv6NetworkField(required=True)
+
+        Site.drop_collection()
+
+        network1 = "2001:db8:85a3:1111::/64"
+        site1 = Site(name="foo", network=network1)
+        self.assertEquals(site1.network, IP(network1))
+        site1 = site1.save()
+        self.assertEquals(site1.network, IP(network1))
+
+        # search with IP object
+        result = Site.objects(network=IP(network1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        network2 = "2001:db8:85a3:2222::/64"
+        # add with IP object
+        site2 = Site(name="bar", network=IP(network2))
+        self.assertEquals(site2.network, IP(network2))
+        site2 = site2.save()
+        self.assertEquals(site2.network, IP(network2))
+
+        # search network
+        result = Site.objects(network=IP(network1))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        # search not network
+        result = Site.objects(network__ne=IP(network2))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
+
+        v6addr = "2001:db8:85a3:2222::3039"
+        # search network by containing IP
+        result = Site.objects(network__contains=IP(v6addr))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "bar")
+
+        # search network by NOT containing IP
+        result = Site.objects(network__not__contains=IP(v6addr))
+        self.assertEquals(len(result), 1)
+        self.assertEquals(result[0].name, "foo")
 
 
 if __name__ == '__main__':
