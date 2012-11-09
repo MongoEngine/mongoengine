@@ -3,7 +3,7 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 
 import sys
 import pymongo
-import pymongo.objectid
+import bson.objectid
 
 
 _document_registry = {}
@@ -112,9 +112,9 @@ class ObjectIdField(BaseField):
         # return unicode(value)
 
     def to_mongo(self, value):
-        if not isinstance(value, pymongo.objectid.ObjectId):
+        if not isinstance(value, bson.objectid.ObjectId):
             try:
-                return pymongo.objectid.ObjectId(unicode(value))
+                return bson.objectid.ObjectId(unicode(value))
             except Exception, e:
                 #e.message attribute has been deprecated since Python 2.6
                 raise ValidationError(unicode(e))
@@ -125,7 +125,7 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            pymongo.objectid.ObjectId(unicode(value))
+            bson.objectid.ObjectId(unicode(value))
         except:
             raise ValidationError('Invalid Object ID')
 

@@ -2,9 +2,6 @@ from connection import _get_db
 
 import pprint
 import pymongo
-import pymongo.code
-import pymongo.dbref
-import pymongo.objectid
 import pymongo.errors
 import re
 import copy
@@ -745,81 +742,6 @@ class QuerySet(object):
 
     def __len__(self):
         return self.count()
-
-    def map_reduce(self, map_f, reduce_f, finalize_f=None, limit=None,
-                   scope=None, keep_temp=False):
-        """Perform a map/reduce query using the current query spec
-        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
-        it must be the last call made, as it does not return a maleable
-        ``QuerySet``.
-
-        See the :meth:`~mongoengine.tests.QuerySetTest.test_map_reduce`
-        and :meth:`~mongoengine.tests.QuerySetTest.test_map_advanced`
-        tests in ``tests.queryset.QuerySetTest`` for usage examples.
-
-        :param map_f: map function, as :class:`~pymongo.code.Code` or string
-        :param reduce_f: reduce function, as
-                         :class:`~pymongo.code.Code` or string
-        :param finalize_f: finalize function, an optional function that
-                           performs any post-reduction processing.
-        :param scope: values to insert into map/reduce global scope. Optional.
-        :param limit: number of objects from current query to provide
-                      to map/reduce method
-        :param keep_temp: keep temporary table (boolean, default ``True``)
-
-        Returns an iterator yielding
-        :class:`~mongoengine.document.MapReduceDocument`.
-
-        .. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
-           :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-           PyMongo version **>= 1.2**.
-
-        .. versionadded:: 0.3
-        """
-        from document import MapReduceDocument
-
-        if not hasattr(self._collection, "map_reduce"):
-            raise NotImplementedError("Requires MongoDB >= 1.1.1")
-
-        map_f_scope = {}
-        if isinstance(map_f, pymongo.code.Code):
-            map_f_scope = map_f.scope
-            map_f = unicode(map_f)
-        map_f = pymongo.code.Code(self._sub_js_fields(map_f), map_f_scope)
-
-        reduce_f_scope = {}
-        if isinstance(reduce_f, pymongo.code.Code):
-            reduce_f_scope = reduce_f.scope
-            reduce_f = unicode(reduce_f)
-        reduce_f_code = self._sub_js_fields(reduce_f)
-        reduce_f = pymongo.code.Code(reduce_f_code, reduce_f_scope)
-
-        mr_args = {'query': self._query, 'keeptemp': keep_temp}
-
-        if finalize_f:
-            finalize_f_scope = {}
-            if isinstance(finalize_f, pymongo.code.Code):
-                finalize_f_scope = finalize_f.scope
-                finalize_f = unicode(finalize_f)
-            finalize_f_code = self._sub_js_fields(finalize_f)
-            finalize_f = pymongo.code.Code(finalize_f_code, finalize_f_scope)
-            mr_args['finalize'] = finalize_f
-
-        if scope:
-            mr_args['scope'] = scope
-
-        if limit:
-            mr_args['limit'] = limit
-
-        results = self._collection.map_reduce(map_f, reduce_f, **mr_args)
-        results = results.find()
-
-        if self._ordering:
-            results = results.sort(self._ordering)
-
-        for doc in results:
-            yield MapReduceDocument(self._document, self._collection,
-                                    doc['_id'], doc['value'])
 
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
