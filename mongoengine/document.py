@@ -314,11 +314,17 @@ class Document(BaseDocument):
     def set(self, **kwargs):
         return self.update_one({'$set': kwargs})
 
+    def unset(self, **kwargs):
+        return self.update_one({'$unset': kwargs})
+
     def inc(self, **kwargs):
         return self.update_one({'$inc': kwargs})
 
     def push(self, **kwargs):
         return self.update_one({'$push': kwargs})
+
+    def pull(self, **kwargs):
+        return self.update_one({'$pull': kwargs})
 
     def add_to_set(self, **kwargs):
         return self.update_one({'$addToSet': kwargs})
