@@ -734,5 +734,56 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEquals(self.Person.count({'number_list': [1, 3, 2]}), 0)
         self.assertEquals(self.Person.count({'number_list': [1, 2]}), 0)
 
+    def testFindAndModify(self):
+        adam = self.Person(name="Adam", age=23)
+        adam.save()
+        danny = self.Person(name="Danny", age=30)
+        danny.save()
+
+        # confirm transformation without new flag
+        adam = self.Person.find_and_modify({"name":"Adam"},
+                {"$inc": {"age": 1}})
+        self.assertEquals(adam.age, 23)
+        adam.reload()
+        self.assertEquals(adam.age, 24)
+
+        # confirm transformation with new flag
+        danny = self.Person.find_and_modify({"name":"Danny"},
+                {"$inc": {"age": 1}}, new=True)
+        self.assertEquals(danny.age, 31)
+        danny.reload()
+        self.assertEquals(danny.age, 31)
+
+        # no error when query matching no document
+        josh = self.Person.find_and_modify({"name":"Josh"},
+                {"$inc": {"age": 1}}, new=True)
+        self.assertTrue(josh is None)
+
+        # test remove flag set to True
+        adam = self.Person.find_and_modify({"name":"Adam"},
+                remove=True)
+        self.assertEquals(adam.name, "Adam")
+        self.assertTrue(self.Person.find_one({"name":"Adam"}) is None)
+
+        # test sort parameter
+        chu = self.Person(name="Chu", age=13)
+        chu.save()
+        chu = self.Person.find_and_modify({},
+            {"$inc": {"age": 1}}, sort={'age': 1}, new=True)
+        self.assertEquals(chu.name, "Chu")
+        self.assertEquals(chu.age, 14)
+
+        danny = self.Person.find_and_modify({},
+            {"$inc": {"age": 1}}, sort={'age': -1})
+        self.assertEquals(danny.name, "Danny")
+        self.assertEquals(danny.age, 31)
+
+        # test upsert if missing and if present
+        josh = self.Person.find_and_modify({"name":"Josh"},
+                {"$set": {"age": 24}}, upsert=True)
+        josh = self.Person.find_and_modify({"name":"Josh"},
+                {"$inc": {"age": 1}}, upsert=True, new=True)
+        self.assertEquals(josh.age, 25)
+
 if __name__ == '__main__':
     unittest.main()

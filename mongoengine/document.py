@@ -212,6 +212,36 @@ class Document(BaseDocument):
             return None
 
     @classmethod
+    def find_and_modify(cls, spec, update=None, sort=None, remove=False,
+            new=False, fields=None, upsert=False, **kwargs):
+        spec = cls._transform_value(spec, cls)
+        if update is not None:
+            update = cls._transform_value(update, cls, op='$set')
+        elif not remove:
+            raise ValueError("Cannot have empty update and no remove flag")
+
+        # handle queries with inheritance
+        if cls._meta.get('allow_inheritance'):
+            spec['_types'] = cls._class_name
+        if sort is None:
+            sort = {}
+        else:
+            new_sort = {}
+            for f, dir in sort.iteritems():
+                f, _ = cls._transform_key(f, cls)
+                new_sort[f] = dir
+
+            sort = new_sort
+
+        result = cls._pymongo().find_and_modify(spec, sort=sort, remove=remove,
+                update=update, new=new, fields=fields, upsert=upsert, **kwargs)
+
+        if result:
+            return cls._from_son(result)
+        else:
+            return None
+
+    @classmethod
     def count(cls, spec, slave_ok=False, **kwargs):
         cur = cls.find_raw(spec, slave_ok=slave_ok, **kwargs)
         return cur.count()
