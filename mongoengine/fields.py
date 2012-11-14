@@ -1,18 +1,24 @@
 import datetime
-import time
 import decimal
-import gridfs
+import itertools
 import re
+import time
+import urllib2
+import urlparse
 import uuid
 import warnings
+from operator import itemgetter
 
+import gridfs
 from bson import Binary, DBRef, SON, ObjectId
+
+from mongoengine.python_support import (PY3, bin_type, txt_type,
+                                        str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
                   ValidationError, get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
-from operator import itemgetter
 
 from IPy import IP
 
@@ -22,12 +28,6 @@ try:
 except ImportError:
     Image = None
     ImageOps = None
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
-
 
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
@@ -54,8 +54,11 @@ class StringField(BaseField):
     def to_python(self, value):
         if isinstance(value, unicode):
             return value
-        else:
-            return value.decode('utf-8')
+        try:
+            value = value.decode('utf-8')
+        except:
+            pass
+        return value
 
     def validate(self, value):
         if not isinstance(value, basestring):
@@ -103,25 +106,30 @@ class URLField(StringField):
     .. versionadded:: 0.3
     """
 
-    URL_REGEX = re.compile(
-        r'^https?://'
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
-        r'localhost|'
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
-        r'(?::\d+)?'
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE
-    )
+    _URL_REGEX = re.compile(
+        r'^(?:http|ftp)s?://' # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+        r'localhost|' #localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?' # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
-    def __init__(self, verify_exists=False, **kwargs):
+    def __init__(self, verify_exists=False, url_regex=None, **kwargs):
         self.verify_exists = verify_exists
+        self.url_regex = url_regex or self._URL_REGEX
         super(URLField, self).__init__(**kwargs)
 
     def validate(self, value):
-        if not URLField.URL_REGEX.match(value):
+        if not self.url_regex.match(value):
             self.error('Invalid URL: %s' % value)
+            return
 
         if self.verify_exists:
-            import urllib2
+            warnings.warn(
+                "The URLField verify_exists argument has intractable security "
+                "and performance issues. Accordingly, it has been deprecated.",
+            DeprecationWarning
+            )
             try:
                 request = urllib2.Request(value)
                 urllib2.urlopen(request)
@@ -155,7 +163,11 @@ class IntField(BaseField):
         super(IntField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        return int(value)
+        try:
+            value = int(value)
+        except ValueError:
+            pass
+        return value
 
     def validate(self, value):
         try:
@@ -185,7 +197,11 @@ class FloatField(BaseField):
         super(FloatField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        return float(value)
+        try:
+            value = float(value)
+        except ValueError:
+            pass
+        return value
 
     def validate(self, value):
         if isinstance(value, int):
@@ -217,9 +233,14 @@ class DecimalField(BaseField):
         super(DecimalField, self).__init__(**kwargs)
 
     def to_python(self, value):
+        original_value = value
         if not isinstance(value, basestring):
             value = unicode(value)
-        return decimal.Decimal(value)
+        try:
+            value = decimal.Decimal(value)
+        except ValueError:
+            return original_value
+        return value
 
     def to_mongo(self, value):
         return unicode(value)
@@ -247,7 +268,11 @@ class BooleanField(BaseField):
     """
 
     def to_python(self, value):
-        return bool(value)
+        try:
+            value = bool(value)
+        except ValueError:
+            pass
+        return value
 
     def validate(self, value):
         if not isinstance(value, bool):
@@ -378,6 +403,8 @@ class ComplexDateTimeField(StringField):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
         if data == None:
             return datetime.datetime.now()
+        if isinstance(data, datetime.datetime):
+            return data
         return self._convert_from_string(data)
 
     def __set__(self, instance, value):
@@ -390,7 +417,11 @@ class ComplexDateTimeField(StringField):
                        'ComplexDateTimeField')
 
     def to_python(self, value):
-        return self._convert_from_string(value)
+        original_value = value
+        try:
+            return self._convert_from_string(value)
+        except:
+            return original_value
 
     def to_mongo(self, value):
         return self._convert_from_datetime(value)
@@ -454,8 +485,9 @@ class GenericEmbeddedDocumentField(BaseField):
 
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
 
-    .. note:: You can use the choices param to limit the acceptable
-    EmbeddedDocument types
+    .. note ::
+        You can use the choices param to limit the acceptable
+        EmbeddedDocument types
     """
 
     def prepare_query_value(self, op, value):
@@ -673,7 +705,8 @@ class ReferenceField(BaseField):
       * NULLIFY     - Updates the reference to null.
       * CASCADE     - Deletes the documents associated with the reference.
       * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.ListField` of references
+      * PULL        - Pull the reference from a :class:`~mongoengine.ListField`
+                      of references
 
     Alternative syntax for registering delete rules (useful when implementing
     bi-directional delete rules)
@@ -686,12 +719,19 @@ class ReferenceField(BaseField):
 
         Bar.register_delete_rule(Foo, 'bar', NULLIFY)
 
+    .. note ::
+        `reverse_delete_rules` do not trigger pre / post delete signals to be
+        triggered.
+
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
-    def __init__(self, document_type, reverse_delete_rule=DO_NOTHING, **kwargs):
+    def __init__(self, document_type, dbref=None,
+                 reverse_delete_rule=DO_NOTHING, **kwargs):
         """Initialises the Reference Field.
 
+        :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
+          or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
         """
@@ -699,6 +739,13 @@ class ReferenceField(BaseField):
             if not issubclass(document_type, (Document, basestring)):
                 self.error('Argument to ReferenceField constructor must be a '
                            'document class or a string')
+
+        if dbref is None:
+            msg = ("ReferenceFields will default to using ObjectId "
+                   " strings in 0.8, set DBRef=True if this isn't desired")
+            warnings.warn(msg, FutureWarning)
+
+        self.dbref = dbref if dbref is not None else True  # To change in 0.8
         self.document_type_obj = document_type
         self.reverse_delete_rule = reverse_delete_rule
         super(ReferenceField, self).__init__(**kwargs)
@@ -721,8 +768,9 @@ class ReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
+
         # Dereference DBRefs
-        if isinstance(value, (DBRef)):
+        if isinstance(value, DBRef):
             value = self.document_type._get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
@@ -731,6 +779,10 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document):
         if isinstance(document, DBRef):
+            if not self.dbref:
+                return DBRef.id
+            return document
+        elif not self.dbref and isinstance(document, basestring):
             return document
 
         id_field_name = self.document_type._meta['id_field']
@@ -738,7 +790,7 @@ class ReferenceField(BaseField):
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
-            id_ = document.id
+            id_ = document.pk
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
@@ -746,18 +798,30 @@ class ReferenceField(BaseField):
             id_ = document
 
         id_ = id_field.to_mongo(id_)
-        collection = self.document_type._get_collection_name()
-        return DBRef(collection, id_)
+        if self.dbref:
+            collection = self.document_type._get_collection_name()
+            return DBRef(collection, id_)
+
+        return id_
+
+    def to_python(self, value):
+        """Convert a MongoDB-compatible type to a Python type.
+        """
+        if (not self.dbref and
+            not isinstance(value, (DBRef, Document, EmbeddedDocument))):
+            collection = self.document_type._get_collection_name()
+            value = DBRef(collection, self.document_type.id.to_python(value))
+        return value
 
     def prepare_query_value(self, op, value):
         if value is None:
             return None
-
         return self.to_mongo(value)
 
     def validate(self, value):
+
         if not isinstance(value, (self.document_type, DBRef)):
-            self.error('A ReferenceField only accepts DBRef')
+            self.error("A ReferenceField only accepts DBRef or documents")
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
@@ -771,10 +835,12 @@ class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
-    .. note:: Any documents used as a generic reference must be registered in the
-    document registry.  Importing the model will automatically register it.
+    .. note ::
+        * Any documents used as a generic reference must be registered in the
+          document registry.  Importing the model will automatically register
+          it.
 
-    .. note:: You can use the choices param to limit the acceptable Document types
+        * You can use the choices param to limit the acceptable Document types
 
     .. versionadded:: 0.3
     """
@@ -845,12 +911,20 @@ class BinaryField(BaseField):
         self.max_bytes = max_bytes
         super(BinaryField, self).__init__(**kwargs)
 
+    def __set__(self, instance, value):
+        """Handle bytearrays in python 3.1"""
+        if PY3 and isinstance(value, bytearray):
+            value = bin_type(value)
+        return super(BinaryField, self).__set__(instance, value)
+
     def to_mongo(self, value):
         return Binary(value)
 
     def validate(self, value):
-        if not isinstance(value, (basestring, Binary)):
-            self.error('BinaryField only accepts string or bson Binary values')
+        if not isinstance(value, (bin_type, txt_type, Binary)):
+            self.error("BinaryField only accepts instances of "
+                       "(%s, %s, Binary)" % (
+                        bin_type.__name__, txt_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -906,11 +980,13 @@ class GridFSProxy(object):
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
-    def __cmp__(self, other):
-        if not isinstance(other, GridFSProxy):
-            return -1
-        return cmp((self.grid_id, self.collection_name, self.db_alias),
-                   (other.grid_id, other.collection_name, other.db_alias))
+    def __eq__(self, other):
+        if isinstance(other, GridFSProxy):
+            return  ((self.grid_id == other.grid_id) and
+                     (self.collection_name == other.collection_name) and
+                     (self.db_alias == other.db_alias))
+        else:
+            return False
 
     @property
     def fs(self):
@@ -1023,7 +1099,8 @@ class FileField(BaseField):
 
     def __set__(self, instance, value):
         key = self.name
-        if (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or isinstance(value, basestring):
+        if ((hasattr(value, 'read') and not
+             isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
@@ -1079,6 +1156,7 @@ class ImageGridFsProxy(GridFSProxy):
 
         try:
             img = Image.open(file_obj)
+            img_format = img.format
         except:
             raise ValidationError('Invalid image')
 
@@ -1113,20 +1191,20 @@ class ImageGridFsProxy(GridFSProxy):
 
         if thumbnail:
             thumb_id = self._put_thumbnail(thumbnail,
-                                          img.format)
+                                          img_format)
         else:
             thumb_id = None
 
         w, h = img.size
 
         io = StringIO()
-        img.save(io, img.format)
+        img.save(io, img_format)
         io.seek(0)
 
         return super(ImageGridFsProxy, self).put(io,
                                                  width=w,
                                                  height=h,
-                                                 format=img.format,
+                                                 format=img_format,
                                                  thumbnail_id=thumb_id,
                                                  **kwargs)
 
@@ -1212,11 +1290,15 @@ class ImageField(FileField):
         params_size = ('width', 'height', 'force')
         extra_args = dict(size=size, thumbnail_size=thumbnail_size)
         for att_name, att in extra_args.items():
-            if att and (isinstance(att, tuple) or isinstance(att, list)):
-                setattr(self, att_name, dict(
-                        map(None, params_size, att)))
-            else:
-                setattr(self, att_name, None)
+            value = None
+            if isinstance(att, (tuple, list)):
+                if PY3:
+                    value = dict(itertools.zip_longest(params_size, att,
+                                                        fillvalue=None))
+                else:
+                    value = dict(map(None, params_size, att))
+
+            setattr(self, att_name, value)
 
         super(ImageField, self).__init__(
             collection_name=collection_name,
@@ -1258,18 +1340,19 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, db_alias = None, *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
+        self.sequence_name = sequence_name
         return super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate_new_value(self):
         """
         Generate and Increment the counter
         """
-        sequence_id = "{0}.{1}".format(self.owner_document._get_collection_name(),
-                                       self.name)
-        collection = get_db(alias = self.db_alias )[self.collection_name]
+        sequence_name = self.sequence_name or self.owner_document._get_collection_name()
+        sequence_id = "%s.%s" % (sequence_name, self.name)
+        collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
                                              update={"$inc": {"next": 1}},
                                              new=True,
@@ -1331,9 +1414,13 @@ class UUIDField(BaseField):
 
     def to_python(self, value):
         if not self._binary:
-            if not isinstance(value, basestring):
-                value = unicode(value)
-            return uuid.UUID(value)
+            original_value = value
+            try:
+                if not isinstance(value, basestring):
+                    value = unicode(value)
+                return uuid.UUID(value)
+            except:
+                return original_value
         return value
 
     def to_mongo(self, value):

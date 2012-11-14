@@ -344,6 +344,10 @@ Its value can take any of the following constants:
    their :file:`models.py` in the :const:`INSTALLED_APPS` tuple.
 
 
+.. warning::
+   Signals are not triggered when doing cascading updates / deletes - if this
+   is required you must manually handle the update / delete.
+
 Generic reference fields
 ''''''''''''''''''''''''
 A second kind of reference field also exists,
@@ -465,13 +469,18 @@ If a dictionary is passed then the following options are available:
     Whether the index should be sparse.
 
 :attr:`unique` (Default: False)
-    Whether the index should be sparse.
+    Whether the index should be unique.
+
+.. note ::
+
+    To index embedded files / dictionary fields use 'dot' notation eg:
+    `rank.title`
 
 .. warning::
 
-
-   Inheritance adds extra indices.
-   If don't need inheritance for a document turn inheritance off - see :ref:`document-inheritance`.
+    Inheritance adds extra indices.
+    If don't need inheritance for a document turn inheritance off -
+    see :ref:`document-inheritance`.
 
 
 Geospatial indexes

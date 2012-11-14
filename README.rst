@@ -63,11 +63,6 @@ Some simple examples of what MongoEngine code looks like::
     ...         print 'Link:', post.url
     ...     print
     ...
-    === Using MongoEngine ===
-    See the tutorial
-
-    === MongoEngine Docs ===
-    Link: hmarr.com/mongoengine
 
     >>> len(BlogPost.objects)
     2
@@ -85,7 +80,7 @@ Some simple examples of what MongoEngine code looks like::
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port, and run ``python setup.py test``.
+the standard port, and run: ``python setup.py test``.
 
 Community
 =========
@@ -93,11 +88,8 @@ Community
   <http://groups.google.com/group/mongoengine-users>`_
 - `MongoEngine Developers mailing list
   <http://groups.google.com/group/mongoengine-dev>`_
-- `#mongoengine IRC channel <irc://irc.freenode.net/mongoengine>`_
+- `#mongoengine IRC channel <http://webchat.freenode.net/?channels=mongoengine>`_
 
 Contributing
 ============
-The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_ - to
-contribute to the project, fork it on GitHub and send a pull request, all
-contributions and suggestions are welcome!
-
+We welcome contributions! see  the`Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
