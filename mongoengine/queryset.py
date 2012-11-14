@@ -407,8 +407,8 @@ class QuerySet(object):
                             self._collection.ensure_index(key_or_list,
                                 background=background, **index_opts)
                         else:
-                            raise InvalidCollectionError("Index %s does not "
-                                                         "exist" % key_or_list)
+                            raise InvalidCollectionError("Index %s on %s does "
+                             "not exist" % (key_or_list, self._collection.name))
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
@@ -418,8 +418,8 @@ class QuerySet(object):
                             background=background, drop_dups=drop_dups,
                             **index_opts)
                     else:
-                        raise InvalidCollectionError("Index %s does not exist"
-                                                     % index)
+                        raise InvalidCollectionError("Index %s on %s does "
+                         "not exist" % (index, self._collection.name))
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
