@@ -242,10 +242,14 @@ class Document(BaseDocument):
 
                 upsert = self._created
                 if updates:
-                    last_error = collection.update(select_dict, {"$set": updates}, upsert=upsert, safe=safe, **write_options)
+                    last_error = collection.update(select_dict,
+                        {"$set": updates}, upsert=upsert, safe=safe,
+                        **write_options)
                     created = is_new_object(last_error)
                 if removals:
-                    last_error = collection.update(select_dict, {"$unset": removals}, upsert=upsert, safe=safe, **write_options)
+                    last_error = collection.update(select_dict,
+                        {"$unset": removals}, upsert=upsert, safe=safe,
+                        **write_options)
                     created = created or is_new_object(last_error)
 
             warn_cascade = not cascade and 'cascade' not in self._meta

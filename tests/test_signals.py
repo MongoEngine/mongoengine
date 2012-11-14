@@ -108,6 +108,20 @@ class SignalTests(unittest.TestCase):
                 signal_output.append('post_delete Another signal, %s' % document)
 
         self.Another = Another
+
+        class ExplicitId(Document):
+            id = IntField(primary_key=True)
+
+            @classmethod
+            def post_save(cls, sender, document, **kwargs):
+                if 'created' in kwargs:
+                    if kwargs['created']:
+                        signal_output.append('Is created')
+                    else:
+                        signal_output.append('Is updated')
+
+        self.ExplicitId = ExplicitId
+        self.ExplicitId.objects.delete()
         # Save up the number of connected signals so that we can check at the end
         # that all the signals we register get properly unregistered
         self.pre_signals = (
@@ -137,6 +151,8 @@ class SignalTests(unittest.TestCase):
         signals.pre_delete.connect(Another.pre_delete, sender=Another)
         signals.post_delete.connect(Another.post_delete, sender=Another)
 
+        signals.post_save.connect(ExplicitId.post_save, sender=ExplicitId)
+
     def tearDown(self):
         signals.pre_init.disconnect(self.Author.pre_init)
         signals.post_init.disconnect(self.Author.post_init)
@@ -154,6 +170,8 @@ class SignalTests(unittest.TestCase):
         signals.post_save.disconnect(self.Another.post_save)
         signals.pre_save.disconnect(self.Another.pre_save)
 
+        signals.post_save.disconnect(self.ExplicitId.post_save)
+
         # Check that all our signals got disconnected properly.
         post_signals = (
             len(signals.pre_init.receivers),
@@ -165,6 +183,8 @@ class SignalTests(unittest.TestCase):
             len(signals.pre_bulk_insert.receivers),
             len(signals.post_bulk_insert.receivers),
         )
+
+        self.ExplicitId.objects.delete()
 
         self.assertEqual(self.pre_signals, post_signals)
 
@@ -228,3 +248,12 @@ class SignalTests(unittest.TestCase):
         ])
 
         self.Author.objects.delete()
+
+    def test_signals_with_explicit_doc_ids(self):
+        """ Model saves must have a created flag the first time."""
+        ei = self.ExplicitId(id=123)
+        # post save must received the created flag, even if there's already
+        # an object id present
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+        # second time, it must be an update
+        self.assertEqual(self.get_signal_output(ei.save), ['Is updated'])
