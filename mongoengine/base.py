@@ -1055,7 +1055,10 @@ class BaseDocument(object):
     def _get_collection_name(cls):
         """Returns the collection name for this class.
         """
-        return cls._meta.get('collection', None)
+        # it's not ensured that _meta exists
+        if hasattr(cls, "_meta"):
+            return cls._meta.get('collection', None)
+        return None
 
     @classmethod
     def _from_son(cls, son):

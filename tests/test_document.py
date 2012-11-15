@@ -789,6 +789,22 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
 
+    def test_db_embedded_doc_list_field(self):
+        """Ensure SequenceField works properly when used in an EmbeddedDocument
+        """
+        class Element(EmbeddedDocument):
+            element_id = SequenceField(required=True)
+            name = StringField(required=True)
+
+        class Facet(Document):
+            name = StringField(required=True)
+            element = EmbeddedDocumentField("Element")
+
+        Facet.drop_collection()
+        facet = Facet(name="Foo", element=Element(name="Bar"))
+        facet.save()
+        self.assertEquals(facet.element.element_id, 1)
+
     def test_db_embedded_doc_field_load(self):
         """Ensure we load embedded document data correctly
         """
