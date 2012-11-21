@@ -232,10 +232,11 @@ class QuerySet(object):
         dictionary of default values for the new document may be provided as a
         keyword argument called :attr:`defaults`.
 
-        .. warning:: This requires two separate operations and therefore a
+        .. note:: This requires two separate operations and therefore a
             race condition exists.  Because there are no transactions in
             mongoDB other approaches should be investigated, to ensure you
-            don't accidently duplicate data when using this method.
+            don't accidently duplicate data when using this method.  This is
+            now scheduled to be removed before 1.0
 
         :param write_options: optional extra keyword arguments used if we
             have to create a new document.
@@ -244,9 +245,14 @@ class QuerySet(object):
         :param auto_save: if the object is to be saved automatically if
             not found.
 
+        .. deprecated:: 0.8
         .. versionchanged:: 0.6 - added `auto_save`
         .. versionadded:: 0.3
         """
+        msg = ("get_or_create is scheduled to be deprecated.  The approach is "
+               "flawed without transactions. Upserts should be preferred.")
+        raise DeprecationWarning(msg)
+
         defaults = query.get('defaults', {})
         if 'defaults' in query:
             del query['defaults']

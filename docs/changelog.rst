@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8
 ==============
+- Deprecated `get_or_create` (MongoEngine/mongoengine#35)
 - Updated inheritable objects created by upsert now contain _cls (MongoEngine/mongoengine#118)
 - Added support for creating documents with embedded documents in a single operation (MongoEngine/mongoengine#6)
 - Added to_json and from_json to Document (MongoEngine/mongoengine#1)
