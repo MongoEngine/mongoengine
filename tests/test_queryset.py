@@ -1793,6 +1793,22 @@ class QuerySetTest(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
+    def test_order_by_chaining(self):
+        """Ensure that an order_by query chains properly and allows .only()
+        """
+        self.Person(name="User A", age=20).save()
+        self.Person(name="User B", age=40).save()
+        self.Person(name="User C", age=30).save()
+
+        only_age = self.Person.objects.order_by('-age').only('age')
+
+        names = [p.name for p in only_age]
+        ages = [p.age for p in only_age]
+
+        # The .only('age') clause should mean that all names are None
+        self.assertEqual(names, [None, None, None])
+        self.assertEqual(ages, [40, 30, 20])
+
     def test_confirm_order_by_reference_wont_work(self):
         """Ordering by reference is not possible.  Use map / reduce.. or
         denormalise"""
