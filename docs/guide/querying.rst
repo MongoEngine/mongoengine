@@ -179,9 +179,11 @@ Retrieving unique results
 -------------------------
 To retrieve a result that should be unique in the collection, use
 :meth:`~mongoengine.queryset.QuerySet.get`. This will raise
-:class:`~mongoengine.queryset.DoesNotExist` if no document matches the query,
-and :class:`~mongoengine.queryset.MultipleObjectsReturned` if more than one
-document matched the query.
+:class:`~mongoengine.queryset.DoesNotExist` if
+no document matches the query, and
+:class:`~mongoengine.queryset.MultipleObjectsReturned`
+if more than one document matched the query.  These exceptions are merged into
+your document defintions eg: `MyDoc.DoesNotExist`
 
 A variation of this method exists,
 :meth:`~mongoengine.queryset.Queryset.get_or_create`, that will create a new
