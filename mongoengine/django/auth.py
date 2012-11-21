@@ -70,7 +70,7 @@ class User(Document):
     meta = {
         'allow_inheritance': True,
         'indexes': [
-            {'fields': ['username'], 'unique': True}
+            {'fields': ['username'], 'unique': True, 'sparse': True}
         ]
     }
 
