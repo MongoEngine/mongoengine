@@ -3388,6 +3388,24 @@ class ValidatorErrorTest(unittest.TestCase):
                 'username': 'Field is required',
                 'name': 'Field is required'})
 
+    def test_email_custom_regex_validation(self):
+
+        class UserNormalEmail(Document):
+            email = EmailField()
+
+        u = UserNormalEmail(email='invalid email')
+        self.assertRaises(ValidationError, u.validate)
+
+        UserNormalEmail(email='test@email.com').validate()
+
+        class UserCustomEmail(Document):
+            email = EmailField(regex=r'\w*@custom.com')
+
+        u = UserCustomEmail(email='test@email.com')
+        self.assertRaises(ValidationError, u.validate)
+
+        UserCustomEmail(email='test@custom.com').validate()
+
     def test_spaces_in_keys(self):
 
         class Embedded(DynamicEmbeddedDocument):
