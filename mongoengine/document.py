@@ -130,6 +130,13 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
+
+        # Invalidate existing cls._collection if it's not using the correct
+        # database.
+        if getattr(cls, '_collection', None) is not None:
+            if cls._collection.database.name != cls._get_db().name:
+                cls._collection = None
+
         if not hasattr(cls, '_collection') or cls._collection is None:
             db = cls._get_db()
             collection_name = cls._get_collection_name()

@@ -3278,6 +3278,31 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEqual('testdb-1', B._meta.get('db_alias'))
 
+    def test_db_alias_overrides(self):
+        """db_alias can be overriden
+        """
+        # Register a connection with db_alias testdb-2
+        register_connection('testdb-2', 'mongoenginetest2')
+
+        class A(Document):
+            """Uses default db_alias
+            """
+            name = StringField()
+            meta = {"allow_inheritance": True}
+
+        class B(A):
+            """Uses testdb-2 db_alias
+            """
+            meta = {"db_alias": "testdb-2"}
+
+        # query with A, to initiate a connection to the default db_alias
+        A.objects.count()
+
+        self.assertEquals('testdb-2', B._meta.get('db_alias'))
+        self.assertEquals('mongoenginetest2', 
+                           B._get_collection().database.name)
+
+
     def test_db_ref_usage(self):
         """ DB Ref usage  in dict_fields"""
 
