@@ -123,6 +123,27 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
+    def test_list_item_dereference_dref_false_stores_as_type(self):
+        """Ensure that DBRef items are stored as their type
+        """
+        class User(Document):
+            my_id = IntField(primary_key=True)
+            name = StringField()
+
+        class Group(Document):
+            members = ListField(ReferenceField(User, dbref=False))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user = User(my_id=1, name='user 1').save()
+
+        Group(members=User.objects).save()
+        group = Group.objects.first()
+
+        self.assertEqual(Group._get_collection().find_one()['members'], [1])
+        self.assertEqual(group.members, [user])
+
     def test_handle_old_style_references(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
