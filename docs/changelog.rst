@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.7
+================
+- Fix handling for old style _types
+
 Changes in 0.7.6
 ================
 - Unicode fix for repr (MongoEngine/mongoengine#133)
