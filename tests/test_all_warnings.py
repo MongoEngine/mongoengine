@@ -53,7 +53,7 @@ class TestWarnings(unittest.TestCase):
         p2.parent = p1
         p2.save(cascade=False)
 
-        self.assertEqual(len(self.warning_list), 1)
+        self.assertTrue(len(self.warning_list) > 0)
         warning = self.warning_list[0]
         self.assertEqual(FutureWarning, warning["category"])
         self.assertTrue("ReferenceFields will default to using ObjectId"
