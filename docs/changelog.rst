@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8
 ==============
+- Fixed db_alias and inherited Documents (MongoEngine/mongoengine#143)
 - Documentation update for document errors (MongoEngine/mongoengine#124)
 - Deprecated `get_or_create` (MongoEngine/mongoengine#35)
 - Updated inheritable objects created by upsert now contain _cls (MongoEngine/mongoengine#118)
