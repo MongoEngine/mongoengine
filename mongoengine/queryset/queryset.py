@@ -251,7 +251,7 @@ class QuerySet(object):
         """
         msg = ("get_or_create is scheduled to be deprecated.  The approach is "
                "flawed without transactions. Upserts should be preferred.")
-        raise DeprecationWarning(msg)
+        warnings.warn(msg, DeprecationWarning)
 
         defaults = query.get('defaults', {})
         if 'defaults' in query:
