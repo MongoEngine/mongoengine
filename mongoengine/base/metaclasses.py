@@ -169,6 +169,9 @@ class DocumentMetaclass(type):
                        "field name" % field.name)
                 raise InvalidDocumentError(msg)
 
+        if issubclass(new_class, Document):
+            new_class._collection = None
+
         # Add class to the _document_registry
         _document_registry[new_class._class_name] = new_class
 

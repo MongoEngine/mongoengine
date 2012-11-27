@@ -1762,6 +1762,31 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Book._get_collection(), get_db("testdb-2")[Book._get_collection_name()])
         self.assertEqual(AuthorBooks._get_collection(), get_db("testdb-3")[AuthorBooks._get_collection_name()])
 
+    def test_db_alias_overrides(self):
+        """db_alias can be overriden
+        """
+        # Register a connection with db_alias testdb-2
+        register_connection('testdb-2', 'mongoenginetest2')
+
+        class A(Document):
+            """Uses default db_alias
+            """
+            name = StringField()
+            meta = {"allow_inheritance": True}
+
+        class B(A):
+            """Uses testdb-2 db_alias
+            """
+            meta = {"db_alias": "testdb-2"}
+
+        A.objects.all()
+
+        self.assertEquals('testdb-2', B._meta.get('db_alias'))
+        self.assertEquals('mongoenginetest',
+                           A._get_collection().database.name)
+        self.assertEquals('mongoenginetest2',
+                           B._get_collection().database.name)
+
     def test_db_alias_propagates(self):
         """db_alias propagates?
         """
