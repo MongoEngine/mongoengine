@@ -9,11 +9,10 @@ _document_registry = {}
 
 def get_document(name):
     doc = _document_registry.get(name, None)
-    if not doc:
-        # Possible old style names
-        end = ".%s" % name
-        possible_match = [k for k in _document_registry.keys()
-                          if k.endswith(end)]
+    if not doc and '.' in name:
+        # Possible old style name
+        end = name.split('.')[-1]
+        possible_match = [k for k in _document_registry.keys() if k == end]
         if len(possible_match) == 1:
             doc = _document_registry.get(possible_match.pop(), None)
     if not doc:
