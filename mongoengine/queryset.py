@@ -11,7 +11,6 @@ from mongoengine.python_support import product, reduce
 
 import pymongo
 from bson.code import Code
-from IPy import IP
 
 from mongoengine import signals
 
@@ -691,8 +690,6 @@ class QuerySet(object):
     def _transform_query(cls, _doc_cls=None, _field_operation=False, **query):
         """Transform a query from Django-style format to Mongo format.
         """
-        from mongoengine.fields import IPNetworkField
-        from mongoengine.fields import IPField
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists', 'not']
         geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'within_polygon', 'near', 'near_sphere']
@@ -702,18 +699,6 @@ class QuerySet(object):
         custom_operators = ['match']
 
         mongo_query = {}
-        def mongo_query_and(value):
-            if "$and" in mongo_query:
-                mongo_query["$and"].append(value)
-            else:
-                mongo_query["$and"] = value
-
-        def mongo_query_or(value):
-            if "$or" in mongo_query:
-                mongo_query["$or"].append(value)
-            else:
-                mongo_query["$or"] = value
-
         merge_query = defaultdict(list)
         for key, value in query.items():
             if key == "__raw__":
@@ -763,44 +748,8 @@ class QuerySet(object):
                             value = field
                     else:
                         value = field.prepare_query_value(op, value)
-                        if isinstance(field, IPNetworkField):
-                            if op == "contains":
-                                contains_query = list()
-                                for (k, v) in value.items():
-                                    new_key = ".".join(parts + [k])
-                                    if negate:
-                                        if "$lte" in v:
-                                            v["$gt"] = v.pop("$lte")
-                                        else:
-                                            v["$lt"] = v.pop("$gte")
-                                    contains_query.append({new_key: v})
-                                if negate:
-                                    mongo_query_or(contains_query)
-                                else:
-                                    mongo_query_and(contains_query)
-                                continue
-                            parts.append("net$lower")
                 elif op in ('in', 'nin', 'all', 'near'):
                     # 'in', 'nin' and 'all' require a list of values
-                    if isinstance(value, IP):
-                        if op not in ('in', 'nin'):
-                            raise NotImplemented('%s not implemented for IP fields' % op)
-                        key = '.'.join(parts)
-                        lower = field.prepare_query_value(None, value[0])
-                        upper = field.prepare_query_value(None, value[-1])
-                        if op == 'in' and not negate:
-                            value = [
-                                {key: {"$gte": lower}},
-                                {key: {"$lte": upper}},
-                            ]
-                            mongo_query_and(value)
-                        else:
-                            value = [
-                                {key: {"$lt": lower}},
-                                {key: {"$gt": upper}},
-                            ]
-                            mongo_query_or(value)
-                        continue
                     value = [field.prepare_query_value(op, v) for v in value]
 
             # if op and op not in match_operators:
@@ -830,14 +779,12 @@ class QuerySet(object):
                 elif op not in match_operators:
                     value = {'$' + op: value}
 
-            if negate and not isinstance(field, IPNetworkField):
+            if negate:
                 value = {'$not': value}
 
             for i, part in indices:
                 parts.insert(i, part)
-
             key = '.'.join(parts)
-                
             if op is None or key not in mongo_query:
                 mongo_query[key] = value
             elif key in mongo_query:
@@ -847,16 +794,11 @@ class QuerySet(object):
                     # Store for manually merging later
                     merge_query[key].append(value)
 
-#        for k, v in mongo_query.items():
-#            if k not in ("$and", "$or") and isinstance(v, list):
-#                value = [{k:val} for val in v]
-#                mongo_query_and(value)
-#                del mongo_query[k]
         # The queryset has been filter in such a way we must manually merge
         for k, v in merge_query.items():
             merge_query[k].append(mongo_query[k])
             del mongo_query[k]
-            if (k not in ("$and", "$or")) and isinstance(v, list):
+            if isinstance(v, list):
                 value = [{k:val} for val in v]
                 if '$and' in mongo_query.keys():
                     mongo_query['$and'].append(value)
