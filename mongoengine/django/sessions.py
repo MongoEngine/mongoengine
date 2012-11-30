@@ -15,10 +15,12 @@ MONGOENGINE_SESSION_DB_ALIAS = getattr(
     settings, 'MONGOENGINE_SESSION_DB_ALIAS',
     DEFAULT_CONNECTION_NAME)
 
+# a setting for the name of the collection used to store sessions
 MONGOENGINE_SESSION_COLLECTION = getattr(
     settings, 'MONGOENGINE_SESSION_COLLECTION',
     'django_session')
 
+# a setting for whether session data is stored encoded or not
 MONGOENGINE_SESSION_DATA_ENCODE = getattr(
     settings, 'MONGOENGINE_SESSION_DATA_ENCODE',
     True)
