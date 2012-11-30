@@ -163,9 +163,8 @@ class Document(BaseDocument):
 
         # no secondary queries during backups ~3am
         time_now = datetime.datetime.now().time()
-        if slave_ok and time_now > datetime.time(3,15) and \
-                time_now < datetime.time(2,55):
-            read_preference = pymongo.ReadPreference.SECONDARY
+        if slave_ok and not (datetime.time(2, 55) < time_now < datetime.time(3,15)):
+            read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED
         else:
             read_preference = pymongo.ReadPreference.PRIMARY
 
@@ -187,7 +186,8 @@ class Document(BaseDocument):
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=False, **kwargs):
-        cur = cls.find_raw(spec, fields, skip, limit, sort, **kwargs)
+        cur = cls.find_raw(spec, fields, skip, limit, sort, slave_ok=slave_ok,
+                           **kwargs)
 
         return [cls._from_son(d) for d in cur]
 
@@ -195,7 +195,7 @@ class Document(BaseDocument):
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=False, timeout=False, **kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
-                           sort, timeout=False, **kwargs)
+                           sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
 
         for doc in cur:
             yield cls._from_son(doc)
