@@ -2299,6 +2299,18 @@ class FieldTest(unittest.TestCase):
         post.comments[1].content = 'here we go'
         post.validate()
 
+    def test_email_field_honors_regex(self):
+        class User(Document):
+            email = EmailField(regex=r'\w+@example.com')
+
+        # Fails regex validation
+        user = User(email='me@foo.com')
+        self.assertRaises(ValidationError, user.validate)
+
+        # Passes regex validation
+        user = User(email='me@example.com')
+        self.assertTrue(user.validate() is None)
+
 
 if __name__ == '__main__':
     unittest.main()
