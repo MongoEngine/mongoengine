@@ -3693,20 +3693,36 @@ class QueryFieldListTest(unittest.TestCase):
 
     def test_as_pymongo(self):
 
+        from decimal import Decimal
+
         class User(Document):
             id = ObjectIdField('_id')
             name = StringField()
             age = IntField()
+            price = DecimalField()
 
         User.drop_collection()
-        User(name="Bob Dole", age=89).save()
-        User(name="Barack Obama", age=51).save()
+        User(name="Bob Dole", age=89, price=Decimal('1.11')).save()
+        User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
 
-        users = [u for u in User.objects.only('name').as_pymongo()]
-        self.assertTrue(isinstance(users[0], dict))
-        self.assertTrue(isinstance(users[1], dict))
-        self.assertEqual(users[0]['name'], 'Bob Dole')
-        self.assertEqual(users[1]['name'], 'Barack Obama')
+        users = User.objects.only('name', 'price').as_pymongo()
+        results = list(users)
+        self.assertTrue(isinstance(results[0], dict))
+        self.assertTrue(isinstance(results[1], dict))
+        self.assertEqual(results[0]['name'], 'Bob Dole')
+        self.assertEqual(results[0]['price'], '1.11')
+        self.assertEqual(results[1]['name'], 'Barack Obama')
+        self.assertEqual(results[1]['price'], '2.22')
+
+        # Test coerce_types
+        users = User.objects.only('name', 'price').as_pymongo(coerce_types=True)
+        results = list(users)
+        self.assertTrue(isinstance(results[0], dict))
+        self.assertTrue(isinstance(results[1], dict))
+        self.assertEqual(results[0]['name'], 'Bob Dole')
+        self.assertEqual(results[0]['price'], Decimal('1.11'))
+        self.assertEqual(results[1]['name'], 'Barack Obama')
+        self.assertEqual(results[1]['price'], Decimal('2.22'))
 
 if __name__ == '__main__':
     unittest.main()
