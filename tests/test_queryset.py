@@ -3691,6 +3691,22 @@ class QueryFieldListTest(unittest.TestCase):
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
 
+    def test_as_pymongo(self):
+
+        class User(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+            age = IntField()
+
+        User.drop_collection()
+        User(name="Bob Dole", age=89).save()
+        User(name="Barack Obama", age=51).save()
+
+        users = [u for u in User.objects.only('name').as_pymongo()]
+        self.assertTrue(isinstance(users[0], dict))
+        self.assertTrue(isinstance(users[1], dict))
+        self.assertEqual(users[0]['name'], 'Bob Dole')
+        self.assertEqual(users[1]['name'], 'Barack Obama')
 
 if __name__ == '__main__':
     unittest.main()

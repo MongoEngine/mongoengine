@@ -353,6 +353,7 @@ class QuerySet(object):
         self._slave_okay = False
         self._iter = False
         self._scalar = []
+        self._as_pymongo = False
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -1002,6 +1003,10 @@ class QuerySet(object):
             if self._scalar:
                 return self._get_scalar(self._document._from_son(
                         self._cursor.next()))
+
+            if self._as_pymongo:
+                return self._cursor.next()
+
             return self._document._from_son(self._cursor.next())
         except StopIteration, e:
             self.rewind()
@@ -1601,6 +1606,13 @@ class QuerySet(object):
     def values_list(self, *fields):
         """An alias for scalar"""
         return self.scalar(*fields)
+
+    def as_pymongo(self):
+        """Instead of returning Document instances, return raw values from
+        pymongo.
+        """
+        self._as_pymongo = True
+        return self
 
     def _sub_js_fields(self, code):
         """When fields are specified with [~fieldname] syntax, where
