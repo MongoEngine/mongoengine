@@ -988,6 +988,9 @@ class QuerySet(object):
             for doc in docs:
                 doc_map[doc['_id']] = self._get_scalar(
                         self._document._from_son(doc))
+        elif self._as_pymongo:
+            for doc in docs:
+                doc_map[doc['_id']] = self._get_as_pymongo(doc)
         else:
             for doc in docs:
                 doc_map[doc['_id']] = self._document._from_son(doc)
@@ -1189,6 +1192,8 @@ class QuerySet(object):
             if self._scalar:
                 return self._get_scalar(self._document._from_son(
                         self._cursor[key]))
+            if self._as_pymongo:
+                return self._get_as_pymongo(self._cursor.next())
             return self._document._from_son(self._cursor[key])
         raise AttributeError
 
