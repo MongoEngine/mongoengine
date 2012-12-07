@@ -584,13 +584,6 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Blog.objects.count(), 2)
 
-        # test handles people trying to upsert
-        def throw_operation_error():
-            blogs = Blog.objects
-            Blog.objects.insert(blogs)
-
-        self.assertRaises(OperationError, throw_operation_error)
-
         # test handles other classes being inserted
         def throw_operation_error_wrong_doc():
             class Author(Document):
