@@ -354,6 +354,7 @@ class QuerySet(object):
         self._iter = False
         self._scalar = []
         self._as_pymongo = False
+        self._as_pymongo_coerce = False
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -1003,9 +1004,8 @@ class QuerySet(object):
             if self._scalar:
                 return self._get_scalar(self._document._from_son(
                         self._cursor.next()))
-
             if self._as_pymongo:
-                return self._cursor.next()
+                return self._get_as_pymongo(self._cursor.next())
 
             return self._document._from_son(self._cursor.next())
         except StopIteration, e:
@@ -1585,6 +1585,48 @@ class QuerySet(object):
 
         return tuple(data)
 
+    def _get_as_pymongo(self, row):
+        # Extract which fields paths we should follow if .fields(...) was
+        # used. If not, handle all fields.
+        if not getattr(self, '__as_pymongo_fields', None):
+            self.__as_pymongo_fields = []
+            for field in self._loaded_fields.fields - set(['_cls', '_id', '_types']):
+                self.__as_pymongo_fields.append(field)
+                while '.' in field:
+                    field, _ = field.rsplit('.', 1)
+                    self.__as_pymongo_fields.append(field)
+
+        all_fields = not self.__as_pymongo_fields
+
+        def clean(data, path=None):
+            path = path or ''
+
+            if isinstance(data, dict):
+                new_data = {}
+                for key, value in data.iteritems():
+                    new_path = '%s.%s' % (path, key) if path else key
+                    if all_fields or new_path in self.__as_pymongo_fields:
+                        new_data[key] = clean(value, path=new_path)
+                data = new_data
+            elif isinstance(data, list):
+                data = [clean(d, path=path) for d in data]
+            else:
+                if self._as_pymongo_coerce:
+                    # If we need to coerce types, we need to determine the
+                    # type of this field and use the corresponding .to_python(...)
+                    from mongoengine.fields import EmbeddedDocumentField
+                    obj = self._document
+                    for chunk in path.split('.'):
+                        obj = getattr(obj, chunk, None)
+                        if obj is None:
+                            break
+                        elif isinstance(obj, EmbeddedDocumentField):
+                            obj = obj.document_type
+                    if obj and data is not None:
+                        data = obj.to_python(data)
+            return data
+        return clean(row)
+
     def scalar(self, *fields):
         """Instead of returning Document instances, return either a specific
         value or a tuple of values in order.
@@ -1607,11 +1649,14 @@ class QuerySet(object):
         """An alias for scalar"""
         return self.scalar(*fields)
 
-    def as_pymongo(self):
+    def as_pymongo(self, coerce_types=False):
         """Instead of returning Document instances, return raw values from
         pymongo.
+
+        :param coerce_type: Field types (if applicable) would be use to coerce types.
         """
         self._as_pymongo = True
+        self._as_pymongo_coerce = coerce_types
         return self
 
     def _sub_js_fields(self, code):
