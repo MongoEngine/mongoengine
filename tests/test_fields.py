@@ -1105,6 +1105,16 @@ class FieldTest(unittest.TestCase):
         p = Person.objects.get(name="Ross")
         self.assertEqual(p.parent, p1)
 
+    def test_dbref_to_mongo(self):
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self', dbref=False)
+
+        p1 = Person._from_son({'name': "Yakxxx",
+                               'parent': "50a234ea469ac1eda42d347d"})
+        mongoed = p1.to_mongo()
+        self.assertTrue(isinstance(mongoed['parent'], ObjectId))
+
     def test_objectid_reference_fields(self):
 
         class Person(Document):

@@ -778,7 +778,7 @@ class ReferenceField(BaseField):
     def to_mongo(self, document):
         if isinstance(document, DBRef):
             if not self.dbref:
-                return DBRef.id
+                return document.id
             return document
         elif not self.dbref and isinstance(document, basestring):
             return document
