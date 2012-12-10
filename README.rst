@@ -14,7 +14,7 @@ About
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
 Documentation available at http://mongoengine-odm.rtfd.org - there is currently
 a `tutorial <http://readthedocs.org/docs/mongoengine-odm/en/latest/tutorial.html>`_, a `user guide
-<http://readthedocs.org/docs/mongoengine-odm/en/latest/userguide.html>`_ and an `API reference
+<https://mongoengine-odm.readthedocs.org/en/latest/guide/index.html>`_ and an `API reference
 <http://readthedocs.org/docs/mongoengine-odm/en/latest/apireference.html>`_.
 
 Installation
