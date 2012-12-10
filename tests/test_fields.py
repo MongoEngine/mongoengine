@@ -2175,6 +2175,28 @@ class FieldTest(unittest.TestCase):
         c = self.db['mongoengine.counters'].find_one({'_id': 'animal.id'})
         self.assertEqual(c['next'], 10)
 
+    def test_embedded_sequence_field(self):
+        class Comment(EmbeddedDocument):
+            id = SequenceField()
+            content = StringField(required=True)
+
+        class Post(Document):
+            title = StringField(required=True)
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        self.db['mongoengine.counters'].drop()
+        Post.drop_collection()
+
+        Post(title="MongoEngine",
+             comments=[Comment(content="NoSQL Rocks"),
+                       Comment(content="MongoEngine Rocks")]).save()
+
+        c = self.db['mongoengine.counters'].find_one({'_id': 'Comment.id'})
+        self.assertEqual(c['next'], 2)
+        post = Post.objects.first()
+        self.assertEqual(1, post.comments[0].id)
+        self.assertEqual(2, post.comments[1].id)
+
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()

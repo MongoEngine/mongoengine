@@ -1338,7 +1338,7 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias=None, sequence_name=None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
@@ -1348,7 +1348,7 @@ class SequenceField(IntField):
         """
         Generate and Increment the counter
         """
-        sequence_name = self.sequence_name or self.owner_document._get_collection_name()
+        sequence_name = self.get_sequence_name()
         sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
@@ -1356,6 +1356,15 @@ class SequenceField(IntField):
                                              new=True,
                                              upsert=True)
         return counter['next']
+
+    def get_sequence_name(self):
+        if self.sequence_name:
+            return self.sequence_name
+        owner = self.owner_document
+        if issubclass(owner, Document):
+            return owner._get_collection_name()
+        else:
+            return owner._class_name
 
     def __get__(self, instance, owner):
 
