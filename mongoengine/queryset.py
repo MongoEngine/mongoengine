@@ -610,11 +610,13 @@ class QuerySet(object):
             if self._where_clause:
                 self._cursor_obj.where(self._where_clause)
 
-            # apply default ordering
             if self._ordering:
+                # Apply query ordering
                 self._cursor_obj.sort(self._ordering)
             elif self._document._meta['ordering']:
+                # Otherwise, apply the ordering from the document model
                 self.order_by(*self._document._meta['ordering'])
+                self._cursor_obj.sort(self._ordering)
 
             if self._limit is not None:
                 self._cursor_obj.limit(self._limit - (self._skip or 0))
@@ -1312,7 +1314,7 @@ class QuerySet(object):
             key_list.append((key, direction))
 
         self._ordering = key_list
-        self._cursor.sort(key_list)
+
         return self
 
     def explain(self, format=False):
