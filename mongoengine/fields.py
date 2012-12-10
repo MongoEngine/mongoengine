@@ -149,6 +149,7 @@ class EmailField(StringField):
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
             self.error('Invalid Mail-address: %s' % value)
+        super(EmailField, self).validate(value)
 
 
 class IntField(BaseField):
