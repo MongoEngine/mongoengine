@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.7.8
 ================
+- Added optional encoding and collection config for Django sessions (MongoEngine/mongoengine#180, MongoEngine/mongoengine#181, MongoEngine/mongoengine#183)
 - Fixed EmailField so can add extra validation (MongoEngine/mongoengine#173, MongoEngine/mongoengine#174, MongoEngine/mongoengine#187)
 - Fixed bulk inserts can now handle custom pk's (MongoEngine/mongoengine#192)
 - Added as_pymongo method to return raw or cast results from pymongo (MongoEngine/mongoengine#193)
