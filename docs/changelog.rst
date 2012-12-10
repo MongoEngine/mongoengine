@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.7.8
 ================
+- Fix query chaining with .order_by() (MongoEngine/mongoengine#176)
 - Added optional encoding and collection config for Django sessions (MongoEngine/mongoengine#180, MongoEngine/mongoengine#181, MongoEngine/mongoengine#183)
 - Fixed EmailField so can add extra validation (MongoEngine/mongoengine#173, MongoEngine/mongoengine#174, MongoEngine/mongoengine#187)
 - Fixed bulk inserts can now handle custom pk's (MongoEngine/mongoengine#192)
