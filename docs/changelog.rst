@@ -2,6 +2,11 @@
 Changelog
 =========
 
+
+Changes in 0.7.8
+================
+- Added as_pymongo method to return raw or cast results from pymongo (MongoEngine/mongoengine#193)
+
 Changes in 0.7.7
 ================
 - Fix handling for old style _types
