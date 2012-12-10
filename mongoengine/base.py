@@ -122,9 +122,11 @@ def get_document(name):
     doc = _document_registry.get(name, None)
     if not doc:
         # Possible old style name
-        end = name.split('.')[-1]
-        possible_match = [k for k in _document_registry.keys() if k == end]
-        if len(possible_match) == 1 and end != name:
+        single_end = name.split('.')[-1]
+        compound_end = '.%s' % single_end
+        possible_match = [k for k in _document_registry.keys()
+                          if k.endswith(compound_end) or k == single_end]
+        if len(possible_match) == 1:
             doc = _document_registry.get(possible_match.pop(), None)
     if not doc:
         raise NotRegistered("""

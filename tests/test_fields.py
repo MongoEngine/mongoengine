@@ -2201,7 +2201,7 @@ class FieldTest(unittest.TestCase):
              comments=[Comment(content="NoSQL Rocks"),
                        Comment(content="MongoEngine Rocks")]).save()
 
-        c = self.db['mongoengine.counters'].find_one({'_id': 'Comment.id'})
+        c = self.db['mongoengine.counters'].find_one({'_id': 'comment.id'})
         self.assertEqual(c['next'], 2)
         post = Post.objects.first()
         self.assertEqual(1, post.comments[0].id)

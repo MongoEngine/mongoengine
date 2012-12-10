@@ -15,7 +15,7 @@ from datetime import datetime
 from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
 
 from mongoengine import *
-from mongoengine.base import NotRegistered, InvalidDocumentError
+from mongoengine.base import NotRegistered, InvalidDocumentError, get_document
 from mongoengine.queryset import InvalidQueryError
 from mongoengine.connection import get_db, get_connection
 
@@ -1336,7 +1336,6 @@ class DocumentTest(unittest.TestCase):
 
         User.drop_collection()
 
-
     def test_document_not_registered(self):
 
         class Place(Document):
@@ -1361,6 +1360,19 @@ class DocumentTest(unittest.TestCase):
             print Place.objects.all()
         self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
+    def test_document_registry_regressions(self):
+
+        class Location(Document):
+            name = StringField()
+            meta = {'allow_inheritance': True}
+
+        class Area(Location):
+            location = ReferenceField('Location', dbref=True)
+
+        Location.drop_collection()
+
+        self.assertEquals(Area, get_document("Area"))
+        self.assertEquals(Area, get_document("Location.Area"))
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.

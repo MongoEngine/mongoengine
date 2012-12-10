@@ -1364,7 +1364,8 @@ class SequenceField(IntField):
         if issubclass(owner, Document):
             return owner._get_collection_name()
         else:
-            return owner._class_name
+            return ''.join('_%s' % c if c.isupper() else c
+                            for c in owner._class_name).strip('_').lower()
 
     def __get__(self, instance, owner):
 

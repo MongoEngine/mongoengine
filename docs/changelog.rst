@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.7.9
+================
+- Better fix handling for old style _types
+- Embedded SequenceFields follow collection naming convention
 
 Changes in 0.7.8
 ================
