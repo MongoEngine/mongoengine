@@ -591,6 +591,10 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertRaises(OperationError, throw_operation_error)
 
+        # Test can insert new doc
+        new_post = Blog(title="code", id=ObjectId())
+        Blog.objects.insert(new_post)
+
         # test handles other classes being inserted
         def throw_operation_error_wrong_doc():
             class Author(Document):

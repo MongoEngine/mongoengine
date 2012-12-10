@@ -5,6 +5,8 @@ Changelog
 
 Changes in 0.7.8
 ================
+- Fixed EmailField so can add extra validation (MongoEngine/mongoengine#173, MongoEngine/mongoengine#174, MongoEngine/mongoengine#187)
+- Fixed bulk inserts can now handle custom pk's (MongoEngine/mongoengine#192)
 - Added as_pymongo method to return raw or cast results from pymongo (MongoEngine/mongoengine#193)
 
 Changes in 0.7.7
