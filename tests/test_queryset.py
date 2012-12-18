@@ -1341,6 +1341,14 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
         self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
 
+        # Test invalid query objs
+        def wrong_query_objs():
+            self.Person.objects('user1')
+        def wrong_query_objs_filter():
+            self.Person.objects('user1')
+        self.assertRaises(InvalidQueryError, wrong_query_objs)
+        self.assertRaises(InvalidQueryError, wrong_query_objs_filter)
+
     def test_q_regex(self):
         """Ensure that Q objects can be queried using regexes.
         """
