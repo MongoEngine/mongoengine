@@ -81,6 +81,40 @@ class OnlyExcludeAllTest(unittest.TestCase):
         Person.drop_collection()
         self.Person = Person
 
+    def test_mixing_only_exclude(self):
+
+        class MyDoc(Document):
+            a = StringField()
+            b = StringField()
+            c = StringField()
+            d = StringField()
+            e = StringField()
+            f = StringField()
+
+        include = ['a', 'b', 'c', 'd', 'e']
+        exclude = ['d', 'e']
+        only = ['b', 'c']
+
+        qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
+        self.assertEqual(qs._loaded_fields.as_dict(),
+            {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1})
+        qs = qs.only(*only)
+        self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
+        qs = qs.exclude(*exclude)
+        self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
+
+        qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
+        qs = qs.exclude(*exclude)
+        self.assertEqual(qs._loaded_fields.as_dict(), {'a': 1, 'b': 1, 'c': 1})
+        qs = qs.only(*only)
+        self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
+
+        qs = MyDoc.objects.exclude(*exclude)
+        qs = qs.fields(**dict(((i, 1) for i in include)))
+        self.assertEqual(qs._loaded_fields.as_dict(), {'a': 1, 'b': 1, 'c': 1})
+        qs = qs.only(*only)
+        self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
+
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
         """
