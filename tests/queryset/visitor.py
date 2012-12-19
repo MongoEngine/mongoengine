@@ -308,3 +308,6 @@ class QTest(unittest.TestCase):
                                 Q(email='example@example.com') |
                                 Q(name='John Doe')
                                 ).limit(2).filter(pk=pk).count())
+
+if __name__ == '__main__':
+    unittest.main()
