@@ -1526,6 +1526,42 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue(None in keys)
         self.assertTrue('e' in keys)
 
+    def test_embedded_db_field_can_update(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField()
+
+        class Doc(DynamicDocument):
+            pass
+
+        Doc.drop_collection()
+
+        doc = Doc()
+        doc.e = SubDoc(val=15)
+        doc.save()
+
+        doc = Doc.objects.first()
+        doc.f = 6
+        doc.save()
+
+    def test_dynamic_embedded_db_field_can_update(self):
+
+        class SubDoc(DynamicEmbeddedDocument):
+            val = IntField()
+
+        class Doc(DynamicDocument):
+            pass
+
+        Doc.drop_collection()
+
+        doc = Doc()
+        doc.e = SubDoc(val=15)
+        doc.save()
+
+        doc = Doc.objects.first()
+        doc.f = 6
+        doc.save()
+
     def test_save(self):
         """Ensure that a document may be saved in the database.
         """
