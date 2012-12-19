@@ -21,6 +21,7 @@ Changes in 0.8
 - Remove _types and just use _cls for inheritance (#148)
 - Only allow QNode instances to be passed as query objects (#199)
 - Dynamic fields are now validated on save (#153) (#154)
+- Added support for multiple slices and made slicing chainable. (#170) (#190) (#191)
 
 Changes in 0.7.9
 ================

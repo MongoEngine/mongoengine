@@ -115,6 +115,35 @@ class OnlyExcludeAllTest(unittest.TestCase):
         qs = qs.only(*only)
         self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
 
+    def test_slicing(self):
+
+        class MyDoc(Document):
+            a = ListField()
+            b = ListField()
+            c = ListField()
+            d = ListField()
+            e = ListField()
+            f = ListField()
+
+        include = ['a', 'b', 'c', 'd', 'e']
+        exclude = ['d', 'e']
+        only = ['b', 'c']
+
+        qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
+        qs = qs.exclude(*exclude)
+        qs = qs.only(*only)
+        qs = qs.fields(slice__b=5)
+        self.assertEqual(qs._loaded_fields.as_dict(),
+            {'b': {'$slice': 5}, 'c': 1})
+
+        qs = qs.fields(slice__c=[5, 1])
+        self.assertEqual(qs._loaded_fields.as_dict(),
+            {'b': {'$slice': 5}, 'c': {'$slice': [5, 1]}})
+
+        qs = qs.exclude('c')
+        self.assertEqual(qs._loaded_fields.as_dict(),
+            {'b': {'$slice': 5}})
+
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
         """
