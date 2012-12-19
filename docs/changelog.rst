@@ -4,23 +4,23 @@ Changelog
 
 Changes in 0.8
 ==============
-- Fixed db_alias and inherited Documents (MongoEngine/mongoengine#143)
-- Documentation update for document errors (MongoEngine/mongoengine#124)
-- Deprecated `get_or_create` (MongoEngine/mongoengine#35)
-- Updated inheritable objects created by upsert now contain _cls (MongoEngine/mongoengine#118)
-- Added support for creating documents with embedded documents in a single operation (MongoEngine/mongoengine#6)
-- Added to_json and from_json to Document (MongoEngine/mongoengine#1)
-- Added to_json and from_json to QuerySet (MongoEngine/mongoengine#131)
-- Updated index creation now tied to Document class (MongoEngine/mongoengine#102)
-- Added none() to queryset (MongoEngine/mongoengine#127)
-- Updated SequenceFields to allow post processing of the calculated counter value (MongoEngine/mongoengine#141)
-- Added clean method to documents for pre validation data cleaning (MongoEngine/mongoengine#60)
-- Added support setting for read prefrence at a query level (MongoEngine/mongoengine#157)
-- Added _instance to EmbeddedDocuments pointing to the parent (MongoEngine/mongoengine#139)
-- Inheritance is off by default (MongoEngine/mongoengine#122)
-- Remove _types and just use _cls for inheritance (MongoEngine/mongoengine#148)
-- Only allow QNode instances to be passed as query objects (MongoEngine/mongoengine#199)
-- Dynamic fields are now validated on save (MongoEngine/mongoengine#153) (MongoEngine/mongoengine#154)
+- Fixed db_alias and inherited Documents (#143)
+- Documentation update for document errors (#124)
+- Deprecated `get_or_create` (#35)
+- Updated inheritable objects created by upsert now contain _cls (#118)
+- Added support for creating documents with embedded documents in a single operation (#6)
+- Added to_json and from_json to Document (#1)
+- Added to_json and from_json to QuerySet (#131)
+- Updated index creation now tied to Document class (#102)
+- Added none() to queryset (#127)
+- Updated SequenceFields to allow post processing of the calculated counter value (#141)
+- Added clean method to documents for pre validation data cleaning (#60)
+- Added support setting for read prefrence at a query level (#157)
+- Added _instance to EmbeddedDocuments pointing to the parent (#139)
+- Inheritance is off by default (#122)
+- Remove _types and just use _cls for inheritance (#148)
+- Only allow QNode instances to be passed as query objects (#199)
+- Dynamic fields are now validated on save (#153) (#154)
 
 Changes in 0.7.9
 ================
@@ -29,12 +29,12 @@ Changes in 0.7.9
 
 Changes in 0.7.8
 ================
-- Fix sequence fields in embedded documents (MongoEngine/mongoengine#166)
-- Fix query chaining with .order_by() (MongoEngine/mongoengine#176)
-- Added optional encoding and collection config for Django sessions (MongoEngine/mongoengine#180, MongoEngine/mongoengine#181, MongoEngine/mongoengine#183)
-- Fixed EmailField so can add extra validation (MongoEngine/mongoengine#173, MongoEngine/mongoengine#174, MongoEngine/mongoengine#187)
-- Fixed bulk inserts can now handle custom pk's (MongoEngine/mongoengine#192)
-- Added as_pymongo method to return raw or cast results from pymongo (MongoEngine/mongoengine#193)
+- Fix sequence fields in embedded documents (#166)
+- Fix query chaining with .order_by() (#176)
+- Added optional encoding and collection config for Django sessions (#180, #181, #183)
+- Fixed EmailField so can add extra validation (#173, #174, #187)
+- Fixed bulk inserts can now handle custom pk's (#192)
+- Added as_pymongo method to return raw or cast results from pymongo (#193)
 
 Changes in 0.7.7
 ================
@@ -42,70 +42,70 @@ Changes in 0.7.7
 
 Changes in 0.7.6
 ================
-- Unicode fix for repr (MongoEngine/mongoengine#133)
-- Allow updates with match operators (MongoEngine/mongoengine#144)
-- Updated URLField - now can have a override the regex (MongoEngine/mongoengine#136)
+- Unicode fix for repr (#133)
+- Allow updates with match operators (#144)
+- Updated URLField - now can have a override the regex (#136)
 - Allow Django AuthenticationBackends to work with Django user (hmarr/mongoengine#573)
-- Fixed reload issue with ReferenceField where dbref=False (MongoEngine/mongoengine#138)
+- Fixed reload issue with ReferenceField where dbref=False (#138)
 
 Changes in 0.7.5
 ================
-- ReferenceFields with dbref=False use ObjectId instead of strings (MongoEngine/mongoengine#134)
-  See ticket for upgrade notes (https://github.com/MongoEngine/mongoengine/issues/134)
+- ReferenceFields with dbref=False use ObjectId instead of strings (#134)
+  See ticket for upgrade notes (#134)
 
 Changes in 0.7.4
 ================
-- Fixed index inheritance issues - firmed up testcases (MongoEngine/mongoengine#123) (MongoEngine/mongoengine#125)
+- Fixed index inheritance issues - firmed up testcases (#123) (#125)
 
 Changes in 0.7.3
 ================
-- Reverted EmbeddedDocuments meta handling - now can turn off inheritance (MongoEngine/mongoengine#119)
+- Reverted EmbeddedDocuments meta handling - now can turn off inheritance (#119)
 
 Changes in 0.7.2
 ================
-- Update index spec generation so its not destructive (MongoEngine/mongoengine#113)
+- Update index spec generation so its not destructive (#113)
 
 Changes in 0.7.1
 =================
-- Fixed index spec inheritance (MongoEngine/mongoengine#111)
+- Fixed index spec inheritance (#111)
 
 Changes in 0.7.0
 =================
-- Updated queryset.delete so you can use with skip / limit (MongoEngine/mongoengine#107)
-- Updated index creation allows kwargs to be passed through refs (MongoEngine/mongoengine#104)
-- Fixed Q object merge edge case (MongoEngine/mongoengine#109)
+- Updated queryset.delete so you can use with skip / limit (#107)
+- Updated index creation allows kwargs to be passed through refs (#104)
+- Fixed Q object merge edge case (#109)
 - Fixed reloading on sharded documents (hmarr/mongoengine#569)
-- Added NotUniqueError for duplicate keys (MongoEngine/mongoengine#62)
-- Added custom collection / sequence naming for SequenceFields (MongoEngine/mongoengine#92)
-- Fixed UnboundLocalError in composite index with pk field (MongoEngine/mongoengine#88)
+- Added NotUniqueError for duplicate keys (#62)
+- Added custom collection / sequence naming for SequenceFields (#92)
+- Fixed UnboundLocalError in composite index with pk field (#88)
 - Updated ReferenceField's to optionally store ObjectId strings
-  this will become the default in 0.8 (MongoEngine/mongoengine#89)
+  this will become the default in 0.8 (#89)
 - Added FutureWarning - save will default to `cascade=False` in 0.8
-- Added example of indexing embedded document fields (MongoEngine/mongoengine#75)
-- Fixed ImageField resizing when forcing size (MongoEngine/mongoengine#80)
-- Add flexibility for fields handling bad data (MongoEngine/mongoengine#78)
+- Added example of indexing embedded document fields (#75)
+- Fixed ImageField resizing when forcing size (#80)
+- Add flexibility for fields handling bad data (#78)
 - Embedded Documents no longer handle meta definitions
-- Use weakref proxies in base lists / dicts (MongoEngine/mongoengine#74)
+- Use weakref proxies in base lists / dicts (#74)
 - Improved queryset filtering (hmarr/mongoengine#554)
 - Fixed Dynamic Documents and Embedded Documents (hmarr/mongoengine#561)
-- Fixed abstract classes and shard keys (MongoEngine/mongoengine#64)
+- Fixed abstract classes and shard keys (#64)
 - Fixed Python 2.5 support
 - Added Python 3 support (thanks to Laine Heron)
 
 Changes in 0.6.20
 =================
-- Added support for distinct and db_alias (MongoEngine/mongoengine#59)
+- Added support for distinct and db_alias (#59)
 - Improved support for chained querysets when constraining the same fields (hmarr/mongoengine#554)
-- Fixed BinaryField lookup re (MongoEngine/mongoengine#48)
+- Fixed BinaryField lookup re (#48)
 
 Changes in 0.6.19
 =================
 
-- Added Binary support to UUID (MongoEngine/mongoengine#47)
-- Fixed MapField lookup for fields without declared lookups (MongoEngine/mongoengine#46)
-- Fixed BinaryField python value issue (MongoEngine/mongoengine#48)
-- Fixed SequenceField non numeric value lookup (MongoEngine/mongoengine#41)
-- Fixed queryset manager issue (MongoEngine/mongoengine#52)
+- Added Binary support to UUID (#47)
+- Fixed MapField lookup for fields without declared lookups (#46)
+- Fixed BinaryField python value issue (#48)
+- Fixed SequenceField non numeric value lookup (#41)
+- Fixed queryset manager issue (#52)
 - Fixed FileField comparision (hmarr/mongoengine#547)
 
 Changes in 0.6.18
