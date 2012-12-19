@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Changes in 0.8
-==============
+Changes in 0.8.X
+================
 - Fixed db_alias and inherited Documents (#143)
 - Documentation update for document errors (#124)
 - Deprecated `get_or_create` (#35)

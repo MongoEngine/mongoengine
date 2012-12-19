@@ -525,7 +525,7 @@ class BaseDocument(object):
 
         # Check to see if we need to include _cls
         allow_inheritance = cls._meta.get('allow_inheritance',
-                                          ALLOW_INHERITANCE) != False
+                                          ALLOW_INHERITANCE)
         include_cls = allow_inheritance and not spec.get('sparse', False)
 
         for key in spec['fields']:

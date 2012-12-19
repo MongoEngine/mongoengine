@@ -1,31 +1,23 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
-import bson
-import os
-import pickle
-import pymongo
-import sys
 import unittest
-import uuid
-import warnings
+import sys
+
+sys.path[0:0] = [""]
+
+import os
+import pymongo
 
 from nose.plugins.skip import SkipTest
 from datetime import datetime
 
-from tests.fixtures import Base, Mixin, PickleEmbedded, PickleTest
-
 from mongoengine import *
-from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError)
-from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db, get_connection
 
-TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
-
-__all__ = ("InstanceTest", )
+__all__ = ("IndexesTest", )
 
 
-class InstanceTest(unittest.TestCase):
+class IndexesTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
@@ -47,19 +39,58 @@ class InstanceTest(unittest.TestCase):
                 continue
             self.db.drop_collection(collection)
 
-    def test_indexes_document(self, ):
+    def ztest_indexes_document(self, ):
         """Ensure that indexes are used when meta[indexes] is specified for
         Documents
         """
-        index_test(Document)
+        self.index_test(Document)
 
     def test_indexes_dynamic_document(self, ):
         """Ensure that indexes are used when meta[indexes] is specified for
         Dynamic Documents
         """
-        index_test(DynamicDocument)
+        self.index_test(DynamicDocument)
 
     def index_test(self, InheritFrom):
+
+        class BlogPost(InheritFrom):
+            date = DateTimeField(db_field='addDate', default=datetime.now)
+            category = StringField()
+            tags = ListField(StringField())
+            meta = {
+                'indexes': [
+                    '-date',
+                    'tags',
+                    ('category', '-date')
+                ]
+            }
+
+        expected_specs = [{'fields': [('addDate', -1)]},
+                          {'fields': [('tags', 1)]},
+                          {'fields': [('category', 1), ('addDate', -1)]}]
+        self.assertEqual(expected_specs, BlogPost._meta['index_specs'])
+
+        BlogPost.ensure_indexes()
+        info = BlogPost.objects._collection.index_information()
+        # _id, '-date', 'tags', ('cat', 'date')
+        self.assertEqual(len(info), 4)
+        info = [value['key'] for key, value in info.iteritems()]
+        for expected in expected_specs:
+            self.assertTrue(expected['fields'] in info)
+
+    def test_indexes_document_inheritance(self):
+        """Ensure that indexes are used when meta[indexes] is specified for
+        Documents
+        """
+        self.index_test_inheritance(Document)
+
+    def test_indexes_dynamic_document_inheritance(self):
+        """Ensure that indexes are used when meta[indexes] is specified for
+        Dynamic Documents
+        """
+        self.index_test_inheritance(DynamicDocument)
+
+    def index_test_inheritance(self, InheritFrom):
 
         class BlogPost(InheritFrom):
             date = DateTimeField(db_field='addDate', default=datetime.now)
@@ -217,7 +248,7 @@ class InstanceTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         # _id, '-date'
-        self.assertEqual(len(info), 3)
+        self.assertEqual(len(info), 2)
 
         # Indexes are lazy so use list() to perform query
         list(BlogPost.objects)
@@ -265,7 +296,6 @@ class InstanceTest(unittest.TestCase):
             }
             user_guid = StringField(required=True)
 
-
         User.drop_collection()
 
         u = User(user_guid='123')
@@ -295,7 +325,7 @@ class InstanceTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_cls_1_date.yr_-1', '_id_'])
+        self.assertEqual(info.keys(), ['date.yr_-1', '_id_'])
         BlogPost.drop_collection()
 
     def test_list_embedded_document_index(self):
@@ -318,7 +348,7 @@ class InstanceTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         # we don't use _cls in with list fields by default
-        self.assertEqual(info.keys(), ['_id_', '_cls_1_tags.tag_1'])
+        self.assertEqual(info.keys(), ['_id_', 'tags.tag_1'])
 
         post1 = BlogPost(title="Embedded Indexes tests in place",
                         tags=[Tag(name="about"), Tag(name="time")]
@@ -347,7 +377,7 @@ class InstanceTest(unittest.TestCase):
 
         class Parent(Document):
             name = StringField()
-            location = ReferenceField(Location)
+            location = ReferenceField(Location, dbref=False)
 
         Location.drop_collection()
         Parent.drop_collection()
@@ -396,8 +426,7 @@ class InstanceTest(unittest.TestCase):
             meta = {
                 'indexes': [
                     ['categories', 'id']
-                ],
-                'allow_inheritance': False
+                ]
             }
 
             title = StringField(required=True)
@@ -498,15 +527,18 @@ class InstanceTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1 = BlogPost(title='test1',
+                         sub=SubDocument(year=2009, slug="test"))
         post1.save()
 
         # sub.slug is different so won't raise exception
-        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2 = BlogPost(title='test2',
+                         sub=SubDocument(year=2010, slug='another-slug'))
         post2.save()
 
         # Now there will be two docs with the same sub.slug
-        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        post3 = BlogPost(title='test3',
+                         sub=SubDocument(year=2010, slug='test'))
         self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
@@ -525,19 +557,23 @@ class InstanceTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1 = BlogPost(title='test1',
+                         sub=SubDocument(year=2009, slug="test"))
         post1.save()
 
         # sub.slug is different so won't raise exception
-        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2 = BlogPost(title='test2',
+                         sub=SubDocument(year=2010, slug='another-slug'))
         post2.save()
 
         # Now there will be two docs with the same sub.slug
-        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        post3 = BlogPost(title='test3',
+                         sub=SubDocument(year=2010, slug='test'))
         self.assertRaises(NotUniqueError, post3.save)
 
         # Now there will be two docs with the same title and year
-        post3 = BlogPost(title='test1', sub=SubDocument(year=2009, slug='test-1'))
+        post3 = BlogPost(title='test1',
+                         sub=SubDocument(year=2009, slug='test-1'))
         self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
@@ -566,7 +602,7 @@ class InstanceTest(unittest.TestCase):
         list(Log.objects)
         info = Log.objects._collection.index_information()
         self.assertEqual(3600,
-                info['_cls_1_created_1']['expireAfterSeconds'])
+                info['created_1']['expireAfterSeconds'])
 
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
@@ -586,7 +622,7 @@ class InstanceTest(unittest.TestCase):
         cust_dupe = Customer(cust_id=1)
         try:
             cust_dupe.save()
-            raise AssertionError, "We saved a dupe!"
+            raise AssertionError("We saved a dupe!")
         except NotUniqueError:
             pass
         Customer.drop_collection()
@@ -630,7 +666,7 @@ class InstanceTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        index_item = [('_cls', 1), ('_id', 1), ('comments.comment_id', 1)]
+        index_item = [('_id', 1), ('comments.comment_id', 1)]
         self.assertTrue(index_item in info)
 
 if __name__ == '__main__':

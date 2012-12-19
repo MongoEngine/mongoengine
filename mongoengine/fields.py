@@ -749,7 +749,7 @@ class ReferenceField(BaseField):
 
         if dbref is None:
             msg = ("ReferenceFields will default to using ObjectId "
-                   " strings in 0.8, set DBRef=True if this isn't desired")
+                   "in 0.8, set DBRef=True if this isn't desired")
             warnings.warn(msg, FutureWarning)
 
         self.dbref = dbref if dbref is not None else True  # To change in 0.8
