@@ -117,6 +117,9 @@ class QuerySet(object):
         """
         query = Q(**query)
         if q_obj:
+            # make sure proper query object is passed
+            if not isinstance(q_obj, QNode):
+                raise InvalidQueryError('Not a query object: %s. Did you intend to use key=value?' % q_obj)
             query &= q_obj
         self._query_obj &= query
         self._mongo_query = None
