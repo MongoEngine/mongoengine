@@ -1118,6 +1118,16 @@ class FieldTest(unittest.TestCase):
         p = Person.objects.get(name="Ross")
         self.assertEqual(p.parent, p1)
 
+    def test_dbref_to_mongo(self):
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self', dbref=False)
+
+        p1 = Person._from_son({'name': "Yakxxx",
+                               'parent': "50a234ea469ac1eda42d347d"})
+        mongoed = p1.to_mongo()
+        self.assertTrue(isinstance(mongoed['parent'], ObjectId))
+
     def test_objectid_reference_fields(self):
 
         class Person(Document):
@@ -2216,6 +2226,29 @@ class FieldTest(unittest.TestCase):
         c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
         self.assertEqual(c['next'], 10)
 
+    def test_embedded_sequence_field(self):
+        class Comment(EmbeddedDocument):
+            id = SequenceField()
+            content = StringField(required=True)
+
+        class Post(Document):
+            title = StringField(required=True)
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        self.db['mongoengine.counters'].drop()
+        Post.drop_collection()
+
+        Post(title="MongoEngine",
+             comments=[Comment(content="NoSQL Rocks"),
+                       Comment(content="MongoEngine Rocks")]).save()
+        import ipdb; ipdb.set_trace();
+        c = self.db['mongoengine.counters'].find_one({'_id': 'comment.id'})
+        self.assertEqual(c['next'], 2)
+        post = Post.objects.first()
+        self.assertEqual(1, post.comments[0].id)
+        self.assertEqual(2, post.comments[1].id)
+
+
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()
@@ -2338,6 +2371,18 @@ class FieldTest(unittest.TestCase):
 
         post.comments[1].content = 'here we go'
         post.validate()
+
+    def test_email_field_honors_regex(self):
+        class User(Document):
+            email = EmailField(regex=r'\w+@example.com')
+
+        # Fails regex validation
+        user = User(email='me@foo.com')
+        self.assertRaises(ValidationError, user.validate)
+
+        # Passes regex validation
+        user = User(email='me@example.com')
+        self.assertTrue(user.validate() is None)
 
 
 if __name__ == '__main__':

@@ -17,6 +17,7 @@ from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
+from mongoengine.base import get_document
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
@@ -281,7 +282,6 @@ class InstanceTest(unittest.TestCase):
 
         User.drop_collection()
 
-
     def test_document_not_registered(self):
 
         class Place(Document):
@@ -306,6 +306,19 @@ class InstanceTest(unittest.TestCase):
             print Place.objects.all()
         self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
+    def test_document_registry_regressions(self):
+
+        class Location(Document):
+            name = StringField()
+            meta = {'allow_inheritance': True}
+
+        class Area(Location):
+            location = ReferenceField('Location', dbref=True)
+
+        Location.drop_collection()
+
+        self.assertEquals(Area, get_document("Area"))
+        self.assertEquals(Area, get_document("Location.Area"))
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.

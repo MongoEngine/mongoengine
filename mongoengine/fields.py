@@ -149,6 +149,7 @@ class EmailField(StringField):
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
             self.error('Invalid Mail-address: %s' % value)
+        super(EmailField, self).validate(value)
 
 
 class IntField(BaseField):
@@ -782,7 +783,7 @@ class ReferenceField(BaseField):
     def to_mongo(self, document):
         if isinstance(document, DBRef):
             if not self.dbref:
-                return DBRef.id
+                return document.id
             return document
         elif not self.dbref and isinstance(document, basestring):
             return document
@@ -1376,6 +1377,16 @@ class SequenceField(BaseField):
                                              new=True,
                                              upsert=True)
         return self.value_decorator(counter['next'])
+
+    def get_sequence_name(self):
+        if self.sequence_name:
+            return self.sequence_name
+        owner = self.owner_document
+        if issubclass(owner, Document):
+            return owner._get_collection_name()
+        else:
+            return ''.join('_%s' % c if c.isupper() else c
+                            for c in owner._class_name).strip('_').lower()
 
     def __get__(self, instance, owner):
         value = super(SequenceField, self).__get__(instance, owner)
