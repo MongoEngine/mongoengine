@@ -2241,7 +2241,6 @@ class FieldTest(unittest.TestCase):
         Post(title="MongoEngine",
              comments=[Comment(content="NoSQL Rocks"),
                        Comment(content="MongoEngine Rocks")]).save()
-        import ipdb; ipdb.set_trace();
         c = self.db['mongoengine.counters'].find_one({'_id': 'comment.id'})
         self.assertEqual(c['next'], 2)
         post = Post.objects.first()

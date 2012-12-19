@@ -1368,8 +1368,7 @@ class SequenceField(BaseField):
         """
         Generate and Increment the counter
         """
-        sequence_name = (self.sequence_name or
-                         self.owner_document._get_collection_name())
+        sequence_name = self.get_sequence_name()
         sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
