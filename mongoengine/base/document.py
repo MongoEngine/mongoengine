@@ -245,6 +245,9 @@ class BaseDocument(object):
         # Get a list of tuples of field names and their current values
         fields = [(field, self._data.get(name))
                   for name, field in self._fields.items()]
+        if self._dynamic:
+            fields += [(field, self._data.get(name))
+                  for name, field in self._dynamic_fields.items()]
 
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")

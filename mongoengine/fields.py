@@ -564,6 +564,10 @@ class DynamicField(BaseField):
             return StringField().prepare_query_value(op, value)
         return self.to_mongo(value)
 
+    def validate(self, value, clean=True):
+        if hasattr(value, "validate"):
+            value.validate(clean=clean)
+
 
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances

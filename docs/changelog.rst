@@ -20,6 +20,7 @@ Changes in 0.8
 - Inheritance is off by default (MongoEngine/mongoengine#122)
 - Remove _types and just use _cls for inheritance (MongoEngine/mongoengine#148)
 - Only allow QNode instances to be passed as query objects (MongoEngine/mongoengine#199)
+- Dynamic fields are now validated on save (MongoEngine/mongoengine#153) (MongoEngine/mongoengine#154)
 
 Changes in 0.7.9
 ================
