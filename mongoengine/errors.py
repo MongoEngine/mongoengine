@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from .python_support import txt_type
+from mongoengine.python_support import txt_type
 
 
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'ValidationError')

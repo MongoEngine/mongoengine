@@ -7,8 +7,8 @@ from bson import DBRef, ObjectId
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
 
-from .common import ALLOW_INHERITANCE
-from .datastructures import BaseDict, BaseList
+from mongoengine.base.common import ALLOW_INHERITANCE
+from mongoengine.base.datastructures import BaseDict, BaseList
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField")
 

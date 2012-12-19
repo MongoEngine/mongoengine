@@ -12,9 +12,9 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
 from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
                                         to_str_keys_recursive)
 
-from .common import get_document, ALLOW_INHERITANCE
-from .datastructures import BaseDict, BaseList
-from .fields import ComplexBaseField
+from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.base.datastructures import BaseDict, BaseList
+from mongoengine.base.fields import ComplexBaseField
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 

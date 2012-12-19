@@ -137,13 +137,11 @@ class DynamicTest(unittest.TestCase):
         embedded_doc_1.validate()
 
         embedded_doc_2 = Embedded(content='this is not a url')
-        with self.assertRaises(ValidationError):
-            embedded_doc_2.validate()
+        self.assertRaises(ValidationError, embedded_doc_2.validate)
 
         doc.embedded_field_1 = embedded_doc_1
         doc.embedded_field_2 = embedded_doc_2
-        with self.assertRaises(ValidationError):
-            doc.validate()
+        self.assertRaises(ValidationError, doc.validate)
 
     def test_inheritance(self):
         """Ensure that dynamic document plays nice with inheritance"""

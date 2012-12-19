@@ -9,8 +9,8 @@ from mongoengine.queryset import (DO_NOTHING, DoesNotExist,
                                   MultipleObjectsReturned,
                                   QuerySet, QuerySetManager)
 
-from .common import _document_registry, ALLOW_INHERITANCE
-from .fields import BaseField, ComplexBaseField, ObjectIdField
+from mongoengine.base.common import _document_registry, ALLOW_INHERITANCE
+from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 
 __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
 

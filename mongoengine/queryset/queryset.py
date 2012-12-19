@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import copy
 import itertools
 import operator
@@ -15,9 +17,9 @@ from mongoengine.common import _import_class
 from mongoengine.errors import (OperationError, NotUniqueError,
                                 InvalidQueryError)
 
-from . import transform
-from .field_list import QueryFieldList
-from .visitor import Q, QNode
+from mongoengine.queryset import transform
+from mongoengine.queryset.field_list import QueryFieldList
+from mongoengine.queryset.visitor import Q, QNode
 
 
 __all__ = ('QuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
