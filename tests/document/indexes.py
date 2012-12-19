@@ -225,6 +225,30 @@ class IndexesTest(unittest.TestCase):
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', '2d')] in info)
 
+    def test_explicit_geo2d_index_embedded(self):
+        """Ensure that geo2d indexes work when created via meta[indexes]
+        """
+        class EmbeddedLocation(EmbeddedDocument):
+            location = DictField()
+
+        class Place(Document):
+            current = DictField(
+                    field=EmbeddedDocumentField('EmbeddedLocation'))
+            meta = {
+                'allow_inheritance': True,
+                'indexes': [
+                    '*current.location.point',
+                ]
+            }
+
+        self.assertEqual([{'fields': [('current.location.point', '2d')]}],
+                        Place._meta['index_specs'])
+
+        Place.ensure_indexes()
+        info = Place._get_collection().index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('current.location.point', '2d')] in info)
+
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
         dictionaries instead of lists.
