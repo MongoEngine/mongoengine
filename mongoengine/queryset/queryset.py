@@ -17,7 +17,7 @@ from mongoengine.errors import (OperationError, NotUniqueError,
 
 from . import transform
 from .field_list import QueryFieldList
-from .visitor import Q
+from .visitor import Q, QNode
 
 
 __all__ = ('QuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
