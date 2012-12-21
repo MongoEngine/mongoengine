@@ -115,29 +115,31 @@ class QTest(unittest.TestCase):
             x = IntField()
             y = BooleanField()
 
+        TestDoc.drop_collection()
+
         query = (Q(x__gt=0) | Q(x__exists=False))
         query &= Q(x__lt=100)
-        self.assertEqual(query.to_query(TestDoc), {
-            '$or': [
-                {'x': {'$lt': 100, '$gt': 0}},
-                {'x': {'$lt': 100, '$exists': False}},
-            ]
+        self.assertEqual(query.to_query(TestDoc), {'$and': [
+            {'$or': [{'x': {'$gt': 0}},
+                     {'x': {'$exists': False}}]},
+            {'x': {'$lt': 100}}]
         })
 
         q1 = (Q(x__gt=0) | Q(x__exists=False))
         q2 = (Q(x__lt=100) | Q(y=True))
         query = (q1 & q2).to_query(TestDoc)
 
-        self.assertEqual(['$or'], query.keys())
-        conditions = [
-            {'x': {'$lt': 100, '$gt': 0}},
-            {'x': {'$lt': 100, '$exists': False}},
-            {'x': {'$gt': 0}, 'y': True},
-            {'x': {'$exists': False}, 'y': True},
-        ]
-        self.assertEqual(len(conditions), len(query['$or']))
-        for condition in conditions:
-            self.assertTrue(condition in query['$or'])
+        TestDoc(x=101).save()
+        TestDoc(x=10).save()
+        TestDoc(y=True).save()
+
+        self.assertEqual(query,
+        {'$and': [
+            {'$or': [{'x': {'$gt': 0}}, {'x': {'$exists': False}}]},
+            {'$or': [{'x': {'$lt': 100}}, {'y': True}]}
+        ]})
+
+        self.assertEqual(2, TestDoc.objects(q1 & q2).count())
 
     def test_or_and_or_combination(self):
         """Ensure that Q-objects handle ORing ANDed ORed components. :)
@@ -146,20 +148,40 @@ class QTest(unittest.TestCase):
             x = IntField()
             y = BooleanField()
 
+        TestDoc.drop_collection()
+        TestDoc(x=-1, y=True).save()
+        TestDoc(x=101, y=True).save()
+        TestDoc(x=99, y=False).save()
+        TestDoc(x=101, y=False).save()
+
         q1 = (Q(x__gt=0) & (Q(y=True) | Q(y__exists=False)))
         q2 = (Q(x__lt=100) & (Q(y=False) | Q(y__exists=False)))
         query = (q1 | q2).to_query(TestDoc)
 
-        self.assertEqual(['$or'], query.keys())
-        conditions = [
-            {'x': {'$gt': 0}, 'y': True},
-            {'x': {'$gt': 0}, 'y': {'$exists': False}},
-            {'x': {'$lt': 100}, 'y':False},
-            {'x': {'$lt': 100}, 'y': {'$exists': False}},
-        ]
-        self.assertEqual(len(conditions), len(query['$or']))
-        for condition in conditions:
-            self.assertTrue(condition in query['$or'])
+        self.assertEqual(query,
+            {'$or': [
+                {'$and': [{'x': {'$gt': 0}},
+                          {'$or': [{'y': True}, {'y': {'$exists': False}}]}]},
+                {'$and': [{'x': {'$lt': 100}},
+                          {'$or': [{'y': False}, {'y': {'$exists': False}}]}]}
+            ]}
+        )
+
+        self.assertEqual(2, TestDoc.objects(q1 | q2).count())
+
+    def test_multiple_occurence_in_field(self):
+        class Test(Document):
+            name = StringField(max_length=40)
+            title = StringField(max_length=40)
+
+        q1 = Q(name__contains='te') | Q(title__contains='te')
+        q2 = Q(name__contains='12') | Q(title__contains='12')
+
+        q3 = q1 & q2
+
+        query = q3.to_query(Test)
+        self.assertEqual(query["$and"][0], q1.to_query(Test))
+        self.assertEqual(query["$and"][1], q2.to_query(Test))
 
     def test_q_clone(self):
 
