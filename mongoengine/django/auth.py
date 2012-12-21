@@ -1,5 +1,3 @@
-import datetime
-
 from mongoengine import *
 
 from django.utils.encoding import smart_str
@@ -33,6 +31,7 @@ except ImportError:
         hash = get_hexdigest(algo, salt, raw_password)
         return '%s$%s$%s' % (algo, salt, hash)
 
+from .utils import datetime_now
 
 REDIRECT_FIELD_NAME = 'next'
 
@@ -62,9 +61,9 @@ class User(Document):
     is_superuser = BooleanField(default=False,
                                 verbose_name=_('superuser status'),
                                 help_text=_("Designates that this user has all permissions without explicitly assigning them."))
-    last_login = DateTimeField(default=datetime.datetime.now,
+    last_login = DateTimeField(default=datetime_now,
                                verbose_name=_('last login'))
-    date_joined = DateTimeField(default=datetime.datetime.now,
+    date_joined = DateTimeField(default=datetime_now,
                                 verbose_name=_('date joined'))
 
     meta = {
@@ -130,7 +129,7 @@ class User(Document):
         """Create (and save) a new user with the given username, password and
         email address.
         """
-        now = datetime.datetime.now()
+        now = datetime_now()
 
         # Normalize the address by lowercasing the domain part of the email
         # address.

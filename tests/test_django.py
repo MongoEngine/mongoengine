@@ -12,7 +12,7 @@ try:
     from django.conf import settings
     from django.core.paginator import Paginator
 
-    settings.configure()
+    settings.configure(USE_TZ=True)
 
     from django.contrib.sessions.tests import SessionTestsMixin
     from mongoengine.django.sessions import SessionStore, MongoSession
@@ -22,6 +22,37 @@ except Exception, err:
         SessionStore = None  # dummy value so no error
     else:
         raise err
+
+
+from datetime import tzinfo, timedelta
+ZERO = timedelta(0)
+
+class FixedOffset(tzinfo):
+    """Fixed offset in minutes east from UTC."""
+
+    def __init__(self, offset, name):
+        self.__offset = timedelta(minutes = offset)
+        self.__name = name
+
+    def utcoffset(self, dt):
+        return self.__offset
+
+    def tzname(self, dt):
+        return self.__name
+
+    def dst(self, dt):
+        return ZERO
+
+
+def activate_timezone(tz):
+    """Activate Django timezone support if it is available.
+    """
+    try:
+        from django.utils import timezone
+        timezone.deactivate()
+        timezone.activate(tz)
+    except ImportError:
+        pass
 
 
 class QuerySetTest(unittest.TestCase):
@@ -120,3 +151,15 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         session['test'] = True
         session.save()
         self.assertTrue('test' in session)
+
+    def test_session_expiration_tz(self):
+        activate_timezone(FixedOffset(60, 'UTC+1'))
+        # create and save new session
+        session = SessionStore()
+        session.set_expiry(600) # expire in 600 seconds
+        session['test_expire'] = True
+        session.save()
+        # reload session with key
+        key = session.session_key
+        session = SessionStore(key)
+        self.assertTrue('test_expire' in session, 'Session has expired before it is expected')
