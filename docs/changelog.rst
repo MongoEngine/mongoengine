@@ -22,6 +22,7 @@ Changes in 0.8.X
 - Only allow QNode instances to be passed as query objects (#199)
 - Dynamic fields are now validated on save (#153) (#154)
 - Added support for multiple slices and made slicing chainable. (#170) (#190) (#191)
+- Fixed GridFSProxy __getattr__ behaviour (#196)
 
 Changes in 0.7.9
 ================

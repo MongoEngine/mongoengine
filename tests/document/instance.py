@@ -19,7 +19,8 @@ from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
 
-TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
+                               '../fields/mongoengine.png')
 
 __all__ = ("InstanceTest",)
 

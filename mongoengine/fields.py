@@ -969,7 +969,7 @@ class GridFSProxy(object):
         if name in attrs:
             return self.__getattribute__(name)
         obj = self.get()
-        if name in dir(obj):
+        if hasattr(obj, name):
             return getattr(obj, name)
         raise AttributeError
 
