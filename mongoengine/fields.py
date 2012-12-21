@@ -300,6 +300,8 @@ class DateTimeField(BaseField):
             return value
         if isinstance(value, datetime.date):
             return datetime.datetime(value.year, value.month, value.day)
+        if callable(value):
+            return value()
 
         # Attempt to parse a datetime:
         # value = smart_str(value)
