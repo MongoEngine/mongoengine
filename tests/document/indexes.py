@@ -39,19 +39,19 @@ class IndexesTest(unittest.TestCase):
                 continue
             self.db.drop_collection(collection)
 
-    def ztest_indexes_document(self, ):
+    def test_indexes_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
         Documents
         """
-        self.index_test(Document)
+        self._index_test(Document)
 
-    def test_indexes_dynamic_document(self, ):
+    def test_indexes_dynamic_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
         Dynamic Documents
         """
-        self.index_test(DynamicDocument)
+        self._index_test(DynamicDocument)
 
-    def index_test(self, InheritFrom):
+    def _index_test(self, InheritFrom):
 
         class BlogPost(InheritFrom):
             date = DateTimeField(db_field='addDate', default=datetime.now)
@@ -78,19 +78,7 @@ class IndexesTest(unittest.TestCase):
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
-    def test_indexes_document_inheritance(self):
-        """Ensure that indexes are used when meta[indexes] is specified for
-        Documents
-        """
-        self.index_test_inheritance(Document)
-
-    def test_indexes_dynamic_document_inheritance(self):
-        """Ensure that indexes are used when meta[indexes] is specified for
-        Dynamic Documents
-        """
-        self.index_test_inheritance(DynamicDocument)
-
-    def index_test_inheritance(self, InheritFrom):
+    def _index_test_inheritance(self, InheritFrom):
 
         class BlogPost(InheritFrom):
             date = DateTimeField(db_field='addDate', default=datetime.now)
@@ -136,6 +124,18 @@ class IndexesTest(unittest.TestCase):
         info = [value['key'] for key, value in info.iteritems()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
+
+    def test_indexes_document_inheritance(self):
+        """Ensure that indexes are used when meta[indexes] is specified for
+        Documents
+        """
+        self._index_test_inheritance(Document)
+
+    def test_indexes_dynamic_document_inheritance(self):
+        """Ensure that indexes are used when meta[indexes] is specified for
+        Dynamic Documents
+        """
+        self._index_test_inheritance(DynamicDocument)
 
     def test_inherited_index(self):
         """Ensure index specs are inhertited correctly"""
@@ -301,6 +301,7 @@ class IndexesTest(unittest.TestCase):
             meta = {
                 'indexes': ['name'],
             }
+        Person.drop_collection()
 
         Person(name="test", user_guid='123').save()
 
