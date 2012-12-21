@@ -3,23 +3,17 @@ from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
-import datetime
+import copy
 import os
 import unittest
-import uuid
 import tempfile
 
-from decimal import Decimal
-
-from bson import Binary, DBRef, ObjectId
 import gridfs
 
 from nose.plugins.skip import SkipTest
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.base import _document_registry
-from mongoengine.errors import NotRegistered
-from mongoengine.python_support import PY3, b, StringIO, bin_type
+from mongoengine.python_support import PY3, b, StringIO
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 
@@ -50,13 +44,12 @@ class FileTest(unittest.TestCase):
         PutFile.drop_collection()
 
         text = b('Hello, World!')
-        more_text = b('Foo Bar')
         content_type = 'text/plain'
 
         putfile = PutFile()
         putfile.the_file.put(text, content_type=content_type)
         putfile.save()
-        putfile.validate()
+
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
         self.assertEqual(result.the_file.read(), text)
@@ -73,7 +66,7 @@ class FileTest(unittest.TestCase):
         putstring.seek(0)
         putfile.the_file.put(putstring, content_type=content_type)
         putfile.save()
-        putfile.validate()
+
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
         self.assertEqual(result.the_file.read(), text)
@@ -98,7 +91,7 @@ class FileTest(unittest.TestCase):
         streamfile.the_file.write(more_text)
         streamfile.the_file.close()
         streamfile.save()
-        streamfile.validate()
+
         result = StreamFile.objects.first()
         self.assertTrue(streamfile == result)
         self.assertEqual(result.the_file.read(), text + more_text)
@@ -135,7 +128,7 @@ class FileTest(unittest.TestCase):
         # Try replacing file with new one
         result.the_file.replace(more_text)
         result.save()
-        result.validate()
+
         result = SetFile.objects.first()
         self.assertTrue(setfile == result)
         self.assertEqual(result.the_file.read(), more_text)
@@ -365,6 +358,26 @@ class FileTest(unittest.TestCase):
         test_file = TestFile.objects.first()
         self.assertEqual(test_file.the_file.read(),
                           b('Hello, World!'))
+
+    def test_copyable(self):
+        class PutFile(Document):
+            the_file = FileField()
+
+        PutFile.drop_collection()
+
+        text = b('Hello, World!')
+        content_type = 'text/plain'
+
+        putfile = PutFile()
+        putfile.the_file.put(text, content_type=content_type)
+        putfile.save()
+
+        class TestFile(Document):
+            name = StringField()
+
+        self.assertEqual(putfile, copy.copy(putfile))
+        self.assertEqual(putfile, copy.deepcopy(putfile))
+
 
 if __name__ == '__main__':
     unittest.main()

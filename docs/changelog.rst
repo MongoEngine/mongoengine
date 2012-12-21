@@ -25,6 +25,7 @@ Changes in 0.8.X
 - Fixed GridFSProxy __getattr__ behaviour (#196)
 - Fix Django timezone support (#151)
 - Simplified Q objects, removed QueryTreeTransformerVisitor (#98) (#171)
+- FileFields now copyable (#198)
 
 Changes in 0.7.9
 ================

@@ -986,14 +986,22 @@ class GridFSProxy(object):
         self_dict['_fs'] = None
         return self_dict
 
+    def __copy__(self):
+        copied = GridFSProxy()
+        copied.__dict__.update(self.__getstate__())
+        return copied
+
+    def __deepcopy__(self, memo):
+        return self.__copy__()
+
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
-            return  ((self.grid_id == other.grid_id) and
-                     (self.collection_name == other.collection_name) and
-                     (self.db_alias == other.db_alias))
+            return ((self.grid_id == other.grid_id) and
+                    (self.collection_name == other.collection_name) and
+                    (self.db_alias == other.db_alias))
         else:
             return False
 
