@@ -1575,8 +1575,15 @@ class QuerySet(object):
             raise OperationError(u'Update failed [%s]' % unicode(e))
 
     def __iter__(self):
-        self.rewind()
-        return self
+        if self._iter:
+            # Already iterating, create a new iterator object to avoid collision.
+            clone = self.clone()
+            clone.rewind()
+            return clone
+        else:
+            # Not yet iterating, can use self as the iterator.
+            self.rewind()
+            return self
 
     def _get_scalar(self, doc):
 
