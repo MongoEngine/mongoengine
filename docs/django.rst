@@ -10,6 +10,10 @@ In your **settings.py** file, ignore the standard database settings (unless you
 also plan to use the ORM in your project), and instead call
 :func:`~mongoengine.connect` somewhere in the settings module.
 
+.. note :: If getting an ``ImproperlyConfigured: settings.DATABASES is
+    improperly configured`` error you may need to remove
+    ``django.contrib.sites`` from ``INSTALLED_APPS`` in settings.py.
+
 Authentication
 ==============
 MongoEngine includes a Django authentication backend, which uses MongoDB. The
