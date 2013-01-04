@@ -516,11 +516,14 @@ class QuerySet(object):
             '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
             '_timeout', '_class_check', '_slave_okay', '_read_preference',
             '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
-            '_limit', '_skip', '_slice', '_hint')
+            '_limit', '_skip', '_hint')
 
         for prop in copy_props:
             val = getattr(self, prop)
             setattr(c, prop, copy.copy(val))
+
+        if self._slice:
+            c._slice = self._slice
 
         if self._cursor_obj:
             c._cursor_obj = self._cursor_obj.clone()
