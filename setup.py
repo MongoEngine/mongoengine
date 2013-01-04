@@ -56,7 +56,7 @@ if sys.version_info[0] == 3:
     extra_opts['packages'] = find_packages(exclude=('tests',))
     if "test" in sys.argv or "nosetests" in sys.argv:
         extra_opts['packages'].append("tests")
-        extra_opts['package_data'] = {"tests": ["mongoengine.png"]}
+        extra_opts['package_data'] = {"tests": ["fields/mongoengine.png"]}
 else:
     extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.3', 'PIL']
     extra_opts['packages'] = find_packages(exclude=('tests',))
