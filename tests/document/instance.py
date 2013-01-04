@@ -654,8 +654,7 @@ class InstanceTest(unittest.TestCase):
 
         Foo.drop_collection()
 
-        a = Foo(name='hello')
-        a.save()
+        a = Foo(name='hello').save()
 
         a.bar = a
         with open(TEST_IMAGE_PATH, 'rb') as test_image:
@@ -665,7 +664,7 @@ class InstanceTest(unittest.TestCase):
             # Confirm can save and it resets the changed fields without hitting
             # max recursion error
             b = Foo.objects.with_id(a.id)
-            b.name='world'
+            b.name = 'world'
             b.save()
 
             self.assertEqual(b.picture, b.bar.picture, b.bar.bar.picture)
