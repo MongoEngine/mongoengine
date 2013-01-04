@@ -28,8 +28,10 @@ def register_connection(alias, name, host='localhost', port=27017,
     :param name: the name of the specific database to use
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
-    :param is_slave: whether the connection can act as a slave ** Depreciated pymongo 2.0.1+
-    :param read_preference: The read preference for the collection ** Added pymongo 2.1
+    :param is_slave: whether the connection can act as a slave
+      ** Depreciated pymongo 2.0.1+
+    :param read_preference: The read preference for the collection
+       ** Added pymongo 2.1
     :param slaves: a list of aliases of slave connections; each of these must
         be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with

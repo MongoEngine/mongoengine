@@ -713,19 +713,19 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(p._cursor_args,
                 {'snapshot': False, 'slave_okay': False, 'timeout': True})
 
-        p.snapshot(False).slave_okay(False).timeout(False)
+        p = p.snapshot(False).slave_okay(False).timeout(False)
         self.assertEqual(p._cursor_args,
                 {'snapshot': False, 'slave_okay': False, 'timeout': False})
 
-        p.snapshot(True).slave_okay(False).timeout(False)
+        p = p.snapshot(True).slave_okay(False).timeout(False)
         self.assertEqual(p._cursor_args,
                 {'snapshot': True, 'slave_okay': False, 'timeout': False})
 
-        p.snapshot(True).slave_okay(True).timeout(False)
+        p = p.snapshot(True).slave_okay(True).timeout(False)
         self.assertEqual(p._cursor_args,
                 {'snapshot': True, 'slave_okay': True, 'timeout': False})
 
-        p.snapshot(True).slave_okay(True).timeout(True)
+        p = p.snapshot(True).slave_okay(True).timeout(True)
         self.assertEqual(p._cursor_args,
                 {'snapshot': True, 'slave_okay': True, 'timeout': True})
 
@@ -773,7 +773,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(docs), 1000)
 
         # Limit and skip
-        self.assertEqual('[<Doc: 1>, <Doc: 2>, <Doc: 3>]', "%s" % docs[1:4])
+        docs = docs[1:4]
+        self.assertEqual('[<Doc: 1>, <Doc: 2>, <Doc: 3>]', "%s" % docs)
 
         self.assertEqual(docs.count(), 3)
         self.assertEqual(len(docs), 3)

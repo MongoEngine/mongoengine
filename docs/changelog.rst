@@ -26,6 +26,7 @@ Changes in 0.8.X
 - Fix Django timezone support (#151)
 - Simplified Q objects, removed QueryTreeTransformerVisitor (#98) (#171)
 - FileFields now copyable (#198)
+- Querysets now return clones and are no longer edit in place (#56)
 
 Changes in 0.7.9
 ================

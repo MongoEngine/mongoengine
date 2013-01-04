@@ -56,6 +56,28 @@ you will need to declare :attr:`allow_inheritance` in the meta data like so: ::
 
         meta = {'allow_inheritance': True}
 
+Querysets
+~~~~~~~~~
+
+Querysets now return clones and should no longer be considered editable in
+place.  This brings us in line with how Django's querysets work and removes a
+long running gotcha.  If you edit your querysets inplace you will have to
+update your code like so: ::
+
+    # Old code:
+    mammals = Animal.objects(type="mammal")
+    mammals.filter(order="Carnivora")       # Returns a cloned queryset that isn't assigned to anything - so this will break in 0.8
+    [m for m in mammals]                    # This will return all mammals in 0.8 as the 2nd filter returned a new queryset
+
+    # Update example a) assign queryset after a change:
+    mammals = Animal.objects(type="mammal")
+    carnivores = mammals.filter(order="Carnivora") # Reassign the new queryset so fitler can be applied
+    [m for m in carnivores]                        # This will return all carnivores
+
+    # Update example b) chain the queryset:
+    mammals = Animal.objects(type="mammal").filter(order="Carnivora")  # The final queryset is assgined to mammals
+    [m for m in mammals]                                               # This will return all carnivores
+
 Indexes
 -------
 

@@ -202,8 +202,8 @@ class QTest(unittest.TestCase):
         self.assertEqual(test2.count(), 3)
         self.assertFalse(test2 == test)
 
-        test2.filter(x=6)
-        self.assertEqual(test2.count(), 1)
+        test3 = test2.filter(x=6)
+        self.assertEqual(test3.count(), 1)
         self.assertEqual(test.count(), 3)
 
     def test_q(self):
