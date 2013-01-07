@@ -1,87 +1,68 @@
-from pymongo import Connection
-import multiprocessing
+from pymongo.mongo_client import MongoClient
+from pymongo.green import GreenletClient
+import collections
 
 __all__ = ['ConnectionError', 'connect']
 
-
-_connection_defaults = {
-    'host': 'localhost:27017',
-    'db_name': 'test'
-}
-
 _connections = {}
-_connection_settings = { }
 _dbs = {}
-
+_db_to_conn = {}
+_default_db = 'sweeper'
 
 class ConnectionError(Exception):
     pass
 
+MONGO_CONNECTIONS = collections.namedtuple('MONGO_CONNECTIONS',
+                                           ['sync', 'async'])
 
-def _get_connection(conn_name=None, reconnect=False):
-    global _connections, _connection_settings
-    identity = get_identity()
 
-    if conn_name not in _connection_settings:
-        return None
+def _get_db(db_name='test', reconnect=False, allow_async=True):
+    global _dbs, _connections, _db_to_conn
 
-    if conn_name not in _connections:
-        _connections[conn_name] = {}
+    if not db_name:
+        db_name = _default_db
+
+    if db_name not in _dbs:
+        if not _db_to_conn:
+            conn_name = None
+
+        else:
+            if db_name not in _db_to_conn:
+                return None
+
+            conn_name = _db_to_conn[db_name]
+
+        if conn_name not in _connections:
+            return None
+
+        conn = _connections[conn_name]
+        _dbs[db_name] = (conn.sync[db_name],
+                         conn.async[db_name] if conn.async else None)
+
+    sync, async = _dbs[db_name]
+
+    return async if allow_async and async else sync
+
+
+def connect(host='localhost', conn_name=None, db_names=None, allow_async=False, **kwargs):
+    global _connections, _db_to_conn
 
     # Connect to the database if not already connected
-    if _connections[conn_name].get(identity) is None or reconnect:
+    if conn_name not in _connections:
         try:
-            _connections[conn_name][identity] = Connection(_connection_settings[conn_name]['host'])
-        except:
-            raise ConnectionError('Cannot connect to the database')
-    return _connections[conn_name][identity]
+            if allow_async:
+                async_conn = GreenletClient.sync_connect(host, **kwargs)
+            else:
+                async_conn = None
 
-def _get_db(conn_name=None, reconnect=False):
-    global _dbs, _connections, _connection_settings
-    identity = get_identity()
+            sync_conn = MongoClient(host, **kwargs)
 
-    if conn_name not in _connection_settings:
-        return None
+            _connections[conn_name] = MONGO_CONNECTIONS(sync_conn, async_conn)
+        except Exception as e:
+            raise ConnectionError('Cannot connect to the database: %s' % str(e))
 
-    if conn_name not in _dbs:
-        _dbs[conn_name] = {}
+        if db_names:
+            for db in db_names:
+                _db_to_conn[db] = conn_name
 
-    if identity not in _dbs[conn_name]:
-        settings = _connection_settings[conn_name]
-
-        conn = _get_connection(conn_name, reconnect)
-
-        db = conn[settings['db_name']]
-
-        if 'db_username' in settings and 'db_password' in settings:
-            authenticated = db.authenticate(settings['db_username'], settings['db_password'])
-            # make sure authentication passes.
-            if not authenticated:
-                raise ConnectionError('Authentication failed with username %s', settings['db_username'])
-
-        _dbs[conn_name][identity] = db
-
-    return _dbs[conn_name][identity]
-
-def get_identity():
-    identity = multiprocessing.current_process()._identity
-    identity = 0 if not identity else identity[0]
-    return identity
-
-def connect(db, username=None, password=None, conn_name=None, **kwargs):
-    """Connect to the database specified by the 'db' argument. Connection
-    settings may be provided here as well if the database is not running on
-    the default port on localhost. If authentication is needed, provide
-    username and password arguments as well.
-    """
-    global _connection_settings
-    _connection_settings[conn_name] = _connection_defaults.copy()
-    _connection_settings[conn_name].update(kwargs)
-    _connection_settings[conn_name]['db_name'] = db
-
-    if username:
-        _connection_settings[conn_name]['db_username'] = username
-    if password:
-        _connection_settings[conn_name]['db_password'] = username
-
-    return _get_db(conn_name, reconnect=True)
+    return _connections[conn_name]

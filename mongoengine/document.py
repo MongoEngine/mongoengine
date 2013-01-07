@@ -5,7 +5,10 @@ from queryset import OperationError
 import pymongo
 import time
 import datetime
+import greenlet
+
 from bson import SON, ObjectId, DBRef
+from connection import _get_db
 
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
@@ -117,8 +120,12 @@ class Document(BaseDocument):
         return cls._fields[cls._meta['id_field']]
 
     @classmethod
-    def _pymongo(cls):
-        return cls.objects._collection
+    def _pymongo(cls, use_async=True):
+        # we can't do async queries if we're on the root greenlet since we have
+        # nothing to yield back to
+        use_async &= bool(greenlet.getcurrent().parent)
+
+        return _get_db(cls._meta['db_name'], allow_async=use_async)[cls._meta['collection']]
 
     def _update_one_key(self):
         """
@@ -137,7 +144,7 @@ class Document(BaseDocument):
 
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
-                 slave_ok=False, find_one=False, **kwargs):
+                 slave_ok=False, find_one=False, allow_async=True, **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
 
@@ -171,10 +178,10 @@ class Document(BaseDocument):
         for i in xrange(2):
             try:
                 if find_one:
-                    return cls._pymongo().find_one(spec, fields, skip=skip, sort=sort,
+                    return cls._pymongo(allow_async).find_one(spec, fields, skip=skip, sort=sort,
                                            read_preference=read_preference, **kwargs)
                 else:
-                    return cls._pymongo().find(spec, fields, skip=skip, limit=limit,
+                    return cls._pymongo(allow_async).find(spec, fields, skip=skip, limit=limit,
                                            sort=sort, read_preference=read_preference,
                                            **kwargs)
                 break
