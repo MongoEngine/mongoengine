@@ -234,11 +234,16 @@ class Document(BaseDocument):
                     select_dict[actual_key] = doc[actual_key]
 
                 upsert = self._created
+                work = {}
+
                 if updates:
-                    collection.update(select_dict, {"$set": updates},
-                        upsert=upsert, safe=safe, **write_options)
+                    work["$set"] = updates
+
                 if removals:
-                    collection.update(select_dict, {"$unset": removals},
+                    work["$unset"] = removals
+
+                if work:
+                    collection.update(select_dict, work,
                         upsert=upsert, safe=safe, **write_options)
 
             warn_cascade = not cascade and 'cascade' not in self._meta
