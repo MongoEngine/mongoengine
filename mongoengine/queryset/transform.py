@@ -26,7 +26,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
     """
     mongo_query = {}
     merge_query = defaultdict(list)
-    for key, value in query.items():
+    for key, value in sorted(query.items()):
         if key == "__raw__":
             mongo_query.update(value)
             continue
