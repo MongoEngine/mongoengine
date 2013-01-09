@@ -307,8 +307,8 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(1, Person.objects.count())
         info = Person.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_cls_1_name_1', '_cls_1_user_guid_1',
-                                       '_id_'])
+        self.assertEqual(sorted(info.keys()),
+                         ['_cls_1_name_1', '_cls_1_user_guid_1', '_id_'])
 
     def test_disable_index_creation(self):
         """Tests setting auto_create_index to False on the connection will
@@ -350,7 +350,7 @@ class IndexesTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['date.yr_-1', '_id_'])
+        self.assertEqual(sorted(info.keys()), ['_id_', 'date.yr_-1'])
         BlogPost.drop_collection()
 
     def test_list_embedded_document_index(self):
@@ -373,7 +373,7 @@ class IndexesTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         # we don't use _cls in with list fields by default
-        self.assertEqual(info.keys(), ['_id_', 'tags.tag_1'])
+        self.assertEqual(sorted(info.keys()), ['_id_', 'tags.tag_1'])
 
         post1 = BlogPost(title="Embedded Indexes tests in place",
                         tags=[Tag(name="about"), Tag(name="time")]
@@ -392,7 +392,7 @@ class IndexesTest(unittest.TestCase):
 
         RecursiveDocument.ensure_indexes()
         info = RecursiveDocument._get_collection().index_information()
-        self.assertEqual(info.keys(), ['_id_', '_cls_1'])
+        self.assertEqual(sorted(info.keys()), ['_cls_1', '_id_'])
 
     def test_geo_indexes_recursion(self):
 

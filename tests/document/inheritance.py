@@ -161,8 +161,8 @@ class InheritanceTest(unittest.TestCase):
         class Employee(Person):
             salary = IntField()
 
-        self.assertEqual(['salary', 'age', 'name', 'id'],
-                         Employee._fields.keys())
+        self.assertEqual(['age', 'id', 'name', 'salary'],
+                         sorted(Employee._fields.keys()))
         self.assertEqual(Employee._get_collection_name(),
                          Person._get_collection_name())
 
