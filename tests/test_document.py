@@ -924,7 +924,7 @@ class DocumentTest(unittest.TestCase):
 
         self.assertEqual(1, Person.objects.count())
         info = Person.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_types_1_user_guid_1', '_id_', '_types_1_name_1'])
+        self.assertEqual(sorted(info.keys()), ['_id_', '_types_1_name_1', '_types_1_user_guid_1'])
         Person.drop_collection()
 
     def test_disable_index_creation(self):
@@ -968,7 +968,7 @@ class DocumentTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         info = BlogPost.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_types_1_date.yr_-1', '_id_'])
+        self.assertEqual(sorted(info.keys()), [ '_id_', '_types_1_date.yr_-1'])
         BlogPost.drop_collection()
 
     def test_list_embedded_document_index(self):
@@ -991,7 +991,8 @@ class DocumentTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         # we don't use _types in with list fields by default
-        self.assertEqual(info.keys(), ['_id_', '_types_1', 'tags.tag_1'])
+        self.assertEqual(sorted(info.keys()),
+                         ['_id_', '_types_1', 'tags.tag_1'])
 
         post1 = BlogPost(title="Embedded Indexes tests in place",
                         tags=[Tag(name="about"), Tag(name="time")]
@@ -1008,7 +1009,7 @@ class DocumentTest(unittest.TestCase):
             recursive_obj = EmbeddedDocumentField(RecursiveObject)
 
         info = RecursiveDocument.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_id_', '_types_1'])
+        self.assertEqual(sorted(info.keys()), ['_id_', '_types_1'])
 
     def test_geo_indexes_recursion(self):
 
@@ -2719,7 +2720,7 @@ class DocumentTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        self.assertEqual(Person._fields.keys(), ['name', 'id'])
+        self.assertEqual(sorted(Person._fields.keys()), ['id', 'name'])
 
         Person(name="Rozza").save()
 
