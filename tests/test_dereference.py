@@ -198,6 +198,10 @@ class FieldTest(unittest.TestCase):
         raw_data = Group._get_collection().find_one()
         self.assertTrue(isinstance(raw_data['author'], DBRef))
         self.assertTrue(isinstance(raw_data['members'][0], DBRef))
+        group = Group.objects.first()
+
+        self.assertEqual(group.author, user)
+        self.assertEqual(group.members, [user])
 
         # Migrate the model definition
         class Group(Document):
