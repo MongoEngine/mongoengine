@@ -2,12 +2,11 @@
 language: python
 services: mongodb
 python:
-    - 2.5
-    - 2.6
-    - 2.7
-    - 3.1
-    - 3.2
-    - 3.3
+    - "2.5"
+    - "2.6"
+    - "2.7"
+    - "3.2"
+    - "3.3"
 env:
   - PYMONGO=dev
   - PYMONGO=2.4.1
