@@ -7,10 +7,11 @@ import operator
 from collections import defaultdict
 from functools import partial
 
-from mongoengine.python_support import product, reduce
+from mongoengine.python_support import product, reduce, PY3
 
 import pymongo
 from bson.code import Code
+from bson.son import SON
 
 from mongoengine import signals
 
@@ -388,7 +389,12 @@ class QuerySet(object):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
             if self._class_check:
-                self._mongo_query.update(self._initial_query)
+                if PY3:
+                    query = SON(self._initial_query.items())
+                    query.update(self._mongo_query)
+                    self._mongo_query = query
+                else:
+                    self._mongo_query.update(self._initial_query)
         return self._mongo_query
 
     def ensure_index(self, key_or_list, drop_dups=False, background=False,
@@ -704,7 +710,7 @@ class QuerySet(object):
 
         mongo_query = {}
         merge_query = defaultdict(list)
-        for key, value in query.items():
+        for key, value in sorted(query.items()):
             if key == "__raw__":
                 mongo_query.update(value)
                 continue

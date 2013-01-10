@@ -47,7 +47,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(QuerySet._transform_query(age__gt=20, age__lt=50),
                          {'age': {'$gt': 20, '$lt': 50}})
         self.assertEqual(QuerySet._transform_query(age=20, age__gt=50),
-                         {'age': 20})
+                         {'$and': [{'age': {'$gt': 50}}, {'age': 20}]})
         self.assertEqual(QuerySet._transform_query(friend__age__gte=30),
                          {'friend.age': {'$gte': 30}})
         self.assertEqual(QuerySet._transform_query(name__exists=True),

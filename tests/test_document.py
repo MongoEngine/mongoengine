@@ -8,6 +8,7 @@ import sys
 import unittest
 import uuid
 import warnings
+import operator
 
 from nose.plugins.skip import SkipTest
 from datetime import datetime
@@ -452,7 +453,8 @@ class DocumentTest(unittest.TestCase):
 
         info = collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertEqual([[(u'_id', 1)], [(u'_types', 1), (u'name', 1)]], info)
+        self.assertEqual([[('_id', 1)], [('_types', 1), ('name', 1)]],
+                         sorted(info, key=operator.itemgetter(0)))
 
         # Turn off inheritance
         class Animal(Document):
@@ -473,7 +475,8 @@ class DocumentTest(unittest.TestCase):
 
         info = collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertEqual([[(u'_id', 1)], [(u'_types', 1), (u'name', 1)]], info)
+        self.assertEqual([[(u'_id', 1)], [(u'_types', 1), (u'name', 1)]],
+            sorted(info, key=operator.itemgetter(0)))
 
         info = collection.index_information()
         indexes_to_drop = [key for key, value in info.iteritems() if '_types' in dict(value['key'])]
@@ -482,14 +485,16 @@ class DocumentTest(unittest.TestCase):
 
         info = collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertEqual([[(u'_id', 1)]], info)
+        self.assertEqual([[(u'_id', 1)]],
+            sorted(info, key=operator.itemgetter(0)))
 
         # Recreate indexes
         dog = Animal.objects.first()
         dog.save()
         info = collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertEqual([[(u'_id', 1)], [(u'name', 1),]], info)
+        self.assertEqual([[(u'_id', 1)], [(u'name', 1),]],
+            sorted(info, key=operator.itemgetter(0)))
 
         Animal.drop_collection()
 
@@ -3412,8 +3417,8 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             User().validate()
         except ValidationError, e:
-            expected_error_message = """ValidationError(Field is required: ['username', 'name'])"""
-            self.assertEqual(e.message, expected_error_message)
+            expected_error_message = """ValidationError(Field is required"""
+            self.assertTrue(expected_error_message in e.message)
             self.assertEqual(e.to_dict(), {
                 'username': 'Field is required',
                 'name': 'Field is required'})
