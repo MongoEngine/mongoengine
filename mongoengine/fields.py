@@ -351,6 +351,20 @@ class ListField(BaseField):
     def to_mongo(self, value):
         return [self.field.to_mongo(item) for item in value]
 
+    def validate_choices(self, value):
+        '''Ensures the value is one of the choices
+        '''
+        if self.choices is None:
+            return
+
+        if not isinstance(value, (list, tuple)):
+            raise ValidationError('Only lists and tuples may be used in a '
+                                  'list field')
+
+        if len(set(value) - set(self.choices)) > 0:
+            raise ValidationError("Each element must be one of %s."
+                % unicode(self.choices))
+
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
