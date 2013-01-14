@@ -183,3 +183,9 @@ Alternatively, you can rename your collections eg ::
         else:
             print "Upgraded collection names"
 
+
+mongodb 1.8 > 2.0 +
+===================
+
+Its been reported that indexes may need to be recreated to the newer version of indexes.  
+To do this drop indexes and call ``ensure_indexes`` on each model.
