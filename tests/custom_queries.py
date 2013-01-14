@@ -10,7 +10,7 @@ from bson import ObjectId, DBRef
 class CustomQueryTest(unittest.TestCase):
 
     def setUp(self):
-        connect()
+        connect(db='mongoenginetest')
         self.db = _get_db()
 
         class Person(Document):

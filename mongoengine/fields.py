@@ -325,7 +325,7 @@ class ListField(BaseField):
                 for value in value_list:
                     # Dereference DBRefs
                     if isinstance(value, (bson.dbref.DBRef)):
-                        value = _get_db(referenced_type._meta['db_name']).dereference(value)
+                        value = _get_db(referenced_type._meta['conn_name']).dereference(value)
                         deref_list.append(referenced_type._from_son(value))
                     else:
                         deref_list.append(value)
@@ -477,7 +477,7 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         # Dereference DBRefs
         if isinstance(value, (bson.dbref.DBRef)):
-            value = _get_db(self.document_type._meta['db_name']).dereference(value)
+            value = _get_db(self.document_type._meta['conn_name']).dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
             else:
@@ -534,7 +534,7 @@ class GenericReferenceField(BaseField):
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])
         reference = value['_ref']
-        doc = _get_db(doc_cls._meta['db_name']).dereference(reference)
+        doc = _get_db(doc_cls._meta['conn_name']).dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
         return doc

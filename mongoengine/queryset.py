@@ -7,7 +7,6 @@ import re
 import copy
 import itertools
 import time
-import greenlet
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError']
@@ -389,51 +388,49 @@ class QuerySet(object):
         if not self._accessed_collection:
             self._accessed_collection = True
 
-            col = self._document._pymongo(use_async=False)
-
             background = self._document._meta.get('index_background', True)
             drop_dups = self._document._meta.get('index_drop_dups', False)
             index_opts = self._document._meta.get('index_options', {})
 
-            if col.full_name not in QuerySet._index_specs:
-                index_info = col.index_information()
-                QuerySet._index_specs[col.full_name] = \
+            if self._collection.full_name not in QuerySet._index_specs:
+                index_info = self._collection.index_information()
+                QuerySet._index_specs[self._collection.full_name] = \
                         [i['key'] for i in index_info.itervalues()]
 
-            index_specs = QuerySet._index_specs[col.full_name]
+            index_specs = QuerySet._index_specs[self._collection.full_name]
 
             # Ensure document-defined indexes are created
             if self._document._meta['indexes']:
                 for key_or_list in self._document._meta['indexes']:
                     if key_or_list not in index_specs:
                         if QuerySet._allow_index_creation:
-                            col.ensure_index(key_or_list,
+                            self._collection.ensure_index(key_or_list,
                                 background=background, **index_opts)
                         else:
                             raise InvalidCollectionError("Index %s on %s does "
-                             "not exist" % (key_or_list, col.name))
+                             "not exist" % (key_or_list, self._collection.name))
 
             # Ensure indexes created by uniqueness constraints
             for index in self._document._meta['unique_indexes']:
                 if index not in index_specs:
                     if QuerySet._allow_index_creation:
-                        col.ensure_index(index, unique=True,
+                        self._collection.ensure_index(index, unique=True,
                             background=background, drop_dups=drop_dups,
                             **index_opts)
                     else:
                         raise InvalidCollectionError("Index %s on %s does "
-                         "not exist" % (index, col.name))
+                         "not exist" % (index, self._collection.name))
 
             # If _types is being used (for polymorphism), it needs an index
             if '_types' in self._query:
-                col.ensure_index('_types',
+                self._collection.ensure_index('_types',
                     background=background, **index_opts)
 
             # Ensure all needed field indexes are created
             for field in self._document._fields.values():
                 if field.__class__._geo_index:
                     index_spec = [(field.db_field, pymongo.GEO2D)]
-                    col.ensure_index(index_spec,
+                    self._collection.ensure_index(index_spec,
                         background=background, **index_opts)
 
         return self._collection_obj
@@ -1078,12 +1075,7 @@ class QuerySetManager(object):
             # Document class being used rather than a document object
             return self
 
-        # we can't do async queries if we're on the root greenlet since we have
-        # nothing to yield back to
-        allow_async = bool(greenlet.getcurrent().parent)
-
-        db = _get_db(owner._meta['db_name'], allow_async=allow_async)
-
+        db = _get_db(owner._meta['conn_name'])
         collection = owner._meta['collection']
         if (db, collection) not in self._collections:
             # Create collection as a capped collection if specified

@@ -274,7 +274,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'index_drop_dups': False,
             'index_opts': {},
             'queryset_class': QuerySet,
-            'db_name': None
+            'conn_name': None
         }
         meta.update(base_meta)
 
