@@ -1706,6 +1706,41 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+
+    def test_simple_choices_validation_invalid_value(self):
+        """Ensure that error messages are correct.
+        """
+        SIZES = ('S', 'M', 'L', 'XL', 'XXL')
+        COLORS = (('R', 'Red'), ('B', 'Blue'))
+        SIZE_MESSAGE = u"Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
+        COLOR_MESSAGE = u"Value must be one of ['R', 'B']"
+
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=SIZES)
+            color = StringField(max_length=1, choices=COLORS)
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+        shirt.validate()
+
+        shirt.size = "S"
+        shirt.color = "R"
+        shirt.validate()
+
+        shirt.size = "XS"
+        shirt.color = "G"
+
+        try:
+            shirt.validate()
+        except ValidationError, error:
+            # get the validation rules
+            error_dict = error.to_dict()
+            self.assertEqual(error_dict['size'], SIZE_MESSAGE)
+            self.assertEqual(error_dict['color'], COLOR_MESSAGE)
+
+        Shirt.drop_collection()
+
     def test_file_fields(self):
         """Ensure that file fields can be written to and their data retrieved
         """
