@@ -351,6 +351,7 @@ class QuerySet(object):
         self._timeout = True
         self._class_check = True
         self._slave_okay = False
+        self._read_preference = None
         self._iter = False
         self._scalar = []
         self._as_pymongo = False
@@ -375,7 +376,8 @@ class QuerySet(object):
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
                     '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint')
+                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint',
+                    '_read_preference',)
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -409,7 +411,8 @@ class QuerySet(object):
         self._collection.ensure_index(fields, **index_spec)
         return self
 
-    def __call__(self, q_obj=None, class_check=True, slave_okay=False, **query):
+    def __call__(self, q_obj=None, class_check=True, slave_okay=False,
+            read_preference=None, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -594,8 +597,12 @@ class QuerySet(object):
         cursor_args = {
             'snapshot': self._snapshot,
             'timeout': self._timeout,
-            'slave_okay': self._slave_okay
         }
+        if self._read_preference:
+            cursor_args['read_preference'] = self._read_preference
+        else:
+            cursor_args['slave_okay'] = self._slave_okay
+
         if self._loaded_fields:
             cursor_args['fields'] = self._loaded_fields.as_dict()
         return cursor_args
@@ -1356,6 +1363,16 @@ class QuerySet(object):
         """
         self._slave_okay = enabled
         return self
+
+    def read_preference(self, read_preference):
+        """Specify the read_preference for the query. This will suppress any
+        value set by slave_okay.
+
+        :read_preference: the ReadPreference to use.
+        """
+        self._read_preference = read_preference
+        return self
+
 
     def delete(self, safe=False):
         """Delete the documents matched by the query.
