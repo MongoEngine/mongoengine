@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime, timedelta
 
 import pymongo
+from pymongo.read_preferences import ReadPreference
 
 from bson import ObjectId
 
@@ -732,6 +733,12 @@ class QuerySetTest(unittest.TestCase):
         p.snapshot(True).slave_okay(True).timeout(True)
         self.assertEqual(p._cursor_args,
                 {'snapshot': True, 'slave_okay': True, 'timeout': True})
+
+        p.slave_okay(True).read_preference(ReadPreference.SECONDARY)
+        self.assertEqual(p._cursor_args,
+                {'read_preference': ReadPreference.SECONDARY,
+                 'snapshot': True, 'timeout': True})
+
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
