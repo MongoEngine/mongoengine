@@ -1378,6 +1378,42 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
+    def test_reverse_delete_rule_with_document_inheritance(self):
+        """Ensure that a referenced document is also deleted upon deletion
+        of a child document.
+        """
+
+        class Writer(self.Person):
+            pass
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+            reviewer = ReferenceField(self.Person, reverse_delete_rule=NULLIFY)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = Writer(name='Test User')
+        author.save()
+
+        reviewer = Writer(name='Re Viewer')
+        reviewer.save()
+
+        post = BlogPost(content='Watched some TV')
+        post.author = author
+        post.reviewer = reviewer
+        post.save()
+
+        reviewer.delete()
+        self.assertEqual(len(BlogPost.objects), 1)
+        self.assertEqual(BlogPost.objects.get().reviewer, None)
+
+        # Delete the Writer should lead to deletion of the BlogPost
+        author.delete()
+        self.assertEqual(len(BlogPost.objects), 0)
+
+
     def test_reverse_delete_rule_cascade_and_nullify_complex_field(self):
         """Ensure that a referenced document is also deleted upon deletion for
         complex fields.

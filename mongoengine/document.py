@@ -7,7 +7,7 @@ from bson.dbref import DBRef
 from mongoengine import signals, queryset
 
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  BaseDict, BaseList, ALLOW_INHERITANCE)
+                  BaseDict, BaseList, ALLOW_INHERITANCE, get_document)
 from queryset import OperationError, NotUniqueError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
@@ -421,9 +421,18 @@ class Document(BaseDocument):
         """This method registers the delete rules to apply when removing this
         object.
         """
-        delete_rules = cls._meta.get('delete_rules') or {}
-        delete_rules[(document_cls, field_name)] = rule
-        cls._meta['delete_rules'] = delete_rules
+        classes = [get_document(class_name)
+                    for class_name in cls._subclasses
+                    if class_name != cls.__name__] + [cls]
+        documents = [get_document(class_name)
+                     for class_name in document_cls._subclasses
+                     if class_name != document_cls.__name__] + [document_cls]
+
+        for cls in classes:
+            for document_cls in documents:
+                delete_rules = cls._meta.get('delete_rules') or {}
+                delete_rules[(document_cls, field_name)] = rule
+                cls._meta['delete_rules'] = delete_rules
 
     @classmethod
     def drop_collection(cls):
