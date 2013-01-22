@@ -1,4 +1,7 @@
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
+
 import unittest
 
 from bson import DBRef, ObjectId
@@ -1018,3 +1021,105 @@ class FieldTest(unittest.TestCase):
         msg = Message.objects.get(id=1)
         self.assertEqual(0, msg.comments[0].id)
         self.assertEqual(1, msg.comments[1].id)
+
+    def test_list_item_dereference_dref_false_save_doesnt_cause_extra_queries(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            name = StringField()
+            members = ListField(ReferenceField(User, dbref=False))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            User(name='user %s' % i).save()
+
+        Group(name="Test", members=User.objects).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            group_obj.name = "new test"
+            group_obj.save()
+
+            self.assertEqual(q, 2)
+
+    def test_list_item_dereference_dref_true_save_doesnt_cause_extra_queries(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            name = StringField()
+            members = ListField(ReferenceField(User, dbref=True))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            User(name='user %s' % i).save()
+
+        Group(name="Test", members=User.objects).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            group_obj.name = "new test"
+            group_obj.save()
+
+            self.assertEqual(q, 2)
+
+    def test_generic_reference_save_doesnt_cause_extra_queries(self):
+
+        class UserA(Document):
+            name = StringField()
+
+        class UserB(Document):
+            name = StringField()
+
+        class UserC(Document):
+            name = StringField()
+
+        class Group(Document):
+            name = StringField()
+            members = ListField(GenericReferenceField())
+
+        UserA.drop_collection()
+        UserB.drop_collection()
+        UserC.drop_collection()
+        Group.drop_collection()
+
+        members = []
+        for i in xrange(1, 51):
+            a = UserA(name='User A %s' % i).save()
+            b = UserB(name='User B %s' % i).save()
+            c = UserC(name='User C %s' % i).save()
+
+            members += [a, b, c]
+
+        Group(name="test", members=members).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            group_obj.name = "new test"
+            group_obj.save()
+
+            self.assertEqual(q, 2)
+
+if __name__ == '__main__':
+    unittest.main()

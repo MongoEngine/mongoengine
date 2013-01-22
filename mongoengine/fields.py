@@ -865,11 +865,15 @@ class GenericReferenceField(BaseField):
         return super(GenericReferenceField, self).__get__(instance, owner)
 
     def validate(self, value):
-        if not isinstance(value, (Document, DBRef)):
+        if not isinstance(value, (Document, DBRef, dict, SON)):
             self.error('GenericReferences can only contain documents')
 
+        if isinstance(value, (dict, SON)):
+            if '_ref' not in value or '_cls' not in value:
+                self.error('GenericReferences can only contain documents')
+
         # We need the id from the saved object to create the DBRef
-        if isinstance(value, Document) and value.id is None:
+        elif isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been'
                        ' saved to the database')
 

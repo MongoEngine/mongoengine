@@ -31,6 +31,7 @@ Changes in 0.8.X
 - Uses getlasterror to test created on updated saves (#163)
 - Fixed inheritance and unique index creation (#140)
 - Fixed reverse delete rule with inheritance (#197)
+- Fixed validation for GenericReferences which havent been dereferenced
 
 Changes in 0.7.9
 ================
