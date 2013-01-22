@@ -30,6 +30,7 @@ Changes in 0.8.X
 - Added support for $maxDistance (#179)
 - Uses getlasterror to test created on updated saves (#163)
 - Fixed inheritance and unique index creation (#140)
+- Fixed reverse delete rule with inheritance (#197)
 
 Changes in 0.7.9
 ================
