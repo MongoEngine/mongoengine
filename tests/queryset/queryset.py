@@ -2239,6 +2239,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(list(events), [event3, event1, event2])
 
         # find events within 10 degrees of san francisco
+        point = [37.7566023, -122.415579]
+        events = Event.objects(location__near=point, location__max_distance=10)
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0], event2)
+
+        # find events within 10 degrees of san francisco
         point_and_distance = [[37.7566023, -122.415579], 10]
         events = Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 1)
@@ -2315,6 +2321,10 @@ class QuerySetTest(unittest.TestCase):
         points = Point.objects(
             location__within_spherical_distance=[[-122, 37.5], 60/earth_radius]
         );
+        self.assertEqual(points.count(), 2)
+
+        points = Point.objects(location__near_sphere=[-122, 37.5],
+                               location__max_distance=60 / earth_radius);
         self.assertEqual(points.count(), 2)
 
         # Finds both points, but orders the north point first because it's

@@ -92,6 +92,8 @@ may used with :class:`~mongoengine.GeoPointField`\ s:
 * ``within_polygon`` -- filter documents to those within a given polygon (e.g.
   [(41.91,-87.69), (41.92,-87.68), (41.91,-87.65), (41.89,-87.65)]).
   .. note:: Requires Mongo Server 2.0
+* ``max_distance`` -- can be added to your location queries to set a maximum
+distance.
 
 
 Querying lists

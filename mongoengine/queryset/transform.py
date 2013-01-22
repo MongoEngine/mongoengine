@@ -9,7 +9,8 @@ __all__ = ('query', 'update')
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                           'all', 'size', 'exists', 'not')
 GEO_OPERATORS        = ('within_distance', 'within_spherical_distance',
-                        'within_box', 'within_polygon', 'near', 'near_sphere')
+                        'within_box', 'within_polygon', 'near', 'near_sphere',
+                        'max_distance')
 STRING_OPERATORS     = ('contains', 'icontains', 'startswith',
                         'istartswith', 'endswith', 'iendswith',
                         'exact', 'iexact')
@@ -97,6 +98,8 @@ def query(_doc_cls=None, _field_operation=False, **query):
                     value = {'$nearSphere': value}
                 elif op == 'within_box':
                     value = {'$within': {'$box': value}}
+                elif op == "max_distance":
+                    value = {'$maxDistance': value}
                 else:
                     raise NotImplementedError("Geo method '%s' has not "
                                               "been implemented" % op)
