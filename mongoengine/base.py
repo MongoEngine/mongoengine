@@ -274,7 +274,13 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             'index_drop_dups': False,
             'index_opts': {},
             'queryset_class': QuerySet,
-            'db_name': None
+            'db_name': None,
+
+            'force_insert': False,
+
+            'hash_field': None,
+            'hash_db_field': '_h',
+            'sharded': True
         }
         meta.update(base_meta)
 
@@ -339,6 +345,18 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class.id = new_class._fields['id']
+
+        if meta['hash_field']:
+            assert 'shard_hash' not in new_class._fields, \
+                    "You already have a shard hash"
+
+            assert meta['hash_field'] in new_class._fields, \
+                    "The field you want to hash doesn't exist"
+
+            from fields import IntField
+
+            new_class._fields['shard_hash'] = IntField(
+                db_field=meta['hash_db_field'], required=True)
 
         return new_class
 

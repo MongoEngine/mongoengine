@@ -61,7 +61,7 @@ class Document(BaseDocument):
 
     __metaclass__ = TopLevelDocumentMetaclass
 
-    def save(self, safe=True, force_insert=False, validate=True):
+    def save(self, safe=True, force_insert=None, validate=True):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -74,6 +74,18 @@ class Document(BaseDocument):
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
         """
+        if self._meta['hash_field']:
+            # if we're hashing the ID and it hasn't been set yet, autogenerate it
+            from fields import ObjectIdField
+            if self._meta['hash_field'] == self._meta['id_field'] and \
+               not self.id and isinstance(self._fields['id'], ObjectIdField):
+                self.id = ObjectId()
+
+            self['shard_hash'] = self._hash(self[self._meta['hash_field']])
+
+        if force_insert is None:
+            force_insert = self._meta['force_insert']
+
         if validate:
             self.validate()
         doc = self.to_mongo()
@@ -120,6 +132,10 @@ class Document(BaseDocument):
         return cls._fields[cls._meta['id_field']]
 
     @classmethod
+    def _hash(cls, value):
+        return hash(str(value))
+
+    @classmethod
     def _pymongo(cls, use_async=True):
         # we can't do async queries if we're on the root greenlet since we have
         # nothing to yield back to
@@ -132,7 +148,12 @@ class Document(BaseDocument):
             Designed to be overloaded in children when a shard key needs to be
             included in update_one() queries
         """
-        return {'_id': self.id}
+        key = {'_id': self.id}
+
+        if self._meta['hash_field'] and self._meta['sharded']:
+            key['shard_hash'] = self._hash(self[self._meta['hash_field']])
+
+        return key
 
     @classmethod
     def _by_id_key(cls, doc_id):
@@ -140,7 +161,13 @@ class Document(BaseDocument):
             Designed to be overloaded in children when a shard key needs to be
             included in a by_id()
         """
-        return {'_id': doc_id}
+        key = {'_id': doc_id}
+
+        if cls._meta['hash_field'] == cls._meta['id_field'] \
+           and cls._meta['sharded']:
+            key['shard_hash'] = cls._hash(doc_id)
+
+        return key
 
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
