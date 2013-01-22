@@ -28,6 +28,7 @@ Changes in 0.8.X
 - FileFields now copyable (#198)
 - Querysets now return clones and are no longer edit in place (#56)
 - Added support for $maxDistance (#179)
+- Uses getlasterror to test created on updated saves (#163)
 
 Changes in 0.7.9
 ================

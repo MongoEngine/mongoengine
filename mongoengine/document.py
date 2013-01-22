@@ -219,11 +219,11 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        find_delta = ('_id' not in doc or self._created or force_insert)
+        created = ('_id' not in doc or self._created or force_insert)
 
         try:
             collection = self.__class__.objects._collection
-            if find_delta:
+            if created:
                 if force_insert:
                     object_id = collection.insert(doc, safe=safe,
                                                   **write_options)
@@ -289,8 +289,7 @@ class Document(BaseDocument):
 
         self._changed_fields = []
         self._created = False
-        signals.post_save.send(self.__class__, document=self,
-                               created=find_delta)
+        signals.post_save.send(self.__class__, document=self, created=created)
         return self
 
     def cascade_save(self, warn_cascade=None, *args, **kwargs):
