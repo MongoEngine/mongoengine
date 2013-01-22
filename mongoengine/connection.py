@@ -2,7 +2,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.green import GreenletClient
 import collections
 
-__all__ = ['ConnectionError', 'connect']
+__all__ = ['ConnectionError', 'connect', 'set_default_db']
 
 _connections = {}
 _dbs = {}
@@ -66,3 +66,8 @@ def connect(host='localhost', conn_name=None, db_names=None, allow_async=False, 
                 _db_to_conn[db] = conn_name
 
     return _connections[conn_name]
+
+def set_default_db(db):
+    global _default_db
+
+    _default_db = db
