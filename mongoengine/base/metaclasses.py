@@ -329,10 +329,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         meta = new_class._meta
 
         # Set index specifications
-        meta['index_specs'] = [new_class._build_index_spec(spec)
-                               for spec in meta['indexes']]
-        unique_indexes = new_class._unique_with_indexes()
-        new_class._meta['unique_indexes'] = unique_indexes
+        meta['index_specs'] = new_class._build_index_specs(meta['indexes'])
 
         # If collection is a callable - call it and set the value
         collection = meta.get('collection')

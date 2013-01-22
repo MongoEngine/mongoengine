@@ -259,13 +259,12 @@ class IndexesTest(unittest.TestCase):
             tags = ListField(StringField())
             meta = {
                 'indexes': [
-                    {'fields': ['-date'], 'unique': True,
-                      'sparse': True, 'types': False},
+                    {'fields': ['-date'], 'unique': True, 'sparse': True},
                 ],
             }
 
         self.assertEqual([{'fields': [('addDate', -1)], 'unique': True,
-                          'sparse': True, 'types': False}],
+                          'sparse': True}],
                         BlogPost._meta['index_specs'])
 
         BlogPost.drop_collection()
@@ -674,7 +673,7 @@ class IndexesTest(unittest.TestCase):
 
         User.drop_collection()
 
-    def test_types_index_with_pk(self):
+    def test_index_with_pk(self):
         """Ensure you can use `pk` as part of a query"""
 
         class Comment(EmbeddedDocument):
@@ -687,7 +686,7 @@ class IndexesTest(unittest.TestCase):
                             {'fields': ['pk', 'comments.comment_id'],
                              'unique': True}]}
         except UnboundLocalError:
-            self.fail('Unbound local error at types index + pk definition')
+            self.fail('Unbound local error at index + pk definition')
 
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]

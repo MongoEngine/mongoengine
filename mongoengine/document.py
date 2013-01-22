@@ -105,7 +105,7 @@ class Document(BaseDocument):
 
     By default, _cls will be added to the start of every index (that
     doesn't contain a list) if allow_inheritance is True. This can be
-    disabled by either setting types to False on the specific index or
+    disabled by either setting cls to False on the specific index or
     by setting index_cls to False on the meta dictionary for the document.
     """
 
@@ -481,12 +481,6 @@ class Document(BaseDocument):
                     first_field = fields[0][0]
             return first_field == '_cls'
 
-        # Ensure indexes created by uniqueness constraints
-        for index in cls._meta['unique_indexes']:
-            cls_indexed = cls_indexed or includes_cls(index)
-            collection.ensure_index(index, unique=True, background=background,
-                                           drop_dups=drop_dups, **index_opts)
-
         # Ensure document-defined indexes are created
         if cls._meta['index_specs']:
             index_spec = cls._meta['index_specs']
@@ -496,19 +490,14 @@ class Document(BaseDocument):
                 cls_indexed = cls_indexed or includes_cls(fields)
                 opts = index_opts.copy()
                 opts.update(spec)
-                collection.ensure_index(fields, background=background, **opts)
+                collection.ensure_index(fields, background=background,
+                                        drop_dups=drop_dups, **opts)
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
         if (index_cls and not cls_indexed and
             cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
             collection.ensure_index('_cls', background=background,
-                                    **index_opts)
-
-        # Add geo indicies
-        for field in cls._geo_indices():
-            index_spec = [(field.db_field, pymongo.GEO2D)]
-            collection.ensure_index(index_spec, background=background,
                                     **index_opts)
 
 

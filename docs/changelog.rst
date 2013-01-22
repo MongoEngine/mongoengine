@@ -29,6 +29,7 @@ Changes in 0.8.X
 - Querysets now return clones and are no longer edit in place (#56)
 - Added support for $maxDistance (#179)
 - Uses getlasterror to test created on updated saves (#163)
+- Fixed inheritance and unique index creation (#140)
 
 Changes in 0.7.9
 ================
