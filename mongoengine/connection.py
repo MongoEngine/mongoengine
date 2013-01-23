@@ -165,7 +165,7 @@ def connect(db, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
 
 class SwitchDB(object):
-    """ SwitchDB alias contextmanager.
+    """ SwitchDB alias context manager.
 
     Example ::
 
@@ -184,7 +184,7 @@ class SwitchDB(object):
     """
 
     def __init__(self, cls, db_alias):
-        """ Construct the query_counter.
+        """ Construct the SwitchDB context manager
 
         :param cls: the class to change the registered db
         :param db_alias: the name of the specific database to use
