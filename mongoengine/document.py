@@ -11,7 +11,7 @@ from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               ALLOW_INHERITANCE, get_document)
 from mongoengine.queryset import OperationError, NotUniqueError
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
-from mongoengine.context_managers import switch_db
+from mongoengine.context_managers import switch_db, switch_collection
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
@@ -392,6 +392,31 @@ class Document(BaseDocument):
             db = cls._get_db
         self._get_collection = lambda: collection
         self._get_db = lambda: db
+        self._collection = collection
+        self._created = True
+        self._objects = self.__class__.objects
+        self._objects._collection_obj = collection
+        return self
+
+    def switch_collection(self, collection_name):
+        """
+        Temporarily switch the collection for a document instance.
+
+        Only really useful for archiving off data and calling `save()`::
+
+            user = User.objects.get(id=user_id)
+            user.switch_collection('old-users')
+            user.save()
+
+        If you need to read from another database see
+        :class:`~mongoengine.context_managers.switch_collection`
+
+        :param collection_name: The database alias to use for saving the
+            document
+        """
+        with switch_collection(self.__class__, collection_name) as cls:
+            collection = cls._get_collection()
+        self._get_collection = lambda: collection
         self._collection = collection
         self._created = True
         self._objects = self.__class__.objects
