@@ -35,6 +35,8 @@ Changes in 0.8.X
 - Added switch_db context manager (#106)
 - Added switch_db method to document instances (#106)
 - Added no_dereference context manager (#82)
+- Added switch_collection context manager (#220)
+- Added switch_collection method to document instances (#220)
 
 Changes in 0.7.9
 ================
