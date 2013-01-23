@@ -133,6 +133,11 @@ class Document(BaseDocument):
 
     @classmethod
     def _hash(cls, value):
+        # chances are this is a mistake and we didn't mean to hash "None"...
+        # protect ourselves from our potential future stupidity
+        if value is None:
+            raise ValueError("Shard hash key is None")
+
         return hash(str(value))
 
     @classmethod
