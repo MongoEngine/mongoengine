@@ -69,3 +69,21 @@ to point across databases and collections.  Below is an example schema, using
             book = ReferenceField(Book)
 
             meta = {"db_alias": "users-books-db"}
+
+
+Switch Database Context Manager
+===============================
+
+Sometimes you might want to switch the database to query against for a class.
+The SwitchDB context manager allows you to change the database alias for a
+class eg ::
+
+        from mongoengine import SwitchDB
+
+        class User(Document):
+            name = StringField()
+
+            meta = {"db_alias": "user-db"}
+
+        with SwitchDB(User, 'archive-user-db') as User:
+            User(name="Ross").save()  # Saves the 'archive-user-db'

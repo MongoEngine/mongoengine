@@ -7,6 +7,7 @@ Connecting
 
 .. autofunction:: mongoengine.connect
 .. autofunction:: mongoengine.register_connection
+.. autoclass:: mongoengine.SwitchDB
 
 Documents
 =========

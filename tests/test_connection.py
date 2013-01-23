@@ -93,6 +93,29 @@ class ConnectionTest(unittest.TestCase):
         date_doc = DateDoc.objects.first()
         self.assertEqual(d, date_doc.the_date)
 
+    def test_switch_db_context_manager(self):
+        register_connection('testdb-1', 'mongoenginetest2')
+
+        class Group(Document):
+            name = StringField()
+
+        Group.drop_collection()
+
+        Group(name="hello - default").save()
+        self.assertEqual(1, Group.objects.count())
+
+        with SwitchDB(Group, 'testdb-1') as Group:
+
+            self.assertEqual(0, Group.objects.count())
+
+            Group(name="hello").save()
+
+            self.assertEqual(1, Group.objects.count())
+
+            Group.drop_collection()
+            self.assertEqual(0, Group.objects.count())
+
+        self.assertEqual(1, Group.objects.count())
 
 if __name__ == '__main__':
     unittest.main()
