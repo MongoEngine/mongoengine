@@ -32,8 +32,9 @@ Changes in 0.8.X
 - Fixed inheritance and unique index creation (#140)
 - Fixed reverse delete rule with inheritance (#197)
 - Fixed validation for GenericReferences which havent been dereferenced
-- Added SwitchDB context manager (#106)
+- Added switch_db context manager (#106)
 - Added switch_db method to document instances (#106)
+- Added no_dereference context manager (#82)
 
 Changes in 0.7.9
 ================

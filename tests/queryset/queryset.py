@@ -17,7 +17,7 @@ from bson import ObjectId
 from mongoengine import *
 from mongoengine.connection import get_connection
 from mongoengine.python_support import PY3
-from mongoengine.tests import query_counter
+from mongoengine.context_managers import query_counter
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
                                   QueryFieldList, queryset_manager)

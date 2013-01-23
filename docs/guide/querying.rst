@@ -93,7 +93,7 @@ may used with :class:`~mongoengine.GeoPointField`\ s:
   [(41.91,-87.69), (41.92,-87.68), (41.91,-87.65), (41.89,-87.65)]).
   .. note:: Requires Mongo Server 2.0
 * ``max_distance`` -- can be added to your location queries to set a maximum
-distance.
+  distance.
 
 
 Querying lists
@@ -368,6 +368,22 @@ QuerySet to a list and dereferences as efficiently as possible.  By default
 references to the depth of 1 level.  If you have more complicated documents and
 want to dereference more of the object at once then increasing the :attr:`max_depth`
 will dereference more levels of the document.
+
+Turning off dereferencing
+-------------------------
+
+Sometimes for performance reasons you don't want to automatically dereference
+data .  To turn off all dereferencing you can use the
+:class:`~mongoengine.context_managers.no_dereference` context manager::
+
+    with no_dereference(Post) as Post:
+        post = Post.objects.first()
+        assert(isinstance(post.author, ObjectId))
+
+.. note::
+
+    :class:`~mongoengine.context_managers.no_dereference` only works on the
+    Default QuerySet manager.
 
 Advanced queries
 ================

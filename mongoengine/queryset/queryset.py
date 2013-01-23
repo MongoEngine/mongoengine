@@ -109,7 +109,6 @@ class QuerySet(object):
         queryset._class_check = class_check
         return queryset
 
-
     def __iter__(self):
         """Support iterator protocol"""
         self.rewind()

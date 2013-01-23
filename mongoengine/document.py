@@ -1,15 +1,17 @@
+from __future__ import with_statement
 import warnings
 
 import pymongo
 import re
 
 from bson.dbref import DBRef
-from mongoengine import signals, queryset
-
-from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  BaseDict, BaseList, ALLOW_INHERITANCE, get_document)
-from queryset import OperationError, NotUniqueError
-from connection import get_db, DEFAULT_CONNECTION_NAME, SwitchDB
+from mongoengine import signals
+from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
+                              BaseDocument, BaseDict, BaseList,
+                              ALLOW_INHERITANCE, get_document)
+from mongoengine.queryset import OperationError, NotUniqueError
+from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
+from mongoengine.context_managers import switch_db
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
@@ -381,11 +383,11 @@ class Document(BaseDocument):
             user.save()
 
         If you need to read from another database see
-        :class:`~mongoengine.SwitchDB`
+        :class:`~mongoengine.context_managers.switch_db`
 
         :param db_alias: The database alias to use for saving the document
         """
-        with SwitchDB(self.__class__, db_alias) as cls:
+        with switch_db(self.__class__, db_alias) as cls:
             collection = cls._get_collection()
             db = cls._get_db
         self._get_collection = lambda: collection

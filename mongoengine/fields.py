@@ -779,7 +779,7 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
 
         # Dereference DBRefs
-        if isinstance(value, DBRef):
+        if self._auto_dereference and isinstance(value, DBRef):
             value = self.document_type._get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)

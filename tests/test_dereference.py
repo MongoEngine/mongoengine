@@ -8,7 +8,7 @@ from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.tests import query_counter
+from mongoengine.context_managers import query_counter, no_dereference
 
 
 class FieldTest(unittest.TestCase):
@@ -1120,6 +1120,78 @@ class FieldTest(unittest.TestCase):
             group_obj.save()
 
             self.assertEqual(q, 2)
+
+    def test_no_dereference_context_manager_object_id(self):
+        """Ensure that DBRef items in ListFields aren't dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            ref = ReferenceField(User, dbref=False)
+            generic = GenericReferenceField()
+            members = ListField(ReferenceField(User, dbref=False))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            User(name='user %s' % i).save()
+
+        user = User.objects.first()
+        Group(ref=user, members=User.objects, generic=user).save()
+
+        with no_dereference(Group) as NoDeRefGroup:
+            self.assertTrue(Group._fields['members']._auto_dereference)
+            self.assertFalse(NoDeRefGroup._fields['members']._auto_dereference)
+
+        with no_dereference(Group) as Group:
+            group = Group.objects.first()
+            self.assertTrue(all([not isinstance(m, User)
+                                for m in group.members]))
+            self.assertFalse(isinstance(group.ref, User))
+            self.assertFalse(isinstance(group.generic, User))
+
+        self.assertTrue(all([isinstance(m, User)
+                             for m in group.members]))
+        self.assertTrue(isinstance(group.ref, User))
+        self.assertTrue(isinstance(group.generic, User))
+
+    def test_no_dereference_context_manager_dbref(self):
+        """Ensure that DBRef items in ListFields aren't dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            ref = ReferenceField(User, dbref=True)
+            generic = GenericReferenceField()
+            members = ListField(ReferenceField(User, dbref=True))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            User(name='user %s' % i).save()
+
+        user = User.objects.first()
+        Group(ref=user, members=User.objects, generic=user).save()
+
+        with no_dereference(Group) as NoDeRefGroup:
+            self.assertTrue(Group._fields['members']._auto_dereference)
+            self.assertFalse(NoDeRefGroup._fields['members']._auto_dereference)
+
+        with no_dereference(Group) as Group:
+            group = Group.objects.first()
+            self.assertTrue(all([not isinstance(m, User)
+                                for m in group.members]))
+            self.assertFalse(isinstance(group.ref, User))
+            self.assertFalse(isinstance(group.generic, User))
+
+        self.assertTrue(all([isinstance(m, User)
+                             for m in group.members]))
+        self.assertTrue(isinstance(group.ref, User))
+        self.assertTrue(isinstance(group.generic, User))
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,3 +1,4 @@
+from __future__ import with_statement
 import datetime
 import pymongo
 import unittest
@@ -8,6 +9,7 @@ from bson.tz_util import utc
 
 from mongoengine import *
 from mongoengine.connection import get_db, get_connection, ConnectionError
+from mongoengine.context_managers import switch_db
 
 
 class ConnectionTest(unittest.TestCase):
@@ -105,7 +107,7 @@ class ConnectionTest(unittest.TestCase):
         Group(name="hello - default").save()
         self.assertEqual(1, Group.objects.count())
 
-        with SwitchDB(Group, 'testdb-1') as Group:
+        with switch_db(Group, 'testdb-1') as Group:
 
             self.assertEqual(0, Group.objects.count())
 

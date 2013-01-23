@@ -18,11 +18,11 @@ class QuerySetManager(object):
     """
 
     get_queryset = None
+    default = QuerySet
 
     def __init__(self, queryset_func=None):
         if queryset_func:
             self.get_queryset = queryset_func
-        self._collections = {}
 
     def __get__(self, instance, owner):
         """Descriptor for instantiating a new QuerySet object when
@@ -33,7 +33,7 @@ class QuerySetManager(object):
             return self
 
         # owner is the document that contains the QuerySetManager
-        queryset_class = owner._meta.get('queryset_class') or QuerySet
+        queryset_class = owner._meta.get('queryset_class', self.default)
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
             arg_count = self.get_queryset.func_code.co_argcount

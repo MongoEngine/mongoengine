@@ -11,7 +11,7 @@ def _import_class(cls_name):
     field_classes = ('DictField', 'DynamicField', 'EmbeddedDocumentField',
                      'FileField', 'GenericReferenceField',
                      'GenericEmbeddedDocumentField', 'GeoPointField',
-                     'ReferenceField', 'StringField')
+                     'ReferenceField', 'StringField', 'ComplexBaseField')
     queryset_classes = ('OperationError',)
     deref_classes = ('DeReference',)
 

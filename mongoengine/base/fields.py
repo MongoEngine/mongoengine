@@ -23,6 +23,7 @@ class BaseField(object):
     name = None
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
+    _auto_dereference = True
 
     # These track each time a Field instance is created. Used to retain order.
     # The auto_creation_counter is used for fields that MongoEngine implicitly
@@ -163,9 +164,11 @@ class ComplexBaseField(BaseField):
 
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
-        dereference = self.field is None or isinstance(self.field,
-            (GenericReferenceField, ReferenceField))
-        if not self._dereference and instance._initialised and dereference:
+        dereference = (self._auto_dereference and
+                       (self.field is None or isinstance(self.field,
+                        (GenericReferenceField, ReferenceField))))
+
+        if not self.__dereference and instance._initialised and dereference:
             instance._data[self.name] = self._dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
@@ -182,7 +185,8 @@ class ComplexBaseField(BaseField):
             value = BaseDict(value, instance, self.name)
             instance._data[self.name] = value
 
-        if (instance._initialised and isinstance(value, (BaseList, BaseDict))
+        if (self._auto_dereference and instance._initialised and
+            isinstance(value, (BaseList, BaseDict))
             and not value._dereferenced):
             value = self._dereference(
                 value, max_depth=1, instance=instance, name=self.name

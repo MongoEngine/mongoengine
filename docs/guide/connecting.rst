@@ -75,15 +75,15 @@ Switch Database Context Manager
 ===============================
 
 Sometimes you might want to switch the database to query against for a class.
-The SwitchDB context manager allows you to change the database alias for a
-class eg ::
+The :class:`~mongoengine.context_managers.switch_db` context manager allows
+you to change the database alias for a class eg ::
 
-        from mongoengine import SwitchDB
+        from mongoengine.context_managers import switch_db
 
         class User(Document):
             name = StringField()
 
             meta = {"db_alias": "user-db"}
 
-        with SwitchDB(User, 'archive-user-db') as User:
+        with switch_db(User, 'archive-user-db') as User:
             User(name="Ross").save()  # Saves the 'archive-user-db'
