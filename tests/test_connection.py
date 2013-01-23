@@ -94,6 +94,7 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(d, date_doc.the_date)
 
     def test_switch_db_context_manager(self):
+        connect('mongoenginetest')
         register_connection('testdb-1', 'mongoenginetest2')
 
         class Group(Document):

@@ -2114,6 +2114,56 @@ class ValidatorErrorTest(unittest.TestCase):
         self.assertEqual(classic_doc, dict_doc)
         self.assertEqual(classic_doc._data, dict_doc._data)
 
+    def test_switch_db_instance(self):
+        register_connection('testdb-1', 'mongoenginetest2')
+
+        class Group(Document):
+            name = StringField()
+
+        Group.drop_collection()
+        with SwitchDB(Group, 'testdb-1') as Group:
+            Group.drop_collection()
+
+        Group(name="hello - default").save()
+        self.assertEqual(1, Group.objects.count())
+
+        group = Group.objects.first()
+        group.switch_db('testdb-1')
+        group.name = "hello - testdb!"
+        group.save()
+
+        with SwitchDB(Group, 'testdb-1') as Group:
+            group = Group.objects.first()
+            self.assertEqual("hello - testdb!", group.name)
+
+        group = Group.objects.first()
+        self.assertEqual("hello - default", group.name)
+
+        # Slightly contrived now - perform an update
+        # Only works as they have the same object_id
+        group.switch_db('testdb-1')
+        group.update(set__name="hello - update")
+
+        with SwitchDB(Group, 'testdb-1') as Group:
+            group = Group.objects.first()
+            self.assertEqual("hello - update", group.name)
+            Group.drop_collection()
+            self.assertEqual(0, Group.objects.count())
+
+        group = Group.objects.first()
+        self.assertEqual("hello - default", group.name)
+
+        # Totally contrived now - perform a delete
+        # Only works as they have the same object_id
+        group.switch_db('testdb-1')
+        group.delete()
+
+        with SwitchDB(Group, 'testdb-1') as Group:
+            self.assertEqual(0, Group.objects.count())
+
+        group = Group.objects.first()
+        self.assertEqual("hello - default", group.name)
+
 
 if __name__ == '__main__':
     unittest.main()

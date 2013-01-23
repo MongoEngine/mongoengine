@@ -168,6 +168,7 @@ class SwitchDB(object):
     """ SwitchDB alias contextmanager.
 
     Example ::
+
         # Register connections
         register_connection('default', 'mongoenginetest')
         register_connection('testdb-1', 'mongoenginetest2')

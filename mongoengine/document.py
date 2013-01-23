@@ -9,7 +9,7 @@ from mongoengine import signals, queryset
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList, ALLOW_INHERITANCE, get_document)
 from queryset import OperationError, NotUniqueError
-from connection import get_db, DEFAULT_CONNECTION_NAME
+from connection import get_db, DEFAULT_CONNECTION_NAME, SwitchDB
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
@@ -222,7 +222,7 @@ class Document(BaseDocument):
         created = ('_id' not in doc or self._created or force_insert)
 
         try:
-            collection = self.__class__.objects._collection
+            collection = self._get_collection()
             if created:
                 if force_insert:
                     object_id = collection.insert(doc, safe=safe,
@@ -322,6 +322,16 @@ class Document(BaseDocument):
                 ref._changed_fields = []
 
     @property
+    def _qs(self):
+        """
+        Returns the queryset to use for updating / reloading / deletions
+        """
+        qs = self.__class__.objects
+        if hasattr(self, '_objects'):
+            qs = self._objects
+        return qs
+
+    @property
     def _object_key(self):
         """Dict to identify object in collection
         """
@@ -342,7 +352,7 @@ class Document(BaseDocument):
             raise OperationError('attempt to update a document not yet saved')
 
         # Need to add shard key to query, or you get an error
-        return self.__class__.objects(**self._object_key).update_one(**kwargs)
+        return self._qs.filter(**self._object_key).update_one(**kwargs)
 
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -353,12 +363,38 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self.__class__.objects(**self._object_key).delete(safe=safe)
+            self._qs.filter(**self._object_key).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
 
         signals.post_delete.send(self.__class__, document=self)
+
+    def switch_db(self, db_alias):
+        """
+        Temporarily switch the database for a document instance.
+
+        Only really useful for archiving off data and calling `save()`::
+
+            user = User.objects.get(id=user_id)
+            user.switch_db('archive-db')
+            user.save()
+
+        If you need to read from another database see
+        :class:`~mongoengine.SwitchDB`
+
+        :param db_alias: The database alias to use for saving the document
+        """
+        with SwitchDB(self.__class__, db_alias) as cls:
+            collection = cls._get_collection()
+            db = cls._get_db
+        self._get_collection = lambda: collection
+        self._get_db = lambda: db
+        self._collection = collection
+        self._created = True
+        self._objects = self.__class__.objects
+        self._objects._collection_obj = collection
+        return self
 
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
@@ -377,7 +413,7 @@ class Document(BaseDocument):
         .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self.__class__.objects(
+        obj = self._qs.filter(
                 **{id_field: self[id_field]}
               ).limit(1).select_related(max_depth=max_depth)
         if obj:
