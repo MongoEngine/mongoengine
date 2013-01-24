@@ -47,7 +47,7 @@ be saved ::
     >>> Page.objects(tags='mongoengine').count()
     >>> 1
 
-..note::
+.. note::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
 
