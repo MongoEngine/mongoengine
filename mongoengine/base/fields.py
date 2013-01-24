@@ -168,6 +168,7 @@ class ComplexBaseField(BaseField):
                        (self.field is None or isinstance(self.field,
                         (GenericReferenceField, ReferenceField))))
 
+        self._auto_dereference = instance._fields[self.name]._auto_dereference
         if not self.__dereference and instance._initialised and dereference:
             instance._data[self.name] = self._dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,

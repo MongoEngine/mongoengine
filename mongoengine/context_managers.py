@@ -93,7 +93,8 @@ class switch_collection(object):
 class no_dereference(object):
     """ no_dereference context manager.
 
-    Turns off all dereferencing in Documents::
+    Turns off all dereferencing in Documents for the duration of the context
+    manager::
 
         with no_dereference(Group) as Group:
             Group.objects.find()
@@ -118,21 +119,12 @@ class no_dereference(object):
 
     def __enter__(self):
         """ change the objects default and _auto_dereference values"""
-        if 'queryset_class' in self.cls._meta:
-            raise OperationError("no_dereference context manager only works on"
-                                 " default queryset classes")
-        objects = self.cls.__dict__['objects']
-        objects.default = QuerySetNoDeRef
-        self.cls.objects = objects
         for field in self.deref_fields:
             self.cls._fields[field]._auto_dereference = False
         return self.cls
 
     def __exit__(self, t, value, traceback):
         """ Reset the default and _auto_dereference values"""
-        objects = self.cls.__dict__['objects']
-        objects.default = QuerySet
-        self.cls.objects = objects
         for field in self.deref_fields:
             self.cls._fields[field]._auto_dereference = True
         return self.cls
@@ -145,7 +137,7 @@ class QuerySetNoDeRef(QuerySet):
 
 
 class query_counter(object):
-    """ Query_counter contextmanager to get the number of queries. """
+    """ Query_counter context manager to get the number of queries. """
 
     def __init__(self):
         """ Construct the query_counter. """

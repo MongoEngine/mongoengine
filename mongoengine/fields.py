@@ -777,7 +777,7 @@ class ReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
-
+        self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
             value = self.document_type._get_db().dereference(value)
@@ -859,7 +859,8 @@ class GenericReferenceField(BaseField):
             return self
 
         value = instance._data.get(self.name)
-        if isinstance(value, (dict, SON)):
+        self._auto_dereference = instance._fields[self.name]._auto_dereference
+        if self._auto_dereference and isinstance(value, (dict, SON)):
             instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)

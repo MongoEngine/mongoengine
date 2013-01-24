@@ -3103,5 +3103,26 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(results[1]['name'], 'Barack Obama')
         self.assertEqual(results[1]['price'], Decimal('2.22'))
 
+    def test_no_dereference(self):
+
+        class Organization(Document):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            organization = ReferenceField(Organization)
+
+        User.drop_collection()
+        Organization.drop_collection()
+
+        whitehouse = Organization(name="White House").save()
+        User(name="Bob Dole", organization=whitehouse).save()
+
+        qs = User.objects()
+        self.assertTrue(isinstance(qs.first().organization, Organization))
+        self.assertFalse(isinstance(qs.no_dereference().first().organization,
+                                    Organization))
+        self.assertTrue(isinstance(qs.first().organization, Organization))
+
 if __name__ == '__main__':
     unittest.main()

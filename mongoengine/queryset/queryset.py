@@ -42,6 +42,7 @@ class QuerySet(object):
     providing :class:`~mongoengine.Document` objects as the results.
     """
     __dereference = False
+    _auto_dereference = True
 
     def __init__(self, document, collection):
         self._document = document
@@ -145,10 +146,12 @@ class QuerySet(object):
         elif isinstance(key, int):
             if queryset._scalar:
                 return queryset._get_scalar(
-                        queryset._document._from_son(queryset._cursor[key]))
+                        queryset._document._from_son(queryset._cursor[key],
+                            _auto_dereference=self._auto_dereference))
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor.next())
-            return queryset._document._from_son(queryset._cursor[key])
+            return queryset._document._from_son(queryset._cursor[key],
+                            _auto_dereference=self._auto_dereference)
         raise AttributeError
 
     def __repr__(self):
@@ -515,7 +518,7 @@ class QuerySet(object):
             '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
             '_timeout', '_class_check', '_slave_okay', '_read_preference',
             '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
-            '_limit', '_skip', '_hint')
+            '_limit', '_skip', '_hint', '_auto_dereference')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -1134,6 +1137,12 @@ class QuerySet(object):
         if not self.__dereference:
             self.__dereference = _import_class('DeReference')()
         return self.__dereference
+
+    def no_dereference(self):
+        """Turn off any dereferencing."""
+        queryset = self.clone()
+        queryset._auto_dereference = False
+        return queryset
 
     # Helper Functions
 

@@ -1,3 +1,4 @@
+import copy
 import operator
 from functools import partial
 
@@ -461,9 +462,10 @@ class BaseDocument(object):
         return cls._meta.get('collection', None)
 
     @classmethod
-    def _from_son(cls, son):
+    def _from_son(cls, son, _auto_dereference=True):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
+
         # get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
@@ -480,7 +482,12 @@ class BaseDocument(object):
         changed_fields = []
         errors_dict = {}
 
-        for field_name, field in cls._fields.iteritems():
+        fields = cls._fields
+        if not _auto_dereference:
+            fields = copy.copy(fields)
+
+        for field_name, field in fields.iteritems():
+            field._auto_dereference = _auto_dereference
             if field.db_field in data:
                 value = data[field.db_field]
                 try:
@@ -507,6 +514,8 @@ class BaseDocument(object):
         obj = cls(__auto_convert=False, **data)
         obj._changed_fields = changed_fields
         obj._created = False
+        if not _auto_dereference:
+            obj._fields = fields
         return obj
 
     @classmethod
