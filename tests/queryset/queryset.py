@@ -2074,6 +2074,32 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_custom_manager_overriding_objects_works(self):
+
+        class Foo(Document):
+            bar = StringField(default='bar')
+            active = BooleanField(default=False)
+
+            @queryset_manager
+            def objects(doc_cls, queryset):
+                return queryset(active=True)
+
+            @queryset_manager
+            def with_inactive(doc_cls, queryset):
+                return queryset(active=False)
+
+        Foo.drop_collection()
+
+        Foo(active=True).save()
+        Foo(active=False).save()
+
+        self.assertEqual(1, Foo.objects.count())
+        self.assertEqual(1, Foo.with_inactive.count())
+
+        Foo.with_inactive.first().delete()
+        self.assertEqual(0, Foo.with_inactive.count())
+        self.assertEqual(1, Foo.objects.count())
+
 
     def test_query_value_conversion(self):
         """Ensure that query values are properly converted when necessary.

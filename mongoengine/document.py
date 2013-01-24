@@ -9,7 +9,7 @@ from mongoengine import signals
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
-from mongoengine.queryset import OperationError, NotUniqueError
+from mongoengine.queryset import OperationError, NotUniqueError, QuerySet
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
 
@@ -328,10 +328,9 @@ class Document(BaseDocument):
         """
         Returns the queryset to use for updating / reloading / deletions
         """
-        qs = self.__class__.objects
-        if hasattr(self, '_objects'):
-            qs = self._objects
-        return qs
+        if not hasattr(self, '__objects'):
+            self.__objects = QuerySet(self, self._get_collection())
+        return self.__objects
 
     @property
     def _object_key(self):
@@ -394,8 +393,8 @@ class Document(BaseDocument):
         self._get_db = lambda: db
         self._collection = collection
         self._created = True
-        self._objects = self.__class__.objects
-        self._objects._collection_obj = collection
+        self.__objects = self._qs
+        self.__objects._collection_obj = collection
         return self
 
     def switch_collection(self, collection_name):
@@ -419,8 +418,8 @@ class Document(BaseDocument):
         self._get_collection = lambda: collection
         self._collection = collection
         self._created = True
-        self._objects = self.__class__.objects
-        self._objects._collection_obj = collection
+        self.__objects = self._qs
+        self.__objects._collection_obj = collection
         return self
 
     def select_related(self, max_depth=1):

@@ -34,10 +34,11 @@ Changes in 0.8.X
 - Fixed validation for GenericReferences which havent been dereferenced
 - Added switch_db context manager (#106)
 - Added switch_db method to document instances (#106)
-- Added no_dereference context manager (#82)
+- Added no_dereference context manager (#82) (#61)
 - Added switch_collection context manager (#220)
 - Added switch_collection method to document instances (#220)
 - Added support for compound primary keys (#149) (#121)
+- Fixed overriding objects with custom manager (#58)
 
 Changes in 0.7.9
 ================
