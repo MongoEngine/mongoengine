@@ -2026,8 +2026,6 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             User().validate()
         except ValidationError, e:
-            expected_error_message = """ValidationError(Field is required: ['username', 'name'])"""
-            self.assertEqual(e.message, expected_error_message)
             self.assertEqual(e.to_dict(), {
                 'username': 'Field is required',
                 'name': 'Field is required'})
