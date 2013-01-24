@@ -140,6 +140,7 @@ class ContextManagersTest(unittest.TestCase):
     def test_query_counter(self):
         connect('mongoenginetest')
         db = get_db()
+        db.test.find({})
 
         with query_counter() as q:
             self.assertEqual(0, q)
