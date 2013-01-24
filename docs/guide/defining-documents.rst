@@ -135,7 +135,8 @@ arguments can be set on all fields:
     field, will not have two documents in the collection with the same value.
 
 :attr:`primary_key` (Default: False)
-    When True, use this field as a primary key for the collection.
+    When True, use this field as a primary key for the collection.  `DictField`
+    and `EmbeddedDocuments` both support being the primary key for a document.
 
 :attr:`choices` (Default: None)
     An iterable (e.g. a list or tuple) of choices to which the value of this
@@ -441,6 +442,7 @@ The following example shows a :class:`Log` document that will be limited to
 
 Indexes
 =======
+
 You can specify indexes on collections to make querying faster. This is done
 by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
@@ -473,20 +475,22 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be unique.
 
-.. note ::
+.. note::
 
-    To index embedded files / dictionary fields use 'dot' notation eg:
-    `rank.title`
+    Inheritance adds extra fields indices see: :ref:`document-inheritance`.
 
-.. warning::
+Compound Indexes and Indexing sub documents
+-------------------------------------------
 
-    Inheritance adds extra indices.
-    If don't need inheritance for a document turn inheritance off -
-    see :ref:`document-inheritance`.
+Compound indexes can be created by adding the Embedded field or dictionary
+field name to the index definition.
 
+Sometimes its more efficient to index parts of Embeedded / dictionary fields,
+in this case use 'dot' notation to identify the value to index eg: `rank.title`
 
 Geospatial indexes
----------------------------
+------------------
+
 Geospatial indexes will be automatically created for all
 :class:`~mongoengine.GeoPointField`\ s
 

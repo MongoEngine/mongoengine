@@ -693,5 +693,39 @@ class IndexesTest(unittest.TestCase):
         index_item = [('_id', 1), ('comments.comment_id', 1)]
         self.assertTrue(index_item in info)
 
+    def test_compound_key_embedded(self):
+
+        class CompoundKey(EmbeddedDocument):
+            name = StringField(required=True)
+            term = StringField(required=True)
+
+        class Report(Document):
+            key = EmbeddedDocumentField(CompoundKey, primary_key=True)
+            text = StringField()
+
+        Report.drop_collection()
+
+        my_key = CompoundKey(name="n", term="ok")
+        report = Report(text="OK", key=my_key).save()
+
+        self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
+                         report.to_mongo())
+        self.assertEqual(report, Report.objects.get(pk=my_key))
+
+    def test_compound_key_dictfield(self):
+
+        class Report(Document):
+            key = DictField(primary_key=True)
+            text = StringField()
+
+        Report.drop_collection()
+
+        my_key = {"name": "n", "term": "ok"}
+        report = Report(text="OK", key=my_key).save()
+
+        self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
+                         report.to_mongo())
+        self.assertEqual(report, Report.objects.get(pk=my_key))
+
 if __name__ == '__main__':
     unittest.main()

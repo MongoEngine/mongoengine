@@ -37,6 +37,7 @@ Changes in 0.8.X
 - Added no_dereference context manager (#82)
 - Added switch_collection context manager (#220)
 - Added switch_collection method to document instances (#220)
+- Added support for compound primary keys (#149)
 
 Changes in 0.7.9
 ================
