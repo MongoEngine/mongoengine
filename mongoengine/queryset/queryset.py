@@ -748,8 +748,12 @@ class QuerySet(object):
         """Instead of returning Document instances, return either a specific
         value or a tuple of values in order.
 
-        This effects all results and can be unset by calling ``scalar``
-        without arguments. Calls ``only`` automatically.
+        Can be used along with
+        :func:`~mongoengine.queryset.QuerySet.no_dereference` to turn off
+        dereferencing.
+
+        .. note:: This effects all results and can be unset by calling
+                  ``scalar`` without arguments. Calls ``only`` automatically.
 
         :param fields: One or more fields to return instead of a Document.
         """
@@ -1139,7 +1143,8 @@ class QuerySet(object):
         return self.__dereference
 
     def no_dereference(self):
-        """Turn off any dereferencing."""
+        """Turn off any dereferencing for the results of this queryset.
+        """
         queryset = self.clone()
         queryset._auto_dereference = False
         return queryset
