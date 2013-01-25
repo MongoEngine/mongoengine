@@ -8,6 +8,7 @@ import queryset
 from queryset import *
 import signals
 from signals import *
+import django
 
 __all__ = (list(document.__all__) + fields.__all__ + connection.__all__ +
            list(queryset.__all__) + signals.__all__)
