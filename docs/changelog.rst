@@ -40,6 +40,7 @@ Changes in 0.8.X
 - Added support for compound primary keys (#149) (#121)
 - Fixed overriding objects with custom manager (#58)
 - Added no_dereference method for querysets (#82) (#61)
+- Undefined data should not override instance methods (#49)
 
 Changes in 0.7.9
 ================

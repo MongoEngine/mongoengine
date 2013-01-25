@@ -9,6 +9,7 @@ from indexes import *
 from inheritance import *
 from instance import *
 from json_serialisation import *
+from validation import *
 
 if __name__ == '__main__':
     unittest.main()

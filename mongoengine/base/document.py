@@ -60,13 +60,17 @@ class BaseDocument(object):
         else:
             FileField = _import_class('FileField')
             for key, value in values.iteritems():
+                if key == '__auto_convert':
+                    continue
                 key = self._reverse_db_field_map.get(key, key)
-                if (value is not None and __auto_convert and
-                    key in self._fields):
-                    field = self._fields.get(key)
-                    if not isinstance(field, FileField):
-                        value = field.to_python(value)
-                setattr(self, key, value)
+                if key in self._fields or key in ('id', 'pk', '_cls'):
+                    if __auto_convert and value is not None:
+                        field = self._fields.get(key)
+                        if field and not isinstance(field, FileField):
+                            value = field.to_python(value)
+                    setattr(self, key, value)
+                else:
+                    self._data[key] = value
 
         # Set any get_fieldname_display methods
         self.__set_field_display()

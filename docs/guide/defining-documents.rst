@@ -600,8 +600,7 @@ Working with existing data
 --------------------------
 As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
 easily get working with existing data.  Just define the document to match
-the expected schema in your database.  If you have wildly varying schemas then
-a :class:`~mongoengine.DynamicDocument` might be more appropriate. ::
+the expected schema in your database ::
 
     # Will work with data in an existing collection named 'cmsPage'
     class Page(Document):
@@ -609,3 +608,10 @@ a :class:`~mongoengine.DynamicDocument` might be more appropriate. ::
         meta = {
             'collection': 'cmsPage'
         }
+
+If you have wildly varying schemas then using a
+:class:`~mongoengine.DynamicDocument` might be more appropriate, instead of
+defining all possible field types.
+
+If you use :class:`~mongoengine.Document` and the database contains data that
+isn't defined then that data will be stored in the `document._data` dictionary.
