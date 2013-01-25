@@ -56,6 +56,26 @@ you will need to declare :attr:`allow_inheritance` in the meta data like so: ::
 
         meta = {'allow_inheritance': True}
 
+Previously, if you had data the database that wasn't defined in the Document
+definition, it would set it as an attribute on the document.  This is no longer
+the case and the data is set only in the ``document._data`` dictionary: ::
+
+    >>> from mongoengine import *
+    >>> class Animal(Document):
+    ...    name = StringField()
+    ...
+    >>> cat = Animal(name="kit", size="small")
+
+    # 0.7
+    >>> cat.size
+    u'small'
+
+    # 0.8
+    >>> cat.size
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+    AttributeError: 'Animal' object has no attribute 'size'
+
 Querysets
 ~~~~~~~~~
 
