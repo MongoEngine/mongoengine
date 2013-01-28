@@ -62,28 +62,31 @@ not provided. Default values may optionally be a callable, which will be called
 to retrieve the value (such as in the above example). The field types available
 are as follows:
 
-* :class:`~mongoengine.StringField`
-* :class:`~mongoengine.URLField`
-* :class:`~mongoengine.EmailField`
-* :class:`~mongoengine.IntField`
-* :class:`~mongoengine.FloatField`
-* :class:`~mongoengine.DecimalField`
-* :class:`~mongoengine.DateTimeField`
+* :class:`~mongoengine.BinaryField`
+* :class:`~mongoengine.BooleanField`
 * :class:`~mongoengine.ComplexDateTimeField`
-* :class:`~mongoengine.ListField`
-* :class:`~mongoengine.SortedListField`
+* :class:`~mongoengine.DateTimeField`
+* :class:`~mongoengine.DecimalField`
 * :class:`~mongoengine.DictField`
+* :class:`~mongoengine.DynamicField`
+* :class:`~mongoengine.EmailField`
+* :class:`~mongoengine.EmbeddedDocumentField`
+* :class:`~mongoengine.FileField`
+* :class:`~mongoengine.FloatField`
+* :class:`~mongoengine.GenericEmbeddedDocumentField`
+* :class:`~mongoengine.GenericReferenceField`
+* :class:`~mongoengine.GeoPointField`
+* :class:`~mongoengine.ImageField`
+* :class:`~mongoengine.IntField`
+* :class:`~mongoengine.ListField`
 * :class:`~mongoengine.MapField`
 * :class:`~mongoengine.ObjectIdField`
 * :class:`~mongoengine.ReferenceField`
-* :class:`~mongoengine.GenericReferenceField`
-* :class:`~mongoengine.EmbeddedDocumentField`
-* :class:`~mongoengine.GenericEmbeddedDocumentField`
-* :class:`~mongoengine.BooleanField`
-* :class:`~mongoengine.FileField`
-* :class:`~mongoengine.BinaryField`
-* :class:`~mongoengine.GeoPointField`
 * :class:`~mongoengine.SequenceField`
+* :class:`~mongoengine.SortedListField`
+* :class:`~mongoengine.StringField`
+* :class:`~mongoengine.URLField`
+* :class:`~mongoengine.UUIDField`
 
 Field arguments
 ---------------
@@ -256,6 +259,35 @@ as the constructor's argument::
         content = StringField()
 
 
+.. _one-to-many-with-listfields:
+
+One to Many with ListFields
+'''''''''''''''''''''''''''
+
+If you are implementing a one to many relationship via a list of references,
+then the references are stored as DBRefs and to query you need to pass an
+instance of the object to the query::
+
+    class User(Document):
+        name = StringField()
+
+    class Page(Document):
+        content = StringField()
+        authors = ListField(ReferenceField(User))
+
+    bob = User(name="Bob Jones").save()
+    john = User(name="John Smith").save()
+
+    Page(content="Test Page", authors=[bob, john]).save()
+    Page(content="Another Page", authors=[john]).save()
+
+    # Find all pages Bob authored
+    Page.objects(authors__in=[bob])
+
+    # Find all pages that both Bob and John have authored
+    Page.objects(authors__all=[bob, john])
+
+
 Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
 By default, MongoDB doesn't check the integrity of your data, so deleting
@@ -289,6 +321,10 @@ Its value can take any of the following constants:
 :const:`mongoengine.CASCADE`
   Any object containing fields that are refererring to the object being deleted
   are deleted first.
+:const:`mongoengine.PULL`
+  Removes the reference to the object (using MongoDB's "pull" operation)
+  from any object's fields of
+  :class:`~mongoengine.ListField` (:class:`~mongoengine.ReferenceField`).
 
 
 .. warning::
@@ -307,6 +343,10 @@ Its value can take any of the following constants:
    In Django, be sure to put all apps that have such delete rule declarations in
    their :file:`models.py` in the :const:`INSTALLED_APPS` tuple.
 
+
+.. warning::
+   Signals are not triggered when doing cascading updates / deletes - if this
+   is required you must manually handle the update / delete.
 
 Generic reference fields
 ''''''''''''''''''''''''
@@ -429,13 +469,18 @@ If a dictionary is passed then the following options are available:
     Whether the index should be sparse.
 
 :attr:`unique` (Default: False)
-    Whether the index should be sparse.
+    Whether the index should be unique.
+
+.. note ::
+
+    To index embedded files / dictionary fields use 'dot' notation eg:
+    `rank.title`
 
 .. warning::
 
-
-   Inheritance adds extra indices.
-   If don't need inheritance for a document turn inheritance off - see :ref:`document-inheritance`.
+    Inheritance adds extra indices.
+    If don't need inheritance for a document turn inheritance off -
+    see :ref:`document-inheritance`.
 
 
 Geospatial indexes

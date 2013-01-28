@@ -2,6 +2,152 @@
 Changelog
 =========
 
+Changes in 0.7.X
+================
+- Unicode fix for repr (MongoEngine/mongoengine#133)
+- Allow updates with match operators (MongoEngine/mongoengine#144)
+- Updated URLField - now can have a override the regex (MongoEngine/mongoengine#136)
+- Allow Django AuthenticationBackends to work with Django user (hmarr/mongoengine#573)
+- Fixed reload issue with ReferenceField where dbref=False (MongoEngine/mongoengine#138)
+
+Changes in 0.7.5
+================
+- ReferenceFields with dbref=False use ObjectId instead of strings (MongoEngine/mongoengine#134)
+  See ticket for upgrade notes (https://github.com/MongoEngine/mongoengine/issues/134)
+
+Changes in 0.7.4
+================
+- Fixed index inheritance issues - firmed up testcases (MongoEngine/mongoengine#123) (MongoEngine/mongoengine#125)
+
+Changes in 0.7.3
+================
+- Reverted EmbeddedDocuments meta handling - now can turn off inheritance (MongoEngine/mongoengine#119)
+
+Changes in 0.7.2
+================
+- Update index spec generation so its not destructive (MongoEngine/mongoengine#113)
+
+Changes in 0.7.1
+=================
+- Fixed index spec inheritance (MongoEngine/mongoengine#111)
+
+Changes in 0.7.0
+=================
+- Updated queryset.delete so you can use with skip / limit (MongoEngine/mongoengine#107)
+- Updated index creation allows kwargs to be passed through refs (MongoEngine/mongoengine#104)
+- Fixed Q object merge edge case (MongoEngine/mongoengine#109)
+- Fixed reloading on sharded documents (hmarr/mongoengine#569)
+- Added NotUniqueError for duplicate keys (MongoEngine/mongoengine#62)
+- Added custom collection / sequence naming for SequenceFields (MongoEngine/mongoengine#92)
+- Fixed UnboundLocalError in composite index with pk field (MongoEngine/mongoengine#88)
+- Updated ReferenceField's to optionally store ObjectId strings
+  this will become the default in 0.8 (MongoEngine/mongoengine#89)
+- Added FutureWarning - save will default to `cascade=False` in 0.8
+- Added example of indexing embedded document fields (MongoEngine/mongoengine#75)
+- Fixed ImageField resizing when forcing size (MongoEngine/mongoengine#80)
+- Add flexibility for fields handling bad data (MongoEngine/mongoengine#78)
+- Embedded Documents no longer handle meta definitions
+- Use weakref proxies in base lists / dicts (MongoEngine/mongoengine#74)
+- Improved queryset filtering (hmarr/mongoengine#554)
+- Fixed Dynamic Documents and Embedded Documents (hmarr/mongoengine#561)
+- Fixed abstract classes and shard keys (MongoEngine/mongoengine#64)
+- Fixed Python 2.5 support
+- Added Python 3 support (thanks to Laine Heron)
+
+Changes in 0.6.20
+=================
+- Added support for distinct and db_alias (MongoEngine/mongoengine#59)
+- Improved support for chained querysets when constraining the same fields (hmarr/mongoengine#554)
+- Fixed BinaryField lookup re (MongoEngine/mongoengine#48)
+
+Changes in 0.6.19
+=================
+
+- Added Binary support to UUID (MongoEngine/mongoengine#47)
+- Fixed MapField lookup for fields without declared lookups (MongoEngine/mongoengine#46)
+- Fixed BinaryField python value issue (MongoEngine/mongoengine#48)
+- Fixed SequenceField non numeric value lookup (MongoEngine/mongoengine#41)
+- Fixed queryset manager issue (MongoEngine/mongoengine#52)
+- Fixed FileField comparision (hmarr/mongoengine#547)
+
+Changes in 0.6.18
+=================
+- Fixed recursion loading bug in _get_changed_fields
+
+Changes in 0.6.17
+=================
+- Fixed issue with custom queryset manager expecting explict variable names
+
+Changes in 0.6.16
+=================
+- Fixed issue where db_alias wasn't inherited
+
+Changes in 0.6.15
+=================
+- Updated validation error messages
+- Added support for null / zero / false values in item_frequencies
+- Fixed cascade save edge case
+- Fixed geo index creation through reference fields
+- Added support for args / kwargs when using @queryset_manager
+- Deref list custom id fix
+
+Changes in 0.6.14
+=================
+- Fixed error dict with nested validation
+- Fixed Int/Float fields and not equals None
+- Exclude tests from installation
+- Allow tuples for index meta
+- Fixed use of str in instance checks
+- Fixed unicode support in transform update
+- Added support for add_to_set and each
+
+Changes in 0.6.13
+=================
+- Fixed EmbeddedDocument db_field validation issue
+- Fixed StringField unicode issue
+- Fixes __repr__ modifying the cursor
+
+Changes in 0.6.12
+=================
+- Fixes scalar lookups for primary_key
+- Fixes error with _delta handling DBRefs
+
+Changes in 0.6.11
+==================
+- Fixed inconsistency handling None values field attrs
+- Fixed map_field embedded db_field issue
+- Fixed .save() _delta issue with DbRefs
+- Fixed Django TestCase
+- Added cmp to Embedded Document
+- Added PULL reverse_delete_rule
+- Fixed CASCADE delete bug
+- Fixed db_field data load error
+- Fixed recursive save with FileField
+
+Changes in 0.6.10
+=================
+- Fixed basedict / baselist to return super(..)
+- Promoted BaseDynamicField to DynamicField
+
+Changes in 0.6.9
+================
+- Fixed sparse indexes on inherited docs
+- Removed FileField auto deletion, needs more work maybe 0.7
+
+Changes in 0.6.8
+================
+- Fixed FileField losing reference when no default set
+- Removed possible race condition from FileField (grid_file)
+- Added assignment to save, can now do: `b = MyDoc(**kwargs).save()`
+- Added support for pull operations on nested EmbeddedDocuments
+- Added support for choices with GenericReferenceFields
+- Added support for choices with GenericEmbeddedDocumentFields
+- Fixed Django 1.4 sessions first save data loss
+- FileField now automatically delete files on .delete()
+- Fix for GenericReference to_mongo method
+- Fixed connection regression
+- Updated Django User document, now allows inheritance
+
 Changes in 0.6.7
 ================
 - Fixed indexing on '_id' or 'pk' or 'id'

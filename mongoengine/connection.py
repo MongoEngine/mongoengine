@@ -65,6 +65,8 @@ def register_connection(alias, name, host='localhost', port=27017,
         })
         if "replicaSet" in host:
             conn_settings['replicaSet'] = True
+
+    conn_settings.update(kwargs)
     _connection_settings[alias] = conn_settings
 
 
