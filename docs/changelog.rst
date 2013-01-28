@@ -45,6 +45,7 @@ Changes in 0.8.X
 - Added Doc class and pk to Validation messages (#69)
 - Fixed Documents deleted via a queryset don't call any signals (#105)
 - Added the "get_decoded" method to the MongoSession class (#216)
+- Fixed invalid choices error bubbling (#214)
 
 Changes in 0.7.9
 ================
