@@ -969,7 +969,8 @@ class QuerySet(object):
 
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
-        and raises InvalidQueryError if a filter has been applied.
+        and raises InvalidQueryError if a filter has been applied. Returns `None`
+        if no document exists with that id.
 
         :param object_id: the value for the id of the document to look up
 
