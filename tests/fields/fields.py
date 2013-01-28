@@ -1725,9 +1725,6 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
-<<<<<<< HEAD:tests/fields/fields.py
-=======
-
     def test_simple_choices_validation_invalid_value(self):
         """Ensure that error messages are correct.
         """
@@ -2060,7 +2057,6 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(test_file.the_file.read(),
                           b('Hello, World!'))
 
->>>>>>> de5fbfde2ca96b93490e0bc96e04f3aa4affcfb5:tests/test_fields.py
     def test_geo_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
