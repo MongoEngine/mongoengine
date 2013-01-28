@@ -3521,6 +3521,36 @@ class ValidatorErrorTest(unittest.TestCase):
 
         self.assertRaises(OperationError, change_shard_key)
 
+    def test_set_unset_one_operation(self):
+        """Ensure that $set and $unset actions are performed in the same
+        operation.
+        """
+        class FooBar(Document):
+            meta = {
+                'collection': 'foobar',
+            }
+
+            foo = StringField(default=None)
+            bar = StringField(default=None)
+
+        FooBar.drop_collection()
+
+        # write an entity with a single prop
+        foo = FooBar(foo='foo')
+        foo.save()
+
+        self.assertEqual(foo.foo, 'foo')
+
+        # set foo to the default causing mongoengine to $unset foo.
+        foo.foo = None
+        foo.bar = 'bar'
+
+        foo.save()
+        foo.reload()
+
+        self.assertIsNone(foo.foo)
+        self.assertEqual(foo.bar, 'bar')
+
 
 if __name__ == '__main__':
     unittest.main()
