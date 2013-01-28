@@ -34,6 +34,9 @@ class MongoSession(Document):
     meta = {'collection': MONGOENGINE_SESSION_COLLECTION,
             'db_alias': MONGOENGINE_SESSION_DB_ALIAS,
             'allow_inheritance': False}
+            
+    def get_decoded(self):
+        return SessionStore().decode(self.session_data)
 
 
 class SessionStore(SessionBase):
