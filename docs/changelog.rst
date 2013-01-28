@@ -46,6 +46,7 @@ Changes in 0.8.X
 - Fixed Documents deleted via a queryset don't call any signals (#105)
 - Added the "get_decoded" method to the MongoSession class (#216)
 - Fixed invalid choices error bubbling (#214)
+- Updated Save so it calls $set and $unset in a single operation (#211)
 
 Changes in 0.7.9
 ================
