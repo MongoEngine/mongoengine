@@ -128,7 +128,7 @@ class BaseField(object):
             elif value_to_check not in self.choices:
                 msg = ('Value must be %s of %s' %
                        (err_msg, unicode(self.choices)))
-                self.error()
+                self.error(msg)
 
         # check validation argument
         if self.validation is not None:
