@@ -48,17 +48,6 @@ class EmbeddedDocument(BaseDocument):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
         self._changed_fields = []
 
-    def __delattr__(self, *args, **kwargs):
-        """Handle deletions of fields"""
-        field_name = args[0]
-        if field_name in self._fields:
-            default = self._fields[field_name].default
-            if callable(default):
-                default = default()
-            setattr(self, field_name, default)
-        else:
-            super(EmbeddedDocument, self).__delattr__(*args, **kwargs)
-
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self._data == other._data
