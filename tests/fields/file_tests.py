@@ -208,7 +208,7 @@ class FileTest(unittest.TestCase):
         Animal.drop_collection()
         marmot = Animal(genus='Marmota', family='Sciuridae')
 
-        marmot_photo = open(TEST_IMAGE_PATH, 'r')  # Retrieve a photo from disk
+        marmot_photo = open(TEST_IMAGE_PATH, 'rb')  # Retrieve a photo from disk
         marmot.photo.put(marmot_photo, content_type='image/jpeg', foo='bar')
         marmot.photo.close()
         marmot.save()
@@ -251,7 +251,7 @@ class FileTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -274,7 +274,7 @@ class FileTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -297,7 +297,7 @@ class FileTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -320,7 +320,7 @@ class FileTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
