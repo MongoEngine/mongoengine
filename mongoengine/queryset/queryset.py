@@ -364,10 +364,15 @@ class QuerySet(object):
         queryset = self.clone()
         doc = queryset._document
 
-        # Handle deletes where skips or limits have been applied
-        if queryset._skip or queryset._limit:
+        has_delete_signal = (
+            signals.pre_delete.has_receivers_for(self._document) or
+            signals.post_delete.has_receivers_for(self._document))
+
+        # Handle deletes where skips or limits have been applied or has a
+        # delete signal
+        if queryset._skip or queryset._limit or has_delete_signal:
             for doc in queryset:
-                doc.delete()
+                doc.delete(safe=safe)
             return
 
         delete_rules = doc._meta.get('delete_rules') or {}

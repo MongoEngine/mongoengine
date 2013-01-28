@@ -19,6 +19,7 @@ from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
 from mongoengine.context_managers import switch_db
+from mongoengine import signals
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
@@ -1375,7 +1376,6 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
-
     def test_reverse_delete_rule_cascade_and_nullify_complex_field(self):
         """Ensure that a referenced document is also deleted upon deletion for
         complex fields.
@@ -1410,6 +1410,43 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
 
+
+    def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
+        ''' ensure the pre_delete signal is triggered upon a cascading deletion
+        setup a blog post with content, an author and editor
+        delete the author which triggers deletion of blogpost via cascade
+        blog post's pre_delete signal alters an editor attribute
+        '''
+        class Editor(self.Person):
+            review_queue = IntField(default=0)
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+            editor = ReferenceField(Editor)
+
+            @classmethod
+            def pre_delete(cls, sender, document, **kwargs):
+                # decrement the docs-to-review count
+                document.editor.update(dec__review_queue=1)
+
+        signals.pre_delete.connect(BlogPost.pre_delete, sender=BlogPost)
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+        Editor.drop_collection()
+
+        author = self.Person(name='Will S.').save()
+        editor = Editor(name='Max P.', review_queue=1).save()
+        BlogPost(content='wrote some books', author=author,
+                 editor=editor).save()
+
+        # delete the author, the post is also deleted due to the CASCADE rule
+        author.delete()
+        # the pre-delete signal should have decremented the editor's queue
+        editor = Editor.objects(name='Max P.').get()
+        self.assertEqual(editor.review_queue, 0)
+
     def test_two_way_reverse_delete_rule(self):
         """Ensure that Bi-Directional relationships work with
         reverse_delete_rule
@@ -1425,7 +1462,6 @@ class InstanceTest(unittest.TestCase):
 
         Bar.register_delete_rule(Foo, 'bar', NULLIFY)
         Foo.register_delete_rule(Bar, 'foo', NULLIFY)
-
 
         Bar.drop_collection()
         Foo.drop_collection()
