@@ -25,6 +25,7 @@ MONGOENGINE_SESSION_DATA_ENCODE = getattr(
     settings, 'MONGOENGINE_SESSION_DATA_ENCODE',
     True)
 
+
 class MongoSession(Document):
     session_key = fields.StringField(primary_key=True, max_length=40)
     session_data = fields.StringField() if MONGOENGINE_SESSION_DATA_ENCODE \
@@ -34,7 +35,7 @@ class MongoSession(Document):
     meta = {'collection': MONGOENGINE_SESSION_COLLECTION,
             'db_alias': MONGOENGINE_SESSION_DB_ALIAS,
             'allow_inheritance': False}
-            
+
     def get_decoded(self):
         return SessionStore().decode(self.session_data)
 

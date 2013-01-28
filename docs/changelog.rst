@@ -44,6 +44,7 @@ Changes in 0.8.X
 - Added Django Group and Permission (#142)
 - Added Doc class and pk to Validation messages (#69)
 - Fixed Documents deleted via a queryset don't call any signals (#105)
+- Added the "get_decoded" method to the MongoSession class (#216)
 
 Changes in 0.7.9
 ================
