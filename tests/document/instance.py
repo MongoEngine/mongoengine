@@ -18,7 +18,7 @@ from mongoengine.errors import (NotRegistered, InvalidDocumentError,
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
-from mongoengine.context_managers import switch_db
+from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
@@ -970,6 +970,28 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, 'User')
         self.assertEqual(person.age, 21)
         self.assertEqual(person.active, False)
+
+    def test_set_unset_one_operation(self):
+        """Ensure that $set and $unset actions are performed in the same
+        operation.
+        """
+        class FooBar(Document):
+            foo = StringField(default=None)
+            bar = StringField(default=None)
+
+        FooBar.drop_collection()
+
+        # write an entity with a single prop
+        foo = FooBar(foo='foo').save()
+
+        self.assertEqual(foo.foo, 'foo')
+        del foo.foo
+        foo.bar = 'bar'
+
+        with query_counter() as q:
+            self.assertEqual(0, q)
+            foo.save()
+            self.assertEqual(1, q)
 
     def test_save_only_changed_fields_recursive(self):
         """Ensure save only sets / unsets changed fields

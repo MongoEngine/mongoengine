@@ -260,7 +260,8 @@ class QuerySetTest(unittest.TestCase):
                             name='Test User', write_options=write_options)
         author.save(write_options=write_options)
 
-        self.Person.objects.update(set__name='Ross', write_options=write_options)
+        self.Person.objects.update(set__name='Ross',
+                                    write_options=write_options)
 
         author = self.Person.objects.first()
         self.assertEqual(author.name, 'Ross')

@@ -84,6 +84,17 @@ class BaseDocument(object):
         self._initialised = True
         signals.post_init.send(self.__class__, document=self)
 
+    def __delattr__(self, *args, **kwargs):
+        """Handle deletions of fields"""
+        field_name = args[0]
+        if field_name in self._fields:
+            default = self._fields[field_name].default
+            if callable(default):
+                default = default()
+            setattr(self, field_name, default)
+        else:
+            super(BaseDocument, self).__delattr__(*args, **kwargs)
+
     def __setattr__(self, name, value):
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
