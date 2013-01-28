@@ -121,7 +121,7 @@ class ValidatorErrorTest(unittest.TestCase):
         except ValidationError, e:
             self.assertTrue("SubDoc:None" in e.message)
             self.assertEqual(e.to_dict(), {
-                'e.val': 'Field is required'})
+                "e": {'val': 'OK could not be converted to int'}})
 
         Doc.drop_collection()
 
@@ -139,7 +139,7 @@ class ValidatorErrorTest(unittest.TestCase):
         except ValidationError, e:
             self.assertTrue("Doc:test" in e.message)
             self.assertEqual(e.to_dict(), {
-                'e.val': 'Field is required'})
+                "e": {'val': 'OK could not be converted to int'}})
 
 
 if __name__ == '__main__':

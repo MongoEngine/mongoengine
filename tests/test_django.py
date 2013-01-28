@@ -1,4 +1,6 @@
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
 import unittest
 from nose.plugins.skip import SkipTest
 from mongoengine.python_support import PY3
@@ -163,3 +165,6 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         key = session.session_key
         session = SessionStore(key)
         self.assertTrue('test_expire' in session, 'Session has expired before it is expected')
+
+if __name__ == '__main__':
+    unittest.main()

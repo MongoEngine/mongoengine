@@ -2,7 +2,6 @@
 from __future__ import with_statement
 import unittest
 import sys
-
 sys.path[0:0] = [""]
 
 import os

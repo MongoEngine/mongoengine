@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import sys
+sys.path[0:0] = [""]
 import unittest
 
 from mongoengine import *
@@ -21,6 +23,7 @@ class SignalTests(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
+
         class Author(Document):
             name = StringField()
 
@@ -69,7 +72,6 @@ class SignalTests(unittest.TestCase):
                 else:
                     signal_output.append('Not loaded')
         self.Author = Author
-
 
         class Another(Document):
             name = StringField()
@@ -122,8 +124,8 @@ class SignalTests(unittest.TestCase):
 
         self.ExplicitId = ExplicitId
         self.ExplicitId.objects.delete()
-        # Save up the number of connected signals so that we can check at the end
-        # that all the signals we register get properly unregistered
+        # Save up the number of connected signals so that we can check at the
+        # end that all the signals we register get properly unregistered
         self.pre_signals = (
             len(signals.pre_init.receivers),
             len(signals.post_init.receivers),
@@ -192,7 +194,7 @@ class SignalTests(unittest.TestCase):
         """ Model saves should throw some signals. """
 
         def create_author():
-            a1 = self.Author(name='Bill Shakespeare')
+            self.Author(name='Bill Shakespeare')
 
         def bulk_create_author_with_load():
             a1 = self.Author(name='Bill Shakespeare')
@@ -216,7 +218,7 @@ class SignalTests(unittest.TestCase):
         ])
 
         a1.reload()
-        a1.name='William Shakespeare'
+        a1.name = 'William Shakespeare'
         self.assertEqual(self.get_signal_output(a1.save), [
             "pre_save signal, William Shakespeare",
             "post_save signal, William Shakespeare",
@@ -257,3 +259,6 @@ class SignalTests(unittest.TestCase):
         self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
         # second time, it must be an update
         self.assertEqual(self.get_signal_output(ei.save), ['Is updated'])
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
 import unittest
 
 from mongoengine import *

@@ -1,13 +1,14 @@
 from __future__ import with_statement
-import datetime
-import pymongo
+import sys
+sys.path[0:0] = [""]
 import unittest
+import datetime
 
-import mongoengine.connection
-
+import pymongo
 from bson.tz_util import utc
 
 from mongoengine import *
+import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
 from mongoengine.context_managers import switch_db
 

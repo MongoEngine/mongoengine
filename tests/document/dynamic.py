@@ -1,6 +1,5 @@
 import unittest
 import sys
-
 sys.path[0:0] = [""]
 
 from mongoengine import *
