@@ -137,7 +137,7 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             doc.save()
         except ValidationError, e:
-            self.assertTrue("SubDoc:test" in e.message)
+            self.assertTrue("Doc:test" in e.message)
             self.assertEqual(e.to_dict(), {
                 'e.val': 'Field is required'})
 
