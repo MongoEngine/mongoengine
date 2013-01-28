@@ -429,6 +429,11 @@ class QuerySet(object):
             replica secondary.
         :param query: Django-style query keyword arguments
         """
+        if self._iter:
+            # Already iterating, and the __call__ is most likely made by
+            # Django's template engine to evaluate a nested variable
+            # expression. In this situation, don't reset everything.
+            return self
         query = Q(**query)
         if q_obj:
             query &= q_obj
@@ -609,7 +614,6 @@ class QuerySet(object):
     @property
     def _cursor(self):
         if self._cursor_obj is None:
-
             self._cursor_obj = self._collection.find(self._query,
                                                      **self._cursor_args)
             # Apply where clauses to cursor
@@ -1581,8 +1585,15 @@ class QuerySet(object):
             raise OperationError(u'Update failed [%s]' % unicode(e))
 
     def __iter__(self):
-        self.rewind()
-        return self
+        if self._iter:
+            # Already iterating, create a new iterator object to avoid collision.
+            clone = self.clone()
+            clone.rewind()
+            return clone
+        else:
+            # Not yet iterating, can use self as the iterator.
+            self.rewind()
+            return self
 
     def _get_scalar(self, doc):
 
