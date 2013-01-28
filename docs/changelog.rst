@@ -42,6 +42,7 @@ Changes in 0.8.X
 - Added no_dereference method for querysets (#82) (#61)
 - Undefined data should not override instance methods (#49)
 - Added Django Group and Permission (#142)
+- Added Doc class and pk to Validation messages (#69)
 
 Changes in 0.7.9
 ================

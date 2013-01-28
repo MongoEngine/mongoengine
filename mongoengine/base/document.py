@@ -274,7 +274,13 @@ class BaseDocument(object):
                                                      field_name=field.name)
 
         if errors:
-            raise ValidationError('ValidationError', errors=errors)
+            pk = "None"
+            if hasattr(self, 'pk'):
+                pk = self.pk
+            elif self._instance:
+                pk = self._instance.pk
+            message = "ValidationError (%s:%s) " % (self._class_name, pk)
+            raise ValidationError(message, errors=errors)
 
     def to_json(self):
         """Converts a document to JSON"""

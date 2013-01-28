@@ -466,45 +466,6 @@ class InstanceTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertEqual(doc, doc.embedded_field[0]._instance)
 
-    def test_embedded_document_validation(self):
-        """Ensure that embedded documents may be validated.
-        """
-        class Comment(EmbeddedDocument):
-            date = DateTimeField()
-            content = StringField(required=True)
-
-        comment = Comment()
-        self.assertRaises(ValidationError, comment.validate)
-
-        comment.content = 'test'
-        comment.validate()
-
-        comment.date = 4
-        self.assertRaises(ValidationError, comment.validate)
-
-        comment.date = datetime.now()
-        comment.validate()
-        self.assertEqual(comment._instance, None)
-
-    def test_embedded_db_field_validate(self):
-
-        class SubDoc(EmbeddedDocument):
-            val = IntField()
-
-        class Doc(Document):
-            e = EmbeddedDocumentField(SubDoc, db_field='eb')
-
-        Doc.drop_collection()
-
-        Doc(e=SubDoc(val=15)).save()
-
-        doc = Doc.objects.first()
-        doc.validate()
-        keys = doc._data.keys()
-        self.assertEqual(2, len(keys))
-        self.assertTrue('id' in keys)
-        self.assertTrue('e' in keys)
-
     def test_document_clean(self):
         class TestDocument(Document):
             status = StringField()
@@ -2000,6 +1961,104 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(True, user.foo)
         self.assertEqual("Bar", user._data["foo"])
         self.assertEqual([1, 2, 3], user._data["data"])
+
+
+    def test_spaces_in_keys(self):
+
+        class Embedded(DynamicEmbeddedDocument):
+            pass
+
+        class Doc(DynamicDocument):
+            pass
+
+        Doc.drop_collection()
+        doc = Doc()
+        setattr(doc, 'hello world', 1)
+        doc.save()
+
+        one = Doc.objects.filter(**{'hello world': 1}).count()
+        self.assertEqual(1, one)
+
+    def test_shard_key(self):
+        class LogEntry(Document):
+            machine = StringField()
+            log = StringField()
+
+            meta = {
+                'shard_key': ('machine',)
+            }
+
+        LogEntry.drop_collection()
+
+        log = LogEntry()
+        log.machine = "Localhost"
+        log.save()
+
+        log.log = "Saving"
+        log.save()
+
+        def change_shard_key():
+            log.machine = "127.0.0.1"
+
+        self.assertRaises(OperationError, change_shard_key)
+
+    def test_shard_key_primary(self):
+        class LogEntry(Document):
+            machine = StringField(primary_key=True)
+            log = StringField()
+
+            meta = {
+                'shard_key': ('machine',)
+            }
+
+        LogEntry.drop_collection()
+
+        log = LogEntry()
+        log.machine = "Localhost"
+        log.save()
+
+        log.log = "Saving"
+        log.save()
+
+        def change_shard_key():
+            log.machine = "127.0.0.1"
+
+        self.assertRaises(OperationError, change_shard_key)
+
+    def test_kwargs_simple(self):
+
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        class Doc(Document):
+            doc_name = StringField()
+            doc = EmbeddedDocumentField(Embedded)
+
+        classic_doc = Doc(doc_name="my doc", doc=Embedded(name="embedded doc"))
+        dict_doc = Doc(**{"doc_name": "my doc",
+                          "doc": {"name": "embedded doc"}})
+
+        self.assertEqual(classic_doc, dict_doc)
+        self.assertEqual(classic_doc._data, dict_doc._data)
+
+    def test_kwargs_complex(self):
+
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        class Doc(Document):
+            doc_name = StringField()
+            docs = ListField(EmbeddedDocumentField(Embedded))
+
+        classic_doc = Doc(doc_name="my doc", docs=[
+                            Embedded(name="embedded doc1"),
+                            Embedded(name="embedded doc2")])
+        dict_doc = Doc(**{"doc_name": "my doc",
+                          "docs": [{"name": "embedded doc1"},
+                                   {"name": "embedded doc2"}]})
+
+        self.assertEqual(classic_doc, dict_doc)
+        self.assertEqual(classic_doc._data, dict_doc._data)
 
 if __name__ == '__main__':
     unittest.main()

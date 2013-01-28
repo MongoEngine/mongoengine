@@ -3,6 +3,7 @@ import sys
 sys.path[0:0] = [""]
 
 import unittest
+from datetime import datetime
 
 from mongoengine import *
 
@@ -10,6 +11,9 @@ __all__ = ("ValidatorErrorTest",)
 
 
 class ValidatorErrorTest(unittest.TestCase):
+
+    def setUp(self):
+        connect(db='mongoenginetest')
 
     def test_to_dict(self):
         """Ensure a ValidationError handles error to_dict correctly.
@@ -57,25 +61,19 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             User().validate()
         except ValidationError, e:
+            self.assertTrue("User:None" in e.message)
             self.assertEqual(e.to_dict(), {
                 'username': 'Field is required',
                 'name': 'Field is required'})
 
-    def test_spaces_in_keys(self):
-
-        class Embedded(DynamicEmbeddedDocument):
-            pass
-
-        class Doc(DynamicDocument):
-            pass
-
-        Doc.drop_collection()
-        doc = Doc()
-        setattr(doc, 'hello world', 1)
-        doc.save()
-
-        one = Doc.objects.filter(**{'hello world': 1}).count()
-        self.assertEqual(1, one)
+        user = User(username="RossC0", name="Ross").save()
+        user.name = None
+        try:
+            user.save()
+        except ValidationError, e:
+            self.assertTrue("User:RossC0" in e.message)
+            self.assertEqual(e.to_dict(), {
+                'name': 'Field is required'})
 
     def test_fields_rewrite(self):
         class BasePerson(Document):
@@ -89,107 +87,60 @@ class ValidatorErrorTest(unittest.TestCase):
         p = Person(age=15)
         self.assertRaises(ValidationError, p.validate)
 
-    def test_cascaded_save_wrong_reference(self):
+    def test_embedded_document_validation(self):
+        """Ensure that embedded documents may be validated.
+        """
+        class Comment(EmbeddedDocument):
+            date = DateTimeField()
+            content = StringField(required=True)
 
-        class ADocument(Document):
-            val = IntField()
+        comment = Comment()
+        self.assertRaises(ValidationError, comment.validate)
 
-        class BDocument(Document):
-            a = ReferenceField(ADocument)
+        comment.content = 'test'
+        comment.validate()
 
-        ADocument.drop_collection()
-        BDocument.drop_collection()
+        comment.date = 4
+        self.assertRaises(ValidationError, comment.validate)
 
-        a = ADocument()
-        a.val = 15
-        a.save()
+        comment.date = datetime.now()
+        comment.validate()
+        self.assertEqual(comment._instance, None)
 
-        b = BDocument()
-        b.a = a
-        b.save()
+    def test_embedded_db_field_validate(self):
 
-        a.delete()
-
-        b = BDocument.objects.first()
-        b.save(cascade=True)
-
-    def test_shard_key(self):
-        class LogEntry(Document):
-            machine = StringField()
-            log = StringField()
-
-            meta = {
-                'shard_key': ('machine',)
-            }
-
-        LogEntry.drop_collection()
-
-        log = LogEntry()
-        log.machine = "Localhost"
-        log.save()
-
-        log.log = "Saving"
-        log.save()
-
-        def change_shard_key():
-            log.machine = "127.0.0.1"
-
-        self.assertRaises(OperationError, change_shard_key)
-
-    def test_shard_key_primary(self):
-        class LogEntry(Document):
-            machine = StringField(primary_key=True)
-            log = StringField()
-
-            meta = {
-                'shard_key': ('machine',)
-            }
-
-        LogEntry.drop_collection()
-
-        log = LogEntry()
-        log.machine = "Localhost"
-        log.save()
-
-        log.log = "Saving"
-        log.save()
-
-        def change_shard_key():
-            log.machine = "127.0.0.1"
-
-        self.assertRaises(OperationError, change_shard_key)
-
-    def test_kwargs_simple(self):
-
-        class Embedded(EmbeddedDocument):
-            name = StringField()
+        class SubDoc(EmbeddedDocument):
+            val = IntField(required=True)
 
         class Doc(Document):
-            doc_name = StringField()
-            doc = EmbeddedDocumentField(Embedded)
+            id = StringField(primary_key=True)
+            e = EmbeddedDocumentField(SubDoc, db_field='eb')
 
-        classic_doc = Doc(doc_name="my doc", doc=Embedded(name="embedded doc"))
-        dict_doc = Doc(**{"doc_name": "my doc",
-                          "doc": {"name": "embedded doc"}})
+        try:
+            Doc(id="bad").validate()
+        except ValidationError, e:
+            self.assertTrue("SubDoc:None" in e.message)
+            self.assertEqual(e.to_dict(), {
+                'e.val': 'Field is required'})
 
-        self.assertEqual(classic_doc, dict_doc)
-        self.assertEqual(classic_doc._data, dict_doc._data)
+        Doc.drop_collection()
 
-    def test_kwargs_complex(self):
+        Doc(id="test", e=SubDoc(val=15)).save()
 
-        class Embedded(EmbeddedDocument):
-            name = StringField()
+        doc = Doc.objects.first()
+        keys = doc._data.keys()
+        self.assertEqual(2, len(keys))
+        self.assertTrue('id' in keys)
+        self.assertTrue('e' in keys)
 
-        class Doc(Document):
-            doc_name = StringField()
-            docs = ListField(EmbeddedDocumentField(Embedded))
+        doc.e.val = "OK"
+        try:
+            doc.save()
+        except ValidationError, e:
+            self.assertTrue("SubDoc:test" in e.message)
+            self.assertEqual(e.to_dict(), {
+                'e.val': 'Field is required'})
 
-        classic_doc = Doc(doc_name="my doc", docs=[
-                            Embedded(name="embedded doc1"),
-                            Embedded(name="embedded doc2")])
-        dict_doc = Doc(**{"doc_name": "my doc",
-                          "docs": [{"name": "embedded doc1"},
-                                   {"name": "embedded doc2"}]})
 
-        self.assertEqual(classic_doc, dict_doc)
-        self.assertEqual(classic_doc._data, dict_doc._data)
+if __name__ == '__main__':
+    unittest.main()
