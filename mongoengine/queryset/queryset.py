@@ -112,8 +112,11 @@ class QuerySet(object):
 
     def __iter__(self):
         """Support iterator protocol"""
-        self.rewind()
-        return self
+        queryset = self
+        if queryset._iter:
+            queryset = self.clone()
+        queryset.rewind()
+        return queryset
 
     def __len__(self):
         return self.count()
@@ -159,7 +162,6 @@ class QuerySet(object):
 
         .. versionchanged:: 0.6.13 Now doesnt modify the cursor
         """
-
         if self._iter:
             return '.. queryset mid-iteration ..'
 
@@ -537,7 +539,7 @@ class QuerySet(object):
             c._cursor_obj = self._cursor_obj.clone()
 
         if self._slice:
-            c._cursor_obj[self._slice]
+            c._cursor[self._slice]
 
         return c
 

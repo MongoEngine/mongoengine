@@ -3125,5 +3125,46 @@ class QuerySetTest(unittest.TestCase):
                                     Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
 
+    def test_nested_queryset_iterator(self):
+        # Try iterating the same queryset twice, nested.
+        names = ['Alice', 'Bob', 'Chuck', 'David', 'Eric', 'Francis', 'George']
+
+        class User(Document):
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+        User.drop_collection()
+
+        for name in names:
+            User(name=name).save()
+
+        users = User.objects.all().order_by('name')
+
+        outer_count = 0
+        inner_count = 0
+        inner_total_count = 0
+
+        self.assertEqual(len(users), 7)
+
+        for i, outer_user in enumerate(users):
+            self.assertEqual(outer_user.name, names[i])
+            outer_count += 1
+            inner_count = 0
+
+            # Calling len might disrupt the inner loop if there are bugs
+            self.assertEqual(len(users), 7)
+
+            for j, inner_user in enumerate(users):
+                self.assertEqual(inner_user.name, names[j])
+                inner_count += 1
+                inner_total_count += 1
+
+            self.assertEqual(inner_count, 7) # inner loop should always be executed seven times
+
+        self.assertEqual(outer_count, 7) # outer loop should be executed seven times total
+        self.assertEqual(inner_total_count, 7 * 7) # inner loop should be executed fourtynine times total
+
 if __name__ == '__main__':
     unittest.main()

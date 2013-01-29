@@ -136,7 +136,25 @@ class QuerySetTest(unittest.TestCase):
             start = end - 1
             self.assertEqual(t.render(Context(d)), u'%d:%d:' % (start, end))
 
+    def test_nested_queryset_template_iterator(self):
+        # Try iterating the same queryset twice, nested, in a Django template.
+        names = ['A', 'B', 'C', 'D']
 
+        class User(Document):
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+        User.drop_collection()
+
+        for name in names:
+            User(name=name).save()
+
+        users = User.objects.all().order_by('name')
+        template = Template("{% for user in users %}{{ user.name }}{% ifequal forloop.counter 2 %} {% for inner_user in users %}{{ inner_user.name }}{% endfor %} {% endifequal %}{% endfor %}")
+        rendered = template.render(Context({'users': users}))
+        self.assertEqual(rendered, 'AB ABCD CD')
 
 class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
     backend = SessionStore

@@ -47,6 +47,7 @@ Changes in 0.8.X
 - Added the "get_decoded" method to the MongoSession class (#216)
 - Fixed invalid choices error bubbling (#214)
 - Updated Save so it calls $set and $unset in a single operation (#211)
+- Fixed inner queryset looping (#204)
 
 Changes in 0.7.9
 ================
