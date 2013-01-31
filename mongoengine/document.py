@@ -59,6 +59,8 @@ class Document(BaseDocument):
     a **+** or **-** sign.
     """
 
+    MAX_AUTO_RECONNECT_TRIES = 2
+
     __metaclass__ = TopLevelDocumentMetaclass
 
     def save(self, safe=True, force_insert=None, validate=True):
@@ -207,7 +209,7 @@ class Document(BaseDocument):
         else:
             read_preference = pymongo.ReadPreference.PRIMARY
 
-        for i in xrange(2):
+        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 if find_one:
                     return cls._pymongo(allow_async).find_one(spec, fields, skip=skip, sort=sort,
@@ -219,7 +221,10 @@ class Document(BaseDocument):
                 break
             # delay & retry once on AutoReconnect error
             except pymongo.errors.AutoReconnect:
-                time.sleep(0.1)
+                if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
+                    raise
+                else:
+                    time.sleep(0.1)
 
 
     @classmethod
@@ -228,7 +233,7 @@ class Document(BaseDocument):
         cur = cls.find_raw(spec, fields, skip, limit, sort, slave_ok=slave_ok,
                            **kwargs)
 
-        return [cls._from_son(d) for d in cur]
+        return [cls._from_son(d) for d in cls._iterate_cursor(cur)]
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
@@ -236,8 +241,29 @@ class Document(BaseDocument):
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
 
-        for doc in cur:
+
+        for doc in cls._iterate_cursor(cur):
             yield cls._from_son(doc)
+
+    @classmethod
+    def _iterate_cursor(cls, cur):
+        """
+            Iterates over a cursor, gracefully handling AutoReconnect exceptions
+        """
+        while True:
+            for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+                try:
+                    # the StopIteration from .next() will bubble up and kill
+                    # this while loop
+                    doc = cur.next()
+                    break
+                except pymongo.errors.AutoReconnect:
+                    if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
+                        raise
+                    else:
+                        time.sleep(0.1)
+
+            yield doc
 
     @classmethod
     def find_one(cls, spec, fields=None, skip=0, sort=None,
@@ -283,7 +309,15 @@ class Document(BaseDocument):
     @classmethod
     def count(cls, spec, slave_ok=False, **kwargs):
         cur = cls.find_raw(spec, slave_ok=slave_ok, **kwargs)
-        return cur.count()
+
+        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+            try:
+                return cur.count()
+            except pymongo.errors.AutoReconnect:
+                if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
+                    raise
+                else:
+                    time.sleep(0.1)
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True, **kwargs):
