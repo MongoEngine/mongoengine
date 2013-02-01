@@ -59,7 +59,8 @@ class Document(BaseDocument):
     a **+** or **-** sign.
     """
 
-    MAX_AUTO_RECONNECT_TRIES = 2
+    MAX_AUTO_RECONNECT_TRIES = 5
+    AUTO_RECONNECT_SLEEP = 0.075
 
     __metaclass__ = TopLevelDocumentMetaclass
 
@@ -224,7 +225,7 @@ class Document(BaseDocument):
                 if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
                     raise
                 else:
-                    time.sleep(0.1)
+                    time.sleep(cls.AUTO_RECONNECT_SLEEP)
 
 
     @classmethod
@@ -261,7 +262,7 @@ class Document(BaseDocument):
                     if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
                         raise
                     else:
-                        time.sleep(0.1)
+                        time.sleep(cls.AUTO_RECONNECT_SLEEP)
 
             yield doc
 
@@ -317,7 +318,7 @@ class Document(BaseDocument):
                 if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
                     raise
                 else:
-                    time.sleep(0.1)
+                    time.sleep(cls.AUTO_RECONNECT_SLEEP)
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True, **kwargs):
