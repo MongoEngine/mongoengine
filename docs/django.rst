@@ -45,6 +45,9 @@ into you settings module::
 
     SESSION_ENGINE = 'mongoengine.django.sessions'
 
+Django provides session cookie, which expires after ```SESSION_COOKIE_AGE``` seconds, but doesnt delete cookie at sessions backend, so ```'mongoengine.django.sessions'``` supports  `mongodb TTL
+<http://docs.mongodb.org/manual/tutorial/expire-data/>`_.
+
 .. versionadded:: 0.2.1
 
 Storage
