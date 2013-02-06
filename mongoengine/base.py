@@ -220,6 +220,10 @@ class DocumentMetaclass(type):
         exc = subclass_exception('MultipleObjectsReturned', base_excs, module)
         new_class.add_to_class('MultipleObjectsReturned', exc)
 
+        if name in _document_registry and _document_registry[name] != new_class:
+            raise ValueError("Different class named %s already exists" %
+                             new_class._class_name)
+
         global _document_registry
         _document_registry[name] = new_class
 
