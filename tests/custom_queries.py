@@ -3,6 +3,7 @@ import unittest
 import warnings
 
 from mongoengine import *
+import mongoengine.base
 from mongoengine.connection import _get_db
 
 from bson import ObjectId, DBRef
@@ -12,6 +13,7 @@ class CustomQueryTest(unittest.TestCase):
     def setUp(self):
         connect()
         self.db = _get_db()
+        mongoengine.base._document_registry = {}
 
         class Person(Document):
             meta = {'allow_inheritance': False}

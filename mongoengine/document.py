@@ -6,6 +6,7 @@ import pymongo
 import time
 import datetime
 import greenlet
+from timer import log_slow_event
 
 from bson import SON, ObjectId, DBRef
 from connection import _get_db
@@ -212,13 +213,17 @@ class Document(BaseDocument):
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
-                if find_one:
-                    return cls._pymongo(allow_async).find_one(spec, fields, skip=skip, sort=sort,
-                                           read_preference=read_preference, **kwargs)
-                else:
-                    return cls._pymongo(allow_async).find(spec, fields, skip=skip, limit=limit,
-                                           sort=sort, read_preference=read_preference,
-                                           **kwargs)
+                with log_slow_event('find', cls._meta['collection'], spec):
+                    if find_one:
+                        return cls._pymongo(allow_async).find_one(spec, fields,
+                                              skip=skip, sort=sort,
+                                              read_preference=read_preference,
+                                              **kwargs)
+                    else:
+                        return cls._pymongo(allow_async).find(spec, fields,
+                                              skip=skip, limit=limit, sort=sort,
+                                              read_preference=read_preference,
+                                              **kwargs)
                 break
             # delay & retry once on AutoReconnect error
             except pymongo.errors.AutoReconnect:
@@ -242,7 +247,6 @@ class Document(BaseDocument):
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
 
-
         for doc in cls._iterate_cursor(cur):
             yield cls._from_son(doc)
 
@@ -254,9 +258,10 @@ class Document(BaseDocument):
         while True:
             for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
                 try:
-                    # the StopIteration from .next() will bubble up and kill
-                    # this while loop
-                    doc = cur.next()
+                    with log_slow_event('getmore', cur.collection.name, None):
+                        # the StopIteration from .next() will bubble up and kill
+                        # this while loop
+                        doc = cur.next()
                     break
                 except pymongo.errors.AutoReconnect:
                     if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
@@ -299,8 +304,10 @@ class Document(BaseDocument):
 
             sort = new_sort
 
-        result = cls._pymongo().find_and_modify(spec, sort=sort, remove=remove,
-                update=update, new=new, fields=fields, upsert=upsert, **kwargs)
+        with log_slow_event("find_and_modify", cls._meta['collection'], spec):
+            result = cls._pymongo().find_and_modify(spec, sort=sort,
+                    remove=remove, update=update, new=new, fields=fields,
+                    upsert=upsert, **kwargs)
 
         if result:
             return cls._from_son(result)
@@ -335,8 +342,9 @@ class Document(BaseDocument):
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
 
-        result = cls._pymongo().update(spec, document, upsert=upsert,
-                                        multi=multi, safe=True, **kwargs)
+        with log_slow_event("update", cls._meta['collection'], spec):
+            result = cls._pymongo().update(spec, document, upsert=upsert,
+                                           multi=multi, safe=True, **kwargs)
         return result
 
     @classmethod
@@ -348,7 +356,8 @@ class Document(BaseDocument):
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
 
-        result = cls._pymongo().remove(spec, safe=True, **kwargs)
+        with log_slow_event("remove", cls._meta['collection'], spec):
+            result = cls._pymongo().remove(spec, safe=True, **kwargs)
         return result
 
     def update_one(self, document, spec=None, upsert=False,
@@ -405,8 +414,9 @@ class Document(BaseDocument):
 
         query_spec = self._transform_value(query_spec, type(self))
 
-        result = self._pymongo().update(query_spec, document, upsert=upsert,
-                                        safe=True, multi=False, **kwargs)
+        with log_slow_event("update_one", self._meta['collection'], spec):
+            result = self._pymongo().update(query_spec, document, upsert=upsert,
+                                            safe=True, multi=False, **kwargs)
 
         # do in-memory updates on the object if the query succeeded
         if result['n'] == 1:
