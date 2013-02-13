@@ -99,7 +99,9 @@ class Document(BaseDocument):
     attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
     False then indexes will not be created by MongoEngine.  This is useful in
     production systems where index creation is performed as part of a deployment
-    system.
+    system. Default behavior is to automatically create specified indexes
+    whenever underlying collection is being used (for the first time) - i.e.
+    when data is inserted into collection or when query is performed.
 
     By default, _types will be added to the start of every index (that
     doesn't contain a list) if allow_inheritance is True. This can be
