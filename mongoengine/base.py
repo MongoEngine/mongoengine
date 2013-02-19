@@ -1194,7 +1194,11 @@ class BaseDocument(object):
                     if isinstance(d, DBRef):
                         break
                     elif p.isdigit():
-                        d = d[int(p)]
+                        try:
+                            d = d[int(p)]
+                        except KeyError:
+                            # digit strings aren't always ints
+                            d = d[p]
                     elif hasattr(d, 'get'):
                         d = d.get(p)
                     new_path.append(p)
