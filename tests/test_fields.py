@@ -911,7 +911,7 @@ class FieldTest(unittest.TestCase):
         Simple.drop_collection()
 
     def test_mapfield_with_embedded_doc(self):
-        """Ensure that the MapField handles the declared type."""
+        """Ensure that the MapField handles EmbeddedDocuments with digit keys."""
 
         class Foo(EmbeddedDocument):
             x = IntField()
