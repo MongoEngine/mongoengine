@@ -1191,7 +1191,7 @@ class BaseDocument(object):
                 d = doc
                 new_path = []
                 for p in parts:
-                    if isinstance(d, DBRef):
+                    if isinstance(d, (DBRef, ObjectId)):
                         break
                     elif p.isdigit():
                         d = d[int(p)]
