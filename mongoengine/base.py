@@ -1193,7 +1193,7 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, DBRef):
                         break
-                    elif p.isdigit():
+                    elif isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif hasattr(d, 'get'):
                         d = d.get(p)
@@ -1224,7 +1224,7 @@ class BaseDocument(object):
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if p.isdigit():
+                    if isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
