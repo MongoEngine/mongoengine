@@ -206,7 +206,7 @@ class Document(BaseDocument):
 
         # no secondary queries during backups ~3am
         time_now = datetime.datetime.now().time()
-        if slave_ok and not (datetime.time(2, 55) < time_now < datetime.time(3,15)):
+        if slave_ok and not (datetime.time(2, 55) < time_now < datetime.time(3,30)):
             read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED
         else:
             read_preference = pymongo.ReadPreference.PRIMARY
