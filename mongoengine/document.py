@@ -269,7 +269,7 @@ class Document(BaseDocument):
         if id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
-        self._changed_fields = []
+        self._clear_changed_fields()
         self._created = False
         signals.post_save.send(self.__class__, document=self, created=created)
         return self
