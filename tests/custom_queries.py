@@ -19,6 +19,7 @@ class CustomQueryTest(unittest.TestCase):
             meta = {'allow_inheritance': False}
             name = StringField()
             age = IntField(db_field='a')
+            gender = StringField(db_field='g')
             favourite_colour = EmbeddedDocumentField("Colour", db_field="c")
             other_colours = ListField(EmbeddedDocumentField("Colour"), db_field="o")
             number_list = ListField(IntField())
@@ -786,6 +787,26 @@ class CustomQueryTest(unittest.TestCase):
         josh = self.Person.find_and_modify({"name":"Josh"},
                 {"$inc": {"age": 1}}, upsert=True, new=True)
         self.assertEquals(josh.age, 25)
+
+    def testDistinct(self):
+        adam = self.Person(name="Adam", age=23, gender='m')
+        adam.save()
+        jack = self.Person(name="Jack", age=23, gender='m')
+        jack.save()
+        # test distinct only returns requested value
+        self.assertEquals(self.Person.distinct({}, "age"), [23])
+
+        josh = self.Person(name="Josh", age=24, gender='m')
+        josh.save()
+        yiting = self.Person(name="Yiting", age=22, gender='f')
+        yiting.save()
+        # test distinct omits docs not in query
+        self.assertEquals(self.Person.distinct({"gender":"f"}, "age"), [22])
+        self.assertEquals(len(self.Person.distinct({}, "gender")), 2)
+
+        # test with sorting
+        self.assertEquals(self.Person.distinct({"gender":"m"}, "age",
+            sort=[('age', 1)]), [23, 24])
 
 if __name__ == '__main__':
     unittest.main()

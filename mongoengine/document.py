@@ -251,6 +251,14 @@ class Document(BaseDocument):
             yield cls._from_son(doc)
 
     @classmethod
+    def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
+             slave_ok=False, timeout=False, **kwargs):
+        cur = cls.find_raw(spec, fields, skip, limit,
+                           sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
+
+        return cur.distinct(cls._transform_key(key, cls)[0])
+
+    @classmethod
     def _iterate_cursor(cls, cur):
         """
             Iterates over a cursor, gracefully handling AutoReconnect exceptions
