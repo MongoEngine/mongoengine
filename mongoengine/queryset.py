@@ -367,6 +367,10 @@ class QuerySet(object):
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
 
+    def __deepcopy__(self, memo):
+        """Essential for chained queries with ReferenceFields involved"""
+        return self.clone()
+
     def clone(self):
         """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`
 
@@ -814,7 +818,6 @@ class QuerySet(object):
                     mongo_query['$and'].append(value)
                 else:
                     mongo_query['$and'] = value
-
         return mongo_query
 
     def get(self, *q_objs, **query):
