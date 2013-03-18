@@ -213,9 +213,6 @@ class LongField(BaseField):
         if self.max_value is not None and value > self.max_value:
             self.error('Long value is too large')
 
-        if value > 0x7FFFFFFFFFFFFFFF:
-            self.error('Long value is too large')
-
     def prepare_query_value(self, op, value):
         if value is None:
             return value
