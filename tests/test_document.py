@@ -1529,8 +1529,10 @@ class DocumentTest(unittest.TestCase):
         doc.validate()
         keys = doc._data.keys()
         self.assertEqual(2, len(keys))
-        self.assertTrue(None in keys)
         self.assertTrue('e' in keys)
+        # Ensure that the _id field has the right id
+        self.assertTrue('_id' in keys)
+        self.assertEqual(doc._data.get('_id'), doc.id)
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
