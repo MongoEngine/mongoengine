@@ -804,8 +804,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['collection'] = collection(new_class)
 
         # Provide a default queryset unless one has been set
-        manager = attrs.get('objects', QuerySetManager())
-        new_class.objects = manager
+        manager = getattr(new_class, 'objects', None)
+        if manager is None:
+            manager = attrs.get('objects', QuerySetManager())
+            new_class.objects = manager
 
         # Validate the fields and set primary key if needed
         for field_name, field in new_class._fields.iteritems():
