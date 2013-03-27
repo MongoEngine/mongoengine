@@ -33,7 +33,7 @@ class DeReference(object):
         self.max_depth = max_depth
         doc_type = None
 
-        if instance and instance._fields:
+        if instance and isinstance(instance, Document):
             doc_type = instance._fields.get(name)
             if hasattr(doc_type, 'field'):
                 doc_type = doc_type.field
@@ -84,7 +84,7 @@ class DeReference(object):
         # Recursively find dbreferences
         depth += 1
         for k, item in iterator:
-            if hasattr(item, '_fields'):
+            if isinstance(item, Document):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
@@ -187,7 +187,7 @@ class DeReference(object):
 
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
-            elif hasattr(v, '_fields'):
+            elif isinstance(v, Document):
                 for field_name, field in v._fields.iteritems():
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
