@@ -162,17 +162,13 @@ class Document(BaseDocument):
                 cls._collection = db[collection_name]
         return cls._collection
 
-    def save(self, safe=True, force_insert=False, validate=True,
+    def save(self, force_insert=False, validate=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
              _refs=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
 
-        If ``safe=True`` and the operation is unsuccessful, an
-        :class:`~mongoengine.OperationError` will be raised.
-
-        :param safe: check if the operation succeeded before returning
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
@@ -218,11 +214,9 @@ class Document(BaseDocument):
             collection = self.__class__.objects._collection
             if created:
                 if force_insert:
-                    object_id = collection.insert(doc, safe=safe,
-                                                  **write_options)
+                    object_id = collection.insert(doc, **write_options)
                 else:
-                    object_id = collection.save(doc, safe=safe,
-                                                **write_options)
+                    object_id = collection.save(doc, **write_options)
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
@@ -236,17 +230,16 @@ class Document(BaseDocument):
                 upsert = self._created
                 if updates:
                     collection.update(select_dict, {"$set": updates},
-                        upsert=upsert, safe=safe, **write_options)
+                        upsert=upsert, **write_options)
                 if removals:
                     collection.update(select_dict, {"$unset": removals},
-                        upsert=upsert, safe=safe, **write_options)
+                        upsert=upsert, **write_options)
 
             warn_cascade = not cascade and 'cascade' not in self._meta
             cascade = (self._meta.get('cascade', True)
                        if cascade is None else cascade)
             if cascade:
                 kwargs = {
-                    "safe": safe,
                     "force_insert": force_insert,
                     "validate": validate,
                     "write_options": write_options,
@@ -326,16 +319,15 @@ class Document(BaseDocument):
         # Need to add shard key to query, or you get an error
         return self.__class__.objects(**self._object_key).update_one(**kwargs)
 
-    def delete(self, safe=False):
+    def delete(self, **kwargs):
         """Delete the :class:`~mongoengine.Document` from the database. This
-        will only take effect if the document has been previously saved.
-
-        :param safe: check if the operation succeeded before returning
+        will only take effect if the document has been previously saved.  Any
+        options will be passed to PyMongo.
         """
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self.__class__.objects(**self._object_key).delete(safe=safe)
+            self.__class__.objects(**self._object_key).delete(**kwargs)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)

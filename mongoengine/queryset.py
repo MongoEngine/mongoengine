@@ -899,15 +899,11 @@ class QuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True, safe=False, write_options=None):
+    def insert(self, doc_or_docs, load_bulk=True, write_options=None):
         """bulk insert documents
-
-        If ``safe=True`` and the operation is unsuccessful, an
-        :class:`~mongoengine.OperationError` will be raised.
 
         :param docs_or_doc: a document or list of documents to be inserted
         :param load_bulk (optional): If True returns the list of document instances
-        :param safe: check if the operation succeeded before returning
         :param write_options: Extra keyword arguments are passed down to
                 :meth:`~pymongo.collection.Collection.insert`
                 which will be used as options for the resultant ``getLastError`` command.
@@ -924,7 +920,6 @@ class QuerySet(object):
 
         if not write_options:
             write_options = {}
-        write_options.update({'safe': safe})
 
         docs = doc_or_docs
         return_one = False
@@ -1363,10 +1358,9 @@ class QuerySet(object):
         self._slave_okay = enabled
         return self
 
-    def delete(self, safe=False):
-        """Delete the documents matched by the query.
-
-        :param safe: check if the operation succeeded before returning
+    def delete(self, **kwargs):
+        """Delete the documents matched by the query.  Any options are passed to
+        PyMongo.
         """
         doc = self._document
 
@@ -1395,17 +1389,17 @@ class QuerySet(object):
                 ref_q_count = ref_q.count()
                 if (doc != document_cls and ref_q_count > 0
                     or (doc == document_cls and ref_q_count > 0)):
-                    ref_q.delete(safe=safe)
+                    ref_q.delete(**kwargs)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
-                        safe_update=safe,
+                        write_options=kwargs,
                         **{'unset__%s' % field_name: 1})
             elif rule == PULL:
                 document_cls.objects(**{field_name + '__in': self}).update(
-                        safe_update=safe,
+                        write_options=kwargs,
                         **{'pull_all__%s' % field_name: self})
 
-        self._collection.remove(self._query, safe=safe)
+        self._collection.remove(self._query, **kwargs)
 
     @classmethod
     def _transform_update(cls, _doc_cls=None, **update):
@@ -1508,11 +1502,10 @@ class QuerySet(object):
 
         return mongo_update
 
-    def update(self, safe_update=True, upsert=False, multi=True, write_options=None, **update):
-        """Perform an atomic update on the fields matched by the query. When
-        ``safe_update`` is used, the number of affected documents is returned.
+    def update(self, upsert=False, multi=True, write_options=None, **update):
+        """Perform an atomic update on the fields matched by the query. The
+        number of affected documents is returned.
 
-        :param safe_update: check if the operation succeeded before returning
         :param upsert: Any existing document with that "_id" is overwritten.
         :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
 
@@ -1534,7 +1527,7 @@ class QuerySet(object):
 
         try:
             ret = self._collection.update(query, update, multi=multi,
-                                          upsert=upsert, safe=safe_update,
+                                          upsert=upsert,
                                           **write_options)
             if ret is not None and 'n' in ret:
                 return ret['n']
@@ -1544,11 +1537,10 @@ class QuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-    def update_one(self, safe_update=True, upsert=False, write_options=None, **update):
-        """Perform an atomic update on first field matched by the query. When
-        ``safe_update`` is used, the number of affected documents is returned.
+    def update_one(self, upsert=False, write_options=None, **update):
+        """Perform an atomic update on first field matched by the query.  The
+        number of affected documents is returned.
 
-        :param safe_update: check if the operation succeeded before returning
         :param upsert: Any existing document with that "_id" is overwritten.
         :param write_options: extra keyword arguments for :meth:`~pymongo.collection.Collection.update`
         :param update: Django-style update keyword arguments
@@ -1572,7 +1564,7 @@ class QuerySet(object):
             # Explicitly provide 'multi=False' to newer versions of PyMongo
             # as the default may change to 'True'
             ret = self._collection.update(query, update, multi=False,
-                                          upsert=upsert, safe=safe_update,
+                                          upsert=upsert,
                                            **write_options)
 
             if ret is not None and 'n' in ret:
