@@ -2013,6 +2013,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(names, [None, None, None])
         self.assertEqual(ages, [40, 30, 20])
 
+        qs = self.Person.objects.all().order_by('-age')
+        qs = qs.limit(10)
+        ages = [p.age for p in qs]
+        self.assertEqual(ages, [40, 30, 20])
+
         qs = self.Person.objects.all().limit(10)
         qs = qs.order_by('-age')
         ages = [p.age for p in qs]
@@ -2022,7 +2027,6 @@ class QuerySetTest(unittest.TestCase):
         qs = qs.order_by('-age')
         ages = [p.age for p in qs]
         self.assertEqual(ages, [40, 30, 20])
-
 
     def test_confirm_order_by_reference_wont_work(self):
         """Ordering by reference is not possible.  Use map / reduce.. or
