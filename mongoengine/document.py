@@ -220,10 +220,12 @@ class Document(BaseDocument):
                                               read_preference=read_preference,
                                               **kwargs)
                     else:
-                        return cls._pymongo(allow_async).find(spec, fields,
+                        cur = cls._pymongo(allow_async).find(spec, fields,
                                               skip=skip, limit=limit, sort=sort,
                                               read_preference=read_preference,
                                               **kwargs)
+                        cur.batch_size(10000)
+                        return cur
                 break
             # delay & retry once on AutoReconnect error
             except pymongo.errors.AutoReconnect:
