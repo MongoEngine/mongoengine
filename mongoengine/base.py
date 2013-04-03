@@ -907,7 +907,17 @@ class BaseDocument(object):
     _dynamic_lock = True
     _initialised = False
 
-    def __init__(self, **values):
+    def __init__(self, *args, **values):
+        if args:
+            # Combine positional arguments with named arguments.
+            # We only want named arguments.
+            field = iter(self._fields_ordered)
+            for value in args:
+                name = next(field)
+                if name in values:
+                    raise TypeError("Multiple values for keyword argument '" + name + "'")
+                values[name] = value
+        
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
