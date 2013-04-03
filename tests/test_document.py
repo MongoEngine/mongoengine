@@ -1386,6 +1386,28 @@ class DocumentTest(unittest.TestCase):
         person = self.Person(name="Test User", age=30)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 30)
+    
+    def test_positional_creation(self):
+        """Ensure that document may be created using positional arguments.
+        """
+        person = self.Person("Test User", 42)
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 42)
+    
+    def test_mixed_creation(self):
+        """Ensure that document may be created using mixed arguments.
+        """
+        person = self.Person("Test User", age=42)
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 42)
+    
+    def test_bad_mixed_creation(self):
+        """Ensure that document gives correct error when duplicating arguments
+        """
+        def construct_bad_instance():
+            return self.Person("Test User", 42, name="Bad User")
+        
+        self.assertRaises(TypeError, construct_bad_instance)
 
     def test_to_dbref(self):
         """Ensure that you can get a dbref of a document"""
