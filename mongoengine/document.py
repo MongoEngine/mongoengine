@@ -237,7 +237,7 @@ class Document(BaseDocument):
                     select_dict[actual_key] = doc[actual_key]
                     
                 if (update_fields):
-                    updates = updates in update_fields
+                    updates = dict((k, v) for (k, v) in updates.iteritems() if k in update_fields)
 
                 upsert = self._created
                 if updates:
