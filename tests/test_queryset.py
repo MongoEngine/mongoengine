@@ -2481,6 +2481,23 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
 
+    def test_distinct_handles_db_field(self):
+        """Ensure that distinct resolves field name to db_field as expected.
+        """
+        class Product(Document):
+            product_id=IntField(db_field='pid')
+
+        Product.drop_collection()
+
+        product_one = Product(product_id=1).save()
+        product_two = Product(product_id=2).save()
+        product_one_dup = Product(product_id=1).save()
+
+        self.assertEqual(set(Product.objects.distinct('product_id')),
+                         set([1, 2]))
+
+        Product.drop_collection()
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
