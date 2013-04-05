@@ -317,7 +317,6 @@ class ListField(BaseField):
             return self
 
         if isinstance(self.field, ReferenceField):
-            referenced_type = self.field.document_type
             # Get value from document instance if available
             value_list = instance._data.get(self.name)
             if value_list:
@@ -325,8 +324,8 @@ class ListField(BaseField):
                 for value in value_list:
                     # Dereference DBRefs
                     if isinstance(value, (bson.dbref.DBRef)):
-                        value = _get_db(referenced_type._meta['db_name']).dereference(value)
-                        deref_list.append(referenced_type._from_son(value))
+                        value = self.field.dereference(value)
+                        deref_list.append(value)
                     else:
                         deref_list.append(value)
                 instance._data[self.name] = deref_list
@@ -477,13 +476,14 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         # Dereference DBRefs
         if isinstance(value, (bson.dbref.DBRef)):
-            value = _get_db(self.document_type._meta['db_name']).dereference(value)
+            value = self.dereference(value)
             if value is not None:
-                instance._data[self.name] = self.document_type._from_son(value)
+                instance._data[self.name] = value
             else:
                 raise DoesNotExist("DBRef for collection %s ID %s cannot be dereferenced" %
-                                   (instance._data[self.name].collection,
-                                    str(instance._data[self.name].id)))
+                   (instance._data[self.name].collection,
+                    str(instance._data[self.name].id)))
+
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -512,6 +512,21 @@ class ReferenceField(BaseField):
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
+
+    def dereference(self, dbref):
+        if not dbref:
+            return None
+
+        doc_cls = self.document_type
+
+        if hasattr(doc_cls, "by_id") and callable(doc_cls.by_id):
+            doc = doc_cls.by_id(dbref.id)
+        else:
+            doc = _get_db(doc_cls._meta['db_name']).dereference(dbref)
+            if doc is not None:
+                doc = doc_cls._from_son(doc)
+
+        return doc
 
 
 class GenericReferenceField(BaseField):
