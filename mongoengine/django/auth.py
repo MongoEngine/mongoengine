@@ -1,6 +1,7 @@
 import datetime
 
 from mongoengine import *
+from mongoengine.django.contenttypes import ContentType
 
 from django.utils.encoding import smart_str
 from django.contrib.auth.models import _user_get_all_permissions
@@ -66,6 +67,12 @@ class User(Document):
                                verbose_name=_('last login'))
     date_joined = DateTimeField(default=datetime.datetime.now,
                                 verbose_name=_('date joined'))
+    
+    groups = ListField(verbose_name=_('groups'))
+    
+    # these are the assigned user specific permissions and NOT the effective permissions
+    # which can be fetched by using has_perm
+    user_permissions = ListField(verbose_name=_('user_permissions'))
 
     meta = {
         'allow_inheritance': True,
@@ -88,7 +95,7 @@ class User(Document):
 
     def is_authenticated(self):
         return True
-
+    
     def set_password(self, raw_password):
         """Sets the user's password - always use this rather than directly
         assigning to :attr:`~mongoengine.django.auth.User.password` as the
@@ -150,6 +157,28 @@ class User(Document):
     def get_and_delete_messages(self):
         return []
 
+class Group(Document):
+    """
+    A Group document that aims to mirror most of the API specified by django
+    """
+    
+    name = StringField(max_length=80, required=True, unique=True,
+                           verbose_name=_('name'),
+                           help_text=_("Required. 80 characters or fewer. Letters, numbers and @/./+/-/_ characters"))
+    
+    #list of DBRefs to permissions
+    permissions = ListField(verbose_name=_('permissions'))
+
+    def __str__(self):
+        return self.name
+    
+class Permission(Document):
+    """
+    A Permission document that aims to mirror most of the API specified by django
+    """
+    name = StringField(max_length=50, verbose_name=_('name'))
+    codename = StringField(max_length=100, verbose_name=_('codename'))
+    content_type = ReferenceField(ContentType, dbref=True, verbose_name=_('content_type'))
 
 class MongoEngineBackend(object):
     """Authenticate using MongoEngine and mongoengine.django.auth.User.
@@ -168,8 +197,30 @@ class MongoEngineBackend(object):
 
     def get_user(self, user_id):
         return User.objects.with_id(user_id)
-
-
+    
+    def get_group_permissions(self, user_obj, obj=None):
+        if user_obj.is_anonymous() or obj is not None:
+            return set()
+        
+        group_permissions = set()
+        
+        for group in user_obj.groups:
+            group_permissions.update(['%s.%s' % (p.content_type.app_label, p.codename) for p in group.permissions])
+            
+        return group_permissions
+    
+    def get_all_permissions(self, user_obj, obj=None):
+        if user_obj.is_anonymous() or obj is not None:
+            return set()
+        
+        user_permissions = set(['%s.%s' % (p.content_type.app_label, p.codename) for p in user_obj.user_permissions])
+        user_permissions.update(self.get_group_permissions(user_obj, obj))
+        
+        return user_permissions
+    
+    def has_perm(self, user_obj, perm, obj=None):
+        return perm in self.get_all_permissions(user_obj, obj)
+        
 def get_user(userid):
     """Returns a User object from an id (User.id). Django's equivalent takes
     request, but taking an id instead leaves it up to the developer to store
