@@ -164,7 +164,7 @@ class Document(BaseDocument):
 
     def save(self, safe=True, force_insert=False, validate=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
-             _refs=None):
+             _refs=None, update_fields=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -213,6 +213,9 @@ class Document(BaseDocument):
         doc = self.to_mongo()
 
         created = force_insert or '_id' not in doc
+        
+        if created and update_fields:
+            raise OperationError('Cannot use update_fields when document is force_insert or not in db')
 
         try:
             collection = self.__class__.objects._collection
@@ -232,6 +235,9 @@ class Document(BaseDocument):
                 for k in shard_key:
                     actual_key = self._db_field_map.get(k, k)
                     select_dict[actual_key] = doc[actual_key]
+                    
+                if (update_fields):
+                    updates = dict((k, v) for (k, v) in updates.iteritems() if k in update_fields)
 
                 upsert = self._created
                 if updates:
