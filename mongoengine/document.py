@@ -164,7 +164,7 @@ class Document(BaseDocument):
 
     def save(self, safe=True, force_insert=False, validate=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
-             _refs=None):
+             _refs=None, update_fields=None):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -189,6 +189,7 @@ class Document(BaseDocument):
         :param cascade_kwargs: optional kwargs dictionary to be passed throw
             to cascading saves
         :param _refs: A list of processed references used in cascading saves
+        :param update_fields: to be compatible with django 1.5 : save method
 
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
