@@ -1123,6 +1123,22 @@ class BaseDocument(object):
             key not in self._changed_fields):
             self._changed_fields.append(key)
 
+    def _clear_changed_fields(self):
+        self._changed_fields = []
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        for field_name, field in self._fields.iteritems():
+            if (isinstance(field, ComplexBaseField) and 
+                isinstance(field.field, EmbeddedDocumentField)):
+                field_value = getattr(self, field_name, None)
+                if field_value:
+                    for idx in (field_value if isinstance(field_value, dict)
+                                            else xrange(len(field_value))):
+                        field_value[idx]._clear_changed_fields()
+            elif isinstance(field, EmbeddedDocumentField):
+                field_value = getattr(self, field_name, None)
+                if field_value:
+                    field_value._clear_changed_fields()
+
     def _get_changed_fields(self, key='', inspected=None):
         """Returns a list of all fields that have explicitly been changed.
         """
