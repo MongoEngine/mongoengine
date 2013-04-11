@@ -13,7 +13,7 @@ env:
   - PYMONGO=2.3
 install:
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo apt-get install zlib1g zlib1g-dev; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib/; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo ln -s /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install PIL --use-mirrors ; true; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install PIL --use-mirrors ; true; fi
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
