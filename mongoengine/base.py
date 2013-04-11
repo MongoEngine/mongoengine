@@ -1193,6 +1193,10 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, DBRef):
                         break
+                    elif isinstance(d, dict) and '_ref' in d:
+                        new_path.append('_ref')
+                        d = d['_ref']
+                        break
                     elif p.isdigit():
                         d = d[int(p)]
                     elif hasattr(d, 'get'):
