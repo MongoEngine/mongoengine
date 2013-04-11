@@ -192,7 +192,7 @@ class BaseField(object):
             return self
 
         # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name)
+        value = instance._data.get(self.name or self.db_field)
 
         if value is None:
             value = self.default
@@ -205,7 +205,7 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        instance._data[self.name] = value
+        instance._data[self.name or self.db_field] = value
         if instance._initialised:
             instance._mark_as_changed(self.name)
 

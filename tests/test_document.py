@@ -1529,8 +1529,10 @@ class DocumentTest(unittest.TestCase):
         doc.validate()
         keys = doc._data.keys()
         self.assertEqual(2, len(keys))
-        self.assertTrue(None in keys)
         self.assertTrue('e' in keys)
+        # Ensure that the _id field has the right id
+        self.assertTrue('_id' in keys)
+        self.assertEqual(doc._data.get('_id'), doc.id)
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
@@ -3368,6 +3370,21 @@ class DocumentTest(unittest.TestCase):
                                         }
                                     ) ]), "1,2")
 
+    def test_data_contains_idfield(self):
+        """Ensure that asking for _data returns 'id'
+        """
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        person = Person()
+        person.name = "Harry Potter"
+        person.save(cascade=False)
+
+        person = Person.objects.first()
+        self.assertTrue('_id' in person._data.keys())
+        self.assertEqual(person._data.get('_id'), person.id)
+
 
 class ValidatorErrorTest(unittest.TestCase):
 
@@ -3520,7 +3537,6 @@ class ValidatorErrorTest(unittest.TestCase):
             log.machine = "127.0.0.1"
 
         self.assertRaises(OperationError, change_shard_key)
-
 
 if __name__ == '__main__':
     unittest.main()
