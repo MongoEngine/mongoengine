@@ -12,9 +12,8 @@ env:
   - PYMONGO=2.4.1
   - PYMONGO=2.3
 install:
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo apt-get install zlib1g zlib1g-dev; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo ln -s /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install pillow --use-mirrors ; true; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then cp /usr/lib/*/libz.so $VIRTUAL_ENV/lib/; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install pil --use-mirrors ; true; fi
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
     - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO --use-mirrors; true; fi
     - python setup.py install
@@ -26,3 +25,8 @@ branches:
   only:
     - master
     - "0.8"
+# # Get development headers for PIL
+# before_install:
+#  - sudo apt-get update -qq
+#  - sudo apt-get build-dep -qq python-imaging
+#  - sudo apt-get install libjpeg-dev
