@@ -1321,7 +1321,8 @@ class QuerySet(object):
             key_list.append((key, direction))
 
         self._ordering = key_list
-
+        if self._cursor_obj:
+            self._cursor_obj.sort(key_list)
         return self
 
     def explain(self, format=False):

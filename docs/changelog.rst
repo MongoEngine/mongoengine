@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Fixed order_by chaining issue (#265)
 - Added dereference support for tuples (#250)
 - Resolve field name to db field name when using distinct(#260, #264, #269)
 - Added kwargs to doc.save to help interop with django (#223, #270)
