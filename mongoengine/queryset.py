@@ -379,8 +379,8 @@ class QuerySet(object):
         c = self.__class__(self._document, self._collection_obj)
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
-                    '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint')
+                      '_loaded_fields', '_ordering', '_snapshot', '_timeout',
+                      '_limit', '_skip', '_slave_okay', '_hint')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -393,16 +393,11 @@ class QuerySet(object):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
             if self._class_check:
-                if PY3:
-                    query = SON(self._initial_query.items())
-                    query.update(self._mongo_query)
-                    self._mongo_query = query
-                else:
-                    self._mongo_query.update(self._initial_query)
+                self._mongo_query.update(self._initial_query)
         return self._mongo_query
 
     def ensure_index(self, key_or_list, drop_dups=False, background=False,
-        **kwargs):
+                     **kwargs):
         """Ensure that the given indexes are in place.
 
         :param key_or_list: a single index key or a list of index keys (to

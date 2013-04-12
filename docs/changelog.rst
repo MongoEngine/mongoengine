@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Changes in 0.7.10
+=================
+- Int fields no longer unset in save when changed to 0 (#272)
+- Fixed ReferenceField query chaining bug fixed (#254)
+
 Changes in 0.7.9
 ================
 - Better fix handling for old style _types
