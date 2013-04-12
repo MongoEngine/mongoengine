@@ -232,27 +232,32 @@ class QuerySetTest(unittest.TestCase):
 
     def test_chaining(self):
         class A(Document):
-            pass
+            s = StringField()
 
         class B(Document):
-            a = ReferenceField(A)
+            ref = ReferenceField(A)
+            boolfield = BooleanField(default=False)
 
         A.drop_collection()
         B.drop_collection()
 
-        a1 = A().save()
-        a2 = A().save()
+        a1 = A(s="test1").save()
+        a2 = A(s="test2").save()
 
-        B(a=a1).save()
+        B(ref=a1, boolfield=True).save()
 
         # Works
-        q1 = B.objects.filter(a__in=[a1, a2], a=a1)._query
+        q1 = B.objects.filter(ref__in=[a1, a2], ref=a1)._query
 
         # Doesn't work
-        q2 = B.objects.filter(a__in=[a1, a2])
-        q2 = q2.filter(a=a1)._query
-
+        q2 = B.objects.filter(ref__in=[a1, a2])
+        q2 = q2.filter(ref=a1)._query
         self.assertEqual(q1, q2)
+
+        a_objects = A.objects(s='test1')
+        query = B.objects(ref__in=a_objects)
+        query = query.filter(boolfield=True)
+        self.assertEquals(query.count(), 1)
 
     def test_update_write_options(self):
         """Test that passing write_options works"""
