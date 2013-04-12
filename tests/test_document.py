@@ -3368,6 +3368,40 @@ class DocumentTest(unittest.TestCase):
                                         }
                                     ) ]), "1,2")
 
+    def test_complex_nesting_document_and_embeddeddocument(self):
+        class Macro(EmbeddedDocument):
+            value = DynamicField(default="UNDEFINED")
+
+        class Parameter(EmbeddedDocument):
+            macros = MapField(EmbeddedDocumentField(Macro))
+
+            def expand(self):
+                self.macros["test"] = Macro()
+
+        class Node(Document):
+            parameters = MapField(EmbeddedDocumentField(Parameter))
+
+            def expand(self):
+                self.flattened_parameter = {}
+                for parameter_name, parameter in self.parameters.iteritems():
+                  parameter.expand()
+
+        class System(Document):
+            name = StringField(required=True)
+            nodes = MapField(ReferenceField(Node, dbref=False))
+
+            def save(self, *args, **kwargs):
+                for node_name, node in self.nodes.iteritems():
+                    node.expand()
+                    node.save(*args, **kwargs)
+                super(System, self).save(*args, **kwargs)
+
+        system = System(name="system")
+        system.save()
+        system.nodes["node"] = Node()
+        system.save()
+        system.nodes["node"].parameters["param"] = Parameter()
+        system.save()
 
 class ValidatorErrorTest(unittest.TestCase):
 
