@@ -49,6 +49,12 @@ Changes in 0.8.X
 - Updated Save so it calls $set and $unset in a single operation (#211)
 - Fixed inner queryset looping (#204)
 
+Changes in 0.7.10
+=================
+- Fixed cloning querysets in PY3
+- Int fields no longer unset in save when changed to 0 (#272)
+- Fixed ReferenceField query chaining bug fixed (#254)
+
 Changes in 0.7.9
 ================
 - Better fix handling for old style _types

@@ -69,7 +69,7 @@ class AllWarnings(unittest.TestCase):
         p2.parent.name = "Poppa Wilson"
         p2.save()
 
-        self.assertEqual(len(self.warning_list), 1)
+        self.assertTrue(len(self.warning_list) > 0)
         if len(self.warning_list) > 1:
             print self.warning_list
         warning = self.warning_list[0]

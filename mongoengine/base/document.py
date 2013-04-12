@@ -1,5 +1,6 @@
 import copy
 import operator
+import numbers
 from functools import partial
 
 import pymongo
@@ -431,13 +432,13 @@ class BaseDocument(object):
 
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
-            if value or isinstance(value, bool):
+            if value or isinstance(value, (numbers.Number, bool)):
                 continue
 
             # If we've set a value that ain't the default value dont unset it.
             default = None
-            if (self._dynamic and len(parts) and
-                parts[0] in self._dynamic_fields):
+            if (self._dynamic and len(parts) and parts[0] in
+               self._dynamic_fields):
                 del(set_data[path])
                 unset_data[path] = 1
                 continue
