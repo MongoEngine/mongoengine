@@ -171,6 +171,7 @@ class DeReference(object):
 
         if not hasattr(items, 'items'):
             is_list = True
+            as_tuple = isinstance(items, tuple)
             iterator = enumerate(items)
             data = []
         else:
@@ -205,7 +206,7 @@ class DeReference(object):
 
         if instance and name:
             if is_list:
-                return BaseList(data, instance, name)
+                return tuple(data) if as_tuple else BaseList(data, instance, name)
             return BaseDict(data, instance, name)
         depth += 1
         return data

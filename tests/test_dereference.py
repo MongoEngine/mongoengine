@@ -997,3 +997,34 @@ class FieldTest(unittest.TestCase):
         msg = Message.objects.get(id=1)
         self.assertEqual(0, msg.comments[0].id)
         self.assertEqual(1, msg.comments[1].id)
+        
+    def test_tuples_as_tuples(self):
+        """
+        Ensure that tuples remain tuples when they are
+        inside a ComplexBaseField
+        """
+        from mongoengine.base import BaseField
+        class EnumField(BaseField):
+            def __init__(self, **kwargs):
+                super(EnumField,self).__init__(**kwargs)
+         
+            def to_mongo(self, value):
+                return value
+         
+            def to_python(self, value):
+                return tuple(value)
+         
+        class TestDoc(Document):
+            items = ListField(EnumField())
+        
+        TestDoc.drop_collection()
+        tuples = [(100,'Testing')]
+        doc = TestDoc()
+        doc.items = tuples
+        doc.save()
+        x = TestDoc.objects().get()
+        self.assertTrue(x is not None)
+        self.assertTrue(len(x.items) == 1)
+        self.assertTrue(tuple(x.items[0]) in tuples)
+        self.assertTrue(x.items[0] in tuples)
+
