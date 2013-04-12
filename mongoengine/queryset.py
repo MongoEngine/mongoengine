@@ -1212,8 +1212,14 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - Fixed handling references
         .. versionchanged:: 0.6 - Improved db_field refrence handling
         """
-        return self._dereference(self._cursor.distinct(field), 1,
-                                 name=field, instance=self._document)
+
+        try:
+            field_document = QuerySet._lookup_field(self._document, field) 
+            if field_document:
+                field = field_document[0].db_field
+        finally:
+            return self._dereference(self._cursor.distinct(field), 1,
+                                     name=field, instance=self._document)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
