@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Resolve field name to db field name when using distinct(#260, #264, #269)
 - Added kwargs to doc.save to help interop with django (#223, #270)
 - Fixed cloning querysets in PY3
 - Int fields no longer unset in save when changed to 0 (#272)
