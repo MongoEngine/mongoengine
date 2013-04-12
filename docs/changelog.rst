@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Added kwargs to doc.save to help interop with django (#223, #270)
 - Fixed cloning querysets in PY3
 - Int fields no longer unset in save when changed to 0 (#272)
 - Fixed ReferenceField query chaining bug fixed (#254)
