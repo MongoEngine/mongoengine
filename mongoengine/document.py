@@ -164,7 +164,7 @@ class Document(BaseDocument):
 
     def save(self, safe=True, force_insert=False, validate=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
-             _refs=None):
+             _refs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.

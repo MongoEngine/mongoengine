@@ -367,6 +367,10 @@ class QuerySet(object):
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
 
+    def __deepcopy__(self, memo):
+        """Essential for chained queries with ReferenceFields involved"""
+        return self.clone()
+
     def clone(self):
         """Creates a copy of the current :class:`~mongoengine.queryset.QuerySet`
 
@@ -375,8 +379,8 @@ class QuerySet(object):
         c = self.__class__(self._document, self._collection_obj)
 
         copy_props = ('_initial_query', '_query_obj', '_where_clause',
-                    '_loaded_fields', '_ordering', '_snapshot',
-                    '_timeout', '_limit', '_skip', '_slave_okay', '_hint')
+                      '_loaded_fields', '_ordering', '_snapshot', '_timeout',
+                      '_limit', '_skip', '_slave_okay', '_hint')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -389,16 +393,11 @@ class QuerySet(object):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
             if self._class_check:
-                if PY3:
-                    query = SON(self._initial_query.items())
-                    query.update(self._mongo_query)
-                    self._mongo_query = query
-                else:
-                    self._mongo_query.update(self._initial_query)
+                self._mongo_query.update(self._initial_query)
         return self._mongo_query
 
     def ensure_index(self, key_or_list, drop_dups=False, background=False,
-        **kwargs):
+                     **kwargs):
         """Ensure that the given indexes are in place.
 
         :param key_or_list: a single index key or a list of index keys (to
@@ -814,7 +813,6 @@ class QuerySet(object):
                     mongo_query['$and'].append(value)
                 else:
                     mongo_query['$and'] = value
-
         return mongo_query
 
     def get(self, *q_objs, **query):
@@ -1214,10 +1212,18 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - Fixed handling references
         .. versionchanged:: 0.6 - Improved db_field refrence handling
         """
+<<<<<<< HEAD
         field = [field]
         field = self._fields_to_dbfields(field).pop()
         return self._dereference(self._cursor.distinct(field), 1,
                                  name=field, instance=self._document)
+=======
+        try:
+            field = self._fields_to_dbfields([field]).pop()
+        finally:
+            return self._dereference(self._cursor.distinct(field), 1,
+                                     name=field, instance=self._document)
+>>>>>>> upstream/master
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -1322,7 +1328,8 @@ class QuerySet(object):
             key_list.append((key, direction))
 
         self._ordering = key_list
-
+        if self._cursor_obj:
+            self._cursor_obj.sort(key_list)
         return self
 
     def explain(self, format=False):
