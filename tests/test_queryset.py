@@ -2565,18 +2565,6 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that distinct resolves field name to db_field as expected.
         """
         class Product(Document):
-<<<<<<< HEAD
-            product_id=IntField(db_field='pid')
-
-        Product.drop_collection()
-
-        product_one = Product(product_id=1).save()
-        product_two = Product(product_id=2).save()
-        product_one_dup = Product(product_id=1).save()
-
-        self.assertEqual(set(Product.objects.distinct('product_id')),
-                         set([1, 2]))
-=======
             product_id = IntField(db_field='pid')
 
         Product.drop_collection()
@@ -2589,7 +2577,6 @@ class QuerySetTest(unittest.TestCase):
                          set([1, 2]))
         self.assertEqual(set(Product.objects.distinct('pid')),
                          set([1, 2]))
->>>>>>> upstream/master
 
         Product.drop_collection()
 
