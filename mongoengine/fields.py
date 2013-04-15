@@ -149,6 +149,7 @@ class EmailField(StringField):
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
             self.error('Invalid Mail-address: %s' % value)
+        super(EmailField, self).validate(value)
 
 
 class IntField(BaseField):
@@ -777,7 +778,7 @@ class ReferenceField(BaseField):
     def to_mongo(self, document):
         if isinstance(document, DBRef):
             if not self.dbref:
-                return DBRef.id
+                return document.id
             return document
         elif not self.dbref and isinstance(document, basestring):
             return document
@@ -1337,7 +1338,7 @@ class SequenceField(IntField):
 
     .. versionadded:: 0.5
     """
-    def __init__(self, collection_name=None, db_alias = None, sequence_name = None, *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias=None, sequence_name=None, *args, **kwargs):
         self.collection_name = collection_name or 'mongoengine.counters'
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
@@ -1347,7 +1348,7 @@ class SequenceField(IntField):
         """
         Generate and Increment the counter
         """
-        sequence_name = self.sequence_name or self.owner_document._get_collection_name()
+        sequence_name = self.get_sequence_name()
         sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_and_modify(query={"_id": sequence_id},
@@ -1355,6 +1356,16 @@ class SequenceField(IntField):
                                              new=True,
                                              upsert=True)
         return counter['next']
+
+    def get_sequence_name(self):
+        if self.sequence_name:
+            return self.sequence_name
+        owner = self.owner_document
+        if issubclass(owner, Document):
+            return owner._get_collection_name()
+        else:
+            return ''.join('_%s' % c if c.isupper() else c
+                            for c in owner._class_name).strip('_').lower()
 
     def __get__(self, instance, owner):
 

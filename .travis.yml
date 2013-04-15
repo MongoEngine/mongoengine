@@ -2,15 +2,15 @@
 language: python
 services: mongodb
 python:
-    - 2.5
-    - 2.6
-    - 2.7
-    - 3.1
-    - 3.2
+    - "2.5"
+    - "2.6"
+    - "2.7"
+    - "3.2"
+    - "3.3"
 env:
   - PYMONGO=dev
+  - PYMONGO=2.4.1
   - PYMONGO=2.3
-  - PYMONGO=2.2
 install:
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo apt-get install zlib1g zlib1g-dev; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib/; fi
@@ -26,4 +26,4 @@ notifications:
 branches:
   only:
     - master
-    - 0.7
+    - "0.8"

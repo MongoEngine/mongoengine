@@ -47,7 +47,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(QuerySet._transform_query(age__gt=20, age__lt=50),
                          {'age': {'$gt': 20, '$lt': 50}})
         self.assertEqual(QuerySet._transform_query(age=20, age__gt=50),
-                         {'age': 20})
+                         {'$and': [{'age': {'$gt': 50}}, {'age': 20}]})
         self.assertEqual(QuerySet._transform_query(friend__age__gte=30),
                          {'friend.age': {'$gte': 30}})
         self.assertEqual(QuerySet._transform_query(name__exists=True),
@@ -590,6 +590,10 @@ class QuerySetTest(unittest.TestCase):
             Blog.objects.insert(blogs)
 
         self.assertRaises(OperationError, throw_operation_error)
+
+        # Test can insert new doc
+        new_post = Blog(title="code", id=ObjectId())
+        Blog.objects.insert(new_post)
 
         # test handles other classes being inserted
         def throw_operation_error_wrong_doc():
@@ -1932,6 +1936,22 @@ class QuerySetTest(unittest.TestCase):
 
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
+
+    def test_order_by_chaining(self):
+        """Ensure that an order_by query chains properly and allows .only()
+        """
+        self.Person(name="User A", age=20).save()
+        self.Person(name="User B", age=40).save()
+        self.Person(name="User C", age=30).save()
+
+        only_age = self.Person.objects.order_by('-age').only('age')
+
+        names = [p.name for p in only_age]
+        ages = [p.age for p in only_age]
+
+        # The .only('age') clause should mean that all names are None
+        self.assertEqual(names, [None, None, None])
+        self.assertEqual(ages, [40, 30, 20])
 
     def test_confirm_order_by_reference_wont_work(self):
         """Ordering by reference is not possible.  Use map / reduce.. or
@@ -3691,6 +3711,38 @@ class QueryFieldListTest(unittest.TestCase):
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
 
+    def test_as_pymongo(self):
+
+        from decimal import Decimal
+
+        class User(Document):
+            id = ObjectIdField('_id')
+            name = StringField()
+            age = IntField()
+            price = DecimalField()
+
+        User.drop_collection()
+        User(name="Bob Dole", age=89, price=Decimal('1.11')).save()
+        User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
+
+        users = User.objects.only('name', 'price').as_pymongo()
+        results = list(users)
+        self.assertTrue(isinstance(results[0], dict))
+        self.assertTrue(isinstance(results[1], dict))
+        self.assertEqual(results[0]['name'], 'Bob Dole')
+        self.assertEqual(results[0]['price'], '1.11')
+        self.assertEqual(results[1]['name'], 'Barack Obama')
+        self.assertEqual(results[1]['price'], '2.22')
+
+        # Test coerce_types
+        users = User.objects.only('name', 'price').as_pymongo(coerce_types=True)
+        results = list(users)
+        self.assertTrue(isinstance(results[0], dict))
+        self.assertTrue(isinstance(results[1], dict))
+        self.assertEqual(results[0]['name'], 'Bob Dole')
+        self.assertEqual(results[0]['price'], Decimal('1.11'))
+        self.assertEqual(results[1]['name'], 'Barack Obama')
+        self.assertEqual(results[1]['price'], Decimal('2.22'))
 
 if __name__ == '__main__':
     unittest.main()

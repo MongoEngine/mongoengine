@@ -12,7 +12,7 @@ from signals import *
 __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
            queryset.__all__ + signals.__all__)
 
-VERSION = (0, 7, 5)
+VERSION = (0, 7, 9)
 
 
 def get_version():
