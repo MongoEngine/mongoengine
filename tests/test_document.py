@@ -1158,9 +1158,26 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same slug and the same day: fail
         post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
-        self.assertRaises(OperationError, post3.save)
+        self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
+
+    def test_unique_case_insensitive(self):
+        """Ensure that case insensitive uniqueness constraints are applied to
+        fields.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            slug = StringField(unique_case_insensitive=True)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', slug='test')
+        post1.save()
+
+        # Two posts with the same slug is not allowed
+        post2 = BlogPost(title='test2', slug='TEST')
+        self.assertRaises(NotUniqueError, post2.save)
 
     def test_unique_embedded_document(self):
         """Ensure that uniqueness constraints are applied to fields on embedded documents.
@@ -1184,6 +1201,33 @@ class DocumentTest(unittest.TestCase):
 
         # Now there will be two docs with the same sub.slug
         post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='test'))
+        self.assertRaises(NotUniqueError, post3.save)
+
+        BlogPost.drop_collection()
+
+    def test_unique_case_insensitive_embedded_document(self):
+        """Ensure that case insensitive uniqueness constraints are applied to
+        fields on embedded documents.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique_case_insensitive=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            sub = EmbeddedDocumentField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', sub=SubDocument(year=2009, slug="test"))
+        post1.save()
+
+        # sub.slug is different so won't raise exception
+        post2 = BlogPost(title='test2', sub=SubDocument(year=2010, slug='another-slug'))
+        post2.save()
+
+        # Now there will be two docs with the same sub.slug
+        post3 = BlogPost(title='test3', sub=SubDocument(year=2010, slug='TEST'))
         self.assertRaises(NotUniqueError, post3.save)
 
         BlogPost.drop_collection()
