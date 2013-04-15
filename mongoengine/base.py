@@ -159,7 +159,7 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None):
+                 help_text=None, version_locks=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
@@ -174,6 +174,7 @@ class BaseField(object):
         self.choices = choices
         self.verbose_name = verbose_name
         self.help_text = help_text
+        self.version_locks = version_locks or []
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
@@ -564,6 +565,8 @@ class DocumentMetaclass(type):
                                         for k, v in doc_fields.iteritems()])
         attrs['_reverse_db_field_map'] = dict(
                 (v, k) for k, v in attrs['_db_field_map'].iteritems())
+        attrs['_version_locks'] = dict([(getattr(f, "db_field", fname),
+                       f.version_locks) for fname, f in doc_fields.iteritems()])
 
         #
         # Set document hierarchy

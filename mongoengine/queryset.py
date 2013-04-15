@@ -49,6 +49,8 @@ class OperationError(Exception):
 class NotUniqueError(OperationError):
     pass
 
+class VersionLockError(OperationError):
+    pass
 
 RE_TYPE = type(re.compile(''))
 
