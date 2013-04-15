@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Added "_id" to _data dictionary (#255)
 - Only mark a field as changed if the value has changed (#258)
 - Explicitly check for Document instances when dereferencing (#261)
 - Fixed order_by chaining issue (#265)
