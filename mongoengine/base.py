@@ -192,7 +192,7 @@ class BaseField(object):
             return self
 
         # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name)
+        value = instance._data.get(self.name or self.db_field)
 
         if value is None:
             value = self.default
@@ -207,9 +207,9 @@ class BaseField(object):
         """
         changed = False
         if (self.name not in instance._data or
-            instance._data[self.name] != value):
+           instance._data[self.name or self.db_field] != value):
             changed = True
-            instance._data[self.name] = value
+            instance._data[self.name or self.db_field] = value
         if changed and instance._initialised:
             instance._mark_as_changed(self.name)
 
