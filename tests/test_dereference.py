@@ -185,8 +185,9 @@ class FieldTest(unittest.TestCase):
 
         # Migrate the data
         for g in Group.objects():
-            g.author = g.author
-            g.members = g.members
+            # Explicitly mark as changed so resets
+            g._mark_as_changed('author')
+            g._mark_as_changed('members')
             g.save()
 
         group = Group.objects.first()
@@ -997,7 +998,7 @@ class FieldTest(unittest.TestCase):
         msg = Message.objects.get(id=1)
         self.assertEqual(0, msg.comments[0].id)
         self.assertEqual(1, msg.comments[1].id)
-        
+
     def test_tuples_as_tuples(self):
         """
         Ensure that tuples remain tuples when they are
@@ -1007,16 +1008,16 @@ class FieldTest(unittest.TestCase):
         class EnumField(BaseField):
             def __init__(self, **kwargs):
                 super(EnumField,self).__init__(**kwargs)
-         
+
             def to_mongo(self, value):
                 return value
-         
+
             def to_python(self, value):
                 return tuple(value)
-         
+
         class TestDoc(Document):
             items = ListField(EnumField())
-        
+
         TestDoc.drop_collection()
         tuples = [(100,'Testing')]
         doc = TestDoc()
