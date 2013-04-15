@@ -3377,9 +3377,7 @@ class DocumentTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        person = Person()
-        person.name = "Harry Potter"
-        person.save(cascade=False)
+        Person(name="Harry Potter").save()
 
         person = Person.objects.first()
         self.assertTrue('_id' in person._data.keys())
