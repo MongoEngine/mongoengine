@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Explicitly check for Document instances when dereferencing (#261)
 - Fixed order_by chaining issue (#265)
 - Added dereference support for tuples (#250)
 - Resolve field name to db field name when using distinct(#260, #264, #269)
