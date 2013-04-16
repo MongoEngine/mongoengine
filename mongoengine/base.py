@@ -558,8 +558,11 @@ class DocumentMetaclass(type):
 
         # Set _fields and db_field maps
         attrs['_fields'] = doc_fields
-        attrs['_db_field_map'] = dict([(k, getattr(v, 'db_field', k))
-                                        for k, v in doc_fields.iteritems()])
+        attrs['_fields_ordered'] = tuple(i[1]
+                                         for i in sorted((v.creation_counter, v.name)
+                                                          for v in doc_fields.itervalues()))
+        attrs['_db_field_map'] = dict((k, getattr(v, 'db_field', k))
+                                       for k, v in doc_fields.iteritems())
         attrs['_reverse_db_field_map'] = dict(
                 (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
@@ -902,7 +905,17 @@ class BaseDocument(object):
     _dynamic_lock = True
     _initialised = False
 
-    def __init__(self, **values):
+    def __init__(self, *args, **values):
+        if args:
+            # Combine positional arguments with named arguments.
+            # We only want named arguments.
+            field = iter(self._fields_ordered)
+            for value in args:
+                name = next(field)
+                if name in values:
+                    raise TypeError("Multiple values for keyword argument '" + name + "'")
+                values[name] = value
+        
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
@@ -1316,7 +1329,10 @@ class BaseDocument(object):
         return value
 
     def __iter__(self):
-        return iter(self._fields)
+        if 'id' in self._fields and 'id' not in self._fields_ordered:
+            return iter(('id', ) + self._fields_ordered)
+        
+        return iter(self._fields_ordered)
 
     def __getitem__(self, name):
         """Dictionary-style field access, return a field's value if present.
