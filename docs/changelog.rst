@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Added 64-bit integer support (#251)
 - Added Django sessions TTL support (#224)
 - Fixed issue with numerical keys in MapField(EmbeddedDocumentField()) (#240)
 - Fixed clearing _changed_fields for complex nested embedded documents (#237, #239, #242)
