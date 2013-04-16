@@ -144,6 +144,17 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(1, TestDocument.objects(int_fld__ne=None).count())
         self.assertEqual(1, TestDocument.objects(float_fld__ne=None).count())
 
+    def test_long_ne_operator(self):
+        class TestDocument(Document):
+            long_fld = LongField()
+
+        TestDocument.drop_collection()
+
+        TestDocument(long_fld=None).save()
+        TestDocument(long_fld=1).save()
+
+        self.assertEqual(1, TestDocument.objects(long_fld__ne=None).count())
+
     def test_object_id_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """
@@ -216,6 +227,23 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.age = 'ten'
         self.assertRaises(ValidationError, person.validate)
+
+    def test_long_validation(self):
+        """Ensure that invalid values cannot be assigned to long fields.
+        """
+        class TestDocument(Document):
+            value = LongField(min_value=0, max_value=110)
+
+        doc = TestDocument()
+        doc.value = 50
+        doc.validate()
+
+        doc.value = -1
+        self.assertRaises(ValidationError, doc.validate)
+        doc.age = 120
+        self.assertRaises(ValidationError, doc.validate)
+        doc.age = 'ten'
+        self.assertRaises(ValidationError, doc.validate)
 
     def test_float_validation(self):
         """Ensure that invalid values cannot be assigned to float fields.
