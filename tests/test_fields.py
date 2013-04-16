@@ -2371,11 +2371,25 @@ class FieldTest(unittest.TestCase):
             self.assertTrue(1 in error_dict['comments'])
             self.assertTrue('content' in error_dict['comments'][1])
             self.assertEqual(error_dict['comments'][1]['content'],
-                              u'Field is required')
-
+                             u'Field is required')
 
         post.comments[1].content = 'here we go'
         post.validate()
+
+    def test_email_field(self):
+        class User(Document):
+            email = EmailField()
+
+        user = User(email="ross@example.com")
+        self.assertTrue(user.validate() is None)
+
+        user = User(email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S"
+                           "ucictfqpdkK9iS1zeFw8sg7s7cwAF7suIfUfeyueLpfosjn3"
+                           "aJIazqqWkm7.net"))
+        self.assertTrue(user.validate() is None)
+
+        user = User(email='me@localhost')
+        self.assertRaises(ValidationError, user.validate)
 
     def test_email_field_honors_regex(self):
         class User(Document):

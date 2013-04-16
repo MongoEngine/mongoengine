@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Updated EmailField length to support long domains (#243)
 - Added 64-bit integer support (#251)
 - Added Django sessions TTL support (#224)
 - Fixed issue with numerical keys in MapField(EmbeddedDocumentField()) (#240)
