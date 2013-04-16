@@ -115,7 +115,7 @@ class DeReference(object):
         object_map = {}
         for col, dbrefs in self.reference_map.iteritems():
             keys = object_map.keys()
-            refs = list(set([dbref for dbref in dbrefs if dbref.encode('utf-8') not in keys]))
+            refs = list(set([dbref for dbref in dbrefs if unicode(dbref).encode('utf-8') not in keys]))
             if hasattr(col, 'objects'):  # We have a document class for the refs
                 references = col.objects.in_bulk(refs)
                 for key, doc in references.iteritems():
