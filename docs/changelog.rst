@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Fixed issue with numerical keys in MapField(EmbeddedDocumentField()) (#240)
 - Fixed clearing _changed_fields for complex nested embedded documents (#237, #239, #242)
 - Added "_id" to _data dictionary (#255)
 - Only mark a field as changed if the value has changed (#258)
