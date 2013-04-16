@@ -3370,7 +3370,7 @@ class DocumentTest(unittest.TestCase):
                                         }
                                     ) ]), "1,2")
 
-    def test_data_contains_idfield(self):
+    def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'
         """
         class Person(Document):
@@ -3382,6 +3382,47 @@ class DocumentTest(unittest.TestCase):
         person = Person.objects.first()
         self.assertTrue('_id' in person._data.keys())
         self.assertEqual(person._data.get('_id'), person.id)
+
+    def test_complex_nesting_document_and_embedded_document(self):
+
+        class Macro(EmbeddedDocument):
+            value = DynamicField(default="UNDEFINED")
+
+        class Parameter(EmbeddedDocument):
+            macros = MapField(EmbeddedDocumentField(Macro))
+
+            def expand(self):
+                self.macros["test"] = Macro()
+
+        class Node(Document):
+            parameters = MapField(EmbeddedDocumentField(Parameter))
+
+            def expand(self):
+                self.flattened_parameter = {}
+                for parameter_name, parameter in self.parameters.iteritems():
+                    parameter.expand()
+
+        class System(Document):
+            name = StringField(required=True)
+            nodes = MapField(ReferenceField(Node, dbref=False))
+
+            def save(self, *args, **kwargs):
+                for node_name, node in self.nodes.iteritems():
+                    node.expand()
+                    node.save(*args, **kwargs)
+                super(System, self).save(*args, **kwargs)
+
+        System.drop_collection()
+        Node.drop_collection()
+
+        system = System(name="system")
+        system.nodes["node"] = Node()
+        system.save()
+        system.nodes["node"].parameters["param"] = Parameter()
+        system.save()
+
+        system = System.objects.first()
+        self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
 
 class ValidatorErrorTest(unittest.TestCase):
