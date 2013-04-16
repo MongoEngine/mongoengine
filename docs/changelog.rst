@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Fixed clearing _changed_fields for complex nested embedded documents (#237, #239, #242)
 - Added "_id" to _data dictionary (#255)
 - Only mark a field as changed if the value has changed (#258)
 - Explicitly check for Document instances when dereferencing (#261)
