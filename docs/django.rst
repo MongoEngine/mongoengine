@@ -10,6 +10,16 @@ In your **settings.py** file, ignore the standard database settings (unless you
 also plan to use the ORM in your project), and instead call
 :func:`~mongoengine.connect` somewhere in the settings module.
 
+.. note ::
+   If you are not using another Database backend make sure you add  a dummy
+   backend, by adding the following to ``settings.py``::
+
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.dummy'
+            }
+        }
+
 Authentication
 ==============
 MongoEngine includes a Django authentication backend, which uses MongoDB. The
