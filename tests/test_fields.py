@@ -965,6 +965,24 @@ class FieldTest(unittest.TestCase):
         doc = self.db.test.find_one()
         self.assertEqual(doc['x']['DICTIONARY_KEY']['i'], 2)
 
+    def test_mapfield_numerical_index(self):
+        """Ensure that MapField accept numeric strings as indexes."""
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        class Test(Document):
+            my_map = MapField(EmbeddedDocumentField(Embedded))
+
+        Test.drop_collection()
+
+        test = Test()
+        test.my_map['1'] = Embedded(name='test')
+        test.save()
+        test.my_map['1'].name = 'test updated'
+        test.save()
+
+        Test.drop_collection()
+
     def test_map_field_lookup(self):
         """Ensure MapField lookups succeed on Fields without a lookup method"""
 
