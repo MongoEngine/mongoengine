@@ -192,7 +192,7 @@ class BaseField(object):
             return self
 
         # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name or self.db_field)
+        value = instance._data.get(self.name)
 
         if value is None:
             value = self.default
@@ -207,9 +207,9 @@ class BaseField(object):
         """
         changed = False
         if (self.name not in instance._data or
-           instance._data[self.name or self.db_field] != value):
+           instance._data[self.name] != value):
             changed = True
-            instance._data[self.name or self.db_field] = value
+            instance._data[self.name] = value
         if changed and instance._initialised:
             instance._mark_as_changed(self.name)
 
@@ -825,6 +825,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if not new_class._meta.get('id_field'):
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
+            new_class._fields['id'].name = 'id'
             new_class.id = new_class._fields['id']
 
         # Merge in exceptions with parent hierarchy
@@ -915,7 +916,7 @@ class BaseDocument(object):
                 if name in values:
                     raise TypeError("Multiple values for keyword argument '" + name + "'")
                 values[name] = value
-        
+
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
@@ -1138,7 +1139,7 @@ class BaseDocument(object):
         self._changed_fields = []
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         for field_name, field in self._fields.iteritems():
-            if (isinstance(field, ComplexBaseField) and 
+            if (isinstance(field, ComplexBaseField) and
                 isinstance(field.field, EmbeddedDocumentField)):
                 field_value = getattr(self, field_name, None)
                 if field_value:
@@ -1331,7 +1332,7 @@ class BaseDocument(object):
     def __iter__(self):
         if 'id' in self._fields and 'id' not in self._fields_ordered:
             return iter(('id', ) + self._fields_ordered)
-        
+
         return iter(self._fields_ordered)
 
     def __getitem__(self, name):

@@ -1386,27 +1386,27 @@ class DocumentTest(unittest.TestCase):
         person = self.Person(name="Test User", age=30)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 30)
-    
+
     def test_positional_creation(self):
         """Ensure that document may be created using positional arguments.
         """
         person = self.Person("Test User", 42)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
-    
+
     def test_mixed_creation(self):
         """Ensure that document may be created using mixed arguments.
         """
         person = self.Person("Test User", age=42)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
-    
+
     def test_bad_mixed_creation(self):
         """Ensure that document gives correct error when duplicating arguments
         """
         def construct_bad_instance():
             return self.Person("Test User", 42, name="Bad User")
-        
+
         self.assertRaises(TypeError, construct_bad_instance)
 
     def test_to_dbref(self):
@@ -1553,8 +1553,8 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(2, len(keys))
         self.assertTrue('e' in keys)
         # Ensure that the _id field has the right id
-        self.assertTrue('_id' in keys)
-        self.assertEqual(doc._data.get('_id'), doc.id)
+        self.assertTrue('id' in keys)
+        self.assertEqual(doc._data.get('id'), doc.id)
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
@@ -3402,8 +3402,8 @@ class DocumentTest(unittest.TestCase):
         Person(name="Harry Potter").save()
 
         person = Person.objects.first()
-        self.assertTrue('_id' in person._data.keys())
-        self.assertEqual(person._data.get('_id'), person.id)
+        self.assertTrue('id' in person._data.keys())
+        self.assertEqual(person._data.get('id'), person.id)
 
     def test_complex_nesting_document_and_embedded_document(self):
 
