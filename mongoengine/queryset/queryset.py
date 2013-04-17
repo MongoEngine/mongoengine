@@ -1138,7 +1138,12 @@ class QuerySet(object):
 
             if self._hint != -1:
                 self._cursor_obj.hint(self._hint)
+
         return self._cursor_obj
+
+    def __deepcopy__(self, memo):
+        """Essential for chained queries with ReferenceFields involved"""
+        return self.clone()
 
     @property
     def _query(self):
@@ -1302,6 +1307,9 @@ class QuerySet(object):
             except:
                 pass
             key_list.append((key, direction))
+
+        if self._cursor_obj:
+            self._cursor_obj.sort(key_list)
         return key_list
 
     def _get_scalar(self, doc):

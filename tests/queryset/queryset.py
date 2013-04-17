@@ -249,6 +249,10 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(list(A.objects.none()), [])
         self.assertEqual(list(A.objects.none().all()), [])
 
+    def test_chaining(self):
+        class A(Document):
+            s = StringField()
+
         class B(Document):
             ref = ReferenceField(A)
             boolfield = BooleanField(default=False)
@@ -282,7 +286,7 @@ class QuerySetTest(unittest.TestCase):
         write_options = {"fsync": True}
 
         author, created = self.Person.objects.get_or_create(
-                            name='Test User', write_options=write_options)
+            name='Test User', write_options=write_options)
         author.save(write_options=write_options)
 
         self.Person.objects.update(set__name='Ross',
@@ -1475,7 +1479,6 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-
     def test_set_list_embedded_documents(self):
 
         class Author(EmbeddedDocument):
@@ -1533,11 +1536,11 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         blog_post_3 = BlogPost(title="Blog Post #3",
-                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+                               published_date=datetime(2010, 1, 6, 0, 0, 0))
         blog_post_2 = BlogPost(title="Blog Post #2",
-                               published_date=datetime(2010, 1, 5, 0, 0 ,0))
+                               published_date=datetime(2010, 1, 5, 0, 0, 0))
         blog_post_4 = BlogPost(title="Blog Post #4",
-                               published_date=datetime(2010, 1, 7, 0, 0 ,0))
+                               published_date=datetime(2010, 1, 7, 0, 0, 0))
         blog_post_1 = BlogPost(title="Blog Post #1", published_date=None)
 
         blog_post_3.save()
@@ -1563,11 +1566,11 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         blog_post_1 = BlogPost(title="A",
-                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+                               published_date=datetime(2010, 1, 6, 0, 0, 0))
         blog_post_2 = BlogPost(title="B",
-                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+                               published_date=datetime(2010, 1, 6, 0, 0, 0))
         blog_post_3 = BlogPost(title="C",
-                               published_date=datetime(2010, 1, 7, 0, 0 ,0))
+                               published_date=datetime(2010, 1, 7, 0, 0, 0))
 
         blog_post_2.save()
         blog_post_3.save()
@@ -1604,6 +1607,7 @@ class QuerySetTest(unittest.TestCase):
 
         qs = self.Person.objects.all().limit(10)
         qs = qs.order_by('-age')
+
         ages = [p.age for p in qs]
         self.assertEqual(ages, [40, 30, 20])
 

@@ -30,7 +30,7 @@ class BaseDocument(object):
     _dynamic_lock = True
     _initialised = False
 
-    def __init__(self, __auto_convert=True, *args, **values):
+    def __init__(self, *args, **values):
         """
         Initialise a document or embedded document
 
@@ -46,7 +46,7 @@ class BaseDocument(object):
                 if name in values:
                     raise TypeError("Multiple values for keyword argument '" + name + "'")
                 values[name] = value
-
+        __auto_convert = values.pop("__auto_convert", True)
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
