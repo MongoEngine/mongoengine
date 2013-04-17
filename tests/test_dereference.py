@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import with_statement
 import unittest
 
@@ -1028,4 +1029,27 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(len(x.items) == 1)
         self.assertTrue(tuple(x.items[0]) in tuples)
         self.assertTrue(x.items[0] in tuples)
+
+    def test_non_ascii_pk(self):
+        """
+        Ensure that dbref conversion to string does not fail when
+        non-ascii characters are used in primary key
+        """
+        class Brand(Document):
+            title = StringField(max_length=255, primary_key=True)
+
+        class BrandGroup(Document):
+            title = StringField(max_length=255, primary_key=True)
+            brands = SortedListField(ReferenceField("Brand", dbref=True))
+
+        Brand.drop_collection()
+        BrandGroup.drop_collection()
+
+        brand1 = Brand(title="Moschino").save()
+        brand2 = Brand(title=u"Денис Симачёв").save()
+
+        BrandGroup(title="top_brands", brands=[brand1, brand2]).save()
+        brand_groups = BrandGroup.objects().all()
+
+        self.assertEqual(2, len([brand for bg in brand_groups for brand in bg.brands]))
 
