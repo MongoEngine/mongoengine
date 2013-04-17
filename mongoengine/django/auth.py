@@ -209,6 +209,9 @@ class User(Document):
     date_joined = DateTimeField(default=datetime_now,
                                 verbose_name=_('date joined'))
 
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
+
     meta = {
         'allow_inheritance': True,
         'indexes': [
