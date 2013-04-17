@@ -912,7 +912,7 @@ class BaseDocument(object):
             # We only want named arguments.
             field = iter(self._fields_ordered)
             for value in args:
-                name = next(field)
+                name = field.next()
                 if name in values:
                     raise TypeError("Multiple values for keyword argument '" + name + "'")
                 values[name] = value
