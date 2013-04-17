@@ -931,6 +931,11 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         Blog.drop_collection()
 
+    def assertSequence(self, qs, expected):
+        self.assertEqual(len(qs), len(expected))
+        for i in range(len(qs)):
+            self.assertEqual(qs[i], expected[i])
+
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """
@@ -957,14 +962,13 @@ class QuerySetTest(unittest.TestCase):
 
         # get the "first" BlogPost using default ordering
         # from BlogPost.meta.ordering
-        latest_post = BlogPost.objects.first()
-        self.assertEqual(latest_post.title, "Blog Post #3")
+        expected = [blog_post_3, blog_post_2, blog_post_1]
+        self.assertSequence(BlogPost.objects.all(), expected)
 
         # override default ordering, order BlogPosts by "published_date"
-        first_post = BlogPost.objects.order_by("+published_date").first()
-        self.assertEqual(first_post.title, "Blog Post #1")
-
-        BlogPost.drop_collection()
+        qs = BlogPost.objects.order_by("+published_date")
+        expected = [blog_post_1, blog_post_2, blog_post_3]
+        self.assertSequence(qs, expected)
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
@@ -1505,8 +1509,8 @@ class QuerySetTest(unittest.TestCase):
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
         """
-        self.Person(name="User A", age=20).save()
         self.Person(name="User B", age=40).save()
+        self.Person(name="User A", age=20).save()
         self.Person(name="User C", age=30).save()
 
         names = [p.name for p in self.Person.objects.order_by('-age')]
@@ -1521,11 +1525,67 @@ class QuerySetTest(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
+    def test_order_by_optional(self):
+        class BlogPost(Document):
+            title = StringField()
+            published_date = DateTimeField(required=False)
+
+        BlogPost.drop_collection()
+
+        blog_post_3 = BlogPost(title="Blog Post #3",
+                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_2 = BlogPost(title="Blog Post #2",
+                               published_date=datetime(2010, 1, 5, 0, 0 ,0))
+        blog_post_4 = BlogPost(title="Blog Post #4",
+                               published_date=datetime(2010, 1, 7, 0, 0 ,0))
+        blog_post_1 = BlogPost(title="Blog Post #1", published_date=None)
+
+        blog_post_3.save()
+        blog_post_1.save()
+        blog_post_4.save()
+        blog_post_2.save()
+
+        expected = [blog_post_1, blog_post_2, blog_post_3, blog_post_4]
+        self.assertSequence(BlogPost.objects.order_by('published_date'),
+                            expected)
+        self.assertSequence(BlogPost.objects.order_by('+published_date'),
+                            expected)
+
+        expected.reverse()
+        self.assertSequence(BlogPost.objects.order_by('-published_date'),
+                            expected)
+
+    def test_order_by_list(self):
+        class BlogPost(Document):
+            title = StringField()
+            published_date = DateTimeField(required=False)
+
+        BlogPost.drop_collection()
+
+        blog_post_1 = BlogPost(title="A",
+                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_2 = BlogPost(title="B",
+                               published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_3 = BlogPost(title="C",
+                               published_date=datetime(2010, 1, 7, 0, 0 ,0))
+
+        blog_post_2.save()
+        blog_post_3.save()
+        blog_post_1.save()
+
+        qs = BlogPost.objects.order_by('published_date', 'title')
+        expected = [blog_post_1, blog_post_2, blog_post_3]
+        self.assertSequence(qs, expected)
+
+        qs = BlogPost.objects.order_by('-published_date', '-title')
+        expected.reverse()
+        self.assertSequence(qs, expected)
+
     def test_order_by_chaining(self):
         """Ensure that an order_by query chains properly and allows .only()
         """
-        self.Person(name="User A", age=20).save()
         self.Person(name="User B", age=40).save()
+        self.Person(name="User A", age=20).save()
         self.Person(name="User C", age=30).save()
 
         only_age = self.Person.objects.order_by('-age').only('age')
@@ -1535,6 +1595,21 @@ class QuerySetTest(unittest.TestCase):
 
         # The .only('age') clause should mean that all names are None
         self.assertEqual(names, [None, None, None])
+        self.assertEqual(ages, [40, 30, 20])
+
+        qs = self.Person.objects.all().order_by('-age')
+        qs = qs.limit(10)
+        ages = [p.age for p in qs]
+        self.assertEqual(ages, [40, 30, 20])
+
+        qs = self.Person.objects.all().limit(10)
+        qs = qs.order_by('-age')
+        ages = [p.age for p in qs]
+        self.assertEqual(ages, [40, 30, 20])
+
+        qs = self.Person.objects.all().skip(0)
+        qs = qs.order_by('-age')
+        ages = [p.age for p in qs]
         self.assertEqual(ages, [40, 30, 20])
 
     def test_confirm_order_by_reference_wont_work(self):
@@ -2064,6 +2139,25 @@ class QuerySetTest(unittest.TestCase):
         foo.save()
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
+
+    def test_distinct_handles_db_field(self):
+        """Ensure that distinct resolves field name to db_field as expected.
+        """
+        class Product(Document):
+            product_id = IntField(db_field='pid')
+
+        Product.drop_collection()
+
+        Product(product_id=1).save()
+        Product(product_id=2).save()
+        Product(product_id=1).save()
+
+        self.assertEqual(set(Product.objects.distinct('product_id')),
+                         set([1, 2]))
+        self.assertEqual(set(Product.objects.distinct('pid')),
+                         set([1, 2]))
+
+        Product.drop_collection()
 
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.

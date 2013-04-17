@@ -10,9 +10,15 @@ In your **settings.py** file, ignore the standard database settings (unless you
 also plan to use the ORM in your project), and instead call
 :func:`~mongoengine.connect` somewhere in the settings module.
 
-.. note:: If getting an ``ImproperlyConfigured: settings.DATABASES is
-    improperly configured`` error you may need to remove
-    ``django.contrib.sites`` from ``INSTALLED_APPS`` in settings.py.
+.. note ::
+   If you are not using another Database backend you may need to add a dummy
+   database backend to ``settings.py`` eg::
+
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.dummy'
+            }
+        }
 
 Authentication
 ==============
@@ -48,6 +54,9 @@ session backend, ensure that your settings module has
 into you settings module::
 
     SESSION_ENGINE = 'mongoengine.django.sessions'
+
+Django provides session cookie, which expires after ```SESSION_COOKIE_AGE``` seconds, but doesnt delete cookie at sessions backend, so ``'mongoengine.django.sessions'`` supports  `mongodb TTL
+<http://docs.mongodb.org/manual/tutorial/expire-data/>`_.
 
 .. versionadded:: 0.2.1
 

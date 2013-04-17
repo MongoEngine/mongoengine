@@ -609,8 +609,11 @@ class QuerySet(object):
         .. versionchanged:: 0.6 - Improved db_field refrence handling
         """
         queryset = self.clone()
-        return queryset._dereference(queryset._cursor.distinct(field), 1,
-                                 name=field, instance=queryset._document)
+        try:
+            field = self._fields_to_dbfields([field]).pop()
+        finally:
+            return self._dereference(queryset._cursor.distinct(field), 1,
+                                     name=field, instance=self._document)
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -696,7 +699,7 @@ class QuerySet(object):
             prefixed with **+** or **-** to determine the ordering direction
         """
         queryset = self.clone()
-        queryset._ordering = self._get_order_by(keys)
+        queryset._ordering = queryset._get_order_by(keys)
         return queryset
 
     def explain(self, format=False):

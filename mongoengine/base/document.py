@@ -30,13 +30,22 @@ class BaseDocument(object):
     _dynamic_lock = True
     _initialised = False
 
-    def __init__(self, __auto_convert=True, **values):
+    def __init__(self, __auto_convert=True, *args, **values):
         """
         Initialise a document or embedded document
 
         :param __auto_convert: Try and will cast python objects to Object types
         :param values: A dictionary of values for the document
         """
+        if args:
+            # Combine positional arguments with named arguments.
+            # We only want named arguments.
+            field = iter(self._fields_ordered)
+            for value in args:
+                name = next(field)
+                if name in values:
+                    raise TypeError("Multiple values for keyword argument '" + name + "'")
+                values[name] = value
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
@@ -117,15 +126,15 @@ class BaseDocument(object):
                     self._mark_as_changed(name)
 
         if (self._is_document and not self._created and
-            name in self._meta.get('shard_key', tuple()) and
-            self._data.get(name) != value):
+           name in self._meta.get('shard_key', tuple()) and
+           self._data.get(name) != value):
             OperationError = _import_class('OperationError')
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
 
         # Check if the user has created a new instance of a class
         if (self._is_document and self._initialised
-            and self._created and name == self._meta['id_field']):
+           and self._created and name == self._meta['id_field']):
                 super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
@@ -143,7 +152,10 @@ class BaseDocument(object):
         self.__set_field_display()
 
     def __iter__(self):
-        return iter(self._fields)
+        if 'id' in self._fields and 'id' not in self._fields_ordered:
+            return iter(('id', ) + self._fields_ordered)
+
+        return iter(self._fields_ordered)
 
     def __getitem__(self, name):
         """Dictionary-style field access, return a field's value if present.
@@ -264,7 +276,7 @@ class BaseDocument(object):
                   for name, field in self._fields.items()]
         if self._dynamic:
             fields += [(field, self._data.get(name))
-                  for name, field in self._dynamic_fields.items()]
+                       for name, field in self._dynamic_fields.items()]
 
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
@@ -273,7 +285,7 @@ class BaseDocument(object):
             if value is not None:
                 try:
                     if isinstance(field, (EmbeddedDocumentField,
-                                           GenericEmbeddedDocumentField)):
+                                          GenericEmbeddedDocumentField)):
                         field._validate(value, clean=clean)
                     else:
                         field._validate(value)
@@ -330,7 +342,7 @@ class BaseDocument(object):
 
         # Convert lists / values so we can watch for any changes on them
         if (isinstance(value, (list, tuple)) and
-            not isinstance(value, BaseList)):
+           not isinstance(value, BaseList)):
             value = BaseList(value, self, name)
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, self, name)
@@ -344,8 +356,24 @@ class BaseDocument(object):
             return
         key = self._db_field_map.get(key, key)
         if (hasattr(self, '_changed_fields') and
-            key not in self._changed_fields):
+           key not in self._changed_fields):
             self._changed_fields.append(key)
+
+    def _clear_changed_fields(self):
+        self._changed_fields = []
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        for field_name, field in self._fields.iteritems():
+            if (isinstance(field, ComplexBaseField) and
+               isinstance(field.field, EmbeddedDocumentField)):
+                field_value = getattr(self, field_name, None)
+                if field_value:
+                    for idx in (field_value if isinstance(field_value, dict)
+                                else xrange(len(field_value))):
+                        field_value[idx]._clear_changed_fields()
+            elif isinstance(field, EmbeddedDocumentField):
+                field_value = getattr(self, field_name, None)
+                if field_value:
+                    field_value._clear_changed_fields()
 
     def _get_changed_fields(self, key='', inspected=None):
         """Returns a list of all fields that have explicitly been changed.
@@ -418,7 +446,7 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, DBRef):
                         break
-                    elif p.isdigit():
+                    elif isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif hasattr(d, 'get'):
                         d = d.get(p)
@@ -449,7 +477,7 @@ class BaseDocument(object):
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if p.isdigit():
+                    if isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
@@ -514,7 +542,7 @@ class BaseDocument(object):
                 value = data[field.db_field]
                 try:
                     data[field_name] = (value if value is None
-                                    else field.to_python(value))
+                                        else field.to_python(value))
                     if field_name != field.db_field:
                         del data[field.db_field]
                 except (AttributeError, ValueError), e:
@@ -548,14 +576,14 @@ class BaseDocument(object):
         geo_indices = cls._geo_indices()
         unique_indices = cls._unique_with_indexes()
         index_specs = [cls._build_index_spec(spec)
-                        for spec in meta_indexes]
+                       for spec in meta_indexes]
 
         def merge_index_specs(index_specs, indices):
             if not indices:
                 return index_specs
 
             spec_fields = [v['fields']
-                       for k, v in enumerate(index_specs)]
+                           for k, v in enumerate(index_specs)]
             # Merge unqiue_indexes with existing specs
             for k, v in enumerate(indices):
                 if v['fields'] in spec_fields:
@@ -727,7 +755,7 @@ class BaseDocument(object):
                     field = DynamicField(db_field=field_name)
                 else:
                     raise LookUpError('Cannot resolve field "%s"'
-                                                % field_name)
+                                      % field_name)
             else:
                 ReferenceField = _import_class('ReferenceField')
                 GenericReferenceField = _import_class('GenericReferenceField')
@@ -744,7 +772,7 @@ class BaseDocument(object):
                     continue
                 elif not new_field:
                     raise LookUpError('Cannot resolve field "%s"'
-                                                % field_name)
+                                      % field_name)
                 field = new_field  # update field to the new field type
             fields.append(field)
         return fields

@@ -32,7 +32,7 @@ class SimplificationVisitor(QNodeVisitor):
         if combination.operation == combination.AND:
             # The simplification only applies to 'simple' queries
             if all(isinstance(node, Q) for node in combination.children):
-                queries = [node.query for node in combination.children]
+                queries = [n.query for n in combination.children]
                 return Q(**self._query_conjunction(queries))
         return combination
 

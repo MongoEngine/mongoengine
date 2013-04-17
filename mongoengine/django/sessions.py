@@ -32,9 +32,17 @@ class MongoSession(Document):
                                         else fields.DictField()
     expire_date = fields.DateTimeField()
 
-    meta = {'collection': MONGOENGINE_SESSION_COLLECTION,
-            'db_alias': MONGOENGINE_SESSION_DB_ALIAS,
-            'allow_inheritance': False}
+    meta = {
+        'collection': MONGOENGINE_SESSION_COLLECTION,
+        'db_alias': MONGOENGINE_SESSION_DB_ALIAS,
+        'allow_inheritance': False,
+        'indexes': [
+            {
+                'fields': ['expire_date'],
+                'expireAfterSeconds': settings.SESSION_COOKIE_AGE
+            }
+        ]
+    }
 
     def get_decoded(self):
         return SessionStore().decode(self.session_data)

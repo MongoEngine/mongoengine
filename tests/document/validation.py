@@ -130,8 +130,8 @@ class ValidatorErrorTest(unittest.TestCase):
         doc = Doc.objects.first()
         keys = doc._data.keys()
         self.assertEqual(2, len(keys))
-        self.assertTrue('id' in keys)
         self.assertTrue('e' in keys)
+        self.assertTrue('id' in keys)
 
         doc.e.val = "OK"
         try:

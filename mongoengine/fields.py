@@ -27,7 +27,7 @@ except ImportError:
     Image = None
     ImageOps = None
 
-__all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
+__all__ = ['StringField', 'IntField', 'LongField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
            'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
@@ -143,7 +143,7 @@ class EmailField(StringField):
     EMAIL_REGEX = re.compile(
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
         r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'  # quoted-string
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE  # domain
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,253}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE  # domain
     )
 
     def validate(self, value):
@@ -153,7 +153,7 @@ class EmailField(StringField):
 
 
 class IntField(BaseField):
-    """An integer field.
+    """An 32-bit integer field.
     """
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
@@ -184,6 +184,40 @@ class IntField(BaseField):
             return value
 
         return int(value)
+
+
+class LongField(BaseField):
+    """An 64-bit integer field.
+    """
+
+    def __init__(self, min_value=None, max_value=None, **kwargs):
+        self.min_value, self.max_value = min_value, max_value
+        super(LongField, self).__init__(**kwargs)
+
+    def to_python(self, value):
+        try:
+            value = long(value)
+        except ValueError:
+            pass
+        return value
+
+    def validate(self, value):
+        try:
+            value = long(value)
+        except:
+            self.error('%s could not be converted to long' % value)
+
+        if self.min_value is not None and value < self.min_value:
+            self.error('Long value is too small')
+
+        if self.max_value is not None and value > self.max_value:
+            self.error('Long value is too large')
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+
+        return long(value)
 
 
 class FloatField(BaseField):

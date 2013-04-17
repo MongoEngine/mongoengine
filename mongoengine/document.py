@@ -160,7 +160,7 @@ class Document(BaseDocument):
 
     def save(self, safe=True, force_insert=False, validate=True, clean=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
-             _refs=None):
+             _refs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -278,7 +278,7 @@ class Document(BaseDocument):
         if id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
-        self._changed_fields = []
+        self._clear_changed_fields()
         self._created = False
         signals.post_save.send(self.__class__, document=self, created=created)
         return self

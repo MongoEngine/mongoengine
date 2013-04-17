@@ -7,7 +7,7 @@ from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.context_managers import query_counter, no_dereference
+from mongoengine.context_managers import query_counter
 
 
 class FieldTest(unittest.TestCase):
@@ -212,8 +212,9 @@ class FieldTest(unittest.TestCase):
 
         # Migrate the data
         for g in Group.objects():
-            g.author = g.author
-            g.members = g.members
+            # Explicitly mark as changed so resets
+            g._mark_as_changed('author')
+            g._mark_as_changed('members')
             g.save()
 
         group = Group.objects.first()
@@ -1120,6 +1121,37 @@ class FieldTest(unittest.TestCase):
 
             self.assertEqual(q, 2)
 
+    def test_tuples_as_tuples(self):
+        """
+        Ensure that tuples remain tuples when they are
+        inside a ComplexBaseField
+        """
+        from mongoengine.base import BaseField
+
+        class EnumField(BaseField):
+
+            def __init__(self, **kwargs):
+                super(EnumField, self).__init__(**kwargs)
+
+            def to_mongo(self, value):
+                return value
+
+            def to_python(self, value):
+                return tuple(value)
+
+        class TestDoc(Document):
+            items = ListField(EnumField())
+
+        TestDoc.drop_collection()
+        tuples = [(100, 'Testing')]
+        doc = TestDoc()
+        doc.items = tuples
+        doc.save()
+        x = TestDoc.objects().get()
+        self.assertTrue(x is not None)
+        self.assertTrue(len(x.items) == 1)
+        self.assertTrue(tuple(x.items[0]) in tuples)
+        self.assertTrue(x.items[0] in tuples)
 
 if __name__ == '__main__':
     unittest.main()

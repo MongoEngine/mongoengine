@@ -827,20 +827,20 @@ class InstanceTest(unittest.TestCase):
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
             datetime_field = DateTimeField(default=datetime.now)
-            embedded_document_field = EmbeddedDocumentField(EmbeddedDoc,
-                                        default=lambda: EmbeddedDoc())
+            embedded_document_field = EmbeddedDocumentField(
+                EmbeddedDoc, default=lambda: EmbeddedDoc())
             list_field = ListField(default=lambda: [1, 2, 3])
             dict_field = DictField(default=lambda: {"hello": "world"})
             objectid_field = ObjectIdField(default=bson.ObjectId)
             reference_field = ReferenceField(Simple, default=lambda:
-                                                        Simple().save())
+                                             Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
             complex_datetime_field = ComplexDateTimeField(default=datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(
-                                            default=lambda: Simple().save())
+                default=lambda: Simple().save())
             sorted_list_field = SortedListField(IntField(),
                                                 default=lambda: [1, 2, 3])
             email_field = EmailField(default="ross@example.com")
@@ -848,7 +848,7 @@ class InstanceTest(unittest.TestCase):
             sequence_field = SequenceField()
             uuid_field = UUIDField(default=uuid.uuid4)
             generic_embedded_document_field = GenericEmbeddedDocumentField(
-                                        default=lambda: EmbeddedDoc())
+                default=lambda: EmbeddedDoc())
 
         Simple.drop_collection()
         Doc.drop_collection()
@@ -1127,20 +1127,20 @@ class InstanceTest(unittest.TestCase):
         u3 = User(username="hmarr")
         u3.save()
 
-        p1 = Page(comments = [Comment(user=u1, comment="Its very good"),
-                              Comment(user=u2, comment="Hello world"),
-                              Comment(user=u3, comment="Ping Pong"),
-                              Comment(user=u1, comment="I like a beer")])
+        p1 = Page(comments=[Comment(user=u1, comment="Its very good"),
+                            Comment(user=u2, comment="Hello world"),
+                            Comment(user=u3, comment="Ping Pong"),
+                            Comment(user=u1, comment="I like a beer")])
         p1.save()
 
-        p2 = Page(comments = [Comment(user=u1, comment="Its very good"),
-                              Comment(user=u2, comment="Hello world")])
+        p2 = Page(comments=[Comment(user=u1, comment="Its very good"),
+                            Comment(user=u2, comment="Hello world")])
         p2.save()
 
-        p3 = Page(comments = [Comment(user=u3, comment="Its very good")])
+        p3 = Page(comments=[Comment(user=u3, comment="Its very good")])
         p3.save()
 
-        p4 = Page(comments = [Comment(user=u2, comment="Heavy Metal song")])
+        p4 = Page(comments=[Comment(user=u2, comment="Heavy Metal song")])
         p4.save()
 
         self.assertEqual([p1, p2], list(Page.objects.filter(comments__user=u1)))
@@ -1182,7 +1182,6 @@ class InstanceTest(unittest.TestCase):
 
         class Site(Document):
             page = EmbeddedDocumentField(Page)
-
 
         Site.drop_collection()
         site = Site(page=Page(log_message="Warning: Dummy message"))
@@ -1328,7 +1327,8 @@ class InstanceTest(unittest.TestCase):
             occurs = ListField(EmbeddedDocumentField(Occurrence), default=list)
 
         def raise_invalid_document():
-            Word._from_son({'stem': [1,2,3], 'forms': 1, 'count': 'one', 'occurs': {"hello": None}})
+            Word._from_son({'stem': [1, 2, 3], 'forms': 1, 'count': 'one',
+                            'occurs': {"hello": None}})
 
         self.assertRaises(InvalidDocumentError, raise_invalid_document)
 
@@ -1350,7 +1350,7 @@ class InstanceTest(unittest.TestCase):
         reviewer = self.Person(name='Re Viewer')
         reviewer.save()
 
-        post = BlogPost(content = 'Watched some TV')
+        post = BlogPost(content='Watched some TV')
         post.author = author
         post.reviewer = reviewer
         post.save()
@@ -1431,7 +1431,6 @@ class InstanceTest(unittest.TestCase):
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
         self.assertEqual(len(BlogPost.objects), 0)
-
 
     def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
         ''' ensure the pre_delete signal is triggered upon a cascading deletion
@@ -1627,7 +1626,7 @@ class InstanceTest(unittest.TestCase):
         u1 = User.objects.create()
         u2 = User.objects.create()
         u3 = User.objects.create()
-        u4 = User() # New object
+        u4 = User()  # New object
 
         b1 = BlogPost.objects.create()
         b2 = BlogPost.objects.create()
@@ -1638,9 +1637,9 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(u1 in all_user_list)
         self.assertTrue(u2 in all_user_list)
         self.assertTrue(u3 in all_user_list)
-        self.assertFalse(u4 in all_user_list) # New object
-        self.assertFalse(b1 in all_user_list) # Other object
-        self.assertFalse(b2 in all_user_list) # Other object
+        self.assertFalse(u4 in all_user_list)  # New object
+        self.assertFalse(b1 in all_user_list)  # Other object
+        self.assertFalse(b2 in all_user_list)  # Other object
 
         # in Dict
         all_user_dic = {}
@@ -1650,9 +1649,9 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(all_user_dic.get(u1, False), "OK")
         self.assertEqual(all_user_dic.get(u2, False), "OK")
         self.assertEqual(all_user_dic.get(u3, False), "OK")
-        self.assertEqual(all_user_dic.get(u4, False), False) # New object
-        self.assertEqual(all_user_dic.get(b1, False), False) # Other object
-        self.assertEqual(all_user_dic.get(b2, False), False) # Other object
+        self.assertEqual(all_user_dic.get(u4, False), False)  # New object
+        self.assertEqual(all_user_dic.get(b1, False), False)  # Other object
+        self.assertEqual(all_user_dic.get(b2, False), False)  # Other object
 
         # in Set
         all_user_set = set(User.objects.all())
@@ -1729,7 +1728,6 @@ class InstanceTest(unittest.TestCase):
         d.save()
 
         self.assertEqual(Doc.objects(archived=False).count(), 1)
-
 
     def test_can_save_false_values_dynamic(self):
         """Ensures you can save False values on dynamic docs"""
@@ -1852,9 +1850,9 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEquals('testdb-2', B._meta.get('db_alias'))
         self.assertEquals('mongoenginetest',
-                           A._get_collection().database.name)
+                          A._get_collection().database.name)
         self.assertEquals('mongoenginetest2',
-                           B._get_collection().database.name)
+                          B._get_collection().database.name)
 
     def test_db_alias_propagates(self):
         """db_alias propagates?
@@ -1920,21 +1918,21 @@ class InstanceTest(unittest.TestCase):
 
         # Checks
         self.assertEqual(",".join([str(b) for b in Book.objects.all()]),
-                            "1,2,3,4,5,6,7,8,9")
+                         "1,2,3,4,5,6,7,8,9")
         # bob related books
         self.assertEqual(",".join([str(b) for b in Book.objects.filter(
-                                    Q(extra__a=bob) |
-                                    Q(author=bob) |
-                                    Q(extra__b=bob))]),
-                                    "1,2,3,4")
+                                  Q(extra__a=bob) |
+                                  Q(author=bob) |
+                                  Q(extra__b=bob))]),
+                         "1,2,3,4")
 
         # Susan & Karl related books
         self.assertEqual(",".join([str(b) for b in Book.objects.filter(
-                                    Q(extra__a__all=[karl, susan]) |
-                                    Q(author__all=[karl, susan]) |
-                                    Q(extra__b__all=[
-                                        karl.to_dbref(), susan.to_dbref()]))
-                                ]), "1")
+                                   Q(extra__a__all=[karl, susan]) |
+                                   Q(author__all=[karl, susan]) |
+                                   Q(extra__b__all=[
+                                     karl.to_dbref(), susan.to_dbref()]))
+                                   ]), "1")
 
         # $Where
         self.assertEqual(u",".join([str(b) for b in Book.objects.filter(
@@ -1943,8 +1941,8 @@ class InstanceTest(unittest.TestCase):
                                             function(){
                                                 return this.name == '1' ||
                                                        this.name == '2';}"""
-                                        }
-                                   )]), "1,2")
+                                    })]),
+                         "1,2")
 
     def test_switch_db_instance(self):
         register_connection('testdb-1', 'mongoenginetest2')
@@ -2019,7 +2017,6 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(True, user.foo)
         self.assertEqual("Bar", user._data["foo"])
         self.assertEqual([1, 2, 3], user._data["data"])
-
 
     def test_spaces_in_keys(self):
 
@@ -2109,14 +2106,91 @@ class InstanceTest(unittest.TestCase):
             docs = ListField(EmbeddedDocumentField(Embedded))
 
         classic_doc = Doc(doc_name="my doc", docs=[
-                            Embedded(name="embedded doc1"),
-                            Embedded(name="embedded doc2")])
+                          Embedded(name="embedded doc1"),
+                          Embedded(name="embedded doc2")])
         dict_doc = Doc(**{"doc_name": "my doc",
                           "docs": [{"name": "embedded doc1"},
                                    {"name": "embedded doc2"}]})
 
         self.assertEqual(classic_doc, dict_doc)
         self.assertEqual(classic_doc._data, dict_doc._data)
+
+    def test_positional_creation(self):
+        """Ensure that document may be created using positional arguments.
+        """
+        person = self.Person("Test User", 42)
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 42)
+
+    def test_mixed_creation(self):
+        """Ensure that document may be created using mixed arguments.
+        """
+        person = self.Person("Test User", age=42)
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 42)
+
+    def test_bad_mixed_creation(self):
+        """Ensure that document gives correct error when duplicating arguments
+        """
+        def construct_bad_instance():
+            return self.Person("Test User", 42, name="Bad User")
+
+        self.assertRaises(TypeError, construct_bad_instance)
+
+    def test_data_contains_id_field(self):
+        """Ensure that asking for _data returns 'id'
+        """
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="Harry Potter").save()
+
+        person = Person.objects.first()
+        self.assertTrue('id' in person._data.keys())
+        self.assertEqual(person._data.get('id'), person.id)
+
+    def test_complex_nesting_document_and_embedded_document(self):
+
+        class Macro(EmbeddedDocument):
+            value = DynamicField(default="UNDEFINED")
+
+        class Parameter(EmbeddedDocument):
+            macros = MapField(EmbeddedDocumentField(Macro))
+
+            def expand(self):
+                self.macros["test"] = Macro()
+
+        class Node(Document):
+            parameters = MapField(EmbeddedDocumentField(Parameter))
+
+            def expand(self):
+                self.flattened_parameter = {}
+                for parameter_name, parameter in self.parameters.iteritems():
+                    parameter.expand()
+
+        class System(Document):
+            name = StringField(required=True)
+            nodes = MapField(ReferenceField(Node, dbref=False))
+
+            def save(self, *args, **kwargs):
+                for node_name, node in self.nodes.iteritems():
+                    node.expand()
+                    node.save(*args, **kwargs)
+                super(System, self).save(*args, **kwargs)
+
+        System.drop_collection()
+        Node.drop_collection()
+
+        system = System(name="system")
+        system.nodes["node"] = Node()
+        system.save()
+        system.nodes["node"].parameters["param"] = Parameter()
+        system.save()
+
+        system = System.objects.first()
+        self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
+
 
 if __name__ == '__main__':
     unittest.main()

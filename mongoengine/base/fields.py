@@ -81,8 +81,12 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        instance._data[self.name] = value
-        if instance._initialised:
+        changed = False
+        if (self.name not in instance._data or
+           instance._data[self.name] != value):
+            changed = True
+            instance._data[self.name] = value
+        if changed and instance._initialised:
             instance._mark_as_changed(self.name)
 
     def error(self, message="", errors=None, field_name=None):

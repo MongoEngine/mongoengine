@@ -145,6 +145,17 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(1, TestDocument.objects(int_fld__ne=None).count())
         self.assertEqual(1, TestDocument.objects(float_fld__ne=None).count())
 
+    def test_long_ne_operator(self):
+        class TestDocument(Document):
+            long_fld = LongField()
+
+        TestDocument.drop_collection()
+
+        TestDocument(long_fld=None).save()
+        TestDocument(long_fld=1).save()
+
+        self.assertEqual(1, TestDocument.objects(long_fld__ne=None).count())
+
     def test_object_id_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """
@@ -217,6 +228,23 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.age = 'ten'
         self.assertRaises(ValidationError, person.validate)
+
+    def test_long_validation(self):
+        """Ensure that invalid values cannot be assigned to long fields.
+        """
+        class TestDocument(Document):
+            value = LongField(min_value=0, max_value=110)
+
+        doc = TestDocument()
+        doc.value = 50
+        doc.validate()
+
+        doc.value = -1
+        self.assertRaises(ValidationError, doc.validate)
+        doc.age = 120
+        self.assertRaises(ValidationError, doc.validate)
+        doc.age = 'ten'
+        self.assertRaises(ValidationError, doc.validate)
 
     def test_float_validation(self):
         """Ensure that invalid values cannot be assigned to float fields.
@@ -970,6 +998,24 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(test.my_map['DICTIONARY_KEY'].number, 2)
         doc = self.db.test.find_one()
         self.assertEqual(doc['x']['DICTIONARY_KEY']['i'], 2)
+
+    def test_mapfield_numerical_index(self):
+        """Ensure that MapField accept numeric strings as indexes."""
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        class Test(Document):
+            my_map = MapField(EmbeddedDocumentField(Embedded))
+
+        Test.drop_collection()
+
+        test = Test()
+        test.my_map['1'] = Embedded(name='test')
+        test.save()
+        test.my_map['1'].name = 'test updated'
+        test.save()
+
+        Test.drop_collection()
 
     def test_map_field_lookup(self):
         """Ensure MapField lookups succeed on Fields without a lookup method"""
@@ -2399,10 +2445,25 @@ class FieldTest(unittest.TestCase):
             self.assertTrue(1 in error_dict['comments'])
             self.assertTrue('content' in error_dict['comments'][1])
             self.assertEqual(error_dict['comments'][1]['content'],
-                              u'Field is required')
+                             u'Field is required')
 
         post.comments[1].content = 'here we go'
         post.validate()
+
+    def test_email_field(self):
+        class User(Document):
+            email = EmailField()
+
+        user = User(email="ross@example.com")
+        self.assertTrue(user.validate() is None)
+
+        user = User(email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S"
+                           "ucictfqpdkK9iS1zeFw8sg7s7cwAF7suIfUfeyueLpfosjn3"
+                           "aJIazqqWkm7.net"))
+        self.assertTrue(user.validate() is None)
+
+        user = User(email='me@localhost')
+        self.assertRaises(ValidationError, user.validate)
 
     def test_email_field_honors_regex(self):
         class User(Document):

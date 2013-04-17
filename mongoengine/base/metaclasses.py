@@ -78,7 +78,7 @@ class DocumentMetaclass(type):
 
             # Count names to ensure no db_field redefinitions
             field_names[attr_value.db_field] = field_names.get(
-                                                    attr_value.db_field, 0) + 1
+                attr_value.db_field, 0) + 1
 
         # Ensure no duplicate db_fields
         duplicate_db_fields = [k for k, v in field_names.items() if v > 1]
@@ -90,9 +90,12 @@ class DocumentMetaclass(type):
         # Set _fields and db_field maps
         attrs['_fields'] = doc_fields
         attrs['_db_field_map'] = dict([(k, getattr(v, 'db_field', k))
-                                        for k, v in doc_fields.iteritems()])
+                                      for k, v in doc_fields.iteritems()])
+        attrs['_fields_ordered'] = tuple(i[1] for i in sorted(
+                                         (v.creation_counter, v.name)
+                                         for v in doc_fields.itervalues()))
         attrs['_reverse_db_field_map'] = dict(
-                (v, k) for k, v in attrs['_db_field_map'].iteritems())
+            (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
         #
         # Set document hierarchy
@@ -101,7 +104,7 @@ class DocumentMetaclass(type):
         class_name = [name]
         for base in flattened_bases:
             if (not getattr(base, '_is_base_cls', True) and
-                not getattr(base, '_meta', {}).get('abstract', True)):
+               not getattr(base, '_meta', {}).get('abstract', True)):
                 # Collate heirarchy for _cls and _subclasses
                 class_name.append(base.__name__)
 
@@ -109,11 +112,11 @@ class DocumentMetaclass(type):
                 # Warn if allow_inheritance isn't set and prevent
                 # inheritance of classes where inheritance is set to False
                 allow_inheritance = base._meta.get('allow_inheritance',
-                                                    ALLOW_INHERITANCE)
-                if (allow_inheritance != True and
-                      not base._meta.get('abstract')):
+                                                   ALLOW_INHERITANCE)
+                if (allow_inheritance is not True and
+                   not base._meta.get('abstract')):
                     raise ValueError('Document %s may not be subclassed' %
-                                      base.__name__)
+                                     base.__name__)
 
         # Get superclasses from last base superclass
         document_bases = [b for b in flattened_bases
