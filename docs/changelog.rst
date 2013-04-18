@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.7.10
 =================
+- Fix UnicodeEncodeError for dbref (#278)
 - Allow construction using positional parameters (#268)
 - Updated EmailField length to support long domains (#243)
 - Added 64-bit integer support (#251)
