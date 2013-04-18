@@ -366,7 +366,7 @@ class QuerySet(object):
         queryset = self.clone()
         doc = queryset._document
 
-        has_delete_signal = (
+        has_delete_signal = signals.signals_available and (
             signals.pre_delete.has_receivers_for(self._document) or
             signals.post_delete.has_receivers_for(self._document))
 
