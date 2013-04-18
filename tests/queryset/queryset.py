@@ -389,6 +389,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[1].by, 'jane')
         self.assertEqual(post.comments[1].votes, 8)
 
+    def test_update_using_positional_operator_matches_first(self):
+
         # Currently the $ operator only applies to the first matched item in
         # the query
 
