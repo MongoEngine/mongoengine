@@ -142,7 +142,7 @@ class UserManager(models.Manager):
         """
         Creates and saves a User with the given username, e-mail and password.
         """
-        now = datetime.datetime.now()
+        now = datetime_now()
 
         # Normalize the address by lowercasing the domain part of the email
         # address.
