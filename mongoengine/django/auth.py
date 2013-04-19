@@ -96,7 +96,7 @@ class Permission(Document):
     Three basic permissions -- add, change and delete -- are automatically created for each Django model.
     """
     name = StringField(max_length=50, verbose_name=_('username'))
-    content_type = ReferenceField(ContentType)
+    content_type = ReferenceField(ContentType, dbref=True)
     codename = StringField(max_length=100, verbose_name=_('codename'))
         # FIXME: don't access field of the other class
         # unique_with=['content_type__app_label', 'content_type__model'])
@@ -128,7 +128,7 @@ class Group(Document):
     """
     name = StringField(max_length=80, unique=True, verbose_name=_('name'))
     # permissions = models.ManyToManyField(Permission, verbose_name=_('permissions'), blank=True)
-    permissions = ListField(ReferenceField(Permission, verbose_name=_('permissions'), required=False))
+    permissions = ListField(ReferenceField(Permission, verbose_name=_('permissions'), required=False, dbref=True))
 
     class Meta:
         verbose_name = _('group')
