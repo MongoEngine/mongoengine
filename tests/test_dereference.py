@@ -1164,7 +1164,7 @@ class FieldTest(unittest.TestCase):
 
         class BrandGroup(Document):
             title = StringField(max_length=255, primary_key=True)
-            brands = SortedListField(ReferenceField("Brand", dbref=True))
+            brands = ListField(ReferenceField("Brand", dbref=True))
 
         Brand.drop_collection()
         BrandGroup.drop_collection()
