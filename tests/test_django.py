@@ -20,10 +20,14 @@ try:
         AUTH_USER_MODEL=('mongo_auth.MongoUser'),
     )
 
-    from django.contrib.auth import authenticate, get_user_model
+    try:
+        from django.contrib.auth import authenticate, get_user_model
+        from mongoengine.django.auth import User
+        from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
+        DJ15 = True
+    except Exception:
+        DJ15 = False
     from django.contrib.sessions.tests import SessionTestsMixin
-    from mongoengine.django.auth import User
-    from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
     from mongoengine.django.sessions import SessionStore, MongoSession
 except Exception, err:
     if PY3:
@@ -203,6 +207,8 @@ class MongoAuthTest(unittest.TestCase):
     def setUp(self):
         if PY3:
             raise SkipTest('django does not have Python 3 support')
+        if not DJ15:
+            raise SkipTest('mongo_auth requires Django 1.5')
         connect(db='mongoenginetest')
         User.drop_collection()
         super(MongoAuthTest, self).setUp()
