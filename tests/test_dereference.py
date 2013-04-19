@@ -1020,7 +1020,7 @@ class FieldTest(unittest.TestCase):
             items = ListField(EnumField())
 
         TestDoc.drop_collection()
-        tuples = [(100,'Testing')]
+        tuples = [(100, 'Testing')]
         doc = TestDoc()
         doc.items = tuples
         doc.save()
@@ -1040,7 +1040,7 @@ class FieldTest(unittest.TestCase):
 
         class BrandGroup(Document):
             title = StringField(max_length=255, primary_key=True)
-            brands = SortedListField(ReferenceField("Brand", dbref=True))
+            brands = ListField(ReferenceField("Brand", dbref=True))
 
         Brand.drop_collection()
         BrandGroup.drop_collection()
