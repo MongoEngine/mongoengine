@@ -51,4 +51,4 @@ rm -rf $RPM_BUILD_ROOT
 # %{python_sitearch}/*
 
 %changelog
-* See: http://readthedocs.org/docs/mongoengine-odm/en/latest/changelog.html
+* See: http://docs.mongoengine.org/en/latest/changelog.html
