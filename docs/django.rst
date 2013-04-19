@@ -42,6 +42,42 @@ The :mod:`~mongoengine.django.auth` module also contains a
 
 .. versionadded:: 0.1.3
 
+Custom User model
+=================
+Django 1.5 introduced `Custom user Models
+<https://docs.djangoproject.com/en/dev/topics/auth/customizing/#auth-custom-user>`
+which can be used as an alternative the Mongoengine authentication backend.
+
+The main advantage of this option is that other components relying on
+:mod:`django.contrib.auth` and supporting the new swappable user model are more
+likely to work. For example, you can use the ``createsuperuser`` management
+command as usual.
+
+To enable the custom User model in Django, add ``'mongoengine.django.mongo_auth'``
+in your ``INSTALLED_APPS`` and set ``'mongo_auth.MongoUser'`` as the custom user
+user model to use. In your **settings.py** file you will have::
+
+    INSTALLED_APPS = (
+        ...
+        'django.contrib.auth',
+        'mongoengine.django.mongo_auth',
+        ...
+    )
+
+    AUTH_USER_MODEL = 'mongo_auth.MongoUser'
+
+An additional ``MONGOENGINE_USER_DOCUMENT`` setting enables you to replace the
+:class:`~mongoengine.django.auth.User` class with another class of your choice::
+
+    MONGOENGINE_USER_DOCUMENT = 'mongoengine.django.auth.User'
+
+The custom :class:`User` must be a :class:`~mongoengine.Document` class, but
+otherwise has the same requirements as a standard custom user model,
+as specified in the `Django Documentation
+<https://docs.djangoproject.com/en/dev/topics/auth/customizing/>`.
+In particular, the custom class must define :attr:`USERNAME_FIELD` and
+:attr:`REQUIRED_FIELDS` attributes.
+
 Sessions
 ========
 Django allows the use of different backend stores for its sessions. MongoEngine
