@@ -1,23 +1,24 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
+
 import datetime
-import os
 import unittest
 import uuid
-import tempfile
 
 from decimal import Decimal
 
 from bson import Binary, DBRef, ObjectId
-import gridfs
 
-from nose.plugins.skip import SkipTest
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.base import _document_registry, NotRegistered
-from mongoengine.python_support import PY3, b, StringIO, bin_type
+from mongoengine.base import _document_registry
+from mongoengine.errors import NotRegistered
+from mongoengine.python_support import PY3, b, bin_type
 
-TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
+__all__ = ("FieldTest", )
+
 
 class FieldTest(unittest.TestCase):
 
@@ -630,7 +631,8 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class CategoryList(Document):
-            categories = SortedListField(EmbeddedDocumentField(Category), ordering='count', reverse=True)
+            categories = SortedListField(EmbeddedDocumentField(Category),
+                                         ordering='count', reverse=True)
             name = StringField()
 
         catlist = CategoryList(name="Top categories")
@@ -754,7 +756,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that the list fields can handle the complex types."""
 
         class SettingBase(EmbeddedDocument):
-            pass
+            meta = {'allow_inheritance': True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -770,8 +772,9 @@ class FieldTest(unittest.TestCase):
         e.mapping.append(StringSetting(value='foo'))
         e.mapping.append(IntegerSetting(value=42))
         e.mapping.append({'number': 1, 'string': 'Hi!', 'float': 1.001,
-                          'complex': IntegerSetting(value=42), 'list':
-                          [IntegerSetting(value=42), StringSetting(value='foo')]})
+                          'complex': IntegerSetting(value=42),
+                          'list': [IntegerSetting(value=42),
+                                   StringSetting(value='foo')]})
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
@@ -871,7 +874,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that the dict field can handle the complex types."""
 
         class SettingBase(EmbeddedDocument):
-            pass
+            meta = {'allow_inheritance': True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -886,9 +889,11 @@ class FieldTest(unittest.TestCase):
         e = Simple()
         e.mapping['somestring'] = StringSetting(value='foo')
         e.mapping['someint'] = IntegerSetting(value=42)
-        e.mapping['nested_dict'] = {'number': 1, 'string': 'Hi!', 'float': 1.001,
-                                 'complex': IntegerSetting(value=42), 'list':
-                                [IntegerSetting(value=42), StringSetting(value='foo')]}
+        e.mapping['nested_dict'] = {'number': 1, 'string': 'Hi!',
+                                    'float': 1.001,
+                                    'complex': IntegerSetting(value=42),
+                                    'list': [IntegerSetting(value=42),
+                                             StringSetting(value='foo')]}
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
@@ -942,7 +947,7 @@ class FieldTest(unittest.TestCase):
         """Ensure that the MapField can handle complex declared types."""
 
         class SettingBase(EmbeddedDocument):
-            pass
+            meta = {"allow_inheritance": True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -978,7 +983,8 @@ class FieldTest(unittest.TestCase):
             number = IntField(default=0, db_field='i')
 
         class Test(Document):
-            my_map = MapField(field=EmbeddedDocumentField(Embedded), db_field='x')
+            my_map = MapField(field=EmbeddedDocumentField(Embedded),
+                                    db_field='x')
 
         Test.drop_collection()
 
@@ -1083,6 +1089,8 @@ class FieldTest(unittest.TestCase):
         class User(EmbeddedDocument):
             name = StringField()
 
+            meta = {'allow_inheritance': True}
+
         class PowerUser(User):
             power = IntField()
 
@@ -1091,8 +1099,10 @@ class FieldTest(unittest.TestCase):
             author = EmbeddedDocumentField(User)
 
         post = BlogPost(content='What I did today...')
-        post.author = User(name='Test User')
         post.author = PowerUser(name='Test User', power=47)
+        post.save()
+
+        self.assertEqual(47, BlogPost.objects.first().author.power)
 
     def test_reference_validation(self):
         """Ensure that invalid docment objects cannot be assigned to reference
@@ -1660,8 +1670,9 @@ class FieldTest(unittest.TestCase):
         """Ensure that value is in a container of allowed values.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            size = StringField(max_length=3, choices=(
+                ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
 
         Shirt.drop_collection()
 
@@ -1677,12 +1688,15 @@ class FieldTest(unittest.TestCase):
         Shirt.drop_collection()
 
     def test_choices_get_field_display(self):
-        """Test dynamic helper for returning the display value of a choices field.
+        """Test dynamic helper for returning the display value of a choices
+        field.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=(('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                                                      ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
-            style = StringField(max_length=3, choices=(('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
+            size = StringField(max_length=3, choices=(
+                    ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                    ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            style = StringField(max_length=3, choices=(
+                ('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
 
         Shirt.drop_collection()
 
@@ -1709,7 +1723,8 @@ class FieldTest(unittest.TestCase):
         """Ensure that value is in a container of allowed values.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=('S', 'M', 'L', 'XL', 'XXL'))
+            size = StringField(max_length=3,
+                              choices=('S', 'M', 'L', 'XL', 'XXL'))
 
         Shirt.drop_collection()
 
@@ -1725,11 +1740,15 @@ class FieldTest(unittest.TestCase):
         Shirt.drop_collection()
 
     def test_simple_choices_get_field_display(self):
-        """Test dynamic helper for returning the display value of a choices field.
+        """Test dynamic helper for returning the display value of a choices
+        field.
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=('S', 'M', 'L', 'XL', 'XXL'))
-            style = StringField(max_length=3, choices=('Small', 'Baggy', 'wide'), default='Small')
+            size = StringField(max_length=3,
+                               choices=('S', 'M', 'L', 'XL', 'XXL'))
+            style = StringField(max_length=3,
+                                choices=('Small', 'Baggy', 'wide'),
+                                default='Small')
 
         Shirt.drop_collection()
 
@@ -1749,6 +1768,40 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(shirt.get_size_display(), 'Z')
         self.assertEqual(shirt.get_style_display(), 'Z')
         self.assertRaises(ValidationError, shirt.validate)
+
+        Shirt.drop_collection()
+
+    def test_simple_choices_validation_invalid_value(self):
+        """Ensure that error messages are correct.
+        """
+        SIZES = ('S', 'M', 'L', 'XL', 'XXL')
+        COLORS = (('R', 'Red'), ('B', 'Blue'))
+        SIZE_MESSAGE = u"Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
+        COLOR_MESSAGE = u"Value must be one of ['R', 'B']"
+
+        class Shirt(Document):
+            size = StringField(max_length=3, choices=SIZES)
+            color = StringField(max_length=1, choices=COLORS)
+
+        Shirt.drop_collection()
+
+        shirt = Shirt()
+        shirt.validate()
+
+        shirt.size = "S"
+        shirt.color = "R"
+        shirt.validate()
+
+        shirt.size = "XS"
+        shirt.color = "G"
+
+        try:
+            shirt.validate()
+        except ValidationError, error:
+            # get the validation rules
+            error_dict = error.to_dict()
+            self.assertEqual(error_dict['size'], SIZE_MESSAGE)
+            self.assertEqual(error_dict['color'], COLOR_MESSAGE)
 
         Shirt.drop_collection()
 
@@ -1943,7 +1996,7 @@ class FieldTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -1966,7 +2019,7 @@ class FieldTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -1989,7 +2042,7 @@ class FieldTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -2012,7 +2065,7 @@ class FieldTest(unittest.TestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'r'))
+        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
 
         t = TestImage.objects.first()
@@ -2172,12 +2225,12 @@ class FieldTest(unittest.TestCase):
     def test_sequence_fields_reload(self):
         class Animal(Document):
             counter = SequenceField()
-            type = StringField()
+            name = StringField()
 
         self.db['mongoengine.counters'].drop()
         Animal.drop_collection()
 
-        a = Animal(type="Boi")
+        a = Animal(name="Boi")
         a.save()
 
         self.assertEqual(a.counter, 1)
@@ -2231,6 +2284,27 @@ class FieldTest(unittest.TestCase):
         c = self.db['mongoengine.counters'].find_one({'_id': 'animal.id'})
         self.assertEqual(c['next'], 10)
 
+    def test_sequence_field_value_decorator(self):
+        class Person(Document):
+            id = SequenceField(primary_key=True, value_decorator=str)
+            name = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+
+        for x in xrange(10):
+            p = Person(name="Person %s" % x)
+            p.save()
+
+        c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
+        self.assertEqual(c['next'], 10)
+
+        ids = [i.id for i in Person.objects]
+        self.assertEqual(ids, map(str, range(1, 11)))
+
+        c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
+        self.assertEqual(c['next'], 10)
+
     def test_embedded_sequence_field(self):
         class Comment(EmbeddedDocument):
             id = SequenceField()
@@ -2246,12 +2320,12 @@ class FieldTest(unittest.TestCase):
         Post(title="MongoEngine",
              comments=[Comment(content="NoSQL Rocks"),
                        Comment(content="MongoEngine Rocks")]).save()
-
         c = self.db['mongoengine.counters'].find_one({'_id': 'comment.id'})
         self.assertEqual(c['next'], 2)
         post = Post.objects.first()
         self.assertEqual(1, post.comments[0].id)
         self.assertEqual(2, post.comments[1].id)
+
 
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):

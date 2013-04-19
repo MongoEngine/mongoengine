@@ -84,11 +84,14 @@ using* the new fields we need to support video posts. This fits with the
 Object-Oriented principle of *inheritance* nicely. We can think of
 :class:`Post` as a base class, and :class:`TextPost`, :class:`ImagePost` and
 :class:`LinkPost` as subclasses of :class:`Post`. In fact, MongoEngine supports
-this kind of modelling out of the box::
+this kind of modelling out of the box - all you need do is turn on inheritance
+by setting :attr:`allow_inheritance` to True in the :attr:`meta`::
 
     class Post(Document):
         title = StringField(max_length=120, required=True)
         author = ReferenceField(User)
+
+        meta = {'allow_inheritance': True}
 
     class TextPost(Post):
         content = StringField()
@@ -167,7 +170,7 @@ To delete all the posts if a user is deleted set the rule::
 
 See :class:`~mongoengine.ReferenceField` for more information.
 
-..note::
+.. note::
     MapFields and DictFields currently don't support automatic handling of
     deleted references
 

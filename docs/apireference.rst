@@ -34,6 +34,13 @@ Documents
 .. autoclass:: mongoengine.ValidationError
   :members:
 
+Context Managers
+================
+
+.. autoclass:: mongoengine.context_managers.switch_db
+.. autoclass:: mongoengine.context_managers.no_dereference
+.. autoclass:: mongoengine.context_managers.query_counter
+
 Querying
 ========
 

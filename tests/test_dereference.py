@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
 import unittest
 
 from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.tests import query_counter
+from mongoengine.context_managers import query_counter
 
 
 class FieldTest(unittest.TestCase):
@@ -124,6 +126,27 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
+    def test_list_item_dereference_dref_false_stores_as_type(self):
+        """Ensure that DBRef items are stored as their type
+        """
+        class User(Document):
+            my_id = IntField(primary_key=True)
+            name = StringField()
+
+        class Group(Document):
+            members = ListField(ReferenceField(User, dbref=False))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user = User(my_id=1, name='user 1').save()
+
+        Group(members=User.objects).save()
+        group = Group.objects.first()
+
+        self.assertEqual(Group._get_collection().find_one()['members'], [1])
+        self.assertEqual(group.members, [user])
+
     def test_handle_old_style_references(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
@@ -178,6 +201,10 @@ class FieldTest(unittest.TestCase):
         raw_data = Group._get_collection().find_one()
         self.assertTrue(isinstance(raw_data['author'], DBRef))
         self.assertTrue(isinstance(raw_data['members'][0], DBRef))
+        group = Group.objects.first()
+
+        self.assertEqual(group.author, user)
+        self.assertEqual(group.members, [user])
 
         # Migrate the model definition
         class Group(Document):
@@ -339,14 +366,10 @@ class FieldTest(unittest.TestCase):
                 return "<Person: %s>" % self.name
 
         Person.drop_collection()
-        paul = Person(name="Paul")
-        paul.save()
-        maria = Person(name="Maria")
-        maria.save()
-        julia = Person(name='Julia')
-        julia.save()
-        anna = Person(name='Anna')
-        anna.save()
+        paul = Person(name="Paul").save()
+        maria = Person(name="Maria").save()
+        julia = Person(name='Julia').save()
+        anna = Person(name='Anna').save()
 
         paul.other.friends = [maria, julia, anna]
         paul.other.name = "Paul's friends"
@@ -1000,15 +1023,116 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(0, msg.comments[0].id)
         self.assertEqual(1, msg.comments[1].id)
 
+    def test_list_item_dereference_dref_false_save_doesnt_cause_extra_queries(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            name = StringField()
+            members = ListField(ReferenceField(User, dbref=False))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            User(name='user %s' % i).save()
+
+        Group(name="Test", members=User.objects).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            group_obj.name = "new test"
+            group_obj.save()
+
+            self.assertEqual(q, 2)
+
+    def test_list_item_dereference_dref_true_save_doesnt_cause_extra_queries(self):
+        """Ensure that DBRef items in ListFields are dereferenced.
+        """
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            name = StringField()
+            members = ListField(ReferenceField(User, dbref=True))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in xrange(1, 51):
+            User(name='user %s' % i).save()
+
+        Group(name="Test", members=User.objects).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            group_obj.name = "new test"
+            group_obj.save()
+
+            self.assertEqual(q, 2)
+
+    def test_generic_reference_save_doesnt_cause_extra_queries(self):
+
+        class UserA(Document):
+            name = StringField()
+
+        class UserB(Document):
+            name = StringField()
+
+        class UserC(Document):
+            name = StringField()
+
+        class Group(Document):
+            name = StringField()
+            members = ListField(GenericReferenceField())
+
+        UserA.drop_collection()
+        UserB.drop_collection()
+        UserC.drop_collection()
+        Group.drop_collection()
+
+        members = []
+        for i in xrange(1, 51):
+            a = UserA(name='User A %s' % i).save()
+            b = UserB(name='User B %s' % i).save()
+            c = UserC(name='User C %s' % i).save()
+
+            members += [a, b, c]
+
+        Group(name="test", members=members).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            group_obj = Group.objects.first()
+            self.assertEqual(q, 1)
+
+            group_obj.name = "new test"
+            group_obj.save()
+
+            self.assertEqual(q, 2)
+
     def test_tuples_as_tuples(self):
         """
         Ensure that tuples remain tuples when they are
         inside a ComplexBaseField
         """
         from mongoengine.base import BaseField
+
         class EnumField(BaseField):
+
             def __init__(self, **kwargs):
-                super(EnumField,self).__init__(**kwargs)
+                super(EnumField, self).__init__(**kwargs)
 
             def to_mongo(self, value):
                 return value
@@ -1020,7 +1144,7 @@ class FieldTest(unittest.TestCase):
             items = ListField(EnumField())
 
         TestDoc.drop_collection()
-        tuples = [(100,'Testing')]
+        tuples = [(100, 'Testing')]
         doc = TestDoc()
         doc.items = tuples
         doc.save()
@@ -1052,4 +1176,7 @@ class FieldTest(unittest.TestCase):
         brand_groups = BrandGroup.objects().all()
 
         self.assertEqual(2, len([brand for bg in brand_groups for brand in bg.brands]))
+
+if __name__ == '__main__':
+    unittest.main()
 

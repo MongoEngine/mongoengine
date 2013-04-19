@@ -92,6 +92,8 @@ may used with :class:`~mongoengine.GeoPointField`\ s:
 * ``within_polygon`` -- filter documents to those within a given polygon (e.g.
   [(41.91,-87.69), (41.92,-87.68), (41.91,-87.65), (41.89,-87.65)]).
   .. note:: Requires Mongo Server 2.0
+* ``max_distance`` -- can be added to your location queries to set a maximum
+  distance.
 
 
 Querying lists
@@ -179,9 +181,11 @@ Retrieving unique results
 -------------------------
 To retrieve a result that should be unique in the collection, use
 :meth:`~mongoengine.queryset.QuerySet.get`. This will raise
-:class:`~mongoengine.queryset.DoesNotExist` if no document matches the query,
-and :class:`~mongoengine.queryset.MultipleObjectsReturned` if more than one
-document matched the query.
+:class:`~mongoengine.queryset.DoesNotExist` if
+no document matches the query, and
+:class:`~mongoengine.queryset.MultipleObjectsReturned`
+if more than one document matched the query.  These exceptions are merged into
+your document defintions eg: `MyDoc.DoesNotExist`
 
 A variation of this method exists,
 :meth:`~mongoengine.queryset.Queryset.get_or_create`, that will create a new
@@ -364,6 +368,27 @@ QuerySet to a list and dereferences as efficiently as possible.  By default
 references to the depth of 1 level.  If you have more complicated documents and
 want to dereference more of the object at once then increasing the :attr:`max_depth`
 will dereference more levels of the document.
+
+Turning off dereferencing
+-------------------------
+
+Sometimes for performance reasons you don't want to automatically dereference
+data. To turn off dereferencing of the results of a query use
+:func:`~mongoengine.queryset.QuerySet.no_dereference` on the queryset like so::
+
+    post = Post.objects.no_dereference().first()
+    assert(isinstance(post.author, ObjectId))
+
+You can also turn off all dereferencing for a fixed period by using the
+:class:`~mongoengine.context_managers.no_dereference` context manager::
+
+    with no_dereference(Post) as Post:
+        post = Post.objects.first()
+        assert(isinstance(post.author, ObjectId))
+
+    # Outside the context manager dereferencing occurs.
+    assert(isinstance(post.author, User))
+
 
 Advanced queries
 ================

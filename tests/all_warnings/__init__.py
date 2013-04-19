@@ -1,11 +1,20 @@
+"""
+This test has been put into a module.  This is because it tests warnings that
+only get triggered on first hit.  This way we can ensure its imported into the
+top level and called first by the test suite.
+"""
+import sys
+sys.path[0:0] = [""]
 import unittest
 import warnings
 
 from mongoengine import *
-from mongoengine.tests import query_counter
 
 
-class TestWarnings(unittest.TestCase):
+__all__ = ('AllWarnings', )
+
+
+class AllWarnings(unittest.TestCase):
 
     def setUp(self):
         conn = connect(db='mongoenginetest')
@@ -20,22 +29,6 @@ class TestWarnings(unittest.TestCase):
     def tearDown(self):
         # restore default handling of warnings
         warnings.showwarning = self.showwarning_default
-
-    def test_allow_inheritance_future_warning(self):
-        """Add FutureWarning for future allow_inhertiance default change.
-        """
-
-        class SimpleBase(Document):
-            a = IntField()
-
-        class InheritedClass(SimpleBase):
-            b = IntField()
-
-        InheritedClass()
-        self.assertEqual(len(self.warning_list), 1)
-        warning = self.warning_list[0]
-        self.assertEqual(FutureWarning, warning["category"])
-        self.assertTrue("InheritedClass" in str(warning["message"]))
 
     def test_dbref_reference_field_future_warning(self):
 
@@ -87,7 +80,7 @@ class TestWarnings(unittest.TestCase):
     def test_document_collection_syntax_warning(self):
 
         class NonAbstractBase(Document):
-            pass
+            meta = {'allow_inheritance': True}
 
         class InheritedDocumentFailTest(NonAbstractBase):
             meta = {'collection': 'fail'}
@@ -96,3 +89,6 @@ class TestWarnings(unittest.TestCase):
         self.assertEqual(SyntaxWarning, warning["category"])
         self.assertEqual('non_abstract_base',
                          InheritedDocumentFailTest._get_collection_name())
+
+import sys
+sys.path[0:0] = [""]

@@ -47,7 +47,7 @@ be saved ::
     >>> Page.objects(tags='mongoengine').count()
     >>> 1
 
-..note::
+.. note::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
 
@@ -135,7 +135,8 @@ arguments can be set on all fields:
     field, will not have two documents in the collection with the same value.
 
 :attr:`primary_key` (Default: False)
-    When True, use this field as a primary key for the collection.
+    When True, use this field as a primary key for the collection.  `DictField`
+    and `EmbeddedDocuments` both support being the primary key for a document.
 
 :attr:`choices` (Default: None)
     An iterable (e.g. a list or tuple) of choices to which the value of this
@@ -441,6 +442,7 @@ The following example shows a :class:`Log` document that will be limited to
 
 Indexes
 =======
+
 You can specify indexes on collections to make querying faster. This is done
 by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
@@ -461,9 +463,11 @@ If a dictionary is passed then the following options are available:
 :attr:`fields` (Default: None)
     The fields to index. Specified in the same format as described above.
 
-:attr:`types` (Default: True)
-    Whether the index should have the :attr:`_types` field added automatically
-    to the start of the index.
+:attr:`cls` (Default: True)
+    If you have polymorphic models that inherit and have
+    :attr:`allow_inheritance` turned on, you can configure whether the index
+    should have the :attr:`_cls` field added automatically to the start of the
+    index.
 
 :attr:`sparse` (Default: False)
     Whether the index should be sparse.
@@ -471,20 +475,22 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be unique.
 
-.. note ::
+.. note::
 
-    To index embedded files / dictionary fields use 'dot' notation eg:
-    `rank.title`
+    Inheritance adds extra fields indices see: :ref:`document-inheritance`.
 
-.. warning::
+Compound Indexes and Indexing sub documents
+-------------------------------------------
 
-    Inheritance adds extra indices.
-    If don't need inheritance for a document turn inheritance off -
-    see :ref:`document-inheritance`.
+Compound indexes can be created by adding the Embedded field or dictionary
+field name to the index definition.
 
+Sometimes its more efficient to index parts of Embeedded / dictionary fields,
+in this case use 'dot' notation to identify the value to index eg: `rank.title`
 
 Geospatial indexes
----------------------------
+------------------
+
 Geospatial indexes will be automatically created for all
 :class:`~mongoengine.GeoPointField`\ s
 
@@ -572,7 +578,9 @@ defined, you may subclass it and add any extra fields or methods you may need.
 As this is new class is not a direct subclass of
 :class:`~mongoengine.Document`, it will not be stored in its own collection; it
 will use the same collection as its superclass uses. This allows for more
-convenient and efficient retrieval of related documents::
+convenient and efficient retrieval of related documents - all you need do is
+set :attr:`allow_inheritance` to True in the :attr:`meta` data for a
+document.::
 
     # Stored in a collection named 'page'
     class Page(Document):
@@ -584,25 +592,26 @@ convenient and efficient retrieval of related documents::
     class DatedPage(Page):
         date = DateTimeField()
 
-.. note:: From 0.7 onwards you must declare `allow_inheritance` in the document meta.
+.. note:: From 0.8 onwards you must declare :attr:`allow_inheritance` defaults
+          to False, meaning you must set it to True to use inheritance.
 
 
 Working with existing data
 --------------------------
-To enable correct retrieval of documents involved in this kind of heirarchy,
-two extra attributes are stored on each document in the database: :attr:`_cls`
-and :attr:`_types`. These are hidden from the user through the MongoEngine
-interface, but may not be present if you are trying to use MongoEngine with
-an existing database. For this reason, you may disable this inheritance
-mechansim, removing the dependency of :attr:`_cls` and :attr:`_types`, enabling
-you to work with existing databases. To disable inheritance on a document
-class, set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
-dictionary::
+As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
+easily get working with existing data.  Just define the document to match
+the expected schema in your database ::
 
     # Will work with data in an existing collection named 'cmsPage'
     class Page(Document):
         title = StringField(max_length=200, required=True)
         meta = {
-            'collection': 'cmsPage',
-            'allow_inheritance': False,
+            'collection': 'cmsPage'
         }
+
+If you have wildly varying schemas then using a
+:class:`~mongoengine.DynamicDocument` might be more appropriate, instead of
+defining all possible field types.
+
+If you use :class:`~mongoengine.Document` and the database contains data that
+isn't defined then that data will be stored in the `document._data` dictionary.

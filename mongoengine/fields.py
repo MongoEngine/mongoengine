@@ -12,14 +12,14 @@ from operator import itemgetter
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
 
+from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
-                  ValidationError, get_document, BaseDocument)
+                  get_document, BaseDocument, ALLOW_INHERITANCE)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
-
 
 try:
     from PIL import Image, ImageOps
@@ -334,6 +334,8 @@ class DateTimeField(BaseField):
             return value
         if isinstance(value, datetime.date):
             return datetime.datetime(value.year, value.month, value.day)
+        if callable(value):
+            return value()
 
         # Attempt to parse a datetime:
         # value = smart_str(value)
@@ -348,16 +350,16 @@ class DateTimeField(BaseField):
             usecs = 0
         kwargs = {'microsecond': usecs}
         try:  # Seconds are optional, so try converting seconds first.
-            return datetime.datetime(*time.strptime(value, '%Y-%m-%d %H:%M:%S')[:6],
-                                     **kwargs)
+            return datetime.datetime(*time.strptime(value,
+                                      '%Y-%m-%d %H:%M:%S')[:6], **kwargs)
         except ValueError:
             try:  # Try without seconds.
-                return datetime.datetime(*time.strptime(value, '%Y-%m-%d %H:%M')[:5],
-                                         **kwargs)
+                return datetime.datetime(*time.strptime(value,
+                                         '%Y-%m-%d %H:%M')[:5], **kwargs)
             except ValueError:  # Try without hour/minutes/seconds.
                 try:
-                    return datetime.datetime(*time.strptime(value, '%Y-%m-%d')[:3],
-                                             **kwargs)
+                    return datetime.datetime(*time.strptime(value,
+                                             '%Y-%m-%d')[:3], **kwargs)
                 except ValueError:
                     return None
 
@@ -444,6 +446,7 @@ class ComplexDateTimeField(StringField):
         return super(ComplexDateTimeField, self).__set__(instance, value)
 
     def validate(self, value):
+        value = self.to_python(value)
         if not isinstance(value, datetime.datetime):
             self.error('Only datetime objects may used in a '
                        'ComplexDateTimeField')
@@ -456,6 +459,7 @@ class ComplexDateTimeField(StringField):
             return original_value
 
     def to_mongo(self, value):
+        value = self.to_python(value)
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
@@ -494,7 +498,7 @@ class EmbeddedDocumentField(BaseField):
             return value
         return self.document_type.to_mongo(value)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
@@ -502,7 +506,7 @@ class EmbeddedDocumentField(BaseField):
         if not isinstance(value, self.document_type):
             self.error('Invalid embedded document instance provided to an '
                        'EmbeddedDocumentField')
-        self.document_type.validate(value)
+        self.document_type.validate(value, clean)
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -532,12 +536,12 @@ class GenericEmbeddedDocumentField(BaseField):
 
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, EmbeddedDocument):
             self.error('Invalid embedded document instance provided to an '
                        'GenericEmbeddedDocumentField')
 
-        value.validate()
+        value.validate(clean=clean)
 
     def to_mongo(self, document):
         if document is None:
@@ -563,7 +567,12 @@ class DynamicField(BaseField):
             return value
 
         if hasattr(value, 'to_mongo'):
-            return value.to_mongo()
+            cls = value.__class__
+            val = value.to_mongo()
+            # If we its a document thats not inherited add _cls
+            if (isinstance(value, (Document, EmbeddedDocument))):
+                val['_cls'] = cls.__name__
+            return val
 
         if not isinstance(value, (dict, list, tuple)):
             return value
@@ -574,13 +583,12 @@ class DynamicField(BaseField):
             value = dict([(k, v) for k, v in enumerate(value)])
 
         data = {}
-        for k, v in value.items():
+        for k, v in value.iteritems():
             data[k] = self.to_mongo(v)
 
+        value = data
         if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(data.items(), key=itemgetter(0))]
-        else:
-            value = data
+            value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
         return value
 
     def lookup_member(self, member_name):
@@ -592,6 +600,10 @@ class DynamicField(BaseField):
             return StringField().prepare_query_value(op, value)
         return self.to_mongo(value)
 
+    def validate(self, value, clean=True):
+        if hasattr(value, "validate"):
+            value.validate(clean=clean)
+
 
 class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
@@ -602,9 +614,6 @@ class ListField(ComplexBaseField):
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
     """
-
-    # ListFields cannot be indexed with _types - MongoDB doesn't support this
-    _index_with_types = False
 
     def __init__(self, field=None, **kwargs):
         self.field = field
@@ -657,7 +666,8 @@ class SortedListField(ListField):
     def to_mongo(self, value):
         value = super(SortedListField, self).to_mongo(value)
         if self._ordering is not None:
-            return sorted(value, key=itemgetter(self._ordering), reverse=self._order_reverse)
+            return sorted(value, key=itemgetter(self._ordering),
+                                 reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
 
@@ -687,7 +697,9 @@ class DictField(ComplexBaseField):
             self.error('Only dictionaries may be used in a DictField')
 
         if any(k for k in value.keys() if not isinstance(k, basestring)):
-            self.error('Invalid dictionary key - documents must have only string keys')
+            msg = ("Invalid dictionary key - documents must "
+                   "have only string keys")
+            self.error(msg)
         if any(('.' in k or '$' in k) for k in value.keys()):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')
@@ -703,7 +715,6 @@ class DictField(ComplexBaseField):
 
         if op in match_operators and isinstance(value, basestring):
             return StringField().prepare_query_value(op, value)
-
         return super(DictField, self).prepare_query_value(op, value)
 
 
@@ -774,7 +785,7 @@ class ReferenceField(BaseField):
 
         if dbref is None:
             msg = ("ReferenceFields will default to using ObjectId "
-                   " strings in 0.8, set DBRef=True if this isn't desired")
+                   "in 0.8, set DBRef=True if this isn't desired")
             warnings.warn(msg, FutureWarning)
 
         self.dbref = dbref if dbref is not None else True  # To change in 0.8
@@ -800,9 +811,9 @@ class ReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
-
+        self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
-        if isinstance(value, DBRef):
+        if self._auto_dereference and isinstance(value, DBRef):
             value = self.document_type._get_db().dereference(value)
             if value is not None:
                 instance._data[self.name] = self.document_type._from_son(value)
@@ -882,17 +893,22 @@ class GenericReferenceField(BaseField):
             return self
 
         value = instance._data.get(self.name)
-        if isinstance(value, (dict, SON)):
+        self._auto_dereference = instance._fields[self.name]._auto_dereference
+        if self._auto_dereference and isinstance(value, (dict, SON)):
             instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 
     def validate(self, value):
-        if not isinstance(value, (Document, DBRef)):
+        if not isinstance(value, (Document, DBRef, dict, SON)):
             self.error('GenericReferences can only contain documents')
 
+        if isinstance(value, (dict, SON)):
+            if '_ref' not in value or '_cls' not in value:
+                self.error('GenericReferences can only contain documents')
+
         # We need the id from the saved object to create the DBRef
-        if isinstance(value, Document) and value.id is None:
+        elif isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been'
                        ' saved to the database')
 
@@ -994,7 +1010,7 @@ class GridFSProxy(object):
         if name in attrs:
             return self.__getattribute__(name)
         obj = self.get()
-        if name in dir(obj):
+        if hasattr(obj, name):
             return getattr(obj, name)
         raise AttributeError
 
@@ -1009,14 +1025,22 @@ class GridFSProxy(object):
         self_dict['_fs'] = None
         return self_dict
 
+    def __copy__(self):
+        copied = GridFSProxy()
+        copied.__dict__.update(self.__getstate__())
+        return copied
+
+    def __deepcopy__(self, memo):
+        return self.__copy__()
+
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
-            return  ((self.grid_id == other.grid_id) and
-                     (self.collection_name == other.collection_name) and
-                     (self.db_alias == other.db_alias))
+            return ((self.grid_id == other.grid_id) and
+                    (self.collection_name == other.collection_name) and
+                    (self.db_alias == other.db_alias))
         else:
             return False
 
@@ -1359,8 +1383,9 @@ class GeoPointField(BaseField):
             self.error('Both values in point must be float or int')
 
 
-class SequenceField(IntField):
-    """Provides a sequental counter (see http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers)
+class SequenceField(BaseField):
+    """Provides a sequental counter see:
+     http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
 
     .. note::
 
@@ -1370,15 +1395,29 @@ class SequenceField(IntField):
              cluster of machines, it is easier to create an object ID than have
              global, uniformly increasing sequence numbers.
 
+    Use any callable as `value_decorator` to transform calculated counter into
+    any value suitable for your needs, e.g. string or hexadecimal
+    representation of the default integer counter value.
+
     .. versionadded:: 0.5
+
+    .. versionchanged:: 0.8 added `value_decorator`
     """
-    def __init__(self, collection_name=None, db_alias=None, sequence_name=None, *args, **kwargs):
-        self.collection_name = collection_name or 'mongoengine.counters'
+
+    _auto_gen = True
+    COLLECTION_NAME = 'mongoengine.counters'
+    VALUE_DECORATOR = int
+
+    def __init__(self, collection_name=None, db_alias=None,
+            sequence_name=None, value_decorator=None, *args, **kwargs):
+        self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
+        self.value_decorator = (callable(value_decorator) and
+            value_decorator or self.VALUE_DECORATOR)
         return super(SequenceField, self).__init__(*args, **kwargs)
 
-    def generate_new_value(self):
+    def generate(self):
         """
         Generate and Increment the counter
         """
@@ -1389,7 +1428,7 @@ class SequenceField(IntField):
                                              update={"$inc": {"next": 1}},
                                              new=True,
                                              upsert=True)
-        return counter['next']
+        return self.value_decorator(counter['next'])
 
     def get_sequence_name(self):
         if self.sequence_name:
@@ -1402,32 +1441,24 @@ class SequenceField(IntField):
                             for c in owner._class_name).strip('_').lower()
 
     def __get__(self, instance, owner):
-
-        if instance is None:
-            return self
-
-        if not instance._data:
-            return
-
-        value = instance._data.get(self.name)
-
-        if not value and instance._initialised:
-            value = self.generate_new_value()
+        value = super(SequenceField, self).__get__(instance, owner)
+        if value is None and instance._initialised:
+            value = self.generate()
             instance._data[self.name] = value
             instance._mark_as_changed(self.name)
 
-        return int(value) if value else None
+        return value
 
     def __set__(self, instance, value):
 
         if value is None and instance._initialised:
-            value = self.generate_new_value()
+            value = self.generate()
 
         return super(SequenceField, self).__set__(instance, value)
 
     def to_python(self, value):
         if value is None:
-            value = self.generate_new_value()
+            value = self.generate()
         return value
 
 

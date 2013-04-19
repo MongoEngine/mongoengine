@@ -33,6 +33,12 @@ MongoEngine now supports :func:`~pymongo.replica_set_connection.ReplicaSetConnec
 to use them please use a URI style connection and provide the `replicaSet` name in the
 connection kwargs.
 
+Read preferences are supported throught the connection or via individual
+queries by passing the read_preference ::
+
+    Bar.objects().read_preference(ReadPreference.PRIMARY)
+    Bar.objects(read_preference=ReadPreference.PRIMARY)
+
 Multiple Databases
 ==================
 
@@ -63,3 +69,21 @@ to point across databases and collections.  Below is an example schema, using
             book = ReferenceField(Book)
 
             meta = {"db_alias": "users-books-db"}
+
+
+Switch Database Context Manager
+===============================
+
+Sometimes you might want to switch the database to query against for a class.
+The :class:`~mongoengine.context_managers.switch_db` context manager allows
+you to change the database alias for a class eg ::
+
+        from mongoengine.context_managers import switch_db
+
+        class User(Document):
+            name = StringField()
+
+            meta = {"db_alias": "user-db"}
+
+        with switch_db(User, 'archive-user-db') as User:
+            User(name="Ross").save()  # Saves the 'archive-user-db'

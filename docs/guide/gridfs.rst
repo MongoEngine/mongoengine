@@ -18,20 +18,10 @@ a document is created to store details about animals, including a photo::
         family = StringField()
         photo = FileField()
 
-    marmot = Animal('Marmota', 'Sciuridae')
+    marmot = Animal(genus='Marmota', family='Sciuridae')
 
-    marmot_photo = open('marmot.jpg', 'r')      # Retrieve a photo from disk
-    marmot.photo = marmot_photo                 # Store photo in the document
-    marmot.photo.content_type = 'image/jpeg'    # Store metadata
-
-    marmot.save()
-
-Another way of writing to a :class:`~mongoengine.FileField` is to use the
-:func:`put` method. This allows for metadata to be stored in the same call as
-the file::
-
-    marmot.photo.put(marmot_photo, content_type='image/jpeg')
-
+    marmot_photo = open('marmot.jpg', 'r')
+    marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
     marmot.save()
 
 Retrieval

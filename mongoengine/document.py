@@ -1,19 +1,21 @@
+from __future__ import with_statement
 import warnings
 
 import pymongo
 import re
 
 from bson.dbref import DBRef
-from mongoengine import signals, queryset
+from mongoengine import signals
+from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
+                              BaseDocument, BaseDict, BaseList,
+                              ALLOW_INHERITANCE, get_document)
+from mongoengine.queryset import OperationError, NotUniqueError, QuerySet
+from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
+from mongoengine.context_managers import switch_db, switch_collection
 
-from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  BaseDict, BaseList)
-from queryset import OperationError, NotUniqueError
-from connection import get_db, DEFAULT_CONNECTION_NAME
-
-__all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
+__all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
-           'InvalidCollectionError', 'NotUniqueError']
+           'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
 
 
 class InvalidCollectionError(Exception):
@@ -28,11 +30,11 @@ class EmbeddedDocument(BaseDocument):
 
     A :class:`~mongoengine.EmbeddedDocument` subclass may be itself subclassed,
     to create a specialised version of the embedded document that will be
-    stored in the same collection. To facilitate this behaviour, `_cls` and
-    `_types` fields are added to documents (hidden though the MongoEngine
-    interface though). To disable this behaviour and remove the dependence on
-    the presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
-    ``False`` in the :attr:`meta` dictionary.
+    stored in the same collection. To facilitate this behaviour a `_cls`
+    field is added to documents (hidden though the MongoEngine interface).
+    To disable this behaviour and remove the dependence on the presence of
+    `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
+    dictionary.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
@@ -40,20 +42,11 @@ class EmbeddedDocument(BaseDocument):
     my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
+    _instance = None
+
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
         self._changed_fields = []
-
-    def __delattr__(self, *args, **kwargs):
-        """Handle deletions of fields"""
-        field_name = args[0]
-        if field_name in self._fields:
-            default = self._fields[field_name].default
-            if callable(default):
-                default = default()
-            setattr(self, field_name, default)
-        else:
-            super(EmbeddedDocument, self).__delattr__(*args, **kwargs)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -76,11 +69,11 @@ class Document(BaseDocument):
 
     A :class:`~mongoengine.Document` subclass may be itself subclassed, to
     create a specialised version of the document that will be stored in the
-    same collection. To facilitate this behaviour, `_cls` and `_types`
-    fields are added to documents (hidden though the MongoEngine interface
-    though). To disable this behaviour and remove the dependence on the
-    presence of `_cls` and `_types`, set :attr:`allow_inheritance` to
-    ``False`` in the :attr:`meta` dictionary.
+    same collection. To facilitate this behaviour a `_cls`
+    field is added to documents (hidden though the MongoEngine interface).
+    To disable this behaviour and remove the dependence on the presence of
+    `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
+    dictionary.
 
     A :class:`~mongoengine.Document` may use a **Capped Collection** by
     specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
@@ -98,13 +91,13 @@ class Document(BaseDocument):
     Automatic index creation can be disabled by specifying
     attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
     False then indexes will not be created by MongoEngine.  This is useful in
-    production systems where index creation is performed as part of a deployment
-    system.
+    production systems where index creation is performed as part of a
+    deployment system.
 
-    By default, _types will be added to the start of every index (that
+    By default, _cls will be added to the start of every index (that
     doesn't contain a list) if allow_inheritance is True. This can be
-    disabled by either setting types to False on the specific index or
-    by setting index_types to False on the meta dictionary for the document.
+    disabled by either setting cls to False on the specific index or
+    by setting index_cls to False on the meta dictionary for the document.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
@@ -117,6 +110,7 @@ class Document(BaseDocument):
         """
         def fget(self):
             return getattr(self, self._meta['id_field'])
+
         def fset(self, value):
             return setattr(self, self._meta['id_field'], value)
         return property(fget, fset)
@@ -125,7 +119,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME ))
+        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
 
     @classmethod
     def _get_collection(cls):
@@ -160,9 +154,11 @@ class Document(BaseDocument):
                     )
             else:
                 cls._collection = db[collection_name]
+            if cls._meta.get('auto_create_index', True):
+                cls.ensure_indexes()
         return cls._collection
 
-    def save(self, safe=True, force_insert=False, validate=True,
+    def save(self, safe=True, force_insert=False, validate=True, clean=True,
              write_options=None,  cascade=None, cascade_kwargs=None,
              _refs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
@@ -176,6 +172,8 @@ class Document(BaseDocument):
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
+        :param clean: call the document clean method, requires `validate` to be
+            True.
         :param write_options: Extra keyword arguments are passed down to
             :meth:`~pymongo.collection.Collection.save` OR
             :meth:`~pymongo.collection.Collection.insert`
@@ -205,17 +203,17 @@ class Document(BaseDocument):
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
-            self.validate()
+            self.validate(clean=clean)
 
         if not write_options:
             write_options = {}
 
         doc = self.to_mongo()
 
-        created = force_insert or '_id' not in doc
+        created = ('_id' not in doc or self._created or force_insert)
 
         try:
-            collection = self.__class__.objects._collection
+            collection = self._get_collection()
             if created:
                 if force_insert:
                     object_id = collection.insert(doc, safe=safe,
@@ -233,13 +231,24 @@ class Document(BaseDocument):
                     actual_key = self._db_field_map.get(k, k)
                     select_dict[actual_key] = doc[actual_key]
 
+                def is_new_object(last_error):
+                    if last_error is not None:
+                        updated = last_error.get("updatedExisting")
+                        if updated is not None:
+                            return not updated
+                    return created
+
                 upsert = self._created
+                update_query = {}
+
                 if updates:
-                    collection.update(select_dict, {"$set": updates},
-                        upsert=upsert, safe=safe, **write_options)
+                    update_query["$set"] = updates
                 if removals:
-                    collection.update(select_dict, {"$unset": removals},
-                        upsert=upsert, safe=safe, **write_options)
+                    update_query["$unset"] = removals
+                if updates or removals:
+                    last_error = collection.update(select_dict, update_query,
+                                    upsert=upsert, safe=safe, **write_options)
+                    created = is_new_object(last_error)
 
             warn_cascade = not cascade and 'cascade' not in self._meta
             cascade = (self._meta.get('cascade', True)
@@ -304,6 +313,15 @@ class Document(BaseDocument):
                 ref._changed_fields = []
 
     @property
+    def _qs(self):
+        """
+        Returns the queryset to use for updating / reloading / deletions
+        """
+        if not hasattr(self, '__objects'):
+            self.__objects = QuerySet(self, self._get_collection())
+        return self.__objects
+
+    @property
     def _object_key(self):
         """Dict to identify object in collection
         """
@@ -324,7 +342,7 @@ class Document(BaseDocument):
             raise OperationError('attempt to update a document not yet saved')
 
         # Need to add shard key to query, or you get an error
-        return self.__class__.objects(**self._object_key).update_one(**kwargs)
+        return self._qs.filter(**self._object_key).update_one(**kwargs)
 
     def delete(self, safe=False):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -335,12 +353,63 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self.__class__.objects(**self._object_key).delete(safe=safe)
+            self._qs.filter(**self._object_key).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
 
         signals.post_delete.send(self.__class__, document=self)
+
+    def switch_db(self, db_alias):
+        """
+        Temporarily switch the database for a document instance.
+
+        Only really useful for archiving off data and calling `save()`::
+
+            user = User.objects.get(id=user_id)
+            user.switch_db('archive-db')
+            user.save()
+
+        If you need to read from another database see
+        :class:`~mongoengine.context_managers.switch_db`
+
+        :param db_alias: The database alias to use for saving the document
+        """
+        with switch_db(self.__class__, db_alias) as cls:
+            collection = cls._get_collection()
+            db = cls._get_db
+        self._get_collection = lambda: collection
+        self._get_db = lambda: db
+        self._collection = collection
+        self._created = True
+        self.__objects = self._qs
+        self.__objects._collection_obj = collection
+        return self
+
+    def switch_collection(self, collection_name):
+        """
+        Temporarily switch the collection for a document instance.
+
+        Only really useful for archiving off data and calling `save()`::
+
+            user = User.objects.get(id=user_id)
+            user.switch_collection('old-users')
+            user.save()
+
+        If you need to read from another database see
+        :class:`~mongoengine.context_managers.switch_collection`
+
+        :param collection_name: The database alias to use for saving the
+            document
+        """
+        with switch_collection(self.__class__, collection_name) as cls:
+            collection = cls._get_collection()
+        self._get_collection = lambda: collection
+        self._collection = collection
+        self._created = True
+        self.__objects = self._qs
+        self.__objects._collection_obj = collection
+        return self
 
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
@@ -359,7 +428,7 @@ class Document(BaseDocument):
         .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self.__class__.objects(
+        obj = self._qs.filter(
                 **{id_field: self[id_field]}
               ).limit(1).select_related(max_depth=max_depth)
         if obj:
@@ -373,6 +442,7 @@ class Document(BaseDocument):
             for name in self._dynamic_fields.keys():
                 setattr(self, name, self._reload(name, obj._data[name]))
         self._changed_fields = obj._changed_fields
+        self._created = False
         return obj
 
     def _reload(self, key, value):
@@ -402,18 +472,93 @@ class Document(BaseDocument):
         """This method registers the delete rules to apply when removing this
         object.
         """
-        delete_rules = cls._meta.get('delete_rules') or {}
-        delete_rules[(document_cls, field_name)] = rule
-        cls._meta['delete_rules'] = delete_rules
+        classes = [get_document(class_name)
+                    for class_name in cls._subclasses
+                    if class_name != cls.__name__] + [cls]
+        documents = [get_document(class_name)
+                     for class_name in document_cls._subclasses
+                     if class_name != document_cls.__name__] + [document_cls]
+
+        for cls in classes:
+            for document_cls in documents:
+                delete_rules = cls._meta.get('delete_rules') or {}
+                delete_rules[(document_cls, field_name)] = rule
+                cls._meta['delete_rules'] = delete_rules
 
     @classmethod
     def drop_collection(cls):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
         """
+        cls._collection = None
         db = cls._get_db()
         db.drop_collection(cls._get_collection_name())
-        queryset.QuerySet._reset_already_indexed(cls)
+
+    @classmethod
+    def ensure_index(cls, key_or_list, drop_dups=False, background=False,
+        **kwargs):
+        """Ensure that the given indexes are in place.
+
+        :param key_or_list: a single index key or a list of index keys (to
+            construct a multi-field index); keys may be prefixed with a **+**
+            or a **-** to determine the index ordering
+        """
+        index_spec = cls._build_index_spec(key_or_list)
+        index_spec = index_spec.copy()
+        fields = index_spec.pop('fields')
+        index_spec['drop_dups'] = drop_dups
+        index_spec['background'] = background
+        index_spec.update(kwargs)
+
+        return cls._get_collection().ensure_index(fields, **index_spec)
+
+    @classmethod
+    def ensure_indexes(cls):
+        """Checks the document meta data and ensures all the indexes exist.
+
+        .. note:: You can disable automatic index creation by setting
+                  `auto_create_index` to False in the documents meta data
+        """
+        background = cls._meta.get('index_background', False)
+        drop_dups = cls._meta.get('index_drop_dups', False)
+        index_opts = cls._meta.get('index_opts') or {}
+        index_cls = cls._meta.get('index_cls', True)
+
+        collection = cls._get_collection()
+
+        # determine if an index which we are creating includes
+        # _cls as its first field; if so, we can avoid creating
+        # an extra index on _cls, as mongodb will use the existing
+        # index to service queries against _cls
+        cls_indexed = False
+
+        def includes_cls(fields):
+            first_field = None
+            if len(fields):
+                if isinstance(fields[0], basestring):
+                    first_field = fields[0]
+                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+                    first_field = fields[0][0]
+            return first_field == '_cls'
+
+        # Ensure document-defined indexes are created
+        if cls._meta['index_specs']:
+            index_spec = cls._meta['index_specs']
+            for spec in index_spec:
+                spec = spec.copy()
+                fields = spec.pop('fields')
+                cls_indexed = cls_indexed or includes_cls(fields)
+                opts = index_opts.copy()
+                opts.update(spec)
+                collection.ensure_index(fields, background=background,
+                                        drop_dups=drop_dups, **opts)
+
+        # If _cls is being used (for polymorphism), it needs an index,
+        # only if another index doesn't begin with _cls
+        if (index_cls and not cls_indexed and
+            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
+            collection.ensure_index('_cls', background=background,
+                                    **index_opts)
 
 
 class DynamicDocument(Document):
@@ -464,7 +609,13 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
         """Deletes the attribute by setting to None and allowing _delta to unset
         it"""
         field_name = args[0]
-        setattr(self, field_name, None)
+        if field_name in self._fields:
+            default = self._fields[field_name].default
+            if callable(default):
+                default = default()
+            setattr(self, field_name, default)
+        else:
+            setattr(self, field_name, None)
 
 
 class MapReduceDocument(object):

@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase, CreateError
 from django.core.exceptions import SuspiciousOperation
@@ -9,6 +7,8 @@ from mongoengine.document import Document
 from mongoengine import fields
 from mongoengine.queryset import OperationError
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
+
+from .utils import datetime_now
 
 
 MONGOENGINE_SESSION_DB_ALIAS = getattr(
@@ -24,6 +24,7 @@ MONGOENGINE_SESSION_COLLECTION = getattr(
 MONGOENGINE_SESSION_DATA_ENCODE = getattr(
     settings, 'MONGOENGINE_SESSION_DATA_ENCODE',
     True)
+
 
 class MongoSession(Document):
     session_key = fields.StringField(primary_key=True, max_length=40)
@@ -43,6 +44,9 @@ class MongoSession(Document):
         ]
     }
 
+    def get_decoded(self):
+        return SessionStore().decode(self.session_data)
+
 
 class SessionStore(SessionBase):
     """A MongoEngine-based session store for Django.
@@ -51,7 +55,7 @@ class SessionStore(SessionBase):
     def load(self):
         try:
             s = MongoSession.objects(session_key=self.session_key,
-                                     expire_date__gt=datetime.now())[0]
+                                     expire_date__gt=datetime_now)[0]
             if MONGOENGINE_SESSION_DATA_ENCODE:
                 return self.decode(force_unicode(s.session_data))
             else:
