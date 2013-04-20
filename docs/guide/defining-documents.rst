@@ -167,6 +167,13 @@ arguments can be set on all fields:
 :attr:`verbose_name` (Default: None)
     Optional human-readable name for the field - used by form libraries
 
+:attr:`version_locks` (Default: None)
+    Optional list of IntField names that should be incremented whenever the
+    current field is modified and the containing document is saved.  If any
+    of the version lock fields have an unexpected value in mongodb (usually
+    when some other process modified the document), then a VersionLockError
+    exception will be raised upon saving the document.  The goal is to have
+    a simple Optimistic Lock mechanism.
 
 List fields
 -----------
@@ -606,3 +613,63 @@ dictionary::
             'collection': 'cmsPage',
             'allow_inheritance': False,
         }
+
+
+Version locks
+=============
+Optimistic Lock are implemented in mongoenginethrough so-called "version
+locks".  A version lock is an IntField whose value is automatically incremented
+whenever a document is saved and some specific fields have been modified.  When
+saving the document, the current value of the version locks is checked in
+mongodb, and if they do not have the expected value, then a VersionLockError is
+raised.
+
+For example:
+
+    class Task(EmbeddedDocument):
+        description = StringField()
+
+    class TodoList(Document):
+        name = StringField()
+        tasks_version = IntField(db_field = "tver")
+        tasks = ListField(EmbeddedDocumentField("Task", db_field="t"),
+                          version_locks = ["tasks_version"])
+
+    todo_list1 = TodoList(name='Test')
+    todo_list1.tasks = [Task(description = "Buy presents")]
+    todo_list1.save()
+
+    todo_list2 = TodoList.objects.get(id = todo_list1.id)
+
+    todo_list1.tasks.append(Task(description = "Bake cake"))
+    todo_list1.save()
+
+    todo_list2.tasks.append(Task(description = "Invite friends"))
+    try:
+        todo_list2.save()
+    except VersionLockError:
+        print "Oups, the list was modified concurrently, let's try again"
+        todo_list2.reload()
+        todo_list2.tasks.append(Task(description = "Invite friends again"))
+        todo_list2.save()
+
+    # prints 2
+    print todo_list2.tasks_version
+
+    # prints: "Buy presents, Bake cake, Invite friends again"
+    print ", ".join([task.description for task in todo_list2.tasks])
+
+As a special shortcut, version locks can be added to *all* fields in a
+document by setting the version_locks _meta attribute:
+
+    class Task(EmbeddedDocument):
+        description = StringField()
+
+    class TodoList(Document):
+        _meta = { "version_locks": ["version"] }
+        name = StringField()
+        version = IntField(db_field = "ver")
+        tasks = ListField(EmbeddedDocumentField("Task", db_field="t"))
+
+Now a task-list's `version` will be checked & incremented upon every save,
+when any field is modified.

@@ -2,18 +2,19 @@ import warnings
 
 import pymongo
 import re
+from itertools import chain
 
 from bson.dbref import DBRef
 from mongoengine import signals, queryset
 
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   BaseDict, BaseList)
-from queryset import OperationError, NotUniqueError
+from queryset import OperationError, NotUniqueError, VersionLockError
 from connection import get_db, DEFAULT_CONNECTION_NAME
 
 __all__ = ['Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
-           'InvalidCollectionError', 'NotUniqueError']
+           'InvalidCollectionError', 'NotUniqueError', 'VersionLockError']
 
 
 class InvalidCollectionError(Exception):
@@ -189,7 +190,6 @@ class Document(BaseDocument):
         :param cascade_kwargs: optional kwargs dictionary to be passed throw
             to cascading saves
         :param _refs: A list of processed references used in cascading saves
-
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
             set / unset.  Saves are cascaded and any
@@ -234,12 +234,35 @@ class Document(BaseDocument):
                     select_dict[actual_key] = doc[actual_key]
 
                 upsert = self._created
+                update_dict = {}
                 if updates:
-                    collection.update(select_dict, {"$set": updates},
-                        upsert=upsert, safe=safe, **write_options)
+                    update_dict["$set"] = updates
                 if removals:
-                    collection.update(select_dict, {"$unset": removals},
-                        upsert=upsert, safe=safe, **write_options)
+                    update_dict["$unset"] = removals
+
+                if not created:
+                    vlocks = self._version_lock_fields(updates, removals)
+                    if vlocks:
+                        inc_dict = {}
+                        for vlock in vlocks:
+                            vlock_db = self._db_field_map[vlock]
+                            inc_dict[vlock_db] = 1
+                            if doc.has_key(vlock_db):
+                                select_dict[vlock_db] = getattr(self, vlock)
+                            else:
+                                select_dict[vlock_db] = {"$exists": False }
+                        update_dict["$inc"] = inc_dict
+
+                if update_dict:
+                    update_result = collection.update(select_dict, update_dict,
+                                    upsert=upsert, safe=safe, **write_options)
+                    if update_result and update_result.get("n", 0) == 0:
+                        raise VersionLockError(
+                          "Unexpected version (%s): document was modified." %
+                          repr(", ".join(vlocks))
+                        )
+                    for vlock in vlocks:
+                        setattr(self, vlock, (getattr(self, vlock, 0) or 0) + 1)
 
             warn_cascade = not cascade and 'cascade' not in self._meta
             cascade = (self._meta.get('cascade', True)
@@ -388,6 +411,13 @@ class Document(BaseDocument):
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._changed_fields = []
         return value
+
+    def _version_lock_fields(self, updates, removals):
+        version_locks = set(self._meta.get("version_locks", []))
+        for db_field in chain(updates.iterkeys(), removals.iterkeys()):
+            root_field = db_field.split(".", 1)[0]
+            version_locks.update(self._version_locks.get(root_field, [])) 
+        return version_locks
 
     def to_dbref(self):
         """Returns an instance of :class:`~bson.dbref.DBRef` useful in
