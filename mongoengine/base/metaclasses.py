@@ -315,8 +315,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # may set allow_inheritance to False
         simple_class = all([b._meta.get('abstract')
                             for b in flattened_bases if hasattr(b, '_meta')])
-        if (not simple_class and meta['allow_inheritance'] == False and
-            not meta['abstract']):
+        if (not simple_class and meta['allow_inheritance'] is False and
+           not meta['abstract']):
             raise ValueError('Only direct subclasses of Document may set '
                              '"allow_inheritance" to False')
 
@@ -339,9 +339,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if callable(collection):
             new_class._meta['collection'] = collection(new_class)
 
-        # Provide a default queryset unless one has been set
-        manager = attrs.get('objects', QuerySetManager())
-        new_class.objects = manager
+        # Provide a default queryset unless exists or one has been set
+        if not hasattr(new_class, 'objects'):
+            new_class.objects = QuerySetManager()
 
         # Validate the fields and set primary key if needed
         for field_name, field in new_class._fields.iteritems():

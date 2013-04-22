@@ -2233,6 +2233,42 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(0, Foo.with_inactive.count())
         self.assertEqual(1, Foo.objects.count())
 
+    def test_inherit_objects(self):
+
+        class Foo(Document):
+            meta = {'allow_inheritance': True}
+            active = BooleanField(default=True)
+
+            @queryset_manager
+            def objects(klass, queryset):
+                return queryset(active=True)
+
+        class Bar(Foo):
+            pass
+
+        Bar.drop_collection()
+        Bar.objects.create(active=False)
+        self.assertEqual(0, Bar.objects.count())
+
+    def test_inherit_objects_override(self):
+
+        class Foo(Document):
+            meta = {'allow_inheritance': True}
+            active = BooleanField(default=True)
+
+            @queryset_manager
+            def objects(klass, queryset):
+                return queryset(active=True)
+
+        class Bar(Foo):
+            @queryset_manager
+            def objects(klass, queryset):
+                return queryset(active=False)
+
+        Bar.drop_collection()
+        Bar.objects.create(active=False)
+        self.assertEqual(0, Foo.objects.count())
+        self.assertEqual(1, Bar.objects.count())
 
     def test_query_value_conversion(self):
         """Ensure that query values are properly converted when necessary.
