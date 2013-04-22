@@ -4,7 +4,8 @@ Changelog
 
 Changes in 0.8.X
 ================
-- Objects manager now inherited (#256)
+- Removed __len__ from queryset (#247)
+- Objects queryset manager now inherited (#256)
 - Updated connection to use MongoClient (#262, #274)
 - Fixed db_alias and inherited Documents (#143)
 - Documentation update for document errors (#124)

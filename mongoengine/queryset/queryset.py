@@ -118,9 +118,6 @@ class QuerySet(object):
         queryset.rewind()
         return queryset
 
-    def __len__(self):
-        return self.count()
-
     def __getitem__(self, key):
         """Support skip and limit using getitem and slicing syntax.
         """
@@ -149,12 +146,12 @@ class QuerySet(object):
         elif isinstance(key, int):
             if queryset._scalar:
                 return queryset._get_scalar(
-                        queryset._document._from_son(queryset._cursor[key],
-                            _auto_dereference=self._auto_dereference))
+                    queryset._document._from_son(queryset._cursor[key],
+                                                 _auto_dereference=self._auto_dereference))
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor.next())
             return queryset._document._from_son(queryset._cursor[key],
-                            _auto_dereference=self._auto_dereference)
+                                                _auto_dereference=self._auto_dereference)
         raise AttributeError
 
     def __repr__(self):

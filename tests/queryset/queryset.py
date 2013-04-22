@@ -72,7 +72,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Find all people in the collection
         people = self.Person.objects
-        self.assertEqual(len(people), 2)
+        self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
         self.assertTrue(isinstance(results[0].id, (ObjectId, str, unicode)))
@@ -83,7 +83,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20)
-        self.assertEqual(len(people), 1)
+        self.assertEqual(people.count(), 1)
         person = people.next()
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
@@ -130,7 +130,7 @@ class QuerySetTest(unittest.TestCase):
         for i in xrange(55):
             self.Person(name='A%s' % i, age=i).save()
 
-        self.assertEqual(len(self.Person.objects), 55)
+        self.assertEqual(self.Person.objects.count(), 55)
         self.assertEqual("Person object", "%s" % self.Person.objects[0])
         self.assertEqual("[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[1:3])
         self.assertEqual("[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[51:53])
@@ -211,10 +211,10 @@ class QuerySetTest(unittest.TestCase):
         Blog.drop_collection()
 
         Blog.objects.create(tags=['a', 'b'])
-        self.assertEqual(len(Blog.objects(tags__0='a')), 1)
-        self.assertEqual(len(Blog.objects(tags__0='b')), 0)
-        self.assertEqual(len(Blog.objects(tags__1='a')), 0)
-        self.assertEqual(len(Blog.objects(tags__1='b')), 1)
+        self.assertEqual(Blog.objects(tags__0='a').count(), 1)
+        self.assertEqual(Blog.objects(tags__0='b').count(), 0)
+        self.assertEqual(Blog.objects(tags__1='a').count(), 0)
+        self.assertEqual(Blog.objects(tags__1='b').count(), 1)
 
         Blog.drop_collection()
 
@@ -229,13 +229,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(blog, blog1)
 
         query = Blog.objects(posts__1__comments__1__name='testb')
-        self.assertEqual(len(query), 2)
+        self.assertEqual(query.count(), 2)
 
         query = Blog.objects(posts__1__comments__1__name='testa')
-        self.assertEqual(len(query), 0)
+        self.assertEqual(query.count(), 0)
 
         query = Blog.objects(posts__0__comments__1__name='testa')
-        self.assertEqual(len(query), 0)
+        self.assertEqual(query.count(), 0)
 
         Blog.drop_collection()
 
@@ -344,7 +344,7 @@ class QuerySetTest(unittest.TestCase):
         # Update all of the first comments of second posts of all blogs
         blog = Blog.objects().update(set__posts__1__comments__0__name="testc")
         testc_blogs = Blog.objects(posts__1__comments__0__name="testc")
-        self.assertEqual(len(testc_blogs), 2)
+        self.assertEqual(testc_blogs.count(), 2)
 
         Blog.drop_collection()
 
@@ -355,7 +355,7 @@ class QuerySetTest(unittest.TestCase):
         blog = Blog.objects().update_one(
             set__posts__1__comments__1__name="testc")
         testc_blogs = Blog.objects(posts__1__comments__1__name="testc")
-        self.assertEqual(len(testc_blogs), 1)
+        self.assertEqual(testc_blogs.count(), 1)
 
         # Check that using this indexing syntax on a non-list fails
         def non_list_indexing():
@@ -793,7 +793,7 @@ class QuerySetTest(unittest.TestCase):
             number = IntField()
 
             def __repr__(self):
-               return "<Doc: %s>" % self.number
+                return "<Doc: %s>" % self.number
 
         Doc.drop_collection()
 
@@ -803,20 +803,17 @@ class QuerySetTest(unittest.TestCase):
         docs = Doc.objects.order_by('number')
 
         self.assertEqual(docs.count(), 1000)
-        self.assertEqual(len(docs), 1000)
 
         docs_string = "%s" % docs
         self.assertTrue("Doc: 0" in docs_string)
 
         self.assertEqual(docs.count(), 1000)
-        self.assertEqual(len(docs), 1000)
 
         # Limit and skip
         docs = docs[1:4]
         self.assertEqual('[<Doc: 1>, <Doc: 2>, <Doc: 3>]', "%s" % docs)
 
         self.assertEqual(docs.count(), 3)
-        self.assertEqual(len(docs), 3)
         for doc in docs:
             self.assertEqual('.. queryset mid-iteration ..', repr(docs))
 
@@ -945,8 +942,10 @@ class QuerySetTest(unittest.TestCase):
         Blog.drop_collection()
 
     def assertSequence(self, qs, expected):
+        qs = list(qs)
+        expected = list(expected)
         self.assertEqual(len(qs), len(expected))
-        for i in range(len(qs)):
+        for i in xrange(len(qs)):
             self.assertEqual(qs[i], expected[i])
 
     def test_ordering(self):
@@ -1124,13 +1123,13 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name="User B", age=30).save()
         self.Person(name="User C", age=40).save()
 
-        self.assertEqual(len(self.Person.objects), 3)
+        self.assertEqual(self.Person.objects.count(), 3)
 
         self.Person.objects(age__lt=30).delete()
-        self.assertEqual(len(self.Person.objects), 2)
+        self.assertEqual(self.Person.objects.count(), 2)
 
         self.Person.objects.delete()
-        self.assertEqual(len(self.Person.objects), 0)
+        self.assertEqual(self.Person.objects.count(), 0)
 
     def test_reverse_delete_rule_cascade(self):
         """Ensure cascading deletion of referring documents from the database.
@@ -2332,8 +2331,8 @@ class QuerySetTest(unittest.TestCase):
         t = Test(testdict={'f': 'Value'})
         t.save()
 
-        self.assertEqual(len(Test.objects(testdict__f__startswith='Val')), 1)
-        self.assertEqual(len(Test.objects(testdict__f='Value')), 1)
+        self.assertEqual(Test.objects(testdict__f__startswith='Val').count(), 1)
+        self.assertEqual(Test.objects(testdict__f='Value').count(), 1)
         Test.drop_collection()
 
         class Test(Document):
@@ -2342,8 +2341,8 @@ class QuerySetTest(unittest.TestCase):
         t = Test(testdict={'f': 'Value'})
         t.save()
 
-        self.assertEqual(len(Test.objects(testdict__f='Value')), 1)
-        self.assertEqual(len(Test.objects(testdict__f__startswith='Val')), 1)
+        self.assertEqual(Test.objects(testdict__f='Value').count(), 1)
+        self.assertEqual(Test.objects(testdict__f__startswith='Val').count(), 1)
         Test.drop_collection()
 
     def test_bulk(self):
@@ -2539,8 +2538,7 @@ class QuerySetTest(unittest.TestCase):
         # Finds only one point because only the first point is within 60km of
         # the reference point to the south.
         points = Point.objects(
-            location__within_spherical_distance=[[-122, 36.5], 60/earth_radius]
-        );
+            location__within_spherical_distance=[[-122, 36.5], 60/earth_radius])
         self.assertEqual(points.count(), 1)
         self.assertEqual(points[0].id, south_point.id)
 
@@ -2551,7 +2549,7 @@ class QuerySetTest(unittest.TestCase):
         """
         class CustomQuerySet(QuerySet):
             def not_empty(self):
-                return len(self) > 0
+                return self.count() > 0
 
         class Post(Document):
             meta = {'queryset_class': CustomQuerySet}
@@ -2572,7 +2570,7 @@ class QuerySetTest(unittest.TestCase):
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
-                return len(self) > 0
+                return self.count() > 0
 
         class CustomQuerySetManager(QuerySetManager):
             queryset_class = CustomQuerySet
@@ -2619,7 +2617,7 @@ class QuerySetTest(unittest.TestCase):
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
-                return len(self) > 0
+                return self.count() > 0
 
         class Base(Document):
             meta = {'abstract': True, 'queryset_class': CustomQuerySet}
@@ -2642,7 +2640,7 @@ class QuerySetTest(unittest.TestCase):
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
-                return len(self) > 0
+                return self.count() > 0
 
         class CustomQuerySetManager(QuerySetManager):
             queryset_class = CustomQuerySet
@@ -3044,14 +3042,14 @@ class QuerySetTest(unittest.TestCase):
 
         # Find all people in the collection
         people = self.Person.objects.scalar('name')
-        self.assertEqual(len(people), 2)
+        self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertEqual(results[0], "User A")
         self.assertEqual(results[1], "User B")
 
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20).scalar('name')
-        self.assertEqual(len(people), 1)
+        self.assertEqual(people.count(), 1)
         person = people.next()
         self.assertEqual(person, "User A")
 
@@ -3097,7 +3095,7 @@ class QuerySetTest(unittest.TestCase):
         for i in xrange(55):
             self.Person(name='A%s' % i, age=i).save()
 
-        self.assertEqual(len(self.Person.objects.scalar('name')), 55)
+        self.assertEqual(self.Person.objects.scalar('name').count(), 55)
         self.assertEqual("A0", "%s" % self.Person.objects.order_by('name').scalar('name').first())
         self.assertEqual("A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
         if PY3:
@@ -3314,7 +3312,7 @@ class QuerySetTest(unittest.TestCase):
         inner_count = 0
         inner_total_count = 0
 
-        self.assertEqual(len(users), 7)
+        self.assertEqual(users.count(), 7)
 
         for i, outer_user in enumerate(users):
             self.assertEqual(outer_user.name, names[i])
@@ -3322,17 +3320,17 @@ class QuerySetTest(unittest.TestCase):
             inner_count = 0
 
             # Calling len might disrupt the inner loop if there are bugs
-            self.assertEqual(len(users), 7)
+            self.assertEqual(users.count(), 7)
 
             for j, inner_user in enumerate(users):
                 self.assertEqual(inner_user.name, names[j])
                 inner_count += 1
                 inner_total_count += 1
 
-            self.assertEqual(inner_count, 7) # inner loop should always be executed seven times
+            self.assertEqual(inner_count, 7)  # inner loop should always be executed seven times
 
-        self.assertEqual(outer_count, 7) # outer loop should be executed seven times total
-        self.assertEqual(inner_total_count, 7 * 7) # inner loop should be executed fourtynine times total
+        self.assertEqual(outer_count, 7)  # outer loop should be executed seven times total
+        self.assertEqual(inner_total_count, 7 * 7)  # inner loop should be executed fourtynine times total
 
 if __name__ == '__main__':
     unittest.main()

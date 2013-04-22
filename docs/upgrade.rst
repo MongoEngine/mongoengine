@@ -79,6 +79,9 @@ the case and the data is set only in the ``document._data`` dictionary: ::
 Querysets
 =========
 
+Attack of the clones
+--------------------
+
 Querysets now return clones and should no longer be considered editable in
 place.  This brings us in line with how Django's querysets work and removes a
 long running gotcha.  If you edit your querysets inplace you will have to
@@ -97,6 +100,19 @@ update your code like so: ::
     # Update example b) chain the queryset:
     mammals = Animal.objects(type="mammal").filter(order="Carnivora")  # The final queryset is assgined to mammals
     [m for m in mammals]                                               # This will return all carnivores
+
+No more len
+-----------
+
+If you ever did len(queryset) it previously did a count() under the covers, this
+caused some unusual issues - so now it has been removed in favour of the
+explicit `queryset.count()` to update::
+
+    # Old code
+    len(Animal.objects(type="mammal"))
+
+    # New code
+    Animal.objects(type="mammal").count())
 
 Client
 ======

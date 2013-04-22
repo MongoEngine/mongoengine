@@ -268,8 +268,8 @@ class QTest(unittest.TestCase):
         self.Person(name='user3', age=30).save()
         self.Person(name='user4', age=40).save()
 
-        self.assertEqual(len(self.Person.objects(Q(age__in=[20]))), 2)
-        self.assertEqual(len(self.Person.objects(Q(age__in=[20, 30]))), 3)
+        self.assertEqual(self.Person.objects(Q(age__in=[20])).count(), 2)
+        self.assertEqual(self.Person.objects(Q(age__in=[20, 30])).count(), 3)
 
         # Test invalid query objs
         def wrong_query_objs():
@@ -311,8 +311,8 @@ class QTest(unittest.TestCase):
         BlogPost(tags=['python', 'mongo']).save()
         BlogPost(tags=['python']).save()
 
-        self.assertEqual(len(BlogPost.objects(Q(tags='mongo'))), 1)
-        self.assertEqual(len(BlogPost.objects(Q(tags='python'))), 2)
+        self.assertEqual(BlogPost.objects(Q(tags='mongo')).count(), 1)
+        self.assertEqual(BlogPost.objects(Q(tags='python')).count(), 2)
 
         BlogPost.drop_collection()
 

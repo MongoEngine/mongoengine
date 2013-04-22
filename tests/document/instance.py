@@ -65,11 +65,11 @@ class InstanceTest(unittest.TestCase):
         for _ in range(10):
             Log().save()
 
-        self.assertEqual(len(Log.objects), 10)
+        self.assertEqual(Log.objects.count(), 10)
 
         # Check that extra documents don't increase the size
         Log().save()
-        self.assertEqual(len(Log.objects), 10)
+        self.assertEqual(Log.objects.count(), 10)
 
         options = Log.objects._collection.options()
         self.assertEqual(options['capped'], True)
@@ -1040,9 +1040,9 @@ class InstanceTest(unittest.TestCase):
         """
         person = self.Person(name="Test User", age=30)
         person.save()
-        self.assertEqual(len(self.Person.objects), 1)
+        self.assertEqual(self.Person.objects.count(), 1)
         person.delete()
-        self.assertEqual(len(self.Person.objects), 0)
+        self.assertEqual(self.Person.objects.count(), 0)
 
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.
@@ -1356,12 +1356,12 @@ class InstanceTest(unittest.TestCase):
         post.save()
 
         reviewer.delete()
-        self.assertEqual(len(BlogPost.objects), 1)  # No effect on the BlogPost
+        self.assertEqual(BlogPost.objects.count(), 1)  # No effect on the BlogPost
         self.assertEqual(BlogPost.objects.get().reviewer, None)
 
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
-        self.assertEqual(len(BlogPost.objects), 0)
+        self.assertEqual(BlogPost.objects.count(), 0)
 
     def test_reverse_delete_rule_with_document_inheritance(self):
         """Ensure that a referenced document is also deleted upon deletion
@@ -1391,12 +1391,12 @@ class InstanceTest(unittest.TestCase):
         post.save()
 
         reviewer.delete()
-        self.assertEqual(len(BlogPost.objects), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)
         self.assertEqual(BlogPost.objects.get().reviewer, None)
 
         # Delete the Writer should lead to deletion of the BlogPost
         author.delete()
-        self.assertEqual(len(BlogPost.objects), 0)
+        self.assertEqual(BlogPost.objects.count(), 0)
 
     def test_reverse_delete_rule_cascade_and_nullify_complex_field(self):
         """Ensure that a referenced document is also deleted upon deletion for
@@ -1425,12 +1425,12 @@ class InstanceTest(unittest.TestCase):
 
         # Deleting the reviewer should have no effect on the BlogPost
         reviewer.delete()
-        self.assertEqual(len(BlogPost.objects), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)
         self.assertEqual(BlogPost.objects.get().reviewers, [])
 
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
-        self.assertEqual(len(BlogPost.objects), 0)
+        self.assertEqual(BlogPost.objects.count(), 0)
 
     def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
         ''' ensure the pre_delete signal is triggered upon a cascading deletion
@@ -1498,7 +1498,7 @@ class InstanceTest(unittest.TestCase):
 
         f.delete()
 
-        self.assertEqual(len(Bar.objects), 1)  # No effect on the BlogPost
+        self.assertEqual(Bar.objects.count(), 1)  # No effect on the BlogPost
         self.assertEqual(Bar.objects.get().foo, None)
 
     def test_invalid_reverse_delete_rules_raise_errors(self):
@@ -1549,7 +1549,7 @@ class InstanceTest(unittest.TestCase):
         # Delete the Person, which should lead to deletion of the BlogPost, and,
         # recursively to the Comment, too
         author.delete()
-        self.assertEqual(len(Comment.objects), 0)
+        self.assertEqual(Comment.objects.count(), 0)
 
         self.Person.drop_collection()
         BlogPost.drop_collection()
@@ -1576,16 +1576,16 @@ class InstanceTest(unittest.TestCase):
 
         # Delete the Person should be denied
         self.assertRaises(OperationError, author.delete)  # Should raise denied error
-        self.assertEqual(len(BlogPost.objects), 1)  # No objects may have been deleted
-        self.assertEqual(len(self.Person.objects), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)  # No objects may have been deleted
+        self.assertEqual(self.Person.objects.count(), 1)
 
         # Other users, that don't have BlogPosts must be removable, like normal
         author = self.Person(name='Another User')
         author.save()
 
-        self.assertEqual(len(self.Person.objects), 2)
+        self.assertEqual(self.Person.objects.count(), 2)
         author.delete()
-        self.assertEqual(len(self.Person.objects), 1)
+        self.assertEqual(self.Person.objects.count(), 1)
 
         self.Person.drop_collection()
         BlogPost.drop_collection()
