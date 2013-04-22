@@ -1857,6 +1857,8 @@ class InstanceTest(unittest.TestCase):
     def test_db_alias_propagates(self):
         """db_alias propagates?
         """
+        register_connection('testdb-1', 'mongoenginetest2')
+
         class A(Document):
             name = StringField()
             meta = {"db_alias": "testdb-1", "allow_inheritance": True}

@@ -340,7 +340,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._meta['collection'] = collection(new_class)
 
         # Provide a default queryset unless exists or one has been set
-        if not hasattr(new_class, 'objects'):
+        if 'objects' not in dir(new_class):
             new_class.objects = QuerySetManager()
 
         # Validate the fields and set primary key if needed
