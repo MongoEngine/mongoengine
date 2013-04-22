@@ -1,5 +1,5 @@
 import pymongo
-from pymongo import Connection, ReplicaSetConnection, uri_parser
+from pymongo import MongoClient, MongoReplicaSetClient, uri_parser
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -112,15 +112,15 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings['slaves'] = slaves
                 conn_settings.pop('read_preference', None)
 
-        connection_class = Connection
+        connection_class = MongoClient
         if 'replicaSet' in conn_settings:
             conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
-            # Discard port since it can't be used on ReplicaSetConnection
+            # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
             # Discard replicaSet if not base string
             if not isinstance(conn_settings['replicaSet'], basestring):
                 conn_settings.pop('replicaSet', None)
-            connection_class = ReplicaSetConnection
+            connection_class = MongoReplicaSetClient
 
         try:
             _connections[alias] = connection_class(**conn_settings)

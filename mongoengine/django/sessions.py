@@ -88,7 +88,7 @@ class SessionStore(SessionBase):
             s.session_data = self._get_session(no_load=must_create)
         s.expire_date = self.get_expiry_date()
         try:
-            s.save(force_insert=must_create, safe=True)
+            s.save(force_insert=must_create)
         except OperationError:
             if must_create:
                 raise CreateError

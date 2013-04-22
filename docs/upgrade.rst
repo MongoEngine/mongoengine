@@ -1,15 +1,15 @@
-=========
+#########
 Upgrading
-=========
+#########
 
 0.7 to 0.8
-==========
+**********
 
 Inheritance
------------
+===========
 
 Data Model
-~~~~~~~~~~
+----------
 
 The inheritance model has changed, we no longer need to store an array of
 :attr:`types` with the model we can just use the classname in :attr:`_cls`.
@@ -44,7 +44,7 @@ inherited classes like so: ::
 
 
 Document Definition
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 The default for inheritance has changed - its now off by default and
 :attr:`_cls` will not be stored automatically with the class.  So if you extend
@@ -77,7 +77,7 @@ the case and the data is set only in the ``document._data`` dictionary: ::
     AttributeError: 'Animal' object has no attribute 'size'
 
 Querysets
-~~~~~~~~~
+=========
 
 Querysets now return clones and should no longer be considered editable in
 place.  This brings us in line with how Django's querysets work and removes a
@@ -98,8 +98,47 @@ update your code like so: ::
     mammals = Animal.objects(type="mammal").filter(order="Carnivora")  # The final queryset is assgined to mammals
     [m for m in mammals]                                               # This will return all carnivores
 
+Client
+======
+PyMongo 2.4 came with a new connection client; MongoClient_ and started the
+depreciation of the old :class:`~pymongo.connection.Connection`. MongoEngine
+now uses the latest `MongoClient` for connections.  By default operations were
+`safe` but if you turned them off or used the connection directly this will
+impact your queries.
+
+Querysets
+---------
+
+Safe
+^^^^
+
+`safe` has been depreciated in the new MongoClient connection.  Please use
+`write_concern` instead.  As `safe` always defaulted as `True` normally no code
+change is required. To disable confirmation of the write just pass `{"w": 0}`
+eg: ::
+
+   # Old
+   Animal(name="Dinasour").save(safe=False)
+
+   # new code:
+   Animal(name="Dinasour").save(write_concern={"w": 0})
+
+Write Concern
+^^^^^^^^^^^^^
+
+`write_options` has been replaced with `write_concern` to bring it inline with
+pymongo. To upgrade simply rename any instances where you used the `write_option`
+keyword  to `write_concern` like so::
+
+   # Old code:
+   Animal(name="Dinasour").save(write_options={"w": 2})
+
+   # new code:
+   Animal(name="Dinasour").save(write_concern={"w": 2})
+
+
 Indexes
--------
+=======
 
 Index methods are no longer tied to querysets but rather to the document class.
 Although `QuerySet._ensure_indexes` and `QuerySet.ensure_index` still exist.
@@ -107,17 +146,19 @@ They should be replaced with :func:`~mongoengine.Document.ensure_indexes` /
 :func:`~mongoengine.Document.ensure_index`.
 
 SequenceFields
---------------
+==============
 
 :class:`~mongoengine.fields.SequenceField` now inherits from `BaseField` to
 allow flexible storage of the calculated value.  As such MIN and MAX settings
 are no longer handled.
 
+.. _MongoClient: http://blog.mongodb.org/post/36666163412/introducing-mongoclient
+
 0.6 to 0.7
-==========
+**********
 
 Cascade saves
--------------
+=============
 
 Saves will raise a `FutureWarning` if they cascade and cascade hasn't been set
 to True.  This is because in 0.8 it will default to False.  If you require
@@ -135,7 +176,7 @@ via `save` eg ::
     Remember: cascading saves **do not** cascade through lists.
 
 ReferenceFields
----------------
+===============
 
 ReferenceFields now can store references as ObjectId strings instead of DBRefs.
 This will become the default in 0.8 and if `dbref` is not set a `FutureWarning`
@@ -164,7 +205,7 @@ migrate ::
 
 
 item_frequencies
-----------------
+================
 
 In the 0.6 series we added support for null / zero / false values in
 item_frequencies.  A side effect was to return keys in the value they are
@@ -173,14 +214,14 @@ updated to handle native types rather than strings keys for the results of
 item frequency queries.
 
 BinaryFields
-------------
+============
 
 Binary fields have been updated so that they are native binary types.  If you
 previously were doing `str` comparisons with binary field values you will have
 to update and wrap the value in a `str`.
 
 0.5 to 0.6
-==========
+**********
 
 Embedded Documents - if you had a `pk` field you will have to rename it from
 `_id` to `pk` as pk is no longer a property of Embedded Documents.
@@ -200,13 +241,13 @@ don't define :attr:`allow_inheritance` in their meta.
 You may need to update pyMongo to 2.0 for use with Sharding.
 
 0.4 to 0.5
-===========
+**********
 
 There have been the following backwards incompatibilities from 0.4 to 0.5.  The
 main areas of changed are: choices in fields, map_reduce and collection names.
 
 Choice options:
----------------
+===============
 
 Are now expected to be an iterable of tuples, with  the first element in each
 tuple being the actual value to be stored. The second element is the
@@ -214,7 +255,7 @@ human-readable name for the option.
 
 
 PyMongo / MongoDB
------------------
+=================
 
 map reduce now requires pymongo 1.11+- The pymongo `merge_output` and
 `reduce_output` parameters, have been depreciated.
@@ -228,7 +269,7 @@ such the following have been changed:
 
 
 Default collection naming
--------------------------
+=========================
 
 Previously it was just lowercase, its now much more pythonic and readable as
 its lowercase and underscores, previously ::

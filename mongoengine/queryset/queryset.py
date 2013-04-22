@@ -221,7 +221,7 @@ class QuerySet(object):
         """
         return self._document(**kwargs).save()
 
-    def get_or_create(self, write_options=None, auto_save=True,
+    def get_or_create(self, write_concern=None, auto_save=True,
                       *q_objs, **query):
         """Retrieve unique object or create, if it doesn't exist. Returns a
         tuple of ``(object, created)``, where ``object`` is the retrieved or
@@ -239,9 +239,9 @@ class QuerySet(object):
             don't accidently duplicate data when using this method.  This is
             now scheduled to be removed before 1.0
 
-        :param write_options: optional extra keyword arguments used if we
+        :param write_concern: optional extra keyword arguments used if we
             have to create a new document.
-            Passes any write_options onto :meth:`~mongoengine.Document.save`
+            Passes any write_concern onto :meth:`~mongoengine.Document.save`
 
         :param auto_save: if the object is to be saved automatically if
             not found.
@@ -266,7 +266,7 @@ class QuerySet(object):
             doc = self._document(**query)
 
             if auto_save:
-                doc.save(write_options=write_options)
+                doc.save(write_concern=write_concern)
             return doc, True
 
     def first(self):
@@ -279,18 +279,13 @@ class QuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True, safe=False,
-               write_options=None):
+    def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
         """bulk insert documents
-
-        If ``safe=True`` and the operation is unsuccessful, an
-        :class:`~mongoengine.OperationError` will be raised.
 
         :param docs_or_doc: a document or list of documents to be inserted
         :param load_bulk (optional): If True returns the list of document
             instances
-        :param safe: check if the operation succeeded before returning
-        :param write_options: Extra keyword arguments are passed down to
+        :param write_concern: Extra keyword arguments are passed down to
                 :meth:`~pymongo.collection.Collection.insert`
                 which will be used as options for the resultant
                 ``getLastError`` command.  For example,
@@ -305,9 +300,8 @@ class QuerySet(object):
         """
         Document = _import_class('Document')
 
-        if not write_options:
-            write_options = {}
-        write_options.update({'safe': safe})
+        if not write_concern:
+            write_concern = {}
 
         docs = doc_or_docs
         return_one = False
@@ -319,7 +313,7 @@ class QuerySet(object):
         for doc in docs:
             if not isinstance(doc, self._document):
                 msg = ("Some documents inserted aren't instances of %s"
-                        % str(self._document))
+                       % str(self._document))
                 raise OperationError(msg)
             if doc.pk and not doc._created:
                 msg = "Some documents have ObjectIds use doc.update() instead"
@@ -328,7 +322,7 @@ class QuerySet(object):
 
         signals.pre_bulk_insert.send(self._document, documents=docs)
         try:
-            ids = self._collection.insert(raw, **write_options)
+            ids = self._collection.insert(raw, **write_concern)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
@@ -340,7 +334,7 @@ class QuerySet(object):
 
         if not load_bulk:
             signals.post_bulk_insert.send(
-                    self._document, documents=docs, loaded=False)
+                self._document, documents=docs, loaded=False)
             return return_one and ids[0] or ids
 
         documents = self.in_bulk(ids)
@@ -348,7 +342,7 @@ class QuerySet(object):
         for obj_id in ids:
             results.append(documents.get(obj_id))
         signals.post_bulk_insert.send(
-                self._document, documents=results, loaded=True)
+            self._document, documents=results, loaded=True)
         return return_one and results[0] or results
 
     def count(self):
@@ -358,10 +352,15 @@ class QuerySet(object):
             return 0
         return self._cursor.count(with_limit_and_skip=True)
 
-    def delete(self, safe=False):
+    def delete(self, write_concern=None):
         """Delete the documents matched by the query.
 
-        :param safe: check if the operation succeeded before returning
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
         """
         queryset = self.clone()
         doc = queryset._document
@@ -370,11 +369,14 @@ class QuerySet(object):
             signals.pre_delete.has_receivers_for(self._document) or
             signals.post_delete.has_receivers_for(self._document))
 
+        if not write_concern:
+            write_concern = {}
+
         # Handle deletes where skips or limits have been applied or has a
         # delete signal
         if queryset._skip or queryset._limit or has_delete_signal:
             for doc in queryset:
-                doc.delete(safe=safe)
+                doc.delete(write_concern=write_concern)
             return
 
         delete_rules = doc._meta.get('delete_rules') or {}
@@ -386,7 +388,7 @@ class QuerySet(object):
             if rule == DENY and document_cls.objects(
                     **{field_name + '__in': self}).count() > 0:
                 msg = ("Could not delete document (%s.%s refers to it)"
-                        % (document_cls.__name__, field_name))
+                       % (document_cls.__name__, field_name))
                 raise OperationError(msg)
 
         for rule_entry in delete_rules:
@@ -396,36 +398,38 @@ class QuerySet(object):
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
                 if (doc != document_cls and ref_q_count > 0
-                    or (doc == document_cls and ref_q_count > 0)):
-                    ref_q.delete(safe=safe)
+                   or (doc == document_cls and ref_q_count > 0)):
+                    ref_q.delete(write_concern=write_concern)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
-                        safe_update=safe,
-                        **{'unset__%s' % field_name: 1})
+                    write_concern=write_concern, **{'unset__%s' % field_name: 1})
             elif rule == PULL:
                 document_cls.objects(**{field_name + '__in': self}).update(
-                        safe_update=safe,
-                        **{'pull_all__%s' % field_name: self})
+                    write_concern=write_concern,
+                    **{'pull_all__%s' % field_name: self})
 
-        queryset._collection.remove(queryset._query, safe=safe)
+        queryset._collection.remove(queryset._query, write_concern=write_concern)
 
-    def update(self, safe_update=True, upsert=False, multi=True,
-               write_options=None, **update):
-        """Perform an atomic update on the fields matched by the query. When
-        ``safe_update`` is used, the number of affected documents is returned.
+    def update(self, upsert=False, multi=True, write_concern=None, **update):
+        """Perform an atomic update on the fields matched by the query.
 
-        :param safe_update: check if the operation succeeded before returning
         :param upsert: Any existing document with that "_id" is overwritten.
-        :param write_options: extra keyword arguments for
-            :meth:`~pymongo.collection.Collection.update`
+        :param multi: Update multiple documents.
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
         """
         if not update:
             raise OperationError("No update parameters, would remove data")
 
-        if not write_options:
-            write_options = {}
+        if not write_concern:
+            write_concern = {}
 
         queryset = self.clone()
         query = queryset._query
@@ -441,8 +445,7 @@ class QuerySet(object):
 
         try:
             ret = queryset._collection.update(query, update, multi=multi,
-                                              upsert=upsert, safe=safe_update,
-                                              **write_options)
+                                              upsert=upsert, **write_concern)
             if ret is not None and 'n' in ret:
                 return ret['n']
         except pymongo.errors.OperationFailure, err:
@@ -451,21 +454,21 @@ class QuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-    def update_one(self, safe_update=True, upsert=False, write_options=None,
-                   **update):
-        """Perform an atomic update on first field matched by the query. When
-        ``safe_update`` is used, the number of affected documents is returned.
+    def update_one(self, upsert=False, write_concern=None, **update):
+        """Perform an atomic update on first field matched by the query.
 
-        :param safe_update: check if the operation succeeded before returning
         :param upsert: Any existing document with that "_id" is overwritten.
-        :param write_options: extra keyword arguments for
-            :meth:`~pymongo.collection.Collection.update`
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
         """
-        return self.update(safe_update=True, upsert=upsert, multi=False,
-                           write_options=None, **update)
+        return self.update(upsert=upsert, multi=False, write_concern=None, **update)
 
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
@@ -498,7 +501,7 @@ class QuerySet(object):
         if self._scalar:
             for doc in docs:
                 doc_map[doc['_id']] = self._get_scalar(
-                        self._document._from_son(doc))
+                    self._document._from_son(doc))
         elif self._as_pymongo:
             for doc in docs:
                 doc_map[doc['_id']] = self._get_as_pymongo(doc)
@@ -523,10 +526,10 @@ class QuerySet(object):
         c = self.__class__(self._document, self._collection_obj)
 
         copy_props = ('_mongo_query', '_initial_query', '_none', '_query_obj',
-            '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
-            '_timeout', '_class_check', '_slave_okay', '_read_preference',
-            '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
-            '_limit', '_skip', '_hint', '_auto_dereference')
+                      '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
+                      '_timeout', '_class_check', '_slave_okay', '_read_preference',
+                      '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
+                      '_limit', '_skip', '_hint', '_auto_dereference')
 
         for prop in copy_props:
             val = getattr(self, prop)

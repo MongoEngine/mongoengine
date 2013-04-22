@@ -142,7 +142,7 @@ class Document(BaseDocument):
                        options.get('size') != max_size:
                         msg = (('Cannot create collection "%s" as a capped '
                                'collection as it already exists')
-                                % cls._collection)
+                               % cls._collection)
                         raise InvalidCollectionError(msg)
                 else:
                     # Create the collection as a capped collection
@@ -158,28 +158,24 @@ class Document(BaseDocument):
                 cls.ensure_indexes()
         return cls._collection
 
-    def save(self, safe=True, force_insert=False, validate=True, clean=True,
-             write_options=None,  cascade=None, cascade_kwargs=None,
+    def save(self, force_insert=False, validate=True, clean=True,
+             write_concern=None,  cascade=None, cascade_kwargs=None,
              _refs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
 
-        If ``safe=True`` and the operation is unsuccessful, an
-        :class:`~mongoengine.OperationError` will be raised.
-
-        :param safe: check if the operation succeeded before returning
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
         :param clean: call the document clean method, requires `validate` to be
             True.
-        :param write_options: Extra keyword arguments are passed down to
+        :param write_concern: Extra keyword arguments are passed down to
             :meth:`~pymongo.collection.Collection.save` OR
             :meth:`~pymongo.collection.Collection.insert`
             which will be used as options for the resultant
             ``getLastError`` command.  For example,
-            ``save(..., write_options={w: 2, fsync: True}, ...)`` will
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
         :param cascade: Sets the flag for cascading saves.  You can set a
@@ -205,8 +201,8 @@ class Document(BaseDocument):
         if validate:
             self.validate(clean=clean)
 
-        if not write_options:
-            write_options = {}
+        if not write_concern:
+            write_concern = {}
 
         doc = self.to_mongo()
 
@@ -216,11 +212,9 @@ class Document(BaseDocument):
             collection = self._get_collection()
             if created:
                 if force_insert:
-                    object_id = collection.insert(doc, safe=safe,
-                                                  **write_options)
+                    object_id = collection.insert(doc, **write_concern)
                 else:
-                    object_id = collection.save(doc, safe=safe,
-                                                **write_options)
+                    object_id = collection.save(doc, **write_concern)
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
@@ -247,7 +241,7 @@ class Document(BaseDocument):
                     update_query["$unset"] = removals
                 if updates or removals:
                     last_error = collection.update(select_dict, update_query,
-                                    upsert=upsert, safe=safe, **write_options)
+                                                   upsert=upsert, **write_concern)
                     created = is_new_object(last_error)
 
             warn_cascade = not cascade and 'cascade' not in self._meta
@@ -255,10 +249,9 @@ class Document(BaseDocument):
                        if cascade is None else cascade)
             if cascade:
                 kwargs = {
-                    "safe": safe,
                     "force_insert": force_insert,
                     "validate": validate,
-                    "write_options": write_options,
+                    "write_concern": write_concern,
                     "cascade": cascade
                 }
                 if cascade_kwargs:  # Allow granular control over cascades
@@ -305,7 +298,7 @@ class Document(BaseDocument):
             if ref and ref_id not in _refs:
                 if warn_cascade:
                     msg = ("Cascading saves will default to off in 0.8, "
-                          "please  explicitly set `.save(cascade=True)`")
+                           "please  explicitly set `.save(cascade=True)`")
                     warnings.warn(msg, FutureWarning)
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
@@ -344,16 +337,21 @@ class Document(BaseDocument):
         # Need to add shard key to query, or you get an error
         return self._qs.filter(**self._object_key).update_one(**kwargs)
 
-    def delete(self, safe=False):
+    def delete(self, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
-        :param safe: check if the operation succeeded before returning
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
         """
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self._qs.filter(**self._object_key).delete(safe=safe)
+            self._qs.filter(**self._object_key).delete(write_concern=write_concern)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
@@ -428,9 +426,8 @@ class Document(BaseDocument):
         .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self._qs.filter(
-                **{id_field: self[id_field]}
-              ).limit(1).select_related(max_depth=max_depth)
+        obj = self._qs.filter(**{id_field: self[id_field]}
+                              ).limit(1).select_related(max_depth=max_depth)
         if obj:
             obj = obj[0]
         else:

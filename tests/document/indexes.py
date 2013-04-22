@@ -314,19 +314,27 @@ class IndexesTest(unittest.TestCase):
         """
         class User(Document):
             meta = {
+                'allow_inheritance': True,
                 'indexes': ['user_guid'],
                 'auto_create_index': False
             }
             user_guid = StringField(required=True)
 
+        class MongoUser(User):
+            pass
+
         User.drop_collection()
 
-        u = User(user_guid='123')
-        u.save()
+        User(user_guid='123').save()
+        MongoUser(user_guid='123').save()
 
-        self.assertEqual(1, User.objects.count())
+        self.assertEqual(2, User.objects.count())
         info = User.objects._collection.index_information()
         self.assertEqual(info.keys(), ['_id_'])
+
+        User.ensure_indexes()
+        info = User.objects._collection.index_information()
+        self.assertEqual(info.keys(), ['_cls_1_user_guid_1', '_id_'])
         User.drop_collection()
 
     def test_embedded_document_index(self):

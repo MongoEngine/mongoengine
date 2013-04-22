@@ -278,24 +278,24 @@ class QuerySetTest(unittest.TestCase):
         query = query.filter(boolfield=True)
         self.assertEquals(query.count(), 1)
 
-    def test_update_write_options(self):
-        """Test that passing write_options works"""
+    def test_update_write_concern(self):
+        """Test that passing write_concern works"""
 
         self.Person.drop_collection()
 
-        write_options = {"fsync": True}
+        write_concern = {"fsync": True}
 
         author, created = self.Person.objects.get_or_create(
-            name='Test User', write_options=write_options)
-        author.save(write_options=write_options)
+            name='Test User', write_concern=write_concern)
+        author.save(write_concern=write_concern)
 
         self.Person.objects.update(set__name='Ross',
-                                    write_options=write_options)
+                                   write_concern=write_concern)
 
         author = self.Person.objects.first()
         self.assertEqual(author.name, 'Ross')
 
-        self.Person.objects.update_one(set__name='Test User', write_options=write_options)
+        self.Person.objects.update_one(set__name='Test User', write_concern=write_concern)
         author = self.Person.objects.first()
         self.assertEqual(author.name, 'Test User')
 
@@ -592,10 +592,17 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            self.assertEqual(q, 1) # 1 for the insert
+            self.assertEqual(q, 1)  # 1 for the insert
+
+        Blog.drop_collection()
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            Blog.ensure_indexes()
+            self.assertEqual(q, 1)
 
             Blog.objects.insert(blogs)
-            self.assertEqual(q, 3) # 1 for insert, and 1 for in bulk fetch (3 in total)
+            self.assertEqual(q, 3)  # 1 for insert, and 1 for in bulk fetch (3 in total)
 
         Blog.drop_collection()
 
@@ -619,7 +626,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(OperationError, throw_operation_error)
 
         # Test can insert new doc
-        new_post = Blog(title="code", id=ObjectId())
+        new_post = Blog(title="code123", id=ObjectId())
         Blog.objects.insert(new_post)
 
         # test handles other classes being inserted
@@ -655,13 +662,13 @@ class QuerySetTest(unittest.TestCase):
         Blog.objects.insert([blog1, blog2])
 
         def throw_operation_error_not_unique():
-            Blog.objects.insert([blog2, blog3], safe=True)
+            Blog.objects.insert([blog2, blog3])
 
         self.assertRaises(NotUniqueError, throw_operation_error_not_unique)
         self.assertEqual(Blog.objects.count(), 2)
 
-        Blog.objects.insert([blog2, blog3], write_options={
-                                                'continue_on_error': True})
+        Blog.objects.insert([blog2, blog3], write_concern={"w": 0,
+                            'continue_on_error': True})
         self.assertEqual(Blog.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):

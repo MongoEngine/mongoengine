@@ -29,7 +29,7 @@ name - just supply the uri as the :attr:`host` to
 ReplicaSets
 ===========
 
-MongoEngine now supports :func:`~pymongo.replica_set_connection.ReplicaSetConnection`
+MongoEngine supports :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
 to use them please use a URI style connection and provide the `replicaSet` name in the
 connection kwargs.
 
