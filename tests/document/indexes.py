@@ -334,7 +334,7 @@ class IndexesTest(unittest.TestCase):
 
         User.ensure_indexes()
         info = User.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_cls_1_user_guid_1', '_id_'])
+        self.assertEqual(sorted(info.keys()), ['_cls_1_user_guid_1', '_id_'])
         User.drop_collection()
 
     def test_embedded_document_index(self):
