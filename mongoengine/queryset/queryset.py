@@ -342,12 +342,16 @@ class QuerySet(object):
             self._document, documents=results, loaded=True)
         return return_one and results[0] or results
 
-    def count(self):
+    def count(self, with_limit_and_skip=True):
         """Count the selected elements in the query.
+
+        :param with_limit_and_skip (optional): take any :meth:`limit` or
+            :meth:`skip` that has been applied to this cursor into account when
+            getting the count
         """
         if self._limit == 0:
             return 0
-        return self._cursor.count(with_limit_and_skip=True)
+        return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
     def delete(self, write_concern=None):
         """Delete the documents matched by the query.

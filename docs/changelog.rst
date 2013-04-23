@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Added with_limit_and_skip support to count() (#235)
 - Removed __len__ from queryset (#247)
 - Objects queryset manager now inherited (#256)
 - Updated connection to use MongoClient (#262, #274)

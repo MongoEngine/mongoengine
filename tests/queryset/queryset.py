@@ -20,7 +20,7 @@ from mongoengine.python_support import PY3
 from mongoengine.context_managers import query_counter
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
-                                  QueryFieldList, queryset_manager)
+                                  queryset_manager)
 from mongoengine.errors import InvalidQueryError
 
 __all__ = ("QuerySetTest",)
@@ -65,10 +65,8 @@ class QuerySetTest(unittest.TestCase):
     def test_find(self):
         """Ensure that a query returns a valid set of results.
         """
-        person1 = self.Person(name="User A", age=20)
-        person1.save()
-        person2 = self.Person(name="User B", age=30)
-        person2.save()
+        self.Person(name="User A", age=20).save()
+        self.Person(name="User B", age=30).save()
 
         # Find all people in the collection
         people = self.Person.objects
@@ -338,21 +336,20 @@ class QuerySetTest(unittest.TestCase):
         comment2 = Comment(name='testb')
         post1 = Post(comments=[comment1, comment2])
         post2 = Post(comments=[comment2, comment2])
-        blog1 = Blog.objects.create(posts=[post1, post2])
-        blog2 = Blog.objects.create(posts=[post2, post1])
+        Blog.objects.create(posts=[post1, post2])
+        Blog.objects.create(posts=[post2, post1])
 
         # Update all of the first comments of second posts of all blogs
-        blog = Blog.objects().update(set__posts__1__comments__0__name="testc")
+        Blog.objects().update(set__posts__1__comments__0__name="testc")
         testc_blogs = Blog.objects(posts__1__comments__0__name="testc")
         self.assertEqual(testc_blogs.count(), 2)
 
         Blog.drop_collection()
-
-        blog1 = Blog.objects.create(posts=[post1, post2])
-        blog2 = Blog.objects.create(posts=[post2, post1])
+        Blog.objects.create(posts=[post1, post2])
+        Blog.objects.create(posts=[post2, post1])
 
         # Update only the first blog returned by the query
-        blog = Blog.objects().update_one(
+        Blog.objects().update_one(
             set__posts__1__comments__1__name="testc")
         testc_blogs = Blog.objects(posts__1__comments__1__name="testc")
         self.assertEqual(testc_blogs.count(), 1)
@@ -2661,6 +2658,19 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
+    def test_count_limit_and_skip(self):
+        class Post(Document):
+            title = StringField()
+
+        Post.drop_collection()
+
+        for i in xrange(10):
+            Post(title="Post %s" % i).save()
+
+        self.assertEqual(5, Post.objects.limit(5).skip(5).count())
+
+        self.assertEqual(10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False))
+
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """
@@ -2669,10 +2679,8 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        post1 = Post(title="Post 1")
-        post1.save()
-        post2 = Post(title="Post 2")
-        post2.save()
+        Post(title="Post 1").save()
+        Post(title="Post 2").save()
 
         posts = Post.objects.all()[0:1]
         self.assertEqual(len(list(posts())), 1)
@@ -3205,20 +3213,18 @@ class QuerySetTest(unittest.TestCase):
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
             datetime_field = DateTimeField(default=datetime.now)
-            embedded_document_field = EmbeddedDocumentField(EmbeddedDoc,
-                                        default=lambda: EmbeddedDoc())
+            embedded_document_field = EmbeddedDocumentField(
+                EmbeddedDoc, default=lambda: EmbeddedDoc())
             list_field = ListField(default=lambda: [1, 2, 3])
             dict_field = DictField(default=lambda: {"hello": "world"})
             objectid_field = ObjectIdField(default=ObjectId)
-            reference_field = ReferenceField(Simple, default=lambda:
-                                                        Simple().save())
+            reference_field = ReferenceField(Simple, default=lambda: Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
             complex_datetime_field = ComplexDateTimeField(default=datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
-            generic_reference_field = GenericReferenceField(
-                                            default=lambda: Simple().save())
+            generic_reference_field = GenericReferenceField(default=lambda: Simple().save())
             sorted_list_field = SortedListField(IntField(),
                                                 default=lambda: [1, 2, 3])
             email_field = EmailField(default="ross@example.com")
@@ -3226,7 +3232,7 @@ class QuerySetTest(unittest.TestCase):
             sequence_field = SequenceField()
             uuid_field = UUIDField(default=uuid.uuid4)
             generic_embedded_document_field = GenericEmbeddedDocumentField(
-                                        default=lambda: EmbeddedDoc())
+                default=lambda: EmbeddedDoc())
 
         Simple.drop_collection()
         Doc.drop_collection()
