@@ -16,6 +16,7 @@ from mongoengine.connection import get_db
 from mongoengine.python_support import PY3, b, StringIO
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
+TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
 
 
 class FileTest(unittest.TestCase):
@@ -217,6 +218,19 @@ class FileTest(unittest.TestCase):
         self.assertEqual(marmot.photo.content_type, 'image/jpeg')
         self.assertEqual(marmot.photo.foo, 'bar')
 
+    def test_file_reassigning(self):
+        class TestFile(Document):
+            the_file = FileField()
+        TestFile.drop_collection()
+
+        test_file = TestFile(the_file=open(TEST_IMAGE_PATH, 'rb')).save()
+        self.assertEqual(test_file.the_file.get().length, 8313)
+
+        test_file = TestFile.objects.first()
+        test_file.the_file = open(TEST_IMAGE2_PATH, 'rb')
+        test_file.save()
+        self.assertEqual(test_file.the_file.get().length, 4971)
+
     def test_file_boolean(self):
         """Ensure that a boolean test of a FileField indicates its presence
         """
@@ -263,6 +277,22 @@ class FileTest(unittest.TestCase):
         self.assertEqual(h, 76)
 
         t.image.delete()
+
+    def test_image_field_reassigning(self):
+        if PY3:
+            raise SkipTest('PIL does not have Python 3 support')
+
+        class TestFile(Document):
+            the_file = ImageField()
+        TestFile.drop_collection()
+
+        test_file = TestFile(the_file=open(TEST_IMAGE_PATH, 'rb')).save()
+        self.assertEqual(test_file.the_file.size, (371, 76))
+
+        test_file = TestFile.objects.first()
+        test_file.the_file = open(TEST_IMAGE2_PATH, 'rb')
+        test_file.save()
+        self.assertEqual(test_file.the_file.size, (45, 101))
 
     def test_image_field_resize(self):
         if PY3:

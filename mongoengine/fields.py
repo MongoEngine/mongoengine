@@ -1165,13 +1165,11 @@ class FileField(BaseField):
                     grid_file.delete()
                 except:
                     pass
-                # Create a new file with the new data
-                grid_file.put(value)
-            else:
-                # Create a new proxy object as we don't already have one
-                instance._data[key] = self.proxy_class(key=key, instance=instance,
-                                                       collection_name=self.collection_name)
-                instance._data[key].put(value)
+
+            # Create a new proxy object as we don't already have one
+            instance._data[key] = self.proxy_class(key=key, instance=instance,
+                                                   collection_name=self.collection_name)
+            instance._data[key].put(value)
         else:
             instance._data[key] = value
 
@@ -1208,6 +1206,8 @@ class ImageGridFsProxy(GridFSProxy):
         Insert a image in database
         applying field properties (size, thumbnail_size)
         """
+        if not self.instance:
+            import ipdb; ipdb.set_trace();
         field = self.instance._fields[self.key]
 
         try:
@@ -1235,10 +1235,7 @@ class ImageGridFsProxy(GridFSProxy):
             size = field.thumbnail_size
 
             if size['force']:
-                thumbnail = ImageOps.fit(img,
-                                   (size['width'],
-                                    size['height']),
-                                   Image.ANTIALIAS)
+                thumbnail = ImageOps.fit(img, (size['width'], size['height']), Image.ANTIALIAS)
             else:
                 thumbnail = img.copy()
                 thumbnail.thumbnail((size['width'],
@@ -1246,8 +1243,7 @@ class ImageGridFsProxy(GridFSProxy):
                                     Image.ANTIALIAS)
 
         if thumbnail:
-            thumb_id = self._put_thumbnail(thumbnail,
-                                          img_format)
+            thumb_id = self._put_thumbnail(thumbnail, img_format)
         else:
             thumb_id = None
 
@@ -1350,7 +1346,7 @@ class ImageField(FileField):
             if isinstance(att, (tuple, list)):
                 if PY3:
                     value = dict(itertools.zip_longest(params_size, att,
-                                                        fillvalue=None))
+                                                       fillvalue=None))
                 else:
                     value = dict(map(None, params_size, att))
 
