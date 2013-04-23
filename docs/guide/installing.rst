@@ -22,10 +22,10 @@ Alternatively, if you don't have setuptools installed, `download it from PyPi
     $ python setup.py install
 
 To use the bleeding-edge version of MongoEngine, you can get the source from
-`GitHub <http://github.com/hmarr/mongoengine/>`_ and install it as above:
+`GitHub <http://github.com/mongoengine/mongoengine/>`_ and install it as above:
 
 .. code-block:: console
 
-    $ git clone git://github.com/hmarr/mongoengine
+    $ git clone git://github.com/mongoengine/mongoengine
     $ cd mongoengine
     $ python setup.py install
