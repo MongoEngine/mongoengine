@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Added SequenceField.set_next_value(value) helper (#159)
 - Updated .only() behaviour - now like exclude it is chainable (#202)
 - Added with_limit_and_skip support to count() (#235)
 - Removed __len__ from queryset (#247)

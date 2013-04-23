@@ -1408,13 +1408,13 @@ class SequenceField(BaseField):
     COLLECTION_NAME = 'mongoengine.counters'
     VALUE_DECORATOR = int
 
-    def __init__(self, collection_name=None, db_alias=None,
-            sequence_name=None, value_decorator=None, *args, **kwargs):
+    def __init__(self, collection_name=None, db_alias=None, sequence_name=None,
+                 value_decorator=None, *args, **kwargs):
         self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
         self.value_decorator = (callable(value_decorator) and
-            value_decorator or self.VALUE_DECORATOR)
+                                value_decorator or self.VALUE_DECORATOR)
         return super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate(self):
@@ -1430,6 +1430,17 @@ class SequenceField(BaseField):
                                              upsert=True)
         return self.value_decorator(counter['next'])
 
+    def set_next_value(self, value):
+        """Helper method to set the next sequence value"""
+        sequence_name = self.get_sequence_name()
+        sequence_id = "%s.%s" % (sequence_name, self.name)
+        collection = get_db(alias=self.db_alias)[self.collection_name]
+        counter = collection.find_and_modify(query={"_id": sequence_id},
+                                             update={"$set": {"next": value}},
+                                             new=True,
+                                             upsert=True)
+        return self.value_decorator(counter['next'])
+
     def get_sequence_name(self):
         if self.sequence_name:
             return self.sequence_name
@@ -1438,7 +1449,7 @@ class SequenceField(BaseField):
             return owner._get_collection_name()
         else:
             return ''.join('_%s' % c if c.isupper() else c
-                            for c in owner._class_name).strip('_').lower()
+                           for c in owner._class_name).strip('_').lower()
 
     def __get__(self, instance, owner):
         value = super(SequenceField, self).__get__(instance, owner)
