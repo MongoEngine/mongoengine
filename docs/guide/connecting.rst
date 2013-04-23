@@ -74,9 +74,13 @@ to point across databases and collections.  Below is an example schema, using
 Switch Database Context Manager
 ===============================
 
-Sometimes you might want to switch the database to query against for a class.
+Sometimes you may want to switch the database to query against for a class,
+for example, you archive older data into a separate database for performance
+reasons.
+
 The :class:`~mongoengine.context_managers.switch_db` context manager allows
-you to change the database alias for a class eg ::
+you to change the database alias for a given class allowing quick and easy
+access to the same User document across databases.eg ::
 
         from mongoengine.context_managers import switch_db
 
@@ -87,3 +91,6 @@ you to change the database alias for a class eg ::
 
         with switch_db(User, 'archive-user-db') as User:
             User(name="Ross").save()  # Saves the 'archive-user-db'
+
+.. note:: Make sure any aliases have been registered with
+    :func:`~mongoengine.register_connection` before using the context manager.

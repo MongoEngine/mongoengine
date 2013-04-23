@@ -7,7 +7,7 @@ MongoDB. To install it, simply run
 
 .. code-block:: console
 
-    # pip install -U mongoengine
+    $ pip install -U mongoengine
 
 :doc:`tutorial`
   Start here for a quick overview.
