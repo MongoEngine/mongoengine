@@ -126,7 +126,9 @@ to `.exclude()`.  Chaining `.only()` calls will increase the fields required::
 
     # New code
     Animal.objects().only('name')
-    Animal.objects().only(['name']).only('order')  # Would return `name` and `order`
+
+    # Note:
+    Animal.objects().only(['name']).only('order')  # Now returns `name` *and* `order`
 
 
 Client
