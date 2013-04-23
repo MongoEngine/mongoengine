@@ -450,7 +450,7 @@ modifier comes before the field, not after it::
     >>> post.tags
     ['database', 'nosql']
 
-.. note ::
+.. note::
 
     In version 0.5 the :meth:`~mongoengine.Document.save` runs atomic updates
     on changed documents by tracking changes to that document.
@@ -466,7 +466,7 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     >>> post.tags
     ['database', 'mongodb']
 
-.. note ::
+.. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
     operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.

@@ -4,7 +4,6 @@ import itertools
 import re
 import time
 import urllib2
-import urlparse
 import uuid
 import warnings
 from operator import itemgetter
@@ -16,7 +15,7 @@ from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField,
-                  get_document, BaseDocument, ALLOW_INHERITANCE)
+                  get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
@@ -27,13 +26,17 @@ except ImportError:
     Image = None
     ImageOps = None
 
-__all__ = ['StringField', 'IntField', 'LongField', 'FloatField', 'BooleanField',
-           'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
-           'ObjectIdField', 'ReferenceField', 'ValidationError', 'MapField',
-           'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
-           'GenericReferenceField', 'FileField', 'BinaryField',
-           'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
-           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
+__all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
+           'FloatField',  'DecimalField',  'BooleanField',  'DateTimeField',
+           'ComplexDateTimeField',  'EmbeddedDocumentField', 'ObjectIdField',
+           'GenericEmbeddedDocumentField',  'DynamicField',  'ListField',
+           'SortedListField',  'DictField',  'MapField',  'ReferenceField',
+           'GenericReferenceField',  'BinaryField',  'GridFSError',
+           'GridFSProxy',  'FileField',  'ImageGridFsProxy',
+           'ImproperlyConfigured',  'ImageField',  'GeoPointField',
+           'SequenceField',  'UUIDField']
+
+
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -351,7 +354,7 @@ class DateTimeField(BaseField):
         kwargs = {'microsecond': usecs}
         try:  # Seconds are optional, so try converting seconds first.
             return datetime.datetime(*time.strptime(value,
-                                      '%Y-%m-%d %H:%M:%S')[:6], **kwargs)
+                                     '%Y-%m-%d %H:%M:%S')[:6], **kwargs)
         except ValueError:
             try:  # Try without seconds.
                 return datetime.datetime(*time.strptime(value,

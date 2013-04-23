@@ -205,7 +205,7 @@ via `save` eg ::
     # Or in code:
     my_document.save(cascade=True)
 
-.. note ::
+.. note::
     Remember: cascading saves **do not** cascade through lists.
 
 ReferenceFields
