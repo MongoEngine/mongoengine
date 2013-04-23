@@ -114,6 +114,21 @@ explicit `queryset.count()` to update::
     # New code
     Animal.objects(type="mammal").count())
 
+
+.only() now inline with .exclude()
+----------------------------------
+
+The behaviour of `.only()` was highly ambious, now it works in the mirror fashion
+to `.exclude()`.  Chaining `.only()` calls will increase the fields required::
+
+    # Old code
+    Animal.objects().only(['type', 'name']).only('name', 'order')  # Would have returned just `name`
+
+    # New code
+    Animal.objects().only('name')
+    Animal.objects().only(['name']).only('order')  # Would return `name` and `order`
+
+
 Client
 ======
 PyMongo 2.4 came with a new connection client; MongoClient_ and started the

@@ -624,18 +624,34 @@ class QuerySet(object):
 
             post = BlogPost.objects(...).only("title", "author.name")
 
+        .. note :: `only()` is chainable and will perform a union ::
+            So with the following it will fetch both: `title` and `author.name`::
+
+                post = BlogPost.objects.only("title").only("author.name")
+
+        :func:`~mongoengine.queryset.QuerySet.all_fields` will reset any
+        field filters.
+
         :param fields: fields to include
 
         .. versionadded:: 0.3
         .. versionchanged:: 0.5 - Added subfield support
         """
         fields = dict([(f, QueryFieldList.ONLY) for f in fields])
-        return self.fields(**fields)
+        return self.fields(True, **fields)
 
     def exclude(self, *fields):
         """Opposite to .only(), exclude some document's fields. ::
 
             post = BlogPost.objects(...).exclude("comments")
+
+        .. note :: `exclude()` is chainable and will perform a union ::
+            So with the following it will exclude both: `title` and `author.name`::
+
+                post = BlogPost.objects.exclude("title").exclude("author.name")
+
+        :func:`~mongoengine.queryset.QuerySet.all_fields` will reset any
+        field filters.
 
         :param fields: fields to exclude
 
@@ -644,7 +660,7 @@ class QuerySet(object):
         fields = dict([(f, QueryFieldList.EXCLUDE) for f in fields])
         return self.fields(**fields)
 
-    def fields(self, **kwargs):
+    def fields(self, _only_called=False, **kwargs):
         """Manipulate how you load this document's fields.  Used by `.only()`
         and `.exclude()` to manipulate which fields to retrieve.  Fields also
         allows for a greater level of control for example:
@@ -678,7 +694,8 @@ class QuerySet(object):
         for value, group in itertools.groupby(fields, lambda x: x[1]):
             fields = [field for field, value in group]
             fields = queryset._fields_to_dbfields(fields)
-            queryset._loaded_fields += QueryFieldList(fields, value=value)
+            queryset._loaded_fields += QueryFieldList(fields, value=value, _only_called=_only_called)
+
         return queryset
 
     def all_fields(self):
