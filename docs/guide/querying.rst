@@ -392,6 +392,7 @@ You can also turn off all dereferencing for a fixed period by using the
 
 Advanced queries
 ================
+
 Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
 arguments can't fully express the query you want to use -- for example if you
 need to combine a number of constraints using *and* and *or*. This is made
@@ -409,6 +410,11 @@ calling it with keyword arguments::
 
     # Get top posts
     Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
+
+.. warning:: You have to use bitwise operators.  You cannot use ``or``, ``and``
+    to combine queries as ``Q(a=a) or Q(b=b)`` is not the same as
+    ``Q(a=a) | Q(b=b)``. As ``Q(a=a)`` equates to true ``Q(a=a) or Q(b=b)`` is
+    the same as ``Q(a=a)``.
 
 .. _guide-atomic-updates:
 
