@@ -72,6 +72,7 @@ class SignalTests(unittest.TestCase):
                 else:
                     signal_output.append('Not loaded')
         self.Author = Author
+        Author.drop_collection()
 
         class Another(Document):
             name = StringField()
@@ -110,6 +111,7 @@ class SignalTests(unittest.TestCase):
                 signal_output.append('post_delete Another signal, %s' % document)
 
         self.Another = Another
+        Another.drop_collection()
 
         class ExplicitId(Document):
             id = IntField(primary_key=True)
@@ -123,7 +125,8 @@ class SignalTests(unittest.TestCase):
                         signal_output.append('Is updated')
 
         self.ExplicitId = ExplicitId
-        self.ExplicitId.objects.delete()
+        ExplicitId.drop_collection()
+
         # Save up the number of connected signals so that we can check at the
         # end that all the signals we register get properly unregistered
         self.pre_signals = (

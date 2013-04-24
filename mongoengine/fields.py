@@ -772,7 +772,7 @@ class ReferenceField(BaseField):
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
-    def __init__(self, document_type, dbref=None,
+    def __init__(self, document_type, dbref=False,
                  reverse_delete_rule=DO_NOTHING, **kwargs):
         """Initialises the Reference Field.
 
@@ -786,12 +786,7 @@ class ReferenceField(BaseField):
                 self.error('Argument to ReferenceField constructor must be a '
                            'document class or a string')
 
-        if dbref is None:
-            msg = ("ReferenceFields will default to using ObjectId "
-                   "in 0.8, set DBRef=True if this isn't desired")
-            warnings.warn(msg, FutureWarning)
-
-        self.dbref = dbref if dbref is not None else True  # To change in 0.8
+        self.dbref = dbref
         self.document_type_obj = document_type
         self.reverse_delete_rule = reverse_delete_rule
         super(ReferenceField, self).__init__(**kwargs)

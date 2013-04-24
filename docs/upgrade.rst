@@ -76,6 +76,35 @@ the case and the data is set only in the ``document._data`` dictionary: ::
       File "<stdin>", line 1, in <module>
     AttributeError: 'Animal' object has no attribute 'size'
 
+ReferenceField
+--------------
+
+ReferenceFields now store ObjectId's by default - this is more efficient than
+DBRefs as we already know what Document types they reference.
+
+    # Old code
+    class Animal(Document):
+        name = ReferenceField('self')
+
+    # New code to keep dbrefs
+    class Animal(Document):
+        name = ReferenceField('self', dbref=True)
+
+To migrate all the references you need to touch each object and mark it as dirty
+eg::
+
+    # Doc definition
+    class Person(Document):
+        name = StringField()
+        parent = ReferenceField('self')
+        friends = ListField(ReferenceField('self'))
+
+    # Mark all ReferenceFields as dirty and save
+    for p in Person.objects:
+        p._mark_as_dirty('parent')
+        p._mark_as_dirty('friends')
+        p.save()
+
 Querysets
 =========
 
