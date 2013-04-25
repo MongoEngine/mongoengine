@@ -1694,11 +1694,19 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(resurrected, pickle_doc)
 
+        # Test pickling changed data
+        pickle_doc.lists.append("3")
+        pickled_doc = pickle.dumps(pickle_doc)
+        resurrected = pickle.loads(pickled_doc)
+
+        self.assertEqual(resurrected, pickle_doc)
         resurrected.string = "Two"
         resurrected.save()
 
-        pickle_doc = pickle_doc.reload()
+        pickle_doc = PickleTest.objects.first()
         self.assertEqual(resurrected, pickle_doc)
+        self.assertEqual(pickle_doc.string, "Two")
+        self.assertEqual(pickle_doc.lists, ["1", "2", "3"])
 
     def test_throw_invalid_document_error(self):
 
