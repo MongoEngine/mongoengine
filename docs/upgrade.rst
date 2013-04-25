@@ -120,6 +120,30 @@ eg::
         p._mark_as_dirty('friends')
         p.save()
 
+UUIDField
+---------
+
+UUIDFields now default to storing binary values::
+
+    # Old code
+    class Animal(Document):
+        uuid = UUIDField()
+
+    # New code
+    class Animal(Document):
+        uuid = UUIDField(binary=False)
+
+To migrate all the uuid's you need to touch each object and mark it as dirty
+eg::
+
+    # Doc definition
+    class Animal(Document):
+        uuid = UUIDField()
+
+    # Mark all ReferenceFields as dirty and save
+    for a in Animal.objects:
+        a._mark_as_dirty('uuid')
+        a.save()
 
 Cascading Saves
 ---------------

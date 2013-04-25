@@ -129,14 +129,14 @@ class DeltaTest(unittest.TestCase):
         }
         self.assertEqual(doc.embedded_field._delta(), (embedded_delta, {}))
         self.assertEqual(doc._delta(),
-            ({'embedded_field': embedded_delta}, {}))
+                         ({'embedded_field': embedded_delta}, {}))
 
         doc.save()
         doc = doc.reload(10)
 
         doc.embedded_field.dict_field = {}
         self.assertEqual(doc._get_changed_fields(),
-                        ['embedded_field.dict_field'])
+                         ['embedded_field.dict_field'])
         self.assertEqual(doc.embedded_field._delta(), ({}, {'dict_field': 1}))
         self.assertEqual(doc._delta(), ({}, {'embedded_field.dict_field': 1}))
         doc.save()
@@ -145,7 +145,7 @@ class DeltaTest(unittest.TestCase):
 
         doc.embedded_field.list_field = []
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field'])
+                         ['embedded_field.list_field'])
         self.assertEqual(doc.embedded_field._delta(), ({}, {'list_field': 1}))
         self.assertEqual(doc._delta(), ({}, {'embedded_field.list_field': 1}))
         doc.save()
@@ -160,7 +160,7 @@ class DeltaTest(unittest.TestCase):
 
         doc.embedded_field.list_field = ['1', 2, embedded_2]
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field'])
+                         ['embedded_field.list_field'])
 
         self.assertEqual(doc.embedded_field._delta(), ({
             'list_field': ['1', 2, {
@@ -192,11 +192,11 @@ class DeltaTest(unittest.TestCase):
 
         doc.embedded_field.list_field[2].string_field = 'world'
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field.2.string_field'])
+                         ['embedded_field.list_field.2.string_field'])
         self.assertEqual(doc.embedded_field._delta(),
-            ({'list_field.2.string_field': 'world'}, {}))
+                         ({'list_field.2.string_field': 'world'}, {}))
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.string_field': 'world'}, {}))
+                         ({'embedded_field.list_field.2.string_field': 'world'}, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
@@ -206,7 +206,7 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field[2].string_field = 'hello world'
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field'])
+                         ['embedded_field.list_field'])
         self.assertEqual(doc.embedded_field._delta(), ({
             'list_field': ['1', 2, {
             '_cls': 'Embedded',
@@ -225,40 +225,40 @@ class DeltaTest(unittest.TestCase):
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
-                        'hello world')
+                         'hello world')
 
         # Test list native methods
         doc.embedded_field.list_field[2].list_field.pop(0)
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.list_field':
-                [2, {'hello': 'world'}]}, {}))
+                         ({'embedded_field.list_field.2.list_field':
+                          [2, {'hello': 'world'}]}, {}))
         doc.save()
         doc = doc.reload(10)
 
         doc.embedded_field.list_field[2].list_field.append(1)
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.list_field':
-                [2, {'hello': 'world'}, 1]}, {}))
+                         ({'embedded_field.list_field.2.list_field':
+                          [2, {'hello': 'world'}, 1]}, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
-            [2, {'hello': 'world'}, 1])
+                         [2, {'hello': 'world'}, 1])
 
         doc.embedded_field.list_field[2].list_field.sort(key=str)
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
-            [1, 2, {'hello': 'world'}])
+                         [1, 2, {'hello': 'world'}])
 
         del(doc.embedded_field.list_field[2].list_field[2]['hello'])
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.list_field': [1, 2, {}]}, {}))
+                         ({'embedded_field.list_field.2.list_field': [1, 2, {}]}, {}))
         doc.save()
         doc = doc.reload(10)
 
         del(doc.embedded_field.list_field[2].list_field)
         self.assertEqual(doc._delta(),
-            ({}, {'embedded_field.list_field.2.list_field': 1}))
+                         ({}, {'embedded_field.list_field.2.list_field': 1}))
 
         doc.save()
         doc = doc.reload(10)
@@ -269,9 +269,9 @@ class DeltaTest(unittest.TestCase):
 
         doc.dict_field['Embedded'].string_field = 'Hello World'
         self.assertEqual(doc._get_changed_fields(),
-            ['dict_field.Embedded.string_field'])
+                         ['dict_field.Embedded.string_field'])
         self.assertEqual(doc._delta(),
-            ({'dict_field.Embedded.string_field': 'Hello World'}, {}))
+                         ({'dict_field.Embedded.string_field': 'Hello World'}, {}))
 
     def test_circular_reference_deltas(self):
         self.circular_reference_deltas(Document, Document)
@@ -289,10 +289,11 @@ class DeltaTest(unittest.TestCase):
             name = StringField()
             owner = ReferenceField('Person')
 
-        person = Person(name="owner")
-        person.save()
-        organization = Organization(name="company")
-        organization.save()
+        Person.drop_collection()
+        Organization.drop_collection()
+
+        person = Person(name="owner").save()
+        organization = Organization(name="company").save()
 
         person.owns.append(organization)
         organization.owner = person

@@ -1474,19 +1474,15 @@ class UUIDField(BaseField):
     """
     _binary = None
 
-    def __init__(self, binary=None, **kwargs):
+    def __init__(self, binary=True, **kwargs):
         """
         Store UUID data in the database
 
-        :param binary: (optional) boolean store as binary.
+        :param binary: if False store as a string.
 
+        .. versionchanged:: 0.8.0
         .. versionchanged:: 0.6.19
         """
-        if binary is None:
-            binary = False
-            msg = ("UUIDFields will soon default to store as binary, please "
-                  "configure binary=False if you wish to store as a string")
-            warnings.warn(msg, FutureWarning)
         self._binary = binary
         super(UUIDField, self).__init__(**kwargs)
 
@@ -1504,6 +1500,8 @@ class UUIDField(BaseField):
     def to_mongo(self, value):
         if not self._binary:
             return unicode(value)
+        elif isinstance(value, basestring):
+            return uuid.UUID(value)
         return value
 
     def prepare_query_value(self, op, value):
