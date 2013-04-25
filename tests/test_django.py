@@ -14,8 +14,19 @@ try:
     from django.conf import settings
     from django.core.paginator import Paginator
 
-    settings.configure(USE_TZ=True)
+    settings.configure(
+        USE_TZ=True,
+        INSTALLED_APPS=('django.contrib.auth', 'mongoengine.django.mongo_auth'),
+        AUTH_USER_MODEL=('mongo_auth.MongoUser'),
+    )
 
+    try:
+        from django.contrib.auth import authenticate, get_user_model
+        from mongoengine.django.auth import User
+        from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
+        DJ15 = True
+    except Exception:
+        DJ15 = False
     from django.contrib.sessions.tests import SessionTestsMixin
     from mongoengine.django.sessions import SessionStore, MongoSession
 except Exception, err:
@@ -156,6 +167,7 @@ class QuerySetTest(unittest.TestCase):
         rendered = template.render(Context({'users': users}))
         self.assertEqual(rendered, 'AB ABCD CD')
 
+
 class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
     backend = SessionStore
 
@@ -183,6 +195,50 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         key = session.session_key
         session = SessionStore(key)
         self.assertTrue('test_expire' in session, 'Session has expired before it is expected')
+
+
+class MongoAuthTest(unittest.TestCase):
+    user_data = {
+        'username': 'user',
+        'email': 'user@example.com',
+        'password': 'test',
+    }
+
+    def setUp(self):
+        if PY3:
+            raise SkipTest('django does not have Python 3 support')
+        if not DJ15:
+            raise SkipTest('mongo_auth requires Django 1.5')
+        connect(db='mongoenginetest')
+        User.drop_collection()
+        super(MongoAuthTest, self).setUp()
+
+    def test_user_model(self):
+        self.assertEqual(get_user_model(), MongoUser)
+
+    def test_user_manager(self):
+        manager = get_user_model()._default_manager
+        self.assertIsInstance(manager, MongoUserManager)
+
+    def test_user_manager_exception(self):
+        manager = get_user_model()._default_manager
+        self.assertRaises(MongoUser.DoesNotExist, manager.get,
+                          username='not found')
+
+    def test_create_user(self):
+        manager = get_user_model()._default_manager
+        user = manager.create_user(**self.user_data)
+        self.assertIsInstance(user, User)
+        db_user = User.objects.get(username='user')
+        self.assertEqual(user.id, db_user.id)
+
+    def test_authenticate(self):
+        get_user_model()._default_manager.create_user(**self.user_data)
+        user = authenticate(username='user', password='fail')
+        self.assertIsNone(user)
+        user = authenticate(username='user', password='test')
+        db_user = User.objects.get(username='user')
+        self.assertEqual(user.id, db_user.id)
 
 if __name__ == '__main__':
     unittest.main()
