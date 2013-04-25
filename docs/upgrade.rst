@@ -145,6 +145,35 @@ eg::
         a._mark_as_dirty('uuid')
         a.save()
 
+DecimalField
+------------
+
+DecimalField now store floats - previous it was storing strings and that
+made it impossible to do comparisons when querying correctly.::
+
+    # Old code
+    class Person(Document):
+        balance = DecimalField()
+
+    # New code
+    class Person(Document):
+        balance = DecimalField(force_string=True)
+
+To migrate all the uuid's you need to touch each object and mark it as dirty
+eg::
+
+    # Doc definition
+    class Person(Document):
+        balance = DecimalField()
+
+    # Mark all ReferenceFields as dirty and save
+    for p in Person.objects:
+        p._mark_as_dirty('balance')
+        p.save()
+
+.. note:: DecimalField's have also been improved with the addition of precision
+    and rounding.  See :class:`~mongoengine.DecimalField` for more information.
+
 Cascading Saves
 ---------------
 To improve performance document saves will no longer automatically cascade.

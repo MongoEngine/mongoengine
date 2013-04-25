@@ -9,7 +9,7 @@ __all__ = ('query', 'update')
 
 
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                          'all', 'size', 'exists', 'not')
+                        'all', 'size', 'exists', 'not')
 GEO_OPERATORS        = ('within_distance', 'within_spherical_distance',
                         'within_box', 'within_polygon', 'near', 'near_sphere',
                         'max_distance')
@@ -74,7 +74,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             if op in singular_ops:
                 if isinstance(field, basestring):
                     if (op in STRING_OPERATORS and
-                        isinstance(value, basestring)):
+                       isinstance(value, basestring)):
                         StringField = _import_class('StringField')
                         value = StringField.prepare_query_value(op, value)
                     else:
@@ -144,7 +144,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
         merge_query[k].append(mongo_query[k])
         del mongo_query[k]
         if isinstance(v, list):
-            value = [{k:val} for val in v]
+            value = [{k: val} for val in v]
             if '$and' in mongo_query.keys():
                 mongo_query['$and'].append(value)
             else:

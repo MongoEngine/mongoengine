@@ -3262,9 +3262,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(isinstance(results[0], dict))
         self.assertTrue(isinstance(results[1], dict))
         self.assertEqual(results[0]['name'], 'Bob Dole')
-        self.assertEqual(results[0]['price'], '1.11')
+        self.assertEqual(results[0]['price'], 1.11)
         self.assertEqual(results[1]['name'], 'Barack Obama')
-        self.assertEqual(results[1]['price'], '2.22')
+        self.assertEqual(results[1]['price'], 2.22)
 
         # Test coerce_types
         users = User.objects.only('name', 'price').as_pymongo(coerce_types=True)

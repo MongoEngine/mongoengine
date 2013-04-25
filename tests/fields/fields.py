@@ -272,10 +272,8 @@ class FieldTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        person = Person()
-        person.height = Decimal('1.89')
-        person.save()
-        person.reload()
+        Person(height=Decimal('1.89')).save()
+        person = Person.objects.first()
         self.assertEqual(person.height, Decimal('1.89'))
 
         person.height = '2.0'
@@ -288,6 +286,45 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
 
         Person.drop_collection()
+
+    def test_decimal_comparison(self):
+
+        class Person(Document):
+            money = DecimalField()
+
+        Person.drop_collection()
+
+        Person(money=6).save()
+        Person(money=8).save()
+        Person(money=10).save()
+
+        self.assertEqual(2, Person.objects(money__gt=Decimal("7")).count())
+        self.assertEqual(2, Person.objects(money__gt=7).count())
+        self.assertEqual(2, Person.objects(money__gt="7").count())
+
+    def test_decimal_storage(self):
+        class Person(Document):
+            btc = DecimalField(precision=4)
+
+        Person.drop_collection()
+        Person(btc=10).save()
+        Person(btc=10.1).save()
+        Person(btc=10.11).save()
+        Person(btc="10.111").save()
+        Person(btc=Decimal("10.1111")).save()
+        Person(btc=Decimal("10.11111")).save()
+
+        # How its stored
+        expected = [{'btc': 10.0}, {'btc': 10.1}, {'btc': 10.11},
+                    {'btc': 10.111}, {'btc': 10.1111}, {'btc': 10.1111}]
+        actual = list(Person.objects.exclude('id').as_pymongo())
+        self.assertEqual(expected, actual)
+
+        # How it comes out locally
+        expected = [Decimal('10.0000'), Decimal('10.1000'), Decimal('10.1100'),
+                    Decimal('10.1110'), Decimal('10.1111'), Decimal('10.1111')]
+        actual = list(Person.objects().scalar('btc'))
+        self.assertEqual(expected, actual)
 
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.
