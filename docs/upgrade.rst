@@ -12,8 +12,8 @@ FutureWarnings to help get you ready for the change, but that hasn't been
 possible for the whole of the release.
 
 .. warning:: Breaking changes - test upgrading on a test system before putting
-live.  There maybe multiple manual steps in migrating and these are best honed
-on a staging / test system.
+    live. There maybe multiple manual steps in migrating and these are best honed
+    on a staging / test system.
 
 Data Model
 ==========
@@ -90,7 +90,7 @@ ReferenceField
 --------------
 
 ReferenceFields now store ObjectId's by default - this is more efficient than
-DBRefs as we already know what Document types they reference.
+DBRefs as we already know what Document types they reference::
 
     # Old code
     class Animal(Document):

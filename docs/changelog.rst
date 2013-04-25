@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Added Custom User Model for Django 1.5 (#285)
 - Cascading saves now default to off (#291)
 - ReferenceField now store ObjectId's by default rather than DBRef (#290)
 - Added ImageField support for inline replacements (#86)
