@@ -5,11 +5,21 @@ Upgrading
 0.7 to 0.8
 **********
 
-Inheritance
-===========
+There have been numerous backwards breaking changes in 0.8.  The reasons for
+these are ensure that MongoEngine has sane defaults going forward and
+performs the best it can out the box.  Where possible there have been
+FutureWarnings to help get you ready for the change, but that hasn't been
+possible for the whole of the release.
+
+.. warning:: Breaking changes - test upgrading on a test system before putting
+live.  There maybe multiple manual steps in migrating and these are best honed
+on a staging / test system.
 
 Data Model
-----------
+==========
+
+Inheritance
+-----------
 
 The inheritance model has changed, we no longer need to store an array of
 :attr:`types` with the model we can just use the classname in :attr:`_cls`.
@@ -104,6 +114,21 @@ eg::
         p._mark_as_dirty('parent')
         p._mark_as_dirty('friends')
         p.save()
+
+
+Cascading Saves
+---------------
+To improve performance document saves will no longer automatically cascade.
+Any changes to a Documents references will either have to be saved manually or
+you will have to explicitly tell it to cascade on save::
+
+    # At the class level:
+    class Person(Document):
+        meta = {'cascade': True}
+
+    # Or on save:
+    my_document.save(cascade=True)
+
 
 Querysets
 =========

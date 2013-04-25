@@ -244,7 +244,6 @@ class Document(BaseDocument):
                                                    upsert=upsert, **write_concern)
                     created = is_new_object(last_error)
 
-            warn_cascade = not cascade and 'cascade' not in self._meta
             cascade = (self._meta.get('cascade', True)
                        if cascade is None else cascade)
             if cascade:
@@ -257,7 +256,7 @@ class Document(BaseDocument):
                 if cascade_kwargs:  # Allow granular control over cascades
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
-                self.cascade_save(warn_cascade=warn_cascade, **kwargs)
+                self.cascade_save(**kwargs)
 
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
@@ -276,7 +275,7 @@ class Document(BaseDocument):
         signals.post_save.send(self.__class__, document=self, created=created)
         return self
 
-    def cascade_save(self, warn_cascade=None, *args, **kwargs):
+    def cascade_save(self, *args, **kwargs):
         """Recursively saves any references /
            generic references on an objects"""
         import fields
@@ -296,10 +295,6 @@ class Document(BaseDocument):
 
             ref_id = "%s,%s" % (ref.__class__.__name__, str(ref._data))
             if ref and ref_id not in _refs:
-                if warn_cascade:
-                    msg = ("Cascading saves will default to off in 0.8, "
-                           "please  explicitly set `.save(cascade=True)`")
-                    warnings.warn(msg, FutureWarning)
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
                 ref.save(**kwargs)
