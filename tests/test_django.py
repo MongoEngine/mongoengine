@@ -178,6 +178,12 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         MongoSession.drop_collection()
         super(MongoDBSessionTest, self).setUp()
 
+    def assertIn(self, first, second, msg=None):
+        self.assertTrue(first in second, msg)
+
+    def assertNotIn(self, first, second, msg=None):
+        self.assertFalse(first in second, msg)
+
     def test_first_save(self):
         session = SessionStore()
         session['test'] = True
@@ -188,7 +194,7 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         activate_timezone(FixedOffset(60, 'UTC+1'))
         # create and save new session
         session = SessionStore()
-        session.set_expiry(600) # expire in 600 seconds
+        session.set_expiry(600)  # expire in 600 seconds
         session['test_expire'] = True
         session.save()
         # reload session with key
