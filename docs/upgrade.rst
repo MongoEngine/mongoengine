@@ -15,6 +15,11 @@ possible for the whole of the release.
     live. There maybe multiple manual steps in migrating and these are best honed
     on a staging / test system.
 
+Python
+=======
+
+Support for python 2.5 has been dropped.
+
 Data Model
 ==========
 
