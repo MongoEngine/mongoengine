@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Document serialization uses field order to ensure a strict order is set (#296)
 - DecimalField now stores as float not string (#289)
 - UUIDField now stores as a binary by default (#292)
 - Added Custom User Model for Django 1.5 (#285)

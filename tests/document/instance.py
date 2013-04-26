@@ -428,6 +428,21 @@ class InstanceTest(unittest.TestCase):
         self.assertFalse('age' in person)
         self.assertFalse('nationality' in person)
 
+    def test_embedded_document_to_mongo(self):
+        class Person(EmbeddedDocument):
+            name = StringField()
+            age = IntField()
+
+            meta = {"allow_inheritance": True}
+
+        class Employee(Person):
+            salary = IntField()
+
+        self.assertEqual(Person(name="Bob", age=35).to_mongo().keys(),
+                         ['_cls', 'name', 'age'])
+        self.assertEqual(Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
+                         ['_cls', 'name', 'age', 'salary'])
+
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly.
         """

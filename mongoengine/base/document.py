@@ -6,6 +6,7 @@ from functools import partial
 import pymongo
 from bson import json_util
 from bson.dbref import DBRef
+from bson.son import SON
 
 from mongoengine import signals
 from mongoengine.common import _import_class
@@ -228,11 +229,16 @@ class BaseDocument(object):
         pass
 
     def to_mongo(self):
-        """Return data dictionary ready for use with MongoDB.
+        """Return as SON data ready for use with MongoDB.
         """
-        data = {}
-        for field_name, field in self._fields.iteritems():
+        data = SON()
+        data["_id"] = None
+        data['_cls'] = self._class_name
+
+        for field_name in self:
             value = self._data.get(field_name, None)
+            field = self._fields.get(field_name)
+
             if value is not None:
                 value = field.to_mongo(value)
 
@@ -244,19 +250,27 @@ class BaseDocument(object):
             if value is not None:
                 data[field.db_field] = value
 
-        # Only add _cls if allow_inheritance is True
-        if (hasattr(self, '_meta') and
-            self._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
-            data['_cls'] = self._class_name
+        # If "_id" has not been set, then try and set it
+        if data["_id"] is None:
+            data["_id"] = self._data.get("id", None)
 
-        if '_id' in data and data['_id'] is None:
-            del data['_id']
+        if data['_id'] is None:
+            data.pop('_id')
+
+        # Only add _cls if allow_inheritance is True
+        if (not hasattr(self, '_meta') or
+           not self._meta.get('allow_inheritance', ALLOW_INHERITANCE)):
+            data.pop('_cls')
 
         if not self._dynamic:
             return data
 
-        for name, field in self._dynamic_fields.items():
+        # Sort dynamic fields by key
+        dynamic_fields = sorted(self._dynamic_fields.iteritems(),
+                                key=operator.itemgetter(0))
+        for name, field in dynamic_fields:
             data[name] = field.to_mongo(self._data.get(name, None))
+
         return data
 
     def validate(self, clean=True):

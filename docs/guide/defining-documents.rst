@@ -24,6 +24,9 @@ objects** as class attributes to the document class::
         title = StringField(max_length=200, required=True)
         date_modified = DateTimeField(default=datetime.datetime.now)
 
+As BSON (the binary format for storing data in mongodb) is order dependent,
+documents are serialized based on their field order.
+
 Dynamic document schemas
 ========================
 One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
@@ -51,6 +54,7 @@ be saved ::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
 
+Dynamic fields are stored in alphabetical order *after* any declared fields.
 
 Fields
 ======

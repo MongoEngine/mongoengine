@@ -120,7 +120,7 @@ eg::
         p._mark_as_dirty('friends')
         p.save()
 
-`An example test migration is available on github
+`An example test migration for ReferenceFields is available on github
 <https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/refrencefield_dbref_to_object_id.py>`_.
 
 UUIDField
@@ -148,7 +148,7 @@ eg::
         a._mark_as_dirty('uuid')
         a.save()
 
-`An example test migration is available on github
+`An example test migration for UUIDFields is available on github
 <https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/uuidfield_to_binary.py>`_.
 
 DecimalField
@@ -180,7 +180,7 @@ eg::
 .. note:: DecimalField's have also been improved with the addition of precision
     and rounding.  See :class:`~mongoengine.fields.DecimalField` for more information.
 
-`An example test migration is available on github
+`An example test migration for DecimalFields is available on github
 <https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/decimalfield_as_float.py>`_.
 
 Cascading Saves
@@ -196,6 +196,19 @@ you will have to explicitly tell it to cascade on save::
     # Or on save:
     my_document.save(cascade=True)
 
+Storage
+-------
+
+Document and Embedded Documents are now serialized based on declared field order.
+Previously, the data was passed to mongodb as a dictionary and which meant that
+order wasn't guaranteed - so things like ``$addToSet`` operations on
+:class:`~mongoengine.EmbeddedDocument` could potentially fail in unexpected
+ways.
+
+If this impacts you, you may want to rewrite the objects using the
+``doc.mark_as_dirty('field')`` pattern described above.  If you are using a
+compound primary key then you will need to ensure the order is fixed and match
+your EmbeddedDocument to that order.
 
 Querysets
 =========
