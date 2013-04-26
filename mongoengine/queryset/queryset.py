@@ -608,6 +608,9 @@ class QuerySet(object):
 
         :param field: the field to select distinct values from
 
+        .. note:: This is a command and won't take ordering or limit into
+           account.
+
         .. versionadded:: 0.4
         .. versionchanged:: 0.5 - Fixed handling references
         .. versionchanged:: 0.6 - Improved db_field refrence handling
