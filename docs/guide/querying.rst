@@ -79,7 +79,7 @@ expressions:
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 There are a few special operators for performing geographical queries, that
-may used with :class:`~mongoengine.GeoPointField`\ s:
+may used with :class:`~mongoengine.fields.GeoPointField`\ s:
 
 * ``within_distance`` -- provide a list containing a point and a maximum
   distance (e.g. [(41.342, -87.653), 5])
@@ -100,7 +100,7 @@ Querying lists
 --------------
 On most fields, this syntax will look up documents where the field specified
 matches the given value exactly, but when the field refers to a
-:class:`~mongoengine.ListField`, a single item may be provided, in which case
+:class:`~mongoengine.fields.ListField`, a single item may be provided, in which case
 lists that contain that item will be matched::
 
     class Page(Document):
@@ -319,7 +319,7 @@ Retrieving a subset of fields
 Sometimes a subset of fields on a :class:`~mongoengine.Document` is required,
 and for efficiency only these should be retrieved from the database. This issue
 is especially important for MongoDB, as fields may often be extremely large
-(e.g. a :class:`~mongoengine.ListField` of
+(e.g. a :class:`~mongoengine.fields.ListField` of
 :class:`~mongoengine.EmbeddedDocument`\ s, which represent the comments on a
 blog post. To select only a subset of fields, use
 :meth:`~mongoengine.queryset.QuerySet.only`, specifying the fields you want to
@@ -351,14 +351,14 @@ If you later need the missing fields, just call
 Getting related data
 --------------------
 
-When iterating the results of :class:`~mongoengine.ListField` or
-:class:`~mongoengine.DictField` we automatically dereference any
+When iterating the results of :class:`~mongoengine.fields.ListField` or
+:class:`~mongoengine.fields.DictField` we automatically dereference any
 :class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
 number the queries to mongo.
 
 There are times when that efficiency is not enough, documents that have
-:class:`~mongoengine.ReferenceField` objects or
-:class:`~mongoengine.GenericReferenceField` objects at the top level are
+:class:`~mongoengine.fields.ReferenceField` objects or
+:class:`~mongoengine.fields.GenericReferenceField` objects at the top level are
 expensive as the number of queries to MongoDB can quickly rise.
 
 To limit the number of queries use
@@ -541,7 +541,7 @@ Javascript code. When accessing a field on a collection object, use
 square-bracket notation, and prefix the MongoEngine field name with a tilde.
 The field name that follows the tilde will be translated to the name used in
 the database. Note that when referring to fields on embedded documents,
-the name of the :class:`~mongoengine.EmbeddedDocumentField`, followed by a dot,
+the name of the :class:`~mongoengine.fields.EmbeddedDocumentField`, followed by a dot,
 should be used before the name of the field on the embedded document. The
 following example shows how the substitutions are made::
 

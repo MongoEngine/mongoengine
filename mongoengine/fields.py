@@ -782,7 +782,7 @@ class ReferenceField(BaseField):
       * NULLIFY     - Updates the reference to null.
       * CASCADE     - Deletes the documents associated with the reference.
       * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.ListField`
+      * PULL        - Pull the reference from a :class:`~mongoengine.fields.ListField`
                       of references
 
     Alternative syntax for registering delete rules (useful when implementing

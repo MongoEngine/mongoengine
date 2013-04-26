@@ -1049,7 +1049,7 @@ class QuerySet(object):
         """)
 
         for result in self.map_reduce(map_func, reduce_func,
-                            finalize_f=finalize_func, output='inline'):
+                                      finalize_f=finalize_func, output='inline'):
             return result.value
         else:
             return 0
@@ -1062,11 +1062,11 @@ class QuerySet(object):
         .. note::
 
             Can only do direct simple mappings and cannot map across
-            :class:`~mongoengine.ReferenceField` or
-            :class:`~mongoengine.GenericReferenceField` for more complex
+            :class:`~mongoengine.fields.ReferenceField` or
+            :class:`~mongoengine.fields.GenericReferenceField` for more complex
             counting a manual map reduce call would is required.
 
-        If the field is a :class:`~mongoengine.ListField`, the items within
+        If the field is a :class:`~mongoengine.fields.ListField`, the items within
         each list will be counted individually.
 
         :param field: the field to use

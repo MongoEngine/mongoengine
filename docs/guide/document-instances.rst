@@ -68,8 +68,8 @@ document values for example::
 
 Cascading Saves
 ---------------
-If your document contains :class:`~mongoengine.ReferenceField` or
-:class:`~mongoengine.GenericReferenceField` objects, then by default the
+If your document contains :class:`~mongoengine.fields.ReferenceField` or
+:class:`~mongoengine.fields.GenericReferenceField` objects, then by default the
 :meth:`~mongoengine.Document.save` method will automatically save any changes to
 those objects as well.  If this is not desired passing :attr:`cascade` as False
 to the save method turns this feature off.

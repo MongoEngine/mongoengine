@@ -120,6 +120,9 @@ eg::
         p._mark_as_dirty('friends')
         p.save()
 
+`An example test migration is available on github
+<https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/refrencefield_dbref_to_object_id.py>`_.
+
 UUIDField
 ---------
 
@@ -144,6 +147,9 @@ eg::
     for a in Animal.objects:
         a._mark_as_dirty('uuid')
         a.save()
+
+`An example test migration is available on github
+<https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/uuidfield_to_binary.py>`_.
 
 DecimalField
 ------------
@@ -172,7 +178,10 @@ eg::
         p.save()
 
 .. note:: DecimalField's have also been improved with the addition of precision
-    and rounding.  See :class:`~mongoengine.DecimalField` for more information.
+    and rounding.  See :class:`~mongoengine.fields.DecimalField` for more information.
+
+`An example test migration is available on github
+<https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/decimalfield_as_float.py>`_.
 
 Cascading Saves
 ---------------
