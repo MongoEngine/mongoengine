@@ -548,7 +548,7 @@ class Document(BaseDocument):
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
         if (index_cls and not cls_indexed and
-            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
+           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
 

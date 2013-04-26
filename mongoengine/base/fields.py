@@ -295,7 +295,7 @@ class ComplexBaseField(BaseField):
                     meta = getattr(v, '_meta', {})
                     allow_inheritance = (
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
-                        == True)
+                        is True)
                     if not allow_inheritance and not self.field:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
