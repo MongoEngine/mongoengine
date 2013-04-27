@@ -1162,9 +1162,9 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def test_unique_case_insensitive(self):
+    def test_unique_case_insensitive_string(self):
         """Ensure that case insensitive uniqueness constraints are applied to
-        fields.
+        strings.
         """
         class BlogPost(Document):
             title = StringField()
@@ -1178,6 +1178,27 @@ class DocumentTest(unittest.TestCase):
         # Two posts with the same slug is not allowed
         post2 = BlogPost(title='test2', slug='TEST')
         self.assertRaises(NotUniqueError, post2.save)
+
+    def test_unique_case_insensitive_email(self):
+        """Ensure that case insensitive uniqueness constraints are applied to
+        emails.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            author_email = IUniqueEmailField()
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(title='test1', author_email='test@test.com')
+        post1.save()
+
+        # Two posts with the same slug is not allowed
+        post2 = BlogPost(title='test2', author_email='Test@test.com')
+        self.assertRaises(NotUniqueError, post2.save)
+
+        # Make sure the email validation still holds
+        post2.author_email = 'Test'
+        self.assertRaises(ValidationError, post2.save)
 
     def test_unique_embedded_document(self):
         """Ensure that uniqueness constraints are applied to fields on embedded documents.

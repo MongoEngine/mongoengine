@@ -34,7 +34,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
            'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField',
-           'IUniqueStringField']
+           'IUniqueStringField', 'IUniqueEmailField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -163,6 +163,18 @@ class EmailField(StringField):
         if not EmailField.EMAIL_REGEX.match(value):
             self.error('Invalid Mail-address: %s' % value)
         super(EmailField, self).validate(value)
+
+
+class IUniqueEmailField(EmailField):
+
+    def __init__(self, *args, **kwargs):
+        kwargs['unique'] = True
+        super(IUniqueEmailField, self).__init__(*args, **kwargs)
+        self._unique_case_insensitive = True
+
+    def __set__(self, instance, value):
+        super(IUniqueEmailField, self).__set__(instance, value)
+        setattr(instance, '_%s_lower' % self.name, value and value.lower())
 
 
 class IntField(BaseField):
