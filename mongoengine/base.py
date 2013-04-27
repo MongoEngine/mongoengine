@@ -157,9 +157,9 @@ class BaseField(object):
     auto_creation_counter = -1
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
-                 unique=False, unique_with=None, unique_case_insensitive=False,
-                 primary_key=False, validation=None, choices=None,
-                 verbose_name=None, help_text=None):
+                 unique=False, unique_with=None, primary_key=False,
+                 validation=None, choices=None, verbose_name=None,
+                 help_text=None):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
@@ -169,7 +169,6 @@ class BaseField(object):
         self.default = default
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
-        self.unique_case_insensitive = unique_case_insensitive
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
@@ -209,9 +208,6 @@ class BaseField(object):
         instance._data[self.name] = value
         if instance._initialised:
             instance._mark_as_changed(self.name)
-
-        if self.unique_case_insensitive:
-            setattr(instance, '_%s_lower' % self.name, value and value.lower())
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
@@ -549,7 +545,7 @@ class DocumentMetaclass(type):
             attr_value.name = attr_name
             if not attr_value.db_field:
                 attr_value.db_field = attr_name
-            if attr_value.unique_case_insensitive:
+            if getattr(attr_value, '_unique_case_insensitive', None):
                 from fields import StringField
 
                 lower_field = StringField(unique=True)

@@ -1168,7 +1168,7 @@ class DocumentTest(unittest.TestCase):
         """
         class BlogPost(Document):
             title = StringField()
-            slug = StringField(unique_case_insensitive=True)
+            slug = IUniqueStringField()
 
         BlogPost.drop_collection()
 
@@ -1211,7 +1211,7 @@ class DocumentTest(unittest.TestCase):
         """
         class SubDocument(EmbeddedDocument):
             year = IntField(db_field='yr')
-            slug = StringField(unique_case_insensitive=True)
+            slug = IUniqueStringField()
 
         class BlogPost(Document):
             title = StringField()

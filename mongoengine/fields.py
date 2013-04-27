@@ -33,7 +33,8 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
-           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
+           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField',
+           'IUniqueStringField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -95,6 +96,18 @@ class StringField(BaseField):
             value = re.escape(value)
             value = re.compile(regex % value, flags)
         return value
+
+
+class IUniqueStringField(StringField):
+
+    def __init__(self, *args, **kwargs):
+        kwargs['unique'] = True
+        super(IUniqueStringField, self).__init__(*args, **kwargs)
+        self._unique_case_insensitive = True
+
+    def __set__(self, instance, value):
+        super(IUniqueStringField, self).__set__(instance, value)
+        setattr(instance, '_%s_lower' % self.name, value and value.lower())
 
 
 class URLField(StringField):
