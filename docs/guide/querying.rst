@@ -79,7 +79,7 @@ expressions:
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 There are a few special operators for performing geographical queries, that
-may used with :class:`~mongoengine.GeoPointField`\ s:
+may used with :class:`~mongoengine.fields.GeoPointField`\ s:
 
 * ``within_distance`` -- provide a list containing a point and a maximum
   distance (e.g. [(41.342, -87.653), 5])
@@ -92,13 +92,15 @@ may used with :class:`~mongoengine.GeoPointField`\ s:
 * ``within_polygon`` -- filter documents to those within a given polygon (e.g.
   [(41.91,-87.69), (41.92,-87.68), (41.91,-87.65), (41.89,-87.65)]).
   .. note:: Requires Mongo Server 2.0
+* ``max_distance`` -- can be added to your location queries to set a maximum
+  distance.
 
 
 Querying lists
 --------------
 On most fields, this syntax will look up documents where the field specified
 matches the given value exactly, but when the field refers to a
-:class:`~mongoengine.ListField`, a single item may be provided, in which case
+:class:`~mongoengine.fields.ListField`, a single item may be provided, in which case
 lists that contain that item will be matched::
 
     class Page(Document):
@@ -179,9 +181,11 @@ Retrieving unique results
 -------------------------
 To retrieve a result that should be unique in the collection, use
 :meth:`~mongoengine.queryset.QuerySet.get`. This will raise
-:class:`~mongoengine.queryset.DoesNotExist` if no document matches the query,
-and :class:`~mongoengine.queryset.MultipleObjectsReturned` if more than one
-document matched the query.
+:class:`~mongoengine.queryset.DoesNotExist` if
+no document matches the query, and
+:class:`~mongoengine.queryset.MultipleObjectsReturned`
+if more than one document matched the query.  These exceptions are merged into
+your document defintions eg: `MyDoc.DoesNotExist`
 
 A variation of this method exists,
 :meth:`~mongoengine.queryset.Queryset.get_or_create`, that will create a new
@@ -315,7 +319,7 @@ Retrieving a subset of fields
 Sometimes a subset of fields on a :class:`~mongoengine.Document` is required,
 and for efficiency only these should be retrieved from the database. This issue
 is especially important for MongoDB, as fields may often be extremely large
-(e.g. a :class:`~mongoengine.ListField` of
+(e.g. a :class:`~mongoengine.fields.ListField` of
 :class:`~mongoengine.EmbeddedDocument`\ s, which represent the comments on a
 blog post. To select only a subset of fields, use
 :meth:`~mongoengine.queryset.QuerySet.only`, specifying the fields you want to
@@ -347,14 +351,14 @@ If you later need the missing fields, just call
 Getting related data
 --------------------
 
-When iterating the results of :class:`~mongoengine.ListField` or
-:class:`~mongoengine.DictField` we automatically dereference any
+When iterating the results of :class:`~mongoengine.fields.ListField` or
+:class:`~mongoengine.fields.DictField` we automatically dereference any
 :class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
 number the queries to mongo.
 
 There are times when that efficiency is not enough, documents that have
-:class:`~mongoengine.ReferenceField` objects or
-:class:`~mongoengine.GenericReferenceField` objects at the top level are
+:class:`~mongoengine.fields.ReferenceField` objects or
+:class:`~mongoengine.fields.GenericReferenceField` objects at the top level are
 expensive as the number of queries to MongoDB can quickly rise.
 
 To limit the number of queries use
@@ -365,8 +369,30 @@ references to the depth of 1 level.  If you have more complicated documents and
 want to dereference more of the object at once then increasing the :attr:`max_depth`
 will dereference more levels of the document.
 
+Turning off dereferencing
+-------------------------
+
+Sometimes for performance reasons you don't want to automatically dereference
+data. To turn off dereferencing of the results of a query use
+:func:`~mongoengine.queryset.QuerySet.no_dereference` on the queryset like so::
+
+    post = Post.objects.no_dereference().first()
+    assert(isinstance(post.author, ObjectId))
+
+You can also turn off all dereferencing for a fixed period by using the
+:class:`~mongoengine.context_managers.no_dereference` context manager::
+
+    with no_dereference(Post) as Post:
+        post = Post.objects.first()
+        assert(isinstance(post.author, ObjectId))
+
+    # Outside the context manager dereferencing occurs.
+    assert(isinstance(post.author, User))
+
+
 Advanced queries
 ================
+
 Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
 arguments can't fully express the query you want to use -- for example if you
 need to combine a number of constraints using *and* and *or*. This is made
@@ -384,6 +410,11 @@ calling it with keyword arguments::
 
     # Get top posts
     Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
+
+.. warning:: You have to use bitwise operators.  You cannot use ``or``, ``and``
+    to combine queries as ``Q(a=a) or Q(b=b)`` is not the same as
+    ``Q(a=a) | Q(b=b)``. As ``Q(a=a)`` equates to true ``Q(a=a) or Q(b=b)`` is
+    the same as ``Q(a=a)``.
 
 .. _guide-atomic-updates:
 
@@ -425,7 +456,7 @@ modifier comes before the field, not after it::
     >>> post.tags
     ['database', 'nosql']
 
-.. note ::
+.. note::
 
     In version 0.5 the :meth:`~mongoengine.Document.save` runs atomic updates
     on changed documents by tracking changes to that document.
@@ -441,7 +472,7 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     >>> post.tags
     ['database', 'mongodb']
 
-.. note ::
+.. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
     operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.
@@ -510,7 +541,7 @@ Javascript code. When accessing a field on a collection object, use
 square-bracket notation, and prefix the MongoEngine field name with a tilde.
 The field name that follows the tilde will be translated to the name used in
 the database. Note that when referring to fields on embedded documents,
-the name of the :class:`~mongoengine.EmbeddedDocumentField`, followed by a dot,
+the name of the :class:`~mongoengine.fields.EmbeddedDocumentField`, followed by a dot,
 should be used before the name of the field on the embedded document. The
 following example shows how the substitutions are made::
 

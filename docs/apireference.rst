@@ -34,6 +34,13 @@ Documents
 .. autoclass:: mongoengine.ValidationError
   :members:
 
+Context Managers
+================
+
+.. autoclass:: mongoengine.context_managers.switch_db
+.. autoclass:: mongoengine.context_managers.no_dereference
+.. autoclass:: mongoengine.context_managers.query_counter
+
 Querying
 ========
 
@@ -47,28 +54,33 @@ Querying
 Fields
 ======
 
-.. autoclass:: mongoengine.BinaryField
-.. autoclass:: mongoengine.BooleanField
-.. autoclass:: mongoengine.ComplexDateTimeField
-.. autoclass:: mongoengine.DateTimeField
-.. autoclass:: mongoengine.DecimalField
-.. autoclass:: mongoengine.DictField
-.. autoclass:: mongoengine.DynamicField
-.. autoclass:: mongoengine.EmailField
-.. autoclass:: mongoengine.EmbeddedDocumentField
-.. autoclass:: mongoengine.FileField
-.. autoclass:: mongoengine.FloatField
-.. autoclass:: mongoengine.GenericEmbeddedDocumentField
-.. autoclass:: mongoengine.GenericReferenceField
-.. autoclass:: mongoengine.GeoPointField
-.. autoclass:: mongoengine.ImageField
-.. autoclass:: mongoengine.IntField
-.. autoclass:: mongoengine.ListField
-.. autoclass:: mongoengine.MapField
-.. autoclass:: mongoengine.ObjectIdField
-.. autoclass:: mongoengine.ReferenceField
-.. autoclass:: mongoengine.SequenceField
-.. autoclass:: mongoengine.SortedListField
-.. autoclass:: mongoengine.StringField
-.. autoclass:: mongoengine.URLField
-.. autoclass:: mongoengine.UUIDField
+.. autoclass:: mongoengine.fields.StringField
+.. autoclass:: mongoengine.fields.URLField
+.. autoclass:: mongoengine.fields.EmailField
+.. autoclass:: mongoengine.fields.IntField
+.. autoclass:: mongoengine.fields.LongField
+.. autoclass:: mongoengine.fields.FloatField
+.. autoclass:: mongoengine.fields.DecimalField
+.. autoclass:: mongoengine.fields.BooleanField
+.. autoclass:: mongoengine.fields.DateTimeField
+.. autoclass:: mongoengine.fields.ComplexDateTimeField
+.. autoclass:: mongoengine.fields.EmbeddedDocumentField
+.. autoclass:: mongoengine.fields.GenericEmbeddedDocumentField
+.. autoclass:: mongoengine.fields.DynamicField
+.. autoclass:: mongoengine.fields.ListField
+.. autoclass:: mongoengine.fields.SortedListField
+.. autoclass:: mongoengine.fields.DictField
+.. autoclass:: mongoengine.fields.MapField
+.. autoclass:: mongoengine.fields.ReferenceField
+.. autoclass:: mongoengine.fields.GenericReferenceField
+.. autoclass:: mongoengine.fields.BinaryField
+.. autoclass:: mongoengine.fields.FileField
+.. autoclass:: mongoengine.fields.ImageField
+.. autoclass:: mongoengine.fields.GeoPointField
+.. autoclass:: mongoengine.fields.SequenceField
+.. autoclass:: mongoengine.fields.ObjectIdField
+.. autoclass:: mongoengine.fields.UUIDField
+.. autoclass:: mongoengine.fields.GridFSError
+.. autoclass:: mongoengine.fields.GridFSProxy
+.. autoclass:: mongoengine.fields.ImageGridFsProxy
+.. autoclass:: mongoengine.fields.ImproperlyConfigured

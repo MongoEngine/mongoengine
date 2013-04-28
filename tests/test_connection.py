@@ -1,12 +1,14 @@
-import datetime
-import pymongo
+from __future__ import with_statement
+import sys
+sys.path[0:0] = [""]
 import unittest
+import datetime
 
-import mongoengine.connection
-
+import pymongo
 from bson.tz_util import utc
 
 from mongoengine import *
+import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
 
 
@@ -23,7 +25,7 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest')
 
         conn = get_connection()
-        self.assertTrue(isinstance(conn, pymongo.connection.Connection))
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
         db = get_db()
         self.assertTrue(isinstance(db, pymongo.database.Database))
@@ -31,7 +33,7 @@ class ConnectionTest(unittest.TestCase):
 
         connect('mongoenginetest2', alias='testdb')
         conn = get_connection('testdb')
-        self.assertTrue(isinstance(conn, pymongo.connection.Connection))
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
     def test_connect_uri(self):
         """Ensure that the connect() method works properly with uri's
@@ -49,7 +51,7 @@ class ConnectionTest(unittest.TestCase):
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
 
         conn = get_connection()
-        self.assertTrue(isinstance(conn, pymongo.connection.Connection))
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
         db = get_db()
         self.assertTrue(isinstance(db, pymongo.database.Database))
@@ -62,7 +64,7 @@ class ConnectionTest(unittest.TestCase):
 
         self.assertRaises(ConnectionError, get_connection)
         conn = get_connection('testdb')
-        self.assertTrue(isinstance(conn, pymongo.connection.Connection))
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
         db = get_db('testdb')
         self.assertTrue(isinstance(db, pymongo.database.Database))

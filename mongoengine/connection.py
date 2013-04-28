@@ -1,5 +1,5 @@
 import pymongo
-from pymongo import Connection, ReplicaSetConnection, uri_parser
+from pymongo import MongoClient, MongoReplicaSetClient, uri_parser
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -28,8 +28,10 @@ def register_connection(alias, name, host='localhost', port=27017,
     :param name: the name of the specific database to use
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
-    :param is_slave: whether the connection can act as a slave ** Depreciated pymongo 2.0.1+
-    :param read_preference: The read preference for the collection ** Added pymongo 2.1
+    :param is_slave: whether the connection can act as a slave
+      ** Depreciated pymongo 2.0.1+
+    :param read_preference: The read preference for the collection
+       ** Added pymongo 2.1
     :param slaves: a list of aliases of slave connections; each of these must
         be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with
@@ -110,15 +112,15 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings['slaves'] = slaves
                 conn_settings.pop('read_preference', None)
 
-        connection_class = Connection
+        connection_class = MongoClient
         if 'replicaSet' in conn_settings:
             conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
-            # Discard port since it can't be used on ReplicaSetConnection
+            # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
             # Discard replicaSet if not base string
             if not isinstance(conn_settings['replicaSet'], basestring):
                 conn_settings.pop('replicaSet', None)
-            connection_class = ReplicaSetConnection
+            connection_class = MongoReplicaSetClient
 
         try:
             _connections[alias] = connection_class(**conn_settings)
@@ -160,6 +162,7 @@ def connect(db, alias=DEFAULT_CONNECTION_NAME, **kwargs):
         register_connection(alias, db, **kwargs)
 
     return get_connection(alias)
+
 
 # Support old naming convention
 _get_connection = get_connection

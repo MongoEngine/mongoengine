@@ -30,21 +30,53 @@ already exist, then any changes will be updated atomically.  For example::
 
 .. note::
 
-    Changes to documents are tracked and on the whole perform `set` operations.
+    Changes to documents are tracked and on the whole perform ``set`` operations.
 
-    * ``list_field.pop(0)`` - *sets* the resulting list
+    * ``list_field.push(0)`` - *sets* the resulting list
     * ``del(list_field)``   - *unsets* whole list
+
+    With lists its preferable to use ``Doc.update(push__list_field=0)`` as
+    this stops the whole list being updated - stopping any race conditions.
 
 .. seealso::
     :ref:`guide-atomic-updates`
 
+Pre save data validation and cleaning
+-------------------------------------
+MongoEngine allows you to create custom cleaning rules for your documents when
+calling :meth:`~mongoengine.Document.save`.  By providing a custom
+:meth:`~mongoengine.Document.clean` method you can do any pre validation / data
+cleaning.
+
+This might be useful if you want to ensure a default value based on other
+document values for example::
+
+    class Essay(Document):
+        status = StringField(choices=('Published', 'Draft'), required=True)
+        pub_date = DateTimeField()
+
+        def clean(self):
+            """Ensures that only published essays have a `pub_date` and
+            automatically sets the pub_date if published and not set"""
+            if self.status == 'Draft' and self.pub_date is not None:
+                msg = 'Draft entries should not have a publication date.'
+                raise ValidationError(msg)
+            # Set the pub_date for published items if not set.
+            if self.status == 'Published' and self.pub_date is None:
+                self.pub_date = datetime.now()
+
+.. note::
+    Cleaning is only called if validation is turned on and when calling
+    :meth:`~mongoengine.Document.save`.
+
 Cascading Saves
 ---------------
-If your document contains :class:`~mongoengine.ReferenceField` or
-:class:`~mongoengine.GenericReferenceField` objects, then by default the
-:meth:`~mongoengine.Document.save` method will automatically save any changes to
-those objects as well.  If this is not desired passing :attr:`cascade` as False
-to the save method turns this feature off.
+If your document contains :class:`~mongoengine.fields.ReferenceField` or
+:class:`~mongoengine.fields.GenericReferenceField` objects, then by default the
+:meth:`~mongoengine.Document.save` method will not save any changes to
+those objects.  If you want all references to also be saved also, noting each
+save is a separate query, then passing :attr:`cascade` as True
+to the save method will cascade any saves.
 
 Deleting documents
 ------------------

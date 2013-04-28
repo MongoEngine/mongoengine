@@ -7,16 +7,18 @@ MongoDB. To install it, simply run
 
 .. code-block:: console
 
-    # pip install -U mongoengine
+    $ pip install -U mongoengine
 
 :doc:`tutorial`
-  Start here for a quick overview.
+  A quick tutorial building a tumblelog to get you up and running with
+  MongoEngine.
 
 :doc:`guide/index`
-  The Full guide to MongoEngine
+  The Full guide to MongoEngine - from modeling documents to storing files,
+  from querying for data to firing signals and *everything* between.
 
 :doc:`apireference`
-  The complete API documentation.
+  The complete API documentation --- the innards of documents, querysets and fields.
 
 :doc:`upgrade`
   How to upgrade MongoEngine.
@@ -28,35 +30,40 @@ Community
 ---------
 
 To get help with using MongoEngine, use the `MongoEngine Users mailing list
-<http://groups.google.com/group/mongoengine-users>`_ or come chat on the
-`#mongoengine IRC channel <irc://irc.freenode.net/mongoengine>`_.
+<http://groups.google.com/group/mongoengine-users>`_ or the ever popular
+`stackoverflow <http://www.stackoverflow.com>`_.
 
 Contributing
 ------------
 
-The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
-contributions are always encouraged. Contributions can be as simple as
-minor tweaks to this documentation. To contribute, fork the project on
+**Yes please!**  We are always looking for contributions, additions and improvements.
+
+The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_
+and contributions are always encouraged. Contributions can be as simple as
+minor tweaks to this documentation, the website or the core.
+
+To contribute, fork the project on
 `GitHub <http://github.com/MongoEngine/mongoengine>`_ and send a
 pull request.
 
-Also, you can join the developers' `mailing list
-<http://groups.google.com/group/mongoengine-dev>`_.
-
 Changes
 -------
+
 See the :doc:`changelog` for a full list of changes to MongoEngine and
 :doc:`upgrade` for upgrade information.
 
-.. toctree::
-   :hidden:
+.. note::  Always read and test the `upgrade <upgrade>`_ documentation before
+    putting updates live in production **;)**
 
-   tutorial
-   guide/index
-   apireference
-   django
-   changelog
-   upgrade
+.. toctree::
+    :hidden:
+
+    tutorial
+    guide/index
+    apireference
+    django
+    changelog
+    upgrade
 
 Indices and tables
 ------------------

@@ -8,8 +8,8 @@ try:
 except ImportError:
     pass
 
-DESCRIPTION = """MongoEngine is a Python Object-Document
-Mapper for working with MongoDB."""
+DESCRIPTION = 'MongoEngine is a Python Object-Document ' + \
+'Mapper for working with MongoDB.'
 LONG_DESCRIPTION = None
 try:
     LONG_DESCRIPTION = open('README.rst').read()
@@ -38,7 +38,6 @@ CLASSIFIERS = [
     'Operating System :: OS Independent',
     'Programming Language :: Python',
     "Programming Language :: Python :: 2",
-    "Programming Language :: Python :: 2.5",
     "Programming Language :: Python :: 2.6",
     "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
@@ -56,9 +55,9 @@ if sys.version_info[0] == 3:
     extra_opts['packages'] = find_packages(exclude=('tests',))
     if "test" in sys.argv or "nosetests" in sys.argv:
         extra_opts['packages'].append("tests")
-        extra_opts['package_data'] = {"tests": ["mongoengine.png"]}
+        extra_opts['package_data'] = {"tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]}
 else:
-    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django==1.4.2', 'PIL']
+    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.4.2', 'PIL']
     extra_opts['packages'] = find_packages(exclude=('tests',))
 
 setup(name='mongoengine',

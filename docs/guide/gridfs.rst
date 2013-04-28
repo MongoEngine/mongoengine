@@ -7,7 +7,7 @@ GridFS
 Writing
 -------
 
-GridFS support comes in the form of the :class:`~mongoengine.FileField` field
+GridFS support comes in the form of the :class:`~mongoengine.fields.FileField` field
 object. This field acts as a file-like object and provides a couple of
 different ways of inserting and retrieving data. Arbitrary metadata such as
 content type can also be stored alongside the files. In the following example,
@@ -18,26 +18,16 @@ a document is created to store details about animals, including a photo::
         family = StringField()
         photo = FileField()
 
-    marmot = Animal('Marmota', 'Sciuridae')
+    marmot = Animal(genus='Marmota', family='Sciuridae')
 
-    marmot_photo = open('marmot.jpg', 'r')      # Retrieve a photo from disk
-    marmot.photo = marmot_photo                 # Store photo in the document
-    marmot.photo.content_type = 'image/jpeg'    # Store metadata
-
-    marmot.save()
-
-Another way of writing to a :class:`~mongoengine.FileField` is to use the
-:func:`put` method. This allows for metadata to be stored in the same call as
-the file::
-
-    marmot.photo.put(marmot_photo, content_type='image/jpeg')
-
+    marmot_photo = open('marmot.jpg', 'r')
+    marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
     marmot.save()
 
 Retrieval
 ---------
 
-So using the :class:`~mongoengine.FileField` is just like using any other
+So using the :class:`~mongoengine.fields.FileField` is just like using any other
 field. The file can also be retrieved just as easily::
 
     marmot = Animal.objects(genus='Marmota').first()
@@ -47,7 +37,7 @@ field. The file can also be retrieved just as easily::
 Streaming
 ---------
 
-Streaming data into a :class:`~mongoengine.FileField` is achieved in a
+Streaming data into a :class:`~mongoengine.fields.FileField` is achieved in a
 slightly different manner.  First, a new file must be created by calling the
 :func:`new_file` method. Data can then be written using :func:`write`::
 

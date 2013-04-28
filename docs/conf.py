@@ -16,7 +16,7 @@ import sys, os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.append(os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -38,7 +38,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'MongoEngine'
-copyright = u'2009-2012, MongoEngine Authors'
+copyright = u'2009, MongoEngine Authors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -173,8 +173,8 @@ latex_paper_size = 'a4'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'MongoEngine.tex', u'MongoEngine Documentation',
-   u'Harry Marr', 'manual'),
+  ('index', 'MongoEngine.tex', 'MongoEngine Documentation',
+   'Ross Lawley', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -193,3 +193,6 @@ latex_documents = [
 
 # If false, no module index is generated.
 #latex_use_modindex = True
+
+autoclass_content = 'both'
+

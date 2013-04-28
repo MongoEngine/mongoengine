@@ -33,7 +33,7 @@ class DeReference(object):
         self.max_depth = max_depth
         doc_type = None
 
-        if instance and instance._fields:
+        if instance and isinstance(instance, (Document, TopLevelDocumentMetaclass)):
             doc_type = instance._fields.get(name)
             if hasattr(doc_type, 'field'):
                 doc_type = doc_type.field
@@ -84,7 +84,7 @@ class DeReference(object):
         # Recursively find dbreferences
         depth += 1
         for k, item in iterator:
-            if hasattr(item, '_fields'):
+            if isinstance(item, Document):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
@@ -115,13 +115,16 @@ class DeReference(object):
         object_map = {}
         for col, dbrefs in self.reference_map.iteritems():
             keys = object_map.keys()
-            refs = list(set([dbref for dbref in dbrefs if str(dbref) not in keys]))
+            refs = list(set([dbref for dbref in dbrefs if unicode(dbref).encode('utf-8') not in keys]))
             if hasattr(col, 'objects'):  # We have a document class for the refs
                 references = col.objects.in_bulk(refs)
                 for key, doc in references.iteritems():
                     object_map[key] = doc
             else:  # Generic reference: use the refs data to convert to document
-                if doc_type and not isinstance(doc_type, (ListField, DictField, MapField,) ):
+                if isinstance(doc_type, (ListField, DictField, MapField,)):
+                    continue
+
+                if doc_type:
                     references = doc_type._get_db()[col].find({'_id': {'$in': refs}})
                     for ref in references:
                         doc = doc_type._from_son(ref)
@@ -164,7 +167,7 @@ class DeReference(object):
         if isinstance(items, (dict, SON)):
             if '_ref' in items:
                 return self.object_map.get(items['_ref'].id, items)
-            elif '_types' in items and '_cls' in items:
+            elif '_cls' in items:
                 doc = get_document(items['_cls'])._from_son(items)
                 doc._data = self._attach_objects(doc._data, depth, doc, None)
                 return doc
@@ -188,7 +191,7 @@ class DeReference(object):
 
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
-            elif hasattr(v, '_fields'):
+            elif isinstance(v, Document):
                 for field_name, field in v._fields.iteritems():
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
