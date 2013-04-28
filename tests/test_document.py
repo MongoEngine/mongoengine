@@ -1168,7 +1168,7 @@ class DocumentTest(unittest.TestCase):
         """
         class BlogPost(Document):
             title = StringField()
-            slug = IUniqueStringField()
+            slug = IUniqueStringField(unique=True)
 
         BlogPost.drop_collection()
 
@@ -1179,13 +1179,33 @@ class DocumentTest(unittest.TestCase):
         post2 = BlogPost(title='test2', slug='TEST')
         self.assertRaises(NotUniqueError, post2.save)
 
+    def test_case_insensitive_string_unique_with(self):
+        """Ensure that case insensitive uniqueness constraints are applied to
+        emails.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            slug = IUniqueStringField(unique_with='title')
+
+        post1 = BlogPost(title='test1', slug='test')
+        post1.save()
+
+        post2 = BlogPost(title='test2', slug='test')
+        post2.save()
+
+        post3 = BlogPost(title='test1', slug='test')
+        self.assertRaises(NotUniqueError, post3.save)
+
+        post4 = BlogPost(title='test1', slug='TEST')
+        self.assertRaises(NotUniqueError, post4.save)
+
     def test_unique_case_insensitive_email(self):
         """Ensure that case insensitive uniqueness constraints are applied to
         emails.
         """
         class BlogPost(Document):
             title = StringField()
-            author_email = IUniqueEmailField()
+            author_email = IUniqueEmailField(unique=True)
 
         BlogPost.drop_collection()
 
@@ -1232,7 +1252,7 @@ class DocumentTest(unittest.TestCase):
         """
         class SubDocument(EmbeddedDocument):
             year = IntField(db_field='yr')
-            slug = IUniqueStringField()
+            slug = IUniqueStringField(unique=True)
 
         class BlogPost(Document):
             title = StringField()

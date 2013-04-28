@@ -101,7 +101,8 @@ class StringField(BaseField):
 class IUniqueStringField(StringField):
 
     def __init__(self, *args, **kwargs):
-        kwargs['unique'] = True
+        if not kwargs.get('unique') and not kwargs.get('unique_with'):
+            raise StandardError('IUniqueStringField requires a unique or unique_with parameter')
         super(IUniqueStringField, self).__init__(*args, **kwargs)
         self._unique_case_insensitive = True
 
@@ -168,7 +169,8 @@ class EmailField(StringField):
 class IUniqueEmailField(EmailField):
 
     def __init__(self, *args, **kwargs):
-        kwargs['unique'] = True
+        if not kwargs.get('unique') and not kwargs.get('unique_with'):
+            raise StandardError('IUniqueStringField requires a unique or unique_with parameter')
         super(IUniqueEmailField, self).__init__(*args, **kwargs)
         self._unique_case_insensitive = True
 

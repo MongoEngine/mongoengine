@@ -548,7 +548,7 @@ class DocumentMetaclass(type):
             if getattr(attr_value, '_unique_case_insensitive', None):
                 from fields import StringField
 
-                lower_field = StringField(unique=True)
+                lower_field = StringField(unique=attr_value.unique, unique_with=attr_value.unique_with)
                 lower_field.name = '_%s_lower' % attr_name
                 lower_field.db_field = lower_field.name
 
