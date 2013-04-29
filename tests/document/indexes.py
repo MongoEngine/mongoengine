@@ -217,7 +217,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('location.point', '2d')]}],
-                        Place._meta['index_specs'])
+                         Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
@@ -231,8 +231,7 @@ class IndexesTest(unittest.TestCase):
             location = DictField()
 
         class Place(Document):
-            current = DictField(
-                    field=EmbeddedDocumentField('EmbeddedLocation'))
+            current = DictField(field=EmbeddedDocumentField('EmbeddedLocation'))
             meta = {
                 'allow_inheritance': True,
                 'indexes': [
@@ -241,7 +240,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('current.location.point', '2d')]}],
-                        Place._meta['index_specs'])
+                         Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
@@ -264,7 +263,7 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual([{'fields': [('addDate', -1)], 'unique': True,
                           'sparse': True}],
-                        BlogPost._meta['index_specs'])
+                         BlogPost._meta['index_specs'])
 
         BlogPost.drop_collection()
 
@@ -633,7 +632,7 @@ class IndexesTest(unittest.TestCase):
         list(Log.objects)
         info = Log.objects._collection.index_information()
         self.assertEqual(3600,
-                info['created_1']['expireAfterSeconds'])
+                         info['created_1']['expireAfterSeconds'])
 
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by

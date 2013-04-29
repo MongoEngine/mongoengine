@@ -8,6 +8,7 @@ import uuid
 import warnings
 from operator import itemgetter
 
+import pymongo
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
 
@@ -35,7 +36,6 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
            'ImproperlyConfigured',  'ImageField',  'GeoPointField',
            'SequenceField',  'UUIDField']
-
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -1392,7 +1392,7 @@ class GeoPointField(BaseField):
     .. versionadded:: 0.4
     """
 
-    _geo_index = True
+    _geo_index = pymongo.GEO2D
 
     def validate(self, value):
         """Make sure that a geo-value is of type (x, y)
@@ -1404,7 +1404,7 @@ class GeoPointField(BaseField):
         if not len(value) == 2:
             self.error('Value must be a two-dimensional point')
         if (not isinstance(value[0], (float, int)) and
-            not isinstance(value[1], (float, int))):
+           not isinstance(value[1], (float, int))):
             self.error('Both values in point must be float or int')
 
 

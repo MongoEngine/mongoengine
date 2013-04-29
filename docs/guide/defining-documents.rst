@@ -479,6 +479,10 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be unique.
 
+:attr:`expireAfterSeconds` (Optional)
+    Allows you to automatically expire data from a collection by setting the
+    time in seconds to expire the a field.
+
 .. note::
 
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
@@ -510,6 +514,22 @@ point. To create a geospatial index you must prefix the field with the
             'indexes': [
                 '*location.point',
             ],
+        }
+
+Time To Live indexes
+--------------------
+
+A special index type that allows you to automatically expire data from a
+collection after a given period. See the official
+`ttl <http://docs.mongodb.org/manual/tutorial/expire-data/#expire-data-from-collections-by-setting-ttl>`_
+documentation for more information.  A common usecase might be session data::
+
+    class Session(Document):
+        created = DateTimeField(default=datetime.now)
+        meta = {
+            'indexes': [
+                {'fields': ['created'], 'expireAfterSeconds': 3600}
+            ]
         }
 
 Ordering
