@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Ensure as_pymongo() and to_json honour only() and exclude() (#293)
 - Document serialization uses field order to ensure a strict order is set (#296)
 - DecimalField now stores as float not string (#289)
 - UUIDField now stores as a binary by default (#292)

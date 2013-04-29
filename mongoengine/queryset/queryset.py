@@ -822,8 +822,7 @@ class QuerySet(object):
 
     def to_json(self):
         """Converts a queryset to JSON"""
-        queryset = self.clone()
-        return json_util.dumps(queryset._collection_obj.find(queryset._query))
+        return json_util.dumps(self.as_pymongo())
 
     def from_json(self, json_data):
         """Converts json data to unsaved objects"""
@@ -1095,7 +1094,7 @@ class QuerySet(object):
                 raise StopIteration
             if self._scalar:
                 return self._get_scalar(self._document._from_son(
-                        self._cursor.next()))
+                                        self._cursor.next()))
             if self._as_pymongo:
                 return self._get_as_pymongo(self._cursor.next())
 
@@ -1370,7 +1369,15 @@ class QuerySet(object):
                 new_data = {}
                 for key, value in data.iteritems():
                     new_path = '%s.%s' % (path, key) if path else key
-                    if all_fields or new_path in self.__as_pymongo_fields:
+
+                    if all_fields:
+                        include_field = True
+                    elif self._loaded_fields.value == QueryFieldList.ONLY:
+                        include_field = new_path in self.__as_pymongo_fields
+                    else:
+                        include_field = new_path not in self.__as_pymongo_fields
+
+                    if include_field:
                         new_data[key] = clean(value, path=new_path)
                 data = new_data
             elif isinstance(data, list):

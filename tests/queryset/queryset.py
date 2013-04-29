@@ -3276,6 +3276,28 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(results[1]['name'], 'Barack Obama')
         self.assertEqual(results[1]['price'], Decimal('2.22'))
 
+    def test_as_pymongo_json_limit_fields(self):
+
+        class User(Document):
+            email = EmailField(unique=True, required=True)
+            password_hash = StringField(db_field='password_hash', required=True)
+            password_salt = StringField(db_field='password_salt', required=True)
+
+        User.drop_collection()
+        User(email="ross@example.com", password_salt="SomeSalt", password_hash="SomeHash").save()
+
+        serialized_user = User.objects.exclude('password_salt', 'password_hash').as_pymongo()[0]
+        self.assertEqual(set(['_id', 'email']), set(serialized_user.keys()))
+
+        serialized_user = User.objects.exclude('id', 'password_salt', 'password_hash').to_json()
+        self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
+
+        serialized_user = User.objects.exclude('password_salt').only('email').as_pymongo()[0]
+        self.assertEqual(set(['email']), set(serialized_user.keys()))
+
+        serialized_user = User.objects.exclude('password_salt').only('email').to_json()
+        self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
+
     def test_no_dereference(self):
 
         class Organization(Document):
