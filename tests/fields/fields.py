@@ -409,6 +409,27 @@ class FieldTest(unittest.TestCase):
         log.time = '1pm'
         self.assertRaises(ValidationError, log.validate)
 
+    def test_datetime_tz_aware_mark_as_changed(self):
+        from mongoengine import connection
+
+        # Reset the connections
+        connection._connection_settings = {}
+        connection._connections = {}
+        connection._dbs = {}
+
+        connect(db='mongoenginetest', tz_aware=True)
+
+        class LogEntry(Document):
+            time = DateTimeField()
+
+        LogEntry.drop_collection()
+
+        LogEntry(time=datetime.datetime(2013, 1, 1, 0, 0, 0)).save()
+
+        log = LogEntry.objects.first()
+        log.time = datetime.datetime(2013, 1, 1, 0, 0, 0)
+        self.assertEqual(['time'], log._changed_fields)
+
     def test_datetime(self):
         """Tests showing pymongo datetime fields handling of microseconds.
         Microseconds are rounded to the nearest millisecond and pre UTC
