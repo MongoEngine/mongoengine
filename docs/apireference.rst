@@ -76,10 +76,13 @@ Fields
 .. autoclass:: mongoengine.fields.BinaryField
 .. autoclass:: mongoengine.fields.FileField
 .. autoclass:: mongoengine.fields.ImageField
-.. autoclass:: mongoengine.fields.GeoPointField
 .. autoclass:: mongoengine.fields.SequenceField
 .. autoclass:: mongoengine.fields.ObjectIdField
 .. autoclass:: mongoengine.fields.UUIDField
+.. autoclass:: mongoengine.fields.GeoPointField
+.. autoclass:: mongoengine.fields.PointField
+.. autoclass:: mongoengine.fields.LineStringField
+.. autoclass:: mongoengine.fields.PolygonField
 .. autoclass:: mongoengine.fields.GridFSError
 .. autoclass:: mongoengine.fields.GridFSProxy
 .. autoclass:: mongoengine.fields.ImageGridFsProxy

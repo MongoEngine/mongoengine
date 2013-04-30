@@ -65,6 +65,9 @@ Available operators are as follows:
 * ``size`` -- the size of the array is
 * ``exists`` -- value for field exists
 
+String queries
+--------------
+
 The following operators are available as shortcuts to querying with regular
 expressions:
 
@@ -78,8 +81,71 @@ expressions:
 * ``iendswith`` -- string field ends with value (case insensitive)
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
-There are a few special operators for performing geographical queries, that
-may used with :class:`~mongoengine.fields.GeoPointField`\ s:
+
+Geo queries
+-----------
+
+There are a few special operators for performing geographical queries. The following
+were added in 0.8 for:  :class:`~mongoengine.fields.PointField`,
+:class:`~mongoengine.fields.LineStringField` and
+:class:`~mongoengine.fields.PolygonField`:
+
+* ``geo_within`` -- Check if a geometry is within a polygon.  For ease of use
+    it accepts either a geojson geometry or just the polygon coordinates eg::
+
+        loc.objects(point__geo_with=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
+        loc.objects(point__geo_with={"type": "Polygon",
+                                 "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
+
+* ``geo_within_box`` - simplified geo_within searching with a box eg::
+
+        loc.objects(point__geo_within_box=[(-125.0, 35.0), (-100.0, 40.0)])
+        loc.objects(point__geo_within_box=[<bottom left coordinates>, <upper right coordinates>])
+
+* ``geo_within_polygon`` -- simplified geo_within searching within a simple polygon eg::
+
+        loc.objects(point__geo_within_polygon=[[40, 5], [40, 6], [41, 6], [40, 5]])
+        loc.objects(point__geo_within_polygon=[ [ <x1> , <y1> ] ,
+                                                [ <x2> , <y2> ] ,
+                                                [ <x3> , <y3> ] ])
+
+* ``geo_within_center`` -- simplified geo_within the flat circle radius of a point eg::
+
+        loc.objects(point__geo_within_center=[(-125.0, 35.0), 1])
+        loc.objects(point__geo_within_center=[ [ <x>, <y> ] , <radius> ])
+
+* ``geo_within_sphere`` -- simplified geo_within the spherical circle radius of a point eg::
+
+        loc.objects(point__geo_within_sphere=[(-125.0, 35.0), 1])
+        loc.objects(point__geo_within_sphere=[ [ <x>, <y> ] , <radius> ])
+
+* ``geo_intersects`` -- selects all locations that intersect with a geometry eg::
+
+        # Inferred from provided points lists:
+        loc.objects(poly__geo_intersects=[40, 6])
+        loc.objects(poly__geo_intersects=[[40, 5], [40, 6]])
+        loc.objects(poly__geo_intersects=[[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]])
+
+        # With geoJson style objects
+        loc.objects(poly__geo_intersects={"type": "Point", "coordinates": [40, 6]})
+        loc.objects(poly__geo_intersects={"type": "LineString",
+                                          "coordinates": [[40, 5], [40, 6]]})
+        loc.objects(poly__geo_intersects={"type": "Polygon",
+                                          "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]})
+
+* ``near`` -- Find all the locations near a given point::
+
+        loc.objects(point__near=[40, 5])
+        loc.objects(point__near={"type": "Point", "coordinates": [40, 5]})
+
+
+    You can also set the maximum distance in meters as well::
+
+        loc.objects(point__near=[40, 5], point__max_distance=1000)
+
+
+The older 2D indexes are still supported with the
+:class:`~mongoengine.fields.GeoPointField`:
 
 * ``within_distance`` -- provide a list containing a point and a maximum
   distance (e.g. [(41.342, -87.653), 5])
@@ -91,7 +157,9 @@ may used with :class:`~mongoengine.fields.GeoPointField`\ s:
   [(35.0, -125.0), (40.0, -100.0)])
 * ``within_polygon`` -- filter documents to those within a given polygon (e.g.
   [(41.91,-87.69), (41.92,-87.68), (41.91,-87.65), (41.89,-87.65)]).
+
   .. note:: Requires Mongo Server 2.0
+
 * ``max_distance`` -- can be added to your location queries to set a maximum
   distance.
 

@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Add support for new geojson fields, indexes and queries (#299)
 - If values cant be compared mark as changed (#287)
 - Ensure as_pymongo() and to_json honour only() and exclude() (#293)
 - Document serialization uses field order to ensure a strict order is set (#296)

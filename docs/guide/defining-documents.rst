@@ -499,6 +499,35 @@ in this case use 'dot' notation to identify the value to index eg: `rank.title`
 Geospatial indexes
 ------------------
 
+
+The best geo index for mongodb is the new "2dsphere", which has an improved
+spherical model and provides better performance and more options when querying.
+The following fields will explicitly add a "2dsphere" index:
+
+    - :class:`~mongoengine.fields.PointField`
+    - :class:`~mongoengine.fields.LineStringField`
+    - :class:`~mongoengine.fields.PolygonField`
+
+As "2dsphere" indexes can be part of a compound index, you may not want the
+automatic index but would prefer a compound index.  In this example we turn off
+auto indexing and explicitly declare a compound index on ``location`` and ``datetime``::
+
+    class Log(Document):
+        location = PointField(auto_index=False)
+        datetime = DateTimeField()
+
+        meta = {
+            'indexes': [[("location", "2dsphere"), ("datetime", 1)]]
+        }
+
+
+Pre MongoDB 2.4 Geo
+'''''''''''''''''''
+
+.. note:: For MongoDB < 2.4 this is still current, however the new 2dsphere
+    index is a big improvement over the previous 2D model - so upgrading is
+    advised.
+
 Geospatial indexes will be automatically created for all
 :class:`~mongoengine.fields.GeoPointField`\ s
 

@@ -523,7 +523,6 @@ class Document(BaseDocument):
         # an extra index on _cls, as mongodb will use the existing
         # index to service queries against _cls
         cls_indexed = False
-
         def includes_cls(fields):
             first_field = None
             if len(fields):

@@ -1,8 +1,8 @@
-=============================
-Using MongoEngine with Django
-=============================
+==============
+Django Support
+==============
 
-.. note:: Updated to support Django 1.4
+.. note:: Updated to support Django 1.5
 
 Connecting
 ==========

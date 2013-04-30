@@ -56,14 +56,16 @@ See the :doc:`changelog` for a full list of changes to MongoEngine and
     putting updates live in production **;)**
 
 .. toctree::
+    :maxdepth: 1
+    :numbered:
     :hidden:
 
     tutorial
     guide/index
     apireference
-    django
     changelog
     upgrade
+    django
 
 Indices and tables
 ------------------

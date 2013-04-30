@@ -381,8 +381,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(sorted(info.keys()), ['_id_', 'tags.tag_1'])
 
         post1 = BlogPost(title="Embedded Indexes tests in place",
-                        tags=[Tag(name="about"), Tag(name="time")]
-                )
+                         tags=[Tag(name="about"), Tag(name="time")])
         post1.save()
         BlogPost.drop_collection()
 
@@ -399,29 +398,6 @@ class IndexesTest(unittest.TestCase):
         info = RecursiveDocument._get_collection().index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1', '_id_'])
 
-    def test_geo_indexes_recursion(self):
-
-        class Location(Document):
-            name = StringField()
-            location = GeoPointField()
-
-        class Parent(Document):
-            name = StringField()
-            location = ReferenceField(Location, dbref=False)
-
-        Location.drop_collection()
-        Parent.drop_collection()
-
-        list(Parent.objects)
-
-        collection = Parent._get_collection()
-        info = collection.index_information()
-
-        self.assertFalse('location_2d' in info)
-
-        self.assertEqual(len(Parent._geo_indices()), 0)
-        self.assertEqual(len(Location._geo_indices()), 1)
-
     def test_covered_index(self):
         """Ensure that covered indexes can be used
         """
@@ -432,7 +408,7 @@ class IndexesTest(unittest.TestCase):
             meta = {
                 'indexes': ['a'],
                 'allow_inheritance': False
-                }
+            }
 
         Test.drop_collection()
 

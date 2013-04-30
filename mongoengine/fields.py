@@ -15,7 +15,7 @@ from bson import Binary, DBRef, SON, ObjectId
 from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
-from base import (BaseField, ComplexBaseField, ObjectIdField,
+from base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
                   get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
@@ -34,8 +34,8 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'SortedListField',  'DictField',  'MapField',  'ReferenceField',
            'GenericReferenceField',  'BinaryField',  'GridFSError',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
-           'ImproperlyConfigured',  'ImageField',  'GeoPointField',
-           'SequenceField',  'UUIDField']
+           'ImproperlyConfigured',  'ImageField',  'GeoPointField', 'PointField',
+           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -1386,28 +1386,6 @@ class ImageField(FileField):
             **kwargs)
 
 
-class GeoPointField(BaseField):
-    """A list storing a latitude and longitude.
-
-    .. versionadded:: 0.4
-    """
-
-    _geo_index = pymongo.GEO2D
-
-    def validate(self, value):
-        """Make sure that a geo-value is of type (x, y)
-        """
-        if not isinstance(value, (list, tuple)):
-            self.error('GeoPointField can only accept tuples or lists '
-                       'of (x, y)')
-
-        if not len(value) == 2:
-            self.error('Value must be a two-dimensional point')
-        if (not isinstance(value[0], (float, int)) and
-           not isinstance(value[1], (float, int))):
-            self.error('Both values in point must be float or int')
-
-
 class SequenceField(BaseField):
     """Provides a sequental counter see:
      http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
@@ -1548,3 +1526,83 @@ class UUIDField(BaseField):
                 value = uuid.UUID(value)
             except Exception, exc:
                 self.error('Could not convert to UUID: %s' % exc)
+
+
+class GeoPointField(BaseField):
+    """A list storing a latitude and longitude.
+
+    .. versionadded:: 0.4
+    """
+
+    _geo_index = pymongo.GEO2D
+
+    def validate(self, value):
+        """Make sure that a geo-value is of type (x, y)
+        """
+        if not isinstance(value, (list, tuple)):
+            self.error('GeoPointField can only accept tuples or lists '
+                       'of (x, y)')
+
+        if not len(value) == 2:
+            self.error("Value (%s) must be a two-dimensional point" % repr(value))
+        elif (not isinstance(value[0], (float, int)) or
+              not isinstance(value[1], (float, int))):
+            self.error("Both values (%s) in point must be float or int" % repr(value))
+
+
+class PointField(GeoJsonBaseField):
+    """A geo json field storing a latitude and longitude.
+
+    The data is represented as:
+
+    .. code-block:: js
+
+        { "type" : "Point" ,
+          "coordinates" : [x, y]}
+
+    You can either pass a dict with the full information or a list
+    to set the value.
+
+    Requires mongodb >= 2.4
+    .. versionadded:: 0.8
+    """
+    _type = "Point"
+
+
+class LineStringField(GeoJsonBaseField):
+    """A geo json field storing a line of latitude and longitude coordinates.
+
+    The data is represented as:
+
+    .. code-block:: js
+
+        { "type" : "LineString" ,
+          "coordinates" : [[x1, y1], [x1, y1] ... [xn, yn]]}
+
+    You can either pass a dict with the full information or a list of points.
+
+    Requires mongodb >= 2.4
+    .. versionadded:: 0.8
+    """
+    _type = "LineString"
+
+
+class PolygonField(GeoJsonBaseField):
+    """A geo json field storing a polygon of latitude and longitude coordinates.
+
+    The data is represented as:
+
+    .. code-block:: js
+
+        { "type" : "Polygon" ,
+          "coordinates" : [[[x1, y1], [x1, y1] ... [xn, yn]],
+                           [[x1, y1], [x1, y1] ... [xn, yn]]}
+
+    You can either pass a dict with the full information or a list
+    of LineStrings. The first LineString being the outside and the rest being
+    holes.
+
+    Requires mongodb >= 2.4
+    .. versionadded:: 0.8
+    """
+    _type = "Polygon"

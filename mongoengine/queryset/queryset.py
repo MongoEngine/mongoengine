@@ -1422,15 +1422,14 @@ class QuerySet(object):
 
         code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
         code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
-                code)
+                      code)
         return code
 
     # Deprecated
-
     def ensure_index(self, **kwargs):
         """Deprecated use :func:`~Document.ensure_index`"""
         msg = ("Doc.objects()._ensure_index() is deprecated. "
-              "Use Doc.ensure_index() instead.")
+               "Use Doc.ensure_index() instead.")
         warnings.warn(msg, DeprecationWarning)
         self._document.__class__.ensure_index(**kwargs)
         return self
@@ -1438,6 +1437,6 @@ class QuerySet(object):
     def _ensure_indexes(self):
         """Deprecated use :func:`~Document.ensure_indexes`"""
         msg = ("Doc.objects()._ensure_indexes() is deprecated. "
-              "Use Doc.ensure_indexes() instead.")
+               "Use Doc.ensure_indexes() instead.")
         warnings.warn(msg, DeprecationWarning)
         self._document.__class__.ensure_indexes()
