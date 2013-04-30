@@ -469,7 +469,8 @@ class QuerySet(object):
 
         .. versionadded:: 0.2
         """
-        return self.update(upsert=upsert, multi=False, write_concern=None, **update)
+        return self.update(
+            upsert=upsert, multi=False, write_concern=write_concern, **update)
 
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
