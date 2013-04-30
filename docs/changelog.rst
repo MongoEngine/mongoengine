@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.X
 ================
+- Updated minimum requirement for pymongo to 2.5
 - Add support for new geojson fields, indexes and queries (#299)
 - If values cant be compared mark as changed (#287)
 - Ensure as_pymongo() and to_json honour only() and exclude() (#293)

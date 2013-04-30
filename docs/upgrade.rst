@@ -15,10 +15,10 @@ possible for the whole of the release.
     live. There maybe multiple manual steps in migrating and these are best honed
     on a staging / test system.
 
-Python
-=======
+Python and PyMongo
+==================
 
-Support for python 2.5 has been dropped.
+MongoEngine requires python 2.6 (or above) and pymongo 2.5 (or above)
 
 Data Model
 ==========
