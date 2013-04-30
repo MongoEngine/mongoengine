@@ -184,9 +184,9 @@ class GeoFieldTest(unittest.TestCase):
             polygon = PolygonField()
 
         geo_indicies = Event._geo_indices()
-        self.assertEqual(geo_indicies, [{'fields': [('line', '2dsphere')]},
-                                        {'fields': [('polygon', '2dsphere')]},
-                                        {'fields': [('point', '2dsphere')]}])
+        self.assertTrue({'fields': [('line', '2dsphere')]} in geo_indicies)
+        self.assertTrue({'fields': [('polygon', '2dsphere')]} in geo_indicies)
+        self.assertTrue({'fields': [('point', '2dsphere')]} in geo_indicies)
 
     def test_indexes_2dsphere_embedded(self):
         """Ensure that indexes are created automatically for GeoPointFields.

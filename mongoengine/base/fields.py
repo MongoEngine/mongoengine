@@ -456,7 +456,7 @@ class GeoJsonBaseField(BaseField):
             if error and error not in errors:
                 errors.append(error)
         if errors:
-            return "Invalid Polygon:\n%s" % ", ".join(set(errors))
+            return "Invalid Polygon:\n%s" % ", ".join(errors)
 
     def _validate_linestring(self, value, top_level=True):
         """Validates a linestring"""
@@ -478,7 +478,7 @@ class GeoJsonBaseField(BaseField):
             if top_level:
                 return "Invalid LineString:\n%s" % ", ".join(errors)
             else:
-                return "%s" % ", ".join(set(errors))
+                return "%s" % ", ".join(errors)
 
     def _validate_point(self, value):
         """Validate each set of coords"""
