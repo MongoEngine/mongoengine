@@ -72,7 +72,6 @@ class QuerySet(object):
         self._cursor_obj = None
         self._limit = None
         self._skip = None
-        self._slice = None
         self._hint = -1  # Using -1 as None is a valid value for hint
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False,
@@ -127,8 +126,10 @@ class QuerySet(object):
         if isinstance(key, slice):
             try:
                 queryset._cursor_obj = queryset._cursor[key]
-                queryset._slice = key
                 queryset._skip, queryset._limit = key.start, key.stop
+                queryset._limit
+                if key.start and key.stop:
+                    queryset._limit = key.stop - key.start
             except IndexError, err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it.
@@ -537,14 +538,8 @@ class QuerySet(object):
             val = getattr(self, prop)
             setattr(c, prop, copy.copy(val))
 
-        if self._slice:
-            c._slice = self._slice
-
         if self._cursor_obj:
             c._cursor_obj = self._cursor_obj.clone()
-
-        if self._slice:
-            c._cursor[self._slice]
 
         return c
 
@@ -571,7 +566,6 @@ class QuerySet(object):
         else:
             queryset._cursor.limit(n)
         queryset._limit = n
-
         # Return self to allow chaining
         return queryset
 
@@ -1155,7 +1149,7 @@ class QuerySet(object):
                 self._cursor_obj.sort(order)
 
             if self._limit is not None:
-                self._cursor_obj.limit(self._limit - (self._skip or 0))
+                self._cursor_obj.limit(self._limit)
 
             if self._skip is not None:
                 self._cursor_obj.skip(self._skip)
