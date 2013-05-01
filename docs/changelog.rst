@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.8.X
+Changes in 0.8.0
 ================
 - Fixed update_one write concern (#302)
 - Updated minimum requirement for pymongo to 2.5
