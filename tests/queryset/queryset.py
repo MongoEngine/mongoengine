@@ -287,15 +287,19 @@ class QuerySetTest(unittest.TestCase):
             name='Test User', write_concern=write_concern)
         author.save(write_concern=write_concern)
 
-        self.Person.objects.update(set__name='Ross',
-                                   write_concern=write_concern)
+        result = self.Person.objects.update(
+            set__name='Ross',write_concern={"w": 1})
+        self.assertEqual(result, 1)
+        result = self.Person.objects.update(
+            set__name='Ross',write_concern={"w": 0})
+        self.assertEqual(result, None)
 
-        author = self.Person.objects.first()
-        self.assertEqual(author.name, 'Ross')
-
-        self.Person.objects.update_one(set__name='Test User', write_concern=write_concern)
-        author = self.Person.objects.first()
-        self.assertEqual(author.name, 'Test User')
+        result = self.Person.objects.update_one(
+            set__name='Test User', write_concern={"w": 1})
+        self.assertEqual(result, 1)
+        result = self.Person.objects.update_one(
+            set__name='Test User', write_concern={"w": 0})
+        self.assertEqual(result, None)
 
     def test_update_update_has_a_value(self):
         """Test to ensure that update is passed a value to update to"""
