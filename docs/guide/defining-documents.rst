@@ -493,7 +493,7 @@ Compound Indexes and Indexing sub documents
 Compound indexes can be created by adding the Embedded field or dictionary
 field name to the index definition.
 
-Sometimes its more efficient to index parts of Embeedded / dictionary fields,
+Sometimes its more efficient to index parts of Embedded / dictionary fields,
 in this case use 'dot' notation to identify the value to index eg: `rank.title`
 
 Geospatial indexes
