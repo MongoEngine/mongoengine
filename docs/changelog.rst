@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Fix cloning of sliced querysets (#303)
 - Fixed update_one write concern (#302)
 - Updated minimum requirement for pymongo to 2.5
 - Add support for new geojson fields, indexes and queries (#299)
