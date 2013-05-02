@@ -115,6 +115,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
+        # Test slice limit and skip cursor reset
+        qs = self.Person.objects[1:2]
+        # fetch then delete the cursor
+        qs._cursor
+        qs._cursor_obj = None
+        people = list(qs)
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0].name, 'User B')
+
         people = list(self.Person.objects[1:1])
         self.assertEqual(len(people), 0)
 
