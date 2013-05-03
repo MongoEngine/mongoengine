@@ -5,7 +5,7 @@ import unittest
 
 from mongoengine import *
 
-from mongoengine.queryset import NULLIFY
+from mongoengine.queryset import NULLIFY, PULL
 from mongoengine.connection import get_db
 
 __all__ = ("ClassMethodsTest", )
@@ -84,6 +84,25 @@ class ClassMethodsTest(unittest.TestCase):
         self.Person.register_delete_rule(Job, 'employee', NULLIFY)
         self.assertEqual(self.Person._meta['delete_rules'],
                          {(Job, 'employee'): NULLIFY})
+
+    def test_register_delete_rule_inherited(self):
+
+        class Vaccine(Document):
+            name = StringField(required=True)
+
+            meta = {"indexes": ["name"]}
+
+        class Animal(Document):
+            family = StringField(required=True)
+            vaccine_made = ListField(ReferenceField("Vaccine", reverse_delete_rule=PULL))
+
+            meta = {"allow_inheritance": True, "indexes": ["family"]}
+
+        class Cat(Animal):
+            name = StringField(required=True)
+
+        self.assertEqual(Vaccine._meta['delete_rules'][(Animal, 'vaccine_made')], PULL)
+        self.assertEqual(Vaccine._meta['delete_rules'][(Cat, 'vaccine_made')], PULL)
 
     def test_collection_naming(self):
         """Ensure that a collection with a specified name may be used.
