@@ -94,7 +94,7 @@ class Document(BaseDocument):
             self.validate()
         doc = self.to_mongo()
         try:
-            collection = self.__class__.objects._collection
+            collection = self._pymongo()
             if force_insert:
                 object_id = collection.insert(doc, safe=safe)
             else:
