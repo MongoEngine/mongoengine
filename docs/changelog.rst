@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Upserting is the only way to ensure docs are saved correctly (#306)
 - Fixed register_delete_rule inheritance issue
 - Fix cloning of sliced querysets (#303)
 - Fixed update_one write concern (#302)

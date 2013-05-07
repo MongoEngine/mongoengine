@@ -852,6 +852,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, None)
 
+    def test_inserts_if_you_set_the_pk(self):
+        p1 = self.Person(name='p1', id=bson.ObjectId()).save()
+        p2 = self.Person(name='p2')
+        p2.id = bson.ObjectId()
+        p2.save()
+
+        self.assertEqual(2, self.Person.objects.count())
+
     def test_can_save_if_not_included(self):
 
         class EmbeddedDoc(EmbeddedDocument):

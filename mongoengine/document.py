@@ -231,7 +231,6 @@ class Document(BaseDocument):
                             return not updated
                     return created
 
-                upsert = self._created
                 update_query = {}
 
                 if updates:
@@ -240,7 +239,7 @@ class Document(BaseDocument):
                     update_query["$unset"] = removals
                 if updates or removals:
                     last_error = collection.update(select_dict, update_query,
-                                                   upsert=upsert, **write_concern)
+                                                   upsert=True, **write_concern)
                     created = is_new_object(last_error)
 
             cascade = (self._meta.get('cascade', True)
