@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Added $setOnInsert support for upserts (#308)
+- Upserts now possible with just query parameters (#309)
 - Upserting is the only way to ensure docs are saved correctly (#306)
 - Fixed register_delete_rule inheritance issue
 - Fix cloning of sliced querysets (#303)

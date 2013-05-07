@@ -427,7 +427,7 @@ class QuerySet(object):
 
         .. versionadded:: 0.2
         """
-        if not update:
+        if not update and not upsert:
             raise OperationError("No update parameters, would remove data")
 
         if not write_concern:

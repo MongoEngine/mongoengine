@@ -296,10 +296,10 @@ class QuerySetTest(unittest.TestCase):
         author.save(write_concern=write_concern)
 
         result = self.Person.objects.update(
-            set__name='Ross',write_concern={"w": 1})
+            set__name='Ross', write_concern={"w": 1})
         self.assertEqual(result, 1)
         result = self.Person.objects.update(
-            set__name='Ross',write_concern={"w": 0})
+            set__name='Ross', write_concern={"w": 0})
         self.assertEqual(result, None)
 
         result = self.Person.objects.update_one(
@@ -535,6 +535,24 @@ class QuerySetTest(unittest.TestCase):
         club = Club.objects().first()
         self.assertEqual(club.members['John']['gender'], "F")
         self.assertEqual(club.members['John']['age'], 14)
+
+    def test_upsert(self):
+        self.Person.drop_collection()
+
+        self.Person.objects(pk=ObjectId(), name="Bob", age=30).update(upsert=True)
+
+        bob = self.Person.objects.first()
+        self.assertEqual("Bob", bob.name)
+        self.assertEqual(30, bob.age)
+
+    def test_set_on_insert(self):
+        self.Person.drop_collection()
+
+        self.Person.objects(pk=ObjectId()).update(set__name='Bob', set_on_insert__age=30, upsert=True)
+
+        bob = self.Person.objects.first()
+        self.assertEqual("Bob", bob.name)
+        self.assertEqual(30, bob.age)
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new

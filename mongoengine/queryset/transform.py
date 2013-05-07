@@ -24,7 +24,8 @@ MATCH_OPERATORS      = (COMPARISON_OPERATORS + GEO_OPERATORS +
                         STRING_OPERATORS + CUSTOM_OPERATORS)
 
 UPDATE_OPERATORS     = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set')
+                        'push_all', 'pull', 'pull_all', 'add_to_set',
+                        'set_on_insert')
 
 
 def query(_doc_cls=None, _field_operation=False, **query):
@@ -163,7 +164,9 @@ def update(_doc_cls=None, **update):
                 if value > 0:
                     value = -value
             elif op == 'add_to_set':
-                op = op.replace('_to_set', 'ToSet')
+                op = 'addToSet'
+            elif op == 'set_on_insert':
+                op = "setOnInsert"
 
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
