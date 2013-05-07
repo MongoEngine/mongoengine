@@ -107,11 +107,11 @@ class URLField(StringField):
     """
 
     _URL_REGEX = re.compile(
-        r'^(?:http|ftp)s?://' # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
-        r'localhost|' #localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
-        r'(?::\d+)?' # optional port
+        r'^(?:http|ftp)s?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
     def __init__(self, verify_exists=False, url_regex=None, **kwargs):
@@ -128,8 +128,7 @@ class URLField(StringField):
             warnings.warn(
                 "The URLField verify_exists argument has intractable security "
                 "and performance issues. Accordingly, it has been deprecated.",
-            DeprecationWarning
-            )
+                DeprecationWarning)
             try:
                 request = urllib2.Request(value)
                 urllib2.urlopen(request)
@@ -469,7 +468,7 @@ class ComplexDateTimeField(StringField):
 
     def __get__(self, instance, owner):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
-        if data == None:
+        if data is None:
             return datetime.datetime.now()
         if isinstance(data, datetime.datetime):
             return data
@@ -658,15 +657,15 @@ class ListField(ComplexBaseField):
         """Make sure that a list of valid fields is being used.
         """
         if (not isinstance(value, (list, tuple, QuerySet)) or
-            isinstance(value, basestring)):
+           isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
         if self.field:
             if op in ('set', 'unset') and (not isinstance(value, basestring)
-                and not isinstance(value, BaseDocument)
-                and hasattr(value, '__iter__')):
+               and not isinstance(value, BaseDocument)
+               and hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)
         return super(ListField, self).prepare_query_value(op, value)
@@ -701,7 +700,7 @@ class SortedListField(ListField):
         value = super(SortedListField, self).to_mongo(value)
         if self._ordering is not None:
             return sorted(value, key=itemgetter(self._ordering),
-                                 reverse=self._order_reverse)
+                          reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
 
@@ -1001,7 +1000,7 @@ class BinaryField(BaseField):
         if not isinstance(value, (bin_type, txt_type, Binary)):
             self.error("BinaryField only accepts instances of "
                        "(%s, %s, Binary)" % (
-                        bin_type.__name__, txt_type.__name__))
+                       bin_type.__name__, txt_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -1235,8 +1234,6 @@ class ImageGridFsProxy(GridFSProxy):
         Insert a image in database
         applying field properties (size, thumbnail_size)
         """
-        if not self.instance:
-            import ipdb; ipdb.set_trace();
         field = self.instance._fields[self.key]
 
         try:
@@ -1308,6 +1305,7 @@ class ImageGridFsProxy(GridFSProxy):
                            height=h,
                            format=format,
                            **kwargs)
+
     @property
     def size(self):
         """
