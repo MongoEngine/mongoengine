@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Fixed querying string versions of ObjectIds issue with ReferenceField (#307)
 - Added $setOnInsert support for upserts (#308)
 - Upserts now possible with just query parameters (#309)
 - Upserting is the only way to ensure docs are saved correctly (#306)

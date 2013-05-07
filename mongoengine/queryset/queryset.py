@@ -544,8 +544,9 @@ class QuerySet(object):
         return c
 
     def select_related(self, max_depth=1):
-        """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
-        a maximum depth in order to cut down the number queries to mongodb.
+        """Handles dereferencing of :class:`~bson.dbref.DBRef` objects or
+        :class:`~bson.object_id.ObjectId` a maximum depth in order to cut down
+        the number queries to mongodb.
 
         .. versionadded:: 0.5
         """

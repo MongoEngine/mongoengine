@@ -854,7 +854,7 @@ class ReferenceField(BaseField):
                 return document.id
             return document
         elif not self.dbref and isinstance(document, basestring):
-            return document
+            return ObjectId(document)
 
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
