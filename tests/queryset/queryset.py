@@ -3272,5 +3272,25 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(outer_count, 7)  # outer loop should be executed seven times total
         self.assertEqual(inner_total_count, 7 * 7)  # inner loop should be executed fourtynine times total
 
+    def test_disable_inheritance_queryset(self):
+        class A(Document):
+            x = IntField()
+            y = IntField()
+
+            meta = {'allow_inheritance': True}
+
+        class B(A):
+            z = IntField()
+
+        A.drop_collection()
+
+        A(x=10, y=20).save()
+        A(x=15, y=30).save()
+        B(x=20, y=40).save()
+        B(x=30, y=50).save()
+
+        for obj in A.objects.disable_inheritance():
+            self.assertEqual(obj.__class__, A)
+
 if __name__ == '__main__':
     unittest.main()
