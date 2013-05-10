@@ -569,9 +569,9 @@ class QuerySet(object):
         queryset._none = True
         return queryset
 
-    def disable_inheritance(self):
+    def no_sub_classes(self):
         """
-        Disable inheritance query, fetch only objects for the query class
+        Only return instances of this document and not any inherited documents
         """
         if self._document._meta.get('allow_inheritance') is True:
             self._initial_query = {"_cls": self._document._class_name}

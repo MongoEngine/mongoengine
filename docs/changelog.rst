@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Added no_sub_classes context manager and queryset helper (#312)
 - Querysets now utilises a local cache
 - Changed __len__ behavour in the queryset (#247, #311)
 - Fixed querying string versions of ObjectIds issue with ReferenceField (#307)
