@@ -26,6 +26,7 @@ __all__ = ('QuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
 
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
+ITER_CHUNK_SIZE = 100
 
 # Delete rules
 DO_NOTHING = 0
@@ -63,6 +64,9 @@ class QuerySet(object):
         self._none = False
         self._as_pymongo = False
         self._as_pymongo_coerce = False
+        self._result_cache = []
+        self._has_more = True
+        self._len = None
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -109,13 +113,60 @@ class QuerySet(object):
         queryset._class_check = class_check
         return queryset
 
+    def __len__(self):
+        """Since __len__ is called quite frequently (for example, as part of
+        list(qs) we populate the result cache and cache the length.
+        """
+        if self._len is not None:
+            return self._len
+        if self._has_more:
+            # populate the cache
+            list(self._iter_results())
+
+        self._len = len(self._result_cache)
+        return self._len
+
     def __iter__(self):
-        """Support iterator protocol"""
-        queryset = self
-        if queryset._iter:
-            queryset = self.clone()
-        queryset.rewind()
-        return queryset
+        """Iteration utilises a results cache which iterates the cursor
+        in batches of ``ITER_CHUNK_SIZE``.
+
+        If ``self._has_more`` the cursor hasn't been exhausted so cache then
+        batch.  Otherwise iterate the result_cache.
+        """
+        self._iter = True
+        if self._has_more:
+            return self._iter_results()
+
+        # iterating over the cache.
+        return iter(self._result_cache)
+
+    def _iter_results(self):
+        """A generator for iterating over the result cache.
+
+        Also populates the cache if there are more possible results to yield.
+        Raises StopIteration when there are no more results"""
+        pos = 0
+        while True:
+            upper = len(self._result_cache)
+            while pos < upper:
+                yield self._result_cache[pos]
+                pos = pos + 1
+            if not self._has_more:
+                raise StopIteration
+            if len(self._result_cache) <= pos:
+                self._populate_cache()
+
+    def _populate_cache(self):
+        """
+        Populates the result cache with ``ITER_CHUNK_SIZE`` more entries
+        (until the cursor is exhausted).
+        """
+        if self._has_more:
+            try:
+                for i in xrange(ITER_CHUNK_SIZE):
+                    self._result_cache.append(self.next())
+            except StopIteration:
+                self._has_more = False
 
     def __getitem__(self, key):
         """Support skip and limit using getitem and slicing syntax.
@@ -157,22 +208,15 @@ class QuerySet(object):
 
     def __repr__(self):
         """Provides the string representation of the QuerySet
-
-        .. versionchanged:: 0.6.13 Now doesnt modify the cursor
         """
+
         if self._iter:
             return '.. queryset mid-iteration ..'
 
-        data = []
-        for i in xrange(REPR_OUTPUT_SIZE + 1):
-            try:
-                data.append(self.next())
-            except StopIteration:
-                break
+        self._populate_cache()
+        data = self._result_cache[:REPR_OUTPUT_SIZE + 1]
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = "...(remaining elements truncated)..."
-
-        self.rewind()
         return repr(data)
 
     # Core functions
@@ -201,7 +245,7 @@ class QuerySet(object):
             result = queryset.next()
         except StopIteration:
             msg = ("%s matching query does not exist."
-                    % queryset._document._class_name)
+                   % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
         try:
             queryset.next()
@@ -352,7 +396,12 @@ class QuerySet(object):
         """
         if self._limit == 0:
             return 0
-        return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        if with_limit_and_skip and self._len is not None:
+            return self._len
+        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        if with_limit_and_skip:
+            self._len = count
+        return count
 
     def delete(self, write_concern=None):
         """Delete the documents matched by the query.
@@ -910,7 +959,7 @@ class QuerySet(object):
             mr_args['out'] = output
 
         results = getattr(queryset._collection, map_reduce_function)(
-                            map_f, reduce_f, **mr_args)
+                          map_f, reduce_f, **mr_args)
 
         if map_reduce_function == 'map_reduce':
             results = results.find()
@@ -1084,20 +1133,18 @@ class QuerySet(object):
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
-        self._iter = True
-        try:
-            if self._limit == 0 or self._none:
-                raise StopIteration
-            if self._scalar:
-                return self._get_scalar(self._document._from_son(
-                                        self._cursor.next()))
-            if self._as_pymongo:
-                return self._get_as_pymongo(self._cursor.next())
+        if self._limit == 0 or self._none:
+            raise StopIteration
 
-            return self._document._from_son(self._cursor.next())
-        except StopIteration, e:
-            self.rewind()
-            raise e
+        raw_doc = self._cursor.next()
+        if self._as_pymongo:
+            return self._get_as_pymongo(raw_doc)
+
+        doc = self._document._from_son(raw_doc)
+        if self._scalar:
+            return self._get_scalar(doc)
+
+        return doc
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.

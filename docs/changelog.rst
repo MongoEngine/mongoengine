@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Querysets now utilises a local cache
+- Changed __len__ behavour in the queryset (#247, #311)
 - Fixed querying string versions of ObjectIds issue with ReferenceField (#307)
 - Added $setOnInsert support for upserts (#308)
 - Upserts now possible with just query parameters (#309)
@@ -25,7 +27,6 @@ Changes in 0.8.0
 - Added SequenceField.set_next_value(value) helper (#159)
 - Updated .only() behaviour - now like exclude it is chainable (#202)
 - Added with_limit_and_skip support to count() (#235)
-- Removed __len__ from queryset (#247)
 - Objects queryset manager now inherited (#256)
 - Updated connection to use MongoClient (#262, #274)
 - Fixed db_alias and inherited Documents (#143)

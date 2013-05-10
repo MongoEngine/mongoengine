@@ -235,12 +235,15 @@ update your code like so: ::
     mammals = Animal.objects(type="mammal").filter(order="Carnivora")  # The final queryset is assgined to mammals
     [m for m in mammals]                                               # This will return all carnivores
 
-No more len
------------
+Len iterates the queryset
+--------------------------
 
-If you ever did len(queryset) it previously did a count() under the covers, this
-caused some unusual issues - so now it has been removed in favour of the
-explicit `queryset.count()` to update::
+If you ever did `len(queryset)` it previously did a `count()` under the covers,
+this caused some unusual issues.  As `len(queryset)` is most often used by
+`list(queryset)` we now cache the queryset results and use that for the length.
+
+This isn't as performant as a `count()` and if you aren't iterating the
+queryset you should upgrade to use count::
 
     # Old code
     len(Animal.objects(type="mammal"))

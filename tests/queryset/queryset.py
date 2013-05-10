@@ -793,7 +793,7 @@ class QuerySetTest(unittest.TestCase):
 
         p = p.snapshot(True).slave_okay(True).timeout(True)
         self.assertEqual(p._cursor_args,
-                {'snapshot': True, 'slave_okay': True, 'timeout': True})
+                         {'snapshot': True, 'slave_okay': True, 'timeout': True})
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
@@ -835,6 +835,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue("Doc: 0" in docs_string)
 
         self.assertEqual(docs.count(), 1000)
+        self.assertTrue('(remaining elements truncated)' in "%s" % docs)
 
         # Limit and skip
         docs = docs[1:4]
@@ -3231,6 +3232,51 @@ class QuerySetTest(unittest.TestCase):
                                     Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
 
+    def test_cached_queryset(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        for i in xrange(100):
+            Person(name="No: %s" % i).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            people = Person.objects
+
+            [x for x in people]
+            self.assertEqual(100, len(people._result_cache))
+            self.assertEqual(None, people._len)
+            self.assertEqual(q, 1)
+
+            list(people)
+            self.assertEqual(100, people._len)  # Caused by list calling len
+            self.assertEqual(q, 1)
+
+            people.count()  # count is cached
+            self.assertEqual(q, 1)
+
+    def test_cache_not_cloned(self):
+
+        class User(Document):
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+        User.drop_collection()
+
+        User(name="Alice").save()
+        User(name="Bob").save()
+
+        users = User.objects.all().order_by('name')
+        self.assertEqual("%s" % users, "[<User: Alice>, <User: Bob>]")
+        self.assertEqual(2, len(users._result_cache))
+
+        users = users.filter(name="Bob")
+        self.assertEqual("%s" % users, "[<User: Bob>]")
+        self.assertEqual(1, len(users._result_cache))
+
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
         names = ['Alice', 'Bob', 'Chuck', 'David', 'Eric', 'Francis', 'George']
@@ -3247,30 +3293,34 @@ class QuerySetTest(unittest.TestCase):
             User(name=name).save()
 
         users = User.objects.all().order_by('name')
-
         outer_count = 0
         inner_count = 0
         inner_total_count = 0
 
-        self.assertEqual(users.count(), 7)
+        with query_counter() as q:
+            self.assertEqual(q, 0)
 
-        for i, outer_user in enumerate(users):
-            self.assertEqual(outer_user.name, names[i])
-            outer_count += 1
-            inner_count = 0
-
-            # Calling len might disrupt the inner loop if there are bugs
             self.assertEqual(users.count(), 7)
 
-            for j, inner_user in enumerate(users):
-                self.assertEqual(inner_user.name, names[j])
-                inner_count += 1
-                inner_total_count += 1
+            for i, outer_user in enumerate(users):
+                self.assertEqual(outer_user.name, names[i])
+                outer_count += 1
+                inner_count = 0
 
-            self.assertEqual(inner_count, 7)  # inner loop should always be executed seven times
+                # Calling len might disrupt the inner loop if there are bugs
+                self.assertEqual(users.count(), 7)
 
-        self.assertEqual(outer_count, 7)  # outer loop should be executed seven times total
-        self.assertEqual(inner_total_count, 7 * 7)  # inner loop should be executed fourtynine times total
+                for j, inner_user in enumerate(users):
+                    self.assertEqual(inner_user.name, names[j])
+                    inner_count += 1
+                    inner_total_count += 1
+
+                self.assertEqual(inner_count, 7)  # inner loop should always be executed seven times
+
+            self.assertEqual(outer_count, 7)  # outer loop should be executed seven times total
+            self.assertEqual(inner_total_count, 7 * 7)  # inner loop should be executed fourtynine times total
+
+            self.assertEqual(q, 2)
 
 if __name__ == '__main__':
     unittest.main()
