@@ -319,8 +319,8 @@ class InstanceTest(unittest.TestCase):
 
         Location.drop_collection()
 
-        self.assertEquals(Area, get_document("Area"))
-        self.assertEquals(Area, get_document("Location.Area"))
+        self.assertEqual(Area, get_document("Area"))
+        self.assertEqual(Area, get_document("Location.Area"))
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments.
@@ -508,12 +508,12 @@ class InstanceTest(unittest.TestCase):
         t = TestDocument(status="published")
         t.save(clean=False)
 
-        self.assertEquals(t.pub_date, None)
+        self.assertEqual(t.pub_date, None)
 
         t = TestDocument(status="published")
         t.save(clean=True)
 
-        self.assertEquals(type(t.pub_date), datetime)
+        self.assertEqual(type(t.pub_date), datetime)
 
     def test_document_embedded_clean(self):
         class TestEmbeddedDocument(EmbeddedDocument):
@@ -545,7 +545,7 @@ class InstanceTest(unittest.TestCase):
             self.assertEqual(e.to_dict(), {'doc': {'__all__': expect_msg}})
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25)).save()
-        self.assertEquals(t.doc.z, 35)
+        self.assertEqual(t.doc.z, 35)
 
         # Asserts not raises
         t = TestDocument(doc=TestEmbeddedDocument(x=15, y=35, z=5))
@@ -1903,11 +1903,11 @@ class InstanceTest(unittest.TestCase):
 
         A.objects.all()
 
-        self.assertEquals('testdb-2', B._meta.get('db_alias'))
-        self.assertEquals('mongoenginetest',
-                          A._get_collection().database.name)
-        self.assertEquals('mongoenginetest2',
-                          B._get_collection().database.name)
+        self.assertEqual('testdb-2', B._meta.get('db_alias'))
+        self.assertEqual('mongoenginetest',
+                         A._get_collection().database.name)
+        self.assertEqual('mongoenginetest2',
+                         B._get_collection().database.name)
 
     def test_db_alias_propagates(self):
         """db_alias propagates?

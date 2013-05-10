@@ -282,7 +282,7 @@ class QuerySetTest(unittest.TestCase):
         a_objects = A.objects(s='test1')
         query = B.objects(ref__in=a_objects)
         query = query.filter(boolfield=True)
-        self.assertEquals(query.count(), 1)
+        self.assertEqual(query.count(), 1)
 
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
