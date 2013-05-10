@@ -569,6 +569,15 @@ class QuerySet(object):
         queryset._none = True
         return queryset
 
+    def disable_inheritance(self):
+        """
+        Disable inheritance query, fetch only objects for the query class
+        """
+        if self._document._meta.get('allow_inheritance') is True:
+            self._initial_query = {"_cls": self._document._class_name}
+
+        return self
+
     def clone(self):
         """Creates a copy of the current
           :class:`~mongoengine.queryset.QuerySet`
