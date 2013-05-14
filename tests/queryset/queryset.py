@@ -3361,5 +3361,25 @@ class QuerySetTest(unittest.TestCase):
         for obj in C.objects.no_sub_classes():
             self.assertEqual(obj.__class__, C)
 
+    def test_query_reference_to_custom_pk_doc(self):
+
+        class A(Document):
+            id = StringField(unique=True, primary_key=True)
+
+        class B(Document):
+            a = ReferenceField(A)
+
+        A.drop_collection()
+        B.drop_collection()
+
+        a = A.objects.create(id='custom_id')
+
+        b = B.objects.create(a=a)
+
+        self.assertEqual(B.objects.count(), 1)
+        self.assertEqual(B.objects.get(a=a).a, a)
+        self.assertEqual(B.objects.get(a=a.id).a, a)
+
+
 if __name__ == '__main__':
     unittest.main()
