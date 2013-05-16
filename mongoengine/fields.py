@@ -1465,6 +1465,17 @@ class SequenceField(BaseField):
                                              upsert=True)
         return self.value_decorator(counter['next'])
 
+    def get_next_value(self):
+        sequence_name = self.get_sequence_name()
+        sequence_id = "%s.%s" % (sequence_name, self.name)
+        collection = get_db(alias=self.db_alias)[self.collection_name]
+        data = collection.find_one({"_id": sequence_id})
+
+        if data:
+            return data['next']
+
+        return 1
+
     def get_sequence_name(self):
         if self.sequence_name:
             return self.sequence_name
