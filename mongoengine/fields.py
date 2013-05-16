@@ -8,13 +8,14 @@ import uuid
 import warnings
 from operator import itemgetter
 
+import pymongo
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
 
 from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
-from base import (BaseField, ComplexBaseField, ObjectIdField,
+from base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
                   get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
@@ -33,9 +34,8 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'SortedListField',  'DictField',  'MapField',  'ReferenceField',
            'GenericReferenceField',  'BinaryField',  'GridFSError',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
-           'ImproperlyConfigured',  'ImageField',  'GeoPointField',
-           'SequenceField',  'UUIDField']
-
+           'ImproperlyConfigured',  'ImageField',  'GeoPointField', 'PointField',
+           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -107,11 +107,11 @@ class URLField(StringField):
     """
 
     _URL_REGEX = re.compile(
-        r'^(?:http|ftp)s?://' # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
-        r'localhost|' #localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
-        r'(?::\d+)?' # optional port
+        r'^(?:http|ftp)s?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
     def __init__(self, verify_exists=False, url_regex=None, **kwargs):
@@ -128,8 +128,7 @@ class URLField(StringField):
             warnings.warn(
                 "The URLField verify_exists argument has intractable security "
                 "and performance issues. Accordingly, it has been deprecated.",
-            DeprecationWarning
-            )
+                DeprecationWarning)
             try:
                 request = urllib2.Request(value)
                 urllib2.urlopen(request)
@@ -297,8 +296,9 @@ class DecimalField(BaseField):
         if value is None:
             return value
 
-        return decimal.Decimal(value).quantize(self.precision,
-                                               rounding=self.rounding)
+        # Convert to string for python 2.6 before casting to Decimal
+        value = decimal.Decimal("%s" % value)
+        return value.quantize(self.precision, rounding=self.rounding)
 
     def to_mongo(self, value):
         if value is None:
@@ -468,7 +468,7 @@ class ComplexDateTimeField(StringField):
 
     def __get__(self, instance, owner):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
-        if data == None:
+        if data is None:
             return datetime.datetime.now()
         if isinstance(data, datetime.datetime):
             return data
@@ -657,15 +657,15 @@ class ListField(ComplexBaseField):
         """Make sure that a list of valid fields is being used.
         """
         if (not isinstance(value, (list, tuple, QuerySet)) or
-            isinstance(value, basestring)):
+           isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
         if self.field:
             if op in ('set', 'unset') and (not isinstance(value, basestring)
-                and not isinstance(value, BaseDocument)
-                and hasattr(value, '__iter__')):
+               and not isinstance(value, BaseDocument)
+               and hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)
         return super(ListField, self).prepare_query_value(op, value)
@@ -700,7 +700,7 @@ class SortedListField(ListField):
         value = super(SortedListField, self).to_mongo(value)
         if self._ordering is not None:
             return sorted(value, key=itemgetter(self._ordering),
-                                 reverse=self._order_reverse)
+                          reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
 
@@ -781,7 +781,7 @@ class ReferenceField(BaseField):
       * NULLIFY     - Updates the reference to null.
       * CASCADE     - Deletes the documents associated with the reference.
       * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.ListField`
+      * PULL        - Pull the reference from a :class:`~mongoengine.fields.ListField`
                       of references
 
     Alternative syntax for registering delete rules (useful when implementing
@@ -854,7 +854,7 @@ class ReferenceField(BaseField):
                 return document.id
             return document
         elif not self.dbref and isinstance(document, basestring):
-            return document
+            return ObjectId(document)
 
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
@@ -879,7 +879,7 @@ class ReferenceField(BaseField):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if (not self.dbref and
-            not isinstance(value, (DBRef, Document, EmbeddedDocument))):
+           not isinstance(value, (DBRef, Document, EmbeddedDocument))):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value))
         return value
@@ -1000,7 +1000,7 @@ class BinaryField(BaseField):
         if not isinstance(value, (bin_type, txt_type, Binary)):
             self.error("BinaryField only accepts instances of "
                        "(%s, %s, Binary)" % (
-                        bin_type.__name__, txt_type.__name__))
+                       bin_type.__name__, txt_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -1234,8 +1234,6 @@ class ImageGridFsProxy(GridFSProxy):
         Insert a image in database
         applying field properties (size, thumbnail_size)
         """
-        if not self.instance:
-            import ipdb; ipdb.set_trace();
         field = self.instance._fields[self.key]
 
         try:
@@ -1307,6 +1305,7 @@ class ImageGridFsProxy(GridFSProxy):
                            height=h,
                            format=format,
                            **kwargs)
+
     @property
     def size(self):
         """
@@ -1383,28 +1382,6 @@ class ImageField(FileField):
         super(ImageField, self).__init__(
             collection_name=collection_name,
             **kwargs)
-
-
-class GeoPointField(BaseField):
-    """A list storing a latitude and longitude.
-
-    .. versionadded:: 0.4
-    """
-
-    _geo_index = True
-
-    def validate(self, value):
-        """Make sure that a geo-value is of type (x, y)
-        """
-        if not isinstance(value, (list, tuple)):
-            self.error('GeoPointField can only accept tuples or lists '
-                       'of (x, y)')
-
-        if not len(value) == 2:
-            self.error('Value must be a two-dimensional point')
-        if (not isinstance(value[0], (float, int)) and
-            not isinstance(value[1], (float, int))):
-            self.error('Both values in point must be float or int')
 
 
 class SequenceField(BaseField):
@@ -1558,3 +1535,83 @@ class UUIDField(BaseField):
                 value = uuid.UUID(value)
             except Exception, exc:
                 self.error('Could not convert to UUID: %s' % exc)
+
+
+class GeoPointField(BaseField):
+    """A list storing a latitude and longitude.
+
+    .. versionadded:: 0.4
+    """
+
+    _geo_index = pymongo.GEO2D
+
+    def validate(self, value):
+        """Make sure that a geo-value is of type (x, y)
+        """
+        if not isinstance(value, (list, tuple)):
+            self.error('GeoPointField can only accept tuples or lists '
+                       'of (x, y)')
+
+        if not len(value) == 2:
+            self.error("Value (%s) must be a two-dimensional point" % repr(value))
+        elif (not isinstance(value[0], (float, int)) or
+              not isinstance(value[1], (float, int))):
+            self.error("Both values (%s) in point must be float or int" % repr(value))
+
+
+class PointField(GeoJsonBaseField):
+    """A geo json field storing a latitude and longitude.
+
+    The data is represented as:
+
+    .. code-block:: js
+
+        { "type" : "Point" ,
+          "coordinates" : [x, y]}
+
+    You can either pass a dict with the full information or a list
+    to set the value.
+
+    Requires mongodb >= 2.4
+    .. versionadded:: 0.8
+    """
+    _type = "Point"
+
+
+class LineStringField(GeoJsonBaseField):
+    """A geo json field storing a line of latitude and longitude coordinates.
+
+    The data is represented as:
+
+    .. code-block:: js
+
+        { "type" : "LineString" ,
+          "coordinates" : [[x1, y1], [x1, y1] ... [xn, yn]]}
+
+    You can either pass a dict with the full information or a list of points.
+
+    Requires mongodb >= 2.4
+    .. versionadded:: 0.8
+    """
+    _type = "LineString"
+
+
+class PolygonField(GeoJsonBaseField):
+    """A geo json field storing a polygon of latitude and longitude coordinates.
+
+    The data is represented as:
+
+    .. code-block:: js
+
+        { "type" : "Polygon" ,
+          "coordinates" : [[[x1, y1], [x1, y1] ... [xn, yn]],
+                           [[x1, y1], [x1, y1] ... [xn, yn]]}
+
+    You can either pass a dict with the full information or a list
+    of LineStrings. The first LineString being the outside and the rest being
+    holes.
+
+    Requires mongodb >= 2.4
+    .. versionadded:: 0.8
+    """
+    _type = "Polygon"

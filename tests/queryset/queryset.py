@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
@@ -113,6 +112,15 @@ class QuerySetTest(unittest.TestCase):
 
         # Test slice limit and skip
         people = list(self.Person.objects[1:2])
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0].name, 'User B')
+
+        # Test slice limit and skip cursor reset
+        qs = self.Person.objects[1:2]
+        # fetch then delete the cursor
+        qs._cursor
+        qs._cursor_obj = None
+        people = list(qs)
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
@@ -274,7 +282,7 @@ class QuerySetTest(unittest.TestCase):
         a_objects = A.objects(s='test1')
         query = B.objects(ref__in=a_objects)
         query = query.filter(boolfield=True)
-        self.assertEquals(query.count(), 1)
+        self.assertEqual(query.count(), 1)
 
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
@@ -287,15 +295,19 @@ class QuerySetTest(unittest.TestCase):
             name='Test User', write_concern=write_concern)
         author.save(write_concern=write_concern)
 
-        self.Person.objects.update(set__name='Ross',
-                                   write_concern=write_concern)
+        result = self.Person.objects.update(
+            set__name='Ross', write_concern={"w": 1})
+        self.assertEqual(result, 1)
+        result = self.Person.objects.update(
+            set__name='Ross', write_concern={"w": 0})
+        self.assertEqual(result, None)
 
-        author = self.Person.objects.first()
-        self.assertEqual(author.name, 'Ross')
-
-        self.Person.objects.update_one(set__name='Test User', write_concern=write_concern)
-        author = self.Person.objects.first()
-        self.assertEqual(author.name, 'Test User')
+        result = self.Person.objects.update_one(
+            set__name='Test User', write_concern={"w": 1})
+        self.assertEqual(result, 1)
+        result = self.Person.objects.update_one(
+            set__name='Test User', write_concern={"w": 0})
+        self.assertEqual(result, None)
 
     def test_update_update_has_a_value(self):
         """Test to ensure that update is passed a value to update to"""
@@ -523,6 +535,24 @@ class QuerySetTest(unittest.TestCase):
         club = Club.objects().first()
         self.assertEqual(club.members['John']['gender'], "F")
         self.assertEqual(club.members['John']['age'], 14)
+
+    def test_upsert(self):
+        self.Person.drop_collection()
+
+        self.Person.objects(pk=ObjectId(), name="Bob", age=30).update(upsert=True)
+
+        bob = self.Person.objects.first()
+        self.assertEqual("Bob", bob.name)
+        self.assertEqual(30, bob.age)
+
+    def test_set_on_insert(self):
+        self.Person.drop_collection()
+
+        self.Person.objects(pk=ObjectId()).update(set__name='Bob', set_on_insert__age=30, upsert=True)
+
+        bob = self.Person.objects.first()
+        self.assertEqual("Bob", bob.name)
+        self.assertEqual(30, bob.age)
 
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
@@ -763,7 +793,7 @@ class QuerySetTest(unittest.TestCase):
 
         p = p.snapshot(True).slave_okay(True).timeout(True)
         self.assertEqual(p._cursor_args,
-                {'snapshot': True, 'slave_okay': True, 'timeout': True})
+                         {'snapshot': True, 'slave_okay': True, 'timeout': True})
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
@@ -805,6 +835,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue("Doc: 0" in docs_string)
 
         self.assertEqual(docs.count(), 1000)
+        self.assertTrue('(remaining elements truncated)' in "%s" % docs)
 
         # Limit and skip
         docs = docs[1:4]
@@ -1233,7 +1264,7 @@ class QuerySetTest(unittest.TestCase):
         class BlogPost(Document):
             content = StringField()
             authors = ListField(ReferenceField(self.Person,
-                reverse_delete_rule=PULL))
+                                reverse_delete_rule=PULL))
 
         BlogPost.drop_collection()
         self.Person.drop_collection()
@@ -1290,6 +1321,49 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(3, BlogPost.objects.count())
         self.Person.objects()[:1].delete()
         self.assertEqual(1, BlogPost.objects.count())
+
+
+    def test_reference_field_find(self):
+        """Ensure cascading deletion of referring documents from the database.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person)
+
+        BlogPost.drop_collection()
+        self.Person.drop_collection()
+
+        me = self.Person(name='Test User').save()
+        BlogPost(content="test 123", author=me).save()
+
+        self.assertEqual(1, BlogPost.objects(author=me).count())
+        self.assertEqual(1, BlogPost.objects(author=me.pk).count())
+        self.assertEqual(1, BlogPost.objects(author="%s" % me.pk).count())
+
+        self.assertEqual(1, BlogPost.objects(author__in=[me]).count())
+        self.assertEqual(1, BlogPost.objects(author__in=[me.pk]).count())
+        self.assertEqual(1, BlogPost.objects(author__in=["%s" % me.pk]).count())
+
+    def test_reference_field_find_dbref(self):
+        """Ensure cascading deletion of referring documents from the database.
+        """
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, dbref=True)
+
+        BlogPost.drop_collection()
+        self.Person.drop_collection()
+
+        me = self.Person(name='Test User').save()
+        BlogPost(content="test 123", author=me).save()
+
+        self.assertEqual(1, BlogPost.objects(author=me).count())
+        self.assertEqual(1, BlogPost.objects(author=me.pk).count())
+        self.assertEqual(1, BlogPost.objects(author="%s" % me.pk).count())
+
+        self.assertEqual(1, BlogPost.objects(author__in=[me]).count())
+        self.assertEqual(1, BlogPost.objects(author__in=[me.pk]).count())
+        self.assertEqual(1, BlogPost.objects(author__in=["%s" % me.pk]).count())
 
     def test_update(self):
         """Ensure that atomic updates work properly.
@@ -2380,167 +2454,6 @@ class QuerySetTest(unittest.TestCase):
     def tearDown(self):
         self.Person.drop_collection()
 
-    def test_geospatial_operators(self):
-        """Ensure that geospatial queries are working.
-        """
-        class Event(Document):
-            title = StringField()
-            date = DateTimeField()
-            location = GeoPointField()
-
-            def __unicode__(self):
-                return self.title
-
-        Event.drop_collection()
-
-        event1 = Event(title="Coltrane Motion @ Double Door",
-                       date=datetime.now() - timedelta(days=1),
-                       location=[41.909889, -87.677137])
-        event2 = Event(title="Coltrane Motion @ Bottom of the Hill",
-                       date=datetime.now() - timedelta(days=10),
-                       location=[37.7749295, -122.4194155])
-        event3 = Event(title="Coltrane Motion @ Empty Bottle",
-                       date=datetime.now(),
-                       location=[41.900474, -87.686638])
-
-        event1.save()
-        event2.save()
-        event3.save()
-
-        # find all events "near" pitchfork office, chicago.
-        # note that "near" will show the san francisco event, too,
-        # although it sorts to last.
-        events = Event.objects(location__near=[41.9120459, -87.67892])
-        self.assertEqual(events.count(), 3)
-        self.assertEqual(list(events), [event1, event3, event2])
-
-        # find events within 5 degrees of pitchfork office, chicago
-        point_and_distance = [[41.9120459, -87.67892], 5]
-        events = Event.objects(location__within_distance=point_and_distance)
-        self.assertEqual(events.count(), 2)
-        events = list(events)
-        self.assertTrue(event2 not in events)
-        self.assertTrue(event1 in events)
-        self.assertTrue(event3 in events)
-
-        # ensure ordering is respected by "near"
-        events = Event.objects(location__near=[41.9120459, -87.67892])
-        events = events.order_by("-date")
-        self.assertEqual(events.count(), 3)
-        self.assertEqual(list(events), [event3, event1, event2])
-
-        # find events within 10 degrees of san francisco
-        point = [37.7566023, -122.415579]
-        events = Event.objects(location__near=point, location__max_distance=10)
-        self.assertEqual(events.count(), 1)
-        self.assertEqual(events[0], event2)
-
-        # find events within 10 degrees of san francisco
-        point_and_distance = [[37.7566023, -122.415579], 10]
-        events = Event.objects(location__within_distance=point_and_distance)
-        self.assertEqual(events.count(), 1)
-        self.assertEqual(events[0], event2)
-
-        # find events within 1 degree of greenpoint, broolyn, nyc, ny
-        point_and_distance = [[40.7237134, -73.9509714], 1]
-        events = Event.objects(location__within_distance=point_and_distance)
-        self.assertEqual(events.count(), 0)
-
-        # ensure ordering is respected by "within_distance"
-        point_and_distance = [[41.9120459, -87.67892], 10]
-        events = Event.objects(location__within_distance=point_and_distance)
-        events = events.order_by("-date")
-        self.assertEqual(events.count(), 2)
-        self.assertEqual(events[0], event3)
-
-        # check that within_box works
-        box = [(35.0, -125.0), (40.0, -100.0)]
-        events = Event.objects(location__within_box=box)
-        self.assertEqual(events.count(), 1)
-        self.assertEqual(events[0].id, event2.id)
-
-        # check that polygon works for users who have a server >= 1.9
-        server_version = tuple(
-            get_connection().server_info()['version'].split('.')
-        )
-        required_version = tuple("1.9.0".split("."))
-        if server_version >= required_version:
-            polygon = [
-                (41.912114,-87.694445),
-                (41.919395,-87.69084),
-                (41.927186,-87.681742),
-                (41.911731,-87.654276),
-                (41.898061,-87.656164),
-            ]
-            events = Event.objects(location__within_polygon=polygon)
-            self.assertEqual(events.count(), 1)
-            self.assertEqual(events[0].id, event1.id)
-
-            polygon2 = [
-                (54.033586,-1.742249),
-                (52.792797,-1.225891),
-                (53.389881,-4.40094)
-            ]
-            events = Event.objects(location__within_polygon=polygon2)
-            self.assertEqual(events.count(), 0)
-
-        Event.drop_collection()
-
-    def test_spherical_geospatial_operators(self):
-        """Ensure that spherical geospatial queries are working
-        """
-        class Point(Document):
-            location = GeoPointField()
-
-        Point.drop_collection()
-
-        # These points are one degree apart, which (according to Google Maps)
-        # is about 110 km apart at this place on the Earth.
-        north_point = Point(location=[-122, 38]) # Near Concord, CA
-        south_point = Point(location=[-122, 37]) # Near Santa Cruz, CA
-        north_point.save()
-        south_point.save()
-
-        earth_radius = 6378.009; # in km (needs to be a float for dividing by)
-
-        # Finds both points because they are within 60 km of the reference
-        # point equidistant between them.
-        points = Point.objects(location__near_sphere=[-122, 37.5])
-        self.assertEqual(points.count(), 2)
-
-        # Same behavior for _within_spherical_distance
-        points = Point.objects(
-            location__within_spherical_distance=[[-122, 37.5], 60/earth_radius]
-        );
-        self.assertEqual(points.count(), 2)
-
-        points = Point.objects(location__near_sphere=[-122, 37.5],
-                               location__max_distance=60 / earth_radius);
-        self.assertEqual(points.count(), 2)
-
-        # Finds both points, but orders the north point first because it's
-        # closer to the reference point to the north.
-        points = Point.objects(location__near_sphere=[-122, 38.5])
-        self.assertEqual(points.count(), 2)
-        self.assertEqual(points[0].id, north_point.id)
-        self.assertEqual(points[1].id, south_point.id)
-
-        # Finds both points, but orders the south point first because it's
-        # closer to the reference point to the south.
-        points = Point.objects(location__near_sphere=[-122, 36.5])
-        self.assertEqual(points.count(), 2)
-        self.assertEqual(points[0].id, south_point.id)
-        self.assertEqual(points[1].id, north_point.id)
-
-        # Finds only one point because only the first point is within 60km of
-        # the reference point to the south.
-        points = Point.objects(
-            location__within_spherical_distance=[[-122, 36.5], 60/earth_radius])
-        self.assertEqual(points.count(), 1)
-        self.assertEqual(points[0].id, south_point.id)
-
-        Point.drop_collection()
-
     def test_custom_querysets(self):
         """Ensure that custom QuerySet classes may be used.
         """
@@ -3276,6 +3189,28 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(results[1]['name'], 'Barack Obama')
         self.assertEqual(results[1]['price'], Decimal('2.22'))
 
+    def test_as_pymongo_json_limit_fields(self):
+
+        class User(Document):
+            email = EmailField(unique=True, required=True)
+            password_hash = StringField(db_field='password_hash', required=True)
+            password_salt = StringField(db_field='password_salt', required=True)
+
+        User.drop_collection()
+        User(email="ross@example.com", password_salt="SomeSalt", password_hash="SomeHash").save()
+
+        serialized_user = User.objects.exclude('password_salt', 'password_hash').as_pymongo()[0]
+        self.assertEqual(set(['_id', 'email']), set(serialized_user.keys()))
+
+        serialized_user = User.objects.exclude('id', 'password_salt', 'password_hash').to_json()
+        self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
+
+        serialized_user = User.objects.exclude('password_salt').only('email').as_pymongo()[0]
+        self.assertEqual(set(['email']), set(serialized_user.keys()))
+
+        serialized_user = User.objects.exclude('password_salt').only('email').to_json()
+        self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
+
     def test_no_dereference(self):
 
         class Organization(Document):
@@ -3297,6 +3232,51 @@ class QuerySetTest(unittest.TestCase):
                                     Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
 
+    def test_cached_queryset(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        for i in xrange(100):
+            Person(name="No: %s" % i).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            people = Person.objects
+
+            [x for x in people]
+            self.assertEqual(100, len(people._result_cache))
+            self.assertEqual(None, people._len)
+            self.assertEqual(q, 1)
+
+            list(people)
+            self.assertEqual(100, people._len)  # Caused by list calling len
+            self.assertEqual(q, 1)
+
+            people.count()  # count is cached
+            self.assertEqual(q, 1)
+
+    def test_cache_not_cloned(self):
+
+        class User(Document):
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+        User.drop_collection()
+
+        User(name="Alice").save()
+        User(name="Bob").save()
+
+        users = User.objects.all().order_by('name')
+        self.assertEqual("%s" % users, "[<User: Alice>, <User: Bob>]")
+        self.assertEqual(2, len(users._result_cache))
+
+        users = users.filter(name="Bob")
+        self.assertEqual("%s" % users, "[<User: Bob>]")
+        self.assertEqual(1, len(users._result_cache))
+
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
         names = ['Alice', 'Bob', 'Chuck', 'David', 'Eric', 'Francis', 'George']
@@ -3313,30 +3293,73 @@ class QuerySetTest(unittest.TestCase):
             User(name=name).save()
 
         users = User.objects.all().order_by('name')
-
         outer_count = 0
         inner_count = 0
         inner_total_count = 0
 
-        self.assertEqual(users.count(), 7)
+        with query_counter() as q:
+            self.assertEqual(q, 0)
 
-        for i, outer_user in enumerate(users):
-            self.assertEqual(outer_user.name, names[i])
-            outer_count += 1
-            inner_count = 0
-
-            # Calling len might disrupt the inner loop if there are bugs
             self.assertEqual(users.count(), 7)
 
-            for j, inner_user in enumerate(users):
-                self.assertEqual(inner_user.name, names[j])
-                inner_count += 1
-                inner_total_count += 1
+            for i, outer_user in enumerate(users):
+                self.assertEqual(outer_user.name, names[i])
+                outer_count += 1
+                inner_count = 0
 
-            self.assertEqual(inner_count, 7)  # inner loop should always be executed seven times
+                # Calling len might disrupt the inner loop if there are bugs
+                self.assertEqual(users.count(), 7)
 
-        self.assertEqual(outer_count, 7)  # outer loop should be executed seven times total
-        self.assertEqual(inner_total_count, 7 * 7)  # inner loop should be executed fourtynine times total
+                for j, inner_user in enumerate(users):
+                    self.assertEqual(inner_user.name, names[j])
+                    inner_count += 1
+                    inner_total_count += 1
+
+                self.assertEqual(inner_count, 7)  # inner loop should always be executed seven times
+
+            self.assertEqual(outer_count, 7)  # outer loop should be executed seven times total
+            self.assertEqual(inner_total_count, 7 * 7)  # inner loop should be executed fourtynine times total
+
+            self.assertEqual(q, 2)
+
+    def test_no_sub_classes(self):
+        class A(Document):
+            x = IntField()
+            y = IntField()
+
+            meta = {'allow_inheritance': True}
+
+        class B(A):
+            z = IntField()
+
+        class C(B):
+            zz = IntField()
+
+        A.drop_collection()
+
+        A(x=10, y=20).save()
+        A(x=15, y=30).save()
+        B(x=20, y=40).save()
+        B(x=30, y=50).save()
+        C(x=40, y=60).save()
+
+        self.assertEqual(A.objects.no_sub_classes().count(), 2)
+        self.assertEqual(A.objects.count(), 5)
+
+        self.assertEqual(B.objects.no_sub_classes().count(), 2)
+        self.assertEqual(B.objects.count(), 3)
+
+        self.assertEqual(C.objects.no_sub_classes().count(), 1)
+        self.assertEqual(C.objects.count(), 1)
+
+        for obj in A.objects.no_sub_classes():
+            self.assertEqual(obj.__class__, A)
+
+        for obj in B.objects.no_sub_classes():
+            self.assertEqual(obj.__class__, B)
+
+        for obj in C.objects.no_sub_classes():
+            self.assertEqual(obj.__class__, C)
 
 if __name__ == '__main__':
     unittest.main()

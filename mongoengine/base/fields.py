@@ -2,7 +2,8 @@ import operator
 import warnings
 import weakref
 
-from bson import DBRef, ObjectId
+from bson import DBRef, ObjectId, SON
+import pymongo
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
@@ -10,7 +11,7 @@ from mongoengine.errors import ValidationError
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
 
-__all__ = ("BaseField", "ComplexBaseField", "ObjectIdField")
+__all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
 
 class BaseField(object):
@@ -81,13 +82,16 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        changed = False
-        if (self.name not in instance._data or
-           instance._data[self.name] != value):
-            changed = True
-            instance._data[self.name] = value
-        if changed and instance._initialised:
-            instance._mark_as_changed(self.name)
+        if instance._initialised:
+            try:
+                if (self.name not in instance._data or
+                   instance._data[self.name] != value):
+                    instance._mark_as_changed(self.name)
+            except:
+                # Values cant be compared eg: naive and tz datetimes
+                # So mark it as changed
+                instance._mark_as_changed(self.name)
+        instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
@@ -183,7 +187,7 @@ class ComplexBaseField(BaseField):
 
         # Convert lists / values so we can watch for any changes on them
         if (isinstance(value, (list, tuple)) and
-            not isinstance(value, BaseList)):
+           not isinstance(value, BaseList)):
             value = BaseList(value, instance, self.name)
             instance._data[self.name] = value
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
@@ -191,8 +195,8 @@ class ComplexBaseField(BaseField):
             instance._data[self.name] = value
 
         if (self._auto_dereference and instance._initialised and
-            isinstance(value, (BaseList, BaseDict))
-            and not value._dereferenced):
+           isinstance(value, (BaseList, BaseDict))
+           and not value._dereferenced):
             value = self._dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )
@@ -228,7 +232,7 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_python(item))
-                                for key, item in value.items()])
+                               for key, item in value.items()])
         else:
             value_dict = {}
             for k, v in value.items():
@@ -279,7 +283,7 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_mongo(item))
-                                for key, item in value.iteritems()])
+                               for key, item in value.iteritems()])
         else:
             value_dict = {}
             for k, v in value.iteritems():
@@ -295,7 +299,7 @@ class ComplexBaseField(BaseField):
                     meta = getattr(v, '_meta', {})
                     allow_inheritance = (
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
-                        == True)
+                        is True)
                     if not allow_inheritance and not self.field:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
@@ -393,3 +397,100 @@ class ObjectIdField(BaseField):
             ObjectId(unicode(value))
         except:
             self.error('Invalid Object ID')
+
+
+class GeoJsonBaseField(BaseField):
+    """A geo json field storing a geojson style object.
+    .. versionadded:: 0.8
+    """
+
+    _geo_index = pymongo.GEOSPHERE
+    _type = "GeoBase"
+
+    def __init__(self, auto_index=True, *args, **kwargs):
+        """
+        :param auto_index: Automatically create a "2dsphere" index. Defaults
+            to `True`.
+        """
+        self._name = "%sField" % self._type
+        if not auto_index:
+            self._geo_index = False
+        super(GeoJsonBaseField, self).__init__(*args, **kwargs)
+
+    def validate(self, value):
+        """Validate the GeoJson object based on its type
+        """
+        if isinstance(value, dict):
+            if set(value.keys()) == set(['type', 'coordinates']):
+                if value['type'] != self._type:
+                    self.error('%s type must be "%s"' % (self._name, self._type))
+                return self.validate(value['coordinates'])
+            else:
+                self.error('%s can only accept a valid GeoJson dictionary'
+                           ' or lists of (x, y)' % self._name)
+                return
+        elif not isinstance(value, (list, tuple)):
+            self.error('%s can only accept lists of [x, y]' % self._name)
+            return
+
+        validate = getattr(self, "_validate_%s" % self._type.lower())
+        error = validate(value)
+        if error:
+            self.error(error)
+
+    def _validate_polygon(self, value):
+        if not isinstance(value, (list, tuple)):
+            return 'Polygons must contain list of linestrings'
+
+        # Quick and dirty validator
+        try:
+            value[0][0][0]
+        except:
+            return "Invalid Polygon must contain at least one valid linestring"
+
+        errors = []
+        for val in value:
+            error = self._validate_linestring(val, False)
+            if not error and val[0] != val[-1]:
+                error = 'LineStrings must start and end at the same point'
+            if error and error not in errors:
+                errors.append(error)
+        if errors:
+            return "Invalid Polygon:\n%s" % ", ".join(errors)
+
+    def _validate_linestring(self, value, top_level=True):
+        """Validates a linestring"""
+        if not isinstance(value, (list, tuple)):
+            return 'LineStrings must contain list of coordinate pairs'
+
+        # Quick and dirty validator
+        try:
+            value[0][0]
+        except:
+            return "Invalid LineString must contain at least one valid point"
+
+        errors = []
+        for val in value:
+            error = self._validate_point(val)
+            if error and error not in errors:
+                errors.append(error)
+        if errors:
+            if top_level:
+                return "Invalid LineString:\n%s" % ", ".join(errors)
+            else:
+                return "%s" % ", ".join(errors)
+
+    def _validate_point(self, value):
+        """Validate each set of coords"""
+        if not isinstance(value, (list, tuple)):
+            return 'Points must be a list of coordinate pairs'
+        elif not len(value) == 2:
+            return "Value (%s) must be a two-dimensional point" % repr(value)
+        elif (not isinstance(value[0], (float, int)) or
+              not isinstance(value[1], (float, int))):
+            return "Both values (%s) in point must be float or int" % repr(value)
+
+    def to_mongo(self, value):
+        if isinstance(value, dict):
+            return value
+        return SON([("type", self._type), ("coordinates", value)])

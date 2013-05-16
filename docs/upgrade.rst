@@ -15,10 +15,10 @@ possible for the whole of the release.
     live. There maybe multiple manual steps in migrating and these are best honed
     on a staging / test system.
 
-Python
-=======
+Python and PyMongo
+==================
 
-Support for python 2.5 has been dropped.
+MongoEngine requires python 2.6 (or above) and pymongo 2.5 (or above)
 
 Data Model
 ==========
@@ -120,6 +120,9 @@ eg::
         p._mark_as_dirty('friends')
         p.save()
 
+`An example test migration for ReferenceFields is available on github
+<https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/refrencefield_dbref_to_object_id.py>`_.
+
 UUIDField
 ---------
 
@@ -144,6 +147,9 @@ eg::
     for a in Animal.objects:
         a._mark_as_dirty('uuid')
         a.save()
+
+`An example test migration for UUIDFields is available on github
+<https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/uuidfield_to_binary.py>`_.
 
 DecimalField
 ------------
@@ -172,7 +178,10 @@ eg::
         p.save()
 
 .. note:: DecimalField's have also been improved with the addition of precision
-    and rounding.  See :class:`~mongoengine.DecimalField` for more information.
+    and rounding.  See :class:`~mongoengine.fields.DecimalField` for more information.
+
+`An example test migration for DecimalFields is available on github
+<https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/decimalfield_as_float.py>`_.
 
 Cascading Saves
 ---------------
@@ -187,6 +196,19 @@ you will have to explicitly tell it to cascade on save::
     # Or on save:
     my_document.save(cascade=True)
 
+Storage
+-------
+
+Document and Embedded Documents are now serialized based on declared field order.
+Previously, the data was passed to mongodb as a dictionary and which meant that
+order wasn't guaranteed - so things like ``$addToSet`` operations on
+:class:`~mongoengine.EmbeddedDocument` could potentially fail in unexpected
+ways.
+
+If this impacts you, you may want to rewrite the objects using the
+``doc.mark_as_dirty('field')`` pattern described above.  If you are using a
+compound primary key then you will need to ensure the order is fixed and match
+your EmbeddedDocument to that order.
 
 Querysets
 =========
@@ -213,12 +235,15 @@ update your code like so: ::
     mammals = Animal.objects(type="mammal").filter(order="Carnivora")  # The final queryset is assgined to mammals
     [m for m in mammals]                                               # This will return all carnivores
 
-No more len
------------
+Len iterates the queryset
+--------------------------
 
-If you ever did len(queryset) it previously did a count() under the covers, this
-caused some unusual issues - so now it has been removed in favour of the
-explicit `queryset.count()` to update::
+If you ever did `len(queryset)` it previously did a `count()` under the covers,
+this caused some unusual issues.  As `len(queryset)` is most often used by
+`list(queryset)` we now cache the queryset results and use that for the length.
+
+This isn't as performant as a `count()` and if you aren't iterating the
+queryset you should upgrade to use count::
 
     # Old code
     len(Animal.objects(type="mammal"))

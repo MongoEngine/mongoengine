@@ -1,8 +1,8 @@
-=============================
-Using MongoEngine with Django
-=============================
+==============
+Django Support
+==============
 
-.. note:: Updated to support Django 1.4
+.. note:: Updated to support Django 1.5
 
 Connecting
 ==========
@@ -98,7 +98,7 @@ Django provides session cookie, which expires after ```SESSION_COOKIE_AGE``` sec
 
 Storage
 =======
-With MongoEngine's support for GridFS via the :class:`~mongoengine.FileField`,
+With MongoEngine's support for GridFS via the :class:`~mongoengine.fields.FileField`,
 it is useful to have a Django file storage backend that wraps this. The new
 storage module is called :class:`~mongoengine.django.storage.GridFSStorage`.
 Using it is very similar to using the default FileSystemStorage.::

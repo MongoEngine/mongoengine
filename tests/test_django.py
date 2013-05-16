@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 import unittest
@@ -151,21 +150,73 @@ class QuerySetTest(unittest.TestCase):
         # Try iterating the same queryset twice, nested, in a Django template.
         names = ['A', 'B', 'C', 'D']
 
-        class User(Document):
+        class CustomUser(Document):
             name = StringField()
 
             def __unicode__(self):
                 return self.name
 
-        User.drop_collection()
+        CustomUser.drop_collection()
 
         for name in names:
-            User(name=name).save()
+            CustomUser(name=name).save()
 
-        users = User.objects.all().order_by('name')
+        users = CustomUser.objects.all().order_by('name')
         template = Template("{% for user in users %}{{ user.name }}{% ifequal forloop.counter 2 %} {% for inner_user in users %}{{ inner_user.name }}{% endfor %} {% endifequal %}{% endfor %}")
         rendered = template.render(Context({'users': users}))
         self.assertEqual(rendered, 'AB ABCD CD')
+
+    def test_filter(self):
+        """Ensure that a queryset and filters work as expected
+        """
+
+        class Note(Document):
+            text = StringField()
+
+        for i in xrange(1, 101):
+            Note(name="Note: %s" % i).save()
+
+        # Check the count
+        self.assertEqual(Note.objects.count(), 100)
+
+        # Get the first 10 and confirm
+        notes = Note.objects[:10]
+        self.assertEqual(notes.count(), 10)
+
+        # Test djangos template filters
+        # self.assertEqual(length(notes), 10)
+        t = Template("{{ notes.count }}")
+        c = Context({"notes": notes})
+        self.assertEqual(t.render(c), "10")
+
+        # Test with skip
+        notes = Note.objects.skip(90)
+        self.assertEqual(notes.count(), 10)
+
+        # Test djangos template filters
+        self.assertEqual(notes.count(), 10)
+        t = Template("{{ notes.count }}")
+        c = Context({"notes": notes})
+        self.assertEqual(t.render(c), "10")
+
+        # Test with limit
+        notes = Note.objects.skip(90)
+        self.assertEqual(notes.count(), 10)
+
+        # Test djangos template filters
+        self.assertEqual(notes.count(), 10)
+        t = Template("{{ notes.count }}")
+        c = Context({"notes": notes})
+        self.assertEqual(t.render(c), "10")
+
+        # Test with skip and limit
+        notes = Note.objects.skip(10).limit(10)
+
+        # Test djangos template filters
+        self.assertEqual(notes.count(), 10)
+        t = Template("{{ notes.count }}")
+        c = Context({"notes": notes})
+        self.assertEqual(t.render(c), "10")
 
 
 class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):

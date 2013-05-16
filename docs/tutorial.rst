@@ -115,7 +115,7 @@ by setting :attr:`allow_inheritance` to True in the :attr:`meta`::
         link_url = StringField()
 
 We are storing a reference to the author of the posts using a
-:class:`~mongoengine.ReferenceField` object. These are similar to foreign key
+:class:`~mongoengine.fields.ReferenceField` object. These are similar to foreign key
 fields in traditional ORMs, and are automatically translated into references
 when they are saved, and dereferenced when they are loaded.
 
@@ -137,7 +137,7 @@ size of our database. So let's take a look that the code our modified
         author = ReferenceField(User)
         tags = ListField(StringField(max_length=30))
 
-The :class:`~mongoengine.ListField` object that is used to define a Post's tags
+The :class:`~mongoengine.fields.ListField` object that is used to define a Post's tags
 takes a field object as its first argument --- this means that you can have
 lists of any type of field (including lists).
 
@@ -174,7 +174,7 @@ We can then store a list of comment documents in our post document::
 Handling deletions of references
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The :class:`~mongoengine.ReferenceField` object takes a keyword
+The :class:`~mongoengine.fields.ReferenceField` object takes a keyword
 `reverse_delete_rule` for handling deletion rules if the reference is deleted.
 To delete all the posts if a user is deleted set the rule::
 
@@ -184,7 +184,7 @@ To delete all the posts if a user is deleted set the rule::
         tags = ListField(StringField(max_length=30))
         comments = ListField(EmbeddedDocumentField(Comment))
 
-See :class:`~mongoengine.ReferenceField` for more information.
+See :class:`~mongoengine.fields.ReferenceField` for more information.
 
 .. note::
     MapFields and DictFields currently don't support automatic handling of

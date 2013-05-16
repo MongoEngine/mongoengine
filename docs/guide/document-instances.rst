@@ -30,10 +30,13 @@ already exist, then any changes will be updated atomically.  For example::
 
 .. note::
 
-    Changes to documents are tracked and on the whole perform `set` operations.
+    Changes to documents are tracked and on the whole perform ``set`` operations.
 
-    * ``list_field.pop(0)`` - *sets* the resulting list
+    * ``list_field.push(0)`` - *sets* the resulting list
     * ``del(list_field)``   - *unsets* whole list
+
+    With lists its preferable to use ``Doc.update(push__list_field=0)`` as
+    this stops the whole list being updated - stopping any race conditions.
 
 .. seealso::
     :ref:`guide-atomic-updates`
@@ -68,11 +71,12 @@ document values for example::
 
 Cascading Saves
 ---------------
-If your document contains :class:`~mongoengine.ReferenceField` or
-:class:`~mongoengine.GenericReferenceField` objects, then by default the
-:meth:`~mongoengine.Document.save` method will automatically save any changes to
-those objects as well.  If this is not desired passing :attr:`cascade` as False
-to the save method turns this feature off.
+If your document contains :class:`~mongoengine.fields.ReferenceField` or
+:class:`~mongoengine.fields.GenericReferenceField` objects, then by default the
+:meth:`~mongoengine.Document.save` method will not save any changes to
+those objects.  If you want all references to also be saved also, noting each
+save is a separate query, then passing :attr:`cascade` as True
+to the save method will cascade any saves.
 
 Deleting documents
 ------------------

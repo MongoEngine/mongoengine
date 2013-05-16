@@ -55,15 +55,25 @@ See the :doc:`changelog` for a full list of changes to MongoEngine and
 .. note::  Always read and test the `upgrade <upgrade>`_ documentation before
     putting updates live in production **;)**
 
+Offline Reading
+---------------
+
+Download the docs in `pdf <https://media.readthedocs.org/pdf/mongoengine-odm/latest/mongoengine-odm.pdf>`_
+or `epub <https://media.readthedocs.org/epub/mongoengine-odm/latest/mongoengine-odm.epub>`_
+formats for offline reading.
+
+
 .. toctree::
+    :maxdepth: 1
+    :numbered:
     :hidden:
 
     tutorial
     guide/index
     apireference
-    django
     changelog
     upgrade
+    django
 
 Indices and tables
 ------------------

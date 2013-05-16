@@ -1,8 +1,10 @@
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.queryset import OperationError, QuerySet
+from mongoengine.queryset import QuerySet
 
-__all__ = ("switch_db", "switch_collection", "no_dereference", "query_counter")
+
+__all__ = ("switch_db", "switch_collection", "no_dereference",
+           "no_sub_classes", "query_counter")
 
 
 class switch_db(object):
@@ -127,6 +129,36 @@ class no_dereference(object):
         """ Reset the default and _auto_dereference values"""
         for field in self.deref_fields:
             self.cls._fields[field]._auto_dereference = True
+        return self.cls
+
+
+class no_sub_classes(object):
+    """ no_sub_classes context manager.
+
+    Only returns instances of this class and no sub (inherited) classes::
+
+        with no_sub_classes(Group) as Group:
+            Group.objects.find()
+
+    """
+
+    def __init__(self, cls):
+        """ Construct the no_sub_classes context manager.
+
+        :param cls: the class to turn querying sub classes on
+        """
+        self.cls = cls
+
+    def __enter__(self):
+        """ change the objects default and _auto_dereference values"""
+        self.cls._all_subclasses = self.cls._subclasses
+        self.cls._subclasses = (self.cls,)
+        return self.cls
+
+    def __exit__(self, t, value, traceback):
+        """ Reset the default and _auto_dereference values"""
+        self.cls._subclasses = self.cls._all_subclasses
+        delattr(self.cls, '_all_subclasses')
         return self.cls
 
 

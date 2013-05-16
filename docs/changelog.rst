@@ -2,8 +2,23 @@
 Changelog
 =========
 
-Changes in 0.8.X
+Changes in 0.8.0
 ================
+- Added no_sub_classes context manager and queryset helper (#312)
+- Querysets now utilises a local cache
+- Changed __len__ behavour in the queryset (#247, #311)
+- Fixed querying string versions of ObjectIds issue with ReferenceField (#307)
+- Added $setOnInsert support for upserts (#308)
+- Upserts now possible with just query parameters (#309)
+- Upserting is the only way to ensure docs are saved correctly (#306)
+- Fixed register_delete_rule inheritance issue
+- Fix cloning of sliced querysets (#303)
+- Fixed update_one write concern (#302)
+- Updated minimum requirement for pymongo to 2.5
+- Add support for new geojson fields, indexes and queries (#299)
+- If values cant be compared mark as changed (#287)
+- Ensure as_pymongo() and to_json honour only() and exclude() (#293)
+- Document serialization uses field order to ensure a strict order is set (#296)
 - DecimalField now stores as float not string (#289)
 - UUIDField now stores as a binary by default (#292)
 - Added Custom User Model for Django 1.5 (#285)
@@ -13,7 +28,6 @@ Changes in 0.8.X
 - Added SequenceField.set_next_value(value) helper (#159)
 - Updated .only() behaviour - now like exclude it is chainable (#202)
 - Added with_limit_and_skip support to count() (#235)
-- Removed __len__ from queryset (#247)
 - Objects queryset manager now inherited (#256)
 - Updated connection to use MongoClient (#262, #274)
 - Fixed db_alias and inherited Documents (#143)

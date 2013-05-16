@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
@@ -408,6 +407,27 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, log.validate)
         log.time = '1pm'
         self.assertRaises(ValidationError, log.validate)
+
+    def test_datetime_tz_aware_mark_as_changed(self):
+        from mongoengine import connection
+
+        # Reset the connections
+        connection._connection_settings = {}
+        connection._connections = {}
+        connection._dbs = {}
+
+        connect(db='mongoenginetest', tz_aware=True)
+
+        class LogEntry(Document):
+            time = DateTimeField()
+
+        LogEntry.drop_collection()
+
+        LogEntry(time=datetime.datetime(2013, 1, 1, 0, 0, 0)).save()
+
+        log = LogEntry.objects.first()
+        log.time = datetime.datetime(2013, 1, 1, 0, 0, 0)
+        self.assertEqual(['time'], log._changed_fields)
 
     def test_datetime(self):
         """Tests showing pymongo datetime fields handling of microseconds.
@@ -1840,45 +1860,6 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(error_dict['color'], COLOR_MESSAGE)
 
         Shirt.drop_collection()
-
-    def test_geo_indexes(self):
-        """Ensure that indexes are created automatically for GeoPointFields.
-        """
-        class Event(Document):
-            title = StringField()
-            location = GeoPointField()
-
-        Event.drop_collection()
-        event = Event(title="Coltrane Motion @ Double Door",
-                      location=[41.909889, -87.677137])
-        event.save()
-
-        info = Event.objects._collection.index_information()
-        self.assertTrue(u'location_2d' in info)
-        self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
-
-        Event.drop_collection()
-
-    def test_geo_embedded_indexes(self):
-        """Ensure that indexes are created automatically for GeoPointFields on
-        embedded documents.
-        """
-        class Venue(EmbeddedDocument):
-            location = GeoPointField()
-            name = StringField()
-
-        class Event(Document):
-            title = StringField()
-            venue = EmbeddedDocumentField(Venue)
-
-        Event.drop_collection()
-        venue = Venue(name="Double Door", location=[41.909889, -87.677137])
-        event = Event(title="Coltrane Motion", venue=venue)
-        event.save()
-
-        info = Event.objects._collection.index_information()
-        self.assertTrue(u'location_2d' in info)
-        self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
 
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""

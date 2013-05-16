@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+import pymongo
 from bson import SON
 
 from mongoengine.common import _import_class
@@ -12,7 +13,9 @@ COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                         'all', 'size', 'exists', 'not')
 GEO_OPERATORS        = ('within_distance', 'within_spherical_distance',
                         'within_box', 'within_polygon', 'near', 'near_sphere',
-                        'max_distance')
+                        'max_distance', 'geo_within', 'geo_within_box',
+                        'geo_within_polygon', 'geo_within_center',
+                        'geo_within_sphere', 'geo_intersects')
 STRING_OPERATORS     = ('contains', 'icontains', 'startswith',
                         'istartswith', 'endswith', 'iendswith',
                         'exact', 'iexact')
@@ -21,7 +24,8 @@ MATCH_OPERATORS      = (COMPARISON_OPERATORS + GEO_OPERATORS +
                         STRING_OPERATORS + CUSTOM_OPERATORS)
 
 UPDATE_OPERATORS     = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set')
+                        'push_all', 'pull', 'pull_all', 'add_to_set',
+                        'set_on_insert')
 
 
 def query(_doc_cls=None, _field_operation=False, **query):
@@ -81,30 +85,14 @@ def query(_doc_cls=None, _field_operation=False, **query):
                         value = field
                 else:
                     value = field.prepare_query_value(op, value)
-            elif op in ('in', 'nin', 'all', 'near'):
+            elif op in ('in', 'nin', 'all', 'near') and not isinstance(value, dict):
                 # 'in', 'nin' and 'all' require a list of values
                 value = [field.prepare_query_value(op, v) for v in value]
 
         # if op and op not in COMPARISON_OPERATORS:
         if op:
             if op in GEO_OPERATORS:
-                if op == "within_distance":
-                    value = {'$within': {'$center': value}}
-                elif op == "within_spherical_distance":
-                    value = {'$within': {'$centerSphere': value}}
-                elif op == "within_polygon":
-                    value = {'$within': {'$polygon': value}}
-                elif op == "near":
-                    value = {'$near': value}
-                elif op == "near_sphere":
-                    value = {'$nearSphere': value}
-                elif op == 'within_box':
-                    value = {'$within': {'$box': value}}
-                elif op == "max_distance":
-                    value = {'$maxDistance': value}
-                else:
-                    raise NotImplementedError("Geo method '%s' has not "
-                                              "been implemented" % op)
+                value = _geo_operator(field, op, value)
             elif op in CUSTOM_OPERATORS:
                 if op == 'match':
                     value = {"$elemMatch": value}
@@ -176,7 +164,9 @@ def update(_doc_cls=None, **update):
                 if value > 0:
                     value = -value
             elif op == 'add_to_set':
-                op = op.replace('_to_set', 'ToSet')
+                op = 'addToSet'
+            elif op == 'set_on_insert':
+                op = "setOnInsert"
 
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
@@ -250,3 +240,76 @@ def update(_doc_cls=None, **update):
             mongo_update[key].update(value)
 
     return mongo_update
+
+
+def _geo_operator(field, op, value):
+    """Helper to return the query for a given geo query"""
+    if field._geo_index == pymongo.GEO2D:
+        if op == "within_distance":
+            value = {'$within': {'$center': value}}
+        elif op == "within_spherical_distance":
+            value = {'$within': {'$centerSphere': value}}
+        elif op == "within_polygon":
+            value = {'$within': {'$polygon': value}}
+        elif op == "near":
+            value = {'$near': value}
+        elif op == "near_sphere":
+            value = {'$nearSphere': value}
+        elif op == 'within_box':
+            value = {'$within': {'$box': value}}
+        elif op == "max_distance":
+            value = {'$maxDistance': value}
+        else:
+            raise NotImplementedError("Geo method '%s' has not "
+                                      "been implemented for a GeoPointField" % op)
+    else:
+        if op == "geo_within":
+            value = {"$geoWithin": _infer_geometry(value)}
+        elif op == "geo_within_box":
+            value = {"$geoWithin": {"$box": value}}
+        elif op == "geo_within_polygon":
+            value = {"$geoWithin": {"$polygon": value}}
+        elif op == "geo_within_center":
+            value = {"$geoWithin": {"$center": value}}
+        elif op == "geo_within_sphere":
+            value = {"$geoWithin": {"$centerSphere": value}}
+        elif op == "geo_intersects":
+            value = {"$geoIntersects": _infer_geometry(value)}
+        elif op == "near":
+            value = {'$near': _infer_geometry(value)}
+        elif op == "max_distance":
+            value = {'$maxDistance': value}
+        else:
+            raise NotImplementedError("Geo method '%s' has not "
+                                      "been implemented for a %s " % (op, field._name))
+    return value
+
+
+def _infer_geometry(value):
+    """Helper method that tries to infer the $geometry shape for a given value"""
+    if isinstance(value, dict):
+        if "$geometry" in value:
+            return value
+        elif 'coordinates' in value and 'type' in value:
+            return {"$geometry": value}
+        raise InvalidQueryError("Invalid $geometry dictionary should have "
+                                "type and coordinates keys")
+    elif isinstance(value, (list, set)):
+        try:
+            value[0][0][0]
+            return {"$geometry": {"type": "Polygon", "coordinates": value}}
+        except:
+            pass
+        try:
+            value[0][0]
+            return {"$geometry": {"type": "LineString", "coordinates": value}}
+        except:
+            pass
+        try:
+            value[0]
+            return {"$geometry": {"type": "Point", "coordinates": value}}
+        except:
+            pass
+
+    raise InvalidQueryError("Invalid $geometry data. Can be either a dictionary "
+                            "or (nested) lists of coordinate(s)")

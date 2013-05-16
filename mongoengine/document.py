@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import warnings
 
 import pymongo
@@ -232,7 +231,6 @@ class Document(BaseDocument):
                             return not updated
                     return created
 
-                upsert = self._created
                 update_query = {}
 
                 if updates:
@@ -241,7 +239,7 @@ class Document(BaseDocument):
                     update_query["$unset"] = removals
                 if updates or removals:
                     last_error = collection.update(select_dict, update_query,
-                                                   upsert=upsert, **write_concern)
+                                                   upsert=True, **write_concern)
                     created = is_new_object(last_error)
 
             cascade = (self._meta.get('cascade', True)
@@ -523,7 +521,6 @@ class Document(BaseDocument):
         # an extra index on _cls, as mongodb will use the existing
         # index to service queries against _cls
         cls_indexed = False
-
         def includes_cls(fields):
             first_field = None
             if len(fields):
@@ -548,7 +545,7 @@ class Document(BaseDocument):
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
         if (index_cls and not cls_indexed and
-            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) == True):
+           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
 
@@ -559,7 +556,7 @@ class DynamicDocument(Document):
     way as an ordinary document but has expando style properties.  Any data
     passed or set against the :class:`~mongoengine.DynamicDocument` that is
     not a field is automatically converted into a
-    :class:`~mongoengine.DynamicField` and data can be attributed to that
+    :class:`~mongoengine.fields.DynamicField` and data can be attributed to that
     field.
 
     .. note::
