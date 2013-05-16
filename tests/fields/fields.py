@@ -1914,6 +1914,21 @@ class FieldTest(unittest.TestCase):
         self.db['mongoengine.counters'].drop()
 
         self.assertEqual(Person.id.get_next_value(), 1)
+
+        class Person(Document):
+            id = SequenceField(primary_key=True, value_decorator=str)
+            name = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+
+        for x in xrange(10):
+            Person(name="Person %s" % x).save()
+
+        self.assertEqual(Person.id.get_next_value(), '11')
+        self.db['mongoengine.counters'].drop()
+
+        self.assertEqual(Person.id.get_next_value(), '1')
         
     def test_sequence_field_sequence_name(self):
         class Person(Document):

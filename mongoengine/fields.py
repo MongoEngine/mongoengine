@@ -1449,9 +1449,9 @@ class SequenceField(BaseField):
         data = collection.find_one({"_id": sequence_id})
 
         if data:
-            return data['next']+1
+            return self.value_decorator(data['next']+1)
 
-        return 1
+        return self.value_decorator(1)
 
     def get_sequence_name(self):
         if self.sequence_name:
