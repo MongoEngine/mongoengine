@@ -1449,7 +1449,7 @@ class SequenceField(BaseField):
         data = collection.find_one({"_id": sequence_id})
 
         if data:
-            return data['next']
+            return data['next']+1
 
         return 1
 
