@@ -8,6 +8,7 @@ _connections = {}
 _dbs = {}
 _db_to_conn = {}
 _default_db = 'sweeper'
+_slave_ok_tags = { True: [{}] }
 
 class ConnectionError(Exception):
     pass
@@ -43,9 +44,13 @@ def _get_db(db_name='test', reconnect=False, allow_async=True):
 
     return async if allow_async and async else sync
 
+def _get_tags(slave_ok):
+    return _slave_ok_tags[slave_ok]
 
-def connect(host='localhost', conn_name=None, db_names=None, allow_async=False, **kwargs):
-    global _connections, _db_to_conn
+
+def connect(host='localhost', conn_name=None, db_names=None, allow_async=False,
+            slave_ok_tags=None, **kwargs):
+    global _connections, _db_to_conn, _slave_ok_tags
 
     # Connect to the database if not already connected
     if conn_name not in _connections:
@@ -64,6 +69,9 @@ def connect(host='localhost', conn_name=None, db_names=None, allow_async=False, 
         if db_names:
             for db in db_names:
                 _db_to_conn[db] = conn_name
+
+        if slave_ok_tags:
+            _slave_ok_tags = slave_ok_tags
 
     return _connections[conn_name]
 

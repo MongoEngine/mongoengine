@@ -9,7 +9,7 @@ import greenlet
 from timer import log_slow_event
 
 from bson import SON, ObjectId, DBRef
-from connection import _get_db
+from connection import _get_db, _get_tags
 
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
@@ -60,7 +60,7 @@ class Document(BaseDocument):
     a **+** or **-** sign.
     """
 
-    MAX_AUTO_RECONNECT_TRIES = 1
+    MAX_AUTO_RECONNECT_TRIES = 3
     AUTO_RECONNECT_SLEEP = 0.075
 
     __metaclass__ = TopLevelDocumentMetaclass
@@ -204,12 +204,27 @@ class Document(BaseDocument):
 
             sort = new_sort
 
-        # no secondary queries during backups ~3am
+        # default to primary read preference
+        read_preference = pymongo.ReadPreference.PRIMARY
+
+        # don't do serving secondary reads during backups around 3am
         time_now = datetime.datetime.now().time()
-        if slave_ok and not (datetime.time(2, 55) < time_now < datetime.time(3,35)):
+        if slave_ok is True:
+            if not (datetime.time(2, 55) < time_now < datetime.time(3,35)):
+                read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED
+        # but if slave_ok is something other than True or False (e.g. a string),
+        # we can do secondary reads any time
+        elif slave_ok:
             read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED
+
+        # if we're reading from secondaries, set the tags based on slave_ok
+        if read_preference != pymongo.ReadPreference.PRIMARY:
+            try:
+                tags = _get_tags(slave_ok)
+            except KeyError:
+                raise ValueError("Invalid slave_ok preference")
         else:
-            read_preference = pymongo.ReadPreference.PRIMARY
+            tags = None
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
@@ -218,11 +233,13 @@ class Document(BaseDocument):
                         return cls._pymongo(allow_async).find_one(spec, fields,
                                               skip=skip, sort=sort,
                                               read_preference=read_preference,
+                                              tag_sets=tags,
                                               **kwargs)
                     else:
                         cur = cls._pymongo(allow_async).find(spec, fields,
                                               skip=skip, limit=limit, sort=sort,
                                               read_preference=read_preference,
+                                              tag_sets=tags,
                                               **kwargs)
                         cur.batch_size(10000)
                         return cur
