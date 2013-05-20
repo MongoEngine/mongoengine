@@ -388,7 +388,7 @@ class Document(BaseDocument):
             user.save()
 
         If you need to read from another database see
-        :class:`~mongoengine.context_managers.switch_collection`
+        :class:`~mongoengine.context_managers.switch_db`
 
         :param collection_name: The database alias to use for saving the
             document
