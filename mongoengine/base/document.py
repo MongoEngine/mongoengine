@@ -148,9 +148,10 @@ class BaseDocument(object):
         return data
 
     def __setstate__(self, data):
-        for k in ('_changed_fields', '_initialised', '_created'):
+        if isinstance(data["_data"], SON):
+            data["_data"] = self.__class__._from_son(data["_data"])._data
+        for k in ('_changed_fields', '_initialised', '_created', '_data'):
             setattr(self, k, data[k])
-        self._data = self.__class__._from_son(data["_data"])._data
 
     def __iter__(self):
         if 'id' in self._fields and 'id' not in self._fields_ordered:
