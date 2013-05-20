@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.0
 ================
+- Fixed querying ReferenceField custom_id (#317)
 - Fixed pickle issues with collections (#316)
 - Added `get_next_value` preview for SequenceFields (#319)
 - Added no_sub_classes context manager and queryset helper (#312)
