@@ -141,16 +141,16 @@ class BaseDocument(object):
         super(BaseDocument, self).__setattr__(name, value)
 
     def __getstate__(self):
-        removals = ("get_%s_display" % k
-                    for k, v in self._fields.items() if v.choices)
-        for k in removals:
-            if hasattr(self, k):
-                delattr(self, k)
-        return self.__dict__
+        data = {}
+        for k in ('_changed_fields', '_initialised', '_created'):
+            data[k] = getattr(self, k)
+        data['_data'] = self.to_mongo()
+        return data
 
-    def __setstate__(self, __dict__):
-        self.__dict__ = __dict__
-        self.__set_field_display()
+    def __setstate__(self, data):
+        for k in ('_changed_fields', '_initialised', '_created'):
+            setattr(self, k, data[k])
+        self._data = self.__class__._from_son(data["_data"])._data
 
     def __iter__(self):
         if 'id' in self._fields and 'id' not in self._fields_ordered:
