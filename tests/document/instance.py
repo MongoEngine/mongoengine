@@ -9,7 +9,7 @@ import unittest
 import uuid
 
 from datetime import datetime
-from tests.fixtures import PickleEmbedded, PickleTest
+from tests.fixtures import PickleEmbedded, PickleTest, PickleSignalsTest
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
@@ -1729,6 +1729,12 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(resurrected, pickle_doc)
         self.assertEqual(pickle_doc.string, "Two")
         self.assertEqual(pickle_doc.lists, ["1", "2", "3"])
+
+    def test_picklable_on_signals(self):
+        pickle_doc = PickleSignalsTest(number=1, string="One", lists=['1', '2'])
+        pickle_doc.embedded = PickleEmbedded()
+        pickle_doc.save()
+        pickle_doc.delete()
 
     def test_throw_invalid_document_error(self):
 
