@@ -1443,6 +1443,11 @@ class SequenceField(BaseField):
         return self.value_decorator(counter['next'])
 
     def get_next_value(self):
+        """Helper method to get the next value for previewing.
+
+        .. warning:: There is no guarantee this will be the next value
+        as it is only fixed on set.
+        """
         sequence_name = self.get_sequence_name()
         sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
