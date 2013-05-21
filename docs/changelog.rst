@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.1
 ================
+- Fixed Python 2.6 django auth importlib issue (#326)
 - Fixed pickle unsaved document regression (#327)
 
 Changes in 0.8.0
