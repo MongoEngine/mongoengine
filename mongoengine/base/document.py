@@ -143,7 +143,8 @@ class BaseDocument(object):
     def __getstate__(self):
         data = {}
         for k in ('_changed_fields', '_initialised', '_created'):
-            data[k] = getattr(self, k)
+            if hasattr(self, k):
+                data[k] = getattr(self, k)
         data['_data'] = self.to_mongo()
         return data
 

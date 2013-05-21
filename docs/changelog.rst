@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.8.1
+================
+- Fixed pickle unsaved document regression (#327)
+
 Changes in 0.8.0
 ================
 - Fixed querying ReferenceField custom_id (#317)
