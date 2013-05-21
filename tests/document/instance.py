@@ -1709,6 +1709,7 @@ class InstanceTest(unittest.TestCase):
 
         pickle_doc = PickleTest(number=1, string="One", lists=['1', '2'])
         pickle_doc.embedded = PickleEmbedded()
+        pickled_doc = pickle.dumps(pickle_doc)  # make sure pickling works even before the doc is saved
         pickle_doc.save()
 
         pickled_doc = pickle.dumps(pickle_doc)
