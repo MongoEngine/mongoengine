@@ -275,7 +275,7 @@ class MongoAuthTest(unittest.TestCase):
 
     def test_user_manager(self):
         manager = get_user_model()._default_manager
-        self.assertIsInstance(manager, MongoUserManager)
+        self.assertTrue(isinstance(manager, MongoUserManager))
 
     def test_user_manager_exception(self):
         manager = get_user_model()._default_manager
@@ -285,14 +285,14 @@ class MongoAuthTest(unittest.TestCase):
     def test_create_user(self):
         manager = get_user_model()._default_manager
         user = manager.create_user(**self.user_data)
-        self.assertIsInstance(user, User)
+        self.assertTrue(isinstance(user, User))
         db_user = User.objects.get(username='user')
         self.assertEqual(user.id, db_user.id)
 
     def test_authenticate(self):
         get_user_model()._default_manager.create_user(**self.user_data)
         user = authenticate(username='user', password='fail')
-        self.assertIsNone(user)
+        self.assertEqual(None, user)
         user = authenticate(username='user', password='test')
         db_user = User.objects.get(username='user')
         self.assertEqual(user.id, db_user.id)
