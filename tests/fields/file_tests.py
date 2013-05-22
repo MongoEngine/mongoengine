@@ -407,6 +407,25 @@ class FileTest(unittest.TestCase):
         self.assertEqual(putfile, copy.copy(putfile))
         self.assertEqual(putfile, copy.deepcopy(putfile))
 
+    def test_get_image_by_grid_id(self):
+
+        class TestImage(Document):
+
+            image1 = ImageField()
+            image2 = ImageField()
+
+        TestImage.drop_collection()
+
+        t = TestImage()
+        t.image1.put(open(TEST_IMAGE_PATH, 'rb'))
+        t.image2.put(open(TEST_IMAGE2_PATH, 'rb'))
+        t.save()
+
+        test = TestImage.objects.first()
+        grid_id = test.image1.grid_id
+
+        self.assertEqual(1, TestImage.objects(Q(image1=grid_id)
+                                              or Q(image2=grid_id)).count())
 
 if __name__ == '__main__':
     unittest.main()
