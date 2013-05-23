@@ -116,8 +116,8 @@ eg::
 
     # Mark all ReferenceFields as dirty and save
     for p in Person.objects:
-        p._mark_as_dirty('parent')
-        p._mark_as_dirty('friends')
+        p._mark_as_changed('parent')
+        p._mark_as_changed('friends')
         p.save()
 
 `An example test migration for ReferenceFields is available on github
@@ -145,7 +145,7 @@ eg::
 
     # Mark all ReferenceFields as dirty and save
     for a in Animal.objects:
-        a._mark_as_dirty('uuid')
+        a._mark_as_changed('uuid')
         a.save()
 
 `An example test migration for UUIDFields is available on github
@@ -174,7 +174,7 @@ eg::
 
     # Mark all ReferenceFields as dirty and save
     for p in Person.objects:
-        p._mark_as_dirty('balance')
+        p._mark_as_changed('balance')
         p.save()
 
 .. note:: DecimalField's have also been improved with the addition of precision
