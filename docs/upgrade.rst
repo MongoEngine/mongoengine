@@ -123,6 +123,10 @@ eg::
 `An example test migration for ReferenceFields is available on github
 <https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/refrencefield_dbref_to_object_id.py>`_.
 
+.. Note:: Internally mongoengine handles ReferenceFields the same, so they are
+   converted to DBRef on loading and ObjectIds or DBRefs depending on settings
+   on storage.
+
 UUIDField
 ---------
 
@@ -143,7 +147,7 @@ eg::
     class Animal(Document):
         uuid = UUIDField()
 
-    # Mark all ReferenceFields as dirty and save
+    # Mark all UUIDFields as dirty and save
     for a in Animal.objects:
         a._mark_as_changed('uuid')
         a.save()
@@ -172,7 +176,7 @@ eg::
     class Person(Document):
         balance = DecimalField()
 
-    # Mark all ReferenceFields as dirty and save
+    # Mark all DecimalField's as dirty and save
     for p in Person.objects:
         p._mark_as_changed('balance')
         p.save()
