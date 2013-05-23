@@ -1479,7 +1479,7 @@ class QuerySet(object):
 
     # Deprecated
     def ensure_index(self, **kwargs):
-        """Deprecated use :func:`~Document.ensure_index`"""
+        """Deprecated use :func:`Document.ensure_index`"""
         msg = ("Doc.objects()._ensure_index() is deprecated. "
                "Use Doc.ensure_index() instead.")
         warnings.warn(msg, DeprecationWarning)
