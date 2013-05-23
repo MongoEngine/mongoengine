@@ -409,6 +409,9 @@ class FileTest(unittest.TestCase):
 
     def test_get_image_by_grid_id(self):
 
+        if PY3:
+            raise SkipTest('PIL does not have Python 3 support')
+
         class TestImage(Document):
 
             image1 = ImageField()
