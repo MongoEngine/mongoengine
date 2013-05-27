@@ -1194,6 +1194,7 @@ class FileField(BaseField):
 
             # Create a new proxy object as we don't already have one
             instance._data[key] = self.proxy_class(key=key, instance=instance,
+                                                   db_alias=self.db_alias,
                                                    collection_name=self.collection_name)
             instance._data[key].put(value)
         else:
