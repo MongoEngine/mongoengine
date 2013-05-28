@@ -808,6 +808,27 @@ class FieldTest(unittest.TestCase):
 
         self.assertRaises(ValidationError, e.save)
 
+    def test_complex_field_same_value_not_changed(self):
+        """
+        If a complex field is set to the same value, it should not be marked as
+        changed.
+        """
+        class Simple(Document):
+            mapping = ListField()
+
+        Simple.drop_collection()
+        e = Simple().save()
+        e.mapping = []
+        self.assertEqual([], e._changed_fields)
+
+        class Simple(Document):
+            mapping = DictField()
+
+        Simple.drop_collection()
+        e = Simple().save()
+        e.mapping = {}
+        self.assertEqual([], e._changed_fields)
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 
