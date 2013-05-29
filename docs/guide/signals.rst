@@ -15,7 +15,7 @@ Signals
 Overview
 --------
 
-Signals are found within the :module:`~mongoengine.signals` module.  Unless
+Signals are found within the `mongoengine.signals` module.  Unless
 specified signals receive no additional arguments beyond the `sender` class and
 `document` instance.  Post-signals are only called if there were no exceptions
 raised during the processing of their related function.
