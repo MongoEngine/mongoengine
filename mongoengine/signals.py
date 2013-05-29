@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-__all__ = ['pre_init', 'post_init', 'pre_save', 'post_save',
-           'pre_delete', 'post_delete']
+__all__ = ['pre_init', 'post_init', 'pre_save_validation', 'pre_save',
+           'post_save', 'pre_delete', 'post_delete']
 
 signals_available = False
 try:
