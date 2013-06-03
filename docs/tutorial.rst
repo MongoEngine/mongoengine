@@ -298,5 +298,5 @@ Learning more about mongoengine
 -------------------------------
 
 If you got this far you've made a great start, so well done!  The next step on
-your mongoengine journey is the `full user guide <guide/index>`_, where you
+your mongoengine journey is the `full user guide <guide/index.html>`_, where you
 can learn indepth about how to use mongoengine and mongodb.
