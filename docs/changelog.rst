@@ -2,6 +2,13 @@
 Changelog
 =========
 
+
+Changes in 0.8.2
+================
+- Django session ttl index expiry fixed (#329)
+- Fixed pickle.loads (#342)
+- Documentation fixes
+
 Changes in 0.8.1
 ================
 - Fixed Python 2.6 django auth importlib issue (#326)
