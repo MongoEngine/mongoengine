@@ -36,7 +36,7 @@ MongoEngine supports :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetCl
 to use them please use a URI style connection and provide the `replicaSet` name in the
 connection kwargs.
 
-Read preferences are supported throught the connection or via individual
+Read preferences are supported through the connection or via individual
 queries by passing the read_preference ::
 
     Bar.objects().read_preference(ReadPreference.PRIMARY)
@@ -83,7 +83,7 @@ reasons.
 
 The :class:`~mongoengine.context_managers.switch_db` context manager allows
 you to change the database alias for a given class allowing quick and easy
-access to the same User document across databases.eg ::
+access to the same User document across databases::
 
         from mongoengine.context_managers import switch_db
 
