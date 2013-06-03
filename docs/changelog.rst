@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Fixed Doc.objects(read_preference=X) not setting read preference (#352)
 - Django session ttl index expiry fixed (#329)
 - Fixed pickle.loads (#342)
 - Documentation fixes

@@ -104,13 +104,17 @@ class QuerySet(object):
                 raise InvalidQueryError(msg)
             query &= q_obj
 
-        queryset = self.clone()
+        if read_preference is None:
+            queryset = self.clone()
+        else:
+            # Use the clone provided when setting read_preference
+            queryset = self.read_preference(read_preference)
+
         queryset._query_obj &= query
         queryset._mongo_query = None
         queryset._cursor_obj = None
-        if read_preference is not None:
-            queryset.read_preference(read_preference)
         queryset._class_check = class_check
+
         return queryset
 
     def __len__(self):

@@ -3098,7 +3098,10 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual([], bars)
 
         self.assertRaises(ConfigurationError, Bar.objects,
-                            read_preference='Primary')
+                          read_preference='Primary')
+
+        bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
 
     def test_json_simple(self):
 
