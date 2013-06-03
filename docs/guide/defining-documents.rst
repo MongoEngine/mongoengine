@@ -403,7 +403,7 @@ either a single field name, or a list or tuple of field names::
 Skipping Document validation on save
 ------------------------------------
 You can also skip the whole document validation process by setting
-``validate=False`` when caling the :meth:`~mongoengine.document.Document.save`
+``validate=False`` when calling the :meth:`~mongoengine.document.Document.save`
 method::
 
     class Recipient(Document):
