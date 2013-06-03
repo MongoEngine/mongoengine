@@ -91,6 +91,13 @@ the case and the data is set only in the ``document._data`` dictionary: ::
       File "<stdin>", line 1, in <module>
     AttributeError: 'Animal' object has no attribute 'size'
 
+The Document class has introduced a reserved function `clean()`, which will be
+called before saving the document. If your document class happen to have a method
+with the same name, please try rename it.
+
+    def clean(self):
+        pass
+
 ReferenceField
 --------------
 
