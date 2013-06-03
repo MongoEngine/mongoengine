@@ -27,9 +27,9 @@ MongoEngine includes a Django authentication backend, which uses MongoDB. The
 :class:`~mongoengine.Document`, but implements most of the methods and
 attributes that the standard Django :class:`User` model does - so the two are
 moderately compatible. Using this backend will allow you to store users in
-MongoDB but still use many of the Django authentication infrastucture (such as
+MongoDB but still use many of the Django authentication infrastructure (such as
 the :func:`login_required` decorator and the :func:`authenticate` function). To
-enable the MongoEngine auth backend, add the following to you **settings.py**
+enable the MongoEngine auth backend, add the following to your **settings.py**
 file::
 
     AUTHENTICATION_BACKENDS = (
@@ -46,7 +46,7 @@ Custom User model
 =================
 Django 1.5 introduced `Custom user Models
 <https://docs.djangoproject.com/en/dev/topics/auth/customizing/#auth-custom-user>`
-which can be used as an alternative the Mongoengine authentication backend.
+which can be used as an alternative to the MongoEngine authentication backend.
 
 The main advantage of this option is that other components relying on
 :mod:`django.contrib.auth` and supporting the new swappable user model are more
@@ -82,16 +82,16 @@ Sessions
 ========
 Django allows the use of different backend stores for its sessions. MongoEngine
 provides a MongoDB-based session backend for Django, which allows you to use
-sessions in you Django application with just MongoDB. To enable the MongoEngine
+sessions in your Django application with just MongoDB. To enable the MongoEngine
 session backend, ensure that your settings module has
 ``'django.contrib.sessions.middleware.SessionMiddleware'`` in the
 ``MIDDLEWARE_CLASSES`` field  and ``'django.contrib.sessions'`` in your
 ``INSTALLED_APPS``. From there, all you need to do is add the following line
-into you settings module::
+into your settings module::
 
     SESSION_ENGINE = 'mongoengine.django.sessions'
 
-Django provides session cookie, which expires after ```SESSION_COOKIE_AGE``` seconds, but doesnt delete cookie at sessions backend, so ``'mongoengine.django.sessions'`` supports  `mongodb TTL
+Django provides session cookie, which expires after ```SESSION_COOKIE_AGE``` seconds, but doesn't delete cookie at sessions backend, so ``'mongoengine.django.sessions'`` supports  `mongodb TTL
 <http://docs.mongodb.org/manual/tutorial/expire-data/>`_.
 
 .. versionadded:: 0.2.1
