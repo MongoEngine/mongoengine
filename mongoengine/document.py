@@ -195,7 +195,7 @@ class Document(BaseDocument):
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values
         """
-        signals.pre_save_validation.send(self.__class__, document=self)
+        signals.pre_save.send(self.__class__, document=self)
 
         if validate:
             self.validate(clean=clean)
@@ -206,9 +206,9 @@ class Document(BaseDocument):
         doc = self.to_mongo()
 
         created = ('_id' not in doc or self._created or force_insert)
-        
-        signals.pre_save.send(self.__class__, document=self, created=created)
-        
+
+        signals.pre_save_post_validation.send(self.__class__, document=self, created=created)
+
         try:
             collection = self._get_collection()
             if created:

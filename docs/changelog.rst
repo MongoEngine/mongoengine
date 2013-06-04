@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Added pre_save_post_validation signal (#345)
 - DateTimeField now auto converts valid datetime isostrings into dates (#343)
 - DateTimeField now uses dateutil for parsing if available (#343)
 - Fixed Doc.objects(read_preference=X) not setting read preference (#352)
