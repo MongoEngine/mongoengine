@@ -7,6 +7,12 @@ import urllib2
 import uuid
 import warnings
 from operator import itemgetter
+try:
+    import dateutil
+except ImportError:
+    dateutil = None
+else:
+    import dateutil.parser
 
 import pymongo
 import gridfs
@@ -371,6 +377,8 @@ class DateTimeField(BaseField):
             return value()
 
         # Attempt to parse a datetime:
+        if dateutil:
+            return dateutil.parser.parse(value)
         # value = smart_str(value)
         # split usecs, because they are not recognized by strptime.
         if '.' in value:
