@@ -40,8 +40,17 @@ class SignalTests(unittest.TestCase):
                 signal_output.append('post_init signal, %s' % document)
 
             @classmethod
+            def pre_save_validation(cls, sender, document, **kwargs):
+                signal_output.append('pre_save_validation signal, %s' % document)
+
+            @classmethod
             def pre_save(cls, sender, document, **kwargs):
                 signal_output.append('pre_save signal, %s' % document)
+                if 'created' in kwargs:
+                    if kwargs['created']:
+                        signal_output.append('Is created')
+                    else:
+                        signal_output.append('Is updated')
 
             @classmethod
             def post_save(cls, sender, document, **kwargs):
@@ -90,8 +99,17 @@ class SignalTests(unittest.TestCase):
                 signal_output.append('post_init Another signal, %s' % document)
 
             @classmethod
+            def pre_save_validation(cls, sender, document, **kwargs):
+                signal_output.append('pre_save_validation Another signal, %s' % document)
+
+            @classmethod
             def pre_save(cls, sender, document, **kwargs):
                 signal_output.append('pre_save Another signal, %s' % document)
+                if 'created' in kwargs:
+                    if kwargs['created']:
+                        signal_output.append('Is created')
+                    else:
+                        signal_output.append('Is updated')
 
             @classmethod
             def post_save(cls, sender, document, **kwargs):
@@ -132,6 +150,7 @@ class SignalTests(unittest.TestCase):
         self.pre_signals = (
             len(signals.pre_init.receivers),
             len(signals.post_init.receivers),
+            len(signals.pre_save_validation.receivers),
             len(signals.pre_save.receivers),
             len(signals.post_save.receivers),
             len(signals.pre_delete.receivers),
@@ -142,6 +161,7 @@ class SignalTests(unittest.TestCase):
 
         signals.pre_init.connect(Author.pre_init, sender=Author)
         signals.post_init.connect(Author.post_init, sender=Author)
+        signals.pre_save_validation.connect(Author.pre_save_validation, sender=Author)
         signals.pre_save.connect(Author.pre_save, sender=Author)
         signals.post_save.connect(Author.post_save, sender=Author)
         signals.pre_delete.connect(Author.pre_delete, sender=Author)
@@ -151,6 +171,7 @@ class SignalTests(unittest.TestCase):
 
         signals.pre_init.connect(Another.pre_init, sender=Another)
         signals.post_init.connect(Another.post_init, sender=Another)
+        signals.pre_save_validation.connect(Another.pre_save_validation, sender=Another)
         signals.pre_save.connect(Another.pre_save, sender=Another)
         signals.post_save.connect(Another.post_save, sender=Another)
         signals.pre_delete.connect(Another.pre_delete, sender=Another)
@@ -165,6 +186,7 @@ class SignalTests(unittest.TestCase):
         signals.pre_delete.disconnect(self.Author.pre_delete)
         signals.post_save.disconnect(self.Author.post_save)
         signals.pre_save.disconnect(self.Author.pre_save)
+        signals.pre_save_validation.disconnect(self.Author.pre_save_validation)
         signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
         signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
 
@@ -174,6 +196,7 @@ class SignalTests(unittest.TestCase):
         signals.pre_delete.disconnect(self.Another.pre_delete)
         signals.post_save.disconnect(self.Another.post_save)
         signals.pre_save.disconnect(self.Another.pre_save)
+        signals.pre_save_validation.disconnect(self.Another.pre_save_validation)
 
         signals.post_save.disconnect(self.ExplicitId.post_save)
 
@@ -181,6 +204,7 @@ class SignalTests(unittest.TestCase):
         post_signals = (
             len(signals.pre_init.receivers),
             len(signals.post_init.receivers),
+            len(signals.pre_save_validation.receivers),
             len(signals.pre_save.receivers),
             len(signals.post_save.receivers),
             len(signals.pre_delete.receivers),
@@ -215,7 +239,9 @@ class SignalTests(unittest.TestCase):
 
         a1 = self.Author(name='Bill Shakespeare')
         self.assertEqual(self.get_signal_output(a1.save), [
+            "pre_save_validation signal, Bill Shakespeare",
             "pre_save signal, Bill Shakespeare",
+            "Is created",
             "post_save signal, Bill Shakespeare",
             "Is created"
         ])
@@ -223,7 +249,9 @@ class SignalTests(unittest.TestCase):
         a1.reload()
         a1.name = 'William Shakespeare'
         self.assertEqual(self.get_signal_output(a1.save), [
+            "pre_save_validation signal, William Shakespeare",
             "pre_save signal, William Shakespeare",
+            "Is updated",
             "post_save signal, William Shakespeare",
             "Is updated"
         ])
