@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Removed unused var in _get_changed_fields (#347)
 - Added pre_save_post_validation signal (#345)
 - DateTimeField now auto converts valid datetime isostrings into dates (#343)
 - DateTimeField now uses dateutil for parsing if available (#343)
