@@ -69,10 +69,8 @@ class QTest(unittest.TestCase):
             y = StringField()
 
         # Check than an error is raised when conflicting queries are anded
-        def invalid_combination():
-            query = Q(x__lt=7) & Q(x__lt=3)
-            query.to_query(TestDoc)
-        self.assertRaises(InvalidQueryError, invalid_combination)
+        query = (Q(x__lt=7) & Q(x__lt=3)).to_query(TestDoc)
+        self.assertEqual(query, {'$and': [ {'x': {'$lt': 7}}, {'x': {'$lt': 3}} ]})
 
         # Check normal cases work without an error
         query = Q(x__lt=7) & Q(x__gt=3)
