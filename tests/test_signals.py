@@ -41,7 +41,7 @@ class SignalTests(unittest.TestCase):
 
             @classmethod
             def pre_save(cls, sender, document, **kwargs):
-                signal_output.append('pre_save signal,, %s' % document)
+                signal_output.append('pre_save signal, %s' % document)
 
             @classmethod
             def pre_save_post_validation(cls, sender, document, **kwargs):
@@ -83,54 +83,6 @@ class SignalTests(unittest.TestCase):
         self.Author = Author
         Author.drop_collection()
 
-        class Another(Document):
-            name = StringField()
-
-            def __unicode__(self):
-                return self.name
-
-            @classmethod
-            def pre_init(cls, sender, document, **kwargs):
-                signal_output.append('pre_init Another signal, %s' % cls.__name__)
-                signal_output.append(str(kwargs['values']))
-
-            @classmethod
-            def post_init(cls, sender, document, **kwargs):
-                signal_output.append('post_init Another signal, %s' % document)
-
-            @classmethod
-            def pre_save(cls, sender, document, **kwargs):
-                signal_output.append('pre_save Another signal, %s' % document)
-
-            @classmethod
-            def pre_save_post_validation(cls, sender, document, **kwargs):
-                signal_output.append('pre_save_post_validation Another signal, %s' % document)
-                if 'created' in kwargs:
-                    if kwargs['created']:
-                        signal_output.append('Is created')
-                    else:
-                        signal_output.append('Is updated')
-
-            @classmethod
-            def post_save(cls, sender, document, **kwargs):
-                signal_output.append('post_save Another signal, %s' % document)
-                if 'created' in kwargs:
-                    if kwargs['created']:
-                        signal_output.append('Is created')
-                    else:
-                        signal_output.append('Is updated')
-
-            @classmethod
-            def pre_delete(cls, sender, document, **kwargs):
-                signal_output.append('pre_delete Another signal, %s' % document)
-
-            @classmethod
-            def post_delete(cls, sender, document, **kwargs):
-                signal_output.append('post_delete Another signal, %s' % document)
-
-        self.Another = Another
-        Another.drop_collection()
-
         class ExplicitId(Document):
             id = IntField(primary_key=True)
 
@@ -169,14 +121,6 @@ class SignalTests(unittest.TestCase):
         signals.pre_bulk_insert.connect(Author.pre_bulk_insert, sender=Author)
         signals.post_bulk_insert.connect(Author.post_bulk_insert, sender=Author)
 
-        signals.pre_init.connect(Another.pre_init, sender=Another)
-        signals.post_init.connect(Another.post_init, sender=Another)
-        signals.pre_save.connect(Another.pre_save, sender=Another)
-        signals.pre_save_post_validation.connect(Another.pre_save_post_validation, sender=Another)
-        signals.post_save.connect(Another.post_save, sender=Another)
-        signals.pre_delete.connect(Another.pre_delete, sender=Another)
-        signals.post_delete.connect(Another.post_delete, sender=Another)
-
         signals.post_save.connect(ExplicitId.post_save, sender=ExplicitId)
 
     def tearDown(self):
@@ -189,14 +133,6 @@ class SignalTests(unittest.TestCase):
         signals.pre_save.disconnect(self.Author.pre_save)
         signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
         signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
-
-        signals.pre_init.disconnect(self.Another.pre_init)
-        signals.post_init.disconnect(self.Another.post_init)
-        signals.post_delete.disconnect(self.Another.post_delete)
-        signals.pre_delete.disconnect(self.Another.pre_delete)
-        signals.post_save.disconnect(self.Another.post_save)
-        signals.pre_save_post_validation.disconnect(self.Another.pre_save_post_validation)
-        signals.pre_save.disconnect(self.Another.pre_save)
 
         signals.post_save.disconnect(self.ExplicitId.post_save)
 
@@ -239,7 +175,7 @@ class SignalTests(unittest.TestCase):
 
         a1 = self.Author(name='Bill Shakespeare')
         self.assertEqual(self.get_signal_output(a1.save), [
-            "pre_save signal,, Bill Shakespeare",
+            "pre_save signal, Bill Shakespeare",
             "pre_save_post_validation signal, Bill Shakespeare",
             "Is created",
             "post_save signal, Bill Shakespeare",
@@ -249,7 +185,7 @@ class SignalTests(unittest.TestCase):
         a1.reload()
         a1.name = 'William Shakespeare'
         self.assertEqual(self.get_signal_output(a1.save), [
-            "pre_save signal,, William Shakespeare",
+            "pre_save signal, William Shakespeare",
             "pre_save_post_validation signal, William Shakespeare",
             "Is updated",
             "post_save signal, William Shakespeare",

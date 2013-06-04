@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Added lock when calling doc.Delete() for when signals have no sender (#350)
 - Reload forces read preference to be PRIMARY (#355)
 - Querysets are now lest restrictive when querying duplicate fields (#332, #333)
 - FileField now honouring db_alias (#341)

@@ -347,11 +347,10 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self._qs.filter(**self._object_key).delete(write_concern=write_concern)
+            self._qs.filter(**self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
-
         signals.post_delete.send(self.__class__, document=self)
 
     def switch_db(self, db_alias):
