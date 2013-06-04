@@ -3392,6 +3392,34 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(B.objects.get(a=a).a, a)
         self.assertEqual(B.objects.get(a=a.id).a, a)
 
+    def test_cls_query_in_subclassed_docs(self):
+
+        class Animal(Document):
+            name = StringField()
+
+            meta = {
+                'allow_inheritance': True
+            }
+
+        class Dog(Animal):
+            pass
+
+        class Cat(Animal):
+            pass
+
+        self.assertEqual(Animal.objects(name='Charlie')._query, {
+            'name': 'Charlie',
+            '_cls': { '$in': ('Animal', 'Animal.Dog', 'Animal.Cat') }
+        })
+        self.assertEqual(Dog.objects(name='Charlie')._query, {
+            'name': 'Charlie',
+            '_cls': 'Animal.Dog'
+        })
+        self.assertEqual(Cat.objects(name='Charlie')._query, {
+            'name': 'Charlie',
+            '_cls': 'Animal.Cat'
+        })
+
 
 if __name__ == '__main__':
     unittest.main()
