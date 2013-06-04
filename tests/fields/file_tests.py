@@ -394,6 +394,14 @@ class FileTest(unittest.TestCase):
         self.assertEqual(test_file.the_file.read(),
                           b('Hello, World!'))
 
+        test_file = TestFile.objects.first()
+        test_file.the_file = b('HELLO, WORLD!')
+        test_file.save()
+
+        test_file = TestFile.objects.first()
+        self.assertEqual(test_file.the_file.read(),
+                          b('HELLO, WORLD!'))
+
     def test_copyable(self):
         class PutFile(Document):
             the_file = FileField()

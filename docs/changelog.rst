@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- FileField now honouring db_alias (#341)
 - Removed customised __set__ change tracking in ComplexBaseField (#344)
 - Removed unused var in _get_changed_fields (#347)
 - Added pre_save_post_validation signal (#345)
