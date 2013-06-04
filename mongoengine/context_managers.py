@@ -189,7 +189,10 @@ class query_counter(object):
 
     def __eq__(self, value):
         """ == Compare querycounter. """
-        return value == self._get_count()
+        counter = self._get_count()
+        if value != counter:
+            print [x for x in self.db.system.profile.find()]
+        return value == counter
 
     def __ne__(self, value):
         """ != Compare querycounter. """
