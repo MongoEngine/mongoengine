@@ -6,6 +6,11 @@ import datetime
 import unittest
 import uuid
 
+try:
+    import dateutil
+except ImportError:
+    dateutil = None
+
 from decimal import Decimal
 
 from bson import Binary, DBRef, ObjectId
@@ -479,6 +484,65 @@ class FieldTest(unittest.TestCase):
             log.reload()
             self.assertNotEqual(log.date, d1)
             self.assertEqual(log.date, d2)
+
+        LogEntry.drop_collection()
+
+    def test_datetime_usage(self):
+        """Tests for regular datetime fields"""
+        class LogEntry(Document):
+            date = DateTimeField()
+
+        LogEntry.drop_collection()
+
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01)
+        log = LogEntry()
+        log.date = d1
+        log.save()
+
+        for query in (d1, d1.isoformat(' ')):
+            log1 = LogEntry.objects.get(date=query)
+            self.assertEqual(log, log1)
+
+        if dateutil:
+            log1 = LogEntry.objects.get(date=d1.isoformat('T'))
+            self.assertEqual(log, log1)
+
+        LogEntry.drop_collection()
+
+        # create 60 log entries
+        for i in xrange(1950, 2010):
+            d = datetime.datetime(i, 01, 01, 00, 00, 01)
+            LogEntry(date=d).save()
+
+        self.assertEqual(LogEntry.objects.count(), 60)
+
+        # Test ordering
+        logs = LogEntry.objects.order_by("date")
+        count = logs.count()
+        i = 0
+        while i == count - 1:
+            self.assertTrue(logs[i].date <= logs[i + 1].date)
+            i += 1
+
+        logs = LogEntry.objects.order_by("-date")
+        count = logs.count()
+        i = 0
+        while i == count - 1:
+            self.assertTrue(logs[i].date >= logs[i + 1].date)
+            i += 1
+
+        # Test searching
+        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980, 1, 1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(
+            date__lte=datetime.datetime(2011, 1, 1),
+            date__gte=datetime.datetime(2000, 1, 1),
+        )
+        self.assertEqual(logs.count(), 10)
 
         LogEntry.drop_collection()
 
