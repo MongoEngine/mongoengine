@@ -408,9 +408,16 @@ class FieldTest(unittest.TestCase):
         log.time = datetime.date.today()
         log.validate()
 
+        log.time = datetime.datetime.now().isoformat(' ')
+        log.validate()
+
+        if dateutil:
+            log.time = datetime.datetime.now().isoformat('T')
+            log.validate()
+
         log.time = -1
         self.assertRaises(ValidationError, log.validate)
-        log.time = '1pm'
+        log.time = 'ABC'
         self.assertRaises(ValidationError, log.validate)
 
     def test_datetime_tz_aware_mark_as_changed(self):
@@ -497,6 +504,7 @@ class FieldTest(unittest.TestCase):
         d1 = datetime.datetime(1970, 01, 01, 00, 00, 01)
         log = LogEntry()
         log.date = d1
+        log.validate()
         log.save()
 
         for query in (d1, d1.isoformat(' ')):
@@ -1993,7 +2001,7 @@ class FieldTest(unittest.TestCase):
         self.db['mongoengine.counters'].drop()
 
         self.assertEqual(Person.id.get_next_value(), '1')
-        
+
     def test_sequence_field_sequence_name(self):
         class Person(Document):
             id = SequenceField(primary_key=True, sequence_name='jelly')
