@@ -205,12 +205,6 @@ class ComplexBaseField(BaseField):
 
         return value
 
-    def __set__(self, instance, value):
-        """Descriptor for assigning a value to a field in a document.
-        """
-        instance._data[self.name] = value
-        instance._mark_as_changed(self.name)
-
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
