@@ -15,6 +15,7 @@ The following document signals exist in MongoEngine and are pretty self-explanat
 
   * `mongoengine.signals.pre_init`
   * `mongoengine.signals.post_init`
+  * `mongoengine.signals.pre_save_validation`
   * `mongoengine.signals.pre_save`
   * `mongoengine.signals.post_save`
   * `mongoengine.signals.pre_delete`
