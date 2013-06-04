@@ -83,6 +83,24 @@ class SignalTests(unittest.TestCase):
         self.Author = Author
         Author.drop_collection()
 
+        class Another(Document):
+
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+            @classmethod
+            def pre_delete(cls, sender, document, **kwargs):
+                signal_output.append('pre_delete signal, %s' % document)
+
+            @classmethod
+            def post_delete(cls, sender, document, **kwargs):
+                signal_output.append('post_delete signal, %s' % document)
+
+        self.Another = Another
+        Another.drop_collection()
+
         class ExplicitId(Document):
             id = IntField(primary_key=True)
 
@@ -121,6 +139,9 @@ class SignalTests(unittest.TestCase):
         signals.pre_bulk_insert.connect(Author.pre_bulk_insert, sender=Author)
         signals.post_bulk_insert.connect(Author.post_bulk_insert, sender=Author)
 
+        signals.pre_delete.connect(Another.pre_delete, sender=Another)
+        signals.post_delete.connect(Another.post_delete, sender=Another)
+
         signals.post_save.connect(ExplicitId.post_save, sender=ExplicitId)
 
     def tearDown(self):
@@ -133,6 +154,9 @@ class SignalTests(unittest.TestCase):
         signals.pre_save.disconnect(self.Author.pre_save)
         signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
         signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
+
+        signals.post_delete.disconnect(self.Another.post_delete)
+        signals.pre_delete.disconnect(self.Another.pre_delete)
 
         signals.post_save.disconnect(self.ExplicitId.post_save)
 
@@ -216,7 +240,14 @@ class SignalTests(unittest.TestCase):
             "Not loaded",
         ])
 
-        self.Author.objects.delete()
+    def test_queryset_delete_signals(self):
+        """ Queryset delete should throw some signals. """
+
+        self.Another(name='Bill Shakespeare').save()
+        self.assertEqual(self.get_signal_output(self.Another.objects.delete), [
+            'pre_delete signal, Bill Shakespeare',
+            'post_delete signal, Bill Shakespeare',
+        ])
 
     def test_signals_with_explicit_doc_ids(self):
         """ Model saves must have a created flag the first time."""
