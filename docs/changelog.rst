@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Reload forces read preference to be PRIMARY (#355)
 - Querysets are now lest restrictive when querying duplicate fields (#332, #333)
 - FileField now honouring db_alias (#341)
 - Removed customised __set__ change tracking in ComplexBaseField (#344)

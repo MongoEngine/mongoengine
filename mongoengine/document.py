@@ -3,6 +3,7 @@ import warnings
 import pymongo
 import re
 
+from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
@@ -421,8 +422,9 @@ class Document(BaseDocument):
         .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self._qs.filter(**{id_field: self[id_field]}
-                              ).limit(1).select_related(max_depth=max_depth)
+        obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
+                **{id_field: self[id_field]}).limit(1).select_related(max_depth=max_depth)
+
         if obj:
             obj = obj[0]
         else:
