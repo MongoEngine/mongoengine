@@ -15,11 +15,8 @@ fetch documents from the database::
 
 .. note::
 
-   Once the iteration finishes (when :class:`StopIteration` is raised),
-   :meth:`~mongoengine.queryset.QuerySet.rewind` will be called so that the
-   :class:`~mongoengine.queryset.QuerySet` may be iterated over again. The
-   results of the first iteration are *not* cached, so the database will be hit
-   each time the :class:`~mongoengine.queryset.QuerySet` is iterated over.
+    As of MongoEngine 0.8 the querysets utilise a local cache.  So iterating
+    it multiple times will only cause a single query.
 
 Filtering queries
 =================
