@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- ImageFields now include PIL error messages if invalid error (#353)
 - Fixed hashing of EmbeddedDocuments (#348)
 - Added lock when calling doc.Delete() for when signals have no sender (#350)
 - Reload forces read preference to be PRIMARY (#355)

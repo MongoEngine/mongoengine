@@ -1259,8 +1259,8 @@ class ImageGridFsProxy(GridFSProxy):
         try:
             img = Image.open(file_obj)
             img_format = img.format
-        except:
-            raise ValidationError('Invalid image')
+        except Exception, e:
+            raise ValidationError('Invalid image: %s' % e)
 
         if (field.size and (img.size[0] > field.size['width'] or
                             img.size[1] > field.size['height'])):

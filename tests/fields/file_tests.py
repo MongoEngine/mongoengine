@@ -269,6 +269,17 @@ class FileTest(unittest.TestCase):
 
         TestImage.drop_collection()
 
+        with tempfile.TemporaryFile() as f:
+            f.write(b("Hello World!"))
+            f.flush()
+
+            t = TestImage()
+            try:
+                t.image.put(f)
+                self.fail("Should have raised an invalidation error")
+            except ValidationError, e:
+                self.assertEquals("%s" % e, "Invalid image: cannot identify image file")
+
         t = TestImage()
         t.image.put(open(TEST_IMAGE_PATH, 'rb'))
         t.save()
