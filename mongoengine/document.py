@@ -489,7 +489,8 @@ class Document(BaseDocument):
                            '$all', '$and', '$or', '$exists', '$mod',
                            '$elemMatch', '$size', '$type', '$not', '$returnKey',
                            '$maxScan', '$orderby', '$explain', '$snapshot',
-                           '$max', '$min', '$showDiskLoc', '$hint', '$comment']
+                           '$max', '$min', '$showDiskLoc', '$hint', '$comment',
+                           '$slice']
 
         # recurse on dict, unless we're at a DictField
         if isinstance(value, dict) and not isinstance(context, DictField):
