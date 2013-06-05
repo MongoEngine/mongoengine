@@ -49,6 +49,19 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(person._fields['age'].help_text, "Your real age")
         self.assertEqual(person._fields['userid'].verbose_name, "User Identity")
 
+        class Person2(Document):
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        person = Person2()
+        date1 = person.created
+        date2 = person.created
+        self.assertEqual(date1, date2)
+
+        person = Person2(created=None)
+        date1 = person.created
+        date2 = person.created
+        self.assertEqual(date1, date2)
+
     def test_required_values(self):
         """Ensure that required field constraints are enforced.
         """
