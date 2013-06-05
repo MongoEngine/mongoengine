@@ -190,6 +190,7 @@ class query_counter(object):
     def __eq__(self, value):
         """ == Compare querycounter. """
         counter = self._get_count()
+        # Temp debugging to try and understand intermittent travis-ci failures
         if value != counter:
             print [x for x in self.db.system.profile.find()]
         return value == counter
