@@ -2169,6 +2169,30 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
+    def test_min(self):
+        """Ensure that minimum can be found correctly.
+        """
+        ages = [23, 54, 12, 94, 27]
+        for i, age in enumerate(ages):
+            self.Person(name='test%s' % i, age=age).save()
+
+        self.assertEqual(int(self.Person.objects.min('age')), min(ages))
+
+        self.Person(name='ageless person').save()
+        self.assertEqual(int(self.Person.objects.min('age')), min(ages))
+
+    def test_max(self):
+        """Ensure that maximum can be found correctly.
+        """
+        ages = [23, 54, 12, 94, 27]
+        for i, age in enumerate(ages):
+            self.Person(name='test%s' % i, age=age).save()
+
+        self.assertEqual(int(self.Person.objects.max('age')), max(ages))
+
+        self.Person(name='ageless person').save()
+        self.assertEqual(int(self.Person.objects.max('age')), max(ages))
+
     def test_distinct(self):
         """Ensure that the QuerySet.distinct method works.
         """
