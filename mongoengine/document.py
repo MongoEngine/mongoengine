@@ -202,7 +202,7 @@ class Document(BaseDocument):
             self.validate(clean=clean)
 
         if not write_concern:
-            write_concern = {}
+            write_concern = {"w": 1}
 
         doc = self.to_mongo()
 
