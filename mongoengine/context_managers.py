@@ -190,9 +190,6 @@ class query_counter(object):
     def __eq__(self, value):
         """ == Compare querycounter. """
         counter = self._get_count()
-        # Temp debugging to try and understand intermittent travis-ci failures
-        if value != counter:
-            print [x for x in self.db.system.profile.find()]
         return value == counter
 
     def __ne__(self, value):
@@ -225,6 +222,7 @@ class query_counter(object):
 
     def _get_count(self):
         """ Get the number of queries. """
-        count = self.db.system.profile.find().count() - self.counter
+        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
+        count = self.db.system.profile.find(ignore_query).count() - self.counter
         self.counter += 1
         return count

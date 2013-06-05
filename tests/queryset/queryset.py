@@ -631,14 +631,13 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 1)  # 1 for the insert
 
         Blog.drop_collection()
+        Blog.ensure_indexes()
+
         with query_counter() as q:
             self.assertEqual(q, 0)
 
-            Blog.ensure_indexes()
-            self.assertEqual(q, 1)
-
             Blog.objects.insert(blogs)
-            self.assertEqual(q, 3)  # 1 for insert, and 1 for in bulk fetch (3 in total)
+            self.assertEqual(q, 2)  # 1 for insert, and 1 for in bulk fetch
 
         Blog.drop_collection()
 
