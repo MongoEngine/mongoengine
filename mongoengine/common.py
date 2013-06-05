@@ -7,7 +7,7 @@ def _import_class(cls_name):
         return _class_registry_cache.get(cls_name)
 
     doc_classes = ('Document', 'DynamicEmbeddedDocument', 'EmbeddedDocument',
-                   'MapReduceDocument')
+                   'MapReduceDocument', 'Trait')
     field_classes = ('DictField', 'DynamicField', 'EmbeddedDocumentField',
                      'FileField', 'GenericReferenceField',
                      'GenericEmbeddedDocumentField', 'GeoPointField',

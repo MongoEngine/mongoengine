@@ -13,7 +13,7 @@ from mongoengine.queryset import OperationError, NotUniqueError, QuerySet
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
 
-__all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
+__all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument', 'Trait',
            'DynamicEmbeddedDocument', 'OperationError',
            'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
 
@@ -52,6 +52,15 @@ class EmbeddedDocument(BaseDocument):
         if isinstance(other, self.__class__):
             return self._data == other._data
         return False
+
+class Trait(BaseDocument):
+    my_metaclass = DocumentMetaclass
+    __metaclass__ = DocumentMetaclass
+    _instance = None
+
+    def __init__(self, *args, **kwargs):
+        super(Trait, self).__init__(*args, **kwargs)
+        self._changed_fields = []
 
 
 class Document(BaseDocument):
@@ -271,6 +280,8 @@ class Document(BaseDocument):
         if id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
+        if hasattr(self, '_remove_trait_fields'):
+            del self._remove_trait_fields
         self._clear_changed_fields()
         self._created = False
         signals.post_save.send(self.__class__, document=self, created=created)
