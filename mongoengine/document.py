@@ -1,9 +1,11 @@
 import warnings
 
+import hashlib
 import pymongo
 import re
 
 from pymongo.read_preferences import ReadPreference
+from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
@@ -52,6 +54,9 @@ class EmbeddedDocument(BaseDocument):
         if isinstance(other, self.__class__):
             return self._data == other._data
         return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class Document(BaseDocument):
