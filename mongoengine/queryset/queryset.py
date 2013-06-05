@@ -185,7 +185,6 @@ class QuerySet(object):
             try:
                 queryset._cursor_obj = queryset._cursor[key]
                 queryset._skip, queryset._limit = key.start, key.stop
-                queryset._limit
                 if key.start and key.stop:
                     queryset._limit = key.stop - key.start
             except IndexError, err:
