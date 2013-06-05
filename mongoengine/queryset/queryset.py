@@ -327,6 +327,16 @@ class QuerySet(object):
             result = None
         return result
 
+    def last(self):
+        """Retrieve the last object matching the query.
+        """
+        queryset = self.clone()
+        try:
+            result = queryset[-1]
+        except IndexError:
+            result = None
+        return result
+
     def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
         """bulk insert documents
 
@@ -1073,6 +1083,67 @@ class QuerySet(object):
                     sum += values[i];
                 }
                 return sum;
+            }
+        """)
+
+        for result in self.map_reduce(map_func, reduce_func, output='inline'):
+            return result.value
+        else:
+            return 0
+
+    def min(self, field):
+        """Minimum value of the specified field.
+
+        :param field: the field to look for minimum value; use dot-notation to
+            embedded document fields
+
+        .. versionadded:: 0.9
+        """
+        map_func = Code("""
+            function () {
+                if ( this[field] != null )
+                    emit(1, this[field] || 0);
+            }
+        """, scope={'field': field})
+
+        reduce_func = Code("""
+            function(key, values) {
+                var min = values[0];
+                for (var i in values) {
+                    if ( values[i] < min )
+                        min = values[i];
+                }
+                return min;
+            }
+        """)
+
+        for result in self.map_reduce(map_func, reduce_func, output='inline'):
+            return result.value
+        else:
+            return 0
+
+    def max(self, field):
+        """Maximum value of the specified field.
+
+        :param field: the field to look for maximum value; use dot-notation to
+            embedded document fields
+
+        .. versionadded:: 0.9
+        """
+        map_func = Code("""
+            function () {
+                emit(1, this[field] || 0);
+            }
+        """, scope={'field': field})
+
+        reduce_func = Code("""
+            function(key, values) {
+                var max = values[0];
+                for (var i in values) {
+                    if ( values[i] > max )
+                        max = values[i];
+                }
+                return max;
             }
         """)
 
