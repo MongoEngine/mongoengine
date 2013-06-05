@@ -215,7 +215,7 @@ class BaseDocument(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        if self.pk is None:
+        if getattr(self, 'pk', None) is None:
             # For new object
             return super(BaseDocument, self).__hash__()
         else:
