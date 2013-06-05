@@ -57,7 +57,7 @@ if sys.version_info[0] == 3:
         extra_opts['packages'].append("tests")
         extra_opts['package_data'] = {"tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]}
 else:
-    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.4.2', 'PIL', 'jinja2==2.6']
+    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.4.2', 'PIL', 'jinja2==2.6', 'python-dateutil']
     extra_opts['packages'] = find_packages(exclude=('tests',))
 
 setup(name='mongoengine',

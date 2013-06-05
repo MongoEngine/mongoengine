@@ -152,7 +152,8 @@ class BaseDocument(object):
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in ('_changed_fields', '_initialised', '_created', '_data'):
-            setattr(self, k, data[k])
+            if k in data:
+                setattr(self, k, data[k])
 
     def __iter__(self):
         if 'id' in self._fields and 'id' not in self._fields_ordered:
@@ -391,7 +392,7 @@ class BaseDocument(object):
                 if field_value:
                     field_value._clear_changed_fields()
 
-    def _get_changed_fields(self, key='', inspected=None):
+    def _get_changed_fields(self, inspected=None):
         """Returns a list of all fields that have explicitly been changed.
         """
         EmbeddedDocument = _import_class("EmbeddedDocument")
@@ -422,7 +423,7 @@ class BaseDocument(object):
             if (isinstance(field, (EmbeddedDocument, DynamicEmbeddedDocument))
                and db_field_name not in _changed_fields):
                  # Find all embedded fields that have been changed
-                changed = field._get_changed_fields(key, inspected)
+                changed = field._get_changed_fields(inspected)
                 _changed_fields += ["%s%s" % (key, k) for k in changed if k]
             elif (isinstance(field, (list, tuple, dict)) and
                     db_field_name not in _changed_fields):
@@ -436,7 +437,7 @@ class BaseDocument(object):
                     if not hasattr(value, '_get_changed_fields'):
                         continue
                     list_key = "%s%s." % (key, index)
-                    changed = value._get_changed_fields(list_key, inspected)
+                    changed = value._get_changed_fields(inspected)
                     _changed_fields += ["%s%s" % (list_key, k)
                                         for k in changed if k]
         return _changed_fields

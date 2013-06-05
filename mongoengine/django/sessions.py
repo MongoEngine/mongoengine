@@ -39,7 +39,7 @@ class MongoSession(Document):
         'indexes': [
             {
                 'fields': ['expire_date'],
-                'expireAfterSeconds': settings.SESSION_COOKIE_AGE
+                'expireAfterSeconds': 0
             }
         ]
     }

@@ -8,6 +8,13 @@ import uuid
 import warnings
 from operator import itemgetter
 
+try:
+    import dateutil
+except ImportError:
+    dateutil = None
+else:
+    import dateutil.parser
+
 import pymongo
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
@@ -347,6 +354,11 @@ class BooleanField(BaseField):
 class DateTimeField(BaseField):
     """A datetime field.
 
+    Uses the python-dateutil library if available alternatively use time.strptime
+    to parse the dates.  Note: python-dateutil's parser is fully featured and when
+    installed you can utilise it to convert varing types of date formats into valid
+    python datetime objects.
+
     Note: Microseconds are rounded to the nearest millisecond.
       Pre UTC microsecond support is effecively broken.
       Use :class:`~mongoengine.fields.ComplexDateTimeField` if you
@@ -354,13 +366,11 @@ class DateTimeField(BaseField):
     """
 
     def validate(self, value):
-        if not isinstance(value, (datetime.datetime, datetime.date)):
+        new_value = self.to_mongo(value)
+        if not isinstance(new_value, (datetime.datetime, datetime.date)):
             self.error(u'cannot parse date "%s"' % value)
 
     def to_mongo(self, value):
-        return self.prepare_query_value(None, value)
-
-    def prepare_query_value(self, op, value):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
@@ -370,8 +380,16 @@ class DateTimeField(BaseField):
         if callable(value):
             return value()
 
+        if not isinstance(value, basestring):
+            return None
+
         # Attempt to parse a datetime:
-        # value = smart_str(value)
+        if dateutil:
+            try:
+                return dateutil.parser.parse(value)
+            except ValueError:
+                return None
+
         # split usecs, because they are not recognized by strptime.
         if '.' in value:
             try:
@@ -395,6 +413,9 @@ class DateTimeField(BaseField):
                                              '%Y-%m-%d')[:3], **kwargs)
                 except ValueError:
                     return None
+
+    def prepare_query_value(self, op, value):
+        return self.to_mongo(value)
 
 
 class ComplexDateTimeField(StringField):
@@ -1194,6 +1215,7 @@ class FileField(BaseField):
 
             # Create a new proxy object as we don't already have one
             instance._data[key] = self.proxy_class(key=key, instance=instance,
+                                                   db_alias=self.db_alias,
                                                    collection_name=self.collection_name)
             instance._data[key].put(value)
         else:

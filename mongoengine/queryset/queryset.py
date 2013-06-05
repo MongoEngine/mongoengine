@@ -104,13 +104,17 @@ class QuerySet(object):
                 raise InvalidQueryError(msg)
             query &= q_obj
 
-        queryset = self.clone()
+        if read_preference is None:
+            queryset = self.clone()
+        else:
+            # Use the clone provided when setting read_preference
+            queryset = self.read_preference(read_preference)
+
         queryset._query_obj &= query
         queryset._mongo_query = None
         queryset._cursor_obj = None
-        if read_preference is not None:
-            queryset.read_preference(read_preference)
         queryset._class_check = class_check
+
         return queryset
 
     def __len__(self):
@@ -413,7 +417,7 @@ class QuerySet(object):
             self._len = count
         return count
 
-    def delete(self, write_concern=None):
+    def delete(self, write_concern=None, _from_doc_delete=False):
         """Delete the documents matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
@@ -422,20 +426,25 @@ class QuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
+        :param _from_doc_delete: True when called from document delete therefore
+            signals will have been triggered so don't loop.
         """
         queryset = self.clone()
         doc = queryset._document
 
+        if not write_concern:
+            write_concern = {}
+
+        # Handle deletes where skips or limits have been applied or
+        # there is an untriggered delete signal
         has_delete_signal = signals.signals_available and (
             signals.pre_delete.has_receivers_for(self._document) or
             signals.post_delete.has_receivers_for(self._document))
 
-        if not write_concern:
-            write_concern = {}
+        call_document_delete = (queryset._skip or queryset._limit or
+                                has_delete_signal) and not _from_doc_delete
 
-        # Handle deletes where skips or limits have been applied or has a
-        # delete signal
-        if queryset._skip or queryset._limit or has_delete_signal:
+        if call_document_delete:
             for doc in queryset:
                 doc.delete(write_concern=write_concern)
             return

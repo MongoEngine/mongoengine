@@ -3,6 +3,7 @@ import warnings
 import pymongo
 import re
 
+from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
@@ -207,6 +208,8 @@ class Document(BaseDocument):
 
         created = ('_id' not in doc or self._created or force_insert)
 
+        signals.pre_save_post_validation.send(self.__class__, document=self, created=created)
+
         try:
             collection = self._get_collection()
             if created:
@@ -344,11 +347,10 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self._qs.filter(**self._object_key).delete(write_concern=write_concern)
+            self._qs.filter(**self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
-
         signals.post_delete.send(self.__class__, document=self)
 
     def switch_db(self, db_alias):
@@ -419,8 +421,9 @@ class Document(BaseDocument):
         .. versionchanged:: 0.6  Now chainable
         """
         id_field = self._meta['id_field']
-        obj = self._qs.filter(**{id_field: self[id_field]}
-                              ).limit(1).select_related(max_depth=max_depth)
+        obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
+                **{id_field: self[id_field]}).limit(1).select_related(max_depth=max_depth)
+
         if obj:
             obj = obj[0]
         else:
