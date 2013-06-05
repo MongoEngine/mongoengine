@@ -15,7 +15,7 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
 from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
                                         to_str_keys_recursive)
 
-from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.base.common import get_document, apply_traits, _trait_registry, ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
 from mongoengine.base.fields import ComplexBaseField
 
@@ -237,6 +237,9 @@ class BaseDocument(object):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
+        traits = getattr(self.__class__, '_traits', None)
+        if traits:
+            data['_traits'] = [trait.__name__ for trait in traits]
 
         for field_name in self:
             value = self._data.get(field_name, None)
@@ -442,6 +445,53 @@ class BaseDocument(object):
                                         for k in changed if k]
         return _changed_fields
 
+    def add_trait(self, names):
+        traits = getattr(self.__class__, '_traits', [])
+        if not isinstance(traits, list):
+            #Traits are a tuple of classes
+            traits = [trait.__name__ for trait in traits]
+        if not isinstance(names, list):
+            names = [names]
+        changed = False
+        for name in names:
+            if name not in traits:
+                traits.append(name)
+                changed = True
+        if changed:
+            self.__class__ = apply_traits(self.__class__, traits)
+            self._mark_as_changed('_traits')
+
+    def remove_trait(self, names):
+        traits = getattr(self.__class__, '_traits', None)
+        if not isinstance(names, list):
+            names = [names]
+        if traits:
+            tnames = {trait.__name__: trait for trait in traits}
+            changed = False
+            for name in names:
+                if name in names:
+                    trait = tnames.pop(name)
+                    changed = True
+                    #If we need to cleanup old fields on the doc do it here
+                    remove = getattr(self, '_remove_trait_fields', [])
+                    for field in trait._fields:
+                        remove.append(field)
+                    self._remove_trait_fields = remove
+            if changed:
+                self.__class__ = apply_traits(self.__class__, tnames.keys())
+                self._mark_as_changed('_traits')
+
+    def has_trait(self, names):
+        if not isinstance(names, list):
+            names = [names]
+        if hasattr(self.__class__, '_traitnames'):
+            for name in names:
+                if name not in self.__class__._traitnames:
+                    break
+            else:
+                return True
+        return False
+
     def _delta(self):
         """Returns the delta (set, unset) of the changes for a document.
         Gets any values that have been explicitly changed.
@@ -520,6 +570,11 @@ class BaseDocument(object):
 
             del(set_data[path])
             unset_data[path] = 1
+        
+        if hasattr(self, '_remove_trait_fields'):
+            for field in self._remove_trait_fields:
+                unset_data[field] = 1
+            
         return set_data, unset_data
 
     @classmethod
@@ -545,6 +600,11 @@ class BaseDocument(object):
         # Return correct subclass for document type
         if class_name != cls._class_name:
             cls = get_document(class_name)
+
+        #Apply the traits
+        traits = son.get('_traits', [])
+        if traits:
+            cls = apply_traits(cls, traits)
 
         changed_fields = []
         errors_dict = {}

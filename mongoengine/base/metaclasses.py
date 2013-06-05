@@ -9,7 +9,7 @@ from mongoengine.queryset import (DO_NOTHING, DoesNotExist,
                                   MultipleObjectsReturned,
                                   QuerySet, QuerySetManager)
 
-from mongoengine.base.common import _document_registry, ALLOW_INHERITANCE
+from mongoengine.base.common import _document_registry, _trait_registry, ALLOW_INHERITANCE
 from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 
 __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
@@ -97,12 +97,18 @@ class DocumentMetaclass(type):
         attrs['_reverse_db_field_map'] = dict(
             (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
+
+        Document, EmbeddedDocument, DictField, Trait = cls._import_classes()
+
         #
         # Set document hierarchy
         #
         superclasses = ()
         class_name = [name]
         for base in flattened_bases:
+            if issubclass(base, Trait):
+                continue
+
             if (not getattr(base, '_is_base_cls', True) and
                not getattr(base, '_meta', {}).get('abstract', True)):
                 # Collate heirarchy for _cls and _subclasses
@@ -140,13 +146,14 @@ class DocumentMetaclass(type):
                 base._subclasses += (_cls,)
             base._types = base._subclasses   # TODO depreciate _types
 
-        Document, EmbeddedDocument, DictField = cls._import_classes()
-
         if issubclass(new_class, Document):
             new_class._collection = None
 
         # Add class to the _document_registry
-        _document_registry[new_class._class_name] = new_class
+        if issubclass(new_class, Trait):
+            _trait_registry[new_class._class_name] = new_class
+        else:
+            _document_registry[new_class._class_name] = new_class
 
         # In Python 2, User-defined methods objects have special read-only
         # attributes 'im_func' and 'im_self' which contain the function obj
@@ -223,7 +230,8 @@ class DocumentMetaclass(type):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
         DictField = _import_class('DictField')
-        return (Document, EmbeddedDocument, DictField)
+        Trait = _import_class('Trait')
+        return (Document, EmbeddedDocument, DictField, Trait)
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
