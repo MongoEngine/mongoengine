@@ -1705,14 +1705,6 @@ class InstanceTest(unittest.TestCase):
 
         self.assertTrue(u1 in all_user_set)
 
-    def test_embedded_document_hash(self):
-        """Test embedded document can be hashed
-        """
-        class User(EmbeddedDocument):
-            pass
-
-        hash(User())
-
     def test_picklable(self):
 
         pickle_doc = PickleTest(number=1, string="One", lists=['1', '2'])
