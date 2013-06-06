@@ -100,9 +100,6 @@ arguments can be set on all fields:
 :attr:`db_field` (Default: None)
     The MongoDB field name.
 
-:attr:`name` (Default: None)
-    The mongoengine field name.
-
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
     :class:`~mongoengine.ValidationError` will be raised when the document is
@@ -129,6 +126,7 @@ arguments can be set on all fields:
             # instead to just an object
             values = ListField(IntField(), default=[1,2,3])
 
+    .. note:: Unsetting a field with a default value will revert back to the default.
 
 :attr:`unique` (Default: False)
     When True, no documents in the collection will have the same value for this
