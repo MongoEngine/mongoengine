@@ -9,6 +9,7 @@ import unittest
 import uuid
 
 from datetime import datetime
+from bson import DBRef
 from tests.fixtures import PickleEmbedded, PickleTest, PickleSignalsTest
 
 from mongoengine import *
@@ -1107,9 +1108,14 @@ class InstanceTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(q, 0)
             sub = UserSubscription(user=u1.pk, feed=f1.pk)
-            sub.validate()
-            self.assertEqual(q, 0)  # Check no change
+            self.assertEqual(q, 0)
             sub.save()
+            self.assertEqual(q, 1)
+
+        # Saving with just the refs on a ListField
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            User(name="Bob", orgs=[o1.pk, o2.pk]).save()
             self.assertEqual(q, 1)
 
         # Saving new objects
