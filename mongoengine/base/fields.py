@@ -36,6 +36,29 @@ class BaseField(object):
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
                  help_text=None):
+        """
+        :param db_field: The database field to store this field in
+            (defaults to the name of the field)
+        :param name: Depreciated - use db_field
+        :param required: If the field is required. Whether it has to have a
+            value or not. Defaults to False.
+        :param default: (optional) The default value for this field if no value
+            has been set (or if the value has been unset).  It Can be a
+            callable.
+        :param unique: Is the field value unique or not.  Defaults to False.
+        :param unique_with: (optional) The other field this field should be
+            unique with.
+        :param primary_key: Mark this field as the primary key. Defaults to False.
+        :param validation: (optional) A callable to validate the value of the
+            field.  Generally this is deprecated in favour of the
+            `FIELD.validate` method
+        :param choices: (optional) The valid choices
+        :param verbose_name: (optional)  The verbose name for the field.
+            Designed to be human readable and is often used when generating
+            model forms from the document model.
+        :param help_text: (optional) The help text for this field and is often
+            used when generating model forms from the document model.
+        """
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
@@ -65,14 +88,9 @@ class BaseField(object):
         if instance is None:
             # Document class being used rather than a document object
             return self
-        # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name)
 
-        if value is None:
-            value = self.default
-            # Allow callable default values
-            if callable(value):
-                value = value()
+        # Get value from document instance if available
+        value = instance._data.get(self.name)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
@@ -82,9 +100,11 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        if value is None:
+
+        # If setting to None and theres a default
+        # Then set the value to the default value
+        if value is None and self.default is not None:
             value = self.default
-            # Allow callable default values
             if callable(value):
                 value = value()
 

@@ -34,33 +34,137 @@ class FieldTest(unittest.TestCase):
         self.db.drop_collection('fs.files')
         self.db.drop_collection('fs.chunks')
 
-    def test_default_values(self):
+    def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating a document.
         """
         class Person(Document):
             name = StringField()
-            age = IntField(default=30, help_text="Your real age")
-            userid = StringField(default=lambda: 'test', verbose_name="User Identity")
-
-        person = Person(name='Test Person')
-        self.assertEqual(person._data['age'], 30)
-        self.assertEqual(person._data['userid'], 'test')
-        self.assertEqual(person._fields['name'].help_text, None)
-        self.assertEqual(person._fields['age'].help_text, "Your real age")
-        self.assertEqual(person._fields['userid'].verbose_name, "User Identity")
-
-        class Person2(Document):
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
 
-        person = Person2()
-        date1 = person.created
-        date2 = person.created
-        self.assertEqual(date1, date2)
+        person = Person(name="Ross")
 
-        person = Person2(created=None)
-        date1 = person.created
-        date2 = person.created
-        self.assertEqual(date1, date2)
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'name', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'name', 'userid'])
+
+    def test_default_values_set_to_None(self):
+        """Ensure that default field values are used when creating a document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        # Trying setting values to None
+        person = Person(name=None, age=None, userid=None, created=None)
+
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+    def test_default_values_when_setting_to_None(self):
+        """Ensure that default field values are used when creating a document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        person = Person()
+        person.name = None
+        person.age = None
+        person.userid = None
+        person.created = None
+
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+    def test_default_values_when_deleting_value(self):
+        """Ensure that default field values are used when creating a document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        person = Person(name="Ross")
+        del person.name
+        del person.age
+        del person.userid
+        del person.created
+
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
     def test_required_values(self):
         """Ensure that required field constraints are enforced.

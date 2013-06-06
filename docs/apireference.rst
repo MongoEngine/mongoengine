@@ -54,6 +54,7 @@ Querying
 Fields
 ======
 
+.. autoclass:: mongoengine.base.fields.BaseField
 .. autoclass:: mongoengine.fields.StringField
 .. autoclass:: mongoengine.fields.URLField
 .. autoclass:: mongoengine.fields.EmailField

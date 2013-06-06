@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Fixed amibiguity and differing behaviour regarding field defaults (#349)
 - ImageFields now include PIL error messages if invalid error (#353)
 - Added lock when calling doc.Delete() for when signals have no sender (#350)
 - Reload forces read preference to be PRIMARY (#355)

@@ -348,7 +348,7 @@ class QuerySet(object):
         """
         Document = _import_class('Document')
 
-        if not write_concern:
+        if write_concern is None:
             write_concern = {}
 
         docs = doc_or_docs
@@ -424,7 +424,7 @@ class QuerySet(object):
         queryset = self.clone()
         doc = queryset._document
 
-        if not write_concern:
+        if write_concern is None:
             write_concern = {}
 
         # Handle deletes where skips or limits have been applied or
@@ -490,7 +490,7 @@ class QuerySet(object):
         if not update and not upsert:
             raise OperationError("No update parameters, would remove data")
 
-        if not write_concern:
+        if write_concern is None:
             write_concern = {}
 
         queryset = self.clone()
