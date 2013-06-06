@@ -8,6 +8,7 @@ from pymongo.read_preferences import ReadPreference
 from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
+from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
@@ -284,15 +285,17 @@ class Document(BaseDocument):
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references /
            generic references on an objects"""
-        import fields
         _refs = kwargs.get('_refs', []) or []
 
+        ReferenceField = _import_class('ReferenceField')
+        GenericReferenceField = _import_class('GenericReferenceField')
+
         for name, cls in self._fields.items():
-            if not isinstance(cls, (fields.ReferenceField,
-                                    fields.GenericReferenceField)):
+            if not isinstance(cls, (ReferenceField,
+                                    GenericReferenceField)):
                 continue
 
-            ref = getattr(self, name)
+            ref = self._data.get(name)
             if not ref or isinstance(ref, DBRef):
                 continue
 

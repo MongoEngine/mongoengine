@@ -97,6 +97,14 @@ class DocumentMetaclass(type):
         attrs['_reverse_db_field_map'] = dict(
             (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
+        # Set cascade flag if not set
+        if 'cascade' not in attrs['_meta']:
+            ReferenceField = _import_class('ReferenceField')
+            GenericReferenceField = _import_class('GenericReferenceField')
+            cascade = any([isinstance(x, (ReferenceField, GenericReferenceField))
+                           for x in doc_fields.values()])
+            attrs['_meta']['cascade'] = cascade
+
         #
         # Set document hierarchy
         #
