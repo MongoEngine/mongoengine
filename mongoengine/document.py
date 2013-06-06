@@ -186,8 +186,8 @@ class Document(BaseDocument):
             will force an fsync on the primary server.
         :param cascade: Sets the flag for cascading saves.  You can set a
             default by setting "cascade" in the document __meta__
-        :param cascade_kwargs: optional kwargs dictionary to be passed throw
-            to cascading saves
+        :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
+            to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
 
         .. versionchanged:: 0.5
@@ -196,11 +196,13 @@ class Document(BaseDocument):
             :class:`~bson.dbref.DBRef` objects that have changes are
             saved as well.
         .. versionchanged:: 0.6
-            Cascade saves are optional = defaults to True, if you want
+            Added cascading saves
+        .. versionchanged:: 0.8
+            Cascade saves are optional and default to False.  If you want
             fine grain control then you can turn off using document
-            meta['cascade'] = False  Also you can pass different kwargs to
+            meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
-            existing kwargs with custom values
+            existing kwargs with custom values.
         """
         signals.pre_save.send(self.__class__, document=self)
 
@@ -251,8 +253,10 @@ class Document(BaseDocument):
                                                    upsert=True, **write_concern)
                     created = is_new_object(last_error)
 
-            cascade = (self._meta.get('cascade', True)
-                       if cascade is None else cascade)
+
+            if cascade is None:
+                cascade = self._meta.get('cascade', False) or cascade_kwargs is not None
+
             if cascade:
                 kwargs = {
                     "force_insert": force_insert,

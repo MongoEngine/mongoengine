@@ -647,22 +647,6 @@ class InstanceTest(unittest.TestCase):
 
             self.assertEqual(b.picture, b.bar.picture, b.bar.bar.picture)
 
-    def test_setting_cascade(self):
-
-        class ForcedCascade(Document):
-            meta = {'cascade': True}
-
-        class Feed(Document):
-            name = StringField()
-
-        class Subscription(Document):
-            name = StringField()
-            feed = ReferenceField(Feed)
-
-        self.assertTrue(ForcedCascade._meta['cascade'])
-        self.assertTrue(Subscription._meta['cascade'])
-        self.assertFalse(Feed._meta['cascade'])
-
     def test_save_cascades(self):
 
         class Person(Document):
@@ -681,7 +665,7 @@ class InstanceTest(unittest.TestCase):
 
         p = Person.objects(name="Wilson Jr").get()
         p.parent.name = "Daddy Wilson"
-        p.save()
+        p.save(cascade=True)
 
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
@@ -700,14 +684,12 @@ class InstanceTest(unittest.TestCase):
 
         p2 = Person(name="Wilson Jr")
         p2.parent = p1
+        p1.name = "Daddy Wilson"
         p2.save(force_insert=True, cascade_kwargs={"force_insert": False})
 
-        p = Person.objects(name="Wilson Jr").get()
-        p.parent.name = "Daddy Wilson"
-        p.save()
-
         p1.reload()
-        self.assertEqual(p1.name, p.parent.name)
+        p2.reload()
+        self.assertEqual(p1.name, p2.parent.name)
 
     def test_save_cascade_meta_false(self):
 
@@ -782,6 +764,10 @@ class InstanceTest(unittest.TestCase):
         p.parent.name = "Daddy Wilson"
         p.save()
 
+        p1.reload()
+        self.assertNotEqual(p1.name, p.parent.name)
+
+        p.save(cascade=True)
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
@@ -1057,8 +1043,6 @@ class InstanceTest(unittest.TestCase):
         Feed.drop_collection()
         UserSubscription.drop_collection()
 
-        self.assertTrue(UserSubscription._meta['cascade'])
-
         o1 = Organization(name="o1").save()
         o2 = Organization(name="o2").save()
 
@@ -1090,7 +1074,7 @@ class InstanceTest(unittest.TestCase):
             self.assertEqual(q, 1)
             sub.user.name = "Test"
             self.assertEqual(q, 2)
-            sub.save()
+            sub.save(cascade=True)
             self.assertEqual(q, 3)
 
         # Changing a value and one that will cascade
@@ -1101,7 +1085,7 @@ class InstanceTest(unittest.TestCase):
             self.assertEqual(q, 1)
             sub.user.name = "Test 2"
             self.assertEqual(q, 2)
-            sub.save()
+            sub.save(cascade=True)
             self.assertEqual(q, 4)  # One for the UserSub and one for the User
 
         # Saving with just the refs
