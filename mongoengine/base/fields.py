@@ -82,6 +82,12 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
+        if value is None:
+            value = self.default
+            # Allow callable default values
+            if callable(value):
+                value = value()
+
         if instance._initialised:
             try:
                 if (self.name not in instance._data or
