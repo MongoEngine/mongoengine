@@ -596,7 +596,7 @@ class Document(BaseDocument):
                     if index not in indexes:
                         indexes.append(index)
 
-        # finish up by appending _id, if needed
+        # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
         if go_up and go_down:
             if [(u'_id', 1)] not in indexes:
                 indexes.append([(u'_id', 1)])
