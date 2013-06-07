@@ -88,3 +88,8 @@ Fields
 .. autoclass:: mongoengine.fields.GridFSProxy
 .. autoclass:: mongoengine.fields.ImageGridFsProxy
 .. autoclass:: mongoengine.fields.ImproperlyConfigured
+
+Misc
+====
+
+.. autofunction:: mongoengine.common._import_class

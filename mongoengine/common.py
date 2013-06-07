@@ -2,7 +2,19 @@ _class_registry_cache = {}
 
 
 def _import_class(cls_name):
-    """Cached mechanism for imports"""
+    """Cache mechanism for imports.
+
+    Due to complications of circular imports mongoengine needs to do lots of
+    inline imports in functions.  This is inefficient as classes are
+    imported repeated throughout the mongoengine code.  This is
+    compounded by some recursive functions requiring inline imports.
+
+    :mod:`mongoengine.common` provides a single point to import all these
+    classes.  Circular imports aren't an issue as it dynamically imports the
+    class when first needed.  Subsequent calls to the
+    :func:`~mongoengine.common._import_class` can then directly retrieve the
+    class from the :data:`mongoengine.common._class_registry_cache`.
+    """
     if cls_name in _class_registry_cache:
         return _class_registry_cache.get(cls_name)
 

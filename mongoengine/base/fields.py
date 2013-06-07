@@ -82,8 +82,7 @@ class BaseField(object):
             BaseField.creation_counter += 1
 
     def __get__(self, instance, owner):
-        """Descriptor for retrieving a value from a field in a document. Do
-        any necessary conversion between Python and MongoDB types.
+        """Descriptor for retrieving a value from a field in a document.
         """
         if instance is None:
             # Document class being used rather than a document object
