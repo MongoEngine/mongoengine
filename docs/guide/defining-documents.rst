@@ -497,7 +497,6 @@ in this case use 'dot' notation to identify the value to index eg: `rank.title`
 Geospatial indexes
 ------------------
 
-
 The best geo index for mongodb is the new "2dsphere", which has an improved
 spherical model and provides better performance and more options when querying.
 The following fields will explicitly add a "2dsphere" index:
@@ -558,6 +557,14 @@ documentation for more information.  A common usecase might be session data::
                 {'fields': ['created'], 'expireAfterSeconds': 3600}
             ]
         }
+
+Comparing Indexes
+-----------------
+
+Use :func:`mongoengine.Document.compare_indexes` to compare actual indexes in
+the database to those that your document definitions define.  This is useful
+for maintenance purposes and ensuring you have the correct indexes for your
+schema.
 
 Ordering
 ========
