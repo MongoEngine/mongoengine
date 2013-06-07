@@ -21,6 +21,19 @@ __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
 
 
+def includes_cls(fields):
+    """ Helper function used for ensuring and comparing indexes
+    """
+
+    first_field = None
+    if len(fields):
+        if isinstance(fields[0], basestring):
+            first_field = fields[0]
+        elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+            first_field = fields[0][0]
+    return first_field == '_cls'
+
+
 class InvalidCollectionError(Exception):
     pass
 
@@ -536,14 +549,6 @@ class Document(BaseDocument):
         # an extra index on _cls, as mongodb will use the existing
         # index to service queries against _cls
         cls_indexed = False
-        def includes_cls(fields):
-            first_field = None
-            if len(fields):
-                if isinstance(fields[0], basestring):
-                    first_field = fields[0]
-                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
-                    first_field = fields[0][0]
-            return first_field == '_cls'
 
         # Ensure document-defined indexes are created
         if cls._meta['index_specs']:
@@ -563,6 +568,90 @@ class Document(BaseDocument):
            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
+
+    @classmethod
+    def list_indexes(cls, go_up=True, go_down=True):
+        """ Lists all of the indexes that should be created for given
+        collection. It includes all the indexes from super- and sub-classes.
+        """
+
+        if cls._meta.get('abstract'):
+            return []
+
+        # get all the base classes, subclasses and sieblings
+        classes = []
+        def get_classes(cls):
+
+            if (cls not in classes and
+               isinstance(cls, TopLevelDocumentMetaclass)):
+                classes.append(cls)
+
+            for base_cls in cls.__bases__:
+                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                   base_cls != Document and
+                   not base_cls._meta.get('abstract') and
+                   base_cls._get_collection().full_name == cls._get_collection().full_name and
+                   base_cls not in classes):
+                    classes.append(base_cls)
+                    get_classes(base_cls)
+            for subclass in cls.__subclasses__():
+                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                   subclass._get_collection().full_name == cls._get_collection().full_name and
+                   subclass not in classes):
+                    classes.append(subclass)
+                    get_classes(subclass)
+
+        get_classes(cls)
+
+        # get the indexes spec for all of the gathered classes
+        def get_indexes_spec(cls):
+            indexes = []
+
+            if cls._meta['index_specs']:
+                index_spec = cls._meta['index_specs']
+                for spec in index_spec:
+                    spec = spec.copy()
+                    fields = spec.pop('fields')
+                    indexes.append(fields)
+            return indexes
+
+        indexes = []
+        for cls in classes:
+            for index in get_indexes_spec(cls):
+                if index not in indexes:
+                    indexes.append(index)
+
+        # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
+        if [(u'_id', 1)] not in indexes:
+            indexes.append([(u'_id', 1)])
+        if (cls._meta.get('index_cls', True) and
+           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+             indexes.append([(u'_cls', 1)])
+
+        return indexes
+
+    @classmethod
+    def compare_indexes(cls):
+        """ Compares the indexes defined in MongoEngine with the ones existing
+        in the database. Returns any missing/extra indexes.
+        """
+
+        required = cls.list_indexes()
+        existing = [info['key'] for info in cls._get_collection().index_information().values()]
+        missing = [index for index in required if index not in existing]
+        extra = [index for index in existing if index not in required]
+
+        # if { _cls: 1 } is missing, make sure it's *really* necessary
+        if [(u'_cls', 1)] in missing:
+            cls_obsolete = False
+            for index in existing:
+                if includes_cls(index) and index not in extra:
+                    cls_obsolete = True
+                    break
+            if cls_obsolete:
+                missing.remove([(u'_cls', 1)])
+
+        return {'missing': missing, 'extra': extra}
 
 
 class DynamicDocument(Document):

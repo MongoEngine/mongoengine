@@ -189,6 +189,41 @@ class InheritanceTest(unittest.TestCase):
         self.assertEqual(Employee._get_collection_name(),
                          Person._get_collection_name())
 
+    def test_indexes_and_multiple_inheritance(self):
+        """ Ensure that all of the indexes are created for a document with
+        multiple inheritance.
+        """
+
+        class A(Document):
+            a = StringField()
+
+            meta = {
+                'allow_inheritance': True,
+                'indexes': ['a']
+            }
+
+        class B(Document):
+            b = StringField()
+
+            meta = {
+                'allow_inheritance': True,
+                'indexes': ['b']
+            }
+
+        class C(A, B):
+            pass
+
+        A.drop_collection()
+        B.drop_collection()
+        C.drop_collection()
+
+        C.ensure_indexes()
+
+        self.assertEqual(
+            [idx['key'] for idx in C._get_collection().index_information().values()],
+            [[(u'_cls', 1), (u'b', 1)], [(u'_id', 1)], [(u'_cls', 1), (u'a', 1)]]
+        )
+
     def test_polymorphic_queries(self):
         """Ensure that the correct subclasses are returned from a query
         """
