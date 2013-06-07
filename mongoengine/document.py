@@ -571,39 +571,55 @@ class Document(BaseDocument):
         if cls._meta.get('abstract'):
             return []
 
-        indexes = []
-        index_cls = cls._meta.get('index_cls', True)
+        # get all the base classes, subclasses and sieblings
+        classes = []
+        def get_classes(cls):
 
-        # Ensure document-defined indexes are created
-        if cls._meta['index_specs']:
-            index_spec = cls._meta['index_specs']
-            for spec in index_spec:
-                spec = spec.copy()
-                fields = spec.pop('fields')
-                indexes.append(fields)
+            if (cls not in classes and
+               isinstance(cls, TopLevelDocumentMetaclass)):
+                classes.append(cls)
 
-        # add all of the indexes from the base classes
-        if go_up:
             for base_cls in cls.__bases__:
-                if isinstance(base_cls, TopLevelDocumentMetaclass):
-                    for index in base_cls.list_indexes(go_up=True, go_down=False):
-                        if index not in indexes:
-                            indexes.append(index)
-
-        # add all of the indexes from subclasses
-        if go_down:
+                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                   base_cls != Document and
+                   not base_cls._meta.get('abstract') and
+                   base_cls._get_collection().full_name == cls._get_collection().full_name and
+                   base_cls not in classes):
+                    classes.append(base_cls)
+                    get_classes(base_cls)
             for subclass in cls.__subclasses__():
-                for index in subclass.list_indexes(go_up=False, go_down=True):
-                    if index not in indexes:
-                        indexes.append(index)
+                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                   subclass._get_collection().full_name == cls._get_collection().full_name and
+                   subclass not in classes):
+                    classes.append(subclass)
+                    get_classes(subclass)
+
+        get_classes(cls)
+
+        # get the indexes spec for all of the gathered classes
+        def get_indexes_spec(cls):
+            indexes = []
+
+            if cls._meta['index_specs']:
+                index_spec = cls._meta['index_specs']
+                for spec in index_spec:
+                    spec = spec.copy()
+                    fields = spec.pop('fields')
+                    indexes.append(fields)
+            return indexes
+
+        indexes = []
+        for cls in classes:
+            for index in get_indexes_spec(cls):
+                if index not in indexes:
+                    indexes.append(index)
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
-        if go_up and go_down:
-            if [(u'_id', 1)] not in indexes:
-                indexes.append([(u'_id', 1)])
-            if (index_cls and
-               cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-                 indexes.append([(u'_cls', 1)])
+        if [(u'_id', 1)] not in indexes:
+            indexes.append([(u'_id', 1)])
+        if (cls._meta.get('index_cls', True) and
+           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+             indexes.append([(u'_cls', 1)])
 
         return indexes
 
