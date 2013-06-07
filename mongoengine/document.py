@@ -20,6 +20,19 @@ __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
 
 
+def includes_cls(fields):
+    """ Helper function used for ensuring and comparing indexes
+    """
+
+    first_field = None
+    if len(fields):
+        if isinstance(fields[0], basestring):
+            first_field = fields[0]
+        elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+            first_field = fields[0][0]
+    return first_field == '_cls'
+
+
 class InvalidCollectionError(Exception):
     pass
 
@@ -529,14 +542,6 @@ class Document(BaseDocument):
         # an extra index on _cls, as mongodb will use the existing
         # index to service queries against _cls
         cls_indexed = False
-        def includes_cls(fields):
-            first_field = None
-            if len(fields):
-                if isinstance(fields[0], basestring):
-                    first_field = fields[0]
-                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
-                    first_field = fields[0][0]
-            return first_field == '_cls'
 
         # Ensure document-defined indexes are created
         if cls._meta['index_specs']:
@@ -556,6 +561,73 @@ class Document(BaseDocument):
            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
+
+    @classmethod
+    def list_indexes(cls, go_up=True, go_down=True):
+        """ Lists all of the indexes that should be created for given
+        collection. It includes all the indexes from super- and sub-classes.
+        """
+
+        if cls._meta.get('abstract'):
+            return []
+
+        indexes = []
+        index_cls = cls._meta.get('index_cls', True)
+
+        # Ensure document-defined indexes are created
+        if cls._meta['index_specs']:
+            index_spec = cls._meta['index_specs']
+            for spec in index_spec:
+                spec = spec.copy()
+                fields = spec.pop('fields')
+                indexes.append(fields)
+
+        # add all of the indexes from the base classes
+        if go_up:
+            for base_cls in cls.__bases__:
+                for index in base_cls.list_indexes(go_up=True, go_down=False):
+                    if index not in indexes:
+                        indexes.append(index)
+
+        # add all of the indexes from subclasses
+        if go_down:
+            for subclass in cls.__subclasses__():
+                for index in subclass.list_indexes(go_up=False, go_down=True):
+                    if index not in indexes:
+                        indexes.append(index)
+
+        # finish up by appending _id, if needed
+        if go_up and go_down:
+            if [(u'_id', 1)] not in indexes:
+                indexes.append([(u'_id', 1)])
+            if (index_cls and
+               cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+                 indexes.append([(u'_cls', 1)])
+
+        return indexes
+
+    @classmethod
+    def compare_indexes(cls):
+        """ Compares the indexes defined in MongoEngine with the ones existing
+        in the database. Returns any missing/extra indexes.
+        """
+
+        required = cls.list_indexes()
+        existing = [info['key'] for info in cls._get_collection().index_information().values()]
+        missing = [index for index in required if index not in existing]
+        extra = [index for index in existing if index not in required]
+
+        # if { _cls: 1 } is missing, make sure it's *really* necessary
+        if [(u'_cls', 1)] in missing:
+            cls_obsolete = False
+            for index in existing:
+                if includes_cls(index) and index not in extra:
+                    cls_obsolete = True
+                    break
+            if cls_obsolete:
+                missing.remove([(u'_cls', 1)])
+
+        return {'missing': missing, 'extra': extra}
 
 
 class DynamicDocument(Document):

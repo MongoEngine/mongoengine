@@ -85,6 +85,117 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(self.Person._meta['delete_rules'],
                          {(Job, 'employee'): NULLIFY})
 
+    def test_compare_indexes(self):
+        """ Ensure that the indexes are properly created and that
+        compare_indexes identifies the missing/extra indexes
+        """
+
+        class BlogPost(Document):
+            author = StringField()
+            title = StringField()
+            description = StringField()
+            tags = StringField()
+
+            meta = {
+                'indexes': [('author', 'title')]
+            }
+
+        BlogPost.drop_collection()
+
+        BlogPost.ensure_indexes()
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
+
+        BlogPost.ensure_index(['author', 'description'])
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [[('author', 1), ('description', 1)]] })
+
+        BlogPost._get_collection().drop_index('author_1_description_1')
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
+
+        BlogPost._get_collection().drop_index('author_1_title_1')
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [[('author', 1), ('title', 1)]], 'extra': [] })
+
+    def test_compare_indexes_inheritance(self):
+        """ Ensure that the indexes are properly created and that
+        compare_indexes identifies the missing/extra indexes for subclassed
+        documents (_cls included)
+        """
+
+        class BlogPost(Document):
+            author = StringField()
+            title = StringField()
+            description = StringField()
+
+            meta = {
+                'allow_inheritance': True
+            }
+
+        class BlogPostWithTags(BlogPost):
+            tags = StringField()
+            tag_list = ListField(StringField())
+
+            meta = {
+                'indexes': [('author', 'tags')]
+            }
+
+        BlogPost.drop_collection()
+
+        BlogPost.ensure_indexes()
+        BlogPostWithTags.ensure_indexes()
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
+
+        BlogPostWithTags.ensure_index(['author', 'tag_list'])
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [[('_cls', 1), ('author', 1), ('tag_list', 1)]] })
+
+        BlogPostWithTags._get_collection().drop_index('_cls_1_author_1_tag_list_1')
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
+
+        BlogPostWithTags._get_collection().drop_index('_cls_1_author_1_tags_1')
+        self.assertEqual(BlogPost.compare_indexes(), { 'missing': [[('_cls', 1), ('author', 1), ('tags', 1)]], 'extra': [] })
+
+    def test_list_indexes_inheritance(self):
+        """ ensure that all of the indexes are listed regardless of the super-
+        or sub-class that we call it from
+        """
+
+        class BlogPost(Document):
+            author = StringField()
+            title = StringField()
+            description = StringField()
+
+            meta = {
+                'allow_inheritance': True
+            }
+
+        class BlogPostWithTags(BlogPost):
+            tags = StringField()
+
+            meta = {
+                'indexes': [('author', 'tags')]
+            }
+
+        class BlogPostWithTagsAndExtraText(BlogPostWithTags):
+            extra_text = StringField()
+
+            meta = {
+                'indexes': [('author', 'tags', 'extra_text')]
+            }
+
+        BlogPost.drop_collection()
+
+        BlogPost.ensure_indexes()
+        BlogPostWithTags.ensure_indexes()
+        BlogPostWithTagsAndExtraText.ensure_indexes()
+
+        self.assertEqual(BlogPost.list_indexes(),
+                         BlogPostWithTags.list_indexes())
+        self.assertEqual(BlogPost.list_indexes(),
+                         BlogPostWithTagsAndExtraText.list_indexes())
+        print BlogPost.list_indexes()
+        self.assertEqual(BlogPost.list_indexes(),
+                         [[('_cls', 1), ('author', 1), ('tags', 1)],
+                         [('_cls', 1), ('author', 1), ('tags', 1), ('extra_text', 1)],
+                         [(u'_id', 1)], [('_cls', 1)]])
+
     def test_register_delete_rule_inherited(self):
 
         class Vaccine(Document):
