@@ -585,9 +585,10 @@ class Document(BaseDocument):
         # add all of the indexes from the base classes
         if go_up:
             for base_cls in cls.__bases__:
-                for index in base_cls.list_indexes(go_up=True, go_down=False):
-                    if index not in indexes:
-                        indexes.append(index)
+                if isinstance(base_cls, TopLevelDocumentMetaclass):
+                    for index in base_cls.list_indexes(go_up=True, go_down=False):
+                        if index not in indexes:
+                            indexes.append(index)
 
         # add all of the indexes from subclasses
         if go_down:
