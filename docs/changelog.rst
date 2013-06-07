@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.8.2
 ================
+- Added compare_indexes helper (#361)
 - Fixed cascading saves which weren't turned off as planned (#291)
 - Fixed Datastructures so instances are a Document or EmbeddedDocument (#363)
 - Improved cascading saves write performance (#361)
