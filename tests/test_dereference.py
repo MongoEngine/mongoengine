@@ -291,6 +291,30 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(employee.friends, friends)
                 self.assertEqual(q, 2)
 
+    def test_list_of_lists_of_references(self):
+
+        class User(Document):
+            name = StringField()
+
+        class Post(Document):
+            user_lists = ListField(ListField(ReferenceField(User)))
+
+        class SimpleList(Document):
+            users = ListField(ReferenceField(User))
+
+        User.drop_collection()
+        Post.drop_collection()
+
+        u1 = User.objects.create(name='u1')
+        u2 = User.objects.create(name='u2')
+        u3 = User.objects.create(name='u3')
+
+        SimpleList.objects.create(users=[u1, u2, u3])
+        self.assertEqual(SimpleList.objects.all()[0].users, [u1, u2, u3])
+
+        Post.objects.create(user_lists=[[u1, u2], [u3]])
+        self.assertEqual(Post.objects.all()[0].user_lists, [[u1, u2], [u3]])
+
     def test_circular_reference(self):
         """Ensure you can handle circular references
         """
