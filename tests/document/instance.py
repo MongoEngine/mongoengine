@@ -2351,6 +2351,24 @@ class InstanceTest(unittest.TestCase):
         system = System.objects.first()
         self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
+    def test_list_of_lists_of_references(self):
+
+        class User(Document):
+            name = StringField()
+
+        class Post(Document):
+            user_lists = ListField(ListField(ReferenceField(User)))
+
+        User.drop_collection()
+        Post.drop_collection()
+
+        u1 = User.objects.create(name='u1')
+        u2 = User.objects.create(name='u2')
+        u3 = User.objects.create(name='u3')
+
+        Post.objects.create(user_lists=[[u1, u2], [u3]])
+        self.assertEqual(Post.objects.all()[0].user_lists, [[u1, u2], [u3]])
+
 
 if __name__ == '__main__':
     unittest.main()
