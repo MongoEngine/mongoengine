@@ -31,26 +31,8 @@ class SignalTests(unittest.TestCase):
                 return self.name
 
             @classmethod
-            def pre_init(cls, sender, document, *args, **kwargs):
-                signal_output.append('pre_init signal, %s' % cls.__name__)
-                signal_output.append(str(kwargs['values']))
-
-            @classmethod
-            def post_init(cls, sender, document, **kwargs):
-                signal_output.append('post_init signal, %s' % document)
-
-            @classmethod
             def pre_save(cls, sender, document, **kwargs):
                 signal_output.append('pre_save signal, %s' % document)
-
-            @classmethod
-            def pre_save_post_validation(cls, sender, document, **kwargs):
-                signal_output.append('pre_save_post_validation signal, %s' % document)
-                if 'created' in kwargs:
-                    if kwargs['created']:
-                        signal_output.append('Is created')
-                    else:
-                        signal_output.append('Is updated')
 
             @classmethod
             def post_save(cls, sender, document, **kwargs):
@@ -118,10 +100,7 @@ class SignalTests(unittest.TestCase):
         # Save up the number of connected signals so that we can check at the
         # end that all the signals we register get properly unregistered
         self.pre_signals = (
-            len(signals.pre_init.receivers),
-            len(signals.post_init.receivers),
             len(signals.pre_save.receivers),
-            len(signals.pre_save_post_validation.receivers),
             len(signals.post_save.receivers),
             len(signals.pre_delete.receivers),
             len(signals.post_delete.receivers),
@@ -129,10 +108,7 @@ class SignalTests(unittest.TestCase):
             len(signals.post_bulk_insert.receivers),
         )
 
-        signals.pre_init.connect(Author.pre_init, sender=Author)
-        signals.post_init.connect(Author.post_init, sender=Author)
         signals.pre_save.connect(Author.pre_save, sender=Author)
-        signals.pre_save_post_validation.connect(Author.pre_save_post_validation, sender=Author)
         signals.post_save.connect(Author.post_save, sender=Author)
         signals.pre_delete.connect(Author.pre_delete, sender=Author)
         signals.post_delete.connect(Author.post_delete, sender=Author)
@@ -145,12 +121,9 @@ class SignalTests(unittest.TestCase):
         signals.post_save.connect(ExplicitId.post_save, sender=ExplicitId)
 
     def tearDown(self):
-        signals.pre_init.disconnect(self.Author.pre_init)
-        signals.post_init.disconnect(self.Author.post_init)
         signals.post_delete.disconnect(self.Author.post_delete)
         signals.pre_delete.disconnect(self.Author.pre_delete)
         signals.post_save.disconnect(self.Author.post_save)
-        signals.pre_save_post_validation.disconnect(self.Author.pre_save_post_validation)
         signals.pre_save.disconnect(self.Author.pre_save)
         signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
         signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
@@ -162,10 +135,7 @@ class SignalTests(unittest.TestCase):
 
         # Check that all our signals got disconnected properly.
         post_signals = (
-            len(signals.pre_init.receivers),
-            len(signals.post_init.receivers),
             len(signals.pre_save.receivers),
-            len(signals.pre_save_post_validation.receivers),
             len(signals.post_save.receivers),
             len(signals.pre_delete.receivers),
             len(signals.post_delete.receivers),
@@ -180,9 +150,6 @@ class SignalTests(unittest.TestCase):
     def test_model_signals(self):
         """ Model saves should throw some signals. """
 
-        def create_author():
-            self.Author(name='Bill Shakespeare')
-
         def bulk_create_author_with_load():
             a1 = self.Author(name='Bill Shakespeare')
             self.Author.objects.insert([a1], load_bulk=True)
@@ -191,17 +158,9 @@ class SignalTests(unittest.TestCase):
             a1 = self.Author(name='Bill Shakespeare')
             self.Author.objects.insert([a1], load_bulk=False)
 
-        self.assertEqual(self.get_signal_output(create_author), [
-            "pre_init signal, Author",
-            "{'name': 'Bill Shakespeare'}",
-            "post_init signal, Bill Shakespeare",
-        ])
-
         a1 = self.Author(name='Bill Shakespeare')
         self.assertEqual(self.get_signal_output(a1.save), [
             "pre_save signal, Bill Shakespeare",
-            "pre_save_post_validation signal, Bill Shakespeare",
-            "Is created",
             "post_save signal, Bill Shakespeare",
             "Is created"
         ])
@@ -210,8 +169,6 @@ class SignalTests(unittest.TestCase):
         a1.name = 'William Shakespeare'
         self.assertEqual(self.get_signal_output(a1.save), [
             "pre_save signal, William Shakespeare",
-            "pre_save_post_validation signal, William Shakespeare",
-            "Is updated",
             "post_save signal, William Shakespeare",
             "Is updated"
         ])
@@ -223,18 +180,13 @@ class SignalTests(unittest.TestCase):
 
         signal_output = self.get_signal_output(bulk_create_author_with_load)
 
-        # The output of this signal is not entirely deterministic. The reloaded
-        # object will have an object ID. Hence, we only check part of the output
-        self.assertEqual(signal_output[3],
-            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]")
-        self.assertEqual(signal_output[-2:],
-            ["post_bulk_insert signal, [<Author: Bill Shakespeare>]",
-             "Is loaded",])
+        self.assertEqual(self.get_signal_output(bulk_create_author_with_load), [
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Is loaded",
+        ])
 
         self.assertEqual(self.get_signal_output(bulk_create_author_without_load), [
-            "pre_init signal, Author",
-            "{'name': 'Bill Shakespeare'}",
-            "post_init signal, Bill Shakespeare",
             "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
             "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
             "Not loaded",

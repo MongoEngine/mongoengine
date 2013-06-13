@@ -363,7 +363,7 @@ class QuerySet(object):
                 msg = ("Some documents inserted aren't instances of %s"
                        % str(self._document))
                 raise OperationError(msg)
-            if doc.pk and not doc._created:
+            if doc.pk and doc._created:
                 msg = "Some documents have ObjectIds use doc.update() instead"
                 raise OperationError(msg)
             raw.append(doc.to_mongo())

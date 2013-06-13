@@ -53,10 +53,11 @@ class ValidatorErrorTest(unittest.TestCase):
         self.assertEqual(error.message, "root(2nd.3rd.4th.Inception: ['1st'])")
 
     def test_model_validation(self):
-
         class User(Document):
             username = StringField(primary_key=True)
             name = StringField(required=True)
+
+        User.drop_collection()
 
         try:
             User().validate()
@@ -128,7 +129,7 @@ class ValidatorErrorTest(unittest.TestCase):
         Doc(id="test", e=SubDoc(val=15)).save()
 
         doc = Doc.objects.first()
-        keys = doc._data.keys()
+        keys = doc.to_dict().keys()
         self.assertEqual(2, len(keys))
         self.assertTrue('e' in keys)
         self.assertTrue('id' in keys)

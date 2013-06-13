@@ -8,6 +8,7 @@ from mongoengine.connection import get_db
 __all__ = ("DynamicTest", )
 
 
+@unittest.skip("DynamicDocument not implemented")
 class DynamicTest(unittest.TestCase):
 
     def setUp(self):

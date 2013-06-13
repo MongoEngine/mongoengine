@@ -86,7 +86,7 @@ class DeReference(object):
         for k, item in iterator:
             if isinstance(item, Document):
                 for field_name, field in item._fields.iteritems():
-                    v = item._data.get(field_name, None)
+                    v = getattr(item, field_name)
                     if isinstance(v, (DBRef)):
                         reference_map.setdefault(field.document_type, []).append(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
@@ -169,7 +169,7 @@ class DeReference(object):
                 return self.object_map.get(items['_ref'].id, items)
             elif '_cls' in items:
                 doc = get_document(items['_cls'])._from_son(items)
-                doc._data = self._attach_objects(doc._data, depth, doc, None)
+                doc._internal_data = self._attach_objects(doc._internal_data, depth, doc, None)
                 return doc
 
         if not hasattr(items, 'items'):
@@ -193,15 +193,15 @@ class DeReference(object):
                 data[k] = self.object_map[k]
             elif isinstance(v, Document):
                 for field_name, field in v._fields.iteritems():
-                    v = data[k]._data.get(field_name, None)
+                    v = data[k]._internal_data.get(field_name, None)
                     if isinstance(v, (DBRef)):
-                        data[k]._data[field_name] = self.object_map.get(v.id, v)
+                        data[k]._internal_data[field_name] = self.object_map.get(v.id, v)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
-                        data[k]._data[field_name] = self.object_map.get(v['_ref'].id, v)
+                        data[k]._internal_data[field_name] = self.object_map.get(v['_ref'].id, v)
                     elif isinstance(v, dict) and depth <= self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
+                        data[k]._internal_data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
                     elif isinstance(v, (list, tuple)) and depth <= self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
+                        data[k]._internal_data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 data[k] = self._attach_objects(v, depth - 1, instance=instance, name=name)
             elif hasattr(v, 'id'):

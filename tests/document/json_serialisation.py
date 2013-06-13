@@ -58,7 +58,6 @@ class TestJson(unittest.TestCase):
             reference_field = ReferenceField(Simple, default=lambda:
                                                         Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
-            decimal_field = DecimalField(default=1.0)
             complex_datetime_field = ComplexDateTimeField(default=datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)

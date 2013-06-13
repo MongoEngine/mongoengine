@@ -59,15 +59,17 @@ class BaseField(object):
         :param help_text: (optional) The help text for this field and is often
             used when generating model forms from the document model.
         """
-        self.db_field = (db_field or name) if not primary_key else '_id'
-        if name:
-            msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
-            warnings.warn(msg, DeprecationWarning)
+        self.name = None # filled in by document
+        self.db_field = db_field
         self.required = required or primary_key
         self.default = default
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
         self.primary_key = primary_key
+        if self.primary_key:
+            if self.db_field:
+                raise ValueError("Can't use primary_key in conjunction with db_field.")
+            self.db_field = '_id'
         self.validation = validation
         self.choices = choices
         self.verbose_name = verbose_name
@@ -82,41 +84,52 @@ class BaseField(object):
             BaseField.creation_counter += 1
 
     def __get__(self, instance, owner):
-        """Descriptor for retrieving a value from a field in a document.
-        """
         if instance is None:
             # Document class being used rather than a document object
             return self
+        else:
+            name = self.name
+            data = instance._internal_data
+            if not name in data:
+                if instance._lazy and name != instance._meta['id_field']:
+                    # We need to fetch the doc from the database.
+                    instance.reload()
+                db_field = instance._db_field_map.get(name, name)
+                try:
+                    db_value = instance._db_data[db_field]
+                except (TypeError, KeyError):
+                    value = self.default() if callable(self.default) else self.default
+                else:
+                    value = self.to_python(db_value)
 
-        # Get value from document instance if available
-        value = instance._data.get(self.name)
+                if hasattr(self, 'value_for_instance'):
+                    value = self.value_for_instance(value, instance)
+                data[name] = value
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument) and value._instance is None:
-            value._instance = weakref.proxy(instance)
-        return value
+            return data[name]
 
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
 
-        # If setting to None and theres a default
-        # Then set the value to the default value
-        if value is None and self.default is not None:
-            value = self.default
-            if callable(value):
-                value = value()
+        if instance._lazy:
+            # Fetch the from the database before we assign to a lazy object.
+            instance.reload()
 
-        if instance._initialised:
-            try:
-                if (self.name not in instance._data or
-                   instance._data[self.name] != value):
-                    instance._mark_as_changed(self.name)
-            except:
-                # Values cant be compared eg: naive and tz datetimes
-                # So mark it as changed
-                instance._mark_as_changed(self.name)
-        instance._data[self.name] = value
+        name = self.name
+
+        value = self.from_python(value)
+        if hasattr(self, 'value_for_instance'):
+            value = self.value_for_instance(value, instance)
+        try:
+            has_changed = name not in instance._internal_data or instance._internal_data[name] != value
+        except: # Values can't be compared eg: naive and tz datetimes
+            has_changed = True
+
+        if has_changed:
+            instance._mark_as_changed(name)
+
+        instance._internal_data[name] = value
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
@@ -132,7 +145,15 @@ class BaseField(object):
     def to_mongo(self, value):
         """Convert a Python type to a MongoDB-compatible type.
         """
-        return self.to_python(value)
+        return value
+
+    def from_python(self, value):
+        """Convert a raw Python value (in an assignment) to the internal
+        Python representation.
+        """
+        if value == None:
+            return self.default() if callable(self.default) else self.default
+        return value
 
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo.
@@ -186,49 +207,6 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
-    __dereference = False
-
-    def __get__(self, instance, owner):
-        """Descriptor to automatically dereference references.
-        """
-        if instance is None:
-            # Document class being used rather than a document object
-            return self
-
-        ReferenceField = _import_class('ReferenceField')
-        GenericReferenceField = _import_class('GenericReferenceField')
-        dereference = (self._auto_dereference and
-                       (self.field is None or isinstance(self.field,
-                        (GenericReferenceField, ReferenceField))))
-
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
-        if not self.__dereference and instance._initialised and dereference:
-            instance._data[self.name] = self._dereference(
-                instance._data.get(self.name), max_depth=1, instance=instance,
-                name=self.name
-            )
-
-        value = super(ComplexBaseField, self).__get__(instance, owner)
-
-        # Convert lists / values so we can watch for any changes on them
-        if (isinstance(value, (list, tuple)) and
-           not isinstance(value, BaseList)):
-            value = BaseList(value, instance, self.name)
-            instance._data[self.name] = value
-        elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, instance, self.name)
-            instance._data[self.name] = value
-
-        if (self._auto_dereference and instance._initialised and
-           isinstance(value, (BaseList, BaseDict))
-           and not value._dereferenced):
-            value = self._dereference(
-                value, max_depth=1, instance=instance, name=self.name
-            )
-            value._dereferenced = True
-            instance._data[self.name] = value
-
-        return value
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -382,25 +360,16 @@ class ComplexBaseField(BaseField):
 
     owner_document = property(_get_owner_document, _set_owner_document)
 
-    @property
-    def _dereference(self,):
-        if not self.__dereference:
-            DeReference = _import_class("DeReference")
-            self.__dereference = DeReference()  # Cached
-        return self.__dereference
-
 
 class ObjectIdField(BaseField):
     """A field wrapper around MongoDB's ObjectIds.
     """
 
     def to_python(self, value):
-        if not isinstance(value, ObjectId):
-            value = ObjectId(value)
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, ObjectId):
+        if value and not isinstance(value, ObjectId):
             try:
                 return ObjectId(unicode(value))
             except Exception, e:

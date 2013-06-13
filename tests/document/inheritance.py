@@ -182,10 +182,10 @@ class InheritanceTest(unittest.TestCase):
 
         self.assertEqual(['age', 'id', 'name', 'salary'],
                          sorted(Employee._fields.keys()))
-        self.assertEqual(Person(name="Bob", age=35).to_mongo().keys(),
-                         ['_cls', 'name', 'age'])
-        self.assertEqual(Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
-                         ['_cls', 'name', 'age', 'salary'])
+        self.assertEqual(set(Person(name="Bob", age=35).to_mongo().keys()),
+                         set(['_cls', 'name', 'age']))
+        self.assertEqual(set(Employee(name="Bob", age=35, salary=0).to_mongo().keys()),
+                         set(['_cls', 'name', 'age', 'salary']))
         self.assertEqual(Employee._get_collection_name(),
                          Person._get_collection_name())
 

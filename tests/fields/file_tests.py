@@ -24,6 +24,7 @@ TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
 
 
+@unittest.skip("FileField not implemented")
 class FileTest(unittest.TestCase):
 
     def setUp(self):

@@ -10,6 +10,7 @@ from mongoengine.connection import get_db
 __all__ = ("GeoFieldTest", )
 
 
+@unittest.skip("geo fields not implemented")
 class GeoFieldTest(unittest.TestCase):
 
     def setUp(self):

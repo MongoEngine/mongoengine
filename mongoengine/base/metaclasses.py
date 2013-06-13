@@ -359,10 +359,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Set primary key if not defined by the document
         if not new_class._meta.get('id_field'):
-            new_class._meta['id_field'] = 'id'
-            new_class._fields['id'] = ObjectIdField(db_field='_id')
-            new_class._fields['id'].name = 'id'
+            id_field = ObjectIdField(primary_key=True)
+            id_field.name = 'id'
+            id_field._auto_gen = True
+            new_class._fields['id'] = id_field
             new_class.id = new_class._fields['id']
+            new_class._meta['id_field'] = 'id'
+            new_class._db_field_map['id'] = id_field.db_field
+
 
         # Merge in exceptions with parent hierarchy
         exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
