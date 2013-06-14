@@ -684,7 +684,8 @@ class BaseDocument(object):
             sparse = False
             # Generate a list of indexes needed by uniqueness constraints
             if field.unique:
-                field.required = True
+                if field.required is None:
+                    field.required = True
                 unique_fields = [field.db_field]
 
                 # Add any unique_with fields to the back of the index spec
