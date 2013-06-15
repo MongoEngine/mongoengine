@@ -26,6 +26,7 @@ from mongoengine.python_support import (PY3, bin_type, txt_type,
 from mongoengine.base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
                   get_document, BaseDocument)
 from mongoengine.base.datastructures import BaseList, BaseDict
+from mongoengine.base.proxy import DocumentProxy
 from mongoengine.queryset import DoesNotExist
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
@@ -516,7 +517,7 @@ class ListField(ComplexBaseField):
         super(ListField, self).__init__(**kwargs)
 
     def value_for_instance(self, value, instance):
-        return BaseList(value, instance, self.name)
+        return BaseList(value or [], instance, self.name)
 
     def from_python(self, val):
         from_python = getattr(self.field, 'from_python', None)
@@ -615,7 +616,7 @@ class DictField(ComplexBaseField):
         return {k: to_python(v) for k, v in val.iteritems()} if to_python else val
 
     def value_for_instance(self, value, instance):
-        return BaseDict(value, instance, self.name)
+        return BaseDict(value or {}, instance, self.name)
 
     def to_mongo(self, val):
         to_mongo = getattr(self.field, 'to_mongo', None)
@@ -734,7 +735,7 @@ class ReferenceField(BaseField):
                 return value
             else:
                 return value.id
-        elif isinstance(value, Document):
+        elif isinstance(value, (Document, DocumentProxy)):
             document_type = self.document_type
             # We need the id from the saved object to create the DBRef
             pk = value.pk
@@ -758,17 +759,22 @@ class ReferenceField(BaseField):
         if value != None:
             document_type = self.document_type
             if self.dbref:
-                obj = document_type(pk=value.id)
+                pk = value.id
             else:
                 if isinstance(value, DBRef):
-                    obj = document_type(pk=value.id)
+                    pk = value.id
                 else:
-                    obj = document_type(pk=value)
-            obj._lazy = True
+                    pk = value
+            if document_type._meta['allow_inheritance']:
+                # We don't know of which type the object will be.
+                obj = DocumentProxy(document_type, pk)
+            else:
+                obj = document_type(pk=pk)
+                obj._lazy = True
             return obj
 
     def from_python(self, value):
-        if isinstance(value, BaseDocument):
+        if isinstance(value, (BaseDocument, DocumentProxy)):
             return value
         elif value == None:
             return super(ReferenceField, self).from_python(value)
@@ -780,17 +786,22 @@ class ReferenceField(BaseField):
                 # DBRef or ID
                 document_type = self.document_type
                 if isinstance(value, DBRef):
-                    obj = document_type(pk=value.id)
+                    pk = value.id
                 else:
-                    obj = document_type(pk=value)
-                obj._lazy = True
+                    pk = value
+                if document_type._meta['allow_inheritance']:
+                    # We don't know of which type the object will be.
+                    obj = DocumentProxy(document_type, pk)
+                else:
+                    obj = document_type(pk=pk)
+                    obj._lazy = True
                 return obj
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(self.from_python(value))
 
     def validate(self, value):
-        if not isinstance(value, (self.document_type, DBRef)):
+        if not isinstance(value, (self.document_type, DBRef, DocumentProxy)):
             self.error("A ReferenceField only accepts DBRef or documents")
 
         if isinstance(value, Document) and value.pk is None:

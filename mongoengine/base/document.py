@@ -15,6 +15,7 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
 from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
                                         to_str_keys_recursive)
 
+from mongoengine.base.proxy import DocumentProxy
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
 from mongoengine.base.fields import ComplexBaseField
@@ -109,9 +110,12 @@ class BaseDocument(object):
         return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
-        if isinstance(other, self.__class__) and hasattr(other, 'pk'):
-            if self.pk == other.pk:
-                return True
+        if isinstance(other, DocumentProxy) and other._get_collection_name() == self._get_collection_name() and hasattr(other, 'pk') and self.pk == other.pk:
+            return True
+
+        if isinstance(other, self.__class__) and hasattr(other, 'pk') and self.pk == other.pk:
+            return True
+
         return False
 
     def __ne__(self, other):
