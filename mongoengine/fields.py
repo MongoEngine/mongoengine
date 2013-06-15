@@ -63,9 +63,6 @@ class StringField(BaseField):
         self.min_length = min_length
         super(StringField, self).__init__(**kwargs)
 
-    def to_mongo(self, value):
-        return value or None
-
     def validate(self, value):
         if not isinstance(value, basestring):
             self.error('StringField only accepts string values')
