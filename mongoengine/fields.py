@@ -513,8 +513,13 @@ class ListField(ComplexBaseField):
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
 
-    def value_for_instance(self, value, instance):
-        return BaseList(value or [], instance, self.name)
+    def value_for_instance(self, value, instance, name=None):
+        name = name or self.name
+        if value and self.field:
+            value_for_instance = getattr(self.field, 'value_for_instance', None)
+            if value_for_instance:
+                value = [value_for_instance(v, instance, name) for v in value]
+        return BaseList(value or [], instance, name)
 
     def from_python(self, val):
         from_python = getattr(self.field, 'from_python', None)
@@ -612,8 +617,13 @@ class DictField(ComplexBaseField):
         to_python = getattr(self.field, 'to_python', None)
         return {k: to_python(v) for k, v in val.iteritems()} if to_python else val
 
-    def value_for_instance(self, value, instance):
-        return BaseDict(value or {}, instance, self.name)
+    def value_for_instance(self, value, instance, name=None):
+        name = name or self.name
+        if value and self.field:
+            value_for_instance = getattr(self.field, 'value_for_instance', None)
+            if value_for_instance:
+                value = {k: value_for_instance(v, instance, name) for k, v in value.iteritems()}
+        return BaseDict(value or {}, instance, name)
 
     def to_mongo(self, val):
         to_mongo = getattr(self.field, 'to_mongo', None)
