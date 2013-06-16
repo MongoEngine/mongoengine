@@ -315,6 +315,7 @@ class FieldTest(unittest.TestCase):
 
         User.drop_collection()
         Post.drop_collection()
+        SimpleList.drop_collection()
 
         u1 = User.objects.create(name='u1')
         u2 = User.objects.create(name='u2')
