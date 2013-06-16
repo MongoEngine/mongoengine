@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__all__ = ['pre_init', 'post_init', 'pre_save', 'pre_save_post_validation',
-           'post_save', 'pre_delete', 'post_delete']
+__all__ = ['pre_save', 'post_save', 'pre_delete', 'post_delete']
 
 signals_available = False
 try:
@@ -36,10 +35,7 @@ except ImportError:
 # not put signals in here.  Create your own namespace instead.
 _signals = Namespace()
 
-pre_init = _signals.signal('pre_init')
-post_init = _signals.signal('post_init')
 pre_save = _signals.signal('pre_save')
-pre_save_post_validation = _signals.signal('pre_save_post_validation')
 post_save = _signals.signal('post_save')
 pre_delete = _signals.signal('pre_delete')
 post_delete = _signals.signal('post_delete')
