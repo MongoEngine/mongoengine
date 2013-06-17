@@ -149,6 +149,9 @@ class IntField(BaseField):
         self.min_value, self.max_value = min_value, max_value
         super(IntField, self).__init__(**kwargs)
 
+    def from_python(self, value):
+        return self.prepare_query_value(None, value)
+
     def validate(self, value):
         try:
             value = int(value)
@@ -160,6 +163,12 @@ class IntField(BaseField):
 
         if self.max_value is not None and value > self.max_value:
             self.error('Integer value is too large')
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        else:
+            return int(value)
 
 
 class FloatField(BaseField):
