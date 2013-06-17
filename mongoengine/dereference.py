@@ -89,6 +89,8 @@ class DeReference(object):
                     v = getattr(item, field_name)
                     if isinstance(v, (DBRef)):
                         reference_map.setdefault(field.document_type, []).append(v.id)
+                    elif isinstance(v, Document) and getattr(v, '_lazy', False):
+                        reference_map.setdefault(field.document_type, []).append(v.pk)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         reference_map.setdefault(get_document(v['_cls']), []).append(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
@@ -196,6 +198,8 @@ class DeReference(object):
                     v = data[k]._internal_data.get(field_name, None)
                     if isinstance(v, (DBRef)):
                         data[k]._internal_data[field_name] = self.object_map.get(v.id, v)
+                    elif isinstance(v, Document) and getattr(v, '_lazy', False):
+                        data[k]._internal_data[field_name] = self.object_map.get(v.pk, v)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         data[k]._internal_data[field_name] = self.object_map.get(v['_ref'].id, v)
                     elif isinstance(v, dict) and depth <= self.max_depth:
