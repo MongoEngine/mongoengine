@@ -527,7 +527,7 @@ class ListField(ComplexBaseField):
 
     def to_python(self, val):
         to_python = getattr(self.field, 'to_python', None)
-        return [to_python(v) for v in val] if to_python else val
+        return [to_python(v) for v in val] if to_python and val else val or None
 
     def to_mongo(self, val):
         to_mongo = getattr(self.field, 'to_mongo', None)
@@ -615,7 +615,7 @@ class DictField(ComplexBaseField):
 
     def to_python(self, val):
         to_python = getattr(self.field, 'to_python', None)
-        return {k: to_python(v) for k, v in val.iteritems()} if to_python else val
+        return {k: to_python(v) for k, v in val.iteritems()} if to_python and val else val or None
 
     def value_for_instance(self, value, instance, name=None):
         name = name or self.name
