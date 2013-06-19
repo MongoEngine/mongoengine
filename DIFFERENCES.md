@@ -21,6 +21,7 @@ Differences between Mongomallard and Mongoengine
 * `_get_changed_fields()` / `_changed_fields` returns a set
 * Simplified `EmailField` email regex to be more compatible
 * Assigning invalid types (e.g. an invalid string to `IntField`) raises immediately a `ValueError`
+* `order_by()` without an argument resets the ordering (no ordering will be applied)
 
 Untested / not implemented yet:
 -----
