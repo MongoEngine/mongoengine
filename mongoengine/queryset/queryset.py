@@ -1062,7 +1062,7 @@ class QuerySet(object):
         """
         map_func = Code("""
             function() {
-                emit(1, this[field] || 0);
+                emit(1, eval("this." + field) || 0);
             }
         """, scope={'field': field})
 
@@ -1093,7 +1093,7 @@ class QuerySet(object):
         map_func = Code("""
             function() {
                 if (this.hasOwnProperty(field))
-                    emit(1, {t: this[field] || 0, c: 1});
+                    emit(1, {t: eval("this." + field) || 0, c: 1});
             }
         """, scope={'field': field})
 
