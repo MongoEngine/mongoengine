@@ -342,8 +342,8 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.age = 120
         self.assertRaises(ValidationError, person.validate)
-        person.age = 'ten'
-        self.assertRaises(ValidationError, person.validate)
+        with self.assertRaises(ValueError):
+            person.age = 'ten'
 
     def test_float_validation(self):
         """Ensure that invalid values cannot be assigned to float fields.
@@ -871,11 +871,8 @@ class FieldTest(unittest.TestCase):
         e.mapping = [1]
         e.save()
 
-        def create_invalid_mapping():
+        with self.assertRaises(ValueError):
             e.mapping = ["abc"]
-            e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
 
         Simple.drop_collection()
 

@@ -134,13 +134,8 @@ class ValidatorErrorTest(unittest.TestCase):
         self.assertTrue('e' in keys)
         self.assertTrue('id' in keys)
 
-        doc.e.val = "OK"
-        try:
-            doc.save()
-        except ValidationError, e:
-            self.assertTrue("Doc:test" in e.message)
-            self.assertEqual(e.to_dict(), {
-                "e": {'val': 'OK could not be converted to int'}})
+        with self.assertRaises(ValueError):
+            doc.e.val = "OK"
 
 
 if __name__ == '__main__':

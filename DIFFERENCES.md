@@ -20,6 +20,7 @@ Differences between Mongomallard and Mongoengine
 * `Document.save()` supports `full=True` keyword argument to force saving all model fields.
 * `_get_changed_fields()` / `_changed_fields` returns a set
 * Simplified `EmailField` email regex to be more compatible
+* Assigning invalid types (e.g. an invalid string to `IntField`) raises immediately a `ValueError`
 
 Untested / not implemented yet:
 -----
