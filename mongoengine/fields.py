@@ -118,15 +118,6 @@ class URLField(StringField):
         if not URLField.URL_REGEX.match(value):
             raise ValidationError('Invalid URL: %s' % value)
 
-        if self.verify_exists:
-            import urllib2
-            try:
-                request = urllib2.Request(value)
-                response = urllib2.urlopen(request)
-            except Exception, e:
-                message = 'This URL appears to be a broken link: %s' % e
-                raise ValidationError(message)
-
 
 class EmailField(StringField):
     """A field that validates input as an E-Mail-Address.
