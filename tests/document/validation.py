@@ -141,6 +141,31 @@ class ValidatorErrorTest(unittest.TestCase):
             self.assertEqual(e.to_dict(), {
                 "e": {'val': 'OK could not be converted to int'}})
 
+    def test_validation_after_reload(self):
+        CHOICES = (
+                (0, 'zero'),
+                (1, 'one'),
+            )
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField(required=True, choices=CHOICES)
+
+        class Doc(Document):
+            e = EmbeddedDocumentField(SubDoc, default=SubDoc)
+
+        doc = Doc()
+        doc.e.val = 0
+        doc.save()
+        doc.reload()
+        self.assertEqual(doc.e.val, 0)
+        doc.e.val = 1
+        doc.save()
+        doc.reload()
+        self.assertEqual(doc.e.val, 1)
+        doc.e.val = None
+        with self.assertRaises(ValidationError):
+            doc.save()
+
 
 if __name__ == '__main__':
     unittest.main()
