@@ -95,6 +95,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 value = _geo_operator(field, op, value)
             elif op in CUSTOM_OPERATORS:
                 if op == 'match':
+                    value = field.prepare_query_value(op, value)
                     value = {"$elemMatch": value}
                 else:
                     NotImplementedError("Custom method '%s' has not "

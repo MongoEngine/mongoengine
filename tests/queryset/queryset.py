@@ -3091,7 +3091,7 @@ class QuerySetTest(unittest.TestCase):
         class Foo(EmbeddedDocument):
             shape = StringField()
             color = StringField()
-            trick = BooleanField()
+            thick = BooleanField()
             meta = {'allow_inheritance': False}
 
         class Bar(Document):
@@ -3100,15 +3100,18 @@ class QuerySetTest(unittest.TestCase):
 
         Bar.drop_collection()
 
-        b1 = Bar(foo=[Foo(shape= "square", color ="purple", thick = False),
-                      Foo(shape= "circle", color ="red", thick = True)])
+        b1 = Bar(foo=[Foo(shape="square", color="purple", thick=False),
+                      Foo(shape="circle", color="red", thick=True)])
         b1.save()
 
-        b2 = Bar(foo=[Foo(shape= "square", color ="red", thick = True),
-                      Foo(shape= "circle", color ="purple", thick = False)])
+        b2 = Bar(foo=[Foo(shape="square", color="red", thick=True),
+                      Foo(shape="circle", color="purple", thick=False)])
         b2.save()
 
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
+        self.assertEqual([b1], ak)
+
+        ak = list(Bar.objects(foo__match=Foo(shape="square", color="purple")))
         self.assertEqual([b1], ak)
 
     def test_upsert_includes_cls(self):
