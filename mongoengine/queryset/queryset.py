@@ -1165,8 +1165,8 @@ class QuerySet(object):
         raw_doc = self._cursor.next()
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
-
-        doc = self._document._from_son(raw_doc)
+        doc = self._document._from_son(raw_doc,
+                                       _auto_dereference=self._auto_dereference)
         if self._scalar:
             return self._get_scalar(doc)
 

@@ -3258,6 +3258,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(isinstance(qs.first().organization, Organization))
         self.assertFalse(isinstance(qs.no_dereference().first().organization,
                                     Organization))
+        self.assertFalse(isinstance(qs.no_dereference().get().organization,
+                                    Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
 
     def test_cached_queryset(self):

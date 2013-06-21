@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Fixed queryset.get() respecting no_dereference (#373)
 - Added full_result kwarg to update (#380)
 
 Changes in 0.8.2
