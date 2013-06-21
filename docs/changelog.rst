@@ -2,6 +2,9 @@
 Changelog
 =========
 
+Changes in 0.8.3
+================
+- Added full_result kwarg to update (#380)
 
 Changes in 0.8.2
 ================

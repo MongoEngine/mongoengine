@@ -536,6 +536,23 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(club.members['John']['gender'], "F")
         self.assertEqual(club.members['John']['age'], 14)
 
+    def test_update_results(self):
+        self.Person.drop_collection()
+
+        result = self.Person(name="Bob", age=25).update(upsert=True, full_result=True)
+        self.assertIsInstance(result, dict)
+        self.assertTrue("upserted" in result)
+        self.assertFalse(result["updatedExisting"])
+
+        bob = self.Person.objects.first()
+        result = bob.update(set__age=30, full_result=True)
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result["updatedExisting"])
+
+        self.Person(name="Bob", age=20).save()
+        result = self.Person.objects(name="Bob").update(set__name="bobby", multi=True)
+        self.assertEqual(result, 2)
+
     def test_upsert(self):
         self.Person.drop_collection()
 

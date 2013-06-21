@@ -474,7 +474,8 @@ class QuerySet(object):
 
         queryset._collection.remove(queryset._query, write_concern=write_concern)
 
-    def update(self, upsert=False, multi=True, write_concern=None, **update):
+    def update(self, upsert=False, multi=True, write_concern=None,
+               full_result=False, **update):
         """Perform an atomic update on the fields matched by the query.
 
         :param upsert: Any existing document with that "_id" is overwritten.
@@ -485,6 +486,8 @@ class QuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
+        :param full_result: Return the full result rather than just the number
+            updated.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
@@ -506,12 +509,13 @@ class QuerySet(object):
                 update["$set"]["_cls"] = queryset._document._class_name
             else:
                 update["$set"] = {"_cls": queryset._document._class_name}
-
         try:
-            ret = queryset._collection.update(query, update, multi=multi,
-                                              upsert=upsert, **write_concern)
-            if ret is not None and 'n' in ret:
-                return ret['n']
+            result = queryset._collection.update(query, update, multi=multi,
+                                                 upsert=upsert, **write_concern)
+            if full_result:
+                return result
+            elif result:
+                return result['n']
         except pymongo.errors.OperationFailure, err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
