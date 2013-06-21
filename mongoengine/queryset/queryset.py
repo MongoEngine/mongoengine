@@ -1068,7 +1068,22 @@ class QuerySet(object):
         """
         map_func = Code("""
             function() {
-                emit(1, eval("this." + field) || 0);
+                function deepFind(obj, path) {
+                  var paths = path.split('.')
+                    , current = obj
+                    , i;
+
+                  for (i = 0; i < paths.length; ++i) {
+                    if (current[paths[i]] == undefined) {
+                      return undefined;
+                    } else {
+                      current = current[paths[i]];
+                    }
+                  }
+                  return current;
+                }
+
+                emit(1, deepFind(this, field) || 0);
             }
         """, scope={'field': field})
 
@@ -1098,8 +1113,24 @@ class QuerySet(object):
         """
         map_func = Code("""
             function() {
-                if (this.hasOwnProperty(field))
-                    emit(1, {t: eval("this." + field) || 0, c: 1});
+                function deepFind(obj, path) {
+                  var paths = path.split('.')
+                    , current = obj
+                    , i;
+
+                  for (i = 0; i < paths.length; ++i) {
+                    if (current[paths[i]] == undefined) {
+                      return undefined;
+                    } else {
+                      current = current[paths[i]];
+                    }
+                  }
+                  return current;
+                }
+
+                val = deepFind(this, field)
+                if (val !== undefined)
+                    emit(1, {t: val || 0, c: 1});
             }
         """, scope={'field': field})
 
