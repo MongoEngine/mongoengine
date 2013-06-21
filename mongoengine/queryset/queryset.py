@@ -245,8 +245,10 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
-        queryset = self.__call__(*q_objs, **query)
+        queryset = self.clone()
         queryset = queryset.limit(2)
+        queryset = queryset.filter(*q_objs, **query)
+
         try:
             result = queryset.next()
         except StopIteration:
