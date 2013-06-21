@@ -245,8 +245,10 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
-        queryset = self.__call__(*q_objs, **query)
+        queryset = self.clone()
         queryset = queryset.limit(2)
+        queryset = queryset.filter(*q_objs, **query)
+
         try:
             result = queryset.next()
         except StopIteration:
@@ -472,7 +474,8 @@ class QuerySet(object):
 
         queryset._collection.remove(queryset._query, write_concern=write_concern)
 
-    def update(self, upsert=False, multi=True, write_concern=None, **update):
+    def update(self, upsert=False, multi=True, write_concern=None,
+               full_result=False, **update):
         """Perform an atomic update on the fields matched by the query.
 
         :param upsert: Any existing document with that "_id" is overwritten.
@@ -483,6 +486,8 @@ class QuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
+        :param full_result: Return the full result rather than just the number
+            updated.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
@@ -504,12 +509,13 @@ class QuerySet(object):
                 update["$set"]["_cls"] = queryset._document._class_name
             else:
                 update["$set"] = {"_cls": queryset._document._class_name}
-
         try:
-            ret = queryset._collection.update(query, update, multi=multi,
-                                              upsert=upsert, **write_concern)
-            if ret is not None and 'n' in ret:
-                return ret['n']
+            result = queryset._collection.update(query, update, multi=multi,
+                                                 upsert=upsert, **write_concern)
+            if full_result:
+                return result
+            elif result:
+                return result['n']
         except pymongo.errors.OperationFailure, err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
@@ -1159,8 +1165,8 @@ class QuerySet(object):
         raw_doc = self._cursor.next()
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
-
-        doc = self._document._from_son(raw_doc)
+        doc = self._document._from_son(raw_doc,
+                                       _auto_dereference=self._auto_dereference)
         if self._scalar:
             return self._get_scalar(doc)
 

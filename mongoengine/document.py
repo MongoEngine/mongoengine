@@ -353,7 +353,13 @@ class Document(BaseDocument):
         been saved.
         """
         if not self.pk:
-            raise OperationError('attempt to update a document not yet saved')
+            if kwargs.get('upsert', False):
+                query = self.to_mongo()
+                if "_cls" in query:
+                    del(query["_cls"])
+                return self._qs.filter(**query).update_one(**kwargs)
+            else:
+                raise OperationError('attempt to update a document not yet saved')
 
         # Need to add shard key to query, or you get an error
         return self._qs.filter(**self._object_key).update_one(**kwargs)
@@ -474,6 +480,7 @@ class Document(BaseDocument):
             value = [self._reload(key, v) for v in value]
             value = BaseList(value, self, key)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
+            value._instance = None
             value._changed_fields = []
         return value
 

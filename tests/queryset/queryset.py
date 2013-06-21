@@ -536,6 +536,23 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(club.members['John']['gender'], "F")
         self.assertEqual(club.members['John']['age'], 14)
 
+    def test_update_results(self):
+        self.Person.drop_collection()
+
+        result = self.Person(name="Bob", age=25).update(upsert=True, full_result=True)
+        self.assertIsInstance(result, dict)
+        self.assertTrue("upserted" in result)
+        self.assertFalse(result["updatedExisting"])
+
+        bob = self.Person.objects.first()
+        result = bob.update(set__age=30, full_result=True)
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result["updatedExisting"])
+
+        self.Person(name="Bob", age=20).save()
+        result = self.Person.objects(name="Bob").update(set__name="bobby", multi=True)
+        self.assertEqual(result, 2)
+
     def test_upsert(self):
         self.Person.drop_collection()
 
@@ -1595,6 +1612,32 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(message.authors[0].name, "Harry")
         self.assertEqual(message.authors[1].name, "Ross")
         self.assertEqual(message.authors[2].name, "Adam")
+
+    def test_reload_embedded_docs_instance(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField()
+
+        class Doc(Document):
+            embedded = EmbeddedDocumentField(SubDoc)
+
+        doc = Doc(embedded=SubDoc(val=0)).save()
+        doc.reload()
+
+        self.assertEqual(doc.pk, doc.embedded._instance.pk)
+
+    def test_reload_list_embedded_docs_instance(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField()
+
+        class Doc(Document):
+            embedded = ListField(EmbeddedDocumentField(SubDoc))
+
+        doc = Doc(embedded=[SubDoc(val=0)]).save()
+        doc.reload()
+
+        self.assertEqual(doc.pk, doc.embedded[0]._instance.pk)
 
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
@@ -3240,6 +3283,8 @@ class QuerySetTest(unittest.TestCase):
         qs = User.objects()
         self.assertTrue(isinstance(qs.first().organization, Organization))
         self.assertFalse(isinstance(qs.no_dereference().first().organization,
+                                    Organization))
+        self.assertFalse(isinstance(qs.no_dereference().get().organization,
                                     Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
 
