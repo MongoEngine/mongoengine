@@ -480,6 +480,7 @@ class Document(BaseDocument):
             value = [self._reload(key, v) for v in value]
             value = BaseList(value, self, key)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
+            value._instance = None
             value._changed_fields = []
         return value
 

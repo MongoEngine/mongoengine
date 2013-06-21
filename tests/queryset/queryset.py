@@ -1613,6 +1613,32 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(message.authors[1].name, "Ross")
         self.assertEqual(message.authors[2].name, "Adam")
 
+    def test_reload_embedded_docs_instance(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField()
+
+        class Doc(Document):
+            embedded = EmbeddedDocumentField(SubDoc)
+
+        doc = Doc(embedded=SubDoc(val=0)).save()
+        doc.reload()
+
+        self.assertEqual(doc.pk, doc.embedded._instance.pk)
+
+    def test_reload_list_embedded_docs_instance(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField()
+
+        class Doc(Document):
+            embedded = ListField(EmbeddedDocumentField(SubDoc))
+
+        doc = Doc(embedded=[SubDoc(val=0)]).save()
+        doc.reload()
+
+        self.assertEqual(doc.pk, doc.embedded[0]._instance.pk)
+
     def test_order_by(self):
         """Ensure that QuerySets may be ordered.
         """
