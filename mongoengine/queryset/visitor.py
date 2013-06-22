@@ -28,7 +28,7 @@ class DuplicateQueryConditionsError(InvalidQueryError):
 
 
 class SimplificationVisitor(QNodeVisitor):
-    """Simplifies query trees by combinging unnecessary 'and' connection nodes
+    """Simplifies query trees by combining unnecessary 'and' connection nodes
     into a single Q-object.
     """
 
@@ -73,6 +73,16 @@ class QueryCompilerVisitor(QNodeVisitor):
     def visit_combination(self, combination):
         operator = "$and"
         if combination.operation == combination.OR:
+            keys = set([key for q in combination.children for key in q.keys()])
+            if len(keys) == 1:
+                field = keys.pop()
+                if not field.startswith('$') and not any([isinstance(q[field], dict) for q in combination.children]):
+                    return {
+                        field: {
+                            '$in': [q[field] for q in combination.children if field in q]
+                        }
+                    }
+
             operator = "$or"
         return {operator: combination.children}
 
