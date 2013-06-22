@@ -18,7 +18,7 @@ Differences between Mongomallard and Mongoengine
 * The primary key is only stored as `_id` in the database and is referenced in Python as `pk` or as the name of the primary key field.
 * Saves are not cascaded by default.
 * `Document.save()` supports `full=True` keyword argument to force saving all model fields.
-* `_get_changed_fields()` / `_changed_fields` returns a set
+* `_get_changed_fields()` / `_changed_fields` returns a set of field names (not db field names)
 * Simplified `EmailField` email regex to be more compatible
 * Assigning invalid types (e.g. an invalid string to `IntField`) raises immediately a `ValueError`
 * `order_by()` without an argument resets the ordering (no ordering will be applied)
@@ -26,7 +26,6 @@ Differences between Mongomallard and Mongoengine
 Untested / not implemented yet:
 -----
 
-* Delta updates for lists / embedded documents (fields that have changed on the document are fully updated)
 * Dynamic documents / `DynamicField`, dynamic addition/deletion of fields
 * Field display name methods
 * `SequenceField`

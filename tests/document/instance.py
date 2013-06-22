@@ -397,10 +397,8 @@ class InstanceTest(unittest.TestCase):
         doc.embedded_field.dict_field['woot'] = "woot"
 
         self.assertEqual(doc._get_changed_fields(), set([
-            'list_field', 'dict_field', 'embedded_field']))
-        #self.assertEqual(doc._get_changed_fields(), [
-        #    'list_field', 'dict_field', 'embedded_field.list_field',
-        #    'embedded_field.dict_field'])
+            'list_field', 'dict_field', 'embedded_field.list_field',
+            'embedded_field.dict_field']))
         doc.save()
 
         doc = doc.reload()
