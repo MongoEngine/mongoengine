@@ -132,6 +132,15 @@ class QuerySet(object):
 
         self._len = len(self._result_cache)
         return self._len
+        
+    def exists(self):
+        """
+            Returns a boolean whether the result exists or not
+        """
+        if self.__len__() != 0:
+            return True
+        else:
+            return False
 
     def __iter__(self):
         """Iteration utilises a results cache which iterates the cursor
