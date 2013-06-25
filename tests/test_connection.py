@@ -56,6 +56,9 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
 
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
+
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.
         """
