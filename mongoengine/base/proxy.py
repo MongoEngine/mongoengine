@@ -180,9 +180,6 @@ class DocumentProxy(LocalProxy):
 
     def _get_current_object(self):
         if self.__document == None:
-            #print 'fetching', self.__document_type, self.__pk
-            #import traceback
-            #traceback.print_stack()
             collection = self.__document_type._get_collection()
             son = collection.find_one({'_id': self.__pk})
             document = self.__document_type._from_son(son)
