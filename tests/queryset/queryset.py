@@ -3246,6 +3246,21 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(results[1]['name'], 'Barack Obama')
         self.assertEqual(results[1]['price'], Decimal('2.22'))
 
+        # assure name and price are the only keys in the result
+        self.assertTrue(
+            set(results[0].keys()).difference(('name', 'price')) == set()
+        )
+
+        # Test requiring id
+        results = list(
+            User.objects.only('id', 'name').as_pymongo(coerce_types=True)
+        )
+        self.assertTrue('_id' in results[0])
+        self.assertTrue(isinstance(results[0]['_id'], ObjectId))
+        self.assertTrue(
+            set(results[0].keys()).difference(('name', '_id')) == set()
+        )
+
     def test_as_pymongo_json_limit_fields(self):
 
         class User(Document):
