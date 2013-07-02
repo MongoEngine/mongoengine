@@ -540,13 +540,13 @@ class QuerySetTest(unittest.TestCase):
         self.Person.drop_collection()
 
         result = self.Person(name="Bob", age=25).update(upsert=True, full_result=True)
-        self.assertIsInstance(result, dict)
+        self.assertTrue(isinstance(result, dict))
         self.assertTrue("upserted" in result)
         self.assertFalse(result["updatedExisting"])
 
         bob = self.Person.objects.first()
         result = bob.update(set__age=30, full_result=True)
-        self.assertIsInstance(result, dict)
+        self.assertTrue(isinstance(result, dict))
         self.assertTrue(result["updatedExisting"])
 
         self.Person(name="Bob", age=20).save()
