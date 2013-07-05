@@ -589,6 +589,34 @@ class QuerySet(object):
 
         return self
 
+    def only_classes(self, *classes):
+        doc = self._document
+        if doc._meta.get('allow_inheritance') is True:
+            queryset = self.clone()
+            class_names = [cls._class_name for cls in classes]
+            allowed_class_names = [name for name in self._document._subclasses if name in class_names]
+            if len(allowed_class_names) == 1:
+                queryset._initial_query = {"_cls": allowed_class_names[0]}
+            else:
+                queryset._initial_query = {"_cls": {"$in": allowed_class_names}}
+            return queryset
+        else:
+            return self
+
+    def exclude_classes(self, *classes):
+        doc = self._document
+        if doc._meta.get('allow_inheritance') is True:
+            queryset = self.clone()
+            class_names = [cls._class_name for cls in classes]
+            allowed_class_names = [name for name in self._document._subclasses if name in class_names]
+            if len(allowed_class_names) == 1:
+                queryset._initial_query = {"_cls": {"$ne": allowed_class_names[0]}}
+            else:
+                queryset._initial_query = {"_cls": {"$nin": allowed_class_names}}
+            return queryset
+        else:
+            return self
+
     def clone(self):
         """Creates a copy of the current
           :class:`~mongoengine.queryset.QuerySet`
