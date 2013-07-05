@@ -1066,11 +1066,27 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
             with sharding.
         """
-        map_func = Code("""
+        map_func = """
             function() {
-                emit(1, this[field] || 0);
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+        
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, item||0);
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, field||0);
+                }
             }
-        """, scope={'field': field})
+        """ % dict(field=field)
 
         reduce_func = Code("""
             function(key, values) {
@@ -1096,13 +1112,28 @@ class QuerySet(object):
         .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
             with sharding.
         """
-        map_func = Code("""
+        map_func = """
             function() {
-                if (this.hasOwnProperty(field))
-                    emit(1, {t: this[field] || 0, c: 1});
-            }
-        """, scope={'field': field})
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
 
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+        
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, {t: item||0, c: 1});
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, {t: field||0, c: 1});
+                }
+            }
+        """ % dict(field=field)
+    
         reduce_func = Code("""
             function(key, values) {
                 var out = {t: 0, c: 0};
@@ -1263,8 +1294,8 @@ class QuerySet(object):
     def _item_frequencies_map_reduce(self, field, normalize=False):
         map_func = """
             function() {
-                var path = '{{~%(field)s}}'.split('.');
-                var field = this;
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
 
                 for (p in path) {
                     if (typeof field != 'undefined')
