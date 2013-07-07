@@ -2,9 +2,6 @@
 import sys
 sys.path[0:0] = [""]
 
-import json
-import hashlib
-
 import unittest
 from datetime import datetime
 
