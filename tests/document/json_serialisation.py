@@ -67,7 +67,7 @@ class TestJson(unittest.TestCase):
                 }
             }
 
-        hashed_password = hashlib.sha1("password").hexdigest()
+        hashed_password = hashlib.sha1("password".encode("utf-8")).hexdigest()
         profile = Profile(name="Jaepil",
                           email="jaepil@somewhere.com",
                           password=hashed_password)
