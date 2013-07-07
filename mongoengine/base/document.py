@@ -362,7 +362,74 @@ class BaseDocument(object):
             raise ValidationError(message, errors=errors)
 
     def to_json(self, role=None):
-        """Converts a document to JSON"""
+        """Converts a document to JSON
+
+        You can filter out fields by declaring the role into your model.
+        This really useful when you want to send a document to
+        the remote location like RESTful API.
+
+        Example ::
+
+            class Profile(EmbeddedDocument):
+                name = StringField()
+                email = StringField()
+                password = StringField()
+
+                meta = {
+                    "roles": {
+                        "json": {
+                            # the "_default" role will be used when the role is not specified
+                            "_default": blacklist("email", "password"),
+                            "admin": whitelist("name", "email", "password")
+                        }
+                    }
+                }
+
+            class User(Document):
+                user_id = StringField()
+                profile = EmbeddedDocumentField(Profile)
+
+                meta = {
+                    "roles": {
+                        "json": {
+                            # the "_default" role will be used when the role is not specified
+                            "_default": blacklist("id"),
+                            "admin": whitelist("id", "user_id", "profile")
+                        }
+                    }
+                }
+
+            hashed_password = hashlib.sha1("password").hexdigest()
+            profile = Profile(name="Jaepil",
+                              email="jaepil@somewhere.com",
+                              password=hashed_password)
+            user = User(user_id="jaepil", profile=profile)
+
+            json_default = user.to_json()
+            self.assertEqual(json.loads(json_default),
+                             {
+                                 "user_id": "jaepil",
+                                 "profile": {
+                                     "name": "Jaepil"
+                                 }
+                             })
+
+            json_admin = user.to_json(role="admin")
+            self.assertEqual(json.loads(json_admin),
+                             {
+                                 "user_id": "jaepil",
+                                 "profile": {
+                                     "name": "Jaepil",
+                                     "email": "jaepil@somewhere.com",
+                                     "password": hashed_password
+                                 }
+                             })
+
+        :param role: Sets the role that filter which fields appear in the JSON string.
+
+        .. versionchanged:: 0.8
+            Added role based serialization
+        """
         if role is None:
             role = "json._default"
         elif not role.startswith("json."):

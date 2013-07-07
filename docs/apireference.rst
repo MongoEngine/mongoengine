@@ -19,6 +19,8 @@ Documents
       A :class:`~mongoengine.queryset.QuerySet` object that is created lazily
       on access.
 
+   .. automethod:: mongoengine.base.BaseDocument.to_json
+
 .. autoclass:: mongoengine.EmbeddedDocument
    :members:
 
