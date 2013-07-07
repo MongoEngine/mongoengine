@@ -242,8 +242,8 @@ class BaseDocument(object):
         parsed_role = re.split(r"\s*[.]\s*", role.strip())
         if len(parsed_role) < 2:
             parsed_role.append("_default")
-        if len(parsed_role) != 2 or parsed_role[0] not in ("json", "mongo"):
-            raise KeyError("Role name must start with 'json' or 'mongo'. %s" % role)
+        if len(parsed_role) != 2 or parsed_role[0] != "json":
+            raise KeyError("Role name must start with 'json'.")
 
         roles = self._meta.get("roles", None)
         if roles is not None:
@@ -268,11 +268,7 @@ class BaseDocument(object):
 
             if parsed_role and role_filter:
                 if role_filter(field_name, value):
-                    if parsed_role[0] == "mongo" and field_name == "id":
-                        raise AttributeError("Cannot filter out 'id' field "
-                                             "for storing document into MongoDB")
-                    else:
-                        continue
+                    continue
 
             if value is not None:
                 if isinstance(field, (EmbeddedDocumentField,
@@ -313,17 +309,12 @@ class BaseDocument(object):
 
         return data
 
-    def to_mongo(self, role=None):
+    def to_mongo(self):
         """Return as SON data ready for use with MongoDB.
         """
-        if role is None:
-            role = "mongo._default"
-        elif not role.startswith("mongo.") and not role.startswith("json."):
-            role = ".".join(["mongo", role])
+        return self._to_mongo(role=None)
 
-        return self._to_mongo(role=role)
-
-    def validate(self, clean=True, role=None):
+    def validate(self, clean=True):
         """Ensure that all fields' values are valid and that required fields
         are present.
         """
@@ -345,22 +336,12 @@ class BaseDocument(object):
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
 
-        parsed_role, role_filter = self._find_role(role=role)
-
         for field, value in fields:
-            if parsed_role and role_filter:
-                if role_filter(field.name, value):
-                    if parsed_role[0] == "mongo" and field.name == "id":
-                        raise AttributeError("Cannot filter out 'id' field "
-                                             "for storing document into MongoDB")
-                    else:
-                        continue
-
             if value is not None:
                 try:
                     if isinstance(field, (EmbeddedDocumentField,
                                           GenericEmbeddedDocumentField)):
-                        field._validate(value, clean=clean, role=role)
+                        field._validate(value, clean=clean)
                     else:
                         field._validate(value)
                 except ValidationError, error:
@@ -384,10 +365,10 @@ class BaseDocument(object):
         """Converts a document to JSON"""
         if role is None:
             role = "json._default"
-        elif not role.startswith("mongo.") and not role.startswith("json."):
+        elif not role.startswith("json."):
             role = ".".join(["json", role])
 
-        return json_util.dumps(self.to_mongo(role=role))
+        return json_util.dumps(self._to_mongo(role=role))
 
     @classmethod
     def from_json(cls, json_data):

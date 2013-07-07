@@ -177,7 +177,7 @@ class Document(BaseDocument):
                 cls.ensure_indexes()
         return cls._collection
 
-    def save(self, force_insert=False, validate=True, clean=True, role=None,
+    def save(self, force_insert=False, validate=True, clean=True,
              write_concern=None,  cascade=None, cascade_kwargs=None,
              _refs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
@@ -189,7 +189,6 @@ class Document(BaseDocument):
         :param validate: validates the document; set to ``False`` to skip.
         :param clean: call the document clean method, requires `validate` to be
             True.
-        :param role: Sets the role that filter which fields appear in the saved document.
         :param write_concern: Extra keyword arguments are passed down to
             :meth:`~pymongo.collection.Collection.save` OR
             :meth:`~pymongo.collection.Collection.insert`
@@ -220,18 +219,13 @@ class Document(BaseDocument):
         """
         signals.pre_save.send(self.__class__, document=self)
 
-        if role is None:
-            role = "mongo._default"
-        elif not role.startswith("mongo.") and not role.startswith("json."):
-            role = ".".join(["mongo", role])
-
         if validate:
-            self.validate(clean=clean, role=role)
+            self.validate(clean=clean)
 
         if write_concern is None:
             write_concern = {"w": 1}
 
-        doc = self.to_mongo(role=role)
+        doc = self.to_mongo()
 
         created = ('_id' not in doc or self._created or force_insert)
 

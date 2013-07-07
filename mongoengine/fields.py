@@ -542,7 +542,7 @@ class EmbeddedDocumentField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
-    def to_python(self, value, role=None):
+    def to_python(self, value):
         if not isinstance(value, self.document_type):
             return self.document_type._from_son(value)
         return value
@@ -552,7 +552,7 @@ class EmbeddedDocumentField(BaseField):
             return value
         return self.document_type._to_mongo(value, role=role)
 
-    def validate(self, value, clean=True, role=None):
+    def validate(self, value, clean=True):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
@@ -560,7 +560,7 @@ class EmbeddedDocumentField(BaseField):
         if not isinstance(value, self.document_type):
             self.error('Invalid embedded document instance provided to an '
                        'EmbeddedDocumentField')
-        self.document_type.validate(value, clean=clean, role=role)
+        self.document_type.validate(value, clean=clean)
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -583,19 +583,19 @@ class GenericEmbeddedDocumentField(BaseField):
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
 
-    def to_python(self, value, role=None):
+    def to_python(self, value):
         if isinstance(value, dict):
             doc_cls = get_document(value['_cls'])
             value = doc_cls._from_son(value)
 
         return value
 
-    def validate(self, value, clean=True, role=None):
+    def validate(self, value, clean=True):
         if not isinstance(value, EmbeddedDocument):
             self.error('Invalid embedded document instance provided to an '
                        'GenericEmbeddedDocumentField')
 
-        value.validate(clean=clean, role=role)
+        value.validate(clean=clean)
 
     def to_mongo(self, document, role=None):
         if document is None:
