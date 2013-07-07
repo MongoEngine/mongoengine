@@ -2,6 +2,9 @@
 import sys
 sys.path[0:0] = [""]
 
+import json
+import hashlib
+
 import unittest
 from datetime import datetime
 
@@ -74,6 +77,79 @@ class ValidatorErrorTest(unittest.TestCase):
             self.assertTrue("User:RossC0" in e.message)
             self.assertEqual(e.to_dict(), {
                 'name': 'Field is required'})
+
+    def test_model_validation_role(self):
+
+        class Profile(EmbeddedDocument):
+            name = StringField()
+            email = StringField()
+            password = StringField()
+
+            meta = {
+                "roles": {
+                    "json": {
+                        # the "_default" role will be used when the role is not specified
+                        "_default": blacklist("email", "password"),
+                        "me": blacklist("id")
+                    },
+                    "mongo": {
+                        "_default": whitelist("name"),
+                        "me": wholelist()
+                    }
+                }
+            }
+
+        class User(Document):
+            user_id = StringField(required=True)
+            profile = EmbeddedDocumentField(Profile)
+
+            meta = {
+                "roles": {
+                    "json": {
+                        # the "_default" role will be used when the role is not specified
+                        "_default": blacklist("id"),
+                        "me": blacklist("id")
+                    },
+                    "mongo": {
+                        "_default": blacklist("user_id"),
+                        "me": wholelist()
+                    }
+                }
+            }
+
+        self.assertIsNone(User().validate(role="mongo._default"))
+
+        try:
+            User().validate(role="mongo.me")
+        except ValidationError, e:
+            self.assertTrue("User:None" in e.message)
+            self.assertEqual(e.to_dict(), {
+                'user_id': 'Field is required'})
+
+        hashed_password = hashlib.sha1("password").hexdigest()
+        profile = Profile(name="Jaepil",
+                          email="jaepil@somewhere.com",
+                          password=hashed_password)
+        user = User(user_id="jaepil", profile=profile)
+
+        doc_default = user.to_mongo()
+        self.assertEqual(doc_default,
+                         {
+                             "profile": {
+                                 "name": "Jaepil"
+                             }
+                         })
+
+        doc_me = user.to_mongo(role="me")
+        self.assertEqual(doc_me,
+                         {
+                             "user_id": "jaepil",
+                             "profile": {
+                                 "name": "Jaepil",
+                                 "email": "jaepil@somewhere.com",
+                                 "password": hashed_password
+                             }
+                         })
 
     def test_fields_rewrite(self):
         class BasePerson(Document):

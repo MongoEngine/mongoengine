@@ -124,12 +124,12 @@ class BaseField(object):
         field_name = field_name if field_name else self.name
         raise ValidationError(message, errors=errors, field_name=field_name)
 
-    def to_python(self, value):
+    def to_python(self, value, role=None):
         """Convert a MongoDB-compatible type to a Python type.
         """
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, role=None):
         """Convert a Python type to a MongoDB-compatible type.
         """
         return self.to_python(value)
@@ -139,7 +139,7 @@ class BaseField(object):
         """
         return value
 
-    def validate(self, value, clean=True):
+    def validate(self, value, clean=True, role=None):
         """Perform validation on a value.
         """
         pass

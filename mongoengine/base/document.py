@@ -2,6 +2,7 @@ import copy
 import operator
 import numbers
 from functools import partial
+import re
 
 import pymongo
 from bson import json_util
@@ -231,19 +232,54 @@ class BaseDocument(object):
         """
         pass
 
-    def to_mongo(self):
-        """Return as SON data ready for use with MongoDB.
+    def _find_role(self, role=None):
         """
+        Returns a list of all fields for specified role.
+        """
+        if role is None or not hasattr(self, "_meta"):
+            return (None, None)
+
+        parsed_role = re.split(r"\s*[.]\s*", role.strip())
+        if len(parsed_role) < 2:
+            parsed_role.append("_default")
+        if len(parsed_role) != 2 or parsed_role[0] not in ("json", "mongo"):
+            raise KeyError("Role name must start with 'json' or 'mongo'. %s" % role)
+
+        roles = self._meta.get("roles", None)
+        if roles is not None:
+            if parsed_role[0] in roles and parsed_role[1] in roles[parsed_role[0]]:
+                return (parsed_role, roles[parsed_role[0]][parsed_role[1]])
+
+        return (None, None)
+
+    def _to_mongo(self, role=None):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
+
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
+
+        parsed_role, role_filter = self._find_role(role=role)
 
         for field_name in self:
             value = self._data.get(field_name, None)
             field = self._fields.get(field_name)
 
+            if parsed_role and role_filter:
+                if role_filter(field_name, value):
+                    if parsed_role[0] == "mongo" and field_name == "id":
+                        raise AttributeError("Cannot filter out 'id' field "
+                                             "for storing document into MongoDB")
+                    else:
+                        continue
+
             if value is not None:
-                value = field.to_mongo(value)
+                if isinstance(field, (EmbeddedDocumentField,
+                                      GenericEmbeddedDocumentField)):
+                    value = field.to_mongo(value, role=role)
+                else:
+                    value = field.to_mongo(value)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
@@ -257,7 +293,8 @@ class BaseDocument(object):
         if data["_id"] is None:
             data["_id"] = self._data.get("id", None)
 
-        if data['_id'] is None:
+        if data['_id'] is None or (role_filter and
+                                   role_filter("id", value)):
             data.pop('_id')
 
         # Only add _cls if allow_inheritance is True
@@ -276,7 +313,17 @@ class BaseDocument(object):
 
         return data
 
-    def validate(self, clean=True):
+    def to_mongo(self, role=None):
+        """Return as SON data ready for use with MongoDB.
+        """
+        if role is None:
+            role = "mongo._default"
+        elif not role.startswith("mongo.") and not role.startswith("json."):
+            role = ".".join(["mongo", role])
+
+        return self._to_mongo(role=role)
+
+    def validate(self, clean=True, role=None):
         """Ensure that all fields' values are valid and that required fields
         are present.
         """
@@ -298,12 +345,22 @@ class BaseDocument(object):
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
 
+        parsed_role, role_filter = self._find_role(role=role)
+
         for field, value in fields:
+            if parsed_role and role_filter:
+                if role_filter(field.name, value):
+                    if parsed_role[0] == "mongo" and field.name == "id":
+                        raise AttributeError("Cannot filter out 'id' field "
+                                             "for storing document into MongoDB")
+                    else:
+                        continue
+
             if value is not None:
                 try:
                     if isinstance(field, (EmbeddedDocumentField,
                                           GenericEmbeddedDocumentField)):
-                        field._validate(value, clean=clean)
+                        field._validate(value, clean=clean, role=role)
                     else:
                         field._validate(value)
                 except ValidationError, error:
@@ -323,9 +380,14 @@ class BaseDocument(object):
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
-    def to_json(self):
+    def to_json(self, role=None):
         """Converts a document to JSON"""
-        return json_util.dumps(self.to_mongo())
+        if role is None:
+            role = "json._default"
+        elif not role.startswith("mongo.") and not role.startswith("json."):
+            role = ".".join(["json", role])
+
+        return json_util.dumps(self.to_mongo(role=role))
 
     @classmethod
     def from_json(cls, json_data):
