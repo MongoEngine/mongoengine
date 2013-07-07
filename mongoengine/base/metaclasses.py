@@ -250,6 +250,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 'index_opts': None,
                 'delete_rules': None,
                 'allow_inheritance': None,
+                'roles': {}
             }
             attrs['_is_base_cls'] = True
             attrs['_meta'].update(attrs.get('meta', {}))

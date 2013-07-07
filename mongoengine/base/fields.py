@@ -129,7 +129,7 @@ class BaseField(object):
         """
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, role=None):
         """Convert a Python type to a MongoDB-compatible type.
         """
         return self.to_python(value)

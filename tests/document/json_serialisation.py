@@ -1,6 +1,9 @@
 import sys
 sys.path[0:0] = [""]
 
+import json
+import hashlib
+
 import unittest
 import uuid
 
@@ -32,6 +35,63 @@ class TestJson(unittest.TestCase):
         doc = Doc(string="Hi", embedded_field=Embedded(string="Hi"))
 
         self.assertEqual(doc, Doc.from_json(doc.to_json()))
+
+    def test_json_role(self):
+
+        class Profile(EmbeddedDocument):
+            name = StringField()
+            email = StringField()
+            password = StringField()
+
+            meta = {
+                "roles": {
+                    "json": {
+                        # the "_default" role will be used when the role is not specified
+                        "_default": blacklist("email", "password"),
+                        "admin": whitelist("name", "email", "password")
+                    }
+                }
+            }
+
+        class User(Document):
+            user_id = StringField()
+            profile = EmbeddedDocumentField(Profile)
+
+            meta = {
+                "roles": {
+                    "json": {
+                        # the "_default" role will be used when the role is not specified
+                        "_default": blacklist("id"),
+                        "admin": whitelist("id", "user_id", "profile")
+                    }
+                }
+            }
+
+        hashed_password = hashlib.sha1("password".encode("utf-8")).hexdigest()
+        profile = Profile(name="Jaepil",
+                          email="jaepil@somewhere.com",
+                          password=hashed_password)
+        user = User(user_id="jaepil", profile=profile)
+
+        json_default = user.to_json()
+        self.assertEqual(json.loads(json_default),
+                         {
+                             "user_id": "jaepil",
+                             "profile": {
+                                 "name": "Jaepil"
+                             }
+                         })
+
+        json_admin = user.to_json(role="admin")
+        self.assertEqual(json.loads(json_admin),
+                         {
+                             "user_id": "jaepil",
+                             "profile": {
+                                 "name": "Jaepil",
+                                 "email": "jaepil@somewhere.com",
+                                 "password": hashed_password
+                             }
+                         })
 
     def test_json_complex(self):
 
