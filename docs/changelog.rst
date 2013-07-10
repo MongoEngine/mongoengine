@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Document.select_related() now respects `db_alias` (#377)
 - Reload uses shard_key if applicable (#384)
 - Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
 - Fixed pickling dynamic documents `_dynamic_fields` (#387)

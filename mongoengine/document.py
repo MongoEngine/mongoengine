@@ -440,8 +440,8 @@ class Document(BaseDocument):
 
         .. versionadded:: 0.5
         """
-        import dereference
-        self._data = dereference.DeReference()(self._data, max_depth)
+        DeReference = _import_class('DeReference')
+        DeReference()([self], max_depth + 1)
         return self
 
     def reload(self, max_depth=1):
