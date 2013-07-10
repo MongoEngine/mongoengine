@@ -11,6 +11,8 @@ env:
   - PYMONGO=dev DJANGO=1.4.2
   - PYMONGO=2.5 DJANGO=1.5.1
   - PYMONGO=2.5 DJANGO=1.4.2
+  - PYMONGO=3.2 DJANGO=1.5.1
+  - PYMONGO=3.3 DJANGO=1.5.1
 install:
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then cp /usr/lib/*/libz.so $VIRTUAL_ENV/lib/; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install pil --use-mirrors ; true; fi
