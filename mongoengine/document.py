@@ -208,10 +208,10 @@ class Document(BaseDocument):
         read_preference = pymongo.ReadPreference.PRIMARY
 
         # don't do serving secondary reads during backups around 3am
-        time_now = datetime.datetime.now().time()
+        #time_now = datetime.datetime.now().time()
         if slave_ok is True:
-            if not (datetime.time(2, 55) < time_now < datetime.time(4,00)):
-                read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED
+            #if not (datetime.time(2, 55) < time_now < datetime.time(4,00)):
+            read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED
         # but if slave_ok is something other than True or False (e.g. a string),
         # we can do secondary reads any time
         elif slave_ok:
