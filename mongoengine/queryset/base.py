@@ -1002,26 +1002,27 @@ class BaseQuerySet(object):
         .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
             with sharding.
         """
-        map_func = Code("""
+        map_func = """
             function() {
-                function deepFind(obj, path) {
-                  var paths = path.split('.')
-                    , current = obj
-                    , i;
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
 
-                  for (i = 0; i < paths.length; ++i) {
-                    if (current[paths[i]] == undefined) {
-                      return undefined;
-                    } else {
-                      current = current[paths[i]];
-                    }
-                  }
-                  return current;
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
                 }
 
-                emit(1, deepFind(this, field) || 0);
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, item||0);
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, field||0);
+                }
             }
-        """, scope={'field': field})
+        """ % dict(field=field)
 
         reduce_func = Code("""
             function(key, values) {
@@ -1047,28 +1048,27 @@ class BaseQuerySet(object):
         .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
             with sharding.
         """
-        map_func = Code("""
+        map_func = """
             function() {
-                function deepFind(obj, path) {
-                  var paths = path.split('.')
-                    , current = obj
-                    , i;
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
 
-                  for (i = 0; i < paths.length; ++i) {
-                    if (current[paths[i]] == undefined) {
-                      return undefined;
-                    } else {
-                      current = current[paths[i]];
-                    }
-                  }
-                  return current;
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
                 }
 
-                val = deepFind(this, field)
-                if (val !== undefined)
-                    emit(1, {t: val || 0, c: 1});
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, {t: item||0, c: 1});
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, {t: field||0, c: 1});
+                }
             }
-        """, scope={'field': field})
+        """ % dict(field=field)
 
         reduce_func = Code("""
             function(key, values) {
