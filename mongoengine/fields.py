@@ -279,14 +279,14 @@ class DecimalField(BaseField):
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal libary:
 
-            - decimial.ROUND_CEILING (towards Infinity)
-            - decimial.ROUND_DOWN (towards zero)
-            - decimial.ROUND_FLOOR (towards -Infinity)
-            - decimial.ROUND_HALF_DOWN (to nearest with ties going towards zero)
-            - decimial.ROUND_HALF_EVEN (to nearest with ties going to nearest even integer)
-            - decimial.ROUND_HALF_UP (to nearest with ties going away from zero)
-            - decimial.ROUND_UP (away from zero)
-            - decimial.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
+            - decimal.ROUND_CEILING (towards Infinity)
+            - decimal.ROUND_DOWN (towards zero)
+            - decimal.ROUND_FLOOR (towards -Infinity)
+            - decimal.ROUND_HALF_DOWN (to nearest with ties going towards zero)
+            - decimal.ROUND_HALF_EVEN (to nearest with ties going to nearest even integer)
+            - decimal.ROUND_HALF_UP (to nearest with ties going away from zero)
+            - decimal.ROUND_UP (away from zero)
+            - decimal.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
 
             Defaults to: ``decimal.ROUND_HALF_UP``
 
