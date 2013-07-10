@@ -42,6 +42,9 @@ class BaseDocument(object):
             # Combine positional arguments with named arguments.
             # We only want named arguments.
             field = iter(self._fields_ordered)
+            # If its an automatic id field then skip to the first defined field
+            if self._auto_id_field:
+                next(field)
             for value in args:
                 name = next(field)
                 if name in values:
@@ -51,6 +54,7 @@ class BaseDocument(object):
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         self._data = {}
+        self._dynamic_fields = SON()
 
         # Assign default values to instance
         for key, field in self._fields.iteritems():
@@ -61,7 +65,6 @@ class BaseDocument(object):
 
         # Set passed values after initialisation
         if self._dynamic:
-            self._dynamic_fields = {}
             dynamic_data = {}
             for key, value in values.iteritems():
                 if key in self._fields or key == '_id':
@@ -116,6 +119,7 @@ class BaseDocument(object):
                 field = DynamicField(db_field=name)
                 field.name = name
                 self._dynamic_fields[name] = field
+                self._fields_ordered += (name,)
 
             if not name.startswith('_'):
                 value = self.__expand_dynamic_values(name, value)
@@ -142,7 +146,8 @@ class BaseDocument(object):
 
     def __getstate__(self):
         data = {}
-        for k in ('_changed_fields', '_initialised', '_created'):
+        for k in ('_changed_fields', '_initialised', '_created',
+                  '_dynamic_fields', '_fields_ordered'):
             if hasattr(self, k):
                 data[k] = getattr(self, k)
         data['_data'] = self.to_mongo()
@@ -151,21 +156,21 @@ class BaseDocument(object):
     def __setstate__(self, data):
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
-        for k in ('_changed_fields', '_initialised', '_created', '_data'):
+        for k in ('_changed_fields', '_initialised', '_created', '_data',
+                  '_fields_ordered', '_dynamic_fields'):
             if k in data:
                 setattr(self, k, data[k])
+        for k in data.get('_dynamic_fields').keys():
+            setattr(self, k, data["_data"].get(k))
 
     def __iter__(self):
-        if 'id' in self._fields and 'id' not in self._fields_ordered:
-            return iter(('id', ) + self._fields_ordered)
-
         return iter(self._fields_ordered)
 
     def __getitem__(self, name):
         """Dictionary-style field access, return a field's value if present.
         """
         try:
-            if name in self._fields:
+            if name in self._fields_ordered:
                 return getattr(self, name)
         except AttributeError:
             pass
@@ -241,6 +246,8 @@ class BaseDocument(object):
         for field_name in self:
             value = self._data.get(field_name, None)
             field = self._fields.get(field_name)
+            if field is None and self._dynamic:
+                field = self._dynamic_fields.get(field_name)
 
             if value is not None:
                 value = field.to_mongo(value)
@@ -265,15 +272,6 @@ class BaseDocument(object):
            not self._meta.get('allow_inheritance', ALLOW_INHERITANCE)):
             data.pop('_cls')
 
-        if not self._dynamic:
-            return data
-
-        # Sort dynamic fields by key
-        dynamic_fields = sorted(self._dynamic_fields.iteritems(),
-                                key=operator.itemgetter(0))
-        for name, field in dynamic_fields:
-            data[name] = field.to_mongo(self._data.get(name, None))
-
         return data
 
     def validate(self, clean=True):
@@ -289,11 +287,8 @@ class BaseDocument(object):
                 errors[NON_FIELD_ERRORS] = error
 
         # Get a list of tuples of field names and their current values
-        fields = [(field, self._data.get(name))
-                  for name, field in self._fields.items()]
-        if self._dynamic:
-            fields += [(field, self._data.get(name))
-                       for name, field in self._dynamic_fields.items()]
+        fields = [(self._fields.get(name, self._dynamic_fields.get(name)),
+                   self._data.get(name)) for name in self._fields_ordered]
 
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
@@ -406,11 +401,7 @@ class BaseDocument(object):
                 return _changed_fields
             inspected.add(self.id)
 
-        field_list = self._fields.copy()
-        if self._dynamic:
-            field_list.update(self._dynamic_fields)
-
-        for field_name in field_list:
+        for field_name in self._fields_ordered:
 
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
@@ -450,7 +441,6 @@ class BaseDocument(object):
         doc = self.to_mongo()
 
         set_fields = self._get_changed_fields()
-        set_data = {}
         unset_data = {}
         parts = []
         if hasattr(self, '_changed_fields'):

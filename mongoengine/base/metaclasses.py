@@ -91,11 +91,12 @@ class DocumentMetaclass(type):
         attrs['_fields'] = doc_fields
         attrs['_db_field_map'] = dict([(k, getattr(v, 'db_field', k))
                                       for k, v in doc_fields.iteritems()])
+        attrs['_reverse_db_field_map'] = dict(
+            (v, k) for k, v in attrs['_db_field_map'].iteritems())
+
         attrs['_fields_ordered'] = tuple(i[1] for i in sorted(
                                          (v.creation_counter, v.name)
                                          for v in doc_fields.itervalues()))
-        attrs['_reverse_db_field_map'] = dict(
-            (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
         #
         # Set document hierarchy
@@ -358,11 +359,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     new_class.id = field
 
         # Set primary key if not defined by the document
+        new_class._auto_id_field = False
         if not new_class._meta.get('id_field'):
+            new_class._auto_id_field = True
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class._fields['id'].name = 'id'
             new_class.id = new_class._fields['id']
+
+        # Prepend id field to _fields_ordered
+        if 'id' in new_class._fields and 'id' not in new_class._fields_ordered:
+            new_class._fields_ordered = ('id', ) + new_class._fields_ordered
 
         # Merge in exceptions with parent hierarchy
         exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)

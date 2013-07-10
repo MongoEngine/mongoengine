@@ -2,6 +2,16 @@
 Upgrading
 #########
 
+
+0.8.2 to 0.8.2
+**************
+
+Minor change that may impact users:
+
+DynamicDocument fields are now stored in creation order after any declared
+fields.  Previously they were stored alphabetically.
+
+
 0.7 to 0.8
 **********
 

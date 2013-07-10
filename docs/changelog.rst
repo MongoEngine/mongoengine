@@ -4,6 +4,8 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
+- Fixed pickling dynamic documents `_dynamic_fields` (#387)
 - Fixed ListField setslice and delslice dirty tracking (#390)
 - Added Django 1.5 PY3 support (#392)
 - Added match ($elemMatch) support for EmbeddedDocuments (#379)

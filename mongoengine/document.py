@@ -460,11 +460,8 @@ class Document(BaseDocument):
         else:
             msg = "Reloaded document has been deleted"
             raise OperationError(msg)
-        for field in self._fields:
+        for field in self._fields_ordered:
             setattr(self, field, self._reload(field, obj[field]))
-        if self._dynamic:
-            for name in self._dynamic_fields.keys():
-                setattr(self, name, self._reload(name, obj._data[name]))
         self._changed_fields = obj._changed_fields
         self._created = False
         return obj
