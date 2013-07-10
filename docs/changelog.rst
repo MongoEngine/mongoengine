@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Added Django 1.5 PY3 support (#392)
 - Added match ($elemMatch) support for EmbeddedDocuments (#379)
 - Fixed weakref being valid after reload (#374)
 - Fixed queryset.get() respecting no_dereference (#373)
