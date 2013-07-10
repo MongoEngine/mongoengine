@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Added QuerySetNoCache and QuerySet.no_cache() for lower memory consumption (#365)
 - Fixed sum and average mapreduce dot notation support (#375, #376)
 - Fixed as_pymongo to return the id (#386)
 - Document.select_related() now respects `db_alias` (#377)

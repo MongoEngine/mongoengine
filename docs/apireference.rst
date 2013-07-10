@@ -49,6 +49,11 @@ Querying
 
    .. automethod:: mongoengine.queryset.QuerySet.__call__
 
+.. autoclass:: mongoengine.queryset.QuerySetNoCache
+   :members:
+
+   .. automethod:: mongoengine.queryset.QuerySetNoCache.__call__
+
 .. autofunction:: mongoengine.queryset.queryset_manager
 
 Fields

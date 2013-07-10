@@ -3254,7 +3254,7 @@ class QuerySetTest(unittest.TestCase):
         User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
 
         results = User.objects.only('id', 'name').as_pymongo()
-        self.assertEqual(results[0].keys(), ['_id', 'name'])
+        self.assertEqual(sorted(results[0].keys()), sorted(['_id', 'name']))
 
         users = User.objects.only('name', 'price').as_pymongo()
         results = list(users)
@@ -3364,6 +3364,34 @@ class QuerySetTest(unittest.TestCase):
         users = users.filter(name="Bob")
         self.assertEqual("%s" % users, "[<User: Bob>]")
         self.assertEqual(1, len(users._result_cache))
+
+    def test_no_cache(self):
+        """Ensure you can add meta data to file"""
+
+        class Noddy(Document):
+            fields = DictField()
+
+        Noddy.drop_collection()
+        for i in xrange(100):
+            noddy = Noddy()
+            for j in range(20):
+                noddy.fields["key"+str(j)] = "value "+str(j)
+            noddy.save()
+
+        docs = Noddy.objects.no_cache()
+
+        counter = len([1 for i in docs])
+        self.assertEquals(counter, 100)
+
+        self.assertEquals(len(list(docs)), 100)
+        self.assertRaises(TypeError, lambda: len(docs))
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            list(docs)
+            self.assertEqual(q, 1)
+            list(docs)
+            self.assertEqual(q, 2)
 
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
