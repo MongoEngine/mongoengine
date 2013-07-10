@@ -266,7 +266,6 @@ class Document(BaseDocument):
                                                    upsert=True, **write_concern)
                     created = is_new_object(last_error)
 
-
             if cascade is None:
                 cascade = self._meta.get('cascade', False) or cascade_kwargs is not None
 
@@ -451,9 +450,8 @@ class Document(BaseDocument):
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
         """
-        id_field = self._meta['id_field']
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-                **{id_field: self[id_field]}).limit(1).select_related(max_depth=max_depth)
+                **self._object_key).limit(1).select_related(max_depth=max_depth)
 
         if obj:
             obj = obj[0]
