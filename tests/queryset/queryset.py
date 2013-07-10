@@ -2246,6 +2246,145 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name='weightless person').save()
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
+    def test_embedded_average(self):
+        class Pay(EmbeddedDocument):
+            value = DecimalField()
+
+        class Doc(Document):
+            name = StringField()
+            pay = EmbeddedDocumentField(
+                Pay)
+
+        Doc.drop_collection()
+
+        Doc(name=u"Wilson Junior",
+            pay=Pay(value=150)).save()
+
+        Doc(name=u"Isabella Luanna",
+            pay=Pay(value=530)).save()
+
+        Doc(name=u"Tayza mariana",
+            pay=Pay(value=165)).save()
+
+        Doc(name=u"Eliana Costa",
+            pay=Pay(value=115)).save()
+
+        self.assertEqual(
+            Doc.objects.average('pay.value'),
+            240)
+
+    def test_embedded_array_average(self):
+        class Pay(EmbeddedDocument):
+            values = ListField(DecimalField())
+
+        class Doc(Document):
+            name = StringField()
+            pay = EmbeddedDocumentField(
+                Pay)
+
+        Doc.drop_collection()
+
+        Doc(name=u"Wilson Junior",
+            pay=Pay(values=[150, 100])).save()
+
+        Doc(name=u"Isabella Luanna",
+            pay=Pay(values=[530, 100])).save()
+
+        Doc(name=u"Tayza mariana",
+            pay=Pay(values=[165, 100])).save()
+
+        Doc(name=u"Eliana Costa",
+            pay=Pay(values=[115, 100])).save()
+
+        self.assertEqual(
+            Doc.objects.average('pay.values'),
+            170)
+
+    def test_array_average(self):
+        class Doc(Document):
+            values = ListField(DecimalField())
+
+        Doc.drop_collection()
+
+        Doc(values=[150, 100]).save()
+        Doc(values=[530, 100]).save()
+        Doc(values=[165, 100]).save()
+        Doc(values=[115, 100]).save()
+
+        self.assertEqual(
+            Doc.objects.average('values'),
+            170)
+
+    def test_embedded_sum(self):
+        class Pay(EmbeddedDocument):
+            value = DecimalField()
+
+        class Doc(Document):
+            name = StringField()
+            pay = EmbeddedDocumentField(
+                Pay)
+
+        Doc.drop_collection()
+
+        Doc(name=u"Wilson Junior",
+            pay=Pay(value=150)).save()
+
+        Doc(name=u"Isabella Luanna",
+            pay=Pay(value=530)).save()
+
+        Doc(name=u"Tayza mariana",
+            pay=Pay(value=165)).save()
+
+        Doc(name=u"Eliana Costa",
+            pay=Pay(value=115)).save()
+
+        self.assertEqual(
+            Doc.objects.sum('pay.value'),
+            960)
+
+
+    def test_embedded_array_sum(self):
+        class Pay(EmbeddedDocument):
+            values = ListField(DecimalField())
+
+        class Doc(Document):
+            name = StringField()
+            pay = EmbeddedDocumentField(
+                Pay)
+
+        Doc.drop_collection()
+
+        Doc(name=u"Wilson Junior",
+            pay=Pay(values=[150, 100])).save()
+
+        Doc(name=u"Isabella Luanna",
+            pay=Pay(values=[530, 100])).save()
+
+        Doc(name=u"Tayza mariana",
+            pay=Pay(values=[165, 100])).save()
+
+        Doc(name=u"Eliana Costa",
+            pay=Pay(values=[115, 100])).save()
+
+        self.assertEqual(
+            Doc.objects.sum('pay.values'),
+            1360)
+
+    def test_array_sum(self):
+        class Doc(Document):
+            values = ListField(DecimalField())
+
+        Doc.drop_collection()
+
+        Doc(values=[150, 100]).save()
+        Doc(values=[530, 100]).save()
+        Doc(values=[165, 100]).save()
+        Doc(values=[115, 100]).save()
+
+        self.assertEqual(
+            Doc.objects.sum('values'),
+            1360)
+
     def test_distinct(self):
         """Ensure that the QuerySet.distinct method works.
         """
@@ -3254,7 +3393,7 @@ class QuerySetTest(unittest.TestCase):
         User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
 
         results = User.objects.only('id', 'name').as_pymongo()
-        self.assertEqual(results[0].keys(), ['_id', 'name'])
+        self.assertEqual(sorted(results[0].keys()), sorted(['_id', 'name']))
 
         users = User.objects.only('name', 'price').as_pymongo()
         results = list(users)
@@ -3364,6 +3503,34 @@ class QuerySetTest(unittest.TestCase):
         users = users.filter(name="Bob")
         self.assertEqual("%s" % users, "[<User: Bob>]")
         self.assertEqual(1, len(users._result_cache))
+
+    def test_no_cache(self):
+        """Ensure you can add meta data to file"""
+
+        class Noddy(Document):
+            fields = DictField()
+
+        Noddy.drop_collection()
+        for i in xrange(100):
+            noddy = Noddy()
+            for j in range(20):
+                noddy.fields["key"+str(j)] = "value "+str(j)
+            noddy.save()
+
+        docs = Noddy.objects.no_cache()
+
+        counter = len([1 for i in docs])
+        self.assertEquals(counter, 100)
+
+        self.assertEquals(len(list(docs)), 100)
+        self.assertRaises(TypeError, lambda: len(docs))
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            list(docs)
+            self.assertEqual(q, 1)
+            list(docs)
+            self.assertEqual(q, 2)
 
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
