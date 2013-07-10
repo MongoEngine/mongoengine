@@ -1190,7 +1190,7 @@ class FileField(BaseField):
         # Check if a file already exists for this model
         grid_file = instance._data.get(self.name)
         if not isinstance(grid_file, self.proxy_class):
-            grid_file = self.get_proxy_obj(key=key, instance=instance)
+            grid_file = self.get_proxy_obj(key=self.name, instance=instance)
             instance._data[self.name] = grid_file
 
         if not grid_file.key:
@@ -1218,16 +1218,16 @@ class FileField(BaseField):
             instance._data[key] = value
 
         instance._mark_as_changed(key)
-        
+
     def get_proxy_obj(self, key, instance, db_alias=None, collection_name=None):
         if db_alias is None:
             db_alias = self.db_alias
         if collection_name is None:
             collection_name = self.collection_name
-            
-        return  self.proxy_class(key=key, instance=instance,
-                                 db_alias=db_alias,
-                                 collection_name=collection_name)
+
+        return self.proxy_class(key=key, instance=instance,
+                                db_alias=db_alias,
+                                collection_name=collection_name)
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
@@ -1261,10 +1261,8 @@ class ImageGridFsProxy(GridFSProxy):
         applying field properties (size, thumbnail_size)
         """
         field = self.instance._fields[self.key]
-        # if the field from the instance has an attribute field
-        # we use that one and hope for the best. Usually only container
-        # fields have a field attribute.
-        if hasattr(field, 'field'):
+        # Handle nested fields
+        if hasattr(field, 'field') and isinstance(field.field, FileField):
             field = field.field
 
         try:
