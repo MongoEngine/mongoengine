@@ -3227,6 +3227,9 @@ class QuerySetTest(unittest.TestCase):
         User(name="Bob Dole", age=89, price=Decimal('1.11')).save()
         User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
 
+        results = User.objects.only('id', 'name').as_pymongo()
+        self.assertEqual(results[0].keys(), ['_id', 'name'])
+
         users = User.objects.only('name', 'price').as_pymongo()
         results = list(users)
         self.assertTrue(isinstance(results[0], dict))

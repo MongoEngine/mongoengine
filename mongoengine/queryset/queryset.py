@@ -1423,7 +1423,8 @@ class QuerySet(object):
         # used. If not, handle all fields.
         if not getattr(self, '__as_pymongo_fields', None):
             self.__as_pymongo_fields = []
-            for field in self._loaded_fields.fields - set(['_cls', '_id']):
+
+            for field in self._loaded_fields.fields - set(['_cls']):
                 self.__as_pymongo_fields.append(field)
                 while '.' in field:
                     field, _ = field.rsplit('.', 1)
