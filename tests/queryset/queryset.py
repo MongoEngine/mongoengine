@@ -30,12 +30,17 @@ class QuerySetTest(unittest.TestCase):
     def setUp(self):
         connect(db='mongoenginetest')
 
+        class PersonMeta(EmbeddedDocument):
+            weight = IntField()
+
         class Person(Document):
             name = StringField()
             age = IntField()
+            person_meta = EmbeddedDocumentField(PersonMeta)
             meta = {'allow_inheritance': True}
 
         Person.drop_collection()
+        self.PersonMeta = PersonMeta
         self.Person = Person
 
     def test_initialisation(self):
@@ -2208,6 +2213,19 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.average('age')), avg)
 
+        # dot notation
+        self.Person(name='person meta', person_meta=self.PersonMeta(weight=0)).save()
+        self.assertAlmostEqual(int(self.Person.objects.average('person_meta.weight')), 0)
+
+        for i, weight in enumerate(ages):
+            self.Person(name='test meta%i', person_meta=self.PersonMeta(weight=weight)).save()
+
+        self.assertAlmostEqual(int(self.Person.objects.average('person_meta.weight')), avg)
+
+        self.Person(name='test meta none').save()
+        self.assertEqual(int(self.Person.objects.average('person_meta.weight')), avg)
+
+
     def test_sum(self):
         """Ensure that field can be summed over correctly.
         """
@@ -2218,6 +2236,14 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
         self.Person(name='ageless person').save()
+        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+
+        for i, age in enumerate(ages):
+            self.Person(name='test meta%s' % i, person_meta=self.PersonMeta(weight=age)).save()
+
+        self.assertEqual(int(self.Person.objects.sum('person_meta.weight')), sum(ages))
+
+        self.Person(name='weightless person').save()
         self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
 
     def test_distinct(self):
