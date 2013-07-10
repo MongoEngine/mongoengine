@@ -1018,6 +1018,32 @@ class FieldTest(unittest.TestCase):
         e.mapping = {}
         self.assertEqual([], e._changed_fields)
 
+    def test_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        simple.widgets[:3] = []
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
+    def test_del_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        del simple.widgets[:3]
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 

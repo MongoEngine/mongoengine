@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Fixed ListField setslice and delslice dirty tracking (#390)
 - Added Django 1.5 PY3 support (#392)
 - Added match ($elemMatch) support for EmbeddedDocuments (#379)
 - Fixed weakref being valid after reload (#374)
