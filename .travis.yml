@@ -14,11 +14,11 @@ env:
   - PYMONGO=3.2 DJANGO=1.5.1
   - PYMONGO=3.3 DJANGO=1.5.1
 install:
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then sudo apt-get install python-dateutil; true; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then sudo apt-get install python3-dateutil; true; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then cp /usr/lib/*/libz.so $VIRTUAL_ENV/lib/; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install pil --use-mirrors ; true; fi
     - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install django==$DJANGO --use-mirrors ; true; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install python-dateutils==1.5 --no-allow-external ; true; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then pip install python-dateutils --no-allow-external ; true; fi
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
     - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO --use-mirrors; true; fi
     - python setup.py install
