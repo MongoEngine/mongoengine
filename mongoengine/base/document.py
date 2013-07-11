@@ -160,7 +160,8 @@ class BaseDocument(object):
                   '_fields_ordered', '_dynamic_fields'):
             if k in data:
                 setattr(self, k, data[k])
-        for k in data.get('_dynamic_fields', SON()).keys():
+        dynamic_fields = data.get('_dynamic_fields') or SON()
+        for k in dynamic_fields.keys():
             setattr(self, k, data["_data"].get(k))
 
     def __iter__(self):
