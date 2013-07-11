@@ -262,8 +262,10 @@ class BaseDocument(object):
                 data[field.db_field] = value
 
         # If "_id" has not been set, then try and set it
-        if data["_id"] is None:
-            data["_id"] = self._data.get("id", None)
+        Document = _import_class("Document")
+        if isinstance(self, Document):
+            if data["_id"] is None:
+                data["_id"] = self._data.get("id", None)
 
         if data['_id'] is None:
             data.pop('_id')

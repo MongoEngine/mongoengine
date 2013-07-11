@@ -444,6 +444,13 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
                          ['_cls', 'name', 'age', 'salary'])
 
+    def test_embedded_document_to_mongo_id(self):
+        class SubDoc(EmbeddedDocument):
+            id = StringField(required=True)
+
+        sub_doc = SubDoc(id="abc")
+        self.assertEqual(sub_doc.to_mongo().keys(), ['id'])
+
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly.
         """
