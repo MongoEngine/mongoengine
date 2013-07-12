@@ -3,7 +3,7 @@ Upgrading
 #########
 
 
-0.8.2 to 0.8.2
+0.8.2 to 0.8.3
 **************
 
 Minor change that may impact users:
