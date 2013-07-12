@@ -12,6 +12,9 @@ Changes in 0.8.3
 - Document.select_related() now respects `db_alias` (#377)
 - Reload uses shard_key if applicable (#384)
 - Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
+
+  **Potential breaking change:** http://docs.mongoengine.org/en/latest/upgrade.html#to-0-8-3
+
 - Fixed pickling dynamic documents `_dynamic_fields` (#387)
 - Fixed ListField setslice and delslice dirty tracking (#390)
 - Added Django 1.5 PY3 support (#392)
@@ -19,6 +22,8 @@ Changes in 0.8.3
 - Fixed weakref being valid after reload (#374)
 - Fixed queryset.get() respecting no_dereference (#373)
 - Added full_result kwarg to update (#380)
+
+
 
 Changes in 0.8.2
 ================
