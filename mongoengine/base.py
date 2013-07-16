@@ -27,7 +27,7 @@ class BaseField(object):
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
-                 validation=None, choices=None):
+                 validation=None, choices=None, dup_check=True):
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -41,6 +41,7 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
+        self.dup_check= dup_check
         self._in_list = False
 
     def __get__(self, instance, owner):
@@ -150,6 +151,10 @@ class DocumentMetaclass(type):
         class_name = [name]
         superclasses = {}
         simple_class = True
+
+        # maps db_field to their name, for db_field de-dup purpose
+        field_to_name_map = {}
+
         for base in bases:
             # Include all fields present in superclasses
             if hasattr(base, '_fields'):
@@ -158,6 +163,11 @@ class DocumentMetaclass(type):
                 # Get superclasses from superclass
                 superclasses[base._class_name] = base
                 superclasses.update(base._superclasses)
+
+                #inherit field_names from superclass
+                field_to_name_map.update(
+                    [(_field.db_field, attr_name)
+                     for attr_name, _field in base._fields.iteritems()])
 
             if hasattr(base, '_meta'):
                 # Ensure that the Document class may be subclassed -
@@ -185,7 +195,6 @@ class DocumentMetaclass(type):
         attrs['_superclasses'] = superclasses
 
         # Add the document's fields to the _fields attribute
-        field_names = set()
         for attr_name, attr_value in attrs.items():
             if hasattr(attr_value, "__class__") and \
                issubclass(attr_value.__class__, BaseField):
@@ -196,9 +205,14 @@ class DocumentMetaclass(type):
                 else:
                     field_name = attr_value.db_field
 
-                # a sanity check
-                assert field_name not in field_names, "Field %s already exists in %s!" % (field_name, name)
-                field_names.add(field_name)
+                if attr_value.dup_check:
+                    # a sanity check, can't have two fields with same db_field
+                    # unless they also have the same name
+                    assert field_name not in field_to_name_map or \
+                            field_to_name_map[field_name] == attr_name, \
+                            "Field %s with db_field %s already exists in %s " \
+                            "or its superclass!" % (attr_name, field_name, name)
+                    field_to_name_map[field_name] = attr_name
 
                 doc_fields[attr_name] = attr_value
         attrs['_fields'] = doc_fields
