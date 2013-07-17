@@ -63,6 +63,12 @@ class StringField(BaseField):
         self.min_length = min_length
         super(StringField, self).__init__(**kwargs)
 
+    def from_python(self, value):
+        if isinstance(value, str):
+            return value.decode('utf8')
+        else:
+            return super(StringField, self).from_python(value)
+
     def validate(self, value):
         if not isinstance(value, basestring):
             self.error('StringField only accepts string values')
