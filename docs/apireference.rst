@@ -49,11 +49,17 @@ Querying
 
    .. automethod:: mongoengine.queryset.QuerySet.__call__
 
+.. autoclass:: mongoengine.queryset.QuerySetNoCache
+   :members:
+
+   .. automethod:: mongoengine.queryset.QuerySetNoCache.__call__
+
 .. autofunction:: mongoengine.queryset.queryset_manager
 
 Fields
 ======
 
+.. autoclass:: mongoengine.base.fields.BaseField
 .. autoclass:: mongoengine.fields.StringField
 .. autoclass:: mongoengine.fields.URLField
 .. autoclass:: mongoengine.fields.EmailField
@@ -76,11 +82,19 @@ Fields
 .. autoclass:: mongoengine.fields.BinaryField
 .. autoclass:: mongoengine.fields.FileField
 .. autoclass:: mongoengine.fields.ImageField
-.. autoclass:: mongoengine.fields.GeoPointField
 .. autoclass:: mongoengine.fields.SequenceField
 .. autoclass:: mongoengine.fields.ObjectIdField
 .. autoclass:: mongoengine.fields.UUIDField
+.. autoclass:: mongoengine.fields.GeoPointField
+.. autoclass:: mongoengine.fields.PointField
+.. autoclass:: mongoengine.fields.LineStringField
+.. autoclass:: mongoengine.fields.PolygonField
 .. autoclass:: mongoengine.fields.GridFSError
 .. autoclass:: mongoengine.fields.GridFSProxy
 .. autoclass:: mongoengine.fields.ImageGridFsProxy
 .. autoclass:: mongoengine.fields.ImproperlyConfigured
+
+Misc
+====
+
+.. autofunction:: mongoengine.common._import_class

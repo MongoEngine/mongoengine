@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
@@ -69,11 +68,11 @@ class QTest(unittest.TestCase):
             x = IntField()
             y = StringField()
 
-        # Check than an error is raised when conflicting queries are anded
-        def invalid_combination():
-            query = Q(x__lt=7) & Q(x__lt=3)
-            query.to_query(TestDoc)
-        self.assertRaises(InvalidQueryError, invalid_combination)
+        query = (Q(x__lt=7) & Q(x__lt=3)).to_query(TestDoc)
+        self.assertEqual(query, {'$and': [{'x': {'$lt': 7}}, {'x': {'$lt': 3}}]})
+
+        query = (Q(y="a") & Q(x__lt=7) & Q(x__lt=3)).to_query(TestDoc)
+        self.assertEqual(query, {'$and': [{'y': "a"}, {'x': {'$lt': 7}}, {'x': {'$lt': 3}}]})
 
         # Check normal cases work without an error
         query = Q(x__lt=7) & Q(x__gt=3)
@@ -326,10 +325,26 @@ class QTest(unittest.TestCase):
         pk = ObjectId()
         User(email='example@example.com', pk=pk).save()
 
-        self.assertEqual(1, User.objects.filter(
-                                Q(email='example@example.com') |
-                                Q(name='John Doe')
-                                ).limit(2).filter(pk=pk).count())
+        self.assertEqual(1, User.objects.filter(Q(email='example@example.com') |
+                                                Q(name='John Doe')).limit(2).filter(pk=pk).count())
+
+    def test_chained_q_or_filtering(self):
+
+        class Post(EmbeddedDocument):
+            name = StringField(required=True)
+
+        class Item(Document):
+            postables = ListField(EmbeddedDocumentField(Post))
+
+        Item.drop_collection()
+
+        Item(postables=[Post(name="a"), Post(name="b")]).save()
+        Item(postables=[Post(name="a"), Post(name="c")]).save()
+        Item(postables=[Post(name="a"), Post(name="b"), Post(name="c")]).save()
+
+        self.assertEqual(Item.objects(Q(postables__name="a") & Q(postables__name="b")).count(), 2)
+        self.assertEqual(Item.objects.filter(postables__name="a").filter(postables__name="b").count(), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

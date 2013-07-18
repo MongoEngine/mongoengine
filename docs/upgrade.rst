@@ -2,6 +2,16 @@
 Upgrading
 #########
 
+
+0.8.2 to 0.8.3
+**************
+
+Minor change that may impact users:
+
+DynamicDocument fields are now stored in creation order after any declared
+fields.  Previously they were stored alphabetically.
+
+
 0.7 to 0.8
 **********
 
@@ -15,10 +25,10 @@ possible for the whole of the release.
     live. There maybe multiple manual steps in migrating and these are best honed
     on a staging / test system.
 
-Python
-=======
+Python and PyMongo
+==================
 
-Support for python 2.5 has been dropped.
+MongoEngine requires python 2.6 (or above) and pymongo 2.5 (or above)
 
 Data Model
 ==========
@@ -91,6 +101,13 @@ the case and the data is set only in the ``document._data`` dictionary: ::
       File "<stdin>", line 1, in <module>
     AttributeError: 'Animal' object has no attribute 'size'
 
+The Document class has introduced a reserved function `clean()`, which will be
+called before saving the document. If your document class happen to have a method
+with the same name, please try rename it.
+
+    def clean(self):
+        pass
+
 ReferenceField
 --------------
 
@@ -116,12 +133,16 @@ eg::
 
     # Mark all ReferenceFields as dirty and save
     for p in Person.objects:
-        p._mark_as_dirty('parent')
-        p._mark_as_dirty('friends')
+        p._mark_as_changed('parent')
+        p._mark_as_changed('friends')
         p.save()
 
 `An example test migration for ReferenceFields is available on github
 <https://github.com/MongoEngine/mongoengine/blob/master/tests/migration/refrencefield_dbref_to_object_id.py>`_.
+
+.. Note:: Internally mongoengine handles ReferenceFields the same, so they are
+   converted to DBRef on loading and ObjectIds or DBRefs depending on settings
+   on storage.
 
 UUIDField
 ---------
@@ -143,9 +164,9 @@ eg::
     class Animal(Document):
         uuid = UUIDField()
 
-    # Mark all ReferenceFields as dirty and save
+    # Mark all UUIDFields as dirty and save
     for a in Animal.objects:
-        a._mark_as_dirty('uuid')
+        a._mark_as_changed('uuid')
         a.save()
 
 `An example test migration for UUIDFields is available on github
@@ -172,9 +193,9 @@ eg::
     class Person(Document):
         balance = DecimalField()
 
-    # Mark all ReferenceFields as dirty and save
+    # Mark all DecimalField's as dirty and save
     for p in Person.objects:
-        p._mark_as_dirty('balance')
+        p._mark_as_changed('balance')
         p.save()
 
 .. note:: DecimalField's have also been improved with the addition of precision
@@ -235,12 +256,15 @@ update your code like so: ::
     mammals = Animal.objects(type="mammal").filter(order="Carnivora")  # The final queryset is assgined to mammals
     [m for m in mammals]                                               # This will return all carnivores
 
-No more len
------------
+Len iterates the queryset
+--------------------------
 
-If you ever did len(queryset) it previously did a count() under the covers, this
-caused some unusual issues - so now it has been removed in favour of the
-explicit `queryset.count()` to update::
+If you ever did `len(queryset)` it previously did a `count()` under the covers,
+this caused some unusual issues.  As `len(queryset)` is most often used by
+`list(queryset)` we now cache the queryset results and use that for the length.
+
+This isn't as performant as a `count()` and if you aren't iterating the
+queryset you should upgrade to use count::
 
     # Old code
     len(Animal.objects(type="mammal"))

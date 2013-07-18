@@ -54,7 +54,7 @@ be saved ::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
 
-Dynamic fields are stored in alphabetical order *after* any declared fields.
+Dynamic fields are stored in creation order *after* any declared fields.
 
 Fields
 ======
@@ -100,9 +100,6 @@ arguments can be set on all fields:
 :attr:`db_field` (Default: None)
     The MongoDB field name.
 
-:attr:`name` (Default: None)
-    The mongoengine field name.
-
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
     :class:`~mongoengine.ValidationError` will be raised when the document is
@@ -129,6 +126,7 @@ arguments can be set on all fields:
             # instead to just an object
             values = ListField(IntField(), default=[1,2,3])
 
+    .. note:: Unsetting a field with a default value will revert back to the default.
 
 :attr:`unique` (Default: False)
     When True, no documents in the collection will have the same value for this
@@ -403,7 +401,7 @@ either a single field name, or a list or tuple of field names::
 Skipping Document validation on save
 ------------------------------------
 You can also skip the whole document validation process by setting
-``validate=False`` when caling the :meth:`~mongoengine.document.Document.save`
+``validate=False`` when calling the :meth:`~mongoengine.document.Document.save`
 method::
 
     class Recipient(Document):
@@ -452,8 +450,8 @@ by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
 either be a single field name, a tuple containing multiple field names, or a
 dictionary containing a full index definition. A direction may be specified on
-fields by prefixing the field name with a **+** or a **-** sign. Note that
-direction only matters on multi-field indexes. ::
+fields by prefixing the field name with a **+** (for ascending) or a **-** sign
+(for descending). Note that direction only matters on multi-field indexes. ::
 
     class Page(Document):
         title = StringField()
@@ -479,6 +477,10 @@ If a dictionary is passed then the following options are available:
 :attr:`unique` (Default: False)
     Whether the index should be unique.
 
+:attr:`expireAfterSeconds` (Optional)
+    Allows you to automatically expire data from a collection by setting the
+    time in seconds to expire the a field.
+
 .. note::
 
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
@@ -489,11 +491,39 @@ Compound Indexes and Indexing sub documents
 Compound indexes can be created by adding the Embedded field or dictionary
 field name to the index definition.
 
-Sometimes its more efficient to index parts of Embeedded / dictionary fields,
+Sometimes its more efficient to index parts of Embedded / dictionary fields,
 in this case use 'dot' notation to identify the value to index eg: `rank.title`
 
 Geospatial indexes
 ------------------
+
+The best geo index for mongodb is the new "2dsphere", which has an improved
+spherical model and provides better performance and more options when querying.
+The following fields will explicitly add a "2dsphere" index:
+
+    - :class:`~mongoengine.fields.PointField`
+    - :class:`~mongoengine.fields.LineStringField`
+    - :class:`~mongoengine.fields.PolygonField`
+
+As "2dsphere" indexes can be part of a compound index, you may not want the
+automatic index but would prefer a compound index.  In this example we turn off
+auto indexing and explicitly declare a compound index on ``location`` and ``datetime``::
+
+    class Log(Document):
+        location = PointField(auto_index=False)
+        datetime = DateTimeField()
+
+        meta = {
+            'indexes': [[("location", "2dsphere"), ("datetime", 1)]]
+        }
+
+
+Pre MongoDB 2.4 Geo
+'''''''''''''''''''
+
+.. note:: For MongoDB < 2.4 this is still current, however the new 2dsphere
+    index is a big improvement over the previous 2D model - so upgrading is
+    advised.
 
 Geospatial indexes will be automatically created for all
 :class:`~mongoengine.fields.GeoPointField`\ s
@@ -511,6 +541,30 @@ point. To create a geospatial index you must prefix the field with the
                 '*location.point',
             ],
         }
+
+Time To Live indexes
+--------------------
+
+A special index type that allows you to automatically expire data from a
+collection after a given period. See the official
+`ttl <http://docs.mongodb.org/manual/tutorial/expire-data/#expire-data-from-collections-by-setting-ttl>`_
+documentation for more information.  A common usecase might be session data::
+
+    class Session(Document):
+        created = DateTimeField(default=datetime.now)
+        meta = {
+            'indexes': [
+                {'fields': ['created'], 'expireAfterSeconds': 3600}
+            ]
+        }
+
+Comparing Indexes
+-----------------
+
+Use :func:`mongoengine.Document.compare_indexes` to compare actual indexes in
+the database to those that your document definitions define.  This is useful
+for maintenance purposes and ensuring you have the correct indexes for your
+schema.
 
 Ordering
 ========

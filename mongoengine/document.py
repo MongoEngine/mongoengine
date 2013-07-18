@@ -1,11 +1,14 @@
-from __future__ import with_statement
 import warnings
 
+import hashlib
 import pymongo
 import re
 
+from pymongo.read_preferences import ReadPreference
+from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
+from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
@@ -16,6 +19,19 @@ from mongoengine.context_managers import switch_db, switch_collection
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
            'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
+
+
+def includes_cls(fields):
+    """ Helper function used for ensuring and comparing indexes
+    """
+
+    first_field = None
+    if len(fields):
+        if isinstance(fields[0], basestring):
+            first_field = fields[0]
+        elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+            first_field = fields[0][0]
+    return first_field == '_cls'
 
 
 class InvalidCollectionError(Exception):
@@ -52,6 +68,9 @@ class EmbeddedDocument(BaseDocument):
         if isinstance(other, self.__class__):
             return self._data == other._data
         return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class Document(BaseDocument):
@@ -180,8 +199,8 @@ class Document(BaseDocument):
             will force an fsync on the primary server.
         :param cascade: Sets the flag for cascading saves.  You can set a
             default by setting "cascade" in the document __meta__
-        :param cascade_kwargs: optional kwargs dictionary to be passed throw
-            to cascading saves
+        :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
+            to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
 
         .. versionchanged:: 0.5
@@ -190,23 +209,27 @@ class Document(BaseDocument):
             :class:`~bson.dbref.DBRef` objects that have changes are
             saved as well.
         .. versionchanged:: 0.6
-            Cascade saves are optional = defaults to True, if you want
+            Added cascading saves
+        .. versionchanged:: 0.8
+            Cascade saves are optional and default to False.  If you want
             fine grain control then you can turn off using document
-            meta['cascade'] = False  Also you can pass different kwargs to
+            meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
-            existing kwargs with custom values
+            existing kwargs with custom values.
         """
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
             self.validate(clean=clean)
 
-        if not write_concern:
-            write_concern = {}
+        if write_concern is None:
+            write_concern = {"w": 1}
 
         doc = self.to_mongo()
 
         created = ('_id' not in doc or self._created or force_insert)
+
+        signals.pre_save_post_validation.send(self.__class__, document=self, created=created)
 
         try:
             collection = self._get_collection()
@@ -232,7 +255,6 @@ class Document(BaseDocument):
                             return not updated
                     return created
 
-                upsert = self._created
                 update_query = {}
 
                 if updates:
@@ -241,11 +263,12 @@ class Document(BaseDocument):
                     update_query["$unset"] = removals
                 if updates or removals:
                     last_error = collection.update(select_dict, update_query,
-                                                   upsert=upsert, **write_concern)
+                                                   upsert=True, **write_concern)
                     created = is_new_object(last_error)
 
-            cascade = (self._meta.get('cascade', True)
-                       if cascade is None else cascade)
+            if cascade is None:
+                cascade = self._meta.get('cascade', False) or cascade_kwargs is not None
+
             if cascade:
                 kwargs = {
                     "force_insert": force_insert,
@@ -278,15 +301,17 @@ class Document(BaseDocument):
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references /
            generic references on an objects"""
-        import fields
         _refs = kwargs.get('_refs', []) or []
 
+        ReferenceField = _import_class('ReferenceField')
+        GenericReferenceField = _import_class('GenericReferenceField')
+
         for name, cls in self._fields.items():
-            if not isinstance(cls, (fields.ReferenceField,
-                                    fields.GenericReferenceField)):
+            if not isinstance(cls, (ReferenceField,
+                                    GenericReferenceField)):
                 continue
 
-            ref = getattr(self, name)
+            ref = self._data.get(name)
             if not ref or isinstance(ref, DBRef):
                 continue
 
@@ -327,7 +352,13 @@ class Document(BaseDocument):
         been saved.
         """
         if not self.pk:
-            raise OperationError('attempt to update a document not yet saved')
+            if kwargs.get('upsert', False):
+                query = self.to_mongo()
+                if "_cls" in query:
+                    del(query["_cls"])
+                return self._qs.filter(**query).update_one(**kwargs)
+            else:
+                raise OperationError('attempt to update a document not yet saved')
 
         # Need to add shard key to query, or you get an error
         return self._qs.filter(**self._object_key).update_one(**kwargs)
@@ -346,11 +377,10 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self._qs.filter(**self._object_key).delete(write_concern=write_concern)
+            self._qs.filter(**self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
-
         signals.post_delete.send(self.__class__, document=self)
 
     def switch_db(self, db_alias):
@@ -390,7 +420,7 @@ class Document(BaseDocument):
             user.save()
 
         If you need to read from another database see
-        :class:`~mongoengine.context_managers.switch_collection`
+        :class:`~mongoengine.context_managers.switch_db`
 
         :param collection_name: The database alias to use for saving the
             document
@@ -410,8 +440,8 @@ class Document(BaseDocument):
 
         .. versionadded:: 0.5
         """
-        import dereference
-        self._data = dereference.DeReference()(self._data, max_depth)
+        DeReference = _import_class('DeReference')
+        DeReference()([self], max_depth + 1)
         return self
 
     def reload(self, max_depth=1):
@@ -420,19 +450,16 @@ class Document(BaseDocument):
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
         """
-        id_field = self._meta['id_field']
-        obj = self._qs.filter(**{id_field: self[id_field]}
-                              ).limit(1).select_related(max_depth=max_depth)
+        obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
+                **self._object_key).limit(1).select_related(max_depth=max_depth)
+
         if obj:
             obj = obj[0]
         else:
             msg = "Reloaded document has been deleted"
             raise OperationError(msg)
-        for field in self._fields:
+        for field in self._fields_ordered:
             setattr(self, field, self._reload(field, obj[field]))
-        if self._dynamic:
-            for name in self._dynamic_fields.keys():
-                setattr(self, name, self._reload(name, obj._data[name]))
         self._changed_fields = obj._changed_fields
         self._created = False
         return obj
@@ -448,6 +475,7 @@ class Document(BaseDocument):
             value = [self._reload(key, v) for v in value]
             value = BaseList(value, self, key)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
+            value._instance = None
             value._changed_fields = []
         return value
 
@@ -524,15 +552,6 @@ class Document(BaseDocument):
         # index to service queries against _cls
         cls_indexed = False
 
-        def includes_cls(fields):
-            first_field = None
-            if len(fields):
-                if isinstance(fields[0], basestring):
-                    first_field = fields[0]
-                elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
-                    first_field = fields[0][0]
-            return first_field == '_cls'
-
         # Ensure document-defined indexes are created
         if cls._meta['index_specs']:
             index_spec = cls._meta['index_specs']
@@ -551,6 +570,90 @@ class Document(BaseDocument):
            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
+
+    @classmethod
+    def list_indexes(cls, go_up=True, go_down=True):
+        """ Lists all of the indexes that should be created for given
+        collection. It includes all the indexes from super- and sub-classes.
+        """
+
+        if cls._meta.get('abstract'):
+            return []
+
+        # get all the base classes, subclasses and sieblings
+        classes = []
+        def get_classes(cls):
+
+            if (cls not in classes and
+               isinstance(cls, TopLevelDocumentMetaclass)):
+                classes.append(cls)
+
+            for base_cls in cls.__bases__:
+                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                   base_cls != Document and
+                   not base_cls._meta.get('abstract') and
+                   base_cls._get_collection().full_name == cls._get_collection().full_name and
+                   base_cls not in classes):
+                    classes.append(base_cls)
+                    get_classes(base_cls)
+            for subclass in cls.__subclasses__():
+                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                   subclass._get_collection().full_name == cls._get_collection().full_name and
+                   subclass not in classes):
+                    classes.append(subclass)
+                    get_classes(subclass)
+
+        get_classes(cls)
+
+        # get the indexes spec for all of the gathered classes
+        def get_indexes_spec(cls):
+            indexes = []
+
+            if cls._meta['index_specs']:
+                index_spec = cls._meta['index_specs']
+                for spec in index_spec:
+                    spec = spec.copy()
+                    fields = spec.pop('fields')
+                    indexes.append(fields)
+            return indexes
+
+        indexes = []
+        for cls in classes:
+            for index in get_indexes_spec(cls):
+                if index not in indexes:
+                    indexes.append(index)
+
+        # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
+        if [(u'_id', 1)] not in indexes:
+            indexes.append([(u'_id', 1)])
+        if (cls._meta.get('index_cls', True) and
+           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+             indexes.append([(u'_cls', 1)])
+
+        return indexes
+
+    @classmethod
+    def compare_indexes(cls):
+        """ Compares the indexes defined in MongoEngine with the ones existing
+        in the database. Returns any missing/extra indexes.
+        """
+
+        required = cls.list_indexes()
+        existing = [info['key'] for info in cls._get_collection().index_information().values()]
+        missing = [index for index in required if index not in existing]
+        extra = [index for index in existing if index not in required]
+
+        # if { _cls: 1 } is missing, make sure it's *really* necessary
+        if [(u'_cls', 1)] in missing:
+            cls_obsolete = False
+            for index in existing:
+                if includes_cls(index) and index not in extra:
+                    cls_obsolete = True
+                    break
+            if cls_obsolete:
+                missing.remove([(u'_cls', 1)])
+
+        return {'missing': missing, 'extra': extra}
 
 
 class DynamicDocument(Document):

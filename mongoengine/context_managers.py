@@ -1,8 +1,10 @@
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.queryset import OperationError, QuerySet
+from mongoengine.queryset import QuerySet
 
-__all__ = ("switch_db", "switch_collection", "no_dereference", "query_counter")
+
+__all__ = ("switch_db", "switch_collection", "no_dereference",
+           "no_sub_classes", "query_counter")
 
 
 class switch_db(object):
@@ -130,6 +132,36 @@ class no_dereference(object):
         return self.cls
 
 
+class no_sub_classes(object):
+    """ no_sub_classes context manager.
+
+    Only returns instances of this class and no sub (inherited) classes::
+
+        with no_sub_classes(Group) as Group:
+            Group.objects.find()
+
+    """
+
+    def __init__(self, cls):
+        """ Construct the no_sub_classes context manager.
+
+        :param cls: the class to turn querying sub classes on
+        """
+        self.cls = cls
+
+    def __enter__(self):
+        """ change the objects default and _auto_dereference values"""
+        self.cls._all_subclasses = self.cls._subclasses
+        self.cls._subclasses = (self.cls,)
+        return self.cls
+
+    def __exit__(self, t, value, traceback):
+        """ Reset the default and _auto_dereference values"""
+        self.cls._subclasses = self.cls._all_subclasses
+        delattr(self.cls, '_all_subclasses')
+        return self.cls
+
+
 class QuerySetNoDeRef(QuerySet):
     """Special no_dereference QuerySet"""
     def __dereference(items, max_depth=1, instance=None, name=None):
@@ -157,7 +189,8 @@ class query_counter(object):
 
     def __eq__(self, value):
         """ == Compare querycounter. """
-        return value == self._get_count()
+        counter = self._get_count()
+        return value == counter
 
     def __ne__(self, value):
         """ != Compare querycounter. """
@@ -189,6 +222,7 @@ class query_counter(object):
 
     def _get_count(self):
         """ Get the number of queries. """
-        count = self.db.system.profile.find().count() - self.counter
+        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
+        count = self.db.system.profile.find(ignore_query).count() - self.counter
         self.counter += 1
         return count

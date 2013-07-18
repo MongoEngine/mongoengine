@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 import unittest
@@ -56,6 +55,9 @@ class ConnectionTest(unittest.TestCase):
         db = get_db()
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
+
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
 
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.

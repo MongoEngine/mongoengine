@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
 import datetime
 import unittest
 import uuid
+
+try:
+    import dateutil
+except ImportError:
+    dateutil = None
 
 from decimal import Decimal
 
@@ -30,20 +34,137 @@ class FieldTest(unittest.TestCase):
         self.db.drop_collection('fs.files')
         self.db.drop_collection('fs.chunks')
 
-    def test_default_values(self):
+    def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating a document.
         """
         class Person(Document):
             name = StringField()
-            age = IntField(default=30, help_text="Your real age")
-            userid = StringField(default=lambda: 'test', verbose_name="User Identity")
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
 
-        person = Person(name='Test Person')
-        self.assertEqual(person._data['age'], 30)
-        self.assertEqual(person._data['userid'], 'test')
-        self.assertEqual(person._fields['name'].help_text, None)
-        self.assertEqual(person._fields['age'].help_text, "Your real age")
-        self.assertEqual(person._fields['userid'].verbose_name, "User Identity")
+        person = Person(name="Ross")
+
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'name', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'name', 'userid'])
+
+    def test_default_values_set_to_None(self):
+        """Ensure that default field values are used when creating a document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        # Trying setting values to None
+        person = Person(name=None, age=None, userid=None, created=None)
+
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+    def test_default_values_when_setting_to_None(self):
+        """Ensure that default field values are used when creating a document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        person = Person()
+        person.name = None
+        person.age = None
+        person.userid = None
+        person.created = None
+
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+    def test_default_values_when_deleting_value(self):
+        """Ensure that default field values are used when creating a document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        person = Person(name="Ross")
+        del person.name
+        del person.age
+        del person.userid
+        del person.created
+
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
     def test_required_values(self):
         """Ensure that required field constraints are enforced.
@@ -404,10 +525,38 @@ class FieldTest(unittest.TestCase):
         log.time = datetime.date.today()
         log.validate()
 
+        log.time = datetime.datetime.now().isoformat(' ')
+        log.validate()
+
+        if dateutil:
+            log.time = datetime.datetime.now().isoformat('T')
+            log.validate()
+
         log.time = -1
         self.assertRaises(ValidationError, log.validate)
-        log.time = '1pm'
+        log.time = 'ABC'
         self.assertRaises(ValidationError, log.validate)
+
+    def test_datetime_tz_aware_mark_as_changed(self):
+        from mongoengine import connection
+
+        # Reset the connections
+        connection._connection_settings = {}
+        connection._connections = {}
+        connection._dbs = {}
+
+        connect(db='mongoenginetest', tz_aware=True)
+
+        class LogEntry(Document):
+            time = DateTimeField()
+
+        LogEntry.drop_collection()
+
+        LogEntry(time=datetime.datetime(2013, 1, 1, 0, 0, 0)).save()
+
+        log = LogEntry.objects.first()
+        log.time = datetime.datetime(2013, 1, 1, 0, 0, 0)
+        self.assertEqual(['time'], log._changed_fields)
 
     def test_datetime(self):
         """Tests showing pymongo datetime fields handling of microseconds.
@@ -459,6 +608,66 @@ class FieldTest(unittest.TestCase):
             log.reload()
             self.assertNotEqual(log.date, d1)
             self.assertEqual(log.date, d2)
+
+        LogEntry.drop_collection()
+
+    def test_datetime_usage(self):
+        """Tests for regular datetime fields"""
+        class LogEntry(Document):
+            date = DateTimeField()
+
+        LogEntry.drop_collection()
+
+        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01)
+        log = LogEntry()
+        log.date = d1
+        log.validate()
+        log.save()
+
+        for query in (d1, d1.isoformat(' ')):
+            log1 = LogEntry.objects.get(date=query)
+            self.assertEqual(log, log1)
+
+        if dateutil:
+            log1 = LogEntry.objects.get(date=d1.isoformat('T'))
+            self.assertEqual(log, log1)
+
+        LogEntry.drop_collection()
+
+        # create 60 log entries
+        for i in xrange(1950, 2010):
+            d = datetime.datetime(i, 01, 01, 00, 00, 01)
+            LogEntry(date=d).save()
+
+        self.assertEqual(LogEntry.objects.count(), 60)
+
+        # Test ordering
+        logs = LogEntry.objects.order_by("date")
+        count = logs.count()
+        i = 0
+        while i == count - 1:
+            self.assertTrue(logs[i].date <= logs[i + 1].date)
+            i += 1
+
+        logs = LogEntry.objects.order_by("-date")
+        count = logs.count()
+        i = 0
+        while i == count - 1:
+            self.assertTrue(logs[i].date >= logs[i + 1].date)
+            i += 1
+
+        # Test searching
+        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980, 1, 1))
+        self.assertEqual(logs.count(), 30)
+
+        logs = LogEntry.objects.filter(
+            date__lte=datetime.datetime(2011, 1, 1),
+            date__gte=datetime.datetime(2000, 1, 1),
+        )
+        self.assertEqual(logs.count(), 10)
 
         LogEntry.drop_collection()
 
@@ -787,6 +996,53 @@ class FieldTest(unittest.TestCase):
         e.mapping = {}
 
         self.assertRaises(ValidationError, e.save)
+
+    def test_complex_field_same_value_not_changed(self):
+        """
+        If a complex field is set to the same value, it should not be marked as
+        changed.
+        """
+        class Simple(Document):
+            mapping = ListField()
+
+        Simple.drop_collection()
+        e = Simple().save()
+        e.mapping = []
+        self.assertEqual([], e._changed_fields)
+
+        class Simple(Document):
+            mapping = DictField()
+
+        Simple.drop_collection()
+        e = Simple().save()
+        e.mapping = {}
+        self.assertEqual([], e._changed_fields)
+
+    def test_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        simple.widgets[:3] = []
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
+    def test_del_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        del simple.widgets[:3]
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
 
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
@@ -1841,45 +2097,6 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
-    def test_geo_indexes(self):
-        """Ensure that indexes are created automatically for GeoPointFields.
-        """
-        class Event(Document):
-            title = StringField()
-            location = GeoPointField()
-
-        Event.drop_collection()
-        event = Event(title="Coltrane Motion @ Double Door",
-                      location=[41.909889, -87.677137])
-        event.save()
-
-        info = Event.objects._collection.index_information()
-        self.assertTrue(u'location_2d' in info)
-        self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
-
-        Event.drop_collection()
-
-    def test_geo_embedded_indexes(self):
-        """Ensure that indexes are created automatically for GeoPointFields on
-        embedded documents.
-        """
-        class Venue(EmbeddedDocument):
-            location = GeoPointField()
-            name = StringField()
-
-        class Event(Document):
-            title = StringField()
-            venue = EmbeddedDocumentField(Venue)
-
-        Event.drop_collection()
-        venue = Venue(name="Double Door", location=[41.909889, -87.677137])
-        event = Event(title="Coltrane Motion", venue=venue)
-        event.save()
-
-        info = Event.objects._collection.index_information()
-        self.assertTrue(u'location_2d' in info)
-        self.assertTrue(info[u'location_2d']['key'] == [(u'location', u'2d')])
-
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""
         class D(Document):
@@ -1916,6 +2133,38 @@ class FieldTest(unittest.TestCase):
         Person.id.set_next_value(1000)
         c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
         self.assertEqual(c['next'], 1000)
+
+
+    def test_sequence_field_get_next_value(self):
+        class Person(Document):
+            id = SequenceField(primary_key=True)
+            name = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+
+        for x in xrange(10):
+            Person(name="Person %s" % x).save()
+
+        self.assertEqual(Person.id.get_next_value(), 11)
+        self.db['mongoengine.counters'].drop()
+
+        self.assertEqual(Person.id.get_next_value(), 1)
+
+        class Person(Document):
+            id = SequenceField(primary_key=True, value_decorator=str)
+            name = StringField()
+
+        self.db['mongoengine.counters'].drop()
+        Person.drop_collection()
+
+        for x in xrange(10):
+            Person(name="Person %s" % x).save()
+
+        self.assertEqual(Person.id.get_next_value(), '11')
+        self.db['mongoengine.counters'].drop()
+
+        self.assertEqual(Person.id.get_next_value(), '1')
 
     def test_sequence_field_sequence_name(self):
         class Person(Document):
@@ -2225,6 +2474,37 @@ class FieldTest(unittest.TestCase):
         user = User(email='me@example.com')
         self.assertTrue(user.validate() is None)
 
+    def test_tuples_as_tuples(self):
+        """
+        Ensure that tuples remain tuples when they are
+        inside a ComplexBaseField
+        """
+        from mongoengine.base import BaseField
+
+        class EnumField(BaseField):
+
+            def __init__(self, **kwargs):
+                super(EnumField, self).__init__(**kwargs)
+
+            def to_mongo(self, value):
+                return value
+
+            def to_python(self, value):
+                return tuple(value)
+
+        class TestDoc(Document):
+            items = ListField(EnumField())
+
+        TestDoc.drop_collection()
+        tuples = [(100, 'Testing')]
+        doc = TestDoc()
+        doc.items = tuples
+        doc.save()
+        x = TestDoc.objects().get()
+        self.assertTrue(x is not None)
+        self.assertTrue(len(x.items) == 1)
+        self.assertTrue(tuple(x.items[0]) in tuples)
+        self.assertTrue(x.items[0] in tuples)
 
 if __name__ == '__main__':
     unittest.main()

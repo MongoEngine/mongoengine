@@ -91,11 +91,12 @@ class DocumentMetaclass(type):
         attrs['_fields'] = doc_fields
         attrs['_db_field_map'] = dict([(k, getattr(v, 'db_field', k))
                                       for k, v in doc_fields.iteritems()])
+        attrs['_reverse_db_field_map'] = dict(
+            (v, k) for k, v in attrs['_db_field_map'].iteritems())
+
         attrs['_fields_ordered'] = tuple(i[1] for i in sorted(
                                          (v.creation_counter, v.name)
                                          for v in doc_fields.itervalues()))
-        attrs['_reverse_db_field_map'] = dict(
-            (v, k) for k, v in attrs['_db_field_map'].iteritems())
 
         #
         # Set document hierarchy
@@ -140,8 +141,31 @@ class DocumentMetaclass(type):
                 base._subclasses += (_cls,)
             base._types = base._subclasses   # TODO depreciate _types
 
-        # Handle delete rules
         Document, EmbeddedDocument, DictField = cls._import_classes()
+
+        if issubclass(new_class, Document):
+            new_class._collection = None
+
+        # Add class to the _document_registry
+        _document_registry[new_class._class_name] = new_class
+
+        # In Python 2, User-defined methods objects have special read-only
+        # attributes 'im_func' and 'im_self' which contain the function obj
+        # and class instance object respectively.  With Python 3 these special
+        # attributes have been replaced by __func__ and __self__.  The Blinker
+        # module continues to use im_func and im_self, so the code below
+        # copies __func__ into im_func and __self__ into im_self for
+        # classmethod objects in Document derived classes.
+        if PY3:
+            for key, val in new_class.__dict__.items():
+                if isinstance(val, classmethod):
+                    f = val.__get__(new_class)
+                    if hasattr(f, '__func__') and not hasattr(f, 'im_func'):
+                        f.__dict__.update({'im_func': getattr(f, '__func__')})
+                    if hasattr(f, '__self__') and not hasattr(f, 'im_self'):
+                        f.__dict__.update({'im_self': getattr(f, '__self__')})
+
+        # Handle delete rules
         for field in new_class._fields.itervalues():
             f = field
             f.owner_document = new_class
@@ -167,32 +191,10 @@ class DocumentMetaclass(type):
                                                      field.name, delete_rule)
 
             if (field.name and hasattr(Document, field.name) and
-                EmbeddedDocument not in new_class.mro()):
+               EmbeddedDocument not in new_class.mro()):
                 msg = ("%s is a document method and not a valid "
                        "field name" % field.name)
                 raise InvalidDocumentError(msg)
-
-        if issubclass(new_class, Document):
-            new_class._collection = None
-
-        # Add class to the _document_registry
-        _document_registry[new_class._class_name] = new_class
-
-        # In Python 2, User-defined methods objects have special read-only
-        # attributes 'im_func' and 'im_self' which contain the function obj
-        # and class instance object respectively.  With Python 3 these special
-        # attributes have been replaced by __func__ and __self__.  The Blinker
-        # module continues to use im_func and im_self, so the code below
-        # copies __func__ into im_func and __self__ into im_self for
-        # classmethod objects in Document derived classes.
-        if PY3:
-            for key, val in new_class.__dict__.items():
-                if isinstance(val, classmethod):
-                    f = val.__get__(new_class)
-                    if hasattr(f, '__func__') and not hasattr(f, 'im_func'):
-                        f.__dict__.update({'im_func': getattr(f, '__func__')})
-                    if hasattr(f, '__self__') and not hasattr(f, 'im_self'):
-                        f.__dict__.update({'im_self': getattr(f, '__self__')})
 
         return new_class
 
@@ -357,11 +359,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     new_class.id = field
 
         # Set primary key if not defined by the document
+        new_class._auto_id_field = False
         if not new_class._meta.get('id_field'):
+            new_class._auto_id_field = True
             new_class._meta['id_field'] = 'id'
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class._fields['id'].name = 'id'
             new_class.id = new_class._fields['id']
+
+        # Prepend id field to _fields_ordered
+        if 'id' in new_class._fields and 'id' not in new_class._fields_ordered:
+            new_class._fields_ordered = ('id', ) + new_class._fields_ordered
 
         # Merge in exceptions with parent hierarchy
         exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)

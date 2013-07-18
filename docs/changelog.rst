@@ -2,8 +2,75 @@
 Changelog
 =========
 
-Changes in 0.8.X
+Changes in 0.8.3
 ================
+- Fixed EmbeddedDocuments with `id` also storing `_id` (#402)
+- Added get_proxy_object helper to filefields (#391)
+- Added QuerySetNoCache and QuerySet.no_cache() for lower memory consumption (#365)
+- Fixed sum and average mapreduce dot notation support (#375, #376, #393)
+- Fixed as_pymongo to return the id (#386)
+- Document.select_related() now respects `db_alias` (#377)
+- Reload uses shard_key if applicable (#384)
+- Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
+
+  **Potential breaking change:** http://docs.mongoengine.org/en/latest/upgrade.html#to-0-8-3
+
+- Fixed pickling dynamic documents `_dynamic_fields` (#387)
+- Fixed ListField setslice and delslice dirty tracking (#390)
+- Added Django 1.5 PY3 support (#392)
+- Added match ($elemMatch) support for EmbeddedDocuments (#379)
+- Fixed weakref being valid after reload (#374)
+- Fixed queryset.get() respecting no_dereference (#373)
+- Added full_result kwarg to update (#380)
+
+
+
+Changes in 0.8.2
+================
+- Added compare_indexes helper (#361)
+- Fixed cascading saves which weren't turned off as planned (#291)
+- Fixed Datastructures so instances are a Document or EmbeddedDocument (#363)
+- Improved cascading saves write performance (#361)
+- Fixed ambiguity and differing behaviour regarding field defaults (#349)
+- ImageFields now include PIL error messages if invalid error (#353)
+- Added lock when calling doc.Delete() for when signals have no sender (#350)
+- Reload forces read preference to be PRIMARY (#355)
+- Querysets are now lest restrictive when querying duplicate fields (#332, #333)
+- FileField now honouring db_alias (#341)
+- Removed customised __set__ change tracking in ComplexBaseField (#344)
+- Removed unused var in _get_changed_fields (#347)
+- Added pre_save_post_validation signal (#345)
+- DateTimeField now auto converts valid datetime isostrings into dates (#343)
+- DateTimeField now uses dateutil for parsing if available (#343)
+- Fixed Doc.objects(read_preference=X) not setting read preference (#352)
+- Django session ttl index expiry fixed (#329)
+- Fixed pickle.loads (#342)
+- Documentation fixes
+
+Changes in 0.8.1
+================
+- Fixed Python 2.6 django auth importlib issue (#326)
+- Fixed pickle unsaved document regression (#327)
+
+Changes in 0.8.0
+================
+- Fixed querying ReferenceField custom_id (#317)
+- Fixed pickle issues with collections (#316)
+- Added `get_next_value` preview for SequenceFields (#319)
+- Added no_sub_classes context manager and queryset helper (#312)
+- Querysets now utilises a local cache
+- Changed __len__ behavour in the queryset (#247, #311)
+- Fixed querying string versions of ObjectIds issue with ReferenceField (#307)
+- Added $setOnInsert support for upserts (#308)
+- Upserts now possible with just query parameters (#309)
+- Upserting is the only way to ensure docs are saved correctly (#306)
+- Fixed register_delete_rule inheritance issue
+- Fix cloning of sliced querysets (#303)
+- Fixed update_one write concern (#302)
+- Updated minimum requirement for pymongo to 2.5
+- Add support for new geojson fields, indexes and queries (#299)
+- If values cant be compared mark as changed (#287)
+- Ensure as_pymongo() and to_json honour only() and exclude() (#293)
 - Document serialization uses field order to ensure a strict order is set (#296)
 - DecimalField now stores as float not string (#289)
 - UUIDField now stores as a binary by default (#292)
@@ -14,7 +81,6 @@ Changes in 0.8.X
 - Added SequenceField.set_next_value(value) helper (#159)
 - Updated .only() behaviour - now like exclude it is chainable (#202)
 - Added with_limit_and_skip support to count() (#235)
-- Removed __len__ from queryset (#247)
 - Objects queryset manager now inherited (#256)
 - Updated connection to use MongoClient (#262, #274)
 - Fixed db_alias and inherited Documents (#143)
