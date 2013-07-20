@@ -54,7 +54,7 @@ be saved ::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
 
-Dynamic fields are stored in alphabetical order *after* any declared fields.
+Dynamic fields are stored in creation order *after* any declared fields.
 
 Fields
 ======

@@ -2,48 +2,42 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 from nose.plugins.skip import SkipTest
-from mongoengine.python_support import PY3
 from mongoengine import *
 
+
+from mongoengine.django.shortcuts import get_document_or_404
+
+from django.http import Http404
+from django.template import Context, Template
+from django.conf import settings
+from django.core.paginator import Paginator
+
+settings.configure(
+    USE_TZ=True,
+    INSTALLED_APPS=('django.contrib.auth', 'mongoengine.django.mongo_auth'),
+    AUTH_USER_MODEL=('mongo_auth.MongoUser'),
+)
+
 try:
-    from mongoengine.django.shortcuts import get_document_or_404
-
-    from django.http import Http404
-    from django.template import Context, Template
-    from django.conf import settings
-    from django.core.paginator import Paginator
-
-    settings.configure(
-        USE_TZ=True,
-        INSTALLED_APPS=('django.contrib.auth', 'mongoengine.django.mongo_auth'),
-        AUTH_USER_MODEL=('mongo_auth.MongoUser'),
-    )
-
-    try:
-        from django.contrib.auth import authenticate, get_user_model
-        from mongoengine.django.auth import User
-        from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
-        DJ15 = True
-    except Exception:
-        DJ15 = False
-    from django.contrib.sessions.tests import SessionTestsMixin
-    from mongoengine.django.sessions import SessionStore, MongoSession
-except Exception, err:
-    if PY3:
-        SessionTestsMixin = type  # dummy value so no error
-        SessionStore = None  # dummy value so no error
-    else:
-        raise err
+    from django.contrib.auth import authenticate, get_user_model
+    from mongoengine.django.auth import User
+    from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
+    DJ15 = True
+except Exception:
+    DJ15 = False
+from django.contrib.sessions.tests import SessionTestsMixin
+from mongoengine.django.sessions import SessionStore, MongoSession
 
 
 from datetime import tzinfo, timedelta
 ZERO = timedelta(0)
 
+
 class FixedOffset(tzinfo):
     """Fixed offset in minutes east from UTC."""
 
     def __init__(self, offset, name):
-        self.__offset = timedelta(minutes = offset)
+        self.__offset = timedelta(minutes=offset)
         self.__name = name
 
     def utcoffset(self, dt):
@@ -70,8 +64,6 @@ def activate_timezone(tz):
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
-        if PY3:
-            raise SkipTest('django does not have Python 3 support')
         connect(db='mongoenginetest')
 
         class Person(Document):
@@ -223,8 +215,6 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
     backend = SessionStore
 
     def setUp(self):
-        if PY3:
-            raise SkipTest('django does not have Python 3 support')
         connect(db='mongoenginetest')
         MongoSession.drop_collection()
         super(MongoDBSessionTest, self).setUp()
@@ -262,8 +252,6 @@ class MongoAuthTest(unittest.TestCase):
     }
 
     def setUp(self):
-        if PY3:
-            raise SkipTest('django does not have Python 3 support')
         if not DJ15:
             raise SkipTest('mongo_auth requires Django 1.5')
         connect(db='mongoenginetest')

@@ -16,7 +16,9 @@ fetch documents from the database::
 .. note::
 
     As of MongoEngine 0.8 the querysets utilise a local cache.  So iterating
-    it multiple times will only cause a single query.
+    it multiple times will only cause a single query.  If this is not the
+    desired behavour you can call :class:`~mongoengine.QuerySet.no_cache` to
+    return a non-caching queryset.
 
 Filtering queries
 =================

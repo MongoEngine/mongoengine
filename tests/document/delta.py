@@ -3,6 +3,7 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 
+from bson import SON
 from mongoengine import *
 from mongoengine.connection import get_db
 
@@ -613,13 +614,13 @@ class DeltaTest(unittest.TestCase):
         Person.drop_collection()
 
         p = Person(name="James", age=34)
-        self.assertEqual(p._delta(), ({'age': 34, 'name': 'James',
-                                       '_cls': 'Person'}, {}))
+        self.assertEqual(p._delta(), (
+            SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
         p.doc = 123
         del(p.doc)
-        self.assertEqual(p._delta(), ({'age': 34, 'name': 'James',
-                                       '_cls': 'Person'}, {'doc': 1}))
+        self.assertEqual(p._delta(), (
+            SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
         p = Person()
         p.name = "Dean"
@@ -631,14 +632,14 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(p._get_changed_fields(), ['age'])
         self.assertEqual(p._delta(), ({'age': 24}, {}))
 
-        p = self.Person.objects(age=22).get()
+        p = Person.objects(age=22).get()
         p.age = 24
         self.assertEqual(p.age, 24)
         self.assertEqual(p._get_changed_fields(), ['age'])
         self.assertEqual(p._delta(), ({'age': 24}, {}))
 
         p.save()
-        self.assertEqual(1, self.Person.objects(age=24).count())
+        self.assertEqual(1, Person.objects(age=24).count())
 
     def test_dynamic_delta(self):
 

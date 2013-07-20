@@ -108,6 +108,14 @@ class BaseList(list):
         self._mark_as_changed()
         return super(BaseList, self).__delitem__(*args, **kwargs)
 
+    def __setslice__(self, *args, **kwargs):
+        self._mark_as_changed()
+        return super(BaseList, self).__setslice__(*args, **kwargs)
+
+    def __delslice__(self, *args, **kwargs):
+        self._mark_as_changed()
+        return super(BaseList, self).__delslice__(*args, **kwargs)
+
     def __getstate__(self):
         self.instance = None
         self._dereferenced = False

@@ -17,6 +17,14 @@ class PickleTest(Document):
     photo = FileField()
 
 
+class PickleDyanmicEmbedded(DynamicEmbeddedDocument):
+    date = DateTimeField(default=datetime.now)
+
+
+class PickleDynamicTest(DynamicDocument):
+    number = IntField()
+
+
 class PickleSignalsTest(Document):
     number = IntField()
     string = StringField(choices=(('One', '1'), ('Two', '2')))

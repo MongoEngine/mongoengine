@@ -1018,6 +1018,32 @@ class FieldTest(unittest.TestCase):
         e.mapping = {}
         self.assertEqual([], e._changed_fields)
 
+    def test_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        simple.widgets[:3] = []
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
+    def test_del_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        del simple.widgets[:3]
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 
@@ -2448,6 +2474,37 @@ class FieldTest(unittest.TestCase):
         user = User(email='me@example.com')
         self.assertTrue(user.validate() is None)
 
+    def test_tuples_as_tuples(self):
+        """
+        Ensure that tuples remain tuples when they are
+        inside a ComplexBaseField
+        """
+        from mongoengine.base import BaseField
+
+        class EnumField(BaseField):
+
+            def __init__(self, **kwargs):
+                super(EnumField, self).__init__(**kwargs)
+
+            def to_mongo(self, value):
+                return value
+
+            def to_python(self, value):
+                return tuple(value)
+
+        class TestDoc(Document):
+            items = ListField(EnumField())
+
+        TestDoc.drop_collection()
+        tuples = [(100, 'Testing')]
+        doc = TestDoc()
+        doc.items = tuples
+        doc.save()
+        x = TestDoc.objects().get()
+        self.assertTrue(x is not None)
+        self.assertTrue(len(x.items) == 1)
+        self.assertTrue(tuple(x.items[0]) in tuples)
+        self.assertTrue(x.items[0] in tuples)
 
 if __name__ == '__main__':
     unittest.main()

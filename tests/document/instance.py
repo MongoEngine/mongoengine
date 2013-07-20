@@ -10,7 +10,8 @@ import uuid
 
 from datetime import datetime
 from bson import DBRef
-from tests.fixtures import PickleEmbedded, PickleTest, PickleSignalsTest
+from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
+                            PickleDyanmicEmbedded, PickleDynamicTest)
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
@@ -442,6 +443,13 @@ class InstanceTest(unittest.TestCase):
                          ['_cls', 'name', 'age'])
         self.assertEqual(Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
                          ['_cls', 'name', 'age', 'salary'])
+
+    def test_embedded_document_to_mongo_id(self):
+        class SubDoc(EmbeddedDocument):
+            id = StringField(required=True)
+
+        sub_doc = SubDoc(id="abc")
+        self.assertEqual(sub_doc.to_mongo().keys(), ['id'])
 
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly.
@@ -1827,6 +1835,29 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(pickle_doc.string, "Two")
         self.assertEqual(pickle_doc.lists, ["1", "2", "3"])
 
+    def test_dynamic_document_pickle(self):
+
+        pickle_doc = PickleDynamicTest(name="test", number=1, string="One", lists=['1', '2'])
+        pickle_doc.embedded = PickleDyanmicEmbedded(foo="Bar")
+        pickled_doc = pickle.dumps(pickle_doc)  # make sure pickling works even before the doc is saved
+
+        pickle_doc.save()
+
+        pickled_doc = pickle.dumps(pickle_doc)
+        resurrected = pickle.loads(pickled_doc)
+
+        self.assertEqual(resurrected, pickle_doc)
+        self.assertEqual(resurrected._fields_ordered,
+                         pickle_doc._fields_ordered)
+        self.assertEqual(resurrected._dynamic_fields.keys(),
+                         pickle_doc._dynamic_fields.keys())
+
+        self.assertEqual(resurrected.embedded, pickle_doc.embedded)
+        self.assertEqual(resurrected.embedded._fields_ordered,
+                         pickle_doc.embedded._fields_ordered)
+        self.assertEqual(resurrected.embedded._dynamic_fields.keys(),
+                         pickle_doc.embedded._dynamic_fields.keys())
+
     def test_picklable_on_signals(self):
         pickle_doc = PickleSignalsTest(number=1, string="One", lists=['1', '2'])
         pickle_doc.embedded = PickleEmbedded()
@@ -2286,6 +2317,16 @@ class InstanceTest(unittest.TestCase):
         """Ensure that document may be created using mixed arguments.
         """
         person = self.Person("Test User", age=42)
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 42)
+
+    def test_mixed_creation_dynamic(self):
+        """Ensure that document may be created using mixed arguments.
+        """
+        class Person(DynamicDocument):
+            name = StringField()
+
+        person = Person("Test User", age=42)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
 

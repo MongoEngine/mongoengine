@@ -279,14 +279,14 @@ class DecimalField(BaseField):
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal libary:
 
-            - decimial.ROUND_CEILING (towards Infinity)
-            - decimial.ROUND_DOWN (towards zero)
-            - decimial.ROUND_FLOOR (towards -Infinity)
-            - decimial.ROUND_HALF_DOWN (to nearest with ties going towards zero)
-            - decimial.ROUND_HALF_EVEN (to nearest with ties going to nearest even integer)
-            - decimial.ROUND_HALF_UP (to nearest with ties going away from zero)
-            - decimial.ROUND_UP (away from zero)
-            - decimial.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
+            - decimal.ROUND_CEILING (towards Infinity)
+            - decimal.ROUND_DOWN (towards zero)
+            - decimal.ROUND_FLOOR (towards -Infinity)
+            - decimal.ROUND_HALF_DOWN (to nearest with ties going towards zero)
+            - decimal.ROUND_HALF_EVEN (to nearest with ties going to nearest even integer)
+            - decimal.ROUND_HALF_UP (to nearest with ties going away from zero)
+            - decimal.ROUND_UP (away from zero)
+            - decimal.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
 
             Defaults to: ``decimal.ROUND_HALF_UP``
 
@@ -1190,9 +1190,7 @@ class FileField(BaseField):
         # Check if a file already exists for this model
         grid_file = instance._data.get(self.name)
         if not isinstance(grid_file, self.proxy_class):
-            grid_file = self.proxy_class(key=self.name, instance=instance,
-                                         db_alias=self.db_alias,
-                                         collection_name=self.collection_name)
+            grid_file = self.get_proxy_obj(key=self.name, instance=instance)
             instance._data[self.name] = grid_file
 
         if not grid_file.key:
@@ -1214,14 +1212,22 @@ class FileField(BaseField):
                     pass
 
             # Create a new proxy object as we don't already have one
-            instance._data[key] = self.proxy_class(key=key, instance=instance,
-                                                   db_alias=self.db_alias,
-                                                   collection_name=self.collection_name)
+            instance._data[key] = self.get_proxy_obj(key=key, instance=instance)
             instance._data[key].put(value)
         else:
             instance._data[key] = value
 
         instance._mark_as_changed(key)
+
+    def get_proxy_obj(self, key, instance, db_alias=None, collection_name=None):
+        if db_alias is None:
+            db_alias = self.db_alias
+        if collection_name is None:
+            collection_name = self.collection_name
+
+        return self.proxy_class(key=key, instance=instance,
+                                db_alias=db_alias,
+                                collection_name=collection_name)
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
@@ -1255,6 +1261,9 @@ class ImageGridFsProxy(GridFSProxy):
         applying field properties (size, thumbnail_size)
         """
         field = self.instance._fields[self.key]
+        # Handle nested fields
+        if hasattr(field, 'field') and isinstance(field.field, FileField):
+            field = field.field
 
         try:
             img = Image.open(file_obj)

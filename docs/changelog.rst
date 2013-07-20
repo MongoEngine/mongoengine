@@ -4,10 +4,26 @@ Changelog
 
 Changes in 0.8.3
 ================
+- Fixed EmbeddedDocuments with `id` also storing `_id` (#402)
+- Added get_proxy_object helper to filefields (#391)
+- Added QuerySetNoCache and QuerySet.no_cache() for lower memory consumption (#365)
+- Fixed sum and average mapreduce dot notation support (#375, #376, #393)
+- Fixed as_pymongo to return the id (#386)
+- Document.select_related() now respects `db_alias` (#377)
+- Reload uses shard_key if applicable (#384)
+- Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
+
+  **Potential breaking change:** http://docs.mongoengine.org/en/latest/upgrade.html#to-0-8-3
+
+- Fixed pickling dynamic documents `_dynamic_fields` (#387)
+- Fixed ListField setslice and delslice dirty tracking (#390)
+- Added Django 1.5 PY3 support (#392)
 - Added match ($elemMatch) support for EmbeddedDocuments (#379)
 - Fixed weakref being valid after reload (#374)
 - Fixed queryset.get() respecting no_dereference (#373)
 - Added full_result kwarg to update (#380)
+
+
 
 Changes in 0.8.2
 ================
