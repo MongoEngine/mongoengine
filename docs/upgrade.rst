@@ -16,8 +16,8 @@ fields.  Previously they were stored alphabetically.
 **********
 
 There have been numerous backwards breaking changes in 0.8.  The reasons for
-these are ensure that MongoEngine has sane defaults going forward and
-performs the best it can out the box.  Where possible there have been
+these are to ensure that MongoEngine has sane defaults going forward and that it
+performs the best it can out of the box.  Where possible there have been
 FutureWarnings to help get you ready for the change, but that hasn't been
 possible for the whole of the release.
 
@@ -71,7 +71,7 @@ inherited classes like so: ::
 Document Definition
 -------------------
 
-The default for inheritance has changed - its now off by default and
+The default for inheritance has changed - it is now off by default and
 :attr:`_cls` will not be stored automatically with the class.  So if you extend
 your :class:`~mongoengine.Document` or :class:`~mongoengine.EmbeddedDocuments`
 you will need to declare :attr:`allow_inheritance` in the meta data like so: ::
@@ -81,7 +81,7 @@ you will need to declare :attr:`allow_inheritance` in the meta data like so: ::
 
         meta = {'allow_inheritance': True}
 
-Previously, if you had data the database that wasn't defined in the Document
+Previously, if you had data in the database that wasn't defined in the Document
 definition, it would set it as an attribute on the document.  This is no longer
 the case and the data is set only in the ``document._data`` dictionary: ::
 
@@ -102,8 +102,8 @@ the case and the data is set only in the ``document._data`` dictionary: ::
     AttributeError: 'Animal' object has no attribute 'size'
 
 The Document class has introduced a reserved function `clean()`, which will be
-called before saving the document. If your document class happen to have a method
-with the same name, please try rename it.
+called before saving the document. If your document class happens to have a method
+with the same name, please try to rename it.
 
     def clean(self):
         pass
@@ -111,7 +111,7 @@ with the same name, please try rename it.
 ReferenceField
 --------------
 
-ReferenceFields now store ObjectId's by default - this is more efficient than
+ReferenceFields now store ObjectIds by default - this is more efficient than
 DBRefs as we already know what Document types they reference::
 
     # Old code
@@ -157,7 +157,7 @@ UUIDFields now default to storing binary values::
     class Animal(Document):
         uuid = UUIDField(binary=False)
 
-To migrate all the uuid's you need to touch each object and mark it as dirty
+To migrate all the uuids you need to touch each object and mark it as dirty
 eg::
 
     # Doc definition
@@ -175,7 +175,7 @@ eg::
 DecimalField
 ------------
 
-DecimalField now store floats - previous it was storing strings and that
+DecimalFields now store floats - previously it was storing strings and that
 made it impossible to do comparisons when querying correctly.::
 
     # Old code
@@ -186,7 +186,7 @@ made it impossible to do comparisons when querying correctly.::
     class Person(Document):
         balance = DecimalField(force_string=True)
 
-To migrate all the uuid's you need to touch each object and mark it as dirty
+To migrate all the DecimalFields you need to touch each object and mark it as dirty
 eg::
 
     # Doc definition
@@ -198,7 +198,7 @@ eg::
         p._mark_as_changed('balance')
         p.save()
 
-.. note:: DecimalField's have also been improved with the addition of precision
+.. note:: DecimalFields have also been improved with the addition of precision
     and rounding.  See :class:`~mongoengine.fields.DecimalField` for more information.
 
 `An example test migration for DecimalFields is available on github
@@ -207,7 +207,7 @@ eg::
 Cascading Saves
 ---------------
 To improve performance document saves will no longer automatically cascade.
-Any changes to a Documents references will either have to be saved manually or
+Any changes to a Document's references will either have to be saved manually or
 you will have to explicitly tell it to cascade on save::
 
     # At the class level:
@@ -249,7 +249,7 @@ update your code like so: ::
 
     # Update example a) assign queryset after a change:
     mammals = Animal.objects(type="mammal")
-    carnivores = mammals.filter(order="Carnivora") # Reassign the new queryset so fitler can be applied
+    carnivores = mammals.filter(order="Carnivora") # Reassign the new queryset so filter can be applied
     [m for m in carnivores]                        # This will return all carnivores
 
     # Update example b) chain the queryset:
@@ -276,7 +276,7 @@ queryset you should upgrade to use count::
 .only() now inline with .exclude()
 ----------------------------------
 
-The behaviour of `.only()` was highly ambious, now it works in the mirror fashion
+The behaviour of `.only()` was highly ambiguous, now it works in mirror fashion
 to `.exclude()`.  Chaining `.only()` calls will increase the fields required::
 
     # Old code
@@ -440,7 +440,7 @@ main areas of changed are: choices in fields, map_reduce and collection names.
 Choice options:
 ===============
 
-Are now expected to be an iterable of tuples, with  the first element in each
+Are now expected to be an iterable of tuples, with the first element in each
 tuple being the actual value to be stored. The second element is the
 human-readable name for the option.
 
@@ -462,8 +462,8 @@ such the following have been changed:
 Default collection naming
 =========================
 
-Previously it was just lowercase, its now much more pythonic and readable as
-its lowercase and underscores, previously ::
+Previously it was just lowercase, it's now much more pythonic and readable as
+it's lowercase and underscores, previously ::
 
     class MyAceDocument(Document):
         pass
@@ -530,5 +530,5 @@ Alternatively, you can rename your collections eg ::
 mongodb 1.8 > 2.0 +
 ===================
 
-Its been reported that indexes may need to be recreated to the newer version of indexes.
+It's been reported that indexes may need to be recreated to the newer version of indexes.
 To do this drop indexes and call ``ensure_indexes`` on each model.
