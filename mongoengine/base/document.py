@@ -438,7 +438,7 @@ class BaseDocument(object):
             index_list.append((key, direction))
 
         # Don't add cls to a geo index
-        if include_cls and direction is not pymongo.GEO2D:
+        if include_cls and direction is not pymongo.GEO2D and spec.get('cls', True):
             index_list.insert(0, ('_cls', 1))
 
         if index_list:
