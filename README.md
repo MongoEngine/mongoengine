@@ -3,9 +3,9 @@ MongoMallard
 
 MongoMallard is a fast ORM-like layer on top of PyMongo, based on MongoEngine.
 
-* Repository: https://github.com/elasticsales/mongomallard
-* See [README_MONGOENGINE](https://github.com/elasticsales/mongomallard/blob/master/README_MONGOENGINE.rst) for MongoEngine's README.
-* See [DIFFERENCES](https://github.com/elasticsales/mongomallard/blob/master/DIFFERENCES.md) for differences between MongoEngine and MongoMallard.
+* Repository: https://github.com/elasticsales/mongoengine
+* See [README_MONGOENGINE](https://github.com/elasticsales/mongoengine/blob/master/README_MONGOENGINE.rst) for MongoEngine's README.
+* See [DIFFERENCES](https://github.com/elasticsales/mongoengine/blob/master/DIFFERENCES.md) for differences between MongoEngine and MongoMallard.
 
 
 Benchmarks
@@ -82,4 +82,4 @@ Sample run on a 2.7 GHz Intel Core i5 running OS X 10.8.3
     </tr>
 </table>
 
-See [tests/benchmark.py](https://github.com/elasticsales/mongomallard/blob/master/tests/benchmark.py) for source code.
+See [tests/benchmark.py](https://github.com/elasticsales/mongoengine/blob/master/tests/benchmark.py) for source code.
