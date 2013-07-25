@@ -313,17 +313,17 @@ class DeltaTest(unittest.TestCase):
         self.circular_reference_deltas_2(DynamicDocument, Document)
         self.circular_reference_deltas_2(DynamicDocument, DynamicDocument)
 
-    def circular_reference_deltas_2(self, DocClass1, DocClass2):
+    def circular_reference_deltas_2(self, DocClass1, DocClass2, dbref=True):
 
         class Person(DocClass1):
             name = StringField()
-            owns = ListField(ReferenceField('Organization'))
-            employer = ReferenceField('Organization')
+            owns = ListField(ReferenceField('Organization', dbref=dbref))
+            employer = ReferenceField('Organization', dbref=dbref)
 
         class Organization(DocClass2):
             name = StringField()
-            owner = ReferenceField('Person')
-            employees = ListField(ReferenceField('Person'))
+            owner = ReferenceField('Person', dbref=dbref)
+            employees = ListField(ReferenceField('Person', dbref=dbref))
 
         Person.drop_collection()
         Organization.drop_collection()
@@ -354,6 +354,8 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(p.owns[0], o)
         self.assertEqual(o.owner, p)
         self.assertEqual(e.employer, o)
+
+        return person, organization, employee
 
     def test_delta_db_field(self):
         self.delta_db_field(Document)
@@ -686,6 +688,19 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._get_changed_fields(), ['list_field'])
         self.assertEqual(doc._delta(), ({}, {'list_field': 1}))
 
+    def test_delta_with_dbref_true(self):
+        person, organization, employee = self.circular_reference_deltas_2(Document, Document, True)
+        employee.name = 'test'
+        changed = organization._get_changed_fields()
+        delta = organization._delta()
+        organization.save()
+
+    def test_delta_with_dbref_false(self):
+        person, organization, employee = self.circular_reference_deltas_2(Document, Document, False)
+        employee.name = 'test'
+        changed = organization._get_changed_fields()
+        delta = organization._delta()
+        organization.save()
 
 if __name__ == '__main__':
     unittest.main()
