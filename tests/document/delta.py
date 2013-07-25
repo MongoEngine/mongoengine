@@ -691,15 +691,25 @@ class DeltaTest(unittest.TestCase):
     def test_delta_with_dbref_true(self):
         person, organization, employee = self.circular_reference_deltas_2(Document, Document, True)
         employee.name = 'test'
-        changed = organization._get_changed_fields()
-        delta = organization._delta()
+
+        self.assertEqual(organization._get_changed_fields(), ['employees.0.name'])
+
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertIn('employees.0', updates)
+
         organization.save()
 
     def test_delta_with_dbref_false(self):
         person, organization, employee = self.circular_reference_deltas_2(Document, Document, False)
         employee.name = 'test'
-        changed = organization._get_changed_fields()
-        delta = organization._delta()
+
+        self.assertEqual(organization._get_changed_fields(), ['employees.0.name'])
+
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertIn('employees.0', updates)
+
         organization.save()
 
 if __name__ == '__main__':
