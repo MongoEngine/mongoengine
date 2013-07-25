@@ -489,7 +489,7 @@ class EmbeddedDocumentField(BaseField):
         return self.document_type_obj
 
     def to_python(self, value):
-        if not isinstance(value, self.document_type):
+        if value and not isinstance(value, self.document_type):
             return self.document_type._from_son(value)
         return value
 
