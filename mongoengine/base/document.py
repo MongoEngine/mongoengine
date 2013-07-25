@@ -4,7 +4,7 @@ import numbers
 from functools import partial
 
 import pymongo
-from bson import json_util
+from bson import json_util, ObjectId
 from bson.dbref import DBRef
 from bson.son import SON
 
@@ -454,7 +454,7 @@ class BaseDocument(object):
                 d = doc
                 new_path = []
                 for p in parts:
-                    if isinstance(d, DBRef):
+                    if isinstance(d, (ObjectId, DBRef)):
                         break
                     elif isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
