@@ -696,7 +696,7 @@ class DeltaTest(unittest.TestCase):
 
         updates, removals = organization._delta()
         self.assertEqual({}, removals)
-        self.assertIn('employees.0', updates)
+        self.assertTrue('employees.0' in updates)
 
         organization.save()
 
@@ -708,7 +708,7 @@ class DeltaTest(unittest.TestCase):
 
         updates, removals = organization._delta()
         self.assertEqual({}, removals)
-        self.assertIn('employees.0', updates)
+        self.assertTrue('employees.0' in updates)
 
         organization.save()
 
