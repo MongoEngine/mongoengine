@@ -577,6 +577,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(30, bob.age)
 
     def test_andModify_upsert(self):
+        """Ensure that andModify can add a new document
+        """
+        
         self.Person.drop_collection()
 
         result = self.Person.objects(name="Bob").andModify(full_response=True, set__age=30)
@@ -594,6 +597,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(30, bob.age)
 
     def test_andModify_sort(self):
+        """Ensure sort can be used to select the record to find_and_modify
+        """
+        
         self.Person.drop_collection()
         
         bob = self.Person(name="Bob", age=30); bob.save()
@@ -1480,8 +1486,10 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_andModify(self):
-        """Ensure that atomic updates work properly.
+        """Ensure that andModify updates a record atomically and returns the
+        old record.
         """
+        
         class BlogPost(Document):
             title = StringField()
             hits = IntField()
