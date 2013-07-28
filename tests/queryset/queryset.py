@@ -567,6 +567,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
         
+    def test_upsert_one(self):
+        self.Person.drop_collection()
+
+        self.Person.objects(name="Bob", age=30).update_one(upsert=True)
+
+        bob = self.Person.objects.first()
+        self.assertEqual("Bob", bob.name)
+        self.assertEqual(30, bob.age)
+
     def test_andModify_upsert(self):
         self.Person.drop_collection()
 
@@ -584,15 +593,23 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
 
-    def test_upsert_one(self):
+    def test_andModify_sort(self):
         self.Person.drop_collection()
-
-        self.Person.objects(name="Bob", age=30).update_one(upsert=True)
-
-        bob = self.Person.objects.first()
-        self.assertEqual("Bob", bob.name)
-        self.assertEqual(30, bob.age)
-
+        
+        bob = self.Person(name="Bob", age=30); bob.save()
+        betty = self.Person(name="Betty", age=30); betty.save()
+        
+        result = self.Person.objects(age=30).andModify(sort=[('name', 1)], set__age=31)
+        self.assertEqual("Betty", result.name)
+        result = self.Person.objects(age=30).andModify(sort=[('name', 1)], set__age=31)
+        self.assertEqual("Bob", result.name)
+        
+        result = self.Person.objects(age=31).andModify(sort=[('name', -1)], set__age=32)
+        self.assertEqual("Bob", result.name)
+        
+        result = self.Person.objects.andModify(sort=[('age', 1)], set__age=32)
+        self.assertEqual("Betty", result.name)
+        
     def test_set_on_insert(self):
         self.Person.drop_collection()
 
