@@ -1445,6 +1445,58 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_andModify(self):
+        """Ensure that atomic updates work properly.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            hits = IntField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(name="Test Post", hits=5, tags=['test'])
+        post.save()
+
+        result = BlogPost.objects(name="Test Post").andModify(set__hits=10)
+        self.assertEqual(result.hits, 5)
+        
+        result = BlogPost.objects(name="Test Post").andModify(inc__hits=1)
+        self.assertEqual(result.hits, 10)
+
+        result = BlogPost.objects(name="Test Post").andModify(dec__hits=1)
+        self.assertEqual(result.hits, 11)
+
+        result = BlogPost.objects(name="Test Post").andModify(push__tags='mongo')
+        self.assertEqual(result.hits, 10)
+
+        result = BlogPost.objects(name="Test Post").andModify(push_all__tags=['db', 'nosql'])
+        self.assertTrue('mongo' in result.tags)
+        
+        post.reload()
+        self.assertTrue('db' in post.tags and 'nosql' in post.tags)
+
+        tags = post.tags
+        result = BlogPost.objects(name="Test Post").andModify(pop__tags=1)
+        self.assertEqual(result.tags, tags)
+        post.reload()
+        self.assertEqual(post.tags, tags[:-1])
+
+        result = BlogPost.objects(name="Test Post").andModify(add_to_set__tags='unique')
+        self.assertEqual(result.tags.count('unique'), 0)
+        result = BlogPost.objects(name="Test Post").andModify(add_to_set__tags='unique')
+        self.assertEqual(result.tags.count('unique'), 1)
+        post.reload()
+        self.assertEqual(post.tags.count('unique'), 1)
+
+        self.assertNotEqual(post.hits, None)
+        result = BlogPost.objects(name="Test Post").andModify(unset__hits=1)
+        self.assertEqual(result.hits, 10)
+        post.reload()
+        self.assertEqual(post.hits, None)
+
+        BlogPost.drop_collection()
+
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """
