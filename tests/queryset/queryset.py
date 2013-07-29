@@ -3327,7 +3327,7 @@ class QuerySetTest(unittest.TestCase):
         Doc(string="Bye", embedded_field=Embedded(string="Bye")).save()
 
         Doc().save()
-        json_data = Doc.objects.to_json()
+        json_data = Doc.objects.to_json(sort_keys=True, separators=(',', ':'))
         doc_objects = list(Doc.objects)
 
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))

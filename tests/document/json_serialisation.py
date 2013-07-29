@@ -31,6 +31,10 @@ class TestJson(unittest.TestCase):
 
         doc = Doc(string="Hi", embedded_field=Embedded(string="Hi"))
 
+        doc_json = doc.to_json(sort_keys=True, separators=(',', ':'))
+        expected_json = """{"embedded_field":{"string":"Hi"},"string":"Hi"}"""
+        self.assertEqual(doc_json, expected_json)
+
         self.assertEqual(doc, Doc.from_json(doc.to_json()))
 
     def test_json_complex(self):
