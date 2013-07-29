@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.8.4
+================
+- Allow args and kwargs to be passed through to_json (#420)
+
 Changes in 0.8.3
 ================
 - Fixed EmbeddedDocuments with `id` also storing `_id` (#402)

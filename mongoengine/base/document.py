@@ -321,9 +321,9 @@ class BaseDocument(object):
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
-    def to_json(self):
+    def to_json(self, *args, **kwargs):
         """Converts a document to JSON"""
-        return json_util.dumps(self.to_mongo())
+        return json_util.dumps(self.to_mongo(),  *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data):

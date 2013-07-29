@@ -827,9 +827,9 @@ class BaseQuerySet(object):
 
     # JSON Helpers
 
-    def to_json(self):
+    def to_json(self, *args, **kwargs):
         """Converts a queryset to JSON"""
-        return json_util.dumps(self.as_pymongo())
+        return json_util.dumps(self.as_pymongo(), *args, **kwargs)
 
     def from_json(self, json_data):
         """Converts json data to unsaved objects"""
