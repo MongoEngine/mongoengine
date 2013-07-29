@@ -4,7 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
-- Fixed _delta including referenced fields when dbref=False (#417)
+- Don't follow references in _get_changed_fields (#422, #417)
 - Allow args and kwargs to be passed through to_json (#420)
 
 Changes in 0.8.3

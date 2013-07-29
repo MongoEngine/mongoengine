@@ -328,14 +328,9 @@ class DeltaTest(unittest.TestCase):
         Person.drop_collection()
         Organization.drop_collection()
 
-        person = Person(name="owner")
-        person.save()
-
-        employee = Person(name="employee")
-        employee.save()
-
-        organization = Organization(name="company")
-        organization.save()
+        person = Person(name="owner").save()
+        employee = Person(name="employee").save()
+        organization = Organization(name="company").save()
 
         person.owns.append(organization)
         organization.owner = person
@@ -692,25 +687,32 @@ class DeltaTest(unittest.TestCase):
         person, organization, employee = self.circular_reference_deltas_2(Document, Document, True)
         employee.name = 'test'
 
-        self.assertEqual(organization._get_changed_fields(), ['employees.0.name'])
+        self.assertEqual(organization._get_changed_fields(), [])
 
         updates, removals = organization._delta()
         self.assertEqual({}, removals)
-        self.assertTrue('employees.0' in updates)
+        self.assertEqual({}, updates)
 
-        organization.save()
+        organization.employees.append(person)
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertTrue('employees' in updates)
 
     def test_delta_with_dbref_false(self):
         person, organization, employee = self.circular_reference_deltas_2(Document, Document, False)
         employee.name = 'test'
 
-        self.assertEqual(organization._get_changed_fields(), ['employees.0.name'])
+        self.assertEqual(organization._get_changed_fields(), [])
 
         updates, removals = organization._delta()
         self.assertEqual({}, removals)
-        self.assertTrue('employees.0' in updates)
+        self.assertEqual({}, updates)
 
-        organization.save()
+        organization.employees.append(person)
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertTrue('employees' in updates)
+
 
 if __name__ == '__main__':
     unittest.main()
