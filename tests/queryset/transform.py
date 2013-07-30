@@ -31,6 +31,31 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(transform.query(name__exists=True),
                          {'name': {'$exists': True}})
 
+    def test_transform_update(self):
+        class DicDoc(Document):
+            dictField = DictField()
+
+        class Doc(Document):
+            pass
+
+        DicDoc.drop_collection()
+        Doc.drop_collection()
+
+        doc = Doc().save()
+        dic_doc = DicDoc().save()
+
+        for k, v in (("set", "$set"), ("set_on_insert", "$setOnInsert"), ("push", "$push")):
+            update = transform.update(DicDoc, **{"%s__dictField__test" % k: doc})
+            self.assertTrue(isinstance(update[v]["dictField.test"], dict))
+
+        # Update special cases
+        update = transform.update(DicDoc, unset__dictField__test=doc)
+        self.assertEqual(update["$unset"]["dictField.test"], 1)
+
+        update = transform.update(DicDoc, pull__dictField__test=doc)
+        self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
+
+
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.
         """
