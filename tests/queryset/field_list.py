@@ -162,6 +162,10 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(obj.name, person.name)
         self.assertEqual(obj.age, person.age)
 
+        obj = Person.objects.only(*('id', 'name',)).get()
+        self.assertEqual(obj.name, person.name)
+        self.assertEqual(obj.age, None)
+
         # Check polymorphism still works
         class Employee(self.Person):
             salary = IntField(db_field='wage')
