@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Fixed dereference threading issue in ComplexField.__get__ (#412)
 - Fixed QuerySetNoCache.count() caching (#410)
 - Don't follow references in _get_changed_fields (#422, #417)
 - Allow args and kwargs to be passed through to_json (#420)
