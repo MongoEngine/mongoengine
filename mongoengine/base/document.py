@@ -629,8 +629,10 @@ class BaseDocument(object):
         # Check to see if we need to include _cls
         allow_inheritance = cls._meta.get('allow_inheritance',
                                           ALLOW_INHERITANCE)
-        include_cls = allow_inheritance and not spec.get('sparse', False)
-
+        include_cls = (allow_inheritance and not spec.get('sparse', False) and
+                       spec.get('cls',  True))
+        if "cls" in spec:
+            spec.pop('cls')
         for key in spec['fields']:
             # If inherited spec continue
             if isinstance(key, (list, tuple)):

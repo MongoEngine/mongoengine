@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Fixed indexing - turn off _cls (#414)
 - Fixed dereference threading issue in ComplexField.__get__ (#412)
 - Fixed QuerySetNoCache.count() caching (#410)
 - Don't follow references in _get_changed_fields (#422, #417)

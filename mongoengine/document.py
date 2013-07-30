@@ -536,6 +536,8 @@ class Document(BaseDocument):
     def ensure_indexes(cls):
         """Checks the document meta data and ensures all the indexes exist.
 
+        Global defaults can be set in the meta - see :doc:`guide/defining-documents`
+
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
         """

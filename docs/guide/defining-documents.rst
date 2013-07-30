@@ -442,6 +442,8 @@ The following example shows a :class:`Log` document that will be limited to
         ip_address = StringField()
         meta = {'max_documents': 1000, 'max_size': 2000000}
 
+.. defining-indexes_
+
 Indexes
 =======
 
@@ -484,6 +486,35 @@ If a dictionary is passed then the following options are available:
 .. note::
 
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
+
+Global index default options
+----------------------------
+
+There are a few top level defaults for all indexes that can be set::
+
+    class Page(Document):
+        title = StringField()
+        rating = StringField()
+        meta = {
+            'index_options': {},
+            'index_background': True,
+            'index_drop_dups': True,
+            'index_cls': False
+        }
+
+
+:attr:`index_options` (Optional)
+    Set any default index options - see the `full options list <http://docs.mongodb.org/manual/reference/method/db.collection.ensureIndex/#db.collection.ensureIndex>`_
+
+:attr:`index_background` (Optional)
+    Set the default value for if an index should be indexed in the background
+
+:attr:`index_drop_dups` (Optional)
+    Set the default value for if an index should drop duplicates
+
+:attr:`index_cls` (Optional)
+    A way to turn off a specific index for _cls.
+
 
 Compound Indexes and Indexing sub documents
 -------------------------------------------
