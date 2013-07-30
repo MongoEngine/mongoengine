@@ -94,6 +94,21 @@ class QuerySet(BaseQuerySet):
             except StopIteration:
                 self._has_more = False
 
+    def count(self, with_limit_and_skip=True):
+        """Count the selected elements in the query.
+
+        :param with_limit_and_skip (optional): take any :meth:`limit` or
+            :meth:`skip` that has been applied to this cursor into account when
+            getting the count
+        """
+        if with_limit_and_skip is False:
+            return super(QuerySet, self).count(with_limit_and_skip)
+
+        if self._len is None:
+            self._len = super(QuerySet, self).count(with_limit_and_skip)
+
+        return self._len
+
     def no_cache(self):
         """Convert to a non_caching queryset
 

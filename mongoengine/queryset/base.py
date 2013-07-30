@@ -60,7 +60,6 @@ class BaseQuerySet(object):
         self._none = False
         self._as_pymongo = False
         self._as_pymongo_coerce = False
-        self._len = None
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -331,14 +330,9 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0:
+        if self._limit == 0 and with_limit_and_skip:
             return 0
-        if with_limit_and_skip and self._len is not None:
-            return self._len
-        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
-        if with_limit_and_skip:
-            self._len = count
-        return count
+        return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
     def delete(self, write_concern=None, _from_doc_delete=False):
         """Delete the documents matched by the query.
