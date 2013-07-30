@@ -558,6 +558,11 @@ documentation for more information.  A common usecase might be session data::
             ]
         }
 
+.. warning:: TTL indexes happen on the MongoDB server and not in the application
+    code, therefore no signals will be fired on document deletion.
+    If you need signals to be fired on deletion, then you must handle the
+    deletion of Documents in your application code.
+
 Comparing Indexes
 -----------------
 
