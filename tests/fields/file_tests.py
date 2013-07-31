@@ -53,11 +53,12 @@ class FileTest(unittest.TestCase):
         content_type = 'text/plain'
 
         putfile = PutFile()
-        putfile.the_file.put(text, content_type=content_type)
+        putfile.the_file.put(text, content_type=content_type, filename="hello")
         putfile.save()
 
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
+        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello>")
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()  # Remove file from GridFS
