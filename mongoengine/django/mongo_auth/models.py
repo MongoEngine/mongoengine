@@ -6,8 +6,27 @@ from django.utils.importlib import import_module
 from django.utils.translation import ugettext_lazy as _
 
 
+__all__ = (
+    'get_user_document',
+)
+
+
 MONGOENGINE_USER_DOCUMENT = getattr(
     settings, 'MONGOENGINE_USER_DOCUMENT', 'mongoengine.django.auth.User')
+
+
+def get_user_document(self):
+    """Get the user docuemnt class user for authentcation.
+
+    This is the class defined in settings.MONGOENGINE_USER_DOCUMENT, which
+    defaults to `mongoengine.django.auth.User`.
+
+    """
+
+    name = MONGOENGINE_USER_DOCUMENT
+    dot = name.rindex('.')
+    module = import_module(name[:dot])
+    return getattr(module, name[dot + 1:])
 
 
 class MongoUserManager(UserManager):
@@ -44,7 +63,7 @@ class MongoUserManager(UserManager):
     def contribute_to_class(self, model, name):
         super(MongoUserManager, self).contribute_to_class(model, name)
         self.dj_model = self.model
-        self.model = self._get_user_document()
+        self.model = get_user_document()
 
         self.dj_model.USERNAME_FIELD = self.model.USERNAME_FIELD
         username = models.CharField(_('username'), max_length=30, unique=True)
@@ -55,16 +74,6 @@ class MongoUserManager(UserManager):
             field = models.CharField(_(name), max_length=30)
             field.contribute_to_class(self.dj_model, name)
 
-    def _get_user_document(self):
-        try:
-            name = MONGOENGINE_USER_DOCUMENT
-            dot = name.rindex('.')
-            module = import_module(name[:dot])
-            return getattr(module, name[dot + 1:])
-        except ImportError:
-            raise ImproperlyConfigured("Error importing %s, please check "
-                                       "settings.MONGOENGINE_USER_DOCUMENT"
-                                       % name)
 
     def get(self, *args, **kwargs):
         try:
@@ -85,5 +94,14 @@ class MongoUserManager(UserManager):
 
 
 class MongoUser(models.Model):
-    objects = MongoUserManager()
+    """"Dummy user model for Django.
 
+    MongoUser is used to replace Django's UserManager with MongoUserManager.
+    The actual user document class is mongoengine.django.auth.User or any
+    other document class specified in MONGOENGINE_USER_DOCUMENT.
+
+    To get the user document class, use `get_user_document()`.
+
+    """
+
+    objects = MongoUserManager()
