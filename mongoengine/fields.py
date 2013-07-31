@@ -1082,6 +1082,10 @@ class GridFSProxy(object):
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
+        
+    def __unicode__(self):
+        name = getattr(self.get(), 'filename', self.grid_id) if self.get() else '(no file)'
+        return '<%s: %s>' % (self.__class__.__name__, name)
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
