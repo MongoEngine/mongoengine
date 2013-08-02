@@ -563,7 +563,8 @@ class EmbeddedDocumentField(BaseField):
         self.document_type.validate(value, clean)
 
     def lookup_member(self, member_name):
-        return self.document_type._fields.get(member_name)
+        return (self.document_type._fields.get(member_name) or
+                self.document_type._abstract_fields.get(member_name))
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
@@ -918,7 +919,8 @@ class ReferenceField(BaseField):
                        'saved to the database')
 
     def lookup_member(self, member_name):
-        return self.document_type._fields.get(member_name)
+        return (self.document_type._fields.get(member_name) or
+                self.document_type._abstract_fields.get(member_name))
 
 
 class GenericReferenceField(BaseField):

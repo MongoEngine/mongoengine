@@ -98,6 +98,19 @@ class DocumentMetaclass(type):
                                          (v.creation_counter, v.name)
                                          for v in doc_fields.itervalues()))
 
+        # Collect abstract fields
+        abstract_fields = {}
+        if 'abstract_fields' in attrs['_meta']:
+            for attr_name, attr_value in attrs['_meta']['abstract_fields'].iteritems():
+                if not isinstance(attr_value, BaseField):
+                    raise ValueError('abstract_fields values must be BaseField '
+                                     'subclasses (%s)' % str(type(attr_value)))
+                attr_value.name = attr_name
+                if not attr_value.db_field:
+                    attr_value.db_field = attr_name
+                abstract_fields[attr_name] = attr_value
+        attrs['_abstract_fields'] = abstract_fields
+
         #
         # Set document hierarchy
         #
@@ -244,6 +257,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 'max_documents': None,
                 'max_size': None,
                 'ordering': [],  # default ordering applied at runtime
+                'abstract_fields': {},
                 'indexes': [],  # indexes to be ensured at runtime
                 'id_field': None,
                 'index_background': False,
@@ -387,14 +401,18 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
 class MetaDict(dict):
     """Custom dictionary for meta classes.
-    Handles the merging of set indexes
+    Handles the merging of set indexes and abstract fields
     """
     _merge_options = ('indexes',)
+    _merge_dict_options = ('abstract_fields',)
 
     def merge(self, new_options):
         for k, v in new_options.iteritems():
             if k in self._merge_options:
                 self[k] = self.get(k, []) + v
+            elif k in self._merge_dict_options:
+                self[k] = self.get(k, {})
+                self[k].update(v)
             else:
                 self[k] = v
 

@@ -774,6 +774,8 @@ class BaseDocument(object):
                     field_name = cls._meta['id_field']
                 if field_name in cls._fields:
                     field = cls._fields[field_name]
+                elif field_name in cls._abstract_fields:
+                    field = cls._abstract_fields[field_name]
                 elif cls._dynamic:
                     DynamicField = _import_class('DynamicField')
                     field = DynamicField(db_field=field_name)
