@@ -2,6 +2,17 @@
 Changelog
 =========
 
+Changes in 0.8.4
+================
+- Added get_user_document and improve mongo_auth module (#423)
+- Added str representation of GridFSProxy (#424)
+- Update transform to handle docs erroneously passed to unset (#416)
+- Fixed indexing - turn off _cls (#414)
+- Fixed dereference threading issue in ComplexField.__get__ (#412)
+- Fixed QuerySetNoCache.count() caching (#410)
+- Don't follow references in _get_changed_fields (#422, #417)
+- Allow args and kwargs to be passed through to_json (#420)
+
 Changes in 0.8.3
 ================
 - Fixed EmbeddedDocuments with `id` also storing `_id` (#402)

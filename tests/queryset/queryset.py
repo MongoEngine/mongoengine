@@ -3327,7 +3327,7 @@ class QuerySetTest(unittest.TestCase):
         Doc(string="Bye", embedded_field=Embedded(string="Bye")).save()
 
         Doc().save()
-        json_data = Doc.objects.to_json()
+        json_data = Doc.objects.to_json(sort_keys=True, separators=(',', ':'))
         doc_objects = list(Doc.objects)
 
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))
@@ -3482,6 +3482,27 @@ class QuerySetTest(unittest.TestCase):
 
             people.count()  # count is cached
             self.assertEqual(q, 1)
+
+    def test_no_cached_queryset(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        for i in xrange(100):
+            Person(name="No: %s" % i).save()
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            people = Person.objects.no_cache()
+
+            [x for x in people]
+            self.assertEqual(q, 1)
+
+            list(people)
+            self.assertEqual(q, 2)
+
+            people.count()
+            self.assertEqual(q, 3)
 
     def test_cache_not_cloned(self):
 

@@ -203,11 +203,13 @@ def update(_doc_cls=None, **update):
                     value = field.prepare_query_value(op, value)
             elif op in ('pushAll', 'pullAll'):
                 value = [field.prepare_query_value(op, v) for v in value]
-            elif op == 'addToSet':
+            elif op in ('addToSet', 'setOnInsert'):
                 if isinstance(value, (list, tuple, set)):
                     value = [field.prepare_query_value(op, v) for v in value]
                 elif field.required or value is not None:
                     value = field.prepare_query_value(op, value)
+            elif op == "unset":
+                value = 1
 
         if match:
             match = '$' + match

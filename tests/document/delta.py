@@ -313,29 +313,24 @@ class DeltaTest(unittest.TestCase):
         self.circular_reference_deltas_2(DynamicDocument, Document)
         self.circular_reference_deltas_2(DynamicDocument, DynamicDocument)
 
-    def circular_reference_deltas_2(self, DocClass1, DocClass2):
+    def circular_reference_deltas_2(self, DocClass1, DocClass2, dbref=True):
 
         class Person(DocClass1):
             name = StringField()
-            owns = ListField(ReferenceField('Organization'))
-            employer = ReferenceField('Organization')
+            owns = ListField(ReferenceField('Organization', dbref=dbref))
+            employer = ReferenceField('Organization', dbref=dbref)
 
         class Organization(DocClass2):
             name = StringField()
-            owner = ReferenceField('Person')
-            employees = ListField(ReferenceField('Person'))
+            owner = ReferenceField('Person', dbref=dbref)
+            employees = ListField(ReferenceField('Person', dbref=dbref))
 
         Person.drop_collection()
         Organization.drop_collection()
 
-        person = Person(name="owner")
-        person.save()
-
-        employee = Person(name="employee")
-        employee.save()
-
-        organization = Organization(name="company")
-        organization.save()
+        person = Person(name="owner").save()
+        employee = Person(name="employee").save()
+        organization = Organization(name="company").save()
 
         person.owns.append(organization)
         organization.owner = person
@@ -354,6 +349,8 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(p.owns[0], o)
         self.assertEqual(o.owner, p)
         self.assertEqual(e.employer, o)
+
+        return person, organization, employee
 
     def test_delta_db_field(self):
         self.delta_db_field(Document)
@@ -685,6 +682,36 @@ class DeltaTest(unittest.TestCase):
         doc.list_field = []
         self.assertEqual(doc._get_changed_fields(), ['list_field'])
         self.assertEqual(doc._delta(), ({}, {'list_field': 1}))
+
+    def test_delta_with_dbref_true(self):
+        person, organization, employee = self.circular_reference_deltas_2(Document, Document, True)
+        employee.name = 'test'
+
+        self.assertEqual(organization._get_changed_fields(), [])
+
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertEqual({}, updates)
+
+        organization.employees.append(person)
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertTrue('employees' in updates)
+
+    def test_delta_with_dbref_false(self):
+        person, organization, employee = self.circular_reference_deltas_2(Document, Document, False)
+        employee.name = 'test'
+
+        self.assertEqual(organization._get_changed_fields(), [])
+
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertEqual({}, updates)
+
+        organization.employees.append(person)
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertTrue('employees' in updates)
 
 
 if __name__ == '__main__':

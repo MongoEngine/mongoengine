@@ -94,8 +94,26 @@ class QuerySet(BaseQuerySet):
             except StopIteration:
                 self._has_more = False
 
+    def count(self, with_limit_and_skip=True):
+        """Count the selected elements in the query.
+
+        :param with_limit_and_skip (optional): take any :meth:`limit` or
+            :meth:`skip` that has been applied to this cursor into account when
+            getting the count
+        """
+        if with_limit_and_skip is False:
+            return super(QuerySet, self).count(with_limit_and_skip)
+
+        if self._len is None:
+            self._len = super(QuerySet, self).count(with_limit_and_skip)
+
+        return self._len
+
     def no_cache(self):
-        """Convert to a non_caching queryset"""
+        """Convert to a non_caching queryset
+
+        .. versionadded:: 0.8.3 Convert to non caching queryset
+        """
         if self._result_cache is not None:
             raise OperationError("QuerySet already cached")
         return self.clone_into(QuerySetNoCache(self._document, self._collection))
@@ -105,7 +123,10 @@ class QuerySetNoCache(BaseQuerySet):
     """A non caching QuerySet"""
 
     def cache(self):
-        """Convert to a caching queryset"""
+        """Convert to a caching queryset
+
+        .. versionadded:: 0.8.3 Convert to caching queryset
+        """
         return self.clone_into(QuerySet(self._document, self._collection))
 
     def __repr__(self):

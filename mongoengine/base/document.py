@@ -5,7 +5,7 @@ from functools import partial
 import re
 
 import pymongo
-from bson import json_util
+from bson import json_util, ObjectId
 from bson.dbref import DBRef
 from bson.son import SON
 
@@ -359,7 +359,8 @@ class BaseDocument(object):
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
-    def to_json(self, role=None):
+<<<<<<< HEAD
+    def to_json(self, role=None, *args, **kwargs):
         """Converts a document to JSON
 
         You can filter out fields by declaring the role into your model.
@@ -433,7 +434,7 @@ class BaseDocument(object):
         elif not role.startswith("json."):
             role = ".".join(["json", role])
 
-        return json_util.dumps(self._to_mongo(role=role))
+        return json_util.dumps(self._to_mongo(role=role), *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data):
@@ -505,6 +506,7 @@ class BaseDocument(object):
         """
         EmbeddedDocument = _import_class("EmbeddedDocument")
         DynamicEmbeddedDocument = _import_class("DynamicEmbeddedDocument")
+        ReferenceField = _import_class("ReferenceField")
         _changed_fields = []
         _changed_fields += getattr(self, '_changed_fields', [])
 
@@ -515,30 +517,35 @@ class BaseDocument(object):
             inspected.add(self.id)
 
         for field_name in self._fields_ordered:
-
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
-            field = self._data.get(field_name, None)
-            if hasattr(field, 'id'):
-                if field.id in inspected:
-                    continue
-                inspected.add(field.id)
+            data = self._data.get(field_name, None)
+            field = self._fields.get(field_name)
 
-            if (isinstance(field, (EmbeddedDocument, DynamicEmbeddedDocument))
+            if hasattr(data, 'id'):
+                if data.id in inspected:
+                    continue
+                inspected.add(data.id)
+            if isinstance(field, ReferenceField):
+                continue
+            elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
                and db_field_name not in _changed_fields):
                  # Find all embedded fields that have been changed
-                changed = field._get_changed_fields(inspected)
+                changed = data._get_changed_fields(inspected)
                 _changed_fields += ["%s%s" % (key, k) for k in changed if k]
-            elif (isinstance(field, (list, tuple, dict)) and
+            elif (isinstance(data, (list, tuple, dict)) and
                     db_field_name not in _changed_fields):
                 # Loop list / dict fields as they contain documents
                 # Determine the iterator to use
-                if not hasattr(field, 'items'):
-                    iterator = enumerate(field)
+                if not hasattr(data, 'items'):
+                    iterator = enumerate(data)
                 else:
-                    iterator = field.iteritems()
+                    iterator = data.iteritems()
                 for index, value in iterator:
                     if not hasattr(value, '_get_changed_fields'):
+                        continue
+                    if (hasattr(field, 'field') and
+                        isinstance(field.field, ReferenceField)):
                         continue
                     list_key = "%s%s." % (key, index)
                     changed = value._get_changed_fields(inspected)
@@ -564,7 +571,7 @@ class BaseDocument(object):
                 d = doc
                 new_path = []
                 for p in parts:
-                    if isinstance(d, DBRef):
+                    if isinstance(d, (ObjectId, DBRef)):
                         break
                     elif isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
@@ -733,8 +740,10 @@ class BaseDocument(object):
         # Check to see if we need to include _cls
         allow_inheritance = cls._meta.get('allow_inheritance',
                                           ALLOW_INHERITANCE)
-        include_cls = allow_inheritance and not spec.get('sparse', False)
-
+        include_cls = (allow_inheritance and not spec.get('sparse', False) and
+                       spec.get('cls',  True))
+        if "cls" in spec:
+            spec.pop('cls')
         for key in spec['fields']:
             # If inherited spec continue
             if isinstance(key, (list, tuple)):
