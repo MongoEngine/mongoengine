@@ -16,7 +16,7 @@ MONGOENGINE_USER_DOCUMENT = getattr(
 
 
 def get_user_document():
-    """Get the user docuemnt class user for authentcation.
+    """Get the user document class used for authentication.
 
     This is the class defined in settings.MONGOENGINE_USER_DOCUMENT, which
     defaults to `mongoengine.django.auth.User`.
