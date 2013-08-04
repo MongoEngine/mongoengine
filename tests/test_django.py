@@ -22,7 +22,11 @@ try:
     try:
         from django.contrib.auth import authenticate, get_user_model
         from mongoengine.django.auth import User
-        from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
+        from mongoengine.django.mongo_auth.models import (
+            MongoUser,
+            MongoUserManager,
+            get_user_document,
+        )
         DJ15 = True
     except Exception:
         DJ15 = False
@@ -270,8 +274,11 @@ class MongoAuthTest(unittest.TestCase):
         User.drop_collection()
         super(MongoAuthTest, self).setUp()
 
-    def test_user_model(self):
+    def test_get_user_model(self):
         self.assertEqual(get_user_model(), MongoUser)
+
+    def test_get_user_document(self):
+        self.assertEqual(get_user_document(), User)
 
     def test_user_manager(self):
         manager = get_user_model()._default_manager
