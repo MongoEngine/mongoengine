@@ -359,7 +359,6 @@ class BaseDocument(object):
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
-<<<<<<< HEAD
     def to_json(self, role=None, *args, **kwargs):
         """Converts a document to JSON
 
