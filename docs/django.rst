@@ -45,7 +45,7 @@ The :mod:`~mongoengine.django.auth` module also contains a
 Custom User model
 =================
 Django 1.5 introduced `Custom user Models
-<https://docs.djangoproject.com/en/dev/topics/auth/customizing/#auth-custom-user>`
+<https://docs.djangoproject.com/en/dev/topics/auth/customizing/#auth-custom-user>`_
 which can be used as an alternative to the MongoEngine authentication backend.
 
 The main advantage of this option is that other components relying on
@@ -74,7 +74,7 @@ An additional ``MONGOENGINE_USER_DOCUMENT`` setting enables you to replace the
 The custom :class:`User` must be a :class:`~mongoengine.Document` class, but
 otherwise has the same requirements as a standard custom user model,
 as specified in the `Django Documentation
-<https://docs.djangoproject.com/en/dev/topics/auth/customizing/>`.
+<https://docs.djangoproject.com/en/dev/topics/auth/customizing/>`_.
 In particular, the custom class must define :attr:`USERNAME_FIELD` and
 :attr:`REQUIRED_FIELDS` attributes.
 
@@ -128,7 +128,7 @@ appended to the filename until the generated filename doesn't exist. The
     >>> fs.listdir()
     ([], [u'hello.txt'])
 
-All files will be saved and retrieved in GridFS via the :class::`FileDocument`
+All files will be saved and retrieved in GridFS via the :class:`FileDocument`
 document, allowing easy access to the files without the GridFSStorage
 backend.::
 
@@ -137,3 +137,36 @@ backend.::
     [<FileDocument: FileDocument object>]
 
 .. versionadded:: 0.4
+
+Shortcuts
+=========
+Inspired by the `Django shortcut get_object_or_404
+<https://docs.djangoproject.com/en/dev/topics/http/shortcuts/#get-object-or-404>`_,
+the :func:`~mongoengine.django.shortcuts.get_document_or_404` method returns 
+a document or raises an Http404 exception if the document does not exist::
+
+    from mongoengine.django.shortcuts import get_document_or_404
+    
+    admin_user = get_document_or_404(User, username='root')
+
+The first argument may be a Document or QuerySet object. All other passed arguments
+and keyword arguments are used in the query::
+
+    foo_email = get_document_or_404(User.objects.only('email'), username='foo', is_active=True).email
+
+.. note:: Like with :func:`get`, a MultipleObjectsReturned will be raised if more than one
+    object is found.
+
+
+Also inspired by the `Django shortcut get_list_or_404
+<https://docs.djangoproject.com/en/dev/topics/http/shortcuts/#get-list-or-404>`_,
+the :func:`~mongoengine.django.shortcuts.get_list_or_404` method returns a list of
+documents or raises an Http404 exception if the list is empty::
+
+    from mongoengine.django.shortcuts import get_list_or_404
+    
+    active_users = get_list_or_404(User, is_active=True)
+
+The first argument may be a Document or QuerySet object. All other passed
+arguments and keyword arguments are used to filter the query.
+
