@@ -21,14 +21,16 @@ settings.configure(
 try:
     from django.contrib.auth import authenticate, get_user_model
     from mongoengine.django.auth import User
-    from mongoengine.django.mongo_auth.models import MongoUser, MongoUserManager
+    from mongoengine.django.mongo_auth.models import (
+        MongoUser,
+        MongoUserManager,
+        get_user_document,
+    )
     DJ15 = True
 except Exception:
     DJ15 = False
 from django.contrib.sessions.tests import SessionTestsMixin
 from mongoengine.django.sessions import SessionStore, MongoSession
-
-
 from datetime import tzinfo, timedelta
 ZERO = timedelta(0)
 
@@ -165,6 +167,8 @@ class QuerySetTest(unittest.TestCase):
         class Note(Document):
             text = StringField()
 
+        Note.drop_collection()
+
         for i in xrange(1, 101):
             Note(name="Note: %s" % i).save()
 
@@ -258,8 +262,11 @@ class MongoAuthTest(unittest.TestCase):
         User.drop_collection()
         super(MongoAuthTest, self).setUp()
 
-    def test_user_model(self):
+    def test_get_user_model(self):
         self.assertEqual(get_user_model(), MongoUser)
+
+    def test_get_user_document(self):
+        self.assertEqual(get_user_document(), User)
 
     def test_user_manager(self):
         manager = get_user_model()._default_manager
