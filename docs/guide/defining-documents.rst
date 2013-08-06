@@ -689,6 +689,35 @@ document.::
 .. note:: From 0.8 onwards you must declare :attr:`allow_inheritance` defaults
           to False, meaning you must set it to True to use inheritance.
 
+Sometimes it is useful to put a field in a subclass, but define an index
+on that field in the superclass, e.g. when defining a compound index on two
+fields in different subclasses. In order to do this, you must specify those
+"abstract" fields in the superclass by setting :attr:`abstract_fields` in the
+:attr:`meta` data for a document to be a dictionary mapping abstract field
+names to field instances, for example::
+
+    class Super(Document):
+        key = StringField()
+
+        meta = {
+	    'allow_inheritance': True,
+	    'abstract_fields': {
+	        'value1': StringField(),
+		'value2': StringField()
+	    },
+	    'indexes': [('key', 'value1', 'value2')]
+	}
+
+    class Sub1(Super):
+        value1 = StringField()
+
+    class Sub2(Super):
+        value2 = StringField()
+
+Using the correct type for the abstract field value allows the indexing to
+know the structure of the field and, for example, support indexing fields
+within an :class:`~mongoengine.fields.EmbeddedDocumentField`. You can always use
+:class:`~mongoengine.fields.DynamicField` if the field type is dynamic or unknown.
 
 Working with existing data
 --------------------------

@@ -117,6 +117,14 @@ class Document(BaseDocument):
     doesn't contain a list) if allow_inheritance is True. This can be
     disabled by either setting cls to False on the specific index or
     by setting index_cls to False on the meta dictionary for the document.
+
+    By default, indexes can only refer to fields accessible in the current
+    class hierarchy, meaning that an index cannot span fields in two
+    different sub-classes. To be able to create such indexes, set
+    :attr:`abstract_fields` in the :attr:`meta` dictionary to be a dictionary
+    mapping field names to field instances. This will allow index creation
+    to be aware of fields on subclasses without the base class actually
+    containing those fields.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3

@@ -2,6 +2,7 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 
+from abstract_fields import *
 from class_methods import *
 from delta import *
 from dynamic import *
