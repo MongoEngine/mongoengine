@@ -3299,6 +3299,13 @@ class QuerySetTest(unittest.TestCase):
         Test.objects(test='foo').update_one(upsert=True, set__test='foo')
         self.assertTrue('_cls' in Test._collection.find_one())
 
+    def test_update_upsert_looks_like_a_digit(self):
+        class MyDoc(DynamicDocument):
+            pass
+        MyDoc.drop_collection()
+        self.assertEqual(1, MyDoc.objects.update_one(upsert=True, inc__47=1))
+        self.assertEqual(MyDoc.objects.get()['47'], 1)
+
     def test_read_preference(self):
         class Bar(Document):
             pass

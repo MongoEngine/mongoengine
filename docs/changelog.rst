@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Handle dynamic fieldnames that look like digits (#434)
 - Added get_user_document and improve mongo_auth module (#423)
 - Added str representation of GridFSProxy (#424)
 - Update transform to handle docs erroneously passed to unset (#416)
