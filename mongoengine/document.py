@@ -400,7 +400,7 @@ class Document(BaseDocument):
         """
         with switch_db(self.__class__, db_alias) as cls:
             collection = cls._get_collection()
-            db = cls._get_db
+            db = cls._get_db()
         self._get_collection = lambda: collection
         self._get_db = lambda: db
         self._collection = collection
