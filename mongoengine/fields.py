@@ -851,6 +851,10 @@ class SafeReferenceField(ReferenceField):
             # Must dereference so we don't get an invalid ObjectId back.
             try:
                 obj.reload()
+
+                # No need for a proxy in this case.
+                if isinstance(obj, DocumentProxy):
+                    obj = obj._get_current_object()
             except DoesNotExist:
                 return None
         return obj
