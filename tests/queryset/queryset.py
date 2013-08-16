@@ -1497,9 +1497,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_pull_nested(self):
 
-        class User(Document):
-            name = StringField()
-
         class Collaborator(EmbeddedDocument):
             user = StringField()
 
