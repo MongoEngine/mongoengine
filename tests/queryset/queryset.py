@@ -1545,6 +1545,9 @@ class QuerySetTest(unittest.TestCase):
         Site.objects(id=s.id).update_one(pull__collaborators__helpful____user='Esteban')
         self.assertEqual(Site.objects.first().collaborators['helpful'], [])
 
+        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful__={'user':'Frank'})
+        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
+
         def pull_all():
             Site.objects(id=s.id).update_one(pull_all__collaborators__user=['Ross'])
 
