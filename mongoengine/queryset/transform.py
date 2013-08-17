@@ -227,10 +227,23 @@ def update(_doc_cls=None, **update):
             if op == 'pullAll':
                 raise InvalidQueryError("pullAll operations only support "
                                         "a single field depth")
+            
+            try:
+                key_split = parts.index('')
+            except ValueError:
+                key_split = None
+
+            if key_split is not None:
+                key_parts = parts[:key_split]
+                parts = parts[key_split+1:]
 
             parts.reverse()
             for key in parts:
                 value = {key: value}
+
+            if (key_split is not None) and (len(key_parts) > 0):
+                value ={'.'.join(key_parts): value}
+                
         elif op == 'addToSet' and isinstance(value, list):
             value = {key: {"$each": value}}
         else:
