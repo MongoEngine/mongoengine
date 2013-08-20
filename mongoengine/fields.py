@@ -780,6 +780,10 @@ class DictField(ComplexBaseField):
 
         if op in match_operators and isinstance(value, basestring):
             return StringField().prepare_query_value(op, value)
+
+        if hasattr(self.field, 'field'):
+            return self.field.prepare_query_value(op, value)
+
         return super(DictField, self).prepare_query_value(op, value)
 
 
