@@ -689,7 +689,6 @@ document.::
 .. note:: From 0.8 onwards you must declare :attr:`allow_inheritance` defaults
           to False, meaning you must set it to True to use inheritance.
 
-
 Working with existing data
 --------------------------
 As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
@@ -709,3 +708,25 @@ defining all possible field types.
 
 If you use :class:`~mongoengine.Document` and the database contains data that
 isn't defined then that data will be stored in the `document._data` dictionary.
+
+Abstract classes
+================
+
+If you want to add some extra functionality to a group of Document classes but
+you don't need or want the overhead of inheritance you can use the
+:attr:`abstract` attribute of :attr:`-mongoengine.Document.meta`.
+This won't turn on :ref:`document-inheritance` but will allow you to keep your
+code DRY::
+
+        class BaseDocument(Document):
+            meta = {
+                'abstract': True,
+            }
+            def check_permissions(self):
+                ...
+
+        class User(BaseDocument):
+           ...
+
+Now the User class will have access to the inherited `check_permissions` method
+and won't store any of the extra `_cls` information.
