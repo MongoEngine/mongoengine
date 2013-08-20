@@ -43,11 +43,11 @@ def query(_doc_cls=None, _field_operation=False, **query):
         parts = [part for part in parts if not part.isdigit()]
         # Check for an operator and transform to mongo-style if there is
         op = None
-        if parts[-1] in MATCH_OPERATORS:
+        if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
         negate = False
-        if parts[-1] == 'not':
+        if len(parts) > 1 and parts[-1] == 'not':
             parts.pop()
             negate = True
 
