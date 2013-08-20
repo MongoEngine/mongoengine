@@ -3691,6 +3691,23 @@ class QuerySetTest(unittest.TestCase):
             '_cls': 'Animal.Cat'
         })
 
+    def test_can_have_field_same_name_as_query_operator(self):
+
+        class Size(Document):
+            name = StringField()
+
+        class Example(Document):
+            size = ReferenceField(Size)
+
+        Size.drop_collection()
+        Example.drop_collection()
+
+        instance_size = Size(name="Large").save()
+        Example(size=instance_size).save()
+
+        self.assertEqual(Example.objects(size=instance_size).count(), 1)
+        self.assertEqual(Example.objects(size__in=[instance_size]).count(), 1)
+
 
 if __name__ == '__main__':
     unittest.main()

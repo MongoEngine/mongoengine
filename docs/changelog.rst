@@ -4,7 +4,8 @@ Changelog
 
 Changes in 0.8.4
 ================
-- Fixed can now exclude subclass fields (#443)
+- Allow fields to be named the same as query operators (#445)
+- Updated field filter logic - can now exclude subclass fields (#443)
 - Fixed dereference issue with embedded listfield referencefields (#439)
 - Fixed slice when using inheritance causing fields to be excluded (#437)
 - Fixed ._get_db() attribute after a Document.switch_db() (#441)
