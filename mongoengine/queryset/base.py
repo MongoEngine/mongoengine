@@ -1347,7 +1347,7 @@ class BaseQuerySet(object):
                 field = ".".join(f.db_field for f in
                                  document._lookup_field(field.split('.')))
                 ret.append(field)
-            except LookUpError, e:
+            except LookUpError, err:
                 found = False
                 for subdoc in subclasses:
                     try:
@@ -1360,7 +1360,7 @@ class BaseQuerySet(object):
                         pass
 
                 if not found:
-                    raise e
+                    raise err
         return ret
 
     def _get_order_by(self, keys):
