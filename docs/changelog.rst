@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Fixed dereference issue with embedded listfield referencefields (#439)
 - Fixed slice when using inheritance causing fields to be excluded (#437)
 - Fixed ._get_db() attribute after a Document.switch_db() (#441)
 - Dynamic Fields store and recompose Embedded Documents / Documents correctly (#449)
