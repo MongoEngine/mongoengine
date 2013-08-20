@@ -624,7 +624,9 @@ class DynamicField(BaseField):
             cls = value.__class__
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
-            if (isinstance(value, (Document, EmbeddedDocument))):
+            if (isinstance(value, Document)):
+                val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
+            if (isinstance(value, EmbeddedDocument)):
                 val['_cls'] = cls.__name__
             return val
 
@@ -644,6 +646,15 @@ class DynamicField(BaseField):
         if is_list:  # Convert back to a list
             value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
         return value
+
+    def to_python(self, value):
+        if isinstance(value, dict) and '_cls' in value:
+            doc_cls = get_document(value['_cls'])
+            if '_ref' in value:
+                value = doc_cls._get_db().dereference(value['_ref'])
+            return doc_cls._from_son(value)
+
+        return super(DynamicField, self).to_python(value)
 
     def lookup_member(self, member_name):
         return member_name
