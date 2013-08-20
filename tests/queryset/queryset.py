@@ -1497,9 +1497,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_pull_nested(self):
 
-        class User(Document):
-            name = StringField()
-
         class Collaborator(EmbeddedDocument):
             user = StringField()
 
@@ -1519,6 +1516,37 @@ class QuerySetTest(unittest.TestCase):
 
         Site.objects(id=s.id).update_one(pull__collaborators__user='Esteban')
         self.assertEqual(Site.objects.first().collaborators, [])
+
+        def pull_all():
+            Site.objects(id=s.id).update_one(pull_all__collaborators__user=['Ross'])
+
+        self.assertRaises(InvalidQueryError, pull_all)
+
+    def test_pull_from_nested(self):
+
+        class Collaborator(EmbeddedDocument):
+            user = StringField()
+
+            def __unicode__(self):
+                return '%s' % self.user
+
+        class Site(Document):
+            name = StringField(max_length=75, unique=True, required=True)
+            collaborators = MapField(ListField(EmbeddedDocumentField(Collaborator)))
+
+
+        Site.drop_collection()
+
+        c = Collaborator(user='Esteban')
+        f = Collaborator(user='Frank')
+        s = Site(name="test", collaborators={'helpful':[c],'unhelpful':[f]})
+        s.save()
+
+        Site.objects(id=s.id).update_one(pull__collaborators__helpful____user='Esteban')
+        self.assertEqual(Site.objects.first().collaborators['helpful'], [])
+
+        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful__={'user':'Frank'})
+        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
 
         def pull_all():
             Site.objects(id=s.id).update_one(pull_all__collaborators__user=['Ross'])
