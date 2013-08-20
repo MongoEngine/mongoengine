@@ -51,7 +51,7 @@ CLASSIFIERS = [
 extra_opts = {}
 if sys.version_info[0] == 3:
     extra_opts['use_2to3'] = True
-    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'jinja2>=2.6', 'django>=1.5.1']
+    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'jinja2==2.6', 'django>=1.5.1']
     extra_opts['packages'] = find_packages(exclude=('tests',))
     if "test" in sys.argv or "nosetests" in sys.argv:
         extra_opts['packages'].append("tests")
