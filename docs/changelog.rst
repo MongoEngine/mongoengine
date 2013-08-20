@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Fixed ._get_db() attribute after a Document.switch_db() (#441)
 - Dynamic Fields store and recompose Embedded Documents / Documents correctly (#449)
 - Handle dynamic fieldnames that look like digits (#434)
 - Added get_user_document and improve mongo_auth module (#423)
