@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Remove database name necessity in uri connection schema (#452)
 - Fixed "$pull" semantics for nested ListFields (#447)
 - Allow fields to be named the same as query operators (#445)
 - Updated field filter logic - can now exclude subclass fields (#443)
