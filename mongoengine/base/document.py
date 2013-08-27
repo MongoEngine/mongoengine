@@ -254,7 +254,7 @@ class BaseDocument(object):
                 value = field.to_mongo(value)
 
             # Handle self generating fields
-            if value is None and field._auto_gen:
+            if value is None and getattr(field, '_auto_gen', False):
                 value = field.generate()
                 self._data[field_name] = value
 
