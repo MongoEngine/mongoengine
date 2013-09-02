@@ -12,7 +12,7 @@ from bson.son import SON
 from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.errors import (ValidationError, InvalidDocumentError,
-                                LookUpError)
+                                LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
 
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
@@ -60,6 +60,15 @@ class BaseDocument(object):
         __only_fields = set(values.pop("__only_fields", values))
 
         signals.pre_init.send(self.__class__, document=self, values=values)
+
+        # Check if there are undefined fields supplied, if so raise an
+        # Exception.
+        for var in values.keys():
+            if var not in self._fields.keys():
+                msg = (
+                    "The field '{}' does not exist on the document '{}'"
+                ).format(var, self._class_name)
+                raise FieldDoesNotExist(msg)
 
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()

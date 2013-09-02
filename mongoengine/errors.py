@@ -40,6 +40,10 @@ class NotUniqueError(OperationError):
     pass
 
 
+class FieldDoesNotExist(Exception):
+    pass
+
+
 class ValidationError(AssertionError):
     """Validation exception.
 
