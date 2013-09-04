@@ -808,5 +808,41 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEquals(self.Person.distinct({"gender":"m"}, "age",
             sort=[('age', 1)]), [23, 24])
 
+    def testPushSlice(self):
+        adam = self.Person(name="Adam", number_list=range(50))
+        adam.save()
+
+        adam.update_one({"$push": {"number_list": {"$each": [50, 51, 52], "$slice": -20}}})
+        adam.reload()
+        self.assertEquals(adam.number_list, range(33, 53))
+        self.assertEquals(len(adam.number_list), 20)
+
+        adam = self.Person(name="Adam", number_list=range(50))
+        adam.save()
+
+        adam.update_one({"$push": {"number_list": {"$each": [50, 51, 52], "$slice": -100}}})
+        adam.reload()
+        self.assertEquals(adam.number_list, range(53))
+        self.assertEquals(len(adam.number_list), 53)
+
+    def testPushSliceEmbedded(self):
+        blue = self.Colour(name="Blue")
+        green = self.Colour(name="Green")
+        red = self.Colour(name="Red")
+        adam = self.Person(name="Adam", other_colours=[blue, green])
+        adam.save()
+
+        adam.update_one({"$push": {"other_colours": {"$each": [red], "$slice": -2}}})
+        adam.reload()
+        self.assertEquals(adam.other_colours, [green, red])
+
+        adam = self.Person(name="Adam", other_colours=[blue, green])
+        adam.save()
+
+        adam.update_one({"$push": {"other_colours": {"$each": [red], "$slice": -5}}})
+        adam.reload()
+        self.assertEquals(adam.other_colours, [blue, green, red])
+
+
 if __name__ == '__main__':
     unittest.main()

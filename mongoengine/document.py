@@ -556,8 +556,13 @@ class Document(BaseDocument):
                 elif op not in NO_VALIDATE_OPS:
                     raise ValidationError("Unknown atomic operator %s" % op)
 
+            # handle $slice by enforcing negative int
+            if op == '$slice':
+                if not isinstance(value, int) or value > 0:
+                    raise ValidationError("Slices must be negative ints")
+
             # handle EmbeddedDocuments
-            if isinstance(value, BaseDocument):
+            elif isinstance(value, BaseDocument):
                 value = value.to_mongo()
 
             # handle lists (force to_mongo() everything if it's a list of docs)
