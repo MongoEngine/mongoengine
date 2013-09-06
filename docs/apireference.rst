@@ -68,6 +68,7 @@ Fields
 .. autoclass:: mongoengine.ObjectIdField
 .. autoclass:: mongoengine.ReferenceField
 .. autoclass:: mongoengine.SequenceField
+.. autoclass:: mongoengine.SetField
 .. autoclass:: mongoengine.SortedListField
 .. autoclass:: mongoengine.StringField
 .. autoclass:: mongoengine.URLField

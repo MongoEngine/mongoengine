@@ -83,6 +83,7 @@ are as follows:
 * :class:`~mongoengine.ObjectIdField`
 * :class:`~mongoengine.ReferenceField`
 * :class:`~mongoengine.SequenceField`
+* :class:`~mongoengine.SetField`
 * :class:`~mongoengine.SortedListField`
 * :class:`~mongoengine.StringField`
 * :class:`~mongoengine.URLField`
