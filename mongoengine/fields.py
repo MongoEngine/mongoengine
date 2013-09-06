@@ -33,7 +33,8 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DecimalField', 'ComplexDateTimeField', 'URLField', 'DynamicField',
            'GenericReferenceField', 'FileField', 'BinaryField',
            'SortedListField', 'EmailField', 'GeoPointField', 'ImageField',
-           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField']
+           'SequenceField', 'UUIDField', 'GenericEmbeddedDocumentField',
+           'SetField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -624,6 +625,33 @@ class SortedListField(ListField):
         if self._ordering is not None:
             return sorted(value, key=itemgetter(self._ordering), reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
+
+
+class SetField(ListField):
+    """ Set field.
+
+        Extends ListField, so that's how it's represented in Mongo.
+    """
+    def __set__(self, instance, value):
+        return super(SetField, self).__set__(instance, self.to_python(value))
+
+    def to_mongo(self, value):
+        try:
+            return super(SetField, self).to_mongo(list(value))
+        except TypeError:
+            return super(SetField, self).to_mongo(value)
+
+    def to_python(self, value):
+        value = super(SetField, self).to_python(value)
+
+        try:
+            return set(value)
+        except TypeError:
+            return value
+
+    def validate(self, value):
+        if not isinstance(value, set):
+            self.error('Only sets can be used.')
 
 
 class DictField(ComplexBaseField):
