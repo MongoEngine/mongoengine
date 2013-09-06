@@ -768,6 +768,34 @@ class FieldTest(unittest.TestCase):
 
         Simple.drop_collection()
 
+    def test_set_field(self):
+        """Ensure that set field work as expected.
+        """
+        class BlogPost(Document):
+            info = SetField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.info = 'my post'
+        self.assertRaises(ValidationError, post.validate)
+
+        post = BlogPost()
+        post.info = {'test'}
+        post.save()
+
+        post.info = ['test', 'test']
+        post.save()
+
+        post = BlogPost()
+        post.info = {'test': 3}
+        post.save()
+
+        self.assertEqual(BlogPost.objects.count(), 3)
+        self.assertEqual(BlogPost.objects.filter(info__exact='test').count(), 3)
+
+        BlogPost.drop_collection()
+
     def test_dict_field(self):
         """Ensure that dict types work as expected.
         """

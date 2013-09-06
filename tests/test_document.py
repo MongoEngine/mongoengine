@@ -1820,6 +1820,7 @@ class DocumentTest(unittest.TestCase):
             sequence_field = SequenceField()
             uuid_field = UUIDField(default=uuid.uuid4)
             generic_embedded_document_field = GenericEmbeddedDocumentField(default=lambda: EmbeddedDoc())
+            set_field = SetField(IntField(), default=lambda: {1, 2, 3})
 
 
         Simple.drop_collection()
