@@ -304,7 +304,10 @@ class DecimalField(BaseField):
             return value
 
         # Convert to string for python 2.6 before casting to Decimal
-        value = decimal.Decimal("%s" % value)
+        try:
+            value = decimal.Decimal("%s" % value)
+        except decimal.InvalidOperation:
+            return value
         return value.quantize(self.precision, rounding=self.rounding)
 
     def to_mongo(self, value):

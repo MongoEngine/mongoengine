@@ -384,6 +384,9 @@ class FieldTest(unittest.TestCase):
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
+        person_2 = Person(height='something invalid')
+        self.assertRaises(ValidationError, person_2.validate)
+
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.
         """
@@ -405,6 +408,11 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('4.0')
         self.assertRaises(ValidationError, person.validate)
+        person.height = 'something invalid'
+        self.assertRaises(ValidationError, person.validate)
+
+        person_2 = Person(height='something invalid')
+        self.assertRaises(ValidationError, person_2.validate)
 
         Person.drop_collection()
 
