@@ -23,6 +23,11 @@ arguments should be provided::
 
     connect('project1', username='webapp', password='pwd123')
 
+The :attr:`authsource` arguments allows you to specify the database to
+authenticateon. If not specified the current database is used::
+
+    connect('project1', username='webapp', password='pwd123', authsource='admin')
+
 Uri style connections are also supported - just supply the uri as
 the :attr:`host` to
 :func:`~mongoengine.connect`::
