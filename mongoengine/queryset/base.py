@@ -850,7 +850,7 @@ class BaseQuerySet(object):
         :param output: output collection name, if set to 'inline' will try to
            use :class:`~pymongo.collection.Collection.inline_map_reduce`
            This can also be a dictionary containing output options
-           see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
+           see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
