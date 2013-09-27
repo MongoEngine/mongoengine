@@ -76,7 +76,7 @@ class GridFSStorage(Storage):
         """Find the documents in the store with the given name
         """
         docs = self.document.objects
-        doc = [d for d in docs if getattr(d, self.field).name == name]
+        doc = [d for d in docs if hasattr(getattr(d, self.field), 'name') and getattr(d, self.field).name == name]
         if doc:
             return doc[0]
         else:
