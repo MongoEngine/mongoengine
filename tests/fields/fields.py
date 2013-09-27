@@ -1109,7 +1109,13 @@ class FieldTest(unittest.TestCase):
         post.info = {'$title': 'test'}
         self.assertRaises(ValidationError, post.validate)
 
+        post.info = {'nested': {'$title': 'test'}}
+        self.assertRaises(ValidationError, post.validate)
+
         post.info = {'the.title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'nested': {'the.title': 'test'}}
         self.assertRaises(ValidationError, post.validate)
 
         post.info = {1: 'test'}
