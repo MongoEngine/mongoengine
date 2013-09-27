@@ -290,6 +290,12 @@ instance of the object to the query::
     # Find all pages that both Bob and John have authored
     Page.objects(authors__all=[bob, john])
 
+    # Remove Bob from the authors for a page.
+    Page.objects(id='...').update_one(pull__authors=bob)
+
+    # Add John to the authors for a page.
+    Page.objects(id='...').update_one(push__authors=john)
+
 
 Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
