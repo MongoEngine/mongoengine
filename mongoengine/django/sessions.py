@@ -55,6 +55,12 @@ class SessionStore(SessionBase):
     """A MongoEngine-based session store for Django.
     """
 
+    def _get_session(self, *args, **kwargs):
+        sess = super(SessionStore, self)._get_session(*args, **kwargs)
+        if sess.get('_auth_user_id', None):
+            sess['_auth_user_id'] = str(sess.get('_auth_user_id'))
+        return sess
+
     def load(self):
         try:
             s = MongoSession.objects(session_key=self.session_key,
