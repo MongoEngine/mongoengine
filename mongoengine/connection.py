@@ -18,7 +18,7 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name, host='localhost', port=27017,
+def register_connection(alias, name, host=None, port=None,
                         is_slave=False, read_preference=False, slaves=None,
                         username=None, password=None, **kwargs):
     """Add a connection.
@@ -43,8 +43,8 @@ def register_connection(alias, name, host='localhost', port=27017,
 
     conn_settings = {
         'name': name,
-        'host': host,
-        'port': port,
+        'host': host or 'localhost',
+        'port': port or 27017,
         'is_slave': is_slave,
         'slaves': slaves or [],
         'username': username,
@@ -53,16 +53,15 @@ def register_connection(alias, name, host='localhost', port=27017,
     }
 
     # Handle uri style connections
-    if "://" in host:
-        uri_dict = uri_parser.parse_uri(host)
+    if "://" in conn_settings['host']:
+        uri_dict = uri_parser.parse_uri(conn_settings['host'])
         conn_settings.update({
-            'host': host,
             'name': uri_dict.get('database') or name,
             'username': uri_dict.get('username'),
             'password': uri_dict.get('password'),
             'read_preference': read_preference,
         })
-        if "replicaSet" in host:
+        if "replicaSet" in conn_settings['host']:
             conn_settings['replicaSet'] = True
 
     conn_settings.update(kwargs)

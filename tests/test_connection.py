@@ -98,6 +98,14 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest2')
 
+    def test_register_connection_defaults(self):
+        """Ensure that defaults are used when the host and port are None.
+        """
+        register_connection('testdb', 'mongoenginetest', host=None, port=None)
+
+        conn = get_connection('testdb')
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
     def test_connection_kwargs(self):
         """Ensure that connection kwargs get passed to pymongo.
         """
