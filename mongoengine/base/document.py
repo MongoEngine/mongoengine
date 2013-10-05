@@ -872,7 +872,7 @@ class BaseDocument(object):
 
         for field_name in parts:
             # Handle ListField indexing:
-            if field_name.isdigit():
+            if field_name.isdigit() and hasattr(field, 'field'):
                 new_field = field.field
                 fields.append(field_name)
                 continue

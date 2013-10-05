@@ -384,6 +384,9 @@ class FieldTest(unittest.TestCase):
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
+        person_2 = Person(height='something invalid')
+        self.assertRaises(ValidationError, person_2.validate)
+
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.
         """
@@ -405,6 +408,11 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('4.0')
         self.assertRaises(ValidationError, person.validate)
+        person.height = 'something invalid'
+        self.assertRaises(ValidationError, person.validate)
+
+        person_2 = Person(height='something invalid')
+        self.assertRaises(ValidationError, person_2.validate)
 
         Person.drop_collection()
 
@@ -1109,7 +1117,13 @@ class FieldTest(unittest.TestCase):
         post.info = {'$title': 'test'}
         self.assertRaises(ValidationError, post.validate)
 
+        post.info = {'nested': {'$title': 'test'}}
+        self.assertRaises(ValidationError, post.validate)
+
         post.info = {'the.title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'nested': {'the.title': 'test'}}
         self.assertRaises(ValidationError, post.validate)
 
         post.info = {1: 'test'}
@@ -2505,6 +2519,47 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(len(x.items) == 1)
         self.assertTrue(tuple(x.items[0]) in tuples)
         self.assertTrue(x.items[0] in tuples)
+
+    def test_dynamic_fields_class(self):
+
+        class Doc2(Document):
+            field_1 = StringField(db_field='f')
+
+        class Doc(Document):
+            my_id = IntField(required=True, unique=True, primary_key=True)
+            embed_me = DynamicField(db_field='e')
+            field_x = StringField(db_field='x')
+
+        Doc.drop_collection()
+        Doc2.drop_collection()
+
+        doc2 = Doc2(field_1="hello")
+        doc = Doc(my_id=1, embed_me=doc2, field_x="x")
+        self.assertRaises(OperationError, doc.save)
+
+        doc2.save()
+        doc.save()
+
+        doc = Doc.objects.get()
+        self.assertEqual(doc.embed_me.field_1, "hello")
+
+    def test_dynamic_fields_embedded_class(self):
+
+        class Embed(EmbeddedDocument):
+            field_1 = StringField(db_field='f')
+
+        class Doc(Document):
+            my_id = IntField(required=True, unique=True, primary_key=True)
+            embed_me = DynamicField(db_field='e')
+            field_x = StringField(db_field='x')
+
+        Doc.drop_collection()
+
+        Doc(my_id=1, embed_me=Embed(field_1="hello"), field_x="x").save()
+
+        doc = Doc.objects.get()
+        self.assertEqual(doc.embed_me.field_1, "hello")
+
 
 if __name__ == '__main__':
     unittest.main()

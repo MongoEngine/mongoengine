@@ -399,5 +399,28 @@ class OnlyExcludeAllTest(unittest.TestCase):
         numbers = Numbers.objects.fields(embedded__n={"$slice": [-5, 10]}).get()
         self.assertEqual(numbers.embedded.n, [-5, -4, -3, -2, -1])
 
+
+    def test_exclude_from_subclasses_docs(self):
+
+        class Base(Document):
+            username = StringField()
+
+            meta = {'allow_inheritance': True}
+
+        class Anon(Base):
+            anon = BooleanField()
+
+        class User(Base):
+            password = StringField()
+            wibble = StringField()
+
+        Base.drop_collection()
+        User(username="mongodb", password="secret").save()
+
+        user = Base.objects().exclude("password", "wibble").first()
+        self.assertEqual(user.password, None)
+
+        self.assertRaises(LookUpError, Base.objects.exclude, "made_up")
+
 if __name__ == '__main__':
     unittest.main()

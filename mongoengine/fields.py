@@ -304,7 +304,10 @@ class DecimalField(BaseField):
             return value
 
         # Convert to string for python 2.6 before casting to Decimal
-        value = decimal.Decimal("%s" % value)
+        try:
+            value = decimal.Decimal("%s" % value)
+        except decimal.InvalidOperation:
+            return value
         return value.quantize(self.precision, rounding=self.rounding)
 
     def to_mongo(self, value):
@@ -624,7 +627,9 @@ class DynamicField(BaseField):
             cls = value.__class__
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
-            if (isinstance(value, (Document, EmbeddedDocument))):
+            if (isinstance(value, Document)):
+                val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
+            if (isinstance(value, EmbeddedDocument)):
                 val['_cls'] = cls.__name__
             return val
 
@@ -644,6 +649,15 @@ class DynamicField(BaseField):
         if is_list:  # Convert back to a list
             value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
         return value
+
+    def to_python(self, value):
+        if isinstance(value, dict) and '_cls' in value:
+            doc_cls = get_document(value['_cls'])
+            if '_ref' in value:
+                value = doc_cls._get_db().dereference(value['_ref'])
+            return doc_cls._from_son(value)
+
+        return super(DynamicField, self).to_python(value)
 
     def lookup_member(self, member_name):
         return member_name
@@ -724,6 +738,21 @@ class SortedListField(ListField):
                           reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
+def key_not_string(d):
+    """ Helper function to recursively determine if any key in a dictionary is
+    not a string.
+    """
+    for k, v in d.items():
+        if not isinstance(k, basestring) or (isinstance(v, dict) and key_not_string(v)):
+            return True
+
+def key_has_dot_or_dollar(d):
+    """ Helper function to recursively determine if any key in a dictionary
+    contains a dot or a dollar sign.
+    """
+    for k, v in d.items():
+        if ('.' in k or '$' in k) or (isinstance(v, dict) and key_has_dot_or_dollar(v)):
+            return True
 
 class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
@@ -750,11 +779,11 @@ class DictField(ComplexBaseField):
         if not isinstance(value, dict):
             self.error('Only dictionaries may be used in a DictField')
 
-        if any(k for k in value.keys() if not isinstance(k, basestring)):
+        if key_not_string(value):
             msg = ("Invalid dictionary key - documents must "
                    "have only string keys")
             self.error(msg)
-        if any(('.' in k or '$' in k) for k in value.keys()):
+        if key_has_dot_or_dollar(value):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')
         super(DictField, self).validate(value)
@@ -769,6 +798,10 @@ class DictField(ComplexBaseField):
 
         if op in match_operators and isinstance(value, basestring):
             return StringField().prepare_query_value(op, value)
+
+        if hasattr(self.field, 'field'):
+            return self.field.prepare_query_value(op, value)
+
         return super(DictField, self).prepare_query_value(op, value)
 
 

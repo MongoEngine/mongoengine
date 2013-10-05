@@ -55,7 +55,8 @@ class QueryFieldList(object):
 
         if self.always_include:
             if self.value is self.ONLY and self.fields:
-                self.fields = self.fields.union(self.always_include)
+                if sorted(self.slice.keys()) != sorted(self.fields):
+                    self.fields = self.fields.union(self.always_include)
             else:
                 self.fields -= self.always_include
 

@@ -14,8 +14,9 @@ from pymongo.common import validate_read_preference
 
 from mongoengine import signals
 from mongoengine.common import _import_class
+from mongoengine.base.common import get_document
 from mongoengine.errors import (OperationError, NotUniqueError,
-                                InvalidQueryError)
+                                InvalidQueryError, LookUpError)
 
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
@@ -849,7 +850,7 @@ class BaseQuerySet(object):
         :param output: output collection name, if set to 'inline' will try to
            use :class:`~pymongo.collection.Collection.inline_map_reduce`
            This can also be a dictionary containing output options
-           see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
+           see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
@@ -1333,13 +1334,33 @@ class BaseQuerySet(object):
 
         return frequencies
 
-    def _fields_to_dbfields(self, fields):
+    def _fields_to_dbfields(self, fields, subdoc=False):
         """Translate fields paths to its db equivalents"""
         ret = []
+        subclasses = []
+        document = self._document
+        if document._meta['allow_inheritance']:
+            subclasses = [get_document(x)
+                          for x in document._subclasses][1:]
         for field in fields:
-            field = ".".join(f.db_field for f in
-                             self._document._lookup_field(field.split('.')))
-            ret.append(field)
+            try:
+                field = ".".join(f.db_field for f in
+                                 document._lookup_field(field.split('.')))
+                ret.append(field)
+            except LookUpError, err:
+                found = False
+                for subdoc in subclasses:
+                    try:
+                        subfield = ".".join(f.db_field for f in
+                                        subdoc._lookup_field(field.split('.')))
+                        ret.append(subfield)
+                        found = True
+                        break
+                    except LookUpError, e:
+                        pass
+
+                if not found:
+                    raise err
         return ret
 
     def _get_order_by(self, keys):

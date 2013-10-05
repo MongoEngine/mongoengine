@@ -46,17 +46,21 @@ Context Managers
 Querying
 ========
 
-.. autoclass:: mongoengine.queryset.QuerySet
-   :members:
+.. automodule:: mongoengine.queryset
+    :synopsis: Queryset level operations
 
-   .. automethod:: mongoengine.queryset.QuerySet.__call__
+    .. autoclass:: mongoengine.queryset.QuerySet
+      :members:
+      :inherited-members:
 
-.. autoclass:: mongoengine.queryset.QuerySetNoCache
-   :members:
+      .. automethod:: QuerySet.__call__
 
-   .. automethod:: mongoengine.queryset.QuerySetNoCache.__call__
+    .. autoclass:: mongoengine.queryset.QuerySetNoCache
+      :members:
 
-.. autofunction:: mongoengine.queryset.queryset_manager
+       .. automethod:: mongoengine.queryset.QuerySetNoCache.__call__
+
+    .. autofunction:: mongoengine.queryset.queryset_manager
 
 Fields
 ======

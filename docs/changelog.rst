@@ -4,6 +4,15 @@ Changelog
 
 Changes in 0.8.4
 ================
+- Remove database name necessity in uri connection schema (#452)
+- Fixed "$pull" semantics for nested ListFields (#447)
+- Allow fields to be named the same as query operators (#445)
+- Updated field filter logic - can now exclude subclass fields (#443)
+- Fixed dereference issue with embedded listfield referencefields (#439)
+- Fixed slice when using inheritance causing fields to be excluded (#437)
+- Fixed ._get_db() attribute after a Document.switch_db() (#441)
+- Dynamic Fields store and recompose Embedded Documents / Documents correctly (#449)
+- Handle dynamic fieldnames that look like digits (#434)
 - Added get_user_document and improve mongo_auth module (#423)
 - Added str representation of GridFSProxy (#424)
 - Update transform to handle docs erroneously passed to unset (#416)

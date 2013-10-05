@@ -1171,6 +1171,30 @@ class FieldTest(unittest.TestCase):
 
         self.assertEqual(2, len([brand for bg in brand_groups for brand in bg.brands]))
 
+    def test_dereferencing_embedded_listfield_referencefield(self):
+        class Tag(Document):
+            meta = {'collection': 'tags'}
+            name = StringField()
+
+        class Post(EmbeddedDocument):
+            body = StringField()
+            tags = ListField(ReferenceField("Tag", dbref=True))
+
+        class Page(Document):
+            meta = {'collection': 'pages'}
+            tags = ListField(ReferenceField("Tag", dbref=True))
+            posts = ListField(EmbeddedDocumentField(Post))
+
+        Tag.drop_collection()
+        Page.drop_collection()
+
+        tag = Tag(name='test').save()
+        post = Post(body='test body', tags=[tag])
+        Page(tags=[tag], posts=[post]).save()
+
+        page = Page.objects.first()
+        self.assertEqual(page.tags[0], page.posts[0].tags[0])
+
 if __name__ == '__main__':
     unittest.main()
 

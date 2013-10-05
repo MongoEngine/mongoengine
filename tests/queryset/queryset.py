@@ -1497,9 +1497,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_pull_nested(self):
 
-        class User(Document):
-            name = StringField()
-
         class Collaborator(EmbeddedDocument):
             user = StringField()
 
@@ -1514,14 +1511,78 @@ class QuerySetTest(unittest.TestCase):
         Site.drop_collection()
 
         c = Collaborator(user='Esteban')
-        s = Site(name="test", collaborators=[c])
-        s.save()
+        s = Site(name="test", collaborators=[c]).save()
 
         Site.objects(id=s.id).update_one(pull__collaborators__user='Esteban')
         self.assertEqual(Site.objects.first().collaborators, [])
 
         def pull_all():
             Site.objects(id=s.id).update_one(pull_all__collaborators__user=['Ross'])
+
+        self.assertRaises(InvalidQueryError, pull_all)
+
+    def test_pull_from_nested_embedded(self):
+
+        class User(EmbeddedDocument):
+            name = StringField()
+
+            def __unicode__(self):
+                return '%s' % self.name
+
+        class Collaborator(EmbeddedDocument):
+            helpful = ListField(EmbeddedDocumentField(User))
+            unhelpful = ListField(EmbeddedDocumentField(User))
+
+        class Site(Document):
+            name = StringField(max_length=75, unique=True, required=True)
+            collaborators = EmbeddedDocumentField(Collaborator)
+
+
+        Site.drop_collection()
+
+        c = User(name='Esteban')
+        f = User(name='Frank')
+        s = Site(name="test", collaborators=Collaborator(helpful=[c], unhelpful=[f])).save()
+
+        Site.objects(id=s.id).update_one(pull__collaborators__helpful=c)
+        self.assertEqual(Site.objects.first().collaborators['helpful'], [])
+
+        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful={'name': 'Frank'})
+        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
+
+        def pull_all():
+            Site.objects(id=s.id).update_one(pull_all__collaborators__helpful__name=['Ross'])
+
+        self.assertRaises(InvalidQueryError, pull_all)
+
+    def test_pull_from_nested_mapfield(self):
+
+        class Collaborator(EmbeddedDocument):
+            user = StringField()
+
+            def __unicode__(self):
+                return '%s' % self.user
+
+        class Site(Document):
+            name = StringField(max_length=75, unique=True, required=True)
+            collaborators = MapField(ListField(EmbeddedDocumentField(Collaborator)))
+
+
+        Site.drop_collection()
+
+        c = Collaborator(user='Esteban')
+        f = Collaborator(user='Frank')
+        s = Site(name="test", collaborators={'helpful':[c],'unhelpful':[f]})
+        s.save()
+
+        Site.objects(id=s.id).update_one(pull__collaborators__helpful__user='Esteban')
+        self.assertEqual(Site.objects.first().collaborators['helpful'], [])
+
+        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful={'user':'Frank'})
+        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
+
+        def pull_all():
+            Site.objects(id=s.id).update_one(pull_all__collaborators__helpful__user=['Ross'])
 
         self.assertRaises(InvalidQueryError, pull_all)
 
@@ -3299,6 +3360,13 @@ class QuerySetTest(unittest.TestCase):
         Test.objects(test='foo').update_one(upsert=True, set__test='foo')
         self.assertTrue('_cls' in Test._collection.find_one())
 
+    def test_update_upsert_looks_like_a_digit(self):
+        class MyDoc(DynamicDocument):
+            pass
+        MyDoc.drop_collection()
+        self.assertEqual(1, MyDoc.objects.update_one(upsert=True, inc__47=1))
+        self.assertEqual(MyDoc.objects.get()['47'], 1)
+
     def test_read_preference(self):
         class Bar(Document):
             pass
@@ -3683,6 +3751,23 @@ class QuerySetTest(unittest.TestCase):
             'name': 'Charlie',
             '_cls': 'Animal.Cat'
         })
+
+    def test_can_have_field_same_name_as_query_operator(self):
+
+        class Size(Document):
+            name = StringField()
+
+        class Example(Document):
+            size = ReferenceField(Size)
+
+        Size.drop_collection()
+        Example.drop_collection()
+
+        instance_size = Size(name="Large").save()
+        Example(size=instance_size).save()
+
+        self.assertEqual(Example.objects(size=instance_size).count(), 1)
+        self.assertEqual(Example.objects(size__in=[instance_size]).count(), 1)
 
 
 if __name__ == '__main__':
