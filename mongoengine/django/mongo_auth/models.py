@@ -105,3 +105,6 @@ class MongoUser(models.Model):
     """
 
     objects = MongoUserManager()
+
+    class Meta:
+        app_label = 'mongo_auth'
