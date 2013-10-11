@@ -1465,6 +1465,22 @@ class SequenceField(BaseField):
     Use any callable as `value_decorator` to transform calculated counter into
     any value suitable for your needs, e.g. string or hexadecimal
     representation of the default integer counter value.
+    
+    Use any callable as `sequence_name` to generate the sequence_name on the fly::
+    
+        def sequence_generator(instance):
+            return "%s:%s" % instance.__class__.__name__, instance.is_a_duck
+            
+        class MyDocument(mongoengine.Document):
+            
+            is_a_duck = mongoengine.BooleanField()
+            
+            qualified_index = mongoengine.SequenceField(sequence_name=sequence_generator)
+            
+    In the above example, at least two unique sequence counter instances will 
+    exist for instances of ``MyDocument``. This can be useful in cases where 
+    it is desired to track instance sequential indexes based on other arbitrary
+    data.
 
     .. versionadded:: 0.5
 
@@ -1526,7 +1542,11 @@ class SequenceField(BaseField):
 
     def get_sequence_name(self):
         if self.sequence_name:
-            return self.sequence_name
+            if callable(self.sequence_name):
+                return self.sequence_name(self)
+            else:
+                return self.sequence_name
+        
         owner = self.owner_document
         if issubclass(owner, Document):
             return owner._get_collection_name()
