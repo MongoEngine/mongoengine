@@ -3,6 +3,7 @@ import warnings
 import hashlib
 import pymongo
 import re
+import datetime
 
 from pymongo.read_preferences import ReadPreference
 from bson import ObjectId
@@ -657,6 +658,21 @@ class Document(BaseDocument):
 
         return {'missing': missing, 'extra': extra}
 
+    def build_to_json(self, *args):
+        out = dict(self._data)
+        for k, v in out.items():
+            if args and (k not in args):
+                del out[k]
+                continue
+            if isinstance(v, ObjectId):
+                out[k] = str(v)
+            elif isinstance(v, datetime.datetime):
+                out[k] = int(time.mktime(v.timetuple()))
+            elif isinstance(v, DBRef):
+                out[k] = str(v.id)
+            elif isinstance(v, Document):
+                out[k] = v.build_to_json(*args)
+        return out
 
 class DynamicDocument(Document):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
@@ -753,3 +769,4 @@ class MapReduceDocument(object):
             self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
         return self._key_object
+
