@@ -291,7 +291,9 @@ class Document(BaseDocument):
                 raise NotUniqueError(message % unicode(err))
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
-        if id_field not in self._meta.get('shard_key', []):
+        #if id_field not in self._meta.get('shard_key', []):
+        if (id_field not in self._meta.get('shard_key', [])) or created:
+            #不是片键或者是初次创建的时候
             self[id_field] = self._fields[id_field].to_python(object_id)
 
         self._clear_changed_fields()
@@ -659,6 +661,12 @@ class Document(BaseDocument):
         return {'missing': missing, 'extra': extra}
 
     def build_to_json(self, *args):
+        """convert doc to python dict for json output
+
+        :param *args: keep fields list, the full fields if None
+
+        :returns: dict
+        """
         out = dict(self._data)
         for k, v in out.items():
             if args and (k not in args):
