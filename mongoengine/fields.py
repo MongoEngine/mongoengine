@@ -613,8 +613,14 @@ class GenericEmbeddedDocumentField(BaseField):
 class DynamicField(BaseField):
     """A truly dynamic field type capable of handling different and varying
     types of data.
+    :param use_dbref: If True , Create a dbref if value is a document. If False, create a copy from document.
 
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
+
+    def __init__(self,use_dbref=True, **kwargs):
+        self.use_dbref = use_dbref
+        super(DynamicField, self).__init__(**kwargs)
+
 
     def to_mongo(self, value):
         """Convert a Python type to a MongoDBcompatible type.
@@ -628,7 +634,10 @@ class DynamicField(BaseField):
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
             if (isinstance(value, Document)):
-                val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
+                if self.use_dbref:
+                        val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
+                else:
+                        val['_cls'] = cls.__name__
             if (isinstance(value, EmbeddedDocument)):
                 val['_cls'] = cls.__name__
             return val
