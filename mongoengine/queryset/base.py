@@ -331,7 +331,7 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0 and with_limit_and_skip:
+        if self._limit == 0 and with_limit_and_skip or self._none:
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
