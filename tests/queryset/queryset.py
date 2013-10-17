@@ -3367,6 +3367,17 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, MyDoc.objects.update_one(upsert=True, inc__47=1))
         self.assertEqual(MyDoc.objects.get()['47'], 1)
 
+    def test_dictfield_key_looks_like_a_digit(self):
+        """Only should work with DictField even if they have numeric keys."""
+
+        class MyDoc(Document):
+            test = DictField()
+
+        MyDoc.drop_collection()
+        doc = MyDoc(test={'47': 1})
+        doc.save()
+        self.assertEqual(MyDoc.objects.only('test__47').get().test['47'], 1)
+
     def test_read_preference(self):
         class Bar(Document):
             pass
