@@ -1929,7 +1929,7 @@ class FieldTest(unittest.TestCase):
 
         user = User.objects(bookmarks__all=[post_1]).first()
 
-        self.assertIsNotNone(user)
+        self.assertNotEqual(user, None)
         self.assertEqual(user.bookmarks[0], post_1)
 
         Post.drop_collection()
