@@ -2528,13 +2528,14 @@ class FieldTest(unittest.TestCase):
         class Doc(Document):
             my_id = IntField(required=True, unique=True, primary_key=True)
             embed_me = DynamicField(db_field='e')
+            embed_me_nodbref = DynamicField(use_dbref=False)
             field_x = StringField(db_field='x')
 
         Doc.drop_collection()
         Doc2.drop_collection()
 
         doc2 = Doc2(field_1="hello")
-        doc = Doc(my_id=1, embed_me=doc2, field_x="x")
+        doc = Doc(my_id=1, embed_me=doc2, embed_me_nodbref=doc2, field_x="x")
         self.assertRaises(OperationError, doc.save)
 
         doc2.save()
@@ -2542,6 +2543,19 @@ class FieldTest(unittest.TestCase):
 
         doc = Doc.objects.get()
         self.assertEqual(doc.embed_me.field_1, "hello")
+        self.assertEqual(doc.embed_me_nodbref.field_1, "hello")
+
+        #DBRef and Copy must be same
+        self.assertEqual(doc.embed_me.field_1, doc.embed_me_nodbref.field_1)
+
+        #Update local ( the copy )
+        doc.embed_me_nodbref.field_1 = "world"
+        doc.embed_me_nodbref.save()
+
+        doc = Doc.objects.get()
+
+        #DBRef and Copy must be defferent now
+        self.assertTrue( not(doc.embed_me.field_1 == doc.embed_me_nodbref.field_1) )
 
     def test_dynamic_fields_embedded_class(self):
 
