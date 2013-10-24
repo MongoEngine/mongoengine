@@ -638,6 +638,9 @@ class DynamicField(BaseField):
                         val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
                 else:
                         val['_cls'] = cls.__name__
+                        if "_id" in val: #Do not modify the original document for copying, but creates a new one.
+                                del( val['_id'] )
+
             if (isinstance(value, EmbeddedDocument)):
                 val['_cls'] = cls.__name__
             return val
