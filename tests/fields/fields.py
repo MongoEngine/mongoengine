@@ -2560,6 +2560,50 @@ class FieldTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertEqual(doc.embed_me.field_1, "hello")
 
+    def test_dynamic_fields_nodbref_class(self):
+
+        class Doc3(EmbeddedDocument):
+            field_2 = StringField()
+
+        class Doc2(Document):
+            field_1 = StringField()
+
+        class Doc(Document):
+            my_id = IntField(required=True, unique=True, primary_key=True)
+            embed_me = DynamicField()
+            embed_me_nodbref = DynamicField(use_dbref=False)
+
+            embed_me_ed = DynamicField()
+            embed_me_ed_nodbref = DynamicField(use_dbref=False)
+
+            field_x = StringField(db_field='x')
+
+        Doc.drop_collection()
+        Doc2.drop_collection()
+
+        doc3 = Doc3(field_2="hello2")
+        doc2 = Doc2(field_1="hello")
+        doc = Doc(my_id=1, 
+            embed_me=doc2, 
+            embed_me_nodbref=doc2, 
+            embed_me_ed=doc3, 
+            embed_me_ed_nodbref=doc3, 
+            field_x="x")
+
+        doc2.save()
+        doc.save()
+
+        doc = Doc.objects.get()
+
+        self.assertEqual(doc.embed_me_nodbref.field_1, doc.embed_me.field_1)
+        
+        doc.update(set__embed_me_nodbref__field_1 = "world")
+        doc.reload()
+        self.assertEqual(doc.embed_me_nodbref.field_1, "world")
+
+        self.assertTrue( not(doc.embed_me_nodbref.field_1 == doc.embed_me.field_1) )
+        self.assertEqual(doc.embed_me_ed_nodbref.field_2, doc.embed_me_ed.field_2)
+        
 
 if __name__ == '__main__':
     unittest.main()
