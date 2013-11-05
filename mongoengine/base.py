@@ -123,8 +123,11 @@ class ObjectIdField(BaseField):
             try:
                 return bson.objectid.ObjectId(unicode(value))
             except Exception, e:
-                #e.message attribute has been deprecated since Python 2.6
-                raise ValidationError(unicode(e))
+                if self.dup_check:
+                    #e.message attribute has been deprecated since Python 2.6
+                    raise ValidationError(unicode(e))
+                else:
+                    return value
         return value
 
     def prepare_query_value(self, op, value):
@@ -405,6 +408,8 @@ class BaseDocument(object):
 
         # Ensure that each field is matched to a valid value
         for field, value in fields:
+            if not field.dup_check:
+                continue
             if value is not None:
                 try:
                     field._validate(value)
