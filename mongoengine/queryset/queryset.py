@@ -1265,6 +1265,20 @@ class QuerySet(object):
             self._mongo_query = self._query_obj.to_query(self._document)
             if self._class_check:
                 self._mongo_query.update(self._initial_query)
+
+        # Simplify a { '$and': [...], ... } query if possible.
+        if '$and' in self._mongo_query:
+            parent_keys_set = set(self._mongo_query.keys()) - set(['$and'])
+            children_keys = [key for child in self._mongo_query['$and'] for key in child.keys()]
+
+            # We can simplify if there are no collisions between the keys, i.e.
+            # no duplicates in children_keys and no intersection between the
+            # children and parent keys.
+            if len(parent_keys_set | set(children_keys)) == len(list(parent_keys_set) + children_keys):
+                # OK to simplify.
+                and_query = self._mongo_query.pop('$and')
+                for child in and_query:
+                    self._mongo_query.update(child)
         return self._mongo_query
 
     @property
