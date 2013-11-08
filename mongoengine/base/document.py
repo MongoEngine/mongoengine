@@ -792,8 +792,17 @@ class BaseDocument(object):
                    # Look up subfield on the previous field
                     new_field = field.lookup_member(field_name)
                 if not new_field and isinstance(field, ComplexBaseField):
-                    fields.append(field_name)
-                    continue
+                    if hasattr(field.field, 'document_type') and cls._dynamic \
+                            and field.field.document_type._dynamic:
+                        DynamicField = _import_class('DynamicField')
+                        new_field = DynamicField(db_field=field_name)
+                    else:
+                        fields.append(field_name)
+                        continue
+                elif not new_field and hasattr(field, 'document_type') and cls._dynamic \
+                        and field.document_type._dynamic:
+                    DynamicField = _import_class('DynamicField')
+                    new_field = DynamicField(db_field=field_name)
                 elif not new_field:
                     raise LookUpError('Cannot resolve field "%s"'
                                       % field_name)

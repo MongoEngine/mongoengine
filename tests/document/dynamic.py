@@ -292,6 +292,21 @@ class DynamicTest(unittest.TestCase):
         person.save()
         self.assertEqual(Person.objects.first().age, 35)
 
+    def test_dynamic_embedded_works_with_only(self):
+        """Ensure custom fieldnames on a dynamic embedded document are found by qs.only()"""
+
+        class Address(DynamicEmbeddedDocument):
+            city = StringField()
+
+        class Person(DynamicDocument):
+            address = EmbeddedDocumentField(Address)
+
+        Person.drop_collection()
+
+        Person(name="Eric", address=Address(city="San Francisco", street_number="1337")).save()
+
+        self.assertEqual(Person.objects.first().address.street_number, '1337')
+        self.assertEqual(Person.objects.only('address.street_number').first().address.street_number, '1337')
 
 if __name__ == '__main__':
     unittest.main()
