@@ -12,6 +12,9 @@ from mongoengine.queryset import OperationError
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
 
 from .utils import datetime_now
+from bson import json_util
+
+import base64
 
 
 MONGOENGINE_SESSION_DB_ALIAS = getattr(
@@ -96,6 +99,12 @@ class SessionStore(SessionBase):
             if must_create:
                 raise CreateError
             raise
+
+    def encode(self, session_dict):
+        """Returns the given session dictionary serialized and encoded as a string."""
+        serialized = json_util.dumps(session_dict)
+        hash = self._hash(serialized)
+        return base64.b64encode(hash.encode() + b":" + serialized).decode('ascii')
 
     def delete(self, session_key=None):
         if session_key is None:
