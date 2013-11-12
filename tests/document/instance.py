@@ -870,6 +870,7 @@ class InstanceTest(unittest.TestCase):
         old_id = w1.save_id
 
         flip(w1)
+        w1.save_id = UUID(2)
         w1.save(save_condition={'save_id':old_id})
         w1.reload()
         self.assertFalse(w1.toggle)
@@ -878,8 +879,20 @@ class InstanceTest(unittest.TestCase):
         flip(w2)
         w2.save(save_condition={'save_id':old_id})
         w2.reload()
-        self.assertFalse(w1.toggle)
-        self.assertEqual(w1.count, 2)
+        self.assertFalse(w2.toggle)
+        self.assertEqual(w2.count, 2)
+
+        # save_condition uses mongoengine-style operator syntax
+        flip(w1)
+        w1.save(save_condition={'count__lt':w1.count})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 3)
+        flip(w1)
+        w1.save(save_condition={'count__gte':w1.count})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 3)
         
 
     def test_update(self):
