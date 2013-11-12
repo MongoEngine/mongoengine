@@ -894,7 +894,6 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
         
-
     def test_update(self):
         """Ensure that an existing document is updated instead of be
         overwritten."""
