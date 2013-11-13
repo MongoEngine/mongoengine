@@ -14,7 +14,6 @@ from pymongo.read_preferences import ReadPreference
 from bson import ObjectId
 
 from mongoengine import *
-from mongoengine.connection import get_connection
 from mongoengine.python_support import PY3
 from mongoengine.context_managers import query_counter
 from mongoengine.queryset import (QuerySet, QuerySetManager,
@@ -3155,8 +3154,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_as_pymongo(self):
 
-        from decimal import Decimal
-
         class User(Document):
             id = ObjectIdField('_id')
             name = StringField()
@@ -3172,6 +3169,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(isinstance(results[1], dict))
         self.assertEqual(results[0]['name'], 'Bob Dole')
         self.assertEqual(results[1]['name'], 'Barack Obama')
+
+        # Make sure _id is included in the results
+        users = User.objects.only('id', 'name').as_pymongo()
+        results = list(users)
+        self.assertTrue('_id' in results[0])
+        self.assertTrue('_id' in results[1])
 
         # Test coerce_types
         users = User.objects.only('name').as_pymongo(coerce_types=True)
