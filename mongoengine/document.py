@@ -1,17 +1,11 @@
-import warnings
-
-import hashlib
 import pymongo
 import re
 
-from pymongo.read_preferences import ReadPreference
-from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
-                              BaseDocument, BaseDict, BaseList,
-                              ALLOW_INHERITANCE, get_document)
+                              BaseDocument, ALLOW_INHERITANCE, get_document)
 from mongoengine.queryset import OperationError, NotUniqueError, QuerySet, DoesNotExist
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection

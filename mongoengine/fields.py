@@ -1,12 +1,8 @@
 import datetime
-import decimal
 import itertools
 import re
 import time
-import types
-import urllib2
 import uuid
-import warnings
 from operator import itemgetter
 
 try:

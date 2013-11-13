@@ -1,19 +1,13 @@
-import copy
 import operator
-import numbers
 from functools import partial
 
 import pymongo
 from bson import json_util
-from bson.dbref import DBRef
 from bson.son import SON
 
-from mongoengine import signals
 from mongoengine.common import _import_class
-from mongoengine.errors import (ValidationError, InvalidDocumentError,
-                                LookUpError)
-from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
-                                        to_str_keys_recursive)
+from mongoengine.errors import (ValidationError, LookUpError)
+from mongoengine.python_support import PY3, txt_type
 
 from mongoengine.base.proxy import DocumentProxy
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
