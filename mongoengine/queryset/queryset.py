@@ -696,10 +696,13 @@ class QuerySet(object):
         queryset._hint = index
         return queryset
 
-    def distinct(self, field):
+    def distinct(self, field, dereference=True):
         """Return a list of distinct values for a given field.
 
         :param field: the field to select distinct values from
+        :param dereference: specify if the returned distinct values should be
+            dereferenced. `False` improves the performance greatly for
+            ReferenceFields (if you only need the ids, not objects).
 
         .. note:: This is a command and won't take ordering or limit into
            account.
@@ -712,8 +715,11 @@ class QuerySet(object):
         try:
             field = self._fields_to_dbfields([field]).pop()
         finally:
-            return self._dereference(queryset._cursor.distinct(field), 1,
-                                     name=field, instance=self._document)
+            values = queryset._cursor.distinct(field)
+            if dereference:
+                values = self._dereference(values, 1, name=field,
+                                           instance=self._document)
+            return values
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
