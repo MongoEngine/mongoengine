@@ -2,7 +2,7 @@
 from nose.plugins.skip import SkipTest
 
 from mongoengine.python_support import PY3
-from mongoengine import connect
+from mongoengine.connection import get_db
 
 try:
     from django.test import TestCase
@@ -28,7 +28,7 @@ class MongoTestCase(TestCase):
     """
     db_name = 'test_%s' % settings.MONGO_DATABASE_NAME
     def __init__(self, methodName='runtest'):
-        self.db = connect(self.db_name).get_db()
+        self.db = get_db()
         super(MongoTestCase, self).__init__(methodName)
 
     def _post_teardown(self):
