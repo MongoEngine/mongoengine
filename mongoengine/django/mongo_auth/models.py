@@ -105,3 +105,9 @@ class MongoUser(models.Model):
     """
 
     objects = MongoUserManager()
+    
+    def set_password(self, password):
+        """Doesn't do anything, but works around the issue with Django 1.6."""
+        from django.contrib.auth.hashers import make_password
+        make_password(password)
+        
