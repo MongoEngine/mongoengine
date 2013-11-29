@@ -42,7 +42,8 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'GenericReferenceField',  'BinaryField',  'GridFSError',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
            'ImproperlyConfigured',  'ImageField',  'GeoPointField', 'PointField',
-           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField']
+           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField',
+           'GeoJsonBaseField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'

@@ -4,7 +4,8 @@ Changelog
 
 Changes in 0.8.5
 ================
-- Fix testing invalid dict field value (#485)
+- Fix setting Geo Location fields (#488)
+- Fix handling invalid dict field value (#485)
 - Added app_label to MongoUser (#484)
 - Use defaults when host and port are passed as None (#483)
 - Fixed distinct casting issue with ListField of EmbeddedDocuments (#470)
