@@ -2519,6 +2519,27 @@ class QuerySetTest(unittest.TestCase):
 
         Product.drop_collection()
 
+    def test_distinct_ListField_EmbeddedDocumentField(self):
+
+        class Author(EmbeddedDocument):
+            name = StringField()
+
+        class Book(Document):
+            title = StringField()
+            authors = ListField(EmbeddedDocumentField(Author))
+
+        Book.drop_collection()
+
+        mark_twain = Author(name="Mark Twain")
+        john_tolkien = Author(name="John Ronald Reuel Tolkien")
+
+        book = Book(title="Tom Sawyer", authors=[mark_twain]).save()
+        book = Book(title="The Lord of the Rings", authors=[john_tolkien]).save()
+        book = Book(title="The Stories", authors=[mark_twain, john_tolkien]).save()
+        authors = Book.objects.distinct("authors")
+
+        self.assertEquals(authors, [mark_twain, john_tolkien])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
