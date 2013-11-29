@@ -90,9 +90,14 @@ session backend, ensure that your settings module has
 into your settings module::
 
     SESSION_ENGINE = 'mongoengine.django.sessions'
+    SESSION_SERIALIZER = 'mongoengine.django.sessions.BSONSerializer'
 
 Django provides session cookie, which expires after ```SESSION_COOKIE_AGE``` seconds, but doesn't delete cookie at sessions backend, so ``'mongoengine.django.sessions'`` supports  `mongodb TTL
 <http://docs.mongodb.org/manual/tutorial/expire-data/>`_.
+
+.. note:: ``SESSION_SERIALIZER`` is only necessary in Django 1.6 as the default
+   serializer is based around JSON and doesn't know how to convert
+   ``bson.objectid.ObjectId`` instances to strings.
 
 .. versionadded:: 0.2.1
 
