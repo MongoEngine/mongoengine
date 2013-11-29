@@ -75,6 +75,12 @@ class GeoFieldTest(unittest.TestCase):
             self._test_for_expected_error(Location, coord, expected)
 
         Location(loc=[1, 2]).validate()
+        Location(loc={
+            "type": "Point",
+            "coordinates": [
+              81.4471435546875,
+              23.61432859499169
+            ]}).validate()
 
     def test_linestring_validation(self):
         class Location(Document):
