@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.5
 ================
+- Added user_permissions to Django User object (#491, #492)
 - Fix setting Geo Location fields (#488)
 - Fix handling invalid dict field value (#485)
 - Added app_label to MongoUser (#484)

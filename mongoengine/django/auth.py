@@ -117,7 +117,7 @@ class Permission(Document):
 
     class Meta:
         verbose_name = _('permission')
-        verbose_name_plural = _('permissions')U
+        verbose_name_plural = _('permissions')
         # unique_together = (('content_type', 'codename'),)
         # ordering = ('content_type__app_label', 'content_type__model', 'codename')
 
@@ -229,7 +229,7 @@ class User(Document):
                                verbose_name=_('last login'))
     date_joined = DateTimeField(default=datetime_now,
                                 verbose_name=_('date joined'))
-                                
+
     user_permissions = ListField(ReferenceField(Permission), verbose_name=_('user permissions'),
                                                 help_text=_('Permissions for the user.'))
 
