@@ -1904,6 +1904,37 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+    def test_generic_reference_list_item_modification(self):
+        """Ensure that modifications of related documents (through generic reference) don't influence on querying
+        """
+        class Post(Document):
+            title = StringField()
+
+        class User(Document):
+            username = StringField()
+            bookmarks = ListField(GenericReferenceField())
+
+        Post.drop_collection()
+        User.drop_collection()
+
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+
+        user = User(bookmarks=[post_1])
+        user.save()
+
+        post_1.title = "Title was modified"
+        user.username = "New username"
+        user.save()
+
+        user = User.objects(bookmarks__all=[post_1]).first()
+
+        self.assertNotEqual(user, None)
+        self.assertEqual(user.bookmarks[0], post_1)
+
+        Post.drop_collection()
+        User.drop_collection()
+
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
