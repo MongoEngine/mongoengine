@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.5
 ================
+- Fixed GenericReferenceField serialization order (#499)
 - Fixed count and none bug (#498)
 - Fixed bug with .only() and DictField with digit keys (#496)
 - Added user_permissions to Django User object (#491, #492)
