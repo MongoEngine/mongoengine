@@ -203,7 +203,7 @@ class ComplexBaseField(BaseField):
         _dereference = _import_class("DeReference")()
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
-        if instance._initialised and dereference:
+        if instance._initialised and dereference and instance._data.get(self.name):
             instance._data[self.name] = _dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
