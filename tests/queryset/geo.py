@@ -422,11 +422,11 @@ class GeoQueriesTest(unittest.TestCase):
 
         Location(loc=[1,2]).save()
         loc = Location.objects.as_pymongo()[0]
-        self.assertEquals(loc["loc"], {"type": "Point", "coordinates": [1, 2]})
+        self.assertEqual(loc["loc"], {"type": "Point", "coordinates": [1, 2]})
 
         Location.objects.update(set__loc=[2,1])
         loc = Location.objects.as_pymongo()[0]
-        self.assertEquals(loc["loc"], {"type": "Point", "coordinates": [2, 1]})
+        self.assertEqual(loc["loc"], {"type": "Point", "coordinates": [2, 1]})
 
     def test_2dsphere_linestring_sets_correctly(self):
         class Location(Document):
@@ -436,11 +436,11 @@ class GeoQueriesTest(unittest.TestCase):
 
         Location(line=[[1, 2], [2, 2]]).save()
         loc = Location.objects.as_pymongo()[0]
-        self.assertEquals(loc["line"], {"type": "LineString", "coordinates": [[1, 2], [2, 2]]})
+        self.assertEqual(loc["line"], {"type": "LineString", "coordinates": [[1, 2], [2, 2]]})
 
         Location.objects.update(set__line=[[2, 1], [1, 2]])
         loc = Location.objects.as_pymongo()[0]
-        self.assertEquals(loc["line"], {"type": "LineString", "coordinates": [[2, 1], [1, 2]]})
+        self.assertEqual(loc["line"], {"type": "LineString", "coordinates": [[2, 1], [1, 2]]})
 
     def test_geojson_PolygonField(self):
         class Location(Document):
@@ -450,11 +450,11 @@ class GeoQueriesTest(unittest.TestCase):
 
         Location(poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]]).save()
         loc = Location.objects.as_pymongo()[0]
-        self.assertEquals(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
+        self.assertEqual(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
 
         Location.objects.update(set__poly=[[[40, 4], [40, 6], [41, 6], [40, 4]]])
         loc = Location.objects.as_pymongo()[0]
-        self.assertEquals(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 4], [40, 6], [41, 6], [40, 4]]]})
+        self.assertEqual(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 4], [40, 6], [41, 6], [40, 4]]]})
 
 if __name__ == '__main__':
     unittest.main()

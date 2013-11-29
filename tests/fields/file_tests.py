@@ -279,7 +279,7 @@ class FileTest(unittest.TestCase):
                 t.image.put(f)
                 self.fail("Should have raised an invalidation error")
             except ValidationError, e:
-                self.assertEquals("%s" % e, "Invalid image: cannot identify image file")
+                self.assertEqual("%s" % e, "Invalid image: cannot identify image file")
 
         t = TestImage()
         t.image.put(open(TEST_IMAGE_PATH, 'rb'))

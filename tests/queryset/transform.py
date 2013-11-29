@@ -172,30 +172,30 @@ class TransformTest(unittest.TestCase):
             loc = PointField()
 
         update = transform.update(Location, set__loc=[1, 2])
-        self.assertEquals(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
+        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
 
         update = transform.update(Location, set__loc={"type": "Point", "coordinates": [1,2]})
-        self.assertEquals(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
+        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
 
     def test_geojson_LineStringField(self):
         class Location(Document):
             line = LineStringField()
 
         update = transform.update(Location, set__line=[[1, 2], [2, 2]])
-        self.assertEquals(update, {'$set': {'line': {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}}})
+        self.assertEqual(update, {'$set': {'line': {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}}})
 
         update = transform.update(Location, set__line={"type": "LineString", "coordinates": [[1, 2], [2, 2]]})
-        self.assertEquals(update, {'$set': {'line': {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}}})
+        self.assertEqual(update, {'$set': {'line': {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}}})
 
     def test_geojson_PolygonField(self):
         class Location(Document):
             poly = PolygonField()
 
         update = transform.update(Location, set__poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
-        self.assertEquals(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
+        self.assertEqual(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
 
         update = transform.update(Location, set__poly={"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
-        self.assertEquals(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
+        self.assertEqual(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
 
 if __name__ == '__main__':
     unittest.main()

@@ -2538,7 +2538,7 @@ class QuerySetTest(unittest.TestCase):
         book = Book(title="The Stories", authors=[mark_twain, john_tolkien]).save()
         authors = Book.objects.distinct("authors")
 
-        self.assertEquals(authors, [mark_twain, john_tolkien])
+        self.assertEqual(authors, [mark_twain, john_tolkien])
 
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
@@ -3641,9 +3641,9 @@ class QuerySetTest(unittest.TestCase):
         docs = Noddy.objects.no_cache()
 
         counter = len([1 for i in docs])
-        self.assertEquals(counter, 100)
+        self.assertEqual(counter, 100)
 
-        self.assertEquals(len(list(docs)), 100)
+        self.assertEqual(len(list(docs)), 100)
         self.assertRaises(TypeError, lambda: len(docs))
 
         with query_counter() as q:
