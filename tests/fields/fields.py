@@ -2560,6 +2560,20 @@ class FieldTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertEqual(doc.embed_me.field_1, "hello")
 
+    def test_invalid_dict_value(self):
+        class DictFieldTest(Document):
+            dictionary = DictField(required=True)
+        
+        DictFieldTest.drop_collection()
+
+        test = DictFieldTest(dictionary=None)
+        test.dictionary # Just access to test getter
+        self.assertRaises(ValidationError, test.validate)
+        
+        test = DictFieldTest(dictionary=False)
+        test.dictionary # Just access to test getter
+        self.assertRaises(ValidationError, test.validate)
+
 
 if __name__ == '__main__':
     unittest.main()
