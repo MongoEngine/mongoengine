@@ -756,7 +756,7 @@ class BaseDocument(object):
         the field's parents and the field.
         """
 
-        from mongoengine.fields import ListField
+        ListField = _import_class("ListField")
 
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
