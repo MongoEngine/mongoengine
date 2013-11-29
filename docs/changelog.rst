@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.8.5
+================
+- Fixed Django 1.6 sessions (#454, #480)
+
 Changes in 0.8.4
 ================
 - Remove database name necessity in uri connection schema (#452)
