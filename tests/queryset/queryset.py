@@ -2882,6 +2882,19 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False))
 
+    def test_count_and_none(self):
+        """Test count works with None()"""
+
+        class MyDoc(Document):
+            pass
+
+        MyDoc.drop_collection()
+        for i in xrange(0, 10):
+            MyDoc().save()
+
+        self.assertEqual(MyDoc.objects.count(), 10)
+        self.assertEqual(MyDoc.objects.none().count(), 0)
+
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """
