@@ -713,6 +713,27 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual({}, removals)
         self.assertTrue('employees' in updates)
 
+    def test_nested_nested_fields_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(MapField(EmbeddedDocumentField(EmbeddedDoc)))
+            name = StringField()
+
+        MyDoc.drop_collection()
+
+        mydoc = MyDoc(name='testcase1', subs={'a': {'b': EmbeddedDoc(name='foo')}}).save()
+
+        mydoc = MyDoc.objects.first()
+        subdoc = mydoc.subs['a']['b']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a.b.name"], mydoc._get_changed_fields())
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
 
 if __name__ == '__main__':
     unittest.main()

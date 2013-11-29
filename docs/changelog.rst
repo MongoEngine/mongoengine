@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.5
 ================
+- Fix multi level nested fields getting marked as changed (#523)
 - Django 1.6 login fix (#522)
 - Django 1.6 session fix (#509)
 - EmbeddedDocument._instance is now set when settng the attribute (#506)
