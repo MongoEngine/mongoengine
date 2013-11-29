@@ -2392,6 +2392,24 @@ class InstanceTest(unittest.TestCase):
         system = System.objects.first()
         self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
+    def test_embedded_document_equality(self):
+
+        class Test(Document):
+            field = StringField(required=True)
+
+        class Embedded(EmbeddedDocument):
+            ref = ReferenceField(Test)
+
+        Test.drop_collection()
+        test = Test(field='123').save()      # has id
+
+        e = Embedded(ref=test)
+        f1 = Embedded._from_son(e.to_mongo())
+        f2 = Embedded._from_son(e.to_mongo())
+
+        self.assertEqual(f1, f2)
+        f1.ref  # Dereferences lazily
+        self.assertEqual(f1, f2)
 
 if __name__ == '__main__':
     unittest.main()
