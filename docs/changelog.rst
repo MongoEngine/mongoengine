@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.5
 ================
+- Use defaults when host and port are passed as None (#483)
 - Fixed distinct casting issue with ListField of EmbeddedDocuments (#470)
 - Fixed Django 1.6 sessions (#454, #480)
 
