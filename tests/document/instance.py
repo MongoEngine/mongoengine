@@ -490,6 +490,26 @@ class InstanceTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertEqual(doc, doc.embedded_field[0]._instance)
 
+    def test_instance_is_set_on_setattr(self):
+
+        class Email(EmbeddedDocument):
+            email = EmailField()
+            def clean(self):
+                print "instance:"
+                print self._instance
+
+        class Account(Document):
+            email = EmbeddedDocumentField(Email)
+
+        Account.drop_collection()
+        acc = Account()
+        acc.email = Email(email='test@example.com')
+        self.assertTrue(hasattr(acc._data["email"], "_instance"))
+        acc.save()
+
+        acc1 = Account.objects.first()
+        self.assertTrue(hasattr(acc1._data["email"], "_instance"))
+
     def test_document_clean(self):
         class TestDocument(Document):
             status = StringField()

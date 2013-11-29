@@ -89,12 +89,7 @@ class BaseField(object):
             return self
 
         # Get value from document instance if available
-        value = instance._data.get(self.name)
-
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument) and value._instance is None:
-            value._instance = weakref.proxy(instance)
-        return value
+        return instance._data.get(self.name)
 
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
@@ -116,6 +111,10 @@ class BaseField(object):
                 # Values cant be compared eg: naive and tz datetimes
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
+
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+        if isinstance(value, EmbeddedDocument) and value._instance is None:
+            value._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):

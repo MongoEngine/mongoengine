@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.8.5
 ================
+- EmbeddedDocument._instance is now set when settng the attribute (#506)
 - Fixed EmbeddedDocument with ReferenceField equality issue (#502)
 - Fixed GenericReferenceField serialization order (#499)
 - Fixed count and none bug (#498)
