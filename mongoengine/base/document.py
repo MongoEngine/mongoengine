@@ -755,6 +755,9 @@ class BaseDocument(object):
         """Lookup a field based on its attribute and return a list containing
         the field's parents and the field.
         """
+
+        from mongoengine.fields import ListField
+
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
         fields = []
@@ -762,7 +765,7 @@ class BaseDocument(object):
 
         for field_name in parts:
             # Handle ListField indexing:
-            if field_name.isdigit() and hasattr(field, 'field'):
+            if field_name.isdigit() and isinstance(field, ListField):
                 new_field = field.field
                 fields.append(field_name)
                 continue
