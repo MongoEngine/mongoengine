@@ -1,6 +1,7 @@
 import copy
 import operator
 import numbers
+from collections import Hashable
 from functools import partial
 
 import pymongo
@@ -420,7 +421,7 @@ class BaseDocument(object):
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
         inspected = inspected or set()
-        if hasattr(self, 'id') and not isinstance(self.id, dict):
+        if hasattr(self, 'id') and isinstance(self.id, Hashable):
             if self.id in inspected:
                 return changed_fields
             inspected.add(self.id)
