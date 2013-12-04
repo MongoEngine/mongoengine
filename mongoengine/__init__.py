@@ -15,7 +15,7 @@ import django
 __all__ = (list(document.__all__) + fields.__all__ + connection.__all__ +
            list(queryset.__all__) + signals.__all__ + list(errors.__all__))
 
-VERSION = (0, 8, 5)
+VERSION = (0, 8, 6)
 
 
 def get_version():

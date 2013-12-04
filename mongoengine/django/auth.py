@@ -9,7 +9,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import ugettext_lazy as _
 
 from .utils import datetime_now
-from .mongo_auth import get_user_document
+from .mongo_auth.models import get_user_document
 
 REDIRECT_FIELD_NAME = 'next'
 
