@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.8.6
+================
+- Fix django auth import (#531)
+
 Changes in 0.8.5
 ================
 - Fix multi level nested fields getting marked as changed (#523)
