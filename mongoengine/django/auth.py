@@ -8,6 +8,11 @@ from django.contrib import auth
 from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import ugettext_lazy as _
 
+from .utils import datetime_now
+from .mongo_auth import get_user_document
+
+REDIRECT_FIELD_NAME = 'next'
+
 try:
     from django.contrib.auth.hashers import check_password, make_password
 except ImportError:
@@ -32,10 +37,6 @@ except ImportError:
         salt = get_hexdigest(algo, str(random()), str(random()))[:5]
         hash = get_hexdigest(algo, salt, raw_password)
         return '%s$%s$%s' % (algo, salt, hash)
-
-from .utils import datetime_now
-
-REDIRECT_FIELD_NAME = 'next'
 
 
 class ContentType(Document):
@@ -383,7 +384,7 @@ class MongoEngineBackend(object):
     supports_inactive_user = False
 
     def authenticate(self, username=None, password=None):
-        user = User.objects(username=username).first()
+        user = get_user_document().objects(username=username).first()
         if user:
             if password and user.check_password(password):
                 backend = auth.get_backends()[0]
@@ -392,7 +393,7 @@ class MongoEngineBackend(object):
         return None
 
     def get_user(self, user_id):
-        return User.objects.with_id(user_id)
+        return get_user_document().objects.with_id(user_id)
 
 
 def get_user(userid):
