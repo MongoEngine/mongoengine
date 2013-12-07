@@ -843,6 +843,24 @@ class CustomQueryTest(unittest.TestCase):
         adam.reload()
         self.assertEquals(adam.other_colours, [blue, green, red])
 
+    def testToMongoReference(self):
+        user = self.User(id=ObjectId(), name="Adam A Flynn")
+        user.save()
+        person = self.Person(user=user, name="Adam")
+        person.save()
+
+        # re-query
+        person = self.Person.find_one({'id' : person.id})
+        # test the the DBRef is not yet dereferenced
+        self.assertEqual(person._data['user'], DBRef('user', user.id))
+
+        person.to_mongo()
+        # test the DBRef is still not dereferenced
+        self.assertEqual(person._data['user'], DBRef('user', user.id))
+
+        person.user
+        # test the DBRef is now dereferenced
+        self.assertNotEqual(person._data['user'], DBRef('user', user.id))
 
 if __name__ == '__main__':
     unittest.main()

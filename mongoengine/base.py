@@ -4,6 +4,7 @@ from queryset import DoesNotExist, MultipleObjectsReturned
 import sys
 import pymongo
 import bson.objectid
+import bson.dbref
 
 
 _document_registry = {}
@@ -493,9 +494,15 @@ class BaseDocument(object):
         """
         data = {}
         for field_name, field in self._fields.items():
-            value = getattr(self, field_name, None)
-            if value is not None:
-                data[field.db_field] = field.to_mongo(value)
+            # don't deference ReferenceField if it's not
+            # dereferenced yet
+            if field_name in self._data and \
+               isinstance(self._data[field_name], (bson.dbref.DBRef)):
+                data[field.db_field] = self._data[field_name]
+            else:
+                value = getattr(self, field_name, None)
+                if value is not None:
+                    data[field.db_field] = field.to_mongo(value)
         # Only add _cls and _types if allow_inheritance is not False
         if not (hasattr(self, '_meta') and
                 self._meta.get('allow_inheritance', True) == False):
