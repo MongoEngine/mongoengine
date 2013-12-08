@@ -2519,6 +2519,27 @@ class QuerySetTest(unittest.TestCase):
 
         Product.drop_collection()
 
+    def test_distinct_ListField_EmbeddedDocumentField(self):
+
+        class Author(EmbeddedDocument):
+            name = StringField()
+
+        class Book(Document):
+            title = StringField()
+            authors = ListField(EmbeddedDocumentField(Author))
+
+        Book.drop_collection()
+
+        mark_twain = Author(name="Mark Twain")
+        john_tolkien = Author(name="John Ronald Reuel Tolkien")
+
+        book = Book(title="Tom Sawyer", authors=[mark_twain]).save()
+        book = Book(title="The Lord of the Rings", authors=[john_tolkien]).save()
+        book = Book(title="The Stories", authors=[mark_twain, john_tolkien]).save()
+        authors = Book.objects.distinct("authors")
+
+        self.assertEqual(authors, [mark_twain, john_tolkien])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
@@ -2860,6 +2881,19 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(5, Post.objects.limit(5).skip(5).count())
 
         self.assertEqual(10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False))
+
+    def test_count_and_none(self):
+        """Test count works with None()"""
+
+        class MyDoc(Document):
+            pass
+
+        MyDoc.drop_collection()
+        for i in xrange(0, 10):
+            MyDoc().save()
+
+        self.assertEqual(MyDoc.objects.count(), 10)
+        self.assertEqual(MyDoc.objects.none().count(), 0)
 
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
@@ -3367,6 +3401,17 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, MyDoc.objects.update_one(upsert=True, inc__47=1))
         self.assertEqual(MyDoc.objects.get()['47'], 1)
 
+    def test_dictfield_key_looks_like_a_digit(self):
+        """Only should work with DictField even if they have numeric keys."""
+
+        class MyDoc(Document):
+            test = DictField()
+
+        MyDoc.drop_collection()
+        doc = MyDoc(test={'47': 1})
+        doc.save()
+        self.assertEqual(MyDoc.objects.only('test__47').get().test['47'], 1)
+
     def test_read_preference(self):
         class Bar(Document):
             pass
@@ -3609,9 +3654,9 @@ class QuerySetTest(unittest.TestCase):
         docs = Noddy.objects.no_cache()
 
         counter = len([1 for i in docs])
-        self.assertEquals(counter, 100)
+        self.assertEqual(counter, 100)
 
-        self.assertEquals(len(list(docs)), 100)
+        self.assertEqual(len(list(docs)), 100)
         self.assertRaises(TypeError, lambda: len(docs))
 
         with query_counter() as q:

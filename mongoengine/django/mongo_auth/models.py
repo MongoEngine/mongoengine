@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
@@ -105,3 +106,10 @@ class MongoUser(models.Model):
     """
 
     objects = MongoUserManager()
+
+    class Meta:
+        app_label = 'mongo_auth'
+
+    def set_password(self, password):
+        """Doesn't do anything, but works around the issue with Django 1.6."""
+        make_password(password)

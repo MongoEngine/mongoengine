@@ -206,6 +206,10 @@ def update(_doc_cls=None, **update):
             else:
                 field = cleaned_fields[-1]
 
+            GeoJsonBaseField = _import_class("GeoJsonBaseField")
+            if isinstance(field, GeoJsonBaseField):
+                value = field.to_mongo(value)
+
             if op in (None, 'set', 'push', 'pull'):
                 if field.required or value is not None:
                     value = field.prepare_query_value(op, value)

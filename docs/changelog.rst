@@ -2,6 +2,28 @@
 Changelog
 =========
 
+Changes in 0.8.6
+================
+- Fix django auth import (#531)
+
+Changes in 0.8.5
+================
+- Fix multi level nested fields getting marked as changed (#523)
+- Django 1.6 login fix (#522) (#527)
+- Django 1.6 session fix (#509)
+- EmbeddedDocument._instance is now set when settng the attribute (#506)
+- Fixed EmbeddedDocument with ReferenceField equality issue (#502)
+- Fixed GenericReferenceField serialization order (#499)
+- Fixed count and none bug (#498)
+- Fixed bug with .only() and DictField with digit keys (#496)
+- Added user_permissions to Django User object (#491, #492)
+- Fix updating Geo Location fields (#488)
+- Fix handling invalid dict field value (#485)
+- Added app_label to MongoUser (#484)
+- Use defaults when host and port are passed as None (#483)
+- Fixed distinct casting issue with ListField of EmbeddedDocuments (#470)
+- Fixed Django 1.6 sessions (#454, #480)
+
 Changes in 0.8.4
 ================
 - Remove database name necessity in uri connection schema (#452)
