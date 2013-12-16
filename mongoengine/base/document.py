@@ -370,7 +370,26 @@ class BaseDocument(object):
         """
         if not key:
             return
+
         key = self._db_field_map.get(key, key)
+        if not hasattr(self, '_changed_fields'):
+            return
+
+        # FIXME: would _delta be a better place for this?
+        # 
+        # We want to go through and check that a parent key doesn't exist already
+        # when adding a nested key.
+        key_parts = key.split('.')
+        partial = key_parts[0]
+
+        if partial in self._changed_fields:
+            return
+
+        for part in key_parts[1:]:
+            partial += '.' + part
+            if partial in self._changed_fields:
+                return
+
         if (hasattr(self, '_changed_fields') and
            key not in self._changed_fields):
             self._changed_fields.append(key)
@@ -405,6 +424,10 @@ class BaseDocument(object):
 
         for index, value in iterator:
             list_key = "%s%s." % (key, index)
+            # don't check anything lower if this key is already marked
+            # as changed.
+            if list_key[:-1] in changed_fields:
+                continue
             if hasattr(value, '_get_changed_fields'):
                 changed = value._get_changed_fields(inspected)
                 changed_fields += ["%s%s" % (list_key, k)

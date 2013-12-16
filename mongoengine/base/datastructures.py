@@ -5,8 +5,7 @@ __all__ = ("BaseDict", "BaseList")
 
 
 class BaseDict(dict):
-    """A special dict so we can watch any changes
-    """
+    """A special dict so we can watch any changes"""
 
     _dereferenced = False
     _instance = None
@@ -21,28 +20,32 @@ class BaseDict(dict):
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
 
-    def __getitem__(self, *args, **kwargs):
-        value = super(BaseDict, self).__getitem__(*args, **kwargs)
+    def __getitem__(self, key):
+        value = super(BaseDict, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
+        elif isinstance(value, dict):
+            value = BaseDict(value, None, '%s.%s' % (self._name, key))
+            super(BaseDict, self).__setitem__(key, value)
+            value._instance = self._instance
         return value
 
-    def __setitem__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).__setitem__(*args, **kwargs)
+    def __setitem__(self, key, value):
+        self._mark_as_changed(key)
+        return super(BaseDict, self).__setitem__(key, value)
 
     def __delete__(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseDict, self).__delete__(*args, **kwargs)
 
-    def __delitem__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).__delitem__(*args, **kwargs)
+    def __delitem__(self, key):
+        self._mark_as_changed(key)
+        return super(BaseDict, self).__delitem__(key)
 
-    def __delattr__(self, *args, **kwargs):
-        self._mark_as_changed()
+    def __delattr__(self, key):
+        self._mark_as_changed(key)
         return super(BaseDict, self).__delattr__(*args, **kwargs)
 
     def __getstate__(self):
@@ -70,9 +73,12 @@ class BaseDict(dict):
         self._mark_as_changed()
         return super(BaseDict, self).update(*args, **kwargs)
 
-    def _mark_as_changed(self):
+    def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
-            self._instance._mark_as_changed(self._name)
+            if key:
+                self._instance._mark_as_changed('%s.%s' % (self._name, key))
+            else:
+                self._instance._mark_as_changed(self._name)
 
 
 class BaseList(list):
