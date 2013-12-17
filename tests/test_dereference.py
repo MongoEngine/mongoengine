@@ -1220,6 +1220,22 @@ class FieldTest(unittest.TestCase):
 
         self.assertEqual(2, len([brand for bg in brand_groups for brand in bg.brands]))
 
+    def test_lazy_dict(self):
+        class Book(Document):
+            name = StringField()
+            properties = DictField()
+        class Author(Document):
+            books = ListField(ReferenceField(Book))
+
+        b = Book.objects.create()
+        a = Author.objects.create(books=[b])
+
+        a.reload()
+        b = a.books[0]
+
+        b.properties['pages'] = 200
+        self.assertEqual(b.properties['pages'], 200)
+
 if __name__ == '__main__':
     unittest.main()
 

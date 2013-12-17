@@ -94,6 +94,8 @@ class BaseField(object):
                 if instance._lazy and name != instance._meta['id_field']:
                     # We need to fetch the doc from the database.
                     instance.reload()
+                    # Reloading changes our internal data pointer.
+                    data = instance._internal_data
                 db_field = instance._db_field_map.get(name, name)
                 try:
                     db_value = instance._db_data[db_field]
