@@ -2499,12 +2499,18 @@ class FieldTest(unittest.TestCase):
         user = User(email="ross@example.com")
         self.assertTrue(user.validate() is None)
 
+        user = User(email="ross@example.co.uk")
+        self.assertTrue(user.validate() is None)
+
         user = User(email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S"
                            "ucictfqpdkK9iS1zeFw8sg7s7cwAF7suIfUfeyueLpfosjn3"
                            "aJIazqqWkm7.net"))
         self.assertTrue(user.validate() is None)
 
         user = User(email='me@localhost')
+        self.assertRaises(ValidationError, user.validate)
+
+        user = User(email="ross@example.com.")
         self.assertRaises(ValidationError, user.validate)
 
     def test_email_field_honors_regex(self):
@@ -2594,13 +2600,13 @@ class FieldTest(unittest.TestCase):
     def test_invalid_dict_value(self):
         class DictFieldTest(Document):
             dictionary = DictField(required=True)
-        
+
         DictFieldTest.drop_collection()
 
         test = DictFieldTest(dictionary=None)
         test.dictionary # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
-        
+
         test = DictFieldTest(dictionary=False)
         test.dictionary # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
