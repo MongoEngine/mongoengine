@@ -368,6 +368,10 @@ class DateTimeField(BaseField):
       Use :class:`~mongoengine.fields.ComplexDateTimeField` if you
       need accurate microsecond support.
     """
+    def __init__(self, **kwargs):
+        if kwargs.get('default') == 'now':
+            kwargs['default'] = datetime.datetime.now()
+        super(DateTimeField, self).__init__(**kwargs)
 
     def validate(self, value):
         new_value = self.to_mongo(value)
