@@ -34,7 +34,7 @@ except ImportError:
     Image = None
     ImageOps = None
 
-__all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
+__all__ = ['StringField', 'URLField',  'EmailField',  'IntField',  'LongField',
            'FloatField',  'DecimalField',  'BooleanField',  'DateTimeField',
            'ComplexDateTimeField',  'EmbeddedDocumentField', 'ObjectIdField',
            'GenericEmbeddedDocumentField',  'DynamicField',  'ListField',
