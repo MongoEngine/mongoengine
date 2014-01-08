@@ -1312,6 +1312,16 @@ class ImageGridFsProxy(GridFSProxy):
         except Exception, e:
             raise ValidationError('Invalid image: %s' % e)
 
+        # Progressive JPEG
+        progressive = img.info.get('progressive') or False
+
+        if (kwargs.get('progressive') and
+                isinstance(kwargs.get('progressive'), bool) and
+                img_format == 'JPEG'):
+            progressive = True
+        else:
+            progressive = False
+
         if (field.size and (img.size[0] > field.size['width'] or
                             img.size[1] > field.size['height'])):
             size = field.size
@@ -1339,14 +1349,14 @@ class ImageGridFsProxy(GridFSProxy):
                                     Image.ANTIALIAS)
 
         if thumbnail:
-            thumb_id = self._put_thumbnail(thumbnail, img_format)
+            thumb_id = self._put_thumbnail(thumbnail, img_format, progressive)
         else:
             thumb_id = None
 
         w, h = img.size
 
         io = StringIO()
-        img.save(io, img_format)
+        img.save(io, img_format, progressive=progressive)
         io.seek(0)
 
         return super(ImageGridFsProxy, self).put(io,
@@ -1364,11 +1374,11 @@ class ImageGridFsProxy(GridFSProxy):
 
         return super(ImageGridFsProxy, self).delete(*args, **kwargs)
 
-    def _put_thumbnail(self, thumbnail, format, **kwargs):
+    def _put_thumbnail(self, thumbnail, format, progressive, **kwargs):
         w, h = thumbnail.size
 
         io = StringIO()
-        thumbnail.save(io, format)
+        thumbnail.save(io, format, progressive=progressive)
         io.seek(0)
 
         return self.fs.put(io, width=w,
