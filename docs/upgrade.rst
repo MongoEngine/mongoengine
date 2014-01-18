@@ -270,7 +270,7 @@ queryset you should upgrade to use count::
     len(Animal.objects(type="mammal"))
 
     # New code
-    Animal.objects(type="mammal").count())
+    Animal.objects(type="mammal").count()
 
 
 .only() now inline with .exclude()
