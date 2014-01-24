@@ -2,6 +2,12 @@
 Upgrading
 #########
 
+0.8.7
+*****
+
+Calling reload on deleted / nonexistant documents now raises a DoesNotExist
+exception.
+
 
 0.8.2 to 0.8.3
 **************
