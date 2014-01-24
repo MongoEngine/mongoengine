@@ -9,7 +9,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import ugettext_lazy as _
 
 from .utils import datetime_now
-from .mongo_auth.models import get_user_document
 
 REDIRECT_FIELD_NAME = 'next'
 
@@ -382,9 +381,10 @@ class MongoEngineBackend(object):
     supports_object_permissions = False
     supports_anonymous_user = False
     supports_inactive_user = False
+    _user_doc = False
 
     def authenticate(self, username=None, password=None):
-        user = get_user_document().objects(username=username).first()
+        user = self.user_document.objects(username=username).first()
         if user:
             if password and user.check_password(password):
                 backend = auth.get_backends()[0]
@@ -393,8 +393,14 @@ class MongoEngineBackend(object):
         return None
 
     def get_user(self, user_id):
-        return get_user_document().objects.with_id(user_id)
+        return self.user_document.objects.with_id(user_id)
 
+    @property
+    def user_document(self):
+        if self._user_doc is False:
+            from .mongo_auth.models import get_user_document
+            self._user_doc = get_user_document()
+        return self._user_doc
 
 def get_user(userid):
     """Returns a User object from an id (User.id). Django's equivalent takes
