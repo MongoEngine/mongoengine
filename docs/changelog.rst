@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.8.7
+================
+- Stop ensure_indexes running on a secondaries (#555)
+
 Changes in 0.8.6
 ================
 - Fix django auth import (#531)

@@ -549,6 +549,8 @@ class Document(BaseDocument):
         index_cls = cls._meta.get('index_cls', True)
 
         collection = cls._get_collection()
+        if collection.read_preference > 1:
+            return
 
         # determine if an index which we are creating includes
         # _cls as its first field; if so, we can avoid creating
