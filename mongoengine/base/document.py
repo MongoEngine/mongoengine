@@ -317,7 +317,7 @@ class BaseDocument(object):
             pk = "None"
             if hasattr(self, 'pk'):
                 pk = self.pk
-            elif self._instance:
+            elif self._instance and hasattr(self._instance, 'pk'):
                 pk = self._instance.pk
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
