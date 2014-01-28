@@ -8,6 +8,9 @@ MongoEngine
 
 .. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
   :target: http://travis-ci.org/MongoEngine/mongoengine
+  
+.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master 
+  :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
 
 About
 =====
