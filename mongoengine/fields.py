@@ -85,6 +85,10 @@ class StringField(BaseField):
         if not isinstance(op, basestring):
             return value
 
+        # for exact search, return the value immediately
+        if op == 'exact':
+            return value
+
         if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
             flags = 0
             if op.startswith('i'):
