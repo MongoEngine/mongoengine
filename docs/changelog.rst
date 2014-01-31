@@ -2,6 +2,12 @@
 Changelog
 =========
 
+Changes in 0.8.7
+================
+- Calling reload on deleted / nonexistant documents raises DoesNotExist (#538)
+- Stop ensure_indexes running on a secondaries (#555)
+- Fix circular import issue with django auth (#531) (#545)
+
 Changes in 0.8.6
 ================
 - Fix django auth import (#531)

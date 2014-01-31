@@ -409,6 +409,27 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(len(doc.embedded_field.list_field), 4)
         self.assertEqual(len(doc.embedded_field.dict_field), 2)
 
+    def test_reload_doesnt_exist(self):
+        class Foo(Document):
+            pass
+
+        f = Foo()
+        try:
+            f.reload()
+        except Foo.DoesNotExist:
+            pass
+        except Exception as ex:
+            self.assertFalse("Threw wrong exception")
+
+        f.save()
+        f.delete()
+        try:
+            f.reload()
+        except Foo.DoesNotExist:
+            pass
+        except Exception as ex:
+            self.assertFalse("Threw wrong exception")
+
     def test_dictionary_access(self):
         """Ensure that dictionary-style field access works properly.
         """
