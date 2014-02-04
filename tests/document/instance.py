@@ -2452,5 +2452,31 @@ class InstanceTest(unittest.TestCase):
         f1.ref  # Dereferences lazily
         self.assertEqual(f1, f2)
 
+    def test_dbref_equality(self):
+        class Test2(Document):
+            name = StringField()
+
+        class Test(Document):
+            name = StringField()
+            test2 = ReferenceField('Test2')
+
+        Test.drop_collection()
+        Test2.drop_collection()
+
+        t2 = Test2(name='a')
+        t2.save()
+
+        t = Test(name='b', test2 = t2)
+
+        f = Test._from_son(t.to_mongo())
+
+        dbref = f._data['test2']
+        obj = f.test2
+        self.assertTrue(isinstance(dbref, DBRef))
+        self.assertTrue(isinstance(obj, Test2))
+        self.assertTrue(obj.id == dbref.id)
+        self.assertTrue(obj == dbref)
+        self.assertTrue(dbref == obj)
+
 if __name__ == '__main__':
     unittest.main()
