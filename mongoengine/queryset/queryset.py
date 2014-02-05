@@ -1115,6 +1115,15 @@ class QuerySet(object):
         else:
             return 0
 
+    def aggregate_sum(self, field):
+        result = self._document._get_collection().aggregate([
+            { '$match': self._query },
+            { '$group': { '_id': 'sum', 'total': { '$sum': '$' + field } } }
+        ])
+        if result['result']:
+            return result['result'][0]['total']
+        return 0
+
     def average(self, field):
         """Average over the values of the specified field.
 
@@ -1154,6 +1163,15 @@ class QuerySet(object):
             return result.value
         else:
             return 0
+
+    def aggregate_average(self, field):
+        result = self._document._get_collection().aggregate([
+            { '$match': self._query },
+            { '$group': { '_id': 'avg', 'total': { '$avg': '$' + field } } }
+        ])
+        if result['result']:
+            return result['result'][0]['total']
+        return 0
 
     def item_frequencies(self, field, normalize=False, map_reduce=True):
         """Returns a dictionary of all items present in a field across
