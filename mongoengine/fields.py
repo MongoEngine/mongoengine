@@ -6,6 +6,8 @@ import time
 import urllib2
 import uuid
 import warnings
+import hashlib
+import base64
 from operator import itemgetter
 
 try:
@@ -43,7 +45,7 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
            'ImproperlyConfigured',  'ImageField',  'GeoPointField', 'PointField',
            'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField',
-           'GeoJsonBaseField']
+           'GeoJsonBaseField', 'TokenField', 'PasswordField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -107,6 +109,49 @@ class StringField(BaseField):
             value = re.compile(regex % value, flags)
         return value
 
+
+class TokenField(StringField):
+    """A field that generates a random token. If a value is used (string), this string will be used to generate the token
+        You can choose an algorithm from hashlib module (default is sha1) and enable/disable base64 encoding (default is True)
+    """
+    def __init__(self, algorithm='SHA1', uses_base64=True, **kwargs):
+        self.algorithm = algorithm
+        self.uses_base64 = uses_base64
+        super(TokenField, self).__init__(**kwargs)
+
+    def __set__(self, instance, value):
+        if not value:
+            value = str(uuid.uuid1())
+        if hasattr(hashlib, self.algorithm.lower()):
+            value = getattr(hashlib, self.algorithm.lower())(value).hexdigest()
+            if self.uses_base64:
+                value = base64.b64encode(value)
+        return super(TokenField, self).__set__(instance, value)
+
+class PasswordField(StringField):
+    """A field that encrypts a string to be used as token or password.
+        You can choose an algorithm from hashlib module (default is sha1) and enable/disable base64 encoding (default is True)
+    """
+
+    def __init__(self, algorithm='SHA1', uses_base64=True, **kwargs):
+        self.algorithm = algorithm
+        self.uses_base64 = uses_base64
+        super(PasswordField, self).__init__(**kwargs)
+
+    def __set__(self, instance, value):
+        if value:
+            if hasattr(hashlib, self.algorithm.lower()):
+                value = getattr(hashlib, self.algorithm.lower())(value).hexdigest()
+                if self.uses_base64:
+                    value = base64.b64encode(value)
+            return super(PasswordField, self).__set__(instance, value)
+
+    def prepare_query_value(self, op, value):
+        if hasattr(hashlib, self.algorithm.lower()):
+            value = getattr(hashlib, self.algorithm.lower())(value).hexdigest()
+            if self.uses_base64:
+                value = base64.b64encode(value)
+        return super(PasswordField, self).prepare_query_value(op, value)
 
 class URLField(StringField):
     """A field that validates input as an URL.
