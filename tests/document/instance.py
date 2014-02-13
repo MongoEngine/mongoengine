@@ -2456,27 +2456,61 @@ class InstanceTest(unittest.TestCase):
         class Test2(Document):
             name = StringField()
 
+        class Test3(Document):
+            name = StringField()
+
         class Test(Document):
             name = StringField()
             test2 = ReferenceField('Test2')
+            test3 = ReferenceField('Test3')
 
         Test.drop_collection()
         Test2.drop_collection()
+        Test3.drop_collection()
 
         t2 = Test2(name='a')
         t2.save()
 
-        t = Test(name='b', test2 = t2)
+        t3 = Test3(name='x')
+        t3.id = t2.id
+        t3.save()
+
+        t = Test(name='b', test2=t2, test3=t3)
 
         f = Test._from_son(t.to_mongo())
 
-        dbref = f._data['test2']
-        obj = f.test2
-        self.assertTrue(isinstance(dbref, DBRef))
-        self.assertTrue(isinstance(obj, Test2))
-        self.assertTrue(obj.id == dbref.id)
-        self.assertTrue(obj == dbref)
-        self.assertTrue(dbref == obj)
+        dbref2 = f._data['test2']
+        obj2 = f.test2
+        self.assertTrue(isinstance(dbref2, DBRef))
+        self.assertTrue(isinstance(obj2, Test2))
+        self.assertTrue(obj2.id == dbref2.id)
+        self.assertTrue(obj2 == dbref2)
+        self.assertTrue(dbref2 == obj2)
+
+        dbref3 = f._data['test3']
+        obj3 = f.test3
+        self.assertTrue(isinstance(dbref3, DBRef))
+        self.assertTrue(isinstance(obj3, Test3))
+        self.assertTrue(obj3.id == dbref3.id)
+        self.assertTrue(obj3 == dbref3)
+        self.assertTrue(dbref3 == obj3)
+
+        self.assertTrue(obj2.id == obj3.id)
+        self.assertTrue(dbref2.id == dbref3.id)
+        self.assertFalse(dbref2 == dbref3)
+        self.assertFalse(dbref3 == dbref2)
+        self.assertTrue(dbref2 != dbref3)
+        self.assertTrue(dbref3 != dbref2)
+
+        self.assertFalse(obj2 == dbref3)
+        self.assertFalse(dbref3 == obj2)
+        self.assertTrue(obj2 != dbref3)
+        self.assertTrue(dbref3 != obj2)
+
+        self.assertFalse(obj3 == dbref2)
+        self.assertFalse(dbref2 == obj3)
+        self.assertTrue(obj3 != dbref2)
+        self.assertTrue(dbref2 != obj3)
 
 if __name__ == '__main__':
     unittest.main()

@@ -216,7 +216,7 @@ class BaseDocument(object):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):
             return self.id == other.id
         if isinstance(other, DBRef):
-            return self.id == other.id
+            return self._get_collection_name() == other.collection and self.id == other.id
         return False
 
     def __ne__(self, other):
