@@ -2612,5 +2612,25 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, test.validate)
 
 
+    def test_query_genericreferencefield( self ):
+        class TestActivity( Document ):
+            name = StringField()
+            owner = GenericReferenceField( required=True )
+
+        class TestPerson( Document ):
+            name = StringField()
+
+        TestActivity.drop_collection()
+        TestPerson.drop_collection()
+
+        person = TestPerson( name="owner" )
+        person.save()
+
+        a1 = TestActivity( name="a1", owner=person )
+        a1.save()
+
+        activities = TestActivity.objects( owner=person )
+        self.assertEquals( activities[0].owner, person )
+
 if __name__ == '__main__':
     unittest.main()
