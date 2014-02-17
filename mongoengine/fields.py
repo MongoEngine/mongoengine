@@ -1023,10 +1023,7 @@ class GenericReferenceField(BaseField):
         id_ = id_field.to_mongo(id_)
         collection = document._get_collection_name()
         ref = DBRef(collection, id_)
-        return SON((
-            ('_cls', document._class_name),
-            ('_ref', ref)
-        ))
+        return {'_cls': document._class_name, '_ref': ref}
 
     def prepare_query_value(self, op, value):
         if value is None:
