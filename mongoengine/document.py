@@ -60,8 +60,8 @@ class Document(BaseDocument):
     a **+** or **-** sign.
     """
 
-    MAX_AUTO_RECONNECT_TRIES = 3
-    AUTO_RECONNECT_SLEEP = 0.075
+    MAX_AUTO_RECONNECT_TRIES = 2
+    AUTO_RECONNECT_SLEEP = 0.0
 
     __metaclass__ = TopLevelDocumentMetaclass
 
