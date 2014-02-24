@@ -2540,6 +2540,27 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(authors, [mark_twain, john_tolkien])
 
+    def test_distinct_ListField_ReferenceField(self):
+        class Foo(Document):
+            bar_lst = ListField(ReferenceField('Bar'))
+
+        class Bar(Document):
+            text = StringField()
+
+        Bar.drop_collection()
+        Foo.drop_collection()
+
+        bar_1 = Bar(text="hi")
+        bar_1.save()
+
+        bar_2 = Bar(text="bye")
+        bar_2.save()
+
+        foo = Foo(bar=bar_1, bar_lst=[bar_1, bar_2])
+        foo.save()
+
+        self.assertEqual(Foo.objects.distinct("bar_lst"), [bar_1, bar_2])
+
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
