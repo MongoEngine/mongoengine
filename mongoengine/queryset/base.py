@@ -7,12 +7,14 @@ import pprint
 import re
 import warnings
 
+from bson import SON
 from bson.code import Code
 from bson import json_util
 import pymongo
 from pymongo.common import validate_read_preference
 
 from mongoengine import signals
+from mongoengine.connection import get_db
 from mongoengine.common import _import_class
 from mongoengine.base.common import get_document
 from mongoengine.errors import (OperationError, NotUniqueError,
@@ -923,7 +925,36 @@ class BaseQuerySet(object):
             map_reduce_function = 'inline_map_reduce'
         else:
             map_reduce_function = 'map_reduce'
-            mr_args['out'] = output
+
+            if isinstance(output, basestring):
+                mr_args['out'] = output
+                
+            elif isinstance(output, dict):
+                ordered_output = []
+
+                for part in ('replace', 'merge', 'reduce'):
+                    value = output.get(part)
+                    if value:
+                        ordered_output.append((part, value))
+                        break
+                
+                else:
+                    raise OperationError("actionData not specified for output")
+
+                db_alias = output.get('db_alias')
+                remaing_args = ['db', 'sharded', 'nonAtomic']
+                
+                if db_alias:
+                    ordered_output.append(('db', get_db(db_alias).name))
+                    del remaing_args[0]
+
+                
+                for part in remaing_args:
+                    value = output.get(part)
+                    if value:
+                        ordered_output.append((part, value))
+                
+                mr_args['out'] = SON(ordered_output)
 
         results = getattr(queryset._collection, map_reduce_function)(
                           map_f, reduce_f, **mr_args)
