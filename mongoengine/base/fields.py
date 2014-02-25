@@ -64,6 +64,8 @@ class BaseField(object):
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
             warnings.warn(msg, DeprecationWarning)
         self.required = required or primary_key
+        if callable(default):
+            default = default()
         self.default = default
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
