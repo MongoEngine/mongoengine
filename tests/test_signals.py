@@ -54,7 +54,9 @@ class SignalTests(unittest.TestCase):
 
             @classmethod
             def post_save(cls, sender, document, **kwargs):
+                dirty_keys = document._delta()[0].keys() + document._delta()[1].keys()
                 signal_output.append('post_save signal, %s' % document)
+                signal_output.append('post_save dirty keys, %s' % dirty_keys)
                 if 'created' in kwargs:
                     if kwargs['created']:
                         signal_output.append('Is created')
@@ -203,6 +205,7 @@ class SignalTests(unittest.TestCase):
             "pre_save_post_validation signal, Bill Shakespeare",
             "Is created",
             "post_save signal, Bill Shakespeare",
+            "post_save dirty keys, ['name']",
             "Is created"
         ])
 
@@ -213,6 +216,7 @@ class SignalTests(unittest.TestCase):
             "pre_save_post_validation signal, William Shakespeare",
             "Is updated",
             "post_save signal, William Shakespeare",
+            "post_save dirty keys, ['name']",
             "Is updated"
         ])
 
