@@ -113,7 +113,7 @@ class BaseField(object):
                 instance._mark_as_changed(self.name)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument) and value._instance is None:
+        if isinstance(value, EmbeddedDocument):
             value._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
