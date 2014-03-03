@@ -760,7 +760,7 @@ class DictField(ComplexBaseField):
     similar to an embedded document, but the structure is not defined.
 
     .. note::
-        Required means it cannot be empty - as the default for ListFields is []
+        Required means it cannot be empty - as the default for DictFields is {}
 
     .. versionadded:: 0.3
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
