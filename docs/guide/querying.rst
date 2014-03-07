@@ -499,10 +499,12 @@ that you may use with these methods:
 * ``dec`` -- decrement a value by a given amount
 * ``push`` -- append a value to a list
 * ``push_all`` -- append several values to a list
-* ``pop`` -- remove the first or last element of a list
+* ``pop`` -- remove the first or last element of a list `depending on the value`_
 * ``pull`` -- remove a value from a list
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
+
+.. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
 
 The syntax for atomic updates is similar to the querying syntax, but the
 modifier comes before the field, not after it::
