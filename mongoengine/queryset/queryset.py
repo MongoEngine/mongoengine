@@ -246,7 +246,7 @@ class QuerySet(object):
         .. versionadded:: 0.3
         """
         queryset = self.__call__(*q_objs, **query)
-        queryset = queryset.limit(2)
+        queryset = queryset.order_by().limit(2)
         try:
             result = queryset.next()
         except StopIteration:
