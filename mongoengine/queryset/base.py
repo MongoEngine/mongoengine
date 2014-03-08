@@ -175,7 +175,7 @@ class BaseQuerySet(object):
         .. versionadded:: 0.3
         """
         queryset = self.clone()
-        queryset = queryset.limit(2)
+        queryset = queryset.order_by().limit(2)
         queryset = queryset.filter(*q_objs, **query)
 
         try:

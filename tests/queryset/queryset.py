@@ -1046,7 +1046,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertSequence(qs, expected)
 
     def test_clear_ordering(self):
-        """ Ensure that the default ordering can be cleared.
+        """ Ensure that the default ordering can be cleared by calling order_by().
         """
         class BlogPost(Document):
             title = StringField()
@@ -1067,6 +1067,30 @@ class QuerySetTest(unittest.TestCase):
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
             print q.get_ops()[0]['query']
+            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+
+    def test_no_ordering_for_get(self):
+        """ Ensure that Doc.objects.get doesn't use any ordering.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            published_date = DateTimeField()
+
+            meta = {
+                'ordering': ['-published_date']
+            }
+
+        BlogPost.objects.create(title='whatever', published_date=datetime.utcnow())
+
+        with db_ops_tracker() as q:
+            BlogPost.objects.get(title='whatever')
+            self.assertEqual(len(q.get_ops()), 1)
+            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+
+        # Ordering should be ignored for .get even if we set it explicitly
+        with db_ops_tracker() as q:
+            BlogPost.objects.order_by('-title').get(title='whatever')
+            self.assertEqual(len(q.get_ops()), 1)
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 
     def test_find_embedded(self):
