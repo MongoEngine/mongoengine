@@ -14,7 +14,6 @@ from pymongo.read_preferences import ReadPreference
 from bson import ObjectId
 
 from mongoengine import *
-from mongoengine.connection import get_connection
 from mongoengine.python_support import PY3
 from mongoengine.context_managers import query_counter
 from mongoengine.queryset import (QuerySet, QuerySetManager,
@@ -23,6 +22,12 @@ from mongoengine.queryset import (QuerySet, QuerySetManager,
 from mongoengine.errors import InvalidQueryError
 
 __all__ = ("QuerySetTest",)
+
+
+class db_ops_tracker(query_counter):
+    def get_ops(self):
+        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
+        return list(self.db.system.profile.find(ignore_query))
 
 
 class QuerySetTest(unittest.TestCase):
@@ -1039,6 +1044,30 @@ class QuerySetTest(unittest.TestCase):
         qs = BlogPost.objects.order_by("+published_date")
         expected = [blog_post_1, blog_post_2, blog_post_3]
         self.assertSequence(qs, expected)
+
+    def test_clear_ordering(self):
+        """ Ensure that the default ordering can be cleared.
+        """
+        class BlogPost(Document):
+            title = StringField()
+            published_date = DateTimeField()
+
+            meta = {
+                'ordering': ['-published_date']
+            }
+
+        BlogPost.drop_collection()
+
+        with db_ops_tracker() as q:
+            BlogPost.objects.filter(title='whatever').first()
+            self.assertEqual(len(q.get_ops()), 1)
+            self.assertEqual(q.get_ops()[0]['query']['$orderby'], {u'published_date': -1})
+
+        with db_ops_tracker() as q:
+            BlogPost.objects.filter(title='whatever').order_by().first()
+            self.assertEqual(len(q.get_ops()), 1)
+            print q.get_ops()[0]['query']
+            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.

@@ -50,7 +50,7 @@ class BaseQuerySet(object):
         self._initial_query = {}
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
-        self._ordering = []
+        self._ordering = None
         self._snapshot = False
         self._timeout = True
         self._class_check = True
@@ -1189,7 +1189,7 @@ class BaseQuerySet(object):
             if self._ordering:
                 # Apply query ordering
                 self._cursor_obj.sort(self._ordering)
-            elif self._document._meta['ordering']:
+            elif self._ordering == None and self._document._meta['ordering']:
                 # Otherwise, apply the ordering from the document model
                 order = self._get_order_by(self._document._meta['ordering'])
                 self._cursor_obj.sort(order)
