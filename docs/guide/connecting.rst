@@ -100,3 +100,18 @@ access to the same User document across databases::
 
 .. note:: Make sure any aliases have been registered with
     :func:`~mongoengine.register_connection` before using the context manager.
+
+There is also a switch collection context manager as well.  The
+:class:`~mongoengine.context_managers.switch_collection` context manager allows
+you to change the collection for a given class allowing quick and easy
+access to the same Group document across collection::
+
+        from mongoengine.context_managers import switch_db
+
+        class Group(Document):
+            name = StringField()
+
+        Group(name="test").save()  # Saves in the default db
+
+        with switch_collection(Group, 'group2000') as Group:
+            Group(name="hello Group 2000 collection!").save()  # Saves in group2000 collection

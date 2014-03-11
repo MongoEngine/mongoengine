@@ -16,6 +16,7 @@ settings.configure(
     USE_TZ=True,
     INSTALLED_APPS=('django.contrib.auth', 'mongoengine.django.mongo_auth'),
     AUTH_USER_MODEL=('mongo_auth.MongoUser'),
+    AUTHENTICATION_BACKENDS = ('mongoengine.django.auth.MongoEngineBackend',)
 )
 
 try:

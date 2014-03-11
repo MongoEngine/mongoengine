@@ -12,6 +12,7 @@ from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
+from mongoengine.errors import ValidationError
 from mongoengine.queryset import OperationError, NotUniqueError, QuerySet
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
@@ -280,7 +281,9 @@ class Document(BaseDocument):
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
                 self.cascade_save(**kwargs)
-
+        except pymongo.errors.DuplicateKeyError, err:
+            message = u'Tried to save duplicate unique keys (%s)'
+            raise NotUniqueError(message % unicode(err))
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
@@ -450,14 +453,16 @@ class Document(BaseDocument):
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
         """
+        if not self.pk:
+            raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-                **self._object_key).limit(1).select_related(max_depth=max_depth)
+                    **self._object_key).limit(1).select_related(max_depth=max_depth)
+
 
         if obj:
             obj = obj[0]
         else:
-            msg = "Reloaded document has been deleted"
-            raise OperationError(msg)
+            raise self.DoesNotExist("Document does not exist")
         for field in self._fields_ordered:
             setattr(self, field, self._reload(field, obj[field]))
         self._changed_fields = obj._changed_fields
@@ -547,6 +552,8 @@ class Document(BaseDocument):
         index_cls = cls._meta.get('index_cls', True)
 
         collection = cls._get_collection()
+        if collection.read_preference > 1:
+            return
 
         # determine if an index which we are creating includes
         # _cls as its first field; if so, we can avoid creating
