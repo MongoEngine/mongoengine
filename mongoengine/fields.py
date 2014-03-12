@@ -391,7 +391,7 @@ class DateTimeField(BaseField):
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except ValueError:
+            except (TypeError, ValueError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
