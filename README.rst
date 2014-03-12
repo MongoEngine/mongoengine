@@ -8,6 +8,9 @@ MongoEngine
 
 .. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
   :target: http://travis-ci.org/MongoEngine/mongoengine
+  
+.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master 
+  :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
 
 About
 =====
@@ -92,4 +95,4 @@ Community
 
 Contributing
 ============
-We welcome contributions! see  the`Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
+We welcome contributions! see  the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
