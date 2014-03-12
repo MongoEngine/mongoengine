@@ -20,19 +20,23 @@ class BaseDict(dict):
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key, *args, **kwargs):
         value = super(BaseDict, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
-        elif isinstance(value, dict):
+        elif not isinstance(value, BaseDict) and isinstance(value, dict):
             value = BaseDict(value, None, '%s.%s' % (self._name, key))
+            super(BaseDict, self).__setitem__(key, value)
+            value._instance = self._instance
+        elif not isinstance(value, BaseList) and isinstance(value, list):
+            value = BaseList(value, None, '%s.%s' % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
         return value
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value, *args, **kwargs):
         self._mark_as_changed(key)
         return super(BaseDict, self).__setitem__(key, value)
 
@@ -40,13 +44,13 @@ class BaseDict(dict):
         self._mark_as_changed()
         return super(BaseDict, self).__delete__(*args, **kwargs)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key, *args, **kwargs):
         self._mark_as_changed(key)
         return super(BaseDict, self).__delitem__(key)
 
-    def __delattr__(self, key):
+    def __delattr__(self, key, *args, **kwargs):
         self._mark_as_changed(key)
-        return super(BaseDict, self).__delattr__(*args, **kwargs)
+        return super(BaseDict, self).__delattr__(key)
 
     def __getstate__(self):
         self.instance = None
@@ -98,21 +102,29 @@ class BaseList(list):
         self._name = name
         return super(BaseList, self).__init__(list_items)
 
-    def __getitem__(self, *args, **kwargs):
-        value = super(BaseList, self).__getitem__(*args, **kwargs)
+    def __getitem__(self, key, *args, **kwargs):
+        value = super(BaseList, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
+        elif not isinstance(value, BaseDict) and isinstance(value, dict):
+            value = BaseDict(value, None, '%s.%s' % (self._name, key))
+            super(BaseList, self).__setitem__(key, value)
+            value._instance = self._instance
+        elif not isinstance(value, BaseList) and isinstance(value, list):
+            value = BaseList(value, None, '%s.%s' % (self._name, key))
+            super(BaseList, self).__setitem__(key, value)
+            value._instance = self._instance
         return value
 
-    def __setitem__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).__setitem__(*args, **kwargs)
+    def __setitem__(self, key, value, *args, **kwargs):
+        self._mark_as_changed(key)
+        return super(BaseList, self).__setitem__(key, value)
 
-    def __delitem__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).__delitem__(*args, **kwargs)
+    def __delitem__(self, key, *args, **kwargs):
+        self._mark_as_changed(key)
+        return super(BaseList, self).__delitem__(key)
 
     def __setslice__(self, *args, **kwargs):
         self._mark_as_changed()
@@ -159,6 +171,9 @@ class BaseList(list):
         self._mark_as_changed()
         return super(BaseList, self).sort(*args, **kwargs)
 
-    def _mark_as_changed(self):
+    def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
-            self._instance._mark_as_changed(self._name)
+            if key:
+                self._instance._mark_as_changed('%s.%s' % (self._name, key))
+            else:
+                self._instance._mark_as_changed(self._name)

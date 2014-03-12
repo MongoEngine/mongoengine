@@ -371,27 +371,17 @@ class BaseDocument(object):
         if not key:
             return
 
-        key = self._db_field_map.get(key, key)
         if not hasattr(self, '_changed_fields'):
             return
 
-        # FIXME: would _delta be a better place for this?
-        # 
-        # We want to go through and check that a parent key doesn't exist already
-        # when adding a nested key.
-        key_parts = key.split('.')
-        partial = key_parts[0]
+        if '.' in key:
+            key, rest = key.split('.', 1)
+            key = self._db_field_map.get(key, key)
+            key = '%s.%s' % (key, rest)
+        else:
+            key = self._db_field_map.get(key, key)
 
-        if partial in self._changed_fields:
-            return
-
-        for part in key_parts[1:]:
-            partial += '.' + part
-            if partial in self._changed_fields:
-                return
-
-        if (hasattr(self, '_changed_fields') and
-           key not in self._changed_fields):
+        if key not in self._changed_fields:
             self._changed_fields.append(key)
 
     def _clear_changed_fields(self):
@@ -443,6 +433,7 @@ class BaseDocument(object):
         ReferenceField = _import_class("ReferenceField")
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
+
         inspected = inspected or set()
         if hasattr(self, 'id') and isinstance(self.id, Hashable):
             if self.id in inspected:
@@ -495,7 +486,10 @@ class BaseDocument(object):
                     if isinstance(d, (ObjectId, DBRef)):
                         break
                     elif isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
+                        try:
+                            d = d[int(p)]
+                        except IndexError:
+                            d = None
                     elif hasattr(d, 'get'):
                         d = d.get(p)
                     new_path.append(p)

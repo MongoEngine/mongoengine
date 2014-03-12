@@ -207,22 +207,21 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field[2].string_field = 'hello world'
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
         self.assertEqual(doc._get_changed_fields(),
-                         ['embedded_field.list_field'])
-        self.assertEqual(doc.embedded_field._delta(), ({
-            'list_field': ['1', 2, {
-            '_cls': 'Embedded',
-            'string_field': 'hello world',
-            'int_field': 1,
-            'list_field': ['1', 2, {'hello': 'world'}],
-            'dict_field': {'hello': 'world'}}]}, {}))
-        self.assertEqual(doc._delta(), ({
-            'embedded_field.list_field': ['1', 2, {
+                         ['embedded_field.list_field.2'])
+        self.assertEqual(doc.embedded_field._delta(), ({'list_field.2': {
                 '_cls': 'Embedded',
                 'string_field': 'hello world',
                 'int_field': 1,
                 'list_field': ['1', 2, {'hello': 'world'}],
                 'dict_field': {'hello': 'world'}}
-            ]}, {}))
+            }, {}))
+        self.assertEqual(doc._delta(), ({'embedded_field.list_field.2': {
+                '_cls': 'Embedded',
+                'string_field': 'hello world',
+                'int_field': 1,
+                'list_field': ['1', 2, {'hello': 'world'}],
+                'dict_field': {'hello': 'world'}}
+            }, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
@@ -253,7 +252,7 @@ class DeltaTest(unittest.TestCase):
 
         del(doc.embedded_field.list_field[2].list_field[2]['hello'])
         self.assertEqual(doc._delta(),
-                         ({'embedded_field.list_field.2.list_field': [1, 2, {}]}, {}))
+                         ({}, {'embedded_field.list_field.2.list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
@@ -548,22 +547,21 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field[2].string_field = 'hello world'
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
         self.assertEqual(doc._get_changed_fields(),
-            ['db_embedded_field.db_list_field'])
-        self.assertEqual(doc.embedded_field._delta(), ({
-            'db_list_field': ['1', 2, {
+            ['db_embedded_field.db_list_field.2'])
+        self.assertEqual(doc.embedded_field._delta(), ({'db_list_field.2': {
             '_cls': 'Embedded',
             'db_string_field': 'hello world',
             'db_int_field': 1,
             'db_list_field': ['1', 2, {'hello': 'world'}],
-            'db_dict_field': {'hello': 'world'}}]}, {}))
+            'db_dict_field': {'hello': 'world'}}}, {}))
         self.assertEqual(doc._delta(), ({
-            'db_embedded_field.db_list_field': ['1', 2, {
+            'db_embedded_field.db_list_field.2': {
                 '_cls': 'Embedded',
                 'db_string_field': 'hello world',
                 'db_int_field': 1,
                 'db_list_field': ['1', 2, {'hello': 'world'}],
                 'db_dict_field': {'hello': 'world'}}
-            ]}, {}))
+            }, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
@@ -594,8 +592,7 @@ class DeltaTest(unittest.TestCase):
 
         del(doc.embedded_field.list_field[2].list_field[2]['hello'])
         self.assertEqual(doc._delta(),
-            ({'db_embedded_field.db_list_field.2.db_list_field':
-                [1, 2, {}]}, {}))
+            ({}, {'db_embedded_field.db_list_field.2.db_list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 

@@ -204,7 +204,8 @@ class DeReference(object):
                     elif isinstance(v, (list, tuple)) and depth <= self.max_depth:
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=name)
+                item_name = '%s.%s' % (name, k) if name else name
+                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
             elif hasattr(v, 'id'):
                 data[k] = self.object_map.get(v.id, v)
 
