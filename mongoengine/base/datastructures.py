@@ -119,11 +119,17 @@ class BaseList(list):
         return value
 
     def __setitem__(self, key, value, *args, **kwargs):
-        self._mark_as_changed(key)
+        if isinstance(key, slice):
+            self._mark_as_changed()
+        else:
+            self._mark_as_changed(key)
         return super(BaseList, self).__setitem__(key, value)
 
     def __delitem__(self, key, *args, **kwargs):
-        self._mark_as_changed(key)
+        if isinstance(key, slice):
+            self._mark_as_changed()
+        else:
+            self._mark_as_changed(key)
         return super(BaseList, self).__delitem__(key)
 
     def __setslice__(self, *args, **kwargs):
