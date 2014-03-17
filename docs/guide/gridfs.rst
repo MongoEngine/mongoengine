@@ -46,7 +46,7 @@ slightly different manner.  First, a new file must be created by calling the
     marmot.photo.write('some_more_image_data')
     marmot.photo.close()
 
-    marmot.photo.save()
+    marmot.save()
 
 Deletion
 --------
