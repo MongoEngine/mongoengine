@@ -825,6 +825,14 @@ class QuerySet(object):
         queryset._ordering = queryset._get_order_by(keys)
         return queryset
 
+    def clear_initial_query(self):
+        """ Sometimes we don't want the default _cls filter to be included in
+        the query. This is a method to clear it.
+        """
+        queryset = self.clone()
+        queryset._initial_query = {}
+        return queryset
+
     def explain(self, format=False):
         """Return an explain plan record for the
         :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
