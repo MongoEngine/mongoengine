@@ -16,20 +16,20 @@ from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
                                         to_str_keys_recursive)
 
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
-from mongoengine.base.datastructures import BaseDict, BaseList
+from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict, SemiStrictDict 
 from mongoengine.base.fields import ComplexBaseField
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
 
-
 class BaseDocument(object):
+    __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
+                  '_dynamic_fields', '_auto_id_field', '_db_field_map', '_cls', '__weakref__')
 
     _dynamic = False
-    _created = True
     _dynamic_lock = True
-    _initialised = False
+    STRICT = False
 
     def __init__(self, *args, **values):
         """
@@ -38,6 +38,8 @@ class BaseDocument(object):
         :param __auto_convert: Try and will cast python objects to Object types
         :param values: A dictionary of values for the document
         """
+        self._initialised = False
+        self._created = True
         if args:
             # Combine positional arguments with named arguments.
             # We only want named arguments.
@@ -52,8 +54,12 @@ class BaseDocument(object):
                 values[name] = value
         __auto_convert = values.pop("__auto_convert", True)
         signals.pre_init.send(self.__class__, document=self, values=values)
-
-        self._data = {}
+        
+        if self.STRICT and not self._dynamic:
+            self._data = StrictDict.create(allowed_keys=self._fields.keys())()
+        else:
+            self._data = SemiStrictDict.create(allowed_keys=self._fields.keys())()
+            
         self._dynamic_fields = SON()
 
         # Assign default values to instance
@@ -129,17 +135,25 @@ class BaseDocument(object):
                 self._data[name] = value
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
+        try:
+            self__created = self._created
+        except AttributeError:
+            self__created = True
 
-        if (self._is_document and not self._created and
+        if (self._is_document and not self__created and
            name in self._meta.get('shard_key', tuple()) and
            self._data.get(name) != value):
             OperationError = _import_class('OperationError')
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
 
+        try:
+            self__initialised = self._initialised
+        except AttributeError:
+            self__initialised = False 
         # Check if the user has created a new instance of a class
-        if (self._is_document and self._initialised
-           and self._created and name == self._meta['id_field']):
+        if (self._is_document and self__initialised
+           and self__created and name == self._meta['id_field']):
                 super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
@@ -157,9 +171,11 @@ class BaseDocument(object):
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in ('_changed_fields', '_initialised', '_created', '_data',
-                  '_fields_ordered', '_dynamic_fields'):
+                   '_dynamic_fields'):
             if k in data:
                 setattr(self, k, data[k])
+        if '_fields_ordered' in data:
+            setattr(type(self), '_fields_ordered', data['_fields_ordered'])
         dynamic_fields = data.get('_dynamic_fields') or SON()
         for k in dynamic_fields.keys():
             setattr(self, k, data["_data"].get(k))
@@ -576,7 +592,9 @@ class BaseDocument(object):
             msg = ("Invalid data to create a `%s` instance.\n%s"
                    % (cls._class_name, errors))
             raise InvalidDocumentError(msg)
-
+        
+        if cls.STRICT:
+            data = dict((k, v) for k,v in data.iteritems() if k in cls._fields)
         obj = cls(__auto_convert=False, **data)
         obj._changed_fields = changed_fields
         obj._created = False
@@ -813,7 +831,11 @@ class BaseDocument(object):
         """Dynamically set the display value for a field with choices"""
         for attr_name, field in self._fields.items():
             if field.choices:
-                setattr(self,
+                if self._dynamic:
+                    obj = self
+                else:
+                    obj = type(self)
+                setattr(obj,
                         'get_%s_display' % attr_name,
                         partial(self.__get_field_display, field=field))
 

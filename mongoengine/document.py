@@ -52,16 +52,17 @@ class EmbeddedDocument(BaseDocument):
     `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
     dictionary.
     """
+    
+    __slots__ = ('_instance')
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
-    _instance = None
-
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
+        self._instance = None
         self._changed_fields = []
 
     def __eq__(self, other):
@@ -123,6 +124,8 @@ class Document(BaseDocument):
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass  = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
+
+    __slots__ = ('__objects' )
 
     def pk():
         """Primary key alias
