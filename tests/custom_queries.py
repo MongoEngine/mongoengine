@@ -120,6 +120,25 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEqual(p.age, 19)
         self.assertEqual(p.name, "Josh")
 
+    def testInOnEnbeddedDocumentList(self):
+        blue = self.Colour(name="Blue")
+        red = self.Colour(name="Red")
+        yellow = self.Colour(name="Yellow")
+        p = self.Person(name="Adam", favourite_colour=blue)
+        p.save()
+        p = self.Person(name="Bill", favourite_colour=red)
+        p.save()
+        p = self.Person(name="Billy", favourite_colour=yellow)
+        p.save()
+
+        people = self.Person.find({'favourite_colour' : { '$in' : [
+            blue,
+            red,
+            yellow,
+        ]}})
+
+        self.assertEqual(len(people), 3)
+
     def testAddToSet(self):
         blue = self.Colour(name="Blue")
         red = self.Colour(name="Red")

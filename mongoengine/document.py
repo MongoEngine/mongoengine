@@ -555,6 +555,11 @@ class Document(BaseDocument):
             # handle EmbeddedDocuments
             elif isinstance(value, BaseDocument):
                 value = value.to_mongo()
+            
+            # handle EmbeddedDocuments in lists
+            elif isinstance(value, list):
+                value = [v.to_mongo() if isinstance(v, BaseDocument) else v\
+                    for v in value]
 
             # handle lists (force to_mongo() everything if it's a list of docs)
             elif isinstance(context, ListField) and \
