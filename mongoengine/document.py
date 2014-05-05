@@ -293,7 +293,7 @@ class Document(BaseDocument):
                 raise NotUniqueError(message % unicode(err))
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
-        if id_field not in self._meta.get('shard_key', []):
+        if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
         self._clear_changed_fields()
