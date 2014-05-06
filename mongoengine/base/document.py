@@ -60,6 +60,8 @@ class BaseDocument(object):
         else:
             self._data = SemiStrictDict.create(allowed_keys=self._fields_ordered)()
 
+        self._created = values.pop("_created", True)
+        self._data = {}
         self._dynamic_fields = SON()
 
         # Assign default values to instance
@@ -619,9 +621,8 @@ class BaseDocument(object):
 
         if cls.STRICT:
             data = dict((k, v) for k,v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, **data)
+        obj = cls(__auto_convert=False, _created=False, **data)
         obj._changed_fields = changed_fields
-        obj._created = False
         if not _auto_dereference:
             obj._fields = fields
         return obj
