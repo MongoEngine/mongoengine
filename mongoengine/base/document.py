@@ -60,7 +60,7 @@ class BaseDocument(object):
         else:
             self._data = SemiStrictDict.create(allowed_keys=self._fields_ordered)()
 
-        self._created = values.pop("_created", True)
+        _created = values.pop("_created", True)
         self._data = {}
         self._dynamic_fields = SON()
 
@@ -104,6 +104,7 @@ class BaseDocument(object):
 
         # Flag initialised
         self._initialised = True
+        self._created = _created
         signals.post_init.send(self.__class__, document=self)
 
     def __delattr__(self, *args, **kwargs):
