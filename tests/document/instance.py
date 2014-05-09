@@ -2281,7 +2281,7 @@ class InstanceTest(unittest.TestCase):
         log.machine = "Localhost"
         log.save()
 
-        self.assertIsNotNone(log.id)
+        self.assertTrue(log.id is not None)
 
         log.log = "Saving"
         log.save()
@@ -2306,7 +2306,7 @@ class InstanceTest(unittest.TestCase):
         log.machine = "Localhost"
         log.save()
 
-        self.assertIsNotNone(log.id)
+        self.assertTrue(log.id is not None)
 
         log.log = "Saving"
         log.save()
