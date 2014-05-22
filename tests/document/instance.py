@@ -2411,7 +2411,7 @@ class InstanceTest(unittest.TestCase):
                 for parameter_name, parameter in self.parameters.iteritems():
                     parameter.expand()
 
-        class System(Document):
+        class NodesSystem(Document):
             name = StringField(required=True)
             nodes = MapField(ReferenceField(Node, dbref=False))
 
@@ -2419,18 +2419,18 @@ class InstanceTest(unittest.TestCase):
                 for node_name, node in self.nodes.iteritems():
                     node.expand()
                     node.save(*args, **kwargs)
-                super(System, self).save(*args, **kwargs)
+                super(NodesSystem, self).save(*args, **kwargs)
 
-        System.drop_collection()
+        NodesSystem.drop_collection()
         Node.drop_collection()
 
-        system = System(name="system")
+        system = NodesSystem(name="system")
         system.nodes["node"] = Node()
         system.save()
         system.nodes["node"].parameters["param"] = Parameter()
         system.save()
 
-        system = System.objects.first()
+        system = NodesSystem.objects.first()
         self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
     def test_embedded_document_equality(self):
