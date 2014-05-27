@@ -3814,6 +3814,29 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(Example.objects(size=instance_size).count(), 1)
         self.assertEqual(Example.objects(size__in=[instance_size]).count(), 1)
 
+    def test_cursor_in_an_if_stmt(self):
+
+        class Test(Document):
+            test_field = StringField()
+
+        Test.drop_collection()
+        queryset = Test.objects
+
+        if queryset:
+            raise AssertionError('Empty cursor returns True')
+
+        test = Test()
+        test.test_field = 'test'
+        test.save()
+
+        queryset = Test.objects
+        if not test:
+            raise AssertionError('There is data, but cursor returned False')
+
+        queryset.next()
+        if queryset:
+            raise AssertionError('There is no data left in cursor')
+
 
 if __name__ == '__main__':
     unittest.main()

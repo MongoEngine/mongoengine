@@ -154,6 +154,15 @@ class BaseQuerySet(object):
     def __iter__(self):
         raise NotImplementedError
 
+    def __nonzero__(self):
+        """ Avoid to open all records in an if stmt """
+
+        for value in self:
+            self.rewind()
+            return True
+
+        return False        
+
     # Core functions
 
     def all(self):
