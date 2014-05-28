@@ -3834,8 +3834,8 @@ class QuerySetTest(unittest.TestCase):
             raise AssertionError('There is data, but cursor returned False')
 
         queryset.next()
-        if queryset:
-            raise AssertionError('There is no data left in cursor')
+        if not queryset:
+            raise AssertionError('There is data, cursor must return True')
 
 
 if __name__ == '__main__':

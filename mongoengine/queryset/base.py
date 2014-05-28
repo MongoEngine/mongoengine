@@ -157,11 +157,7 @@ class BaseQuerySet(object):
     def _bool(self):
         """ Avoid to open all records in an if stmt """
 
-        for value in self:
-            self.rewind()
-            return True
-
-        return False
+        return False if self.first() is None else True
 
     def __nonzero__(self):
         """ Same behaviour in Py2 """
