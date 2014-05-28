@@ -154,7 +154,7 @@ class BaseQuerySet(object):
     def __iter__(self):
         raise NotImplementedError
 
-    def __nonzero__(self):
+    def _bool(self):
         """ Avoid to open all records in an if stmt """
 
         for value in self:
@@ -163,10 +163,15 @@ class BaseQuerySet(object):
 
         return False
 
+    def __nonzero__(self):
+        """ Same behaviour in Py2 """
+
+        return self._bool()
+
     def __bool__(self):
         """ Same behaviour in Py3 """
 
-        return self.__nonzero__()
+        return self._bool()
 
     # Core functions
 
