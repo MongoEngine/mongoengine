@@ -3886,7 +3886,6 @@ class QuerySetTest(unittest.TestCase):
             op = p.db.system.profile.find({"ns":
                 {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-
             self.assertTrue('$orderby' in op['query'],
                 'BaseQuerySet cannot remove orderby in for loop')
 
