@@ -166,7 +166,7 @@ class BaseQuerySet(object):
     def __bool__(self):
         """ Same behaviour in Py3 """
 
-        return self.__nonzero__():
+        return self.__nonzero__()
 
     # Core functions
 
