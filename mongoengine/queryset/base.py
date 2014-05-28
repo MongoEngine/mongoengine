@@ -159,11 +159,7 @@ class BaseQuerySet(object):
 
         queryset = self.clone()
         queryset._ordering = []
-        try:
-            queryset[0]
-            return True
-        except IndexError:
-            return False
+        return False if queryset.first() is None else True
 
     def __nonzero__(self):
         """ Same behaviour in Py2 """
