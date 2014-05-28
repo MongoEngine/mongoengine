@@ -157,7 +157,13 @@ class BaseQuerySet(object):
     def _bool(self):
         """ Avoid to open all records in an if stmt """
 
-        return False if self.first() is None else True
+        queryset = self.clone()
+        queryset._ordering = []
+        try:
+            queryset[0]
+            return True
+        except IndexError:
+            return False
 
     def __nonzero__(self):
         """ Same behaviour in Py2 """

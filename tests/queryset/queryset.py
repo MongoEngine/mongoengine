@@ -3837,6 +3837,59 @@ class QuerySetTest(unittest.TestCase):
         if not queryset:
             raise AssertionError('There is data, cursor must return True')
 
+    def test_bool_performance(self):
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        for i in xrange(100):
+            Person(name="No: %s" % i).save()
+
+        with query_counter() as q:
+            if Person.objects:
+                pass
+
+            self.assertEqual(q, 1)
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertEqual(op['nreturned'], 1)
+
+
+    def test_bool_with_ordering(self):
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="Test").save()
+
+        qs = Person.objects.order_by('name')
+
+        with query_counter() as q:
+
+            if qs:
+                pass
+
+            op = q.db.system.profile.find({"ns": 
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertFalse('$orderby' in op['query'],
+                'BaseQuerySet cannot use orderby in if stmt')
+
+        with query_counter() as p:
+
+            for x in qs:
+                pass
+
+            op = p.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+
+            self.assertTrue('$orderby' in op['query'],
+                'BaseQuerySet cannot remove orderby in for loop')
+
 
 if __name__ == '__main__':
     unittest.main()
