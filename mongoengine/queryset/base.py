@@ -161,7 +161,12 @@ class BaseQuerySet(object):
             self.rewind()
             return True
 
-        return False        
+        return False
+
+    def __bool__(self):
+        """ Same behaviour in Py3 """
+
+        return self.__nonzero__():
 
     # Core functions
 
