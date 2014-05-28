@@ -666,8 +666,14 @@ class BaseDocument(object):
                 fields = []
             else:
                 fields = cls._lookup_field(parts)
-                parts = [field if field == '_id' else field.db_field
-                         for field in fields]
+                parts = []
+                for field in fields:
+                    try:
+                        if field != "_id":
+                            field = field.db_field
+                    except AttributeError:
+                        pass
+                    parts.append(field)
                 key = '.'.join(parts)
             index_list.append((key, direction))
 
