@@ -154,22 +154,22 @@ class BaseQuerySet(object):
     def __iter__(self):
         raise NotImplementedError
 
-    def _bool(self):
-        """ Avoid to open all records in an if stmt """
+    def has_data(self):
+        """ Retrieves whether cursor has any data. """
 
         queryset = self.clone()
         queryset._ordering = []
         return False if queryset.first() is None else True
 
     def __nonzero__(self):
-        """ Same behaviour in Py2 """
+        """ Avoid to open all records in an if stmt in Py2. """
 
-        return self._bool()
+        return self.has_data()
 
     def __bool__(self):
-        """ Same behaviour in Py3 """
+        """ Avoid to open all records in an if stmt in Py3. """
 
-        return self._bool()
+        return self.has_data()
 
     # Core functions
 

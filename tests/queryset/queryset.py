@@ -3831,11 +3831,15 @@ class QuerySetTest(unittest.TestCase):
 
         queryset = Test.objects
         if not test:
-            raise AssertionError('There is data, but cursor returned False')
+            raise AssertionError('Cursor has data and returned False')
 
         queryset.next()
         if not queryset:
-            raise AssertionError('There is data, cursor must return True')
+            raise AssertionError('Cursor has data and it must returns False,'
+                ' even in the last item.')
+
+        self.assertTrue(queryset.has_data(), 'Cursor has data and '
+            'returned False')
 
     def test_bool_performance(self):
 
