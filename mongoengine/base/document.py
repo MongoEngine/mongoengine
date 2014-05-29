@@ -680,15 +680,18 @@ class BaseDocument(object):
             if isinstance(key, (list, tuple)):
                 continue
 
-            # ASCENDING from +,
+            # ASCENDING from +
             # DESCENDING from -
             # GEO2D from *
+            # TEXT from $
             direction = pymongo.ASCENDING
             if key.startswith("-"):
                 direction = pymongo.DESCENDING
             elif key.startswith("*"):
                 direction = pymongo.GEO2D
-            if key.startswith(("+", "-", "*")):
+            elif key.startswith("$"):
+                direction = pymongo.TEXT
+            if key.startswith(("+", "-", "*", "$")):
                 key = key[1:]
 
             # Use real field name, do it manually because we need field
