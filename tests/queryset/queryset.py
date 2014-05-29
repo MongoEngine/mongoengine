@@ -3889,6 +3889,33 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue('$orderby' in op['query'],
                 'BaseQuerySet cannot remove orderby in for loop')
 
+    def test_bool_with_ordering_from_meta_dict(self):
+
+        class Person(Document):
+            name = StringField()
+            meta = {
+                'ordering': ['name']
+            }
+
+        Person.drop_collection()
+        
+        Person(name="B").save()
+        Person(name="C").save()
+        Person(name="A").save()
+
+        with query_counter() as q:
+
+            if Person.objects:
+                pass
+
+            op = q.db.system.profile.find({"ns": 
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' in op['query'],
+                'BaseQuerySet cannot remove orderby from meta in boolen test')
+
+            self.assertEqual(Person.objects.first().name, 'A') 
+
 
 if __name__ == '__main__':
     unittest.main()
