@@ -3835,7 +3835,7 @@ class QuerySetTest(unittest.TestCase):
 
         queryset.next()
         if not queryset:
-            raise AssertionError('Cursor has data and it must returns False,'
+            raise AssertionError('Cursor has data and it must returns True,'
                 ' even in the last item.')
 
         self.assertTrue(queryset.has_data(), 'Cursor has data and '
