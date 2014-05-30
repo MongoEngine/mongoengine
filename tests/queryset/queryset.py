@@ -1040,6 +1040,76 @@ class QuerySetTest(unittest.TestCase):
         expected = [blog_post_1, blog_post_2, blog_post_3]
         self.assertSequence(qs, expected)
 
+    def test_clear_ordering(self):
+        """ Make sure one can clear the query set ordering by applying a
+        consecutive order_by()
+        """
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="A").save()
+        Person(name="B").save()
+
+        qs = Person.objects.order_by('-name')
+
+        # Make sure we can clear a previously specified ordering
+        with query_counter() as q:
+            lst = list(qs.order_by())
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' not in op['query'])
+            self.assertEqual(lst[0].name, 'A')
+
+        # Make sure previously specified ordering is preserved during
+        # consecutive calls to the same query set
+        with query_counter() as q:
+            lst = list(qs)
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' in op['query'])
+            self.assertEqual(lst[0].name, 'B')
+
+    def test_clear_default_ordering(self):
+
+        class Person(Document):
+            name = StringField()
+            meta = {
+                'ordering': ['-name']
+            }
+
+        Person.drop_collection()
+        Person(name="A").save()
+        Person(name="B").save()
+
+        qs = Person.objects
+
+        # Make sure clearing default ordering works
+        with query_counter() as q:
+            lst = list(qs.order_by())
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' not in op['query'])
+            self.assertEqual(lst[0].name, 'A')
+
+        # Make sure default ordering is preserved during consecutive calls
+        # to the same query set
+        with query_counter() as q:
+            lst = list(qs)
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' in op['query'])
+            self.assertEqual(lst[0].name, 'B')
+
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
