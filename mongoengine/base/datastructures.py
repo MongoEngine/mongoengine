@@ -12,7 +12,7 @@ class BaseDict(dict):
     _instance = None
     _name = None
 
-    def __init__(self, dict_items, instance, name):
+    def __init__(self, dict_items, instance=None, name=None):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
@@ -83,7 +83,7 @@ class BaseList(list):
     _instance = None
     _name = None
 
-    def __init__(self, list_items, instance, name):
+    def __init__(self, list_items, instance=None, name=None):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
