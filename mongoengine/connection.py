@@ -52,17 +52,18 @@ def register_connection(alias, name, host=None, port=None,
         'read_preference': read_preference
     }
 
-    # Handle uri style connections
-    if "://" in conn_settings['host']:
-        uri_dict = uri_parser.parse_uri(conn_settings['host'])
-        conn_settings.update({
-            'name': uri_dict.get('database') or name,
-            'username': uri_dict.get('username'),
-            'password': uri_dict.get('password'),
-            'read_preference': read_preference,
-        })
-        if "replicaSet" in conn_settings['host']:
-            conn_settings['replicaSet'] = True
+    if 'mock_db' not in kwargs or kwargs['mock_db'] == None:
+        # Handle uri style connections
+        if "://" in conn_settings['host']:
+            uri_dict = uri_parser.parse_uri(conn_settings['host'])
+            conn_settings.update({
+                'name': uri_dict.get('database') or name,
+                'username': uri_dict.get('username'),
+                'password': uri_dict.get('password'),
+                'read_preference': read_preference,
+            })
+            if "replicaSet" in conn_settings['host']:
+                conn_settings['replicaSet'] = True
 
     conn_settings.update(kwargs)
     _connection_settings[alias] = conn_settings
@@ -93,35 +94,38 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
-        if hasattr(pymongo, 'version_tuple'):  # Support for 2.1+
-            conn_settings.pop('name', None)
-            conn_settings.pop('slaves', None)
-            conn_settings.pop('is_slave', None)
-            conn_settings.pop('username', None)
-            conn_settings.pop('password', None)
+        if 'mock_db' in conn_settings and conn_settings['mock_db'] != None:
+            _connections[alias] = conn_settings['mock_db'](**conn_settings)
         else:
-            # Get all the slave connections
-            if 'slaves' in conn_settings:
-                slaves = []
-                for slave_alias in conn_settings['slaves']:
-                    slaves.append(get_connection(slave_alias))
-                conn_settings['slaves'] = slaves
-                conn_settings.pop('read_preference', None)
+            if hasattr(pymongo, 'version_tuple'):  # Support for 2.1+
+                conn_settings.pop('name', None)
+                conn_settings.pop('slaves', None)
+                conn_settings.pop('is_slave', None)
+                conn_settings.pop('username', None)
+                conn_settings.pop('password', None)
+            else:
+                # Get all the slave connections
+                if 'slaves' in conn_settings:
+                    slaves = []
+                    for slave_alias in conn_settings['slaves']:
+                        slaves.append(get_connection(slave_alias))
+                    conn_settings['slaves'] = slaves
+                    conn_settings.pop('read_preference', None)
 
-        connection_class = MongoClient
-        if 'replicaSet' in conn_settings:
-            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
-            # Discard port since it can't be used on MongoReplicaSetClient
-            conn_settings.pop('port', None)
-            # Discard replicaSet if not base string
-            if not isinstance(conn_settings['replicaSet'], basestring):
-                conn_settings.pop('replicaSet', None)
-            connection_class = MongoReplicaSetClient
+            connection_class = MongoClient
+            if 'replicaSet' in conn_settings:
+                conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
+                # Discard port since it can't be used on MongoReplicaSetClient
+                conn_settings.pop('port', None)
+                # Discard replicaSet if not base string
+                if not isinstance(conn_settings['replicaSet'], basestring):
+                    conn_settings.pop('replicaSet', None)
+                connection_class = MongoReplicaSetClient
 
-        try:
-            _connections[alias] = connection_class(**conn_settings)
-        except Exception, e:
-            raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
+            try:
+                _connections[alias] = connection_class(**conn_settings)
+            except Exception, e:
+                raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]
 
 
