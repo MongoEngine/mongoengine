@@ -40,6 +40,10 @@ class NotUniqueError(OperationError):
     pass
 
 
+class VersionLockError(OperationError):
+    pass
+
+
 class ValidationError(AssertionError):
     """Validation exception.
 
