@@ -93,6 +93,8 @@ class DocumentMetaclass(type):
                                       for k, v in doc_fields.iteritems()])
         attrs['_reverse_db_field_map'] = dict(
             (v, k) for k, v in attrs['_db_field_map'].iteritems())
+        attrs['_version_locks'] = dict([(getattr(f, "db_field", fname),
+                        f.version_locks) for fname, f in doc_fields.iteritems()])
 
         attrs['_fields_ordered'] = tuple(i[1] for i in sorted(
                                          (v.creation_counter, v.name)
