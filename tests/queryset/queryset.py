@@ -3908,9 +3908,6 @@ class QuerySetTest(unittest.TestCase):
             raise AssertionError('Cursor has data and it must returns True,'
                 ' even in the last item.')
 
-        self.assertTrue(queryset.has_data(), 'Cursor has data and '
-            'returned False')
-
     def test_bool_performance(self):
 
         class Person(Document):
@@ -3985,10 +3982,12 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns": 
                 {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertTrue('$orderby' in op['query'],
-                'BaseQuerySet cannot remove orderby from meta in boolen test')
+            self.assertFalse('$orderby' in op['query'],
+                'BaseQuerySet must remove orderby from meta in boolen test')
 
             self.assertEqual(Person.objects.first().name, 'A') 
+            self.assertTrue(Person.objects._has_data(),
+                            'Cursor has data and returned False')
 
 
 if __name__ == '__main__':

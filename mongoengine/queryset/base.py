@@ -154,22 +154,21 @@ class BaseQuerySet(object):
     def __iter__(self):
         raise NotImplementedError
 
-    def has_data(self):
+    def _has_data(self):
         """ Retrieves whether cursor has any data. """
 
-        queryset = self.clone()
-        queryset._ordering = []
+        queryset = self.order_by()
         return False if queryset.first() is None else True
 
     def __nonzero__(self):
         """ Avoid to open all records in an if stmt in Py2. """
 
-        return self.has_data()
+        return self._has_data()
 
     def __bool__(self):
         """ Avoid to open all records in an if stmt in Py3. """
 
-        return self.has_data()
+        return self._has_data()
 
     # Core functions
 
@@ -1410,7 +1409,7 @@ class BaseQuerySet(object):
                 pass
             key_list.append((key, direction))
 
-        if self._cursor_obj:
+        if self._cursor_obj and key_list:
             self._cursor_obj.sort(key_list)
         return key_list
 
