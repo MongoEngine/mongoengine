@@ -62,13 +62,13 @@ class BaseQuerySet(object):
         self._as_pymongo = False
         self._as_pymongo_coerce = False
 
-        # If inheritance is allowed, only return instances and instances of
-        # subclasses of the class being used
-        if document._meta.get('allow_inheritance') is True:
-            if len(self._document._subclasses) == 1:
-                self._initial_query = {"_cls": self._document._subclasses[0]}
+        # If inheritance is allowed, and we're querying a subclass, only return
+        # instances of this class (and its subclasses).
+        if document._meta.get('allow_inheritance') is True and document._superclasses:
+            if len(document._subclasses) == 1:
+                self._initial_query = {"_cls": document._subclasses[0]}
             else:
-                self._initial_query = {"_cls": {"$in": self._document._subclasses}}
+                self._initial_query = {"_cls": {"$in": document._subclasses}}
             self._loaded_fields = QueryFieldList(always_include=['_cls'])
         self._cursor_obj = None
         self._limit = None
