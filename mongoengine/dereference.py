@@ -95,7 +95,7 @@ class DeReference(object):
         # Recursively find dbreferences
         depth += 1
         for k, item in iterator:
-            if isinstance(item, Document):
+            if isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
@@ -202,7 +202,7 @@ class DeReference(object):
 
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
-            elif isinstance(v, Document):
+            elif isinstance(v, (Document, EmbeddedDocument)):
                 for field_name, field in v._fields.iteritems():
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
