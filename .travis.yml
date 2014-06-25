@@ -50,7 +50,6 @@ matrix:
           env: PYMONGO=2.7.1 DJANGO=1.4.13
 install:
     - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev python-tk
-    - cp /usr/lib/*/libz.so $VIRTUAL_ENV/lib/
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
     - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO; true; fi
     - pip install Django==$DJANGO
