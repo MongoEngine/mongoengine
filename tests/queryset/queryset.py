@@ -3586,7 +3586,13 @@ class QuerySetTest(unittest.TestCase):
 
             [x for x in people]
             self.assertEqual(100, len(people._result_cache))
-            self.assertEqual(None, people._len)
+
+            import platform
+
+            if platform.python_implementation() != "PyPy":
+                # PyPy evaluates __len__ when iterating with list comprehensions while CPython does not.
+                # This may be a bug in PyPy (PyPy/#1802) but it does not affect the behavior of MongoEngine.
+                self.assertEqual(None, people._len)
             self.assertEqual(q, 1)
 
             list(people)
