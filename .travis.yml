@@ -23,6 +23,7 @@ env:
   - PYMONGO=2.7.1 DJANGO=1.4.13
   
 matrix:
+    fast_finish: true
     exclude:
         - python: "3.2"
           env: PYMONGO=dev DJANGO=1.4.13
