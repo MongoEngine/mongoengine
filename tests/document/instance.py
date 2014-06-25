@@ -15,7 +15,7 @@ from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError)
+                                InvalidQueryError, NotUniqueError)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
@@ -989,6 +989,16 @@ class InstanceTest(unittest.TestCase):
             person.update(name="Dan")
 
         self.assertRaises(InvalidQueryError, update_no_op_raises)
+
+    def test_update_unique_field(self):
+        class Doc(Document):
+            name = StringField(unique=True)
+
+        doc1 = Doc(name="first").save()
+        doc2 = Doc(name="second").save()
+
+        self.assertRaises(NotUniqueError, lambda:
+                          doc2.update(set__name=doc1.name))
 
     def test_embedded_update(self):
         """

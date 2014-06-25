@@ -459,6 +459,8 @@ class BaseQuerySet(object):
                 return result
             elif result:
                 return result['n']
+        except pymongo.errors.DuplicateKeyError, err:
+            raise NotUniqueError(u'Update failed (%s)' % unicode(err))
         except pymongo.errors.OperationFailure, err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
