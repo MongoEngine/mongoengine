@@ -15,7 +15,7 @@ def cprofile_main():
     class Noddy(Document):
         fields = DictField()
 
-    for i in xrange(1):
+    for i in range(1):
         noddy = Noddy()
         for j in range(20):
             noddy.fields["key" + str(j)] = "value " + str(j)
@@ -128,7 +128,7 @@ connection = MongoClient()
 db = connection.timeit_test
 noddy = db.noddy
 
-for i in xrange(10000):
+for i in range(10000):
     example = {'fields': {}}
     for j in range(20):
         example['fields']["key"+str(j)] = "value "+str(j)
@@ -151,7 +151,7 @@ connection = MongoClient()
 db = connection.timeit_test
 noddy = db.noddy
 
-for i in xrange(10000):
+for i in range(10000):
     example = {'fields': {}}
     for j in range(20):
         example['fields']["key"+str(j)] = "value "+str(j)
@@ -181,7 +181,7 @@ class Noddy(Document):
 """
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -197,7 +197,7 @@ myNoddys = Noddy.objects()
     print(t.timeit(1))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     fields = {}
     for j in range(20):
@@ -215,7 +215,7 @@ myNoddys = Noddy.objects()
     print(t.timeit(1))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -231,7 +231,7 @@ myNoddys = Noddy.objects()
     print(t.timeit(1))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -247,7 +247,7 @@ myNoddys = Noddy.objects()
     print(t.timeit(1))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -263,7 +263,7 @@ myNoddys = Noddy.objects()
     print(t.timeit(1))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
