@@ -29,6 +29,7 @@ class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
+        connect(db='mongoenginetest2', alias='test2')
 
         class PersonMeta(EmbeddedDocument):
             weight = IntField()
@@ -2956,6 +2957,21 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(test.count(), test2.count())
 
         Number.drop_collection()
+
+    def test_using(self):
+        """Ensure that switching databases for a queryset is possible
+        """
+        class Number2(Document):
+            n = IntField()
+
+        Number2.drop_collection()
+
+        for i in xrange(1, 10):
+            t = Number2(n=i)
+            t.switch_db('test2')
+            t.save()
+
+        self.assertEqual(len(Number2.objects.using('test2')), 9)
 
     def test_unset_reference(self):
         class Comment(Document):
