@@ -50,7 +50,7 @@ class BaseQuerySet(object):
         self._initial_query = {}
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
-        self._ordering = []
+        self._ordering = None
         self._snapshot = False
         self._timeout = True
         self._class_check = True
@@ -153,6 +153,22 @@ class BaseQuerySet(object):
 
     def __iter__(self):
         raise NotImplementedError
+
+    def _has_data(self):
+        """ Retrieves whether cursor has any data. """
+
+        queryset = self.order_by()
+        return False if queryset.first() is None else True
+
+    def __nonzero__(self):
+        """ Avoid to open all records in an if stmt in Py2. """
+
+        return self._has_data()
+
+    def __bool__(self):
+        """ Avoid to open all records in an if stmt in Py3. """
+
+        return self._has_data()
 
     # Core functions
 
@@ -1189,8 +1205,9 @@ class BaseQuerySet(object):
             if self._ordering:
                 # Apply query ordering
                 self._cursor_obj.sort(self._ordering)
-            elif self._document._meta['ordering']:
-                # Otherwise, apply the ordering from the document model
+            elif self._ordering is None and self._document._meta['ordering']:
+                # Otherwise, apply the ordering from the document model, unless
+                # it's been explicitly cleared via order_by with no arguments
                 order = self._get_order_by(self._document._meta['ordering'])
                 self._cursor_obj.sort(order)
 
@@ -1392,7 +1409,7 @@ class BaseQuerySet(object):
                 pass
             key_list.append((key, direction))
 
-        if self._cursor_obj:
+        if self._cursor_obj and key_list:
             self._cursor_obj.sort(key_list)
         return key_list
 

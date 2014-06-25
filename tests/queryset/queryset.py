@@ -1040,6 +1040,76 @@ class QuerySetTest(unittest.TestCase):
         expected = [blog_post_1, blog_post_2, blog_post_3]
         self.assertSequence(qs, expected)
 
+    def test_clear_ordering(self):
+        """ Make sure one can clear the query set ordering by applying a
+        consecutive order_by()
+        """
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="A").save()
+        Person(name="B").save()
+
+        qs = Person.objects.order_by('-name')
+
+        # Make sure we can clear a previously specified ordering
+        with query_counter() as q:
+            lst = list(qs.order_by())
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' not in op['query'])
+            self.assertEqual(lst[0].name, 'A')
+
+        # Make sure previously specified ordering is preserved during
+        # consecutive calls to the same query set
+        with query_counter() as q:
+            lst = list(qs)
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' in op['query'])
+            self.assertEqual(lst[0].name, 'B')
+
+    def test_clear_default_ordering(self):
+
+        class Person(Document):
+            name = StringField()
+            meta = {
+                'ordering': ['-name']
+            }
+
+        Person.drop_collection()
+        Person(name="A").save()
+        Person(name="B").save()
+
+        qs = Person.objects
+
+        # Make sure clearing default ordering works
+        with query_counter() as q:
+            lst = list(qs.order_by())
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' not in op['query'])
+            self.assertEqual(lst[0].name, 'A')
+
+        # Make sure default ordering is preserved during consecutive calls
+        # to the same query set
+        with query_counter() as q:
+            lst = list(qs)
+
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' in op['query'])
+            self.assertEqual(lst[0].name, 'B')
+
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from a query.
         """
@@ -3813,6 +3883,111 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Example.objects(size=instance_size).count(), 1)
         self.assertEqual(Example.objects(size__in=[instance_size]).count(), 1)
+
+    def test_cursor_in_an_if_stmt(self):
+
+        class Test(Document):
+            test_field = StringField()
+
+        Test.drop_collection()
+        queryset = Test.objects
+
+        if queryset:
+            raise AssertionError('Empty cursor returns True')
+
+        test = Test()
+        test.test_field = 'test'
+        test.save()
+
+        queryset = Test.objects
+        if not test:
+            raise AssertionError('Cursor has data and returned False')
+
+        queryset.next()
+        if not queryset:
+            raise AssertionError('Cursor has data and it must returns True,'
+                ' even in the last item.')
+
+    def test_bool_performance(self):
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        for i in xrange(100):
+            Person(name="No: %s" % i).save()
+
+        with query_counter() as q:
+            if Person.objects:
+                pass
+
+            self.assertEqual(q, 1)
+            op = q.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertEqual(op['nreturned'], 1)
+
+
+    def test_bool_with_ordering(self):
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="Test").save()
+
+        qs = Person.objects.order_by('name')
+
+        with query_counter() as q:
+
+            if qs:
+                pass
+
+            op = q.db.system.profile.find({"ns": 
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertFalse('$orderby' in op['query'],
+                'BaseQuerySet cannot use orderby in if stmt')
+
+        with query_counter() as p:
+
+            for x in qs:
+                pass
+
+            op = p.db.system.profile.find({"ns":
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertTrue('$orderby' in op['query'],
+                'BaseQuerySet cannot remove orderby in for loop')
+
+    def test_bool_with_ordering_from_meta_dict(self):
+
+        class Person(Document):
+            name = StringField()
+            meta = {
+                'ordering': ['name']
+            }
+
+        Person.drop_collection()
+        
+        Person(name="B").save()
+        Person(name="C").save()
+        Person(name="A").save()
+
+        with query_counter() as q:
+
+            if Person.objects:
+                pass
+
+            op = q.db.system.profile.find({"ns": 
+                {"$ne": "%s.system.indexes" % q.db.name}})[0]
+
+            self.assertFalse('$orderby' in op['query'],
+                'BaseQuerySet must remove orderby from meta in boolen test')
+
+            self.assertEqual(Person.objects.first().name, 'A') 
+            self.assertTrue(Person.objects._has_data(),
+                            'Cursor has data and returned False')
 
 
 if __name__ == '__main__':
