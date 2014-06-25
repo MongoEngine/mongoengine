@@ -210,7 +210,7 @@ myNoddys = Noddy.objects()
 """
 
     print("-" * 100)
-    print """Creating 10000 dictionaries without continual assign - MongoEngine"""
+    print("""Creating 10000 dictionaries without continual assign - MongoEngine""")
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(t.timeit(1))
 
@@ -242,7 +242,7 @@ myNoddys = Noddy.objects()
 """
 
     print("-" * 100)
-    print """Creating 10000 dictionaries - MongoEngine, write_concern={"w": 0}, validate=False, cascade=True"""
+    print("""Creating 10000 dictionaries - MongoEngine, write_concern={"w": 0}, validate=False, cascade=True""")
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(t.timeit(1))
 
