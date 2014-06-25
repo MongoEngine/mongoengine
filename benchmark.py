@@ -140,7 +140,7 @@ myNoddys = noddy.find()
 """
 
     print("-" * 100)
-    print """Creating 10000 dictionaries - Pymongo"""
+    print("""Creating 10000 dictionaries - Pymongo""")
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(t.timeit(1))
 
@@ -163,7 +163,7 @@ myNoddys = noddy.find()
 """
 
     print("-" * 100)
-    print """Creating 10000 dictionaries - Pymongo write_concern={"w": 0}"""
+    print("""Creating 10000 dictionaries - Pymongo write_concern={"w": 0}""")
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(t.timeit(1))
 
@@ -226,7 +226,7 @@ myNoddys = Noddy.objects()
 """
 
     print("-" * 100)
-    print """Creating 10000 dictionaries - MongoEngine - write_concern={"w": 0}, cascade = True"""
+    print("""Creating 10000 dictionaries - MongoEngine - write_concern={"w": 0}, cascade = True""")
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(t.timeit(1))
 
