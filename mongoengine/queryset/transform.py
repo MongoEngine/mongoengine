@@ -38,7 +38,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             mongo_query.update(value)
             continue
 
-        parts = key.split('__')
+        parts = key.rsplit('__')
         indices = [(i, p) for i, p in enumerate(parts) if p.isdigit()]
         parts = [part for part in parts if not part.isdigit()]
         # Check for an operator and transform to mongo-style if there is

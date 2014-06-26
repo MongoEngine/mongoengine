@@ -2,6 +2,14 @@
 Changelog
 =========
 
+
+Changes in 0.9.X - DEV
+======================
+- pypy support #673
+- Enabled connection pooling #674
+- Removing support for Django 1.4.x, pymongo 2.5.x, pymongo 2.6.x.
+- Removing support for Python < 2.6.6
+
 Changes in 0.8.7
 ================
 - Calling reload on deleted / nonexistant documents raises DoesNotExist (#538)

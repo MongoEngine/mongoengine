@@ -13,8 +13,7 @@ from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError)
-from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
-                                        to_str_keys_recursive)
+from mongoengine.python_support import PY3, txt_type
 
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
@@ -545,10 +544,6 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
         data = dict(("%s" % key, value) for key, value in son.iteritems())
-        if not UNICODE_KWARGS:
-            # python 2.6.4 and lower cannot handle unicode keys
-            # passed to class constructor example: cls(**data)
-            to_str_keys_recursive(data)
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
