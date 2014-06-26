@@ -483,7 +483,40 @@ class BaseQuerySet(object):
         """
         return self.update(
             upsert=upsert, multi=False, write_concern=write_concern, **update)
+    
+    def andModify(self, upsert=False, sort=None, full_response=False, **update):
+        """Perform an atomic update on the fields matched by the query.  Returns
+        a document.  Essentially a wrapper for PyMongo's find_and_modify; itself
+        a wrapper for MongoDB's findAndModify.
 
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param sort: a list of (key, direction) pairs specifying the sort order 
+            for this query.
+        :param full_response: return the entire response object from the server.
+        :param update: Django-style update keyword arguments
+
+        .. versionadded:: TBC
+        """
+        if not update and not upsert:
+            raise OperationError("No update parameters, must either update or remove")
+
+        queryset = self.clone()
+        query = queryset._query
+        update = transform.update(queryset._document, **update)
+
+        try:
+            result = queryset._collection.find_and_modify(query, update, upsert=upsert, sort=sort, full_response=full_response)
+            if full_response:
+              if not result['value'] is None:
+                result['value'] = self._document._from_son(result['value'])  
+            else:
+              if not result is None:
+                result = self._document._from_son(result)  
+            return result 
+            
+        except pymongo.errors.OperationFailure, err:
+            raise OperationError(u'findAndModify failed (%s)' % unicode(err))
+            
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
         and raises InvalidQueryError if a filter has been applied. Returns

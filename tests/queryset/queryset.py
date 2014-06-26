@@ -566,7 +566,7 @@ class QuerySetTest(unittest.TestCase):
         bob = self.Person.objects.first()
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
-
+        
     def test_upsert_one(self):
         self.Person.drop_collection()
 
@@ -576,6 +576,46 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
 
+    def test_andModify_upsert(self):
+        """Ensure that andModify can add a new document
+        """
+        
+        self.Person.drop_collection()
+
+        result = self.Person.objects(name="Bob").andModify(full_response=True, set__age=30)
+        self.assertEqual(result['value'], None)
+        bob = self.Person.objects(name="Bob").first()
+        self.assertEqual(bob, None)
+        
+        result = self.Person.objects(name="Bob").andModify(upsert=True, full_response=True, set__age=30)
+        self.assertEqual(result['value'], None)
+        self.assertEqual(result['lastErrorObject']['updatedExisting'], False)
+        self.assertTrue(isinstance(result['lastErrorObject']['upserted'], ObjectId))
+        
+        bob = self.Person.objects(name="Bob").first()
+        self.assertEqual("Bob", bob.name)
+        self.assertEqual(30, bob.age)
+
+    def test_andModify_sort(self):
+        """Ensure sort can be used to select the record to find_and_modify
+        """
+        
+        self.Person.drop_collection()
+        
+        bob = self.Person(name="Bob", age=30); bob.save()
+        betty = self.Person(name="Betty", age=30); betty.save()
+        
+        result = self.Person.objects(age=30).andModify(sort=[('name', 1)], set__age=31)
+        self.assertEqual("Betty", result.name)
+        result = self.Person.objects(age=30).andModify(sort=[('name', 1)], set__age=31)
+        self.assertEqual("Bob", result.name)
+        
+        result = self.Person.objects(age=31).andModify(sort=[('name', -1)], set__age=32)
+        self.assertEqual("Bob", result.name)
+        
+        result = self.Person.objects.andModify(sort=[('age', 1)], set__age=32)
+        self.assertEqual("Betty", result.name)
+        
     def test_set_on_insert(self):
         self.Person.drop_collection()
 
@@ -1510,6 +1550,60 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertNotEqual(post.hits, None)
         BlogPost.objects.update_one(unset__hits=1)
+        post.reload()
+        self.assertEqual(post.hits, None)
+
+        BlogPost.drop_collection()
+
+    def test_andModify(self):
+        """Ensure that andModify updates a record atomically and returns the
+        old record.
+        """
+        
+        class BlogPost(Document):
+            title = StringField()
+            hits = IntField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(title="Test Post", hits=5, tags=['test'])
+        post.save()
+
+        result = BlogPost.objects(title="Test Post").andModify(set__hits=10)
+        self.assertEqual(result.hits, 5)
+        
+        result = BlogPost.objects(title="Test Post").andModify(inc__hits=1)
+        self.assertEqual(result.hits, 10)
+
+        result = BlogPost.objects(title="Test Post").andModify(dec__hits=1)
+        self.assertEqual(result.hits, 11)
+
+        result = BlogPost.objects(title="Test Post").andModify(push__tags='mongo')
+        self.assertEqual(result.hits, 10)
+
+        result = BlogPost.objects(title="Test Post").andModify(push_all__tags=['db', 'nosql'])
+        self.assertTrue('mongo' in result.tags)
+        
+        post.reload()
+        self.assertTrue('db' in post.tags and 'nosql' in post.tags)
+
+        tags = post.tags
+        result = BlogPost.objects(title="Test Post").andModify(pop__tags=1)
+        self.assertEqual(result.tags, tags)
+        post.reload()
+        self.assertEqual(post.tags, tags[:-1])
+
+        result = BlogPost.objects(title="Test Post").andModify(add_to_set__tags='unique')
+        self.assertEqual(result.tags.count('unique'), 0)
+        result = BlogPost.objects(title="Test Post").andModify(add_to_set__tags='unique')
+        self.assertEqual(result.tags.count('unique'), 1)
+        post.reload()
+        self.assertEqual(post.tags.count('unique'), 1)
+
+        self.assertNotEqual(post.hits, None)
+        result = BlogPost.objects(title="Test Post").andModify(unset__hits=1)
+        self.assertEqual(result.hits, 10)
         post.reload()
         self.assertEqual(post.hits, None)
 
