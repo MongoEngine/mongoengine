@@ -14,11 +14,11 @@ import pymongo.errors
 from pymongo.common import validate_read_preference
 
 from mongoengine import signals
+from mongoengine.context_managers import switch_db
 from mongoengine.common import _import_class
 from mongoengine.base.common import get_document
 from mongoengine.errors import (OperationError, NotUniqueError,
                                 InvalidQueryError, LookUpError)
-
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -406,7 +406,7 @@ class BaseQuerySet(object):
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
                 if (doc != document_cls and ref_q_count > 0
-                   or (doc == document_cls and ref_q_count > 0)):
+                    or (doc == document_cls and ref_q_count > 0)):
                     ref_q.delete(write_concern=write_concern)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
@@ -593,6 +593,19 @@ class BaseQuerySet(object):
             self._initial_query = {"_cls": self._document._class_name}
 
         return self
+
+    def using(self, alias):
+        """This method is for controlling which database the QuerySet will be evaluated against if you are using more than one database.
+
+        :param alias: The database alias
+
+        .. versionadded:: 0.8
+        """
+
+        with switch_db(self._document, alias) as cls:
+            collection = cls._get_collection()
+
+        return self.clone_into(self.__class__(self._document, collection))
 
     def clone(self):
         """Creates a copy of the current
@@ -998,7 +1011,7 @@ class BaseQuerySet(object):
             mr_args['out'] = output
 
         results = getattr(queryset._collection, map_reduce_function)(
-                          map_f, reduce_f, **mr_args)
+            map_f, reduce_f, **mr_args)
 
         if map_reduce_function == 'map_reduce':
             results = results.find()
@@ -1435,7 +1448,7 @@ class BaseQuerySet(object):
                 for subdoc in subclasses:
                     try:
                         subfield = ".".join(f.db_field for f in
-                                        subdoc._lookup_field(field.split('.')))
+                                            subdoc._lookup_field(field.split('.')))
                         ret.append(subfield)
                         found = True
                         break
@@ -1523,6 +1536,7 @@ class BaseQuerySet(object):
                     # type of this field and use the corresponding
                     # .to_python(...)
                     from mongoengine.fields import EmbeddedDocumentField
+
                     obj = self._document
                     for chunk in path.split('.'):
                         obj = getattr(obj, chunk, None)
@@ -1533,6 +1547,7 @@ class BaseQuerySet(object):
                     if obj and data is not None:
                         data = obj.to_python(data)
             return data
+
         return clean(row)
 
     def _sub_js_fields(self, code):
@@ -1541,6 +1556,7 @@ class BaseQuerySet(object):
         substituted for the MongoDB name of the field (specified using the
         :attr:`name` keyword argument in a field's constructor).
         """
+
         def field_sub(match):
             # Extract just the field name, and look up the field objects
             field_name = match.group(1).split('.')
