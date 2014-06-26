@@ -650,7 +650,7 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            self.assertEqual(q, 1)  # 1 for the insert
+            self.assertEqual(q, 99)  # profiling logs each doc now :(
 
         Blog.drop_collection()
         Blog.ensure_indexes()
@@ -659,7 +659,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            self.assertEqual(q, 2)  # 1 for insert, and 1 for in bulk fetch
+            self.assertEqual(q, 100)  # 99 or insert, and 1 for in bulk fetch
 
         Blog.drop_collection()
 
@@ -3943,7 +3943,7 @@ class QuerySetTest(unittest.TestCase):
             if qs:
                 pass
 
-            op = q.db.system.profile.find({"ns": 
+            op = q.db.system.profile.find({"ns":
                 {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
             self.assertFalse('$orderby' in op['query'],
@@ -3969,7 +3969,7 @@ class QuerySetTest(unittest.TestCase):
             }
 
         Person.drop_collection()
-        
+
         Person(name="B").save()
         Person(name="C").save()
         Person(name="A").save()
@@ -3979,13 +3979,13 @@ class QuerySetTest(unittest.TestCase):
             if Person.objects:
                 pass
 
-            op = q.db.system.profile.find({"ns": 
+            op = q.db.system.profile.find({"ns":
                 {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
             self.assertFalse('$orderby' in op['query'],
                 'BaseQuerySet must remove orderby from meta in boolen test')
 
-            self.assertEqual(Person.objects.first().name, 'A') 
+            self.assertEqual(Person.objects.first().name, 'A')
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
