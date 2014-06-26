@@ -820,6 +820,80 @@ class InstanceTest(unittest.TestCase):
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
+    def test_save_atomicity_condition(self):
+
+        class Widget(Document):
+            toggle = BooleanField(default=False)
+            count = IntField(default=0)
+            save_id = UUIDField()
+
+        def flip(widget):
+            widget.toggle = not widget.toggle
+            widget.count += 1
+
+        def UUID(i):
+            return uuid.UUID(int=i)
+
+        Widget.drop_collection()
+        
+        w1 = Widget(toggle=False, save_id=UUID(1))
+
+        # ignore save_condition on new record creation
+        w1.save(save_condition={'save_id':UUID(42)})
+        w1.reload()
+        self.assertFalse(w1.toggle)
+        self.assertEqual(w1.save_id, UUID(1))
+        self.assertEqual(w1.count, 0)
+
+        # mismatch in save_condition prevents save
+        flip(w1)
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 1)
+        w1.save(save_condition={'save_id':UUID(42)})
+        w1.reload()
+        self.assertFalse(w1.toggle)
+        self.assertEqual(w1.count, 0)
+
+        # matched save_condition allows save
+        flip(w1)
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 1)
+        w1.save(save_condition={'save_id':UUID(1)})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 1)
+
+        # save_condition can be used to ensure atomic read & updates
+        # i.e., prevent interleaved reads and writes from separate contexts
+        w2 = Widget.objects.get()
+        self.assertEqual(w1, w2)
+        old_id = w1.save_id
+
+        flip(w1)
+        w1.save_id = UUID(2)
+        w1.save(save_condition={'save_id':old_id})
+        w1.reload()
+        self.assertFalse(w1.toggle)
+        self.assertEqual(w1.count, 2)
+        flip(w2)
+        flip(w2)
+        w2.save(save_condition={'save_id':old_id})
+        w2.reload()
+        self.assertFalse(w2.toggle)
+        self.assertEqual(w2.count, 2)
+
+        # save_condition uses mongoengine-style operator syntax
+        flip(w1)
+        w1.save(save_condition={'count__lt':w1.count})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 3)
+        flip(w1)
+        w1.save(save_condition={'count__gte':w1.count})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 3)
+        
     def test_update(self):
         """Ensure that an existing document is updated instead of be
         overwritten."""
