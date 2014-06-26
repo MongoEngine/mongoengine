@@ -181,7 +181,7 @@ class BaseDocument(object):
         """Dictionary-style field access, set a field's value.
         """
         # Ensure that the field exists before settings its value
-        if name not in self._fields:
+        if not self._dynamic and name not in self._fields:
             raise KeyError(name)
         return setattr(self, name, value)
 
