@@ -58,6 +58,9 @@ if sys.version_info[0] == 3:
 else:
     extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.4.2', 'PIL', 'jinja2>=2.6', 'python-dateutil']
 
+    if sys.version_info[0] == 2 and sys.version_info[1] == 6:
+        extra_opts['tests_require'].append('unittest2')
+
 setup(name='mongoengine',
       version=VERSION,
       author='Harry Marr',
