@@ -58,7 +58,7 @@ install:
     - python setup.py install
 script:
     - python setup.py test
-    - 2to3 . -w
+    - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
     - python benchmark.py
 notifications:
   irc: "irc.freenode.org#mongoengine"
