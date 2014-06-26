@@ -488,8 +488,9 @@ calling it with keyword arguments::
 Atomic updates
 ==============
 Documents may be updated atomically by using the
-:meth:`~mongoengine.queryset.QuerySet.update_one` and
-:meth:`~mongoengine.queryset.QuerySet.update` methods on a
+:meth:`~mongoengine.queryset.QuerySet.update_one`,
+:meth:`~mongoengine.queryset.QuerySet.update` and
+:meth:`~mongoengine.queryset.QuerySet.modify` methods on a
 :meth:`~mongoengine.queryset.QuerySet`. There are several different "modifiers"
 that you may use with these methods:
 

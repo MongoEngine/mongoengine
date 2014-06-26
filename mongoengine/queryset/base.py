@@ -10,6 +10,7 @@ import warnings
 from bson.code import Code
 from bson import json_util
 import pymongo
+import pymongo.errors
 from pymongo.common import validate_read_preference
 
 from mongoengine import signals
@@ -483,6 +484,59 @@ class BaseQuerySet(object):
         """
         return self.update(
             upsert=upsert, multi=False, write_concern=write_concern, **update)
+
+    def modify(self, upsert=False, full_response=False, remove=False, new=False, **update):
+        """Update and return the updated document.
+
+        Returns either the document before or after modification based on `new`
+        parameter. If no documents match the query and `upsert` is false,
+        returns ``None``. If upserting and `new` is false, returns ``None``.
+
+        If the full_response parameter is ``True``, the return value will be
+        the entire response object from the server, including the 'ok' and
+        'lastErrorObject' fields, rather than just the modified document.
+        This is useful mainly because the 'lastErrorObject' document holds
+        information about the command's execution.
+
+        :param upsert: insert if document doesn't exist (default ``False``)
+        :param full_response: return the entire response object from the
+            server (default ``False``)
+        :param remove: remove rather than updating (default ``False``)
+        :param new: return updated rather than original document
+            (default ``False``)
+        :param update: Django-style update keyword arguments
+
+        .. versionadded:: 0.9
+        """
+
+        if remove and new:
+            raise OperationError("Conflicting parameters: remove and new")
+
+        if not update and not upsert and not remove:
+            raise OperationError("No update parameters, must either update or remove")
+
+        queryset = self.clone()
+        query = queryset._query
+        update = transform.update(queryset._document, **update)
+        sort = queryset._ordering
+
+        try:
+            result = queryset._collection.find_and_modify(
+                query, update, upsert=upsert, sort=sort, remove=remove, new=new,
+                full_response=full_response, **self._cursor_args)
+        except pymongo.errors.DuplicateKeyError, err:
+            raise NotUniqueError(u"Update failed (%s)" % err)
+        except pymongo.errors.OperationFailure, err:
+            raise OperationError(u"Update failed (%s)" % err)
+
+        if full_response:
+            if result["value"] is not None:
+                result["value"] = self._document._from_son(result["value"])
+        else:
+            if result is not None:
+                result = self._document._from_son(result)
+
+        return result
 
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
