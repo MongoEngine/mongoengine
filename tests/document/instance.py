@@ -57,7 +57,7 @@ class InstanceTest(unittest.TestCase):
             date = DateTimeField(default=datetime.now)
             meta = {
                 'max_documents': 10,
-                'max_size': 90000,
+                'max_size': 4096,
             }
 
         Log.drop_collection()
@@ -75,7 +75,7 @@ class InstanceTest(unittest.TestCase):
         options = Log.objects._collection.options()
         self.assertEqual(options['capped'], True)
         self.assertEqual(options['max'], 10)
-        self.assertEqual(options['size'], 90000)
+        self.assertTrue(options['size'] >= 4096)
 
         # Check that the document cannot be redefined with different options
         def recreate_log_document():
