@@ -21,7 +21,7 @@ env:
   - PYMONGO=2.7.1 DJANGO=1.6.5
   - PYMONGO=2.7.1 DJANGO=1.5.8
   - PYMONGO=2.7.1 DJANGO=1.4.13
-  
+
 matrix:
     fast_finish: true
     exclude:
@@ -65,3 +65,4 @@ notifications:
 branches:
   only:
     - master
+    - "0.9"
