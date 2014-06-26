@@ -16,7 +16,7 @@ from bson import ObjectId
 from mongoengine import *
 from mongoengine.connection import get_connection
 from mongoengine.python_support import PY3
-from mongoengine.context_managers import query_counter
+from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
                                   queryset_manager)
@@ -3035,8 +3035,10 @@ class QuerySetTest(unittest.TestCase):
             n = IntField()
 
         Number2.drop_collection()
+        with switch_db(Number2, 'test2') as Number2:
+            Number2.drop_collection()
 
-        for i in xrange(1, 10):
+        for i in range(1, 10):
             t = Number2(n=i)
             t.switch_db('test2')
             t.save()
