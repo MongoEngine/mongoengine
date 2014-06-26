@@ -92,7 +92,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'nature'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -116,7 +116,7 @@ html_theme_path = ['_themes']
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = "favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -200,3 +200,6 @@ latex_documents = [
 
 autoclass_content = 'both'
 
+html_theme_options = dict(
+    canonical_url='http://docs.mongoengine.org/en/latest/'
+)

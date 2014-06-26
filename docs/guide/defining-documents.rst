@@ -290,6 +290,12 @@ instance of the object to the query::
     # Find all pages that both Bob and John have authored
     Page.objects(authors__all=[bob, john])
 
+    # Remove Bob from the authors for a page.
+    Page.objects(id='...').update_one(pull__authors=bob)
+
+    # Add John to the authors for a page.
+    Page.objects(id='...').update_one(push__authors=john)
+
 
 Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
@@ -524,6 +530,8 @@ field name to the index definition.
 
 Sometimes its more efficient to index parts of Embedded / dictionary fields,
 in this case use 'dot' notation to identify the value to index eg: `rank.title`
+
+.. _geospatial-indexes:
 
 Geospatial indexes
 ------------------

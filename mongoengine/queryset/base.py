@@ -10,14 +10,15 @@ import warnings
 from bson.code import Code
 from bson import json_util
 import pymongo
+import pymongo.errors
 from pymongo.common import validate_read_preference
 
 from mongoengine import signals
+from mongoengine.context_managers import switch_db
 from mongoengine.common import _import_class
 from mongoengine.base.common import get_document
 from mongoengine.errors import (OperationError, NotUniqueError,
                                 InvalidQueryError, LookUpError)
-
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -50,7 +51,7 @@ class BaseQuerySet(object):
         self._initial_query = {}
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
-        self._ordering = []
+        self._ordering = None
         self._snapshot = False
         self._timeout = True
         self._class_check = True
@@ -153,6 +154,22 @@ class BaseQuerySet(object):
 
     def __iter__(self):
         raise NotImplementedError
+
+    def _has_data(self):
+        """ Retrieves whether cursor has any data. """
+
+        queryset = self.order_by()
+        return False if queryset.first() is None else True
+
+    def __nonzero__(self):
+        """ Avoid to open all records in an if stmt in Py2. """
+
+        return self._has_data()
+
+    def __bool__(self):
+        """ Avoid to open all records in an if stmt in Py3. """
+
+        return self._has_data()
 
     # Core functions
 
@@ -302,8 +319,11 @@ class BaseQuerySet(object):
         signals.pre_bulk_insert.send(self._document, documents=docs)
         try:
             ids = self._collection.insert(raw, **write_concern)
+        except pymongo.errors.DuplicateKeyError, err:
+            message = 'Could not save document (%s)';
+            raise NotUniqueError(message % unicode(err))
         except pymongo.errors.OperationFailure, err:
-            message = 'Could not save document (%s)'
+            message = 'Could not save document (%s)';
             if re.match('^E1100[01] duplicate key', unicode(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
@@ -331,7 +351,7 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0 and with_limit_and_skip:
+        if self._limit == 0 and with_limit_and_skip or self._none:
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
@@ -386,7 +406,7 @@ class BaseQuerySet(object):
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
                 if (doc != document_cls and ref_q_count > 0
-                   or (doc == document_cls and ref_q_count > 0)):
+                    or (doc == document_cls and ref_q_count > 0)):
                     ref_q.delete(write_concern=write_concern)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
@@ -440,6 +460,8 @@ class BaseQuerySet(object):
                 return result
             elif result:
                 return result['n']
+        except pymongo.errors.DuplicateKeyError, err:
+            raise NotUniqueError(u'Update failed (%s)' % unicode(err))
         except pymongo.errors.OperationFailure, err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
@@ -462,6 +484,59 @@ class BaseQuerySet(object):
         """
         return self.update(
             upsert=upsert, multi=False, write_concern=write_concern, **update)
+
+    def modify(self, upsert=False, full_response=False, remove=False, new=False, **update):
+        """Update and return the updated document.
+
+        Returns either the document before or after modification based on `new`
+        parameter. If no documents match the query and `upsert` is false,
+        returns ``None``. If upserting and `new` is false, returns ``None``.
+
+        If the full_response parameter is ``True``, the return value will be
+        the entire response object from the server, including the 'ok' and
+        'lastErrorObject' fields, rather than just the modified document.
+        This is useful mainly because the 'lastErrorObject' document holds
+        information about the command's execution.
+
+        :param upsert: insert if document doesn't exist (default ``False``)
+        :param full_response: return the entire response object from the
+            server (default ``False``)
+        :param remove: remove rather than updating (default ``False``)
+        :param new: return updated rather than original document
+            (default ``False``)
+        :param update: Django-style update keyword arguments
+
+        .. versionadded:: 0.9
+        """
+
+        if remove and new:
+            raise OperationError("Conflicting parameters: remove and new")
+
+        if not update and not upsert and not remove:
+            raise OperationError("No update parameters, must either update or remove")
+
+        queryset = self.clone()
+        query = queryset._query
+        update = transform.update(queryset._document, **update)
+        sort = queryset._ordering
+
+        try:
+            result = queryset._collection.find_and_modify(
+                query, update, upsert=upsert, sort=sort, remove=remove, new=new,
+                full_response=full_response, **self._cursor_args)
+        except pymongo.errors.DuplicateKeyError, err:
+            raise NotUniqueError(u"Update failed (%s)" % err)
+        except pymongo.errors.OperationFailure, err:
+            raise OperationError(u"Update failed (%s)" % err)
+
+        if full_response:
+            if result["value"] is not None:
+                result["value"] = self._document._from_son(result["value"])
+        else:
+            if result is not None:
+                result = self._document._from_son(result)
+
+        return result
 
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
@@ -518,6 +593,19 @@ class BaseQuerySet(object):
             self._initial_query = {"_cls": self._document._class_name}
 
         return self
+
+    def using(self, alias):
+        """This method is for controlling which database the QuerySet will be evaluated against if you are using more than one database.
+
+        :param alias: The database alias
+
+        .. versionadded:: 0.8
+        """
+
+        with switch_db(self._document, alias) as cls:
+            collection = cls._get_collection()
+
+        return self.clone_into(self.__class__(self._document, collection))
 
     def clone(self):
         """Creates a copy of the current
@@ -621,8 +709,15 @@ class BaseQuerySet(object):
         try:
             field = self._fields_to_dbfields([field]).pop()
         finally:
-            return self._dereference(queryset._cursor.distinct(field), 1,
-                                     name=field, instance=self._document)
+            distinct = self._dereference(queryset._cursor.distinct(field), 1,
+                                         name=field, instance=self._document)
+
+            # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
+            doc_field = getattr(self._document._fields.get(field), "field", None)
+            instance = getattr(doc_field, "document_type", False)
+            if instance:
+                distinct = [instance(**doc) for doc in distinct]
+            return distinct
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
@@ -850,7 +945,7 @@ class BaseQuerySet(object):
         :param output: output collection name, if set to 'inline' will try to
            use :class:`~pymongo.collection.Collection.inline_map_reduce`
            This can also be a dictionary containing output options
-           see: http://docs.mongodb.org/manual/reference/commands/#mapReduce
+           see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
@@ -916,7 +1011,7 @@ class BaseQuerySet(object):
             mr_args['out'] = output
 
         results = getattr(queryset._collection, map_reduce_function)(
-                          map_f, reduce_f, **mr_args)
+            map_f, reduce_f, **mr_args)
 
         if map_reduce_function == 'map_reduce':
             results = results.find()
@@ -1179,8 +1274,9 @@ class BaseQuerySet(object):
             if self._ordering:
                 # Apply query ordering
                 self._cursor_obj.sort(self._ordering)
-            elif self._document._meta['ordering']:
-                # Otherwise, apply the ordering from the document model
+            elif self._ordering is None and self._document._meta['ordering']:
+                # Otherwise, apply the ordering from the document model, unless
+                # it's been explicitly cleared via order_by with no arguments
                 order = self._get_order_by(self._document._meta['ordering'])
                 self._cursor_obj.sort(order)
 
@@ -1352,7 +1448,7 @@ class BaseQuerySet(object):
                 for subdoc in subclasses:
                     try:
                         subfield = ".".join(f.db_field for f in
-                                        subdoc._lookup_field(field.split('.')))
+                                            subdoc._lookup_field(field.split('.')))
                         ret.append(subfield)
                         found = True
                         break
@@ -1382,7 +1478,7 @@ class BaseQuerySet(object):
                 pass
             key_list.append((key, direction))
 
-        if self._cursor_obj:
+        if self._cursor_obj and key_list:
             self._cursor_obj.sort(key_list)
         return key_list
 
@@ -1440,6 +1536,7 @@ class BaseQuerySet(object):
                     # type of this field and use the corresponding
                     # .to_python(...)
                     from mongoengine.fields import EmbeddedDocumentField
+
                     obj = self._document
                     for chunk in path.split('.'):
                         obj = getattr(obj, chunk, None)
@@ -1450,6 +1547,7 @@ class BaseQuerySet(object):
                     if obj and data is not None:
                         data = obj.to_python(data)
             return data
+
         return clean(row)
 
     def _sub_js_fields(self, code):
@@ -1458,6 +1556,7 @@ class BaseQuerySet(object):
         substituted for the MongoDB name of the field (specified using the
         :attr:`name` keyword argument in a field's constructor).
         """
+
         def field_sub(match):
             # Extract just the field name, and look up the field objects
             field_name = match.group(1).split('.')

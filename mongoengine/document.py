@@ -12,7 +12,9 @@ from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
-from mongoengine.queryset import OperationError, NotUniqueError, QuerySet
+from mongoengine.errors import ValidationError
+from mongoengine.queryset import (OperationError, NotUniqueError,
+                                  QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
 
@@ -67,7 +69,7 @@ class EmbeddedDocument(BaseDocument):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self._data == other._data
+            return self.to_mongo() == other.to_mongo()
         return False
 
     def __ne__(self, other):
@@ -182,7 +184,7 @@ class Document(BaseDocument):
 
     def save(self, force_insert=False, validate=True, clean=True,
              write_concern=None,  cascade=None, cascade_kwargs=None,
-             _refs=None, **kwargs):
+             _refs=None, save_condition=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -205,7 +207,8 @@ class Document(BaseDocument):
         :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
             to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
-
+        :param save_condition: only perform save if matching record in db
+            satisfies condition(s) (e.g., version number)
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
             set / unset.  Saves are cascaded and any
@@ -219,6 +222,9 @@ class Document(BaseDocument):
             meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
+        .. versionchanged:: 0.8.5
+            Optional save_condition that only overwrites existing documents
+            if the condition is satisfied in the current db record.
         """
         signals.pre_save.send(self.__class__, document=self)
 
@@ -232,7 +238,8 @@ class Document(BaseDocument):
 
         created = ('_id' not in doc or self._created or force_insert)
 
-        signals.pre_save_post_validation.send(self.__class__, document=self, created=created)
+        signals.pre_save_post_validation.send(self.__class__, document=self,
+                                              created=created)
 
         try:
             collection = self._get_collection()
@@ -245,7 +252,12 @@ class Document(BaseDocument):
                 object_id = doc['_id']
                 updates, removals = self._delta()
                 # Need to add shard key to query, or you get an error
-                select_dict = {'_id': object_id}
+                if save_condition is not None:
+                    select_dict = transform.query(self.__class__,
+                                                  **save_condition)
+                else:
+                    select_dict = {}
+                select_dict['_id'] = object_id
                 shard_key = self.__class__._meta.get('shard_key', tuple())
                 for k in shard_key:
                     actual_key = self._db_field_map.get(k, k)
@@ -265,9 +277,11 @@ class Document(BaseDocument):
                 if removals:
                     update_query["$unset"] = removals
                 if updates or removals:
+                    upsert = save_condition is None
                     last_error = collection.update(select_dict, update_query,
-                                                   upsert=True, **write_concern)
+                                                   upsert=upsert, **write_concern)
                     created = is_new_object(last_error)
+
 
             if cascade is None:
                 cascade = self._meta.get('cascade', False) or cascade_kwargs is not None
@@ -283,7 +297,9 @@ class Document(BaseDocument):
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
                 self.cascade_save(**kwargs)
-
+        except pymongo.errors.DuplicateKeyError, err:
+            message = u'Tried to save duplicate unique keys (%s)'
+            raise NotUniqueError(message % unicode(err))
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
@@ -453,14 +469,16 @@ class Document(BaseDocument):
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
         """
+        if not self.pk:
+            raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-                **self._object_key).limit(1).select_related(max_depth=max_depth)
+                    **self._object_key).limit(1).select_related(max_depth=max_depth)
+
 
         if obj:
             obj = obj[0]
         else:
-            msg = "Reloaded document has been deleted"
-            raise OperationError(msg)
+            raise self.DoesNotExist("Document does not exist")
         for field in self._fields_ordered:
             setattr(self, field, self._reload(field, obj[field]))
         self._changed_fields = obj._changed_fields
@@ -550,6 +568,8 @@ class Document(BaseDocument):
         index_cls = cls._meta.get('index_cls', True)
 
         collection = cls._get_collection()
+        if collection.read_preference > 1:
+            return
 
         # determine if an index which we are creating includes
         # _cls as its first field; if so, we can avoid creating

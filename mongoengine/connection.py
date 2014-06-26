@@ -18,7 +18,7 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name, host='localhost', port=27017,
+def register_connection(alias, name, host=None, port=None,
                         is_slave=False, read_preference=False, slaves=None,
                         username=None, password=None, **kwargs):
     """Add a connection.
@@ -43,8 +43,8 @@ def register_connection(alias, name, host='localhost', port=27017,
 
     conn_settings = {
         'name': name,
-        'host': host,
-        'port': port,
+        'host': host or 'localhost',
+        'port': port or 27017,
         'is_slave': is_slave,
         'slaves': slaves or [],
         'username': username,
@@ -53,16 +53,15 @@ def register_connection(alias, name, host='localhost', port=27017,
     }
 
     # Handle uri style connections
-    if "://" in host:
-        uri_dict = uri_parser.parse_uri(host)
+    if "://" in conn_settings['host']:
+        uri_dict = uri_parser.parse_uri(conn_settings['host'])
         conn_settings.update({
-            'host': host,
             'name': uri_dict.get('database') or name,
             'username': uri_dict.get('username'),
             'password': uri_dict.get('password'),
             'read_preference': read_preference,
         })
-        if "replicaSet" in host:
+        if "replicaSet" in conn_settings['host']:
             conn_settings['replicaSet'] = True
 
     conn_settings.update(kwargs)
@@ -94,20 +93,11 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
-        if hasattr(pymongo, 'version_tuple'):  # Support for 2.1+
-            conn_settings.pop('name', None)
-            conn_settings.pop('slaves', None)
-            conn_settings.pop('is_slave', None)
-            conn_settings.pop('username', None)
-            conn_settings.pop('password', None)
-        else:
-            # Get all the slave connections
-            if 'slaves' in conn_settings:
-                slaves = []
-                for slave_alias in conn_settings['slaves']:
-                    slaves.append(get_connection(slave_alias))
-                conn_settings['slaves'] = slaves
-                conn_settings.pop('read_preference', None)
+        conn_settings.pop('name', None)
+        conn_settings.pop('slaves', None)
+        conn_settings.pop('is_slave', None)
+        conn_settings.pop('username', None)
+        conn_settings.pop('password', None)
 
         connection_class = MongoClient
         if 'replicaSet' in conn_settings:
@@ -120,7 +110,19 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             connection_class = MongoReplicaSetClient
 
         try:
-            _connections[alias] = connection_class(**conn_settings)
+            connection = None
+            connection_settings_iterator = ((alias, settings.copy()) for alias, settings in _connection_settings.iteritems())
+            for alias, connection_settings in connection_settings_iterator:
+                connection_settings.pop('name', None)
+                connection_settings.pop('slaves', None)
+                connection_settings.pop('is_slave', None)
+                connection_settings.pop('username', None)
+                connection_settings.pop('password', None)
+                if conn_settings == connection_settings and _connections.get(alias, None):
+                    connection = _connections[alias]
+                    break
+
+            _connections[alias] = connection if connection else connection_class(**conn_settings)
         except Exception, e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]

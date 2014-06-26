@@ -42,7 +42,8 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'GenericReferenceField',  'BinaryField',  'GridFSError',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
            'ImproperlyConfigured',  'ImageField',  'GeoPointField', 'PointField',
-           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField']
+           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField',
+           'GeoJsonBaseField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -152,7 +153,7 @@ class EmailField(StringField):
     EMAIL_REGEX = re.compile(
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
         r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'  # quoted-string
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,253}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE  # domain
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,253}[A-Z0-9])?\.)+[A-Z]{2,6}$', re.IGNORECASE  # domain
     )
 
     def validate(self, value):
@@ -304,7 +305,10 @@ class DecimalField(BaseField):
             return value
 
         # Convert to string for python 2.6 before casting to Decimal
-        value = decimal.Decimal("%s" % value)
+        try:
+            value = decimal.Decimal("%s" % value)
+        except decimal.InvalidOperation:
+            return value
         return value.quantize(self.precision, rounding=self.rounding)
 
     def to_mongo(self, value):
@@ -387,7 +391,7 @@ class DateTimeField(BaseField):
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except ValueError:
+            except (TypeError, ValueError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
@@ -735,13 +739,28 @@ class SortedListField(ListField):
                           reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
+def key_not_string(d):
+    """ Helper function to recursively determine if any key in a dictionary is
+    not a string.
+    """
+    for k, v in d.items():
+        if not isinstance(k, basestring) or (isinstance(v, dict) and key_not_string(v)):
+            return True
+
+def key_has_dot_or_dollar(d):
+    """ Helper function to recursively determine if any key in a dictionary
+    contains a dot or a dollar sign.
+    """
+    for k, v in d.items():
+        if ('.' in k or '$' in k) or (isinstance(v, dict) and key_has_dot_or_dollar(v)):
+            return True
 
 class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
     .. note::
-        Required means it cannot be empty - as the default for ListFields is []
+        Required means it cannot be empty - as the default for DictFields is {}
 
     .. versionadded:: 0.3
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
@@ -761,11 +780,11 @@ class DictField(ComplexBaseField):
         if not isinstance(value, dict):
             self.error('Only dictionaries may be used in a DictField')
 
-        if any(k for k in value.keys() if not isinstance(k, basestring)):
+        if key_not_string(value):
             msg = ("Invalid dictionary key - documents must "
                    "have only string keys")
             self.error(msg)
-        if any(('.' in k or '$' in k) for k in value.keys()):
+        if key_has_dot_or_dollar(value):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')
         super(DictField, self).validate(value)
@@ -1004,7 +1023,10 @@ class GenericReferenceField(BaseField):
         id_ = id_field.to_mongo(id_)
         collection = document._get_collection_name()
         ref = DBRef(collection, id_)
-        return {'_cls': document._class_name, '_ref': ref}
+        return SON((
+            ('_cls', document._class_name),
+            ('_ref', ref)
+        ))
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -1591,7 +1613,12 @@ class UUIDField(BaseField):
 
 
 class GeoPointField(BaseField):
-    """A list storing a latitude and longitude.
+    """A list storing a longitude and latitude coordinate. 
+
+    .. note:: this represents a generic point in a 2D plane and a legacy way of 
+        representing a geo point. It admits 2d indexes but not "2dsphere" indexes 
+        in MongoDB > 2.4 which are more natural for modeling geospatial points. 
+        See :ref:`geospatial-indexes` 
 
     .. versionadded:: 0.4
     """
@@ -1613,7 +1640,7 @@ class GeoPointField(BaseField):
 
 
 class PointField(GeoJsonBaseField):
-    """A geo json field storing a latitude and longitude.
+    """A GeoJSON field storing a longitude and latitude coordinate.
 
     The data is represented as:
 
@@ -1632,7 +1659,7 @@ class PointField(GeoJsonBaseField):
 
 
 class LineStringField(GeoJsonBaseField):
-    """A geo json field storing a line of latitude and longitude coordinates.
+    """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is represented as:
 
@@ -1650,7 +1677,7 @@ class LineStringField(GeoJsonBaseField):
 
 
 class PolygonField(GeoJsonBaseField):
-    """A geo json field storing a polygon of latitude and longitude coordinates.
+    """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is represented as:
 

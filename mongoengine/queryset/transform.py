@@ -38,7 +38,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             mongo_query.update(value)
             continue
 
-        parts = key.split('__')
+        parts = key.rsplit('__')
         indices = [(i, p) for i, p in enumerate(parts) if p.isdigit()]
         parts = [part for part in parts if not part.isdigit()]
         # Check for an operator and transform to mongo-style if there is
@@ -205,6 +205,10 @@ def update(_doc_cls=None, **update):
                 field = cleaned_fields[-2]
             else:
                 field = cleaned_fields[-1]
+
+            GeoJsonBaseField = _import_class("GeoJsonBaseField")
+            if isinstance(field, GeoJsonBaseField):
+                value = field.to_mongo(value)
 
             if op in (None, 'set', 'push', 'pull'):
                 if field.required or value is not None:

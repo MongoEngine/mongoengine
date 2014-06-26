@@ -92,8 +92,8 @@ were added in 0.8 for:  :class:`~mongoengine.fields.PointField`,
 * ``geo_within`` -- Check if a geometry is within a polygon.  For ease of use
     it accepts either a geojson geometry or just the polygon coordinates eg::
 
-        loc.objects(point__geo_with=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
-        loc.objects(point__geo_with={"type": "Polygon",
+        loc.objects(point__geo_within=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
+        loc.objects(point__geo_within={"type": "Polygon",
                                  "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
 
 * ``geo_within_box`` - simplified geo_within searching with a box eg::
@@ -488,8 +488,9 @@ calling it with keyword arguments::
 Atomic updates
 ==============
 Documents may be updated atomically by using the
-:meth:`~mongoengine.queryset.QuerySet.update_one` and
-:meth:`~mongoengine.queryset.QuerySet.update` methods on a
+:meth:`~mongoengine.queryset.QuerySet.update_one`,
+:meth:`~mongoengine.queryset.QuerySet.update` and
+:meth:`~mongoengine.queryset.QuerySet.modify` methods on a
 :meth:`~mongoengine.queryset.QuerySet`. There are several different "modifiers"
 that you may use with these methods:
 

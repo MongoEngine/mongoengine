@@ -1,6 +1,11 @@
 import sys
 sys.path[0:0] = [""]
-import unittest
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import datetime
 
 import pymongo
@@ -33,6 +38,17 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest2', alias='testdb')
         conn = get_connection('testdb')
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
+    def test_sharing_connections(self):
+        """Ensure that connections are shared when the connection settings are exactly the same
+        """
+        connect('mongoenginetest', alias='testdb1')
+
+        expected_connection = get_connection('testdb1')
+
+        connect('mongoenginetest', alias='testdb2')
+        actual_connection = get_connection('testdb2')
+        self.assertIs(expected_connection, actual_connection)
 
     def test_connect_uri(self):
         """Ensure that the connect() method works properly with uri's
@@ -97,6 +113,14 @@ class ConnectionTest(unittest.TestCase):
         db = get_db('testdb')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest2')
+
+    def test_register_connection_defaults(self):
+        """Ensure that defaults are used when the host and port are None.
+        """
+        register_connection('testdb', 'mongoenginetest', host=None, port=None)
+
+        conn = get_connection('testdb')
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
     def test_connection_kwargs(self):
         """Ensure that connection kwargs get passed to pymongo.
