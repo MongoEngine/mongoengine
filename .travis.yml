@@ -11,44 +11,12 @@ python:
 env:
   - PYMONGO=dev DJANGO=1.6.5
   - PYMONGO=dev DJANGO=1.5.8
-  - PYMONGO=dev DJANGO=1.4.13
-  - PYMONGO=2.5.2 DJANGO=1.6.5
-  - PYMONGO=2.5.2 DJANGO=1.5.8
-  - PYMONGO=2.5.2 DJANGO=1.4.13
-  - PYMONGO=2.6.3 DJANGO=1.6.5
-  - PYMONGO=2.6.3 DJANGO=1.5.8
-  - PYMONGO=2.6.3 DJANGO=1.4.13
   - PYMONGO=2.7.1 DJANGO=1.6.5
   - PYMONGO=2.7.1 DJANGO=1.5.8
-  - PYMONGO=2.7.1 DJANGO=1.4.13
 
 matrix:
     fast_finish: true
-    exclude:
-        - python: "3.2"
-          env: PYMONGO=dev DJANGO=1.4.13
-        - python: "3.2"
-          env: PYMONGO=2.5.2 DJANGO=1.4.13
-        - python: "3.2"
-          env: PYMONGO=2.6.3 DJANGO=1.4.13
-        - python: "3.2"
-          env: PYMONGO=2.7.1 DJANGO=1.4.13
-        - python: "3.3"
-          env: PYMONGO=dev DJANGO=1.4.13
-        - python: "3.3"
-          env: PYMONGO=2.5.2 DJANGO=1.4.13
-        - python: "3.3"
-          env: PYMONGO=2.6.3 DJANGO=1.4.13
-        - python: "3.3"
-          env: PYMONGO=2.7.1 DJANGO=1.4.13
-        - python: "3.4"
-          env: PYMONGO=dev DJANGO=1.4.13
-        - python: "3.4"
-          env: PYMONGO=2.5.2 DJANGO=1.4.13
-        - python: "3.4"
-          env: PYMONGO=2.6.3 DJANGO=1.4.13
-        - python: "3.4"
-          env: PYMONGO=2.7.1 DJANGO=1.4.13
+
 install:
     - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev python-tk
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
