@@ -114,15 +114,24 @@ def query(_doc_cls=None, _field_operation=False, **query):
         elif key in mongo_query:
             if key in mongo_query and isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
-                # $maxDistance needs to come last - convert to SON
+                # $maxDistance needs to be within geoJSON $near queries and
+                # come last - convert to SON
                 if '$maxDistance' in mongo_query[key]:
                     value_dict = mongo_query[key]
+                    if '$near' in value_dict and isinstance(
+                            value_dict['$near'], dict):
+                        # $near is geoJSON formatted, add $maxDistance
+                        near_son = SON(value_dict.pop('$near'))
+                        max_dist = value_dict.pop('$maxDistance')
+                        near_son['$maxDistance'] = max_dist
+                        value_dict['$near'] = near_son
                     value_son = SON()
                     for k, v in value_dict.iteritems():
                         if k == '$maxDistance':
                             continue
                         value_son[k] = v
-                    value_son['$maxDistance'] = value_dict['$maxDistance']
+                    if '$maxDistance' in value_dict:
+                        value_son['$maxDistance'] = value_dict['$maxDistance']
                     mongo_query[key] = value_son
             else:
                 # Store for manually merging later
