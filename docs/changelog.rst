@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 - pypy support #673
+- Enabled connection pooling #674
 
 Changes in 0.8.7
 ================
