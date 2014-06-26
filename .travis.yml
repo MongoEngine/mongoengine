@@ -58,6 +58,7 @@ install:
     - python setup.py install
 script:
     - python setup.py test
+    - 2to3 . -w
     - python benchmark.py
 notifications:
   irc: "irc.freenode.org#mongoengine"
