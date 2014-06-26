@@ -20,7 +20,8 @@ _dbs = {}
 
 def register_connection(alias, name, host=None, port=None,
                         is_slave=False, read_preference=False, slaves=None,
-                        username=None, password=None, **kwargs):
+                        username=None, password=None, authsource=None,
+                        **kwargs):
     """Add a connection.
 
     :param alias: the name that will be used to refer to this connection
@@ -36,6 +37,8 @@ def register_connection(alias, name, host=None, port=None,
         be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with
     :param password: password to authenticate with
+    :param authsource: database to authenticate on
+       ** Added pymongo 2.5
     :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
 
     """
@@ -49,6 +52,7 @@ def register_connection(alias, name, host=None, port=None,
         'slaves': slaves or [],
         'username': username,
         'password': password,
+        'authsource': authsource,
         'read_preference': read_preference
     }
 
@@ -99,6 +103,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             conn_settings.pop('is_slave', None)
             conn_settings.pop('username', None)
             conn_settings.pop('password', None)
+            conn_settings.pop('authsource', None)
         else:
             # Get all the slave connections
             if 'slaves' in conn_settings:
@@ -137,7 +142,8 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         # Authenticate if necessary
         if conn_settings['username'] and conn_settings['password']:
             db.authenticate(conn_settings['username'],
-                            conn_settings['password'])
+                            conn_settings['password'],
+                            conn_settings['authsource'])
         _dbs[alias] = db
     return _dbs[alias]
 
