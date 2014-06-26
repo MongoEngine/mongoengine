@@ -147,7 +147,7 @@ class BaseQuerySet(object):
                     queryset._document._from_son(queryset._cursor[key],
                                                  _auto_dereference=self._auto_dereference))
             if queryset._as_pymongo:
-                return queryset._get_as_pymongo(queryset._cursor.next())
+                return queryset._get_as_pymongo(queryset._cursor[key])
             return queryset._document._from_son(queryset._cursor[key],
                                                 _auto_dereference=self._auto_dereference)
         raise AttributeError
