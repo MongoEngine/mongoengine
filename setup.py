@@ -51,12 +51,15 @@ CLASSIFIERS = [
 extra_opts = {"packages": find_packages(exclude=["tests", "tests.*"])}
 if sys.version_info[0] == 3:
     extra_opts['use_2to3'] = True
-    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'jinja2==2.6', 'django>=1.5.1']
+    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'jinja2==2.6', 'Pillow>=2.0.0', 'django>=1.5.1']
     if "test" in sys.argv or "nosetests" in sys.argv:
         extra_opts['packages'] = find_packages()
         extra_opts['package_data'] = {"tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]}
 else:
-    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.4.2', 'PIL', 'jinja2>=2.6', 'python-dateutil']
+    extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'django>=1.4.2', 'Pillow>=2.0.0', 'jinja2>=2.6', 'python-dateutil']
+
+    if sys.version_info[0] == 2 and sys.version_info[1] == 6:
+        extra_opts['tests_require'].append('unittest2')
 
 setup(name='mongoengine',
       version=VERSION,
@@ -72,7 +75,7 @@ setup(name='mongoengine',
       long_description=LONG_DESCRIPTION,
       platforms=['any'],
       classifiers=CLASSIFIERS,
-      install_requires=['pymongo>=2.5'],
+      install_requires=['pymongo>=2.7'],
       test_suite='nose.collector',
       **extra_opts
 )
