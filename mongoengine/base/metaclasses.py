@@ -359,7 +359,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     new_class.id = field
 
         # Set primary key if not defined by the document
-        new_class._auto_id_field = False
+        new_class._auto_id_field = getattr(parent_doc_cls,
+                                           '_auto_id_field', False)
         if not new_class._meta.get('id_field'):
             new_class._auto_id_field = True
             new_class._meta['id_field'] = 'id'

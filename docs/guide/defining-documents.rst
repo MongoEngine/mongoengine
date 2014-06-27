@@ -531,6 +531,8 @@ field name to the index definition.
 Sometimes its more efficient to index parts of Embedded / dictionary fields,
 in this case use 'dot' notation to identify the value to index eg: `rank.title`
 
+.. _geospatial-indexes:
+
 Geospatial indexes
 ------------------
 

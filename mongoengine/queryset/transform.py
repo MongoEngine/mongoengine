@@ -3,6 +3,7 @@ from collections import defaultdict
 import pymongo
 from bson import SON
 
+from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidQueryError, LookUpError
 
@@ -38,7 +39,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             mongo_query.update(value)
             continue
 
-        parts = key.split('__')
+        parts = key.rsplit('__')
         indices = [(i, p) for i, p in enumerate(parts) if p.isdigit()]
         parts = [part for part in parts if not part.isdigit()]
         # Check for an operator and transform to mongo-style if there is
@@ -115,14 +116,21 @@ def query(_doc_cls=None, _field_operation=False, **query):
             if key in mongo_query and isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
                 # $maxDistance needs to come last - convert to SON
-                if '$maxDistance' in mongo_query[key]:
-                    value_dict = mongo_query[key]
+                value_dict = mongo_query[key]
+                if ('$maxDistance' in value_dict and '$near' in value_dict and
+                    isinstance(value_dict['$near'], dict)):
+
                     value_son = SON()
                     for k, v in value_dict.iteritems():
                         if k == '$maxDistance':
                             continue
                         value_son[k] = v
-                    value_son['$maxDistance'] = value_dict['$maxDistance']
+                    if (get_connection().max_wire_version <= 1):
+                        value_son['$maxDistance'] = value_dict['$maxDistance']
+                    else:
+                        value_son['$near'] = SON(value_son['$near'])
+                        value_son['$near']['$maxDistance'] = value_dict['$maxDistance']
+
                     mongo_query[key] = value_son
             else:
                 # Store for manually merging later
