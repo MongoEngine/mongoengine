@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Fixed nested reference field distinct error #583
 - Fixed change tracking on nested MapFields #539
 - Dynamic fields in embedded documents now visible to queryset.only() / qs.exclude() #425 #507
 - Add authentication_source option to register_connection #178 #464 #573 #580 #590
