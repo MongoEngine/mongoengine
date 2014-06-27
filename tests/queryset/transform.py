@@ -31,6 +31,31 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(transform.query(name__exists=True),
                          {'name': {'$exists': True}})
 
+    def test_transform_update(self):
+        class DicDoc(Document):
+            dictField = DictField()
+
+        class Doc(Document):
+            pass
+
+        DicDoc.drop_collection()
+        Doc.drop_collection()
+
+        doc = Doc().save()
+        dic_doc = DicDoc().save()
+
+        for k, v in (("set", "$set"), ("set_on_insert", "$setOnInsert"), ("push", "$push")):
+            update = transform.update(DicDoc, **{"%s__dictField__test" % k: doc})
+            self.assertTrue(isinstance(update[v]["dictField.test"], dict))
+
+        # Update special cases
+        update = transform.update(DicDoc, unset__dictField__test=doc)
+        self.assertEqual(update["$unset"]["dictField.test"], 1)
+
+        update = transform.update(DicDoc, pull__dictField__test=doc)
+        self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
+
+
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.
         """
@@ -142,6 +167,35 @@ class TransformTest(unittest.TestCase):
                              {'attachments.views.extracted': 'no'}]}
         self.assertEqual(expected, raw_query)
 
+    def test_geojson_PointField(self):
+        class Location(Document):
+            loc = PointField()
+
+        update = transform.update(Location, set__loc=[1, 2])
+        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
+
+        update = transform.update(Location, set__loc={"type": "Point", "coordinates": [1,2]})
+        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
+
+    def test_geojson_LineStringField(self):
+        class Location(Document):
+            line = LineStringField()
+
+        update = transform.update(Location, set__line=[[1, 2], [2, 2]])
+        self.assertEqual(update, {'$set': {'line': {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}}})
+
+        update = transform.update(Location, set__line={"type": "LineString", "coordinates": [[1, 2], [2, 2]]})
+        self.assertEqual(update, {'$set': {'line': {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}}})
+
+    def test_geojson_PolygonField(self):
+        class Location(Document):
+            poly = PolygonField()
+
+        update = transform.update(Location, set__poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
+        self.assertEqual(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
+
+        update = transform.update(Location, set__poly={"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
+        self.assertEqual(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
 
 if __name__ == '__main__':
     unittest.main()

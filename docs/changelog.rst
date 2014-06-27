@@ -3,13 +3,111 @@ Changelog
 =========
 
 
+Changes in 0.9.X - DEV
+======================
+
+- Added the ability to reload specific document fields #100
+- Added db_alias support and fixes for custom map/reduce output #586
+- post_save signal now has access to delta information about field changes #594 #589
+- Don't query with $orderby for qs.get() #600
+- Fix id shard key save issue #636
+- Fixes issue with recursive embedded document errors #557
+- Fix clear_changed_fields() clearing unsaved documents bug #602
+- Removing support for Django 1.4.x, pymongo 2.5.x, pymongo 2.6.x.
+- Removing support for Python < 2.6.6
+- Fixed $maxDistance location for geoJSON $near queries with MongoDB 2.6+ #664
+- QuerySet.modify() method to provide find_and_modify() like behaviour #677
+- Added support for the using() method on a queryset #676
+- PYPY support #673
+- Connection pooling #674
+- Avoid to open all documents from cursors in an if stmt #655
+- Ability to clear the ordering #657
+- Raise NotUniqueError in Document.update() on pymongo.errors.DuplicateKeyError #626
+- Slots - memory improvements #625
+- Fixed incorrectly split a query key when it ends with "_" #619
+- Geo docs updates #613
+- Workaround a dateutil bug #608
+- Conditional save for atomic-style operations #511
+- Allow dynamic dictionary-style field access #559
+
+Changes in 0.8.7
+================
+- Calling reload on deleted / nonexistant documents raises DoesNotExist (#538)
+- Stop ensure_indexes running on a secondaries (#555)
+- Fix circular import issue with django auth (#531) (#545)
+
+Changes in 0.8.6
+================
+- Fix django auth import (#531)
+
+Changes in 0.8.5
+================
+- Fix multi level nested fields getting marked as changed (#523)
+- Django 1.6 login fix (#522) (#527)
+- Django 1.6 session fix (#509)
+- EmbeddedDocument._instance is now set when settng the attribute (#506)
+- Fixed EmbeddedDocument with ReferenceField equality issue (#502)
+- Fixed GenericReferenceField serialization order (#499)
+- Fixed count and none bug (#498)
+- Fixed bug with .only() and DictField with digit keys (#496)
+- Added user_permissions to Django User object (#491, #492)
+- Fix updating Geo Location fields (#488)
+- Fix handling invalid dict field value (#485)
+- Added app_label to MongoUser (#484)
+- Use defaults when host and port are passed as None (#483)
+- Fixed distinct casting issue with ListField of EmbeddedDocuments (#470)
+- Fixed Django 1.6 sessions (#454, #480)
+
+Changes in 0.8.4
+================
+- Remove database name necessity in uri connection schema (#452)
+- Fixed "$pull" semantics for nested ListFields (#447)
+- Allow fields to be named the same as query operators (#445)
+- Updated field filter logic - can now exclude subclass fields (#443)
+- Fixed dereference issue with embedded listfield referencefields (#439)
+- Fixed slice when using inheritance causing fields to be excluded (#437)
+- Fixed ._get_db() attribute after a Document.switch_db() (#441)
+- Dynamic Fields store and recompose Embedded Documents / Documents correctly (#449)
+- Handle dynamic fieldnames that look like digits (#434)
+- Added get_user_document and improve mongo_auth module (#423)
+- Added str representation of GridFSProxy (#424)
+- Update transform to handle docs erroneously passed to unset (#416)
+- Fixed indexing - turn off _cls (#414)
+- Fixed dereference threading issue in ComplexField.__get__ (#412)
+- Fixed QuerySetNoCache.count() caching (#410)
+- Don't follow references in _get_changed_fields (#422, #417)
+- Allow args and kwargs to be passed through to_json (#420)
+
+Changes in 0.8.3
+================
+- Fixed EmbeddedDocuments with `id` also storing `_id` (#402)
+- Added get_proxy_object helper to filefields (#391)
+- Added QuerySetNoCache and QuerySet.no_cache() for lower memory consumption (#365)
+- Fixed sum and average mapreduce dot notation support (#375, #376, #393)
+- Fixed as_pymongo to return the id (#386)
+- Document.select_related() now respects `db_alias` (#377)
+- Reload uses shard_key if applicable (#384)
+- Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
+
+  **Potential breaking change:** http://docs.mongoengine.org/en/latest/upgrade.html#to-0-8-3
+
+- Fixed pickling dynamic documents `_dynamic_fields` (#387)
+- Fixed ListField setslice and delslice dirty tracking (#390)
+- Added Django 1.5 PY3 support (#392)
+- Added match ($elemMatch) support for EmbeddedDocuments (#379)
+- Fixed weakref being valid after reload (#374)
+- Fixed queryset.get() respecting no_dereference (#373)
+- Added full_result kwarg to update (#380)
+
+
+
 Changes in 0.8.2
 ================
 - Added compare_indexes helper (#361)
 - Fixed cascading saves which weren't turned off as planned (#291)
 - Fixed Datastructures so instances are a Document or EmbeddedDocument (#363)
 - Improved cascading saves write performance (#361)
-- Fixed amibiguity and differing behaviour regarding field defaults (#349)
+- Fixed ambiguity and differing behaviour regarding field defaults (#349)
 - ImageFields now include PIL error messages if invalid error (#353)
 - Added lock when calling doc.Delete() for when signals have no sender (#350)
 - Reload forces read preference to be PRIMARY (#355)

@@ -3,6 +3,7 @@ from collections import defaultdict
 import pymongo
 from bson import SON
 
+from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidQueryError, LookUpError
 
@@ -38,16 +39,16 @@ def query(_doc_cls=None, _field_operation=False, **query):
             mongo_query.update(value)
             continue
 
-        parts = key.split('__')
+        parts = key.rsplit('__')
         indices = [(i, p) for i, p in enumerate(parts) if p.isdigit()]
         parts = [part for part in parts if not part.isdigit()]
         # Check for an operator and transform to mongo-style if there is
         op = None
-        if parts[-1] in MATCH_OPERATORS:
+        if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
         negate = False
-        if parts[-1] == 'not':
+        if len(parts) > 1 and parts[-1] == 'not':
             parts.pop()
             negate = True
 
@@ -95,6 +96,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 value = _geo_operator(field, op, value)
             elif op in CUSTOM_OPERATORS:
                 if op == 'match':
+                    value = field.prepare_query_value(op, value)
                     value = {"$elemMatch": value}
                 else:
                     NotImplementedError("Custom method '%s' has not "
@@ -114,14 +116,26 @@ def query(_doc_cls=None, _field_operation=False, **query):
             if key in mongo_query and isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
                 # $maxDistance needs to come last - convert to SON
-                if '$maxDistance' in mongo_query[key]:
-                    value_dict = mongo_query[key]
+                value_dict = mongo_query[key]
+                if ('$maxDistance' in value_dict and '$near' in value_dict):
                     value_son = SON()
-                    for k, v in value_dict.iteritems():
-                        if k == '$maxDistance':
-                            continue
-                        value_son[k] = v
-                    value_son['$maxDistance'] = value_dict['$maxDistance']
+                    if isinstance(value_dict['$near'], dict):
+                        for k, v in value_dict.iteritems():
+                            if k == '$maxDistance':
+                                continue
+                            value_son[k] = v
+                        if (get_connection().max_wire_version <= 1):
+                            value_son['$maxDistance'] = value_dict['$maxDistance']
+                        else:
+                            value_son['$near'] = SON(value_son['$near'])
+                            value_son['$near']['$maxDistance'] = value_dict['$maxDistance']
+                    else:
+                        for k, v in value_dict.iteritems():
+                            if k == '$maxDistance':
+                                continue
+                            value_son[k] = v
+                        value_son['$maxDistance'] = value_dict['$maxDistance']
+
                     mongo_query[key] = value_son
             else:
                 # Store for manually merging later
@@ -181,6 +195,7 @@ def update(_doc_cls=None, **update):
             parts = []
 
             cleaned_fields = []
+            appended_sub_field = False
             for field in fields:
                 append_field = True
                 if isinstance(field, basestring):
@@ -192,21 +207,34 @@ def update(_doc_cls=None, **update):
                 else:
                     parts.append(field.db_field)
                 if append_field:
+                    appended_sub_field = False
                     cleaned_fields.append(field)
+                    if hasattr(field, 'field'):
+                        cleaned_fields.append(field.field)
+                        appended_sub_field = True
 
             # Convert value to proper value
-            field = cleaned_fields[-1]
+            if appended_sub_field:
+                field = cleaned_fields[-2]
+            else:
+                field = cleaned_fields[-1]
+
+            GeoJsonBaseField = _import_class("GeoJsonBaseField")
+            if isinstance(field, GeoJsonBaseField):
+                value = field.to_mongo(value)
 
             if op in (None, 'set', 'push', 'pull'):
                 if field.required or value is not None:
                     value = field.prepare_query_value(op, value)
             elif op in ('pushAll', 'pullAll'):
                 value = [field.prepare_query_value(op, v) for v in value]
-            elif op == 'addToSet':
+            elif op in ('addToSet', 'setOnInsert'):
                 if isinstance(value, (list, tuple, set)):
                     value = [field.prepare_query_value(op, v) for v in value]
                 elif field.required or value is not None:
                     value = field.prepare_query_value(op, value)
+            elif op == "unset":
+                value = 1
 
         if match:
             match = '$' + match
@@ -220,10 +248,23 @@ def update(_doc_cls=None, **update):
 
         if 'pull' in op and '.' in key:
             # Dot operators don't work on pull operations
-            # it uses nested dict syntax
+            # unless they point to a list field
+            # Otherwise it uses nested dict syntax
             if op == 'pullAll':
                 raise InvalidQueryError("pullAll operations only support "
                                         "a single field depth")
+
+            # Look for the last list field and use dot notation until there
+            field_classes = [c.__class__ for c in cleaned_fields]
+            field_classes.reverse()
+            ListField = _import_class('ListField')
+            if ListField in field_classes:
+                # Join all fields via dot notation to the last ListField
+                # Then process as normal
+                last_listField = len(cleaned_fields) - field_classes.index(ListField)
+                key = ".".join(parts[:last_listField])
+                parts = parts[last_listField:]
+                parts.insert(0, key)
 
             parts.reverse()
             for key in parts:

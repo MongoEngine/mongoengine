@@ -162,6 +162,10 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(obj.name, person.name)
         self.assertEqual(obj.age, person.age)
 
+        obj = self.Person.objects.only(*('id', 'name',)).get()
+        self.assertEqual(obj.name, person.name)
+        self.assertEqual(obj.age, None)
+
         # Check polymorphism still works
         class Employee(self.Person):
             salary = IntField(db_field='wage')
@@ -394,6 +398,29 @@ class OnlyExcludeAllTest(unittest.TestCase):
         # skip to fifth from last, limit 10 dict method
         numbers = Numbers.objects.fields(embedded__n={"$slice": [-5, 10]}).get()
         self.assertEqual(numbers.embedded.n, [-5, -4, -3, -2, -1])
+
+
+    def test_exclude_from_subclasses_docs(self):
+
+        class Base(Document):
+            username = StringField()
+
+            meta = {'allow_inheritance': True}
+
+        class Anon(Base):
+            anon = BooleanField()
+
+        class User(Base):
+            password = StringField()
+            wibble = StringField()
+
+        Base.drop_collection()
+        User(username="mongodb", password="secret").save()
+
+        user = Base.objects().exclude("password", "wibble").first()
+        self.assertEqual(user.password, None)
+
+        self.assertRaises(LookUpError, Base.objects.exclude, "made_up")
 
 if __name__ == '__main__':
     unittest.main()

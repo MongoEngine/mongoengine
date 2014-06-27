@@ -89,12 +89,7 @@ class BaseField(object):
             return self
 
         # Get value from document instance if available
-        value = instance._data.get(self.name)
-
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument) and value._instance is None:
-            value._instance = weakref.proxy(instance)
-        return value
+        return instance._data.get(self.name)
 
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
@@ -116,6 +111,10 @@ class BaseField(object):
                 # Values cant be compared eg: naive and tz datetimes
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
+
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+        if isinstance(value, EmbeddedDocument) and value._instance is None:
+            value._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
@@ -186,7 +185,6 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
-    __dereference = False
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references.
@@ -201,9 +199,11 @@ class ComplexBaseField(BaseField):
                        (self.field is None or isinstance(self.field,
                         (GenericReferenceField, ReferenceField))))
 
+        _dereference = _import_class("DeReference")()
+
         self._auto_dereference = instance._fields[self.name]._auto_dereference
-        if not self.__dereference and instance._initialised and dereference:
-            instance._data[self.name] = self._dereference(
+        if instance._initialised and dereference and instance._data.get(self.name):
+            instance._data[self.name] = _dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
             )
@@ -222,7 +222,7 @@ class ComplexBaseField(BaseField):
         if (self._auto_dereference and instance._initialised and
            isinstance(value, (BaseList, BaseDict))
            and not value._dereferenced):
-            value = self._dereference(
+            value = _dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )
             value._dereferenced = True
@@ -381,13 +381,6 @@ class ComplexBaseField(BaseField):
         self._owner_document = owner_document
 
     owner_document = property(_get_owner_document, _set_owner_document)
-
-    @property
-    def _dereference(self,):
-        if not self.__dereference:
-            DeReference = _import_class("DeReference")
-            self.__dereference = DeReference()  # Cached
-        return self.__dereference
 
 
 class ObjectIdField(BaseField):

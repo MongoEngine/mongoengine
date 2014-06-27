@@ -53,11 +53,12 @@ class FileTest(unittest.TestCase):
         content_type = 'text/plain'
 
         putfile = PutFile()
-        putfile.the_file.put(text, content_type=content_type)
+        putfile.the_file.put(text, content_type=content_type, filename="hello")
         putfile.save()
 
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
+        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello>")
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()  # Remove file from GridFS
@@ -278,7 +279,7 @@ class FileTest(unittest.TestCase):
                 t.image.put(f)
                 self.fail("Should have raised an invalidation error")
             except ValidationError, e:
-                self.assertEquals("%s" % e, "Invalid image: cannot identify image file")
+                self.assertEqual("%s" % e, "Invalid image: cannot identify image file %s" % f)
 
         t = TestImage()
         t.image.put(open(TEST_IMAGE_PATH, 'rb'))
@@ -454,6 +455,32 @@ class FileTest(unittest.TestCase):
 
         self.assertEqual(1, TestImage.objects(Q(image1=grid_id)
                                               or Q(image2=grid_id)).count())
+
+    def test_complex_field_filefield(self):
+        """Ensure you can add meta data to file"""
+
+        class Animal(Document):
+            genus = StringField()
+            family = StringField()
+            photos = ListField(FileField())
+
+        Animal.drop_collection()
+        marmot = Animal(genus='Marmota', family='Sciuridae')
+
+        marmot_photo = open(TEST_IMAGE_PATH, 'rb')  # Retrieve a photo from disk
+
+        photos_field = marmot._fields['photos'].field
+        new_proxy = photos_field.get_proxy_obj('photos', marmot)
+        new_proxy.put(marmot_photo, content_type='image/jpeg', foo='bar')
+        marmot_photo.close()
+
+        marmot.photos.append(new_proxy)
+        marmot.save()
+
+        marmot = Animal.objects.get()
+        self.assertEqual(marmot.photos[0].content_type, 'image/jpeg')
+        self.assertEqual(marmot.photos[0].foo, 'bar')
+        self.assertEqual(marmot.photos[0].get().length, 8313)
 
 if __name__ == '__main__':
     unittest.main()

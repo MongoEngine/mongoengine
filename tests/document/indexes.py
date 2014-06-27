@@ -156,6 +156,25 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual([{'fields': [('_cls', 1), ('title', 1)]}],
                          A._meta['index_specs'])
 
+    def test_index_no_cls(self):
+        """Ensure index specs are inhertited correctly"""
+
+        class A(Document):
+            title = StringField()
+            meta = {
+                'indexes': [
+                        {'fields': ('title',), 'cls': False},
+                ],
+                'allow_inheritance': True,
+                'index_cls': False
+                }
+
+        self.assertEqual([('title', 1)], A._meta['index_specs'][0]['fields'])
+        A._get_collection().drop_indexes()
+        A.ensure_indexes()
+        info = A._get_collection().index_information()
+        self.assertEqual(len(info.keys()), 2)
+
     def test_build_index_spec_is_not_destructive(self):
 
         class MyDoc(Document):
@@ -472,7 +491,7 @@ class IndexesTest(unittest.TestCase):
 
         def invalid_index_2():
             return BlogPost.objects.hint(('tags', 1))
-        self.assertRaises(TypeError, invalid_index_2)
+        self.assertRaises(Exception, invalid_index_2)
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.

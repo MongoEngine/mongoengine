@@ -54,7 +54,7 @@ be saved ::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
 
-Dynamic fields are stored in alphabetical order *after* any declared fields.
+Dynamic fields are stored in creation order *after* any declared fields.
 
 Fields
 ======
@@ -290,6 +290,12 @@ instance of the object to the query::
     # Find all pages that both Bob and John have authored
     Page.objects(authors__all=[bob, john])
 
+    # Remove Bob from the authors for a page.
+    Page.objects(id='...').update_one(pull__authors=bob)
+
+    # Add John to the authors for a page.
+    Page.objects(id='...').update_one(push__authors=john)
+
 
 Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
@@ -442,6 +448,8 @@ The following example shows a :class:`Log` document that will be limited to
         ip_address = StringField()
         meta = {'max_documents': 1000, 'max_size': 2000000}
 
+.. defining-indexes_
+
 Indexes
 =======
 
@@ -450,8 +458,8 @@ by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
 either be a single field name, a tuple containing multiple field names, or a
 dictionary containing a full index definition. A direction may be specified on
-fields by prefixing the field name with a **+** or a **-** sign. Note that
-direction only matters on multi-field indexes. ::
+fields by prefixing the field name with a **+** (for ascending) or a **-** sign
+(for descending). Note that direction only matters on multi-field indexes. ::
 
     class Page(Document):
         title = StringField()
@@ -485,6 +493,35 @@ If a dictionary is passed then the following options are available:
 
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
 
+Global index default options
+----------------------------
+
+There are a few top level defaults for all indexes that can be set::
+
+    class Page(Document):
+        title = StringField()
+        rating = StringField()
+        meta = {
+            'index_options': {},
+            'index_background': True,
+            'index_drop_dups': True,
+            'index_cls': False
+        }
+
+
+:attr:`index_options` (Optional)
+    Set any default index options - see the `full options list <http://docs.mongodb.org/manual/reference/method/db.collection.ensureIndex/#db.collection.ensureIndex>`_
+
+:attr:`index_background` (Optional)
+    Set the default value for if an index should be indexed in the background
+
+:attr:`index_drop_dups` (Optional)
+    Set the default value for if an index should drop duplicates
+
+:attr:`index_cls` (Optional)
+    A way to turn off a specific index for _cls.
+
+
 Compound Indexes and Indexing sub documents
 -------------------------------------------
 
@@ -493,6 +530,8 @@ field name to the index definition.
 
 Sometimes its more efficient to index parts of Embedded / dictionary fields,
 in this case use 'dot' notation to identify the value to index eg: `rank.title`
+
+.. _geospatial-indexes:
 
 Geospatial indexes
 ------------------
@@ -557,6 +596,11 @@ documentation for more information.  A common usecase might be session data::
                 {'fields': ['created'], 'expireAfterSeconds': 3600}
             ]
         }
+
+.. warning:: TTL indexes happen on the MongoDB server and not in the application
+    code, therefore no signals will be fired on document deletion.
+    If you need signals to be fired on deletion, then you must handle the
+    deletion of Documents in your application code.
 
 Comparing Indexes
 -----------------
@@ -653,7 +697,6 @@ document.::
 .. note:: From 0.8 onwards you must declare :attr:`allow_inheritance` defaults
           to False, meaning you must set it to True to use inheritance.
 
-
 Working with existing data
 --------------------------
 As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
@@ -673,3 +716,25 @@ defining all possible field types.
 
 If you use :class:`~mongoengine.Document` and the database contains data that
 isn't defined then that data will be stored in the `document._data` dictionary.
+
+Abstract classes
+================
+
+If you want to add some extra functionality to a group of Document classes but
+you don't need or want the overhead of inheritance you can use the
+:attr:`abstract` attribute of :attr:`-mongoengine.Document.meta`.
+This won't turn on :ref:`document-inheritance` but will allow you to keep your
+code DRY::
+
+        class BaseDocument(Document):
+            meta = {
+                'abstract': True,
+            }
+            def check_permissions(self):
+                ...
+
+        class User(BaseDocument):
+           ...
+
+Now the User class will have access to the inherited `check_permissions` method
+and won't store any of the extra `_cls` information.

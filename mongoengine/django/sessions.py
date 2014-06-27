@@ -1,7 +1,11 @@
+from bson import json_util
 from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase, CreateError
 from django.core.exceptions import SuspiciousOperation
-from django.utils.encoding import force_unicode
+try:
+    from django.utils.encoding import force_unicode
+except ImportError:
+    from django.utils.encoding import force_text as force_unicode
 
 from mongoengine.document import Document
 from mongoengine import fields
@@ -52,6 +56,12 @@ class SessionStore(SessionBase):
     """A MongoEngine-based session store for Django.
     """
 
+    def _get_session(self, *args, **kwargs):
+        sess = super(SessionStore, self)._get_session(*args, **kwargs)
+        if sess.get('_auth_user_id', None):
+            sess['_auth_user_id'] = str(sess.get('_auth_user_id'))
+        return sess
+
     def load(self):
         try:
             s = MongoSession.objects(session_key=self.session_key,
@@ -100,3 +110,15 @@ class SessionStore(SessionBase):
                 return
             session_key = self.session_key
         MongoSession.objects(session_key=session_key).delete()
+
+
+class BSONSerializer(object):
+    """
+    Serializer that can handle BSON types (eg ObjectId).
+    """
+    def dumps(self, obj):
+        return json_util.dumps(obj, separators=(',', ':')).encode('ascii')
+
+    def loads(self, data):
+        return json_util.loads(data.decode('ascii'))
+

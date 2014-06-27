@@ -5,6 +5,8 @@ import unittest
 from datetime import datetime, timedelta
 from mongoengine import *
 
+from nose.plugins.skip import SkipTest
+
 __all__ = ("GeoQueriesTest",)
 
 
@@ -139,6 +141,7 @@ class GeoQueriesTest(unittest.TestCase):
     def test_spherical_geospatial_operators(self):
         """Ensure that spherical geospatial queries are working
         """
+        raise SkipTest("https://jira.mongodb.org/browse/SERVER-14039")
         class Point(Document):
             location = GeoPointField()
 
@@ -413,6 +416,48 @@ class GeoQueriesTest(unittest.TestCase):
 
         roads = Road.objects.filter(poly__geo_intersects={"$geometry": polygon}).count()
         self.assertEqual(1, roads)
+
+    def test_2dsphere_point_sets_correctly(self):
+        class Location(Document):
+            loc = PointField()
+
+        Location.drop_collection()
+
+        Location(loc=[1,2]).save()
+        loc = Location.objects.as_pymongo()[0]
+        self.assertEqual(loc["loc"], {"type": "Point", "coordinates": [1, 2]})
+
+        Location.objects.update(set__loc=[2,1])
+        loc = Location.objects.as_pymongo()[0]
+        self.assertEqual(loc["loc"], {"type": "Point", "coordinates": [2, 1]})
+
+    def test_2dsphere_linestring_sets_correctly(self):
+        class Location(Document):
+            line = LineStringField()
+
+        Location.drop_collection()
+
+        Location(line=[[1, 2], [2, 2]]).save()
+        loc = Location.objects.as_pymongo()[0]
+        self.assertEqual(loc["line"], {"type": "LineString", "coordinates": [[1, 2], [2, 2]]})
+
+        Location.objects.update(set__line=[[2, 1], [1, 2]])
+        loc = Location.objects.as_pymongo()[0]
+        self.assertEqual(loc["line"], {"type": "LineString", "coordinates": [[2, 1], [1, 2]]})
+
+    def test_geojson_PolygonField(self):
+        class Location(Document):
+            poly = PolygonField()
+
+        Location.drop_collection()
+
+        Location(poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]]).save()
+        loc = Location.objects.as_pymongo()[0]
+        self.assertEqual(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
+
+        Location.objects.update(set__poly=[[[40, 4], [40, 6], [41, 6], [40, 4]]])
+        loc = Location.objects.as_pymongo()[0]
+        self.assertEqual(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 4], [40, 6], [41, 6], [40, 4]]]})
 
 if __name__ == '__main__':
     unittest.main()

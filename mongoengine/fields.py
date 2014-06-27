@@ -42,7 +42,8 @@ __all__ = ['StringField',  'URLField',  'EmailField',  'IntField',  'LongField',
            'GenericReferenceField',  'BinaryField',  'GridFSError',
            'GridFSProxy',  'FileField',  'ImageGridFsProxy',
            'ImproperlyConfigured',  'ImageField',  'GeoPointField', 'PointField',
-           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField']
+           'LineStringField', 'PolygonField', 'SequenceField',  'UUIDField',
+           'GeoJsonBaseField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -152,7 +153,7 @@ class EmailField(StringField):
     EMAIL_REGEX = re.compile(
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
         r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'  # quoted-string
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,253}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$', re.IGNORECASE  # domain
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,253}[A-Z0-9])?\.)+[A-Z]{2,6}$', re.IGNORECASE  # domain
     )
 
     def validate(self, value):
@@ -279,14 +280,14 @@ class DecimalField(BaseField):
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal libary:
 
-            - decimial.ROUND_CEILING (towards Infinity)
-            - decimial.ROUND_DOWN (towards zero)
-            - decimial.ROUND_FLOOR (towards -Infinity)
-            - decimial.ROUND_HALF_DOWN (to nearest with ties going towards zero)
-            - decimial.ROUND_HALF_EVEN (to nearest with ties going to nearest even integer)
-            - decimial.ROUND_HALF_UP (to nearest with ties going away from zero)
-            - decimial.ROUND_UP (away from zero)
-            - decimial.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
+            - decimal.ROUND_CEILING (towards Infinity)
+            - decimal.ROUND_DOWN (towards zero)
+            - decimal.ROUND_FLOOR (towards -Infinity)
+            - decimal.ROUND_HALF_DOWN (to nearest with ties going towards zero)
+            - decimal.ROUND_HALF_EVEN (to nearest with ties going to nearest even integer)
+            - decimal.ROUND_HALF_UP (to nearest with ties going away from zero)
+            - decimal.ROUND_UP (away from zero)
+            - decimal.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
 
             Defaults to: ``decimal.ROUND_HALF_UP``
 
@@ -304,7 +305,10 @@ class DecimalField(BaseField):
             return value
 
         # Convert to string for python 2.6 before casting to Decimal
-        value = decimal.Decimal("%s" % value)
+        try:
+            value = decimal.Decimal("%s" % value)
+        except decimal.InvalidOperation:
+            return value
         return value.quantize(self.precision, rounding=self.rounding)
 
     def to_mongo(self, value):
@@ -387,7 +391,7 @@ class DateTimeField(BaseField):
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except ValueError:
+            except (TypeError, ValueError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
@@ -624,7 +628,9 @@ class DynamicField(BaseField):
             cls = value.__class__
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
-            if (isinstance(value, (Document, EmbeddedDocument))):
+            if (isinstance(value, Document)):
+                val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
+            if (isinstance(value, EmbeddedDocument)):
                 val['_cls'] = cls.__name__
             return val
 
@@ -644,6 +650,15 @@ class DynamicField(BaseField):
         if is_list:  # Convert back to a list
             value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
         return value
+
+    def to_python(self, value):
+        if isinstance(value, dict) and '_cls' in value:
+            doc_cls = get_document(value['_cls'])
+            if '_ref' in value:
+                value = doc_cls._get_db().dereference(value['_ref'])
+            return doc_cls._from_son(value)
+
+        return super(DynamicField, self).to_python(value)
 
     def lookup_member(self, member_name):
         return member_name
@@ -724,13 +739,28 @@ class SortedListField(ListField):
                           reverse=self._order_reverse)
         return sorted(value, reverse=self._order_reverse)
 
+def key_not_string(d):
+    """ Helper function to recursively determine if any key in a dictionary is
+    not a string.
+    """
+    for k, v in d.items():
+        if not isinstance(k, basestring) or (isinstance(v, dict) and key_not_string(v)):
+            return True
+
+def key_has_dot_or_dollar(d):
+    """ Helper function to recursively determine if any key in a dictionary
+    contains a dot or a dollar sign.
+    """
+    for k, v in d.items():
+        if ('.' in k or '$' in k) or (isinstance(v, dict) and key_has_dot_or_dollar(v)):
+            return True
 
 class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
     .. note::
-        Required means it cannot be empty - as the default for ListFields is []
+        Required means it cannot be empty - as the default for DictFields is {}
 
     .. versionadded:: 0.3
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
@@ -750,11 +780,11 @@ class DictField(ComplexBaseField):
         if not isinstance(value, dict):
             self.error('Only dictionaries may be used in a DictField')
 
-        if any(k for k in value.keys() if not isinstance(k, basestring)):
+        if key_not_string(value):
             msg = ("Invalid dictionary key - documents must "
                    "have only string keys")
             self.error(msg)
-        if any(('.' in k or '$' in k) for k in value.keys()):
+        if key_has_dot_or_dollar(value):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')
         super(DictField, self).validate(value)
@@ -769,6 +799,10 @@ class DictField(ComplexBaseField):
 
         if op in match_operators and isinstance(value, basestring):
             return StringField().prepare_query_value(op, value)
+
+        if hasattr(self.field, 'field'):
+            return self.field.prepare_query_value(op, value)
+
         return super(DictField, self).prepare_query_value(op, value)
 
 
@@ -989,7 +1023,10 @@ class GenericReferenceField(BaseField):
         id_ = id_field.to_mongo(id_)
         collection = document._get_collection_name()
         ref = DBRef(collection, id_)
-        return {'_cls': document._class_name, '_ref': ref}
+        return SON((
+            ('_cls', document._class_name),
+            ('_ref', ref)
+        ))
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -1082,6 +1119,10 @@ class GridFSProxy(object):
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
+
+    def __str__(self):
+        name = getattr(self.get(), 'filename', self.grid_id) if self.get() else '(no file)'
+        return '<%s: %s>' % (self.__class__.__name__, name)
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
@@ -1190,9 +1231,7 @@ class FileField(BaseField):
         # Check if a file already exists for this model
         grid_file = instance._data.get(self.name)
         if not isinstance(grid_file, self.proxy_class):
-            grid_file = self.proxy_class(key=self.name, instance=instance,
-                                         db_alias=self.db_alias,
-                                         collection_name=self.collection_name)
+            grid_file = self.get_proxy_obj(key=self.name, instance=instance)
             instance._data[self.name] = grid_file
 
         if not grid_file.key:
@@ -1214,14 +1253,22 @@ class FileField(BaseField):
                     pass
 
             # Create a new proxy object as we don't already have one
-            instance._data[key] = self.proxy_class(key=key, instance=instance,
-                                                   db_alias=self.db_alias,
-                                                   collection_name=self.collection_name)
+            instance._data[key] = self.get_proxy_obj(key=key, instance=instance)
             instance._data[key].put(value)
         else:
             instance._data[key] = value
 
         instance._mark_as_changed(key)
+
+    def get_proxy_obj(self, key, instance, db_alias=None, collection_name=None):
+        if db_alias is None:
+            db_alias = self.db_alias
+        if collection_name is None:
+            collection_name = self.collection_name
+
+        return self.proxy_class(key=key, instance=instance,
+                                db_alias=db_alias,
+                                collection_name=collection_name)
 
     def to_mongo(self, value):
         # Store the GridFS file id in MongoDB
@@ -1255,6 +1302,9 @@ class ImageGridFsProxy(GridFSProxy):
         applying field properties (size, thumbnail_size)
         """
         field = self.instance._fields[self.key]
+        # Handle nested fields
+        if hasattr(field, 'field') and isinstance(field.field, FileField):
+            field = field.field
 
         try:
             img = Image.open(file_obj)
@@ -1563,7 +1613,12 @@ class UUIDField(BaseField):
 
 
 class GeoPointField(BaseField):
-    """A list storing a latitude and longitude.
+    """A list storing a longitude and latitude coordinate. 
+
+    .. note:: this represents a generic point in a 2D plane and a legacy way of 
+        representing a geo point. It admits 2d indexes but not "2dsphere" indexes 
+        in MongoDB > 2.4 which are more natural for modeling geospatial points. 
+        See :ref:`geospatial-indexes` 
 
     .. versionadded:: 0.4
     """
@@ -1585,7 +1640,7 @@ class GeoPointField(BaseField):
 
 
 class PointField(GeoJsonBaseField):
-    """A geo json field storing a latitude and longitude.
+    """A GeoJSON field storing a longitude and latitude coordinate.
 
     The data is represented as:
 
@@ -1604,7 +1659,7 @@ class PointField(GeoJsonBaseField):
 
 
 class LineStringField(GeoJsonBaseField):
-    """A geo json field storing a line of latitude and longitude coordinates.
+    """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is represented as:
 
@@ -1622,7 +1677,7 @@ class LineStringField(GeoJsonBaseField):
 
 
 class PolygonField(GeoJsonBaseField):
-    """A geo json field storing a polygon of latitude and longitude coordinates.
+    """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is represented as:
 

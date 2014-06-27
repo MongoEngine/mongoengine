@@ -4,7 +4,7 @@ from base import (BaseDict, BaseList, TopLevelDocumentMetaclass, get_document)
 from fields import (ReferenceField, ListField, DictField, MapField)
 from connection import get_db
 from queryset import QuerySet
-from document import Document
+from document import Document, EmbeddedDocument
 
 
 class DeReference(object):
@@ -33,7 +33,8 @@ class DeReference(object):
         self.max_depth = max_depth
         doc_type = None
 
-        if instance and isinstance(instance, (Document, TopLevelDocumentMetaclass)):
+        if instance and isinstance(instance, (Document, EmbeddedDocument,
+                                              TopLevelDocumentMetaclass)):
             doc_type = instance._fields.get(name)
             while hasattr(doc_type, 'field'):
                 doc_type = doc_type.field

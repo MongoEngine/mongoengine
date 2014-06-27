@@ -20,7 +20,7 @@ a document is created to store details about animals, including a photo::
 
     marmot = Animal(genus='Marmota', family='Sciuridae')
 
-    marmot_photo = open('marmot.jpg', 'r')
+    marmot_photo = open('marmot.jpg', 'rb')
     marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
     marmot.save()
 
@@ -46,7 +46,7 @@ slightly different manner.  First, a new file must be created by calling the
     marmot.photo.write('some_more_image_data')
     marmot.photo.close()
 
-    marmot.photo.save()
+    marmot.save()
 
 Deletion
 --------
@@ -70,5 +70,5 @@ Replacing files
 Files can be replaced with the :func:`replace` method. This works just like
 the :func:`put` method so even metadata can (and should) be replaced::
 
-    another_marmot = open('another_marmot.png', 'r')
+    another_marmot = open('another_marmot.png', 'rb')
     marmot.photo.replace(another_marmot, content_type='image/png')

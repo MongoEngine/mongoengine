@@ -384,6 +384,9 @@ class FieldTest(unittest.TestCase):
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
+        person_2 = Person(height='something invalid')
+        self.assertRaises(ValidationError, person_2.validate)
+
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.
         """
@@ -405,6 +408,11 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, person.validate)
         person.height = Decimal('4.0')
         self.assertRaises(ValidationError, person.validate)
+        person.height = 'something invalid'
+        self.assertRaises(ValidationError, person.validate)
+
+        person_2 = Person(height='something invalid')
+        self.assertRaises(ValidationError, person_2.validate)
 
         Person.drop_collection()
 
@@ -1018,6 +1026,32 @@ class FieldTest(unittest.TestCase):
         e.mapping = {}
         self.assertEqual([], e._changed_fields)
 
+    def test_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        simple.widgets[:3] = []
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
+    def test_del_slice_marks_field_as_changed(self):
+
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        del simple.widgets[:3]
+        self.assertEqual(['widgets'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [4])
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 
@@ -1083,7 +1117,13 @@ class FieldTest(unittest.TestCase):
         post.info = {'$title': 'test'}
         self.assertRaises(ValidationError, post.validate)
 
+        post.info = {'nested': {'$title': 'test'}}
+        self.assertRaises(ValidationError, post.validate)
+
         post.info = {'the.title': 'test'}
+        self.assertRaises(ValidationError, post.validate)
+
+        post.info = {'nested': {'the.title': 'test'}}
         self.assertRaises(ValidationError, post.validate)
 
         post.info = {1: 'test'}
@@ -1864,6 +1904,37 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+    def test_generic_reference_list_item_modification(self):
+        """Ensure that modifications of related documents (through generic reference) don't influence on querying
+        """
+        class Post(Document):
+            title = StringField()
+
+        class User(Document):
+            username = StringField()
+            bookmarks = ListField(GenericReferenceField())
+
+        Post.drop_collection()
+        User.drop_collection()
+
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+
+        user = User(bookmarks=[post_1])
+        user.save()
+
+        post_1.title = "Title was modified"
+        user.username = "New username"
+        user.save()
+
+        user = User.objects(bookmarks__all=[post_1]).first()
+
+        self.assertNotEqual(user, None)
+        self.assertEqual(user.bookmarks[0], post_1)
+
+        Post.drop_collection()
+        User.drop_collection()
+
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
@@ -2428,12 +2499,18 @@ class FieldTest(unittest.TestCase):
         user = User(email="ross@example.com")
         self.assertTrue(user.validate() is None)
 
+        user = User(email="ross@example.co.uk")
+        self.assertTrue(user.validate() is None)
+
         user = User(email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S"
                            "ucictfqpdkK9iS1zeFw8sg7s7cwAF7suIfUfeyueLpfosjn3"
                            "aJIazqqWkm7.net"))
         self.assertTrue(user.validate() is None)
 
         user = User(email='me@localhost')
+        self.assertRaises(ValidationError, user.validate)
+
+        user = User(email="ross@example.com.")
         self.assertRaises(ValidationError, user.validate)
 
     def test_email_field_honors_regex(self):
@@ -2447,6 +2524,92 @@ class FieldTest(unittest.TestCase):
         # Passes regex validation
         user = User(email='me@example.com')
         self.assertTrue(user.validate() is None)
+
+    def test_tuples_as_tuples(self):
+        """
+        Ensure that tuples remain tuples when they are
+        inside a ComplexBaseField
+        """
+        from mongoengine.base import BaseField
+
+        class EnumField(BaseField):
+
+            def __init__(self, **kwargs):
+                super(EnumField, self).__init__(**kwargs)
+
+            def to_mongo(self, value):
+                return value
+
+            def to_python(self, value):
+                return tuple(value)
+
+        class TestDoc(Document):
+            items = ListField(EnumField())
+
+        TestDoc.drop_collection()
+        tuples = [(100, 'Testing')]
+        doc = TestDoc()
+        doc.items = tuples
+        doc.save()
+        x = TestDoc.objects().get()
+        self.assertTrue(x is not None)
+        self.assertTrue(len(x.items) == 1)
+        self.assertTrue(tuple(x.items[0]) in tuples)
+        self.assertTrue(x.items[0] in tuples)
+
+    def test_dynamic_fields_class(self):
+
+        class Doc2(Document):
+            field_1 = StringField(db_field='f')
+
+        class Doc(Document):
+            my_id = IntField(required=True, unique=True, primary_key=True)
+            embed_me = DynamicField(db_field='e')
+            field_x = StringField(db_field='x')
+
+        Doc.drop_collection()
+        Doc2.drop_collection()
+
+        doc2 = Doc2(field_1="hello")
+        doc = Doc(my_id=1, embed_me=doc2, field_x="x")
+        self.assertRaises(OperationError, doc.save)
+
+        doc2.save()
+        doc.save()
+
+        doc = Doc.objects.get()
+        self.assertEqual(doc.embed_me.field_1, "hello")
+
+    def test_dynamic_fields_embedded_class(self):
+
+        class Embed(EmbeddedDocument):
+            field_1 = StringField(db_field='f')
+
+        class Doc(Document):
+            my_id = IntField(required=True, unique=True, primary_key=True)
+            embed_me = DynamicField(db_field='e')
+            field_x = StringField(db_field='x')
+
+        Doc.drop_collection()
+
+        Doc(my_id=1, embed_me=Embed(field_1="hello"), field_x="x").save()
+
+        doc = Doc.objects.get()
+        self.assertEqual(doc.embed_me.field_1, "hello")
+
+    def test_invalid_dict_value(self):
+        class DictFieldTest(Document):
+            dictionary = DictField(required=True)
+
+        DictFieldTest.drop_collection()
+
+        test = DictFieldTest(dictionary=None)
+        test.dictionary # Just access to test getter
+        self.assertRaises(ValidationError, test.validate)
+
+        test = DictFieldTest(dictionary=False)
+        test.dictionary # Just access to test getter
+        self.assertRaises(ValidationError, test.validate)
 
 
 if __name__ == '__main__':
