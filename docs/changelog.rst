@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Implemented equality between Documents and DBRefs #597
 - Fixed ReferenceField inside nested ListFields dereferencing problem #368
 - Added the ability to reload specific document fields #100
 - Added db_alias support and fixes for custom map/reduce output #586
