@@ -312,9 +312,9 @@ class Document(BaseDocument):
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
+        signals.post_save.send(self.__class__, document=self, created=created)
         self._clear_changed_fields()
         self._created = False
-        signals.post_save.send(self.__class__, document=self, created=created)
         return self
 
     def cascade_save(self, *args, **kwargs):
