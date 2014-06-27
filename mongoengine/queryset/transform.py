@@ -117,19 +117,24 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 mongo_query[key].update(value)
                 # $maxDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
-                if ('$maxDistance' in value_dict and '$near' in value_dict and
-                    isinstance(value_dict['$near'], dict)):
-
+                if ('$maxDistance' in value_dict and '$near' in value_dict):
                     value_son = SON()
-                    for k, v in value_dict.iteritems():
-                        if k == '$maxDistance':
-                            continue
-                        value_son[k] = v
-                    if (get_connection().max_wire_version <= 1):
-                        value_son['$maxDistance'] = value_dict['$maxDistance']
+                    if isinstance(value_dict['$near'], dict):
+                        for k, v in value_dict.iteritems():
+                            if k == '$maxDistance':
+                                continue
+                            value_son[k] = v
+                        if (get_connection().max_wire_version <= 1):
+                            value_son['$maxDistance'] = value_dict['$maxDistance']
+                        else:
+                            value_son['$near'] = SON(value_son['$near'])
+                            value_son['$near']['$maxDistance'] = value_dict['$maxDistance']
                     else:
-                        value_son['$near'] = SON(value_son['$near'])
-                        value_son['$near']['$maxDistance'] = value_dict['$maxDistance']
+                        for k, v in value_dict.iteritems():
+                            if k == '$maxDistance':
+                                continue
+                            value_son[k] = v
+                        value_son['$maxDistance'] = value_dict['$maxDistance']
 
                     mongo_query[key] = value_son
             else:
