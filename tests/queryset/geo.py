@@ -5,6 +5,8 @@ import unittest
 from datetime import datetime, timedelta
 from mongoengine import *
 
+from nose.plugins.skip import SkipTest
+
 __all__ = ("GeoQueriesTest",)
 
 
@@ -139,6 +141,7 @@ class GeoQueriesTest(unittest.TestCase):
     def test_spherical_geospatial_operators(self):
         """Ensure that spherical geospatial queries are working
         """
+        raise SkipTest("https://jira.mongodb.org/browse/SERVER-14039")
         class Point(Document):
             location = GeoPointField()
 
