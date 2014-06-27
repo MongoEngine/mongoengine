@@ -11,7 +11,7 @@ __all__ = ('query', 'update')
 
 
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                        'all', 'size', 'exists', 'not')
+                        'all', 'size', 'exists', 'not', 'elemMatch')
 GEO_OPERATORS        = ('within_distance', 'within_spherical_distance',
                         'within_box', 'within_polygon', 'near', 'near_sphere',
                         'max_distance', 'geo_within', 'geo_within_box',
@@ -95,7 +95,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             if op in GEO_OPERATORS:
                 value = _geo_operator(field, op, value)
             elif op in CUSTOM_OPERATORS:
-                if op == 'match':
+                if op in ('elem_match', 'match'):
                     value = field.prepare_query_value(op, value)
                     value = {"$elemMatch": value}
                 else:

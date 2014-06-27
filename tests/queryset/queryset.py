@@ -3604,6 +3604,9 @@ class QuerySetTest(unittest.TestCase):
         ak = list(Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
 
+        ak = list(Bar.objects(foo__elemMatch={'shape': "square", "color": "purple"}))
+        self.assertEqual([b1], ak)
+
         ak = list(Bar.objects(foo__match=Foo(shape="square", color="purple")))
         self.assertEqual([b1], ak)
 
