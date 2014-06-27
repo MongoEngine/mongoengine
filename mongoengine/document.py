@@ -69,7 +69,7 @@ class EmbeddedDocument(BaseDocument):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.to_mongo() == other.to_mongo()
+            return self._data == other._data
         return False
 
     def __ne__(self, other):

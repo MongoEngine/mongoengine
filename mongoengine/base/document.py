@@ -229,8 +229,9 @@ class BaseDocument(object):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):
-            if self.id == other.id:
-                return True
+            return self.id == other.id
+        if isinstance(other, DBRef):
+            return self._get_collection_name() == other.collection and self.id == other.id
         return False
 
     def __ne__(self, other):
