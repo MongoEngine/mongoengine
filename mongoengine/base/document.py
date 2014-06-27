@@ -3,6 +3,7 @@ import operator
 import numbers
 from collections import Hashable
 from functools import partial
+import re
 
 import pymongo
 from bson import json_util, ObjectId
@@ -253,12 +254,35 @@ class BaseDocument(object):
         """
         pass
 
-    def to_mongo(self):
-        """Return as SON data ready for use with MongoDB.
+    def _find_role(self, role=None):
         """
+        Returns a list of all fields for specified role.
+        """
+        if role is None or not hasattr(self, "_meta"):
+            return (None, None)
+
+        parsed_role = re.split(r"\s*[.]\s*", role.strip())
+        if len(parsed_role) < 2:
+            parsed_role.append("_default")
+        if len(parsed_role) != 2 or parsed_role[0] != "json":
+            raise KeyError("Role name must start with 'json'.")
+
+        roles = self._meta.get("roles", None)
+        if roles is not None:
+            if parsed_role[0] in roles and parsed_role[1] in roles[parsed_role[0]]:
+                return (parsed_role, roles[parsed_role[0]][parsed_role[1]])
+
+        return (None, None)
+
+    def _to_mongo(self, role=None):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
+
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
+
+        parsed_role, role_filter = self._find_role(role=role)
 
         for field_name in self:
             value = self._data.get(field_name, None)
@@ -266,8 +290,16 @@ class BaseDocument(object):
             if field is None and self._dynamic:
                 field = self._dynamic_fields.get(field_name)
 
+            if parsed_role and role_filter:
+                if role_filter(field_name, value):
+                    continue
+
             if value is not None:
-                value = field.to_mongo(value)
+                if isinstance(field, (EmbeddedDocumentField,
+                                      GenericEmbeddedDocumentField)):
+                    value = field.to_mongo(value, role=role)
+                else:
+                    value = field.to_mongo(value)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
@@ -283,7 +315,8 @@ class BaseDocument(object):
             if data["_id"] is None:
                 data["_id"] = self._data.get("id", None)
 
-        if data['_id'] is None:
+        if data['_id'] is None or (role_filter and
+                                   role_filter("id", value)):
             data.pop('_id')
 
         # Only add _cls if allow_inheritance is True
@@ -292,6 +325,11 @@ class BaseDocument(object):
             data.pop('_cls')
 
         return data
+
+    def to_mongo(self):
+        """Return as SON data ready for use with MongoDB.
+        """
+        return self._to_mongo(role=None)
 
     def validate(self, clean=True):
         """Ensure that all fields' values are valid and that required fields
@@ -337,9 +375,81 @@ class BaseDocument(object):
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
-    def to_json(self, *args, **kwargs):
-        """Converts a document to JSON"""
-        return json_util.dumps(self.to_mongo(),  *args, **kwargs)
+    def to_json(self, role=None, *args, **kwargs):
+        """Converts a document to JSON
+
+        You can filter out fields by declaring the role into your model.
+        This really useful when you want to send a document to
+        the remote location like RESTful API.
+
+        Example ::
+
+            class Profile(EmbeddedDocument):
+                name = StringField()
+                email = StringField()
+                password = StringField()
+
+                meta = {
+                    "roles": {
+                        "json": {
+                            # the "_default" role will be used when the role is not specified
+                            "_default": blacklist("email", "password"),
+                            "admin": whitelist("name", "email", "password")
+                        }
+                    }
+                }
+
+            class User(Document):
+                user_id = StringField()
+                profile = EmbeddedDocumentField(Profile)
+
+                meta = {
+                    "roles": {
+                        "json": {
+                            # the "_default" role will be used when the role is not specified
+                            "_default": blacklist("id"),
+                            "admin": whitelist("id", "user_id", "profile")
+                        }
+                    }
+                }
+
+            hashed_password = hashlib.sha1("password").hexdigest()
+            profile = Profile(name="Jaepil",
+                              email="jaepil@somewhere.com",
+                              password=hashed_password)
+            user = User(user_id="jaepil", profile=profile)
+
+            json_default = user.to_json()
+            self.assertEqual(json.loads(json_default),
+                             {
+                                 "user_id": "jaepil",
+                                 "profile": {
+                                     "name": "Jaepil"
+                                 }
+                             })
+
+            json_admin = user.to_json(role="admin")
+            self.assertEqual(json.loads(json_admin),
+                             {
+                                 "user_id": "jaepil",
+                                 "profile": {
+                                     "name": "Jaepil",
+                                     "email": "jaepil@somewhere.com",
+                                     "password": hashed_password
+                                 }
+                             })
+
+        :param role: Sets the role that filter which fields appear in the JSON string.
+
+        .. versionchanged:: 0.8
+            Added role based serialization
+        """
+        if role is None:
+            role = "json._default"
+        elif not role.startswith("json."):
+            role = ".".join(["json", role])
+
+        return json_util.dumps(self._to_mongo(role=role), *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data):
