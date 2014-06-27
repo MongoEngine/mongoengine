@@ -391,7 +391,7 @@ class DateTimeField(BaseField):
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except ValueError:
+            except (TypeError, ValueError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
@@ -760,7 +760,7 @@ class DictField(ComplexBaseField):
     similar to an embedded document, but the structure is not defined.
 
     .. note::
-        Required means it cannot be empty - as the default for ListFields is []
+        Required means it cannot be empty - as the default for DictFields is {}
 
     .. versionadded:: 0.3
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
@@ -1554,6 +1554,14 @@ class SequenceField(BaseField):
 
         return super(SequenceField, self).__set__(instance, value)
 
+    def prepare_query_value(self, op, value):
+        """
+        This method is overriden in order to convert the query value into to required
+        type. We need to do this in order to be able to successfully compare query   
+        values passed as string, the base implementation returns the value as is.
+        """
+        return self.value_decorator(value)
+
     def to_python(self, value):
         if value is None:
             value = self.generate()
@@ -1613,7 +1621,12 @@ class UUIDField(BaseField):
 
 
 class GeoPointField(BaseField):
-    """A list storing a latitude and longitude.
+    """A list storing a longitude and latitude coordinate. 
+
+    .. note:: this represents a generic point in a 2D plane and a legacy way of 
+        representing a geo point. It admits 2d indexes but not "2dsphere" indexes 
+        in MongoDB > 2.4 which are more natural for modeling geospatial points. 
+        See :ref:`geospatial-indexes` 
 
     .. versionadded:: 0.4
     """
@@ -1635,7 +1648,7 @@ class GeoPointField(BaseField):
 
 
 class PointField(GeoJsonBaseField):
-    """A geo json field storing a latitude and longitude.
+    """A GeoJSON field storing a longitude and latitude coordinate.
 
     The data is represented as:
 
@@ -1654,7 +1667,7 @@ class PointField(GeoJsonBaseField):
 
 
 class LineStringField(GeoJsonBaseField):
-    """A geo json field storing a line of latitude and longitude coordinates.
+    """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is represented as:
 
@@ -1672,7 +1685,7 @@ class LineStringField(GeoJsonBaseField):
 
 
 class PolygonField(GeoJsonBaseField):
-    """A geo json field storing a polygon of latitude and longitude coordinates.
+    """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is represented as:
 

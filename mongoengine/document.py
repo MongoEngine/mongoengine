@@ -13,7 +13,8 @@ from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
 from mongoengine.errors import ValidationError
-from mongoengine.queryset import OperationError, NotUniqueError, QuerySet
+from mongoengine.queryset import (OperationError, NotUniqueError,
+                                  QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
 
@@ -54,20 +55,21 @@ class EmbeddedDocument(BaseDocument):
     dictionary.
     """
 
+    __slots__ = ('_instance')
+
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
-    _instance = None
-
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
+        self._instance = None
         self._changed_fields = []
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.to_mongo() == other.to_mongo()
+            return self._data == other._data
         return False
 
     def __ne__(self, other):
@@ -125,6 +127,8 @@ class Document(BaseDocument):
     my_metaclass  = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
+    __slots__ = ('__objects' )
+
     def pk():
         """Primary key alias
         """
@@ -180,7 +184,7 @@ class Document(BaseDocument):
 
     def save(self, force_insert=False, validate=True, clean=True,
              write_concern=None,  cascade=None, cascade_kwargs=None,
-             _refs=None, **kwargs):
+             _refs=None, save_condition=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -203,7 +207,8 @@ class Document(BaseDocument):
         :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
             to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
-
+        :param save_condition: only perform save if matching record in db
+            satisfies condition(s) (e.g., version number)
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
             set / unset.  Saves are cascaded and any
@@ -217,6 +222,9 @@ class Document(BaseDocument):
             meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
+        .. versionchanged:: 0.8.5
+            Optional save_condition that only overwrites existing documents
+            if the condition is satisfied in the current db record.
         """
         signals.pre_save.send(self.__class__, document=self)
 
@@ -230,7 +238,8 @@ class Document(BaseDocument):
 
         created = ('_id' not in doc or self._created or force_insert)
 
-        signals.pre_save_post_validation.send(self.__class__, document=self, created=created)
+        signals.pre_save_post_validation.send(self.__class__, document=self,
+                                              created=created)
 
         try:
             collection = self._get_collection()
@@ -243,7 +252,12 @@ class Document(BaseDocument):
                 object_id = doc['_id']
                 updates, removals = self._delta()
                 # Need to add shard key to query, or you get an error
-                select_dict = {'_id': object_id}
+                if save_condition is not None:
+                    select_dict = transform.query(self.__class__,
+                                                  **save_condition)
+                else:
+                    select_dict = {}
+                select_dict['_id'] = object_id
                 shard_key = self.__class__._meta.get('shard_key', tuple())
                 for k in shard_key:
                     actual_key = self._db_field_map.get(k, k)
@@ -263,9 +277,11 @@ class Document(BaseDocument):
                 if removals:
                     update_query["$unset"] = removals
                 if updates or removals:
+                    upsert = save_condition is None
                     last_error = collection.update(select_dict, update_query,
-                                                   upsert=True, **write_concern)
+                                                   upsert=upsert, **write_concern)
                     created = is_new_object(last_error)
+
 
             if cascade is None:
                 cascade = self._meta.get('cascade', False) or cascade_kwargs is not None
@@ -293,12 +309,12 @@ class Document(BaseDocument):
                 raise NotUniqueError(message % unicode(err))
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
-        if id_field not in self._meta.get('shard_key', []):
+        if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
+        signals.post_save.send(self.__class__, document=self, created=created)
         self._clear_changed_fields()
         self._created = False
-        signals.post_save.send(self.__class__, document=self, created=created)
         return self
 
     def cascade_save(self, *args, **kwargs):
@@ -447,27 +463,41 @@ class Document(BaseDocument):
         DeReference()([self], max_depth + 1)
         return self
 
-    def reload(self, max_depth=1):
+    def reload(self, *fields, **kwargs):
         """Reloads all attributes from the database.
+
+        :param fields: (optional) args list of fields to reload
+        :param max_depth: (optional) depth of dereferencing to follow
 
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
+        .. versionchanged:: 0.9  Can provide specific fields to reload
         """
+        max_depth = 1
+        if fields and isinstance(fields[0], int):
+            max_depth = fields[0]
+            fields = fields[1:]
+        elif "max_depth" in kwargs:
+            max_depth = kwargs["max_depth"]
+
         if not self.pk:
             raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-                    **self._object_key).limit(1).select_related(max_depth=max_depth)
-
+                    **self._object_key).only(*fields).limit(1
+                    ).select_related(max_depth=max_depth)
 
         if obj:
             obj = obj[0]
         else:
             raise self.DoesNotExist("Document does not exist")
+
         for field in self._fields_ordered:
-            setattr(self, field, self._reload(field, obj[field]))
+            if not fields or field in fields:
+                setattr(self, field, self._reload(field, obj[field]))
+
         self._changed_fields = obj._changed_fields
         self._created = False
-        return obj
+        return self
 
     def _reload(self, key, value):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the

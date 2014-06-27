@@ -207,22 +207,21 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field[2].string_field = 'hello world'
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
         self.assertEqual(doc._get_changed_fields(),
-                         ['embedded_field.list_field'])
-        self.assertEqual(doc.embedded_field._delta(), ({
-            'list_field': ['1', 2, {
-            '_cls': 'Embedded',
-            'string_field': 'hello world',
-            'int_field': 1,
-            'list_field': ['1', 2, {'hello': 'world'}],
-            'dict_field': {'hello': 'world'}}]}, {}))
-        self.assertEqual(doc._delta(), ({
-            'embedded_field.list_field': ['1', 2, {
+                         ['embedded_field.list_field.2'])
+        self.assertEqual(doc.embedded_field._delta(), ({'list_field.2': {
                 '_cls': 'Embedded',
                 'string_field': 'hello world',
                 'int_field': 1,
                 'list_field': ['1', 2, {'hello': 'world'}],
                 'dict_field': {'hello': 'world'}}
-            ]}, {}))
+            }, {}))
+        self.assertEqual(doc._delta(), ({'embedded_field.list_field.2': {
+                '_cls': 'Embedded',
+                'string_field': 'hello world',
+                'int_field': 1,
+                'list_field': ['1', 2, {'hello': 'world'}],
+                'dict_field': {'hello': 'world'}}
+            }, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
@@ -253,7 +252,7 @@ class DeltaTest(unittest.TestCase):
 
         del(doc.embedded_field.list_field[2].list_field[2]['hello'])
         self.assertEqual(doc._delta(),
-                         ({'embedded_field.list_field.2.list_field': [1, 2, {}]}, {}))
+                         ({}, {'embedded_field.list_field.2.list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
@@ -548,22 +547,21 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field[2].string_field = 'hello world'
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
         self.assertEqual(doc._get_changed_fields(),
-            ['db_embedded_field.db_list_field'])
-        self.assertEqual(doc.embedded_field._delta(), ({
-            'db_list_field': ['1', 2, {
+            ['db_embedded_field.db_list_field.2'])
+        self.assertEqual(doc.embedded_field._delta(), ({'db_list_field.2': {
             '_cls': 'Embedded',
             'db_string_field': 'hello world',
             'db_int_field': 1,
             'db_list_field': ['1', 2, {'hello': 'world'}],
-            'db_dict_field': {'hello': 'world'}}]}, {}))
+            'db_dict_field': {'hello': 'world'}}}, {}))
         self.assertEqual(doc._delta(), ({
-            'db_embedded_field.db_list_field': ['1', 2, {
+            'db_embedded_field.db_list_field.2': {
                 '_cls': 'Embedded',
                 'db_string_field': 'hello world',
                 'db_int_field': 1,
                 'db_list_field': ['1', 2, {'hello': 'world'}],
                 'db_dict_field': {'hello': 'world'}}
-            ]}, {}))
+            }, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
@@ -594,8 +592,7 @@ class DeltaTest(unittest.TestCase):
 
         del(doc.embedded_field.list_field[2].list_field[2]['hello'])
         self.assertEqual(doc._delta(),
-            ({'db_embedded_field.db_list_field.2.db_list_field':
-                [1, 2, {}]}, {}))
+            ({}, {'db_embedded_field.db_list_field.2.db_list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
@@ -734,6 +731,48 @@ class DeltaTest(unittest.TestCase):
 
         mydoc._clear_changed_fields()
         self.assertEqual([], mydoc._get_changed_fields())
+
+    def test_referenced_object_changed_attributes(self):
+        """Ensures that when you save a new reference to a field, the referenced object isn't altered"""
+
+        class Organization(Document):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            org = ReferenceField('Organization', required=True)
+
+        Organization.drop_collection()
+        User.drop_collection()
+
+        org1 = Organization(name='Org 1')
+        org1.save()
+
+        org2 = Organization(name='Org 2')
+        org2.save()
+
+        user = User(name='Fred', org=org1)
+        user.save()
+
+        org1.reload()
+        org2.reload()
+        user.reload()
+        self.assertEqual(org1.name, 'Org 1')
+        self.assertEqual(org2.name, 'Org 2')
+        self.assertEqual(user.name, 'Fred')
+
+        user.name = 'Harold'
+        user.org = org2
+
+        org2.name = 'New Org 2'
+        self.assertEqual(org2.name, 'New Org 2')
+
+        user.save()
+        org2.save()
+
+        self.assertEqual(org2.name, 'New Org 2')
+        org2.reload()
+        self.assertEqual(org2.name, 'New Org 2')
 
 if __name__ == '__main__':
     unittest.main()

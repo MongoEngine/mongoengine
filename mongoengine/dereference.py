@@ -36,7 +36,7 @@ class DeReference(object):
         if instance and isinstance(instance, (Document, EmbeddedDocument,
                                               TopLevelDocumentMetaclass)):
             doc_type = instance._fields.get(name)
-            if hasattr(doc_type, 'field'):
+            while hasattr(doc_type, 'field'):
                 doc_type = doc_type.field
 
             if isinstance(doc_type, ReferenceField):
@@ -51,9 +51,19 @@ class DeReference(object):
                     return items
                 elif not field.dbref:
                     if not hasattr(items, 'items'):
-                        items = [field.to_python(v)
-                             if not isinstance(v, (DBRef, Document)) else v
-                             for v in items]
+
+                        def _get_items(items):
+                            new_items = []
+                            for v in items:
+                                if isinstance(v, list):
+                                    new_items.append(_get_items(v))
+                                elif not isinstance(v, (DBRef, Document)):
+                                    new_items.append(field.to_python(v))
+                                else:
+                                    new_items.append(v)
+                            return new_items
+
+                        items = _get_items(items)
                     else:
                         items = dict([
                             (k, field.to_python(v))
@@ -114,11 +124,11 @@ class DeReference(object):
         """Fetch all references and convert to their document objects
         """
         object_map = {}
-        for col, dbrefs in self.reference_map.iteritems():
+        for collection, dbrefs in self.reference_map.iteritems():
             keys = object_map.keys()
             refs = list(set([dbref for dbref in dbrefs if unicode(dbref).encode('utf-8') not in keys]))
-            if hasattr(col, 'objects'):  # We have a document class for the refs
-                references = col.objects.in_bulk(refs)
+            if hasattr(collection, 'objects'):  # We have a document class for the refs
+                references = collection.objects.in_bulk(refs)
                 for key, doc in references.iteritems():
                     object_map[key] = doc
             else:  # Generic reference: use the refs data to convert to document
@@ -126,19 +136,19 @@ class DeReference(object):
                     continue
 
                 if doc_type:
-                    references = doc_type._get_db()[col].find({'_id': {'$in': refs}})
+                    references = doc_type._get_db()[collection].find({'_id': {'$in': refs}})
                     for ref in references:
                         doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
                 else:
-                    references = get_db()[col].find({'_id': {'$in': refs}})
+                    references = get_db()[collection].find({'_id': {'$in': refs}})
                     for ref in references:
                         if '_cls' in ref:
                             doc = get_document(ref["_cls"])._from_son(ref)
                         elif doc_type is None:
                             doc = get_document(
                                 ''.join(x.capitalize()
-                                    for x in col.split('_')))._from_son(ref)
+                                    for x in collection.split('_')))._from_son(ref)
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
@@ -204,7 +214,8 @@ class DeReference(object):
                     elif isinstance(v, (list, tuple)) and depth <= self.max_depth:
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=name)
+                item_name = '%s.%s' % (name, k) if name else name
+                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
             elif hasattr(v, 'id'):
                 data[k] = self.object_map.get(v.id, v)
 

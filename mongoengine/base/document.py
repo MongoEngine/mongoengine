@@ -13,24 +13,23 @@ from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError)
-from mongoengine.python_support import (PY3, UNICODE_KWARGS, txt_type,
-                                        to_str_keys_recursive)
+from mongoengine.python_support import PY3, txt_type
 
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
-from mongoengine.base.datastructures import BaseDict, BaseList
+from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict, SemiStrictDict
 from mongoengine.base.fields import ComplexBaseField
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
 
-
 class BaseDocument(object):
+    __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
+                  '_dynamic_fields', '_auto_id_field', '_db_field_map', '_cls', '__weakref__')
 
     _dynamic = False
-    _created = True
     _dynamic_lock = True
-    _initialised = False
+    STRICT = False
 
     def __init__(self, *args, **values):
         """
@@ -39,6 +38,8 @@ class BaseDocument(object):
         :param __auto_convert: Try and will cast python objects to Object types
         :param values: A dictionary of values for the document
         """
+        self._initialised = False
+        self._created = True
         if args:
             # Combine positional arguments with named arguments.
             # We only want named arguments.
@@ -54,7 +55,11 @@ class BaseDocument(object):
         __auto_convert = values.pop("__auto_convert", True)
         signals.pre_init.send(self.__class__, document=self, values=values)
 
-        self._data = {}
+        if self.STRICT and not self._dynamic:
+            self._data = StrictDict.create(allowed_keys=self._fields.keys())()
+        else:
+            self._data = SemiStrictDict.create(allowed_keys=self._fields.keys())()
+
         self._dynamic_fields = SON()
 
         # Assign default values to instance
@@ -130,17 +135,25 @@ class BaseDocument(object):
                 self._data[name] = value
                 if hasattr(self, '_changed_fields'):
                     self._mark_as_changed(name)
+        try:
+            self__created = self._created
+        except AttributeError:
+            self__created = True
 
-        if (self._is_document and not self._created and
+        if (self._is_document and not self__created and
            name in self._meta.get('shard_key', tuple()) and
            self._data.get(name) != value):
             OperationError = _import_class('OperationError')
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
 
+        try:
+            self__initialised = self._initialised
+        except AttributeError:
+            self__initialised = False
         # Check if the user has created a new instance of a class
-        if (self._is_document and self._initialised
-           and self._created and name == self._meta['id_field']):
+        if (self._is_document and self__initialised
+           and self__created and name == self._meta['id_field']):
                 super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
@@ -158,9 +171,11 @@ class BaseDocument(object):
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in ('_changed_fields', '_initialised', '_created', '_data',
-                  '_fields_ordered', '_dynamic_fields'):
+                   '_dynamic_fields'):
             if k in data:
                 setattr(self, k, data[k])
+        if '_fields_ordered' in data:
+            setattr(type(self), '_fields_ordered', data['_fields_ordered'])
         dynamic_fields = data.get('_dynamic_fields') or SON()
         for k in dynamic_fields.keys():
             setattr(self, k, data["_data"].get(k))
@@ -182,7 +197,7 @@ class BaseDocument(object):
         """Dictionary-style field access, set a field's value.
         """
         # Ensure that the field exists before settings its value
-        if name not in self._fields:
+        if not self._dynamic and name not in self._fields:
             raise KeyError(name)
         return setattr(self, name, value)
 
@@ -214,8 +229,9 @@ class BaseDocument(object):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):
-            if self.id == other.id:
-                return True
+            return self.id == other.id
+        if isinstance(other, DBRef):
+            return self._get_collection_name() == other.collection and self.id == other.id
         return False
 
     def __ne__(self, other):
@@ -317,7 +333,7 @@ class BaseDocument(object):
             pk = "None"
             if hasattr(self, 'pk'):
                 pk = self.pk
-            elif self._instance:
+            elif self._instance and hasattr(self._instance, 'pk'):
                 pk = self._instance.pk
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
@@ -370,9 +386,18 @@ class BaseDocument(object):
         """
         if not key:
             return
-        key = self._db_field_map.get(key, key)
-        if (hasattr(self, '_changed_fields') and
-           key not in self._changed_fields):
+
+        if not hasattr(self, '_changed_fields'):
+            return
+
+        if '.' in key:
+            key, rest = key.split('.', 1)
+            key = self._db_field_map.get(key, key)
+            key = '%s.%s' % (key, rest)
+        else:
+            key = self._db_field_map.get(key, key)
+
+        if key not in self._changed_fields:
             self._changed_fields.append(key)
 
     def _clear_changed_fields(self):
@@ -392,6 +417,8 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
                 if hasattr(data, "_changed_fields"):
+                    if hasattr(data, "_is_document") and data._is_document:
+                        continue
                     data._changed_fields = []
         self._changed_fields = []
 
@@ -405,6 +432,10 @@ class BaseDocument(object):
 
         for index, value in iterator:
             list_key = "%s%s." % (key, index)
+            # don't check anything lower if this key is already marked
+            # as changed.
+            if list_key[:-1] in changed_fields:
+                continue
             if hasattr(value, '_get_changed_fields'):
                 changed = value._get_changed_fields(inspected)
                 changed_fields += ["%s%s" % (list_key, k)
@@ -420,6 +451,7 @@ class BaseDocument(object):
         ReferenceField = _import_class("ReferenceField")
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
+
         inspected = inspected or set()
         if hasattr(self, 'id') and isinstance(self.id, Hashable):
             if self.id in inspected:
@@ -472,7 +504,10 @@ class BaseDocument(object):
                     if isinstance(d, (ObjectId, DBRef)):
                         break
                     elif isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
+                        try:
+                            d = d[int(p)]
+                        except IndexError:
+                            d = None
                     elif hasattr(d, 'get'):
                         d = d.get(p)
                     new_path.append(p)
@@ -545,10 +580,6 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
         data = dict(("%s" % key, value) for key, value in son.iteritems())
-        if not UNICODE_KWARGS:
-            # python 2.6.4 and lower cannot handle unicode keys
-            # passed to class constructor example: cls(**data)
-            to_str_keys_recursive(data)
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
@@ -586,6 +617,8 @@ class BaseDocument(object):
                    % (cls._class_name, errors))
             raise InvalidDocumentError(msg)
 
+        if cls.STRICT:
+            data = dict((k, v) for k,v in data.iteritems() if k in cls._fields)
         obj = cls(__auto_convert=False, **data)
         obj._changed_fields = changed_fields
         obj._created = False
@@ -804,8 +837,17 @@ class BaseDocument(object):
                    # Look up subfield on the previous field
                     new_field = field.lookup_member(field_name)
                 if not new_field and isinstance(field, ComplexBaseField):
-                    fields.append(field_name)
-                    continue
+                    if hasattr(field.field, 'document_type') and cls._dynamic \
+                            and field.field.document_type._dynamic:
+                        DynamicField = _import_class('DynamicField')
+                        new_field = DynamicField(db_field=field_name)
+                    else:
+                        fields.append(field_name)
+                        continue
+                elif not new_field and hasattr(field, 'document_type') and cls._dynamic \
+                        and field.document_type._dynamic:
+                    DynamicField = _import_class('DynamicField')
+                    new_field = DynamicField(db_field=field_name)
                 elif not new_field:
                     raise LookUpError('Cannot resolve field "%s"'
                                       % field_name)
@@ -825,7 +867,11 @@ class BaseDocument(object):
         """Dynamically set the display value for a field with choices"""
         for attr_name, field in self._fields.items():
             if field.choices:
-                setattr(self,
+                if self._dynamic:
+                    obj = self
+                else:
+                    obj = type(self)
+                setattr(obj,
                         'get_%s_display' % attr_name,
                         partial(self.__get_field_display, field=field))
 
