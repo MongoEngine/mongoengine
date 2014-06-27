@@ -50,7 +50,7 @@ class InstanceTest(unittest.TestCase):
                 continue
             self.db.drop_collection(collection)
 
-    def ztest_capped_collection(self):
+    def test_capped_collection(self):
         """Ensure that capped collections work properly.
         """
         class Log(Document):
@@ -90,7 +90,7 @@ class InstanceTest(unittest.TestCase):
 
         Log.drop_collection()
 
-    def ztest_repr(self):
+    def test_repr(self):
         """Ensure that unicode representation works
         """
         class Article(Document):
@@ -103,7 +103,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual('<Article: привет мир>', repr(doc))
 
-    def ztest_queryset_resurrects_dropped_collection(self):
+    def test_queryset_resurrects_dropped_collection(self):
         self.Person.drop_collection()
 
         self.assertEqual([], list(self.Person.objects()))
@@ -116,7 +116,7 @@ class InstanceTest(unittest.TestCase):
         self.Person.drop_collection()
         self.assertEqual([], list(Actor.objects()))
 
-    def ztest_polymorphic_references(self):
+    def test_polymorphic_references(self):
         """Ensure that the correct subclasses are returned from a query when
         using references / generic references
         """
@@ -163,7 +163,7 @@ class InstanceTest(unittest.TestCase):
         Zoo.drop_collection()
         Animal.drop_collection()
 
-    def ztest_reference_inheritance(self):
+    def test_reference_inheritance(self):
         class Stats(Document):
             created = DateTimeField(default=datetime.now)
 
@@ -188,7 +188,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(list_stats, CompareStats.objects.first().stats)
 
-    def ztest_db_field_load(self):
+    def test_db_field_load(self):
         """Ensure we load data correctly
         """
         class Person(Document):
@@ -208,7 +208,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
 
-    def ztest_db_embedded_doc_field_load(self):
+    def test_db_embedded_doc_field_load(self):
         """Ensure we load embedded document data correctly
         """
         class Rank(EmbeddedDocument):
@@ -234,7 +234,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
 
-    def ztest_custom_id_field(self):
+    def test_custom_id_field(self):
         """Ensure that documents may be created with custom primary keys.
         """
         class User(Document):
@@ -286,7 +286,7 @@ class InstanceTest(unittest.TestCase):
 
         User.drop_collection()
 
-    def ztest_document_not_registered(self):
+    def test_document_not_registered(self):
 
         class Place(Document):
             name = StringField()
@@ -310,7 +310,7 @@ class InstanceTest(unittest.TestCase):
             print Place.objects.all()
         self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
-    def ztest_document_registry_regressions(self):
+    def test_document_registry_regressions(self):
 
         class Location(Document):
             name = StringField()
@@ -324,14 +324,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Area, get_document("Area"))
         self.assertEqual(Area, get_document("Location.Area"))
 
-    def ztest_creation(self):
+    def test_creation(self):
         """Ensure that document may be created using keyword arguments.
         """
         person = self.Person(name="Test User", age=30)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 30)
 
-    def ztest_to_dbref(self):
+    def test_to_dbref(self):
         """Ensure that you can get a dbref of a document"""
         person = self.Person(name="Test User", age=30)
         self.assertRaises(OperationError, person.to_dbref)
@@ -365,7 +365,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, "Mr Test User")
         self.assertEqual(person.age, 21)
 
-    def ztest_reload_sharded(self):
+    def test_reload_sharded(self):
         class Animal(Document):
             superphylum = StringField()
             meta = {'shard_key': ('superphylum',)}
@@ -376,7 +376,7 @@ class InstanceTest(unittest.TestCase):
         doc.reload()
         Animal.drop_collection()
 
-    def ztest_reload_referencing(self):
+    def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly
         """
         class Embedded(EmbeddedDocument):
@@ -428,7 +428,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(len(doc.embedded_field.list_field), 4)
         self.assertEqual(len(doc.embedded_field.dict_field), 2)
 
-    def ztest_reload_doesnt_exist(self):
+    def test_reload_doesnt_exist(self):
         class Foo(Document):
             pass
 
@@ -449,7 +449,7 @@ class InstanceTest(unittest.TestCase):
         except Exception as ex:
             self.assertFalse("Threw wrong exception")
 
-    def ztest_dictionary_access(self):
+    def test_dictionary_access(self):
         """Ensure that dictionary-style field access works properly.
         """
         person = self.Person(name='Test User', age=30)
@@ -469,7 +469,7 @@ class InstanceTest(unittest.TestCase):
         self.assertFalse('age' in person)
         self.assertFalse('nationality' in person)
 
-    def ztest_embedded_document_to_mongo(self):
+    def test_embedded_document_to_mongo(self):
         class Person(EmbeddedDocument):
             name = StringField()
             age = IntField()
@@ -484,14 +484,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
                          ['_cls', 'name', 'age', 'salary'])
 
-    def ztest_embedded_document_to_mongo_id(self):
+    def test_embedded_document_to_mongo_id(self):
         class SubDoc(EmbeddedDocument):
             id = StringField(required=True)
 
         sub_doc = SubDoc(id="abc")
         self.assertEqual(sub_doc.to_mongo().keys(), ['id'])
 
-    def ztest_embedded_document(self):
+    def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly.
         """
         class Comment(EmbeddedDocument):
@@ -500,7 +500,7 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue('content' in Comment._fields)
         self.assertFalse('id' in Comment._fields)
 
-    def ztest_embedded_document_instance(self):
+    def test_embedded_document_instance(self):
         """Ensure that embedded documents can reference parent instance
         """
         class Embedded(EmbeddedDocument):
@@ -515,7 +515,7 @@ class InstanceTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertEqual(doc, doc.embedded_field._instance)
 
-    def ztest_embedded_document_complex_instance(self):
+    def test_embedded_document_complex_instance(self):
         """Ensure that embedded documents in complex fields can reference
         parent instance"""
         class Embedded(EmbeddedDocument):
@@ -530,7 +530,7 @@ class InstanceTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertEqual(doc, doc.embedded_field[0]._instance)
 
-    def ztest_instance_is_set_on_setattr(self):
+    def test_instance_is_set_on_setattr(self):
 
         class Email(EmbeddedDocument):
             email = EmailField()
@@ -547,7 +547,7 @@ class InstanceTest(unittest.TestCase):
         acc1 = Account.objects.first()
         self.assertTrue(hasattr(acc1._data["email"], "_instance"))
 
-    def ztest_document_clean(self):
+    def test_document_clean(self):
         class TestDocument(Document):
             status = StringField()
             pub_date = DateTimeField()
@@ -581,7 +581,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(type(t.pub_date), datetime)
 
-    def ztest_document_embedded_clean(self):
+    def test_document_embedded_clean(self):
         class TestEmbeddedDocument(EmbeddedDocument):
             x = IntField(required=True)
             y = IntField(required=True)
@@ -617,7 +617,7 @@ class InstanceTest(unittest.TestCase):
         t = TestDocument(doc=TestEmbeddedDocument(x=15, y=35, z=5))
         t.save(clean=False)
 
-    def ztest_save(self):
+    def test_save(self):
         """Ensure that a document may be saved in the database.
         """
         # Create person object and save it to the database
@@ -642,7 +642,7 @@ class InstanceTest(unittest.TestCase):
         except ValidationError:
             self.fail()
 
-    def ztest_save_to_a_value_that_equates_to_false(self):
+    def test_save_to_a_value_that_equates_to_false(self):
 
         class Thing(EmbeddedDocument):
             count = IntField()
@@ -662,7 +662,7 @@ class InstanceTest(unittest.TestCase):
         user.reload()
         self.assertEqual(user.thing.count, 0)
 
-    def ztest_save_max_recursion_not_hit(self):
+    def test_save_max_recursion_not_hit(self):
 
         class Person(Document):
             name = StringField()
@@ -688,7 +688,7 @@ class InstanceTest(unittest.TestCase):
         p0.name = 'wpjunior'
         p0.save()
 
-    def ztest_save_max_recursion_not_hit_with_file_field(self):
+    def test_save_max_recursion_not_hit_with_file_field(self):
 
         class Foo(Document):
             name = StringField()
@@ -712,7 +712,7 @@ class InstanceTest(unittest.TestCase):
 
             self.assertEqual(b.picture, b.bar.picture, b.bar.bar.picture)
 
-    def ztest_save_cascades(self):
+    def test_save_cascades(self):
 
         class Person(Document):
             name = StringField()
@@ -735,7 +735,7 @@ class InstanceTest(unittest.TestCase):
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
-    def ztest_save_cascade_kwargs(self):
+    def test_save_cascade_kwargs(self):
 
         class Person(Document):
             name = StringField()
@@ -756,7 +756,7 @@ class InstanceTest(unittest.TestCase):
         p2.reload()
         self.assertEqual(p1.name, p2.parent.name)
 
-    def ztest_save_cascade_meta_false(self):
+    def test_save_cascade_meta_false(self):
 
         class Person(Document):
             name = StringField()
@@ -785,7 +785,7 @@ class InstanceTest(unittest.TestCase):
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
-    def ztest_save_cascade_meta_true(self):
+    def test_save_cascade_meta_true(self):
 
         class Person(Document):
             name = StringField()
@@ -810,7 +810,7 @@ class InstanceTest(unittest.TestCase):
         p1.reload()
         self.assertNotEqual(p1.name, p.parent.name)
 
-    def ztest_save_cascades_generically(self):
+    def test_save_cascades_generically(self):
 
         class Person(Document):
             name = StringField()
@@ -836,7 +836,7 @@ class InstanceTest(unittest.TestCase):
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
-    def ztest_save_atomicity_condition(self):
+    def test_save_atomicity_condition(self):
 
         class Widget(Document):
             toggle = BooleanField(default=False)
@@ -910,7 +910,7 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
 
-    def ztest_update(self):
+    def test_update(self):
         """Ensure that an existing document is updated instead of be
         overwritten."""
         # Create person object and save it to the database
@@ -994,7 +994,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, None)
 
-    def ztest_inserts_if_you_set_the_pk(self):
+    def test_inserts_if_you_set_the_pk(self):
         p1 = self.Person(name='p1', id=bson.ObjectId()).save()
         p2 = self.Person(name='p2')
         p2.id = bson.ObjectId()
@@ -1002,7 +1002,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(2, self.Person.objects.count())
 
-    def ztest_can_save_if_not_included(self):
+    def test_can_save_if_not_included(self):
 
         class EmbeddedDoc(EmbeddedDocument):
             pass
@@ -1051,7 +1051,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(my_doc.string_field, "string")
         self.assertEqual(my_doc.int_field, 1)
 
-    def ztest_document_update(self):
+    def test_document_update(self):
 
         def update_not_saved_raises():
             person = self.Person(name='dcrosta')
@@ -1080,7 +1080,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(InvalidQueryError, update_no_op_raises)
 
-    def ztest_update_unique_field(self):
+    def test_update_unique_field(self):
         class Doc(Document):
             name = StringField(unique=True)
 
@@ -1090,7 +1090,7 @@ class InstanceTest(unittest.TestCase):
         self.assertRaises(NotUniqueError, lambda:
                           doc2.update(set__name=doc1.name))
 
-    def ztest_embedded_update(self):
+    def test_embedded_update(self):
         """
         Test update on `EmbeddedDocumentField` fields
         """
@@ -1114,7 +1114,7 @@ class InstanceTest(unittest.TestCase):
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
 
-    def ztest_embedded_update_db_field(self):
+    def test_embedded_update_db_field(self):
         """
         Test update on `EmbeddedDocumentField` fields when db_field is other
         than default.
@@ -1141,7 +1141,7 @@ class InstanceTest(unittest.TestCase):
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
 
-    def ztest_save_only_changed_fields(self):
+    def test_save_only_changed_fields(self):
         """Ensure save only sets / unsets changed fields
         """
 
@@ -1170,7 +1170,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.age, 21)
         self.assertEqual(person.active, False)
 
-    def ztest_query_count_when_saving(self):
+    def test_query_count_when_saving(self):
         """Ensure references don't cause extra fetches when saving"""
         class Organization(Document):
             name = StringField()
@@ -1263,7 +1263,7 @@ class InstanceTest(unittest.TestCase):
             sub.save()
             self.assertEqual(q, 3)
 
-    def ztest_set_unset_one_operation(self):
+    def test_set_unset_one_operation(self):
         """Ensure that $set and $unset actions are performed in the same
         operation.
         """
@@ -1285,7 +1285,7 @@ class InstanceTest(unittest.TestCase):
             foo.save()
             self.assertEqual(1, q)
 
-    def ztest_save_only_changed_fields_recursive(self):
+    def test_save_only_changed_fields_recursive(self):
         """Ensure save only sets / unsets changed fields
         """
 
@@ -1327,7 +1327,7 @@ class InstanceTest(unittest.TestCase):
         person = self.Person.objects.get()
         self.assertFalse(person.comments_dict['first_post'].published)
 
-    def ztest_delete(self):
+    def test_delete(self):
         """Ensure that document may be deleted using the delete method.
         """
         person = self.Person(name="Test User", age=30)
@@ -1336,7 +1336,7 @@ class InstanceTest(unittest.TestCase):
         person.delete()
         self.assertEqual(self.Person.objects.count(), 0)
 
-    def ztest_save_custom_id(self):
+    def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id.
         """
         # Create person object and save it to the database
@@ -1348,7 +1348,7 @@ class InstanceTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
 
-    def ztest_save_custom_pk(self):
+    def test_save_custom_pk(self):
         """Ensure that a document may be saved with a custom _id using pk alias.
         """
         # Create person object and save it to the database
@@ -1360,7 +1360,7 @@ class InstanceTest(unittest.TestCase):
         person_obj = collection.find_one({'name': 'Test User'})
         self.assertEqual(str(person_obj['_id']), '497ce96f395f2f052a494fd4')
 
-    def ztest_save_list(self):
+    def test_save_list(self):
         """Ensure that a list field may be properly saved.
         """
         class Comment(EmbeddedDocument):
@@ -1387,7 +1387,7 @@ class InstanceTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def ztest_list_search_by_embedded(self):
+    def test_list_search_by_embedded(self):
         class User(Document):
             username = StringField(required=True)
 
@@ -1439,7 +1439,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual([p1, p2, p4], list(Page.objects.filter(comments__user=u2)))
         self.assertEqual([p1, p3], list(Page.objects.filter(comments__user=u3)))
 
-    def ztest_save_embedded_document(self):
+    def test_save_embedded_document(self):
         """Ensure that a document with an embedded document field may be
         saved in the database.
         """
@@ -1463,7 +1463,7 @@ class InstanceTest(unittest.TestCase):
         # Ensure that the 'details' embedded object saved correctly
         self.assertEqual(employee_obj['details']['position'], 'Developer')
 
-    def ztest_embedded_update_after_save(self):
+    def test_embedded_update_after_save(self):
         """
         Test update of `EmbeddedDocumentField` attached to a newly saved
         document.
@@ -1486,7 +1486,7 @@ class InstanceTest(unittest.TestCase):
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
 
-    def ztest_updating_an_embedded_document(self):
+    def test_updating_an_embedded_document(self):
         """Ensure that a document with an embedded document field may be
         saved in the database.
         """
@@ -1521,7 +1521,7 @@ class InstanceTest(unittest.TestCase):
         promoted_employee.reload()
         self.assertEqual(promoted_employee.details, None)
 
-    def ztest_object_mixins(self):
+    def test_object_mixins(self):
 
         class NameMixin(object):
             name = StringField()
@@ -1536,7 +1536,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(['id', 'name', 'widgets'], sorted(Bar._fields.keys()))
 
-    def ztest_mixin_inheritance(self):
+    def test_mixin_inheritance(self):
         class BaseMixIn(object):
             count = IntField()
             data = StringField()
@@ -1560,7 +1560,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(t.data, "test")
         self.assertEqual(t.count, 12)
 
-    def ztest_save_reference(self):
+    def test_save_reference(self):
         """Ensure that a document reference field may be saved in the database.
         """
 
@@ -1596,7 +1596,7 @@ class InstanceTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-    def ztest_duplicate_db_fields_raise_invalid_document_error(self):
+    def test_duplicate_db_fields_raise_invalid_document_error(self):
         """Ensure a InvalidDocumentError is thrown if duplicate fields
         declare the same db_field"""
 
@@ -1607,7 +1607,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
-    def ztest_invalid_son(self):
+    def test_invalid_son(self):
         """Raise an error if loading invalid data"""
         class Occurrence(EmbeddedDocument):
             number = IntField()
@@ -1624,7 +1624,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, raise_invalid_document)
 
-    def ztest_reverse_delete_rule_cascade_and_nullify(self):
+    def test_reverse_delete_rule_cascade_and_nullify(self):
         """Ensure that a referenced document is also deleted upon deletion.
         """
 
@@ -1655,7 +1655,7 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
 
-    def ztest_reverse_delete_rule_with_document_inheritance(self):
+    def test_reverse_delete_rule_with_document_inheritance(self):
         """Ensure that a referenced document is also deleted upon deletion
         of a child document.
         """
@@ -1690,7 +1690,7 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
 
-    def ztest_reverse_delete_rule_cascade_and_nullify_complex_field(self):
+    def test_reverse_delete_rule_cascade_and_nullify_complex_field(self):
         """Ensure that a referenced document is also deleted upon deletion for
         complex fields.
         """
@@ -1724,7 +1724,7 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
 
-    def ztest_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
+    def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
         ''' ensure the pre_delete signal is triggered upon a cascading deletion
         setup a blog post with content, an author and editor
         delete the author which triggers deletion of blogpost via cascade
@@ -1760,7 +1760,7 @@ class InstanceTest(unittest.TestCase):
         editor = Editor.objects(name='Max P.').get()
         self.assertEqual(editor.review_queue, 0)
 
-    def ztest_two_way_reverse_delete_rule(self):
+    def test_two_way_reverse_delete_rule(self):
         """Ensure that Bi-Directional relationships work with
         reverse_delete_rule
         """
@@ -1793,7 +1793,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Bar.objects.count(), 1)  # No effect on the BlogPost
         self.assertEqual(Bar.objects.get().foo, None)
 
-    def ztest_invalid_reverse_delete_rules_raise_errors(self):
+    def test_invalid_reverse_delete_rules_raise_errors(self):
 
         def throw_invalid_document_error():
             class Blog(Document):
@@ -1810,7 +1810,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error_embedded)
 
-    def ztest_reverse_delete_rule_cascade_recurs(self):
+    def test_reverse_delete_rule_cascade_recurs(self):
         """Ensure that a chain of documents is also deleted upon cascaded
         deletion.
         """
@@ -1847,7 +1847,7 @@ class InstanceTest(unittest.TestCase):
         BlogPost.drop_collection()
         Comment.drop_collection()
 
-    def ztest_reverse_delete_rule_deny(self):
+    def test_reverse_delete_rule_deny(self):
         """Ensure that a document cannot be referenced if there are still
         documents referring to it.
         """
@@ -1902,7 +1902,7 @@ class InstanceTest(unittest.TestCase):
         A.drop_collection()
         B.drop_collection()
 
-    def ztest_document_hash(self):
+    def test_document_hash(self):
         """Test document in list, dict, set
         """
         class User(Document):
@@ -1950,7 +1950,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertTrue(u1 in all_user_set)
 
-    def ztest_picklable(self):
+    def test_picklable(self):
 
         pickle_doc = PickleTest(number=1, string="One", lists=['1', '2'])
         pickle_doc.embedded = PickleEmbedded()
@@ -1976,7 +1976,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(pickle_doc.string, "Two")
         self.assertEqual(pickle_doc.lists, ["1", "2", "3"])
 
-    def ztest_dynamic_document_pickle(self):
+    def test_dynamic_document_pickle(self):
 
         pickle_doc = PickleDynamicTest(name="test", number=1, string="One", lists=['1', '2'])
         pickle_doc.embedded = PickleDyanmicEmbedded(foo="Bar")
@@ -1999,13 +1999,13 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(resurrected.embedded._dynamic_fields.keys(),
                          pickle_doc.embedded._dynamic_fields.keys())
 
-    def ztest_picklable_on_signals(self):
+    def test_picklable_on_signals(self):
         pickle_doc = PickleSignalsTest(number=1, string="One", lists=['1', '2'])
         pickle_doc.embedded = PickleEmbedded()
         pickle_doc.save()
         pickle_doc.delete()
 
-    def ztest_throw_invalid_document_error(self):
+    def test_throw_invalid_document_error(self):
 
         # test handles people trying to upsert
         def throw_invalid_document_error():
@@ -2014,7 +2014,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
-    def ztest_mutating_documents(self):
+    def test_mutating_documents(self):
 
         class B(EmbeddedDocument):
             field1 = StringField(default='field1')
@@ -2045,7 +2045,7 @@ class InstanceTest(unittest.TestCase):
         a.reload()
         self.assertEqual(a.b.field2.c_field, 'new value')
 
-    def ztest_can_save_false_values(self):
+    def test_can_save_false_values(self):
         """Ensures you can save False values on save"""
         class Doc(Document):
             foo = StringField()
@@ -2059,7 +2059,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(Doc.objects(archived=False).count(), 1)
 
-    def ztest_can_save_false_values_dynamic(self):
+    def test_can_save_false_values_dynamic(self):
         """Ensures you can save False values on dynamic docs"""
         class Doc(DynamicDocument):
             foo = StringField()
@@ -2072,7 +2072,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual(Doc.objects(archived=False).count(), 1)
 
-    def ztest_do_not_save_unchanged_references(self):
+    def test_do_not_save_unchanged_references(self):
         """Ensures cascading saves dont auto update"""
         class Job(Document):
             name = StringField()
@@ -2103,7 +2103,7 @@ class InstanceTest(unittest.TestCase):
         finally:
             Collection.update = orig_update
 
-    def ztest_db_alias_tests(self):
+    def test_db_alias_tests(self):
         """ DB Alias tests """
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
@@ -2159,7 +2159,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Book._get_collection(), get_db("testdb-2")[Book._get_collection_name()])
         self.assertEqual(AuthorBooks._get_collection(), get_db("testdb-3")[AuthorBooks._get_collection_name()])
 
-    def ztest_db_alias_overrides(self):
+    def test_db_alias_overrides(self):
         """db_alias can be overriden
         """
         # Register a connection with db_alias testdb-2
@@ -2184,7 +2184,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual('mongoenginetest2',
                          B._get_collection().database.name)
 
-    def ztest_db_alias_propagates(self):
+    def test_db_alias_propagates(self):
         """db_alias propagates?
         """
         register_connection('testdb-1', 'mongoenginetest2')
@@ -2198,7 +2198,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual('testdb-1', B._meta.get('db_alias'))
 
-    def ztest_db_ref_usage(self):
+    def test_db_ref_usage(self):
         """ DB Ref usage  in dict_fields"""
 
         class User(Document):
@@ -2276,7 +2276,7 @@ class InstanceTest(unittest.TestCase):
                                     })]),
                          "1,2")
 
-    def ztest_switch_db_instance(self):
+    def test_switch_db_instance(self):
         register_connection('testdb-1', 'mongoenginetest2')
 
         class Group(Document):
@@ -2326,7 +2326,7 @@ class InstanceTest(unittest.TestCase):
         group = Group.objects.first()
         self.assertEqual("hello - default", group.name)
 
-    def ztest_no_overwritting_no_data_loss(self):
+    def test_no_overwritting_no_data_loss(self):
 
         class User(Document):
             username = StringField(primary_key=True)
@@ -2350,7 +2350,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual("Bar", user._data["foo"])
         self.assertEqual([1, 2, 3], user._data["data"])
 
-    def ztest_spaces_in_keys(self):
+    def test_spaces_in_keys(self):
 
         class Embedded(DynamicEmbeddedDocument):
             pass
@@ -2366,7 +2366,7 @@ class InstanceTest(unittest.TestCase):
         one = Doc.objects.filter(**{'hello world': 1}).count()
         self.assertEqual(1, one)
 
-    def ztest_shard_key(self):
+    def test_shard_key(self):
         class LogEntry(Document):
             machine = StringField()
             log = StringField()
@@ -2391,7 +2391,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(OperationError, change_shard_key)
 
-    def ztest_shard_key_primary(self):
+    def test_shard_key_primary(self):
         class LogEntry(Document):
             machine = StringField(primary_key=True)
             log = StringField()
@@ -2416,7 +2416,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(OperationError, change_shard_key)
 
-    def ztest_kwargs_simple(self):
+    def test_kwargs_simple(self):
 
         class Embedded(EmbeddedDocument):
             name = StringField()
@@ -2432,7 +2432,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(classic_doc, dict_doc)
         self.assertEqual(classic_doc._data, dict_doc._data)
 
-    def ztest_kwargs_complex(self):
+    def test_kwargs_complex(self):
 
         class Embedded(EmbeddedDocument):
             name = StringField()
@@ -2451,21 +2451,21 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(classic_doc, dict_doc)
         self.assertEqual(classic_doc._data, dict_doc._data)
 
-    def ztest_positional_creation(self):
+    def test_positional_creation(self):
         """Ensure that document may be created using positional arguments.
         """
         person = self.Person("Test User", 42)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
 
-    def ztest_mixed_creation(self):
+    def test_mixed_creation(self):
         """Ensure that document may be created using mixed arguments.
         """
         person = self.Person("Test User", age=42)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
 
-    def ztest_mixed_creation_dynamic(self):
+    def test_mixed_creation_dynamic(self):
         """Ensure that document may be created using mixed arguments.
         """
         class Person(DynamicDocument):
@@ -2475,7 +2475,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
 
-    def ztest_bad_mixed_creation(self):
+    def test_bad_mixed_creation(self):
         """Ensure that document gives correct error when duplicating arguments
         """
         def construct_bad_instance():
@@ -2483,7 +2483,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(TypeError, construct_bad_instance)
 
-    def ztest_data_contains_id_field(self):
+    def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'
         """
         class Person(Document):
@@ -2496,7 +2496,7 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue('id' in person._data.keys())
         self.assertEqual(person._data.get('id'), person.id)
 
-    def ztest_complex_nesting_document_and_embedded_document(self):
+    def test_complex_nesting_document_and_embedded_document(self):
 
         class Macro(EmbeddedDocument):
             value = DynamicField(default="UNDEFINED")
@@ -2537,7 +2537,7 @@ class InstanceTest(unittest.TestCase):
         system = NodesSystem.objects.first()
         self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
-    def ztest_embedded_document_equality(self):
+    def test_embedded_document_equality(self):
 
         class Test(Document):
             field = StringField(required=True)
