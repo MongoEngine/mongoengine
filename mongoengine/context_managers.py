@@ -1,6 +1,5 @@
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.queryset import QuerySet
 
 
 __all__ = ("switch_db", "switch_collection", "no_dereference",
@@ -160,12 +159,6 @@ class no_sub_classes(object):
         self.cls._subclasses = self.cls._all_subclasses
         delattr(self.cls, '_all_subclasses')
         return self.cls
-
-
-class QuerySetNoDeRef(QuerySet):
-    """Special no_dereference QuerySet"""
-    def __dereference(items, max_depth=1, instance=None, name=None):
-            return items
 
 
 class query_counter(object):

@@ -141,6 +141,30 @@ class ValidatorErrorTest(unittest.TestCase):
             self.assertEqual(e.to_dict(), {
                 "e": {'val': 'OK could not be converted to int'}})
 
+    def test_embedded_weakref(self):
+
+        class SubDoc(EmbeddedDocument):
+            val = IntField(required=True)
+
+        class Doc(Document):
+            e = EmbeddedDocumentField(SubDoc, db_field='eb')
+
+        Doc.drop_collection()
+
+        d1 = Doc()
+        d2 = Doc()
+
+        s = SubDoc()
+
+        self.assertRaises(ValidationError, lambda: s.validate())
+
+        d1.e = s
+        d2.e = s
+
+        del d1
+
+        self.assertRaises(ValidationError, lambda: d2.validate())
+
 
 if __name__ == '__main__':
     unittest.main()
