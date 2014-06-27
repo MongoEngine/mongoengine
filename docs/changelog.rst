@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Don't query with $orderby for qs.get() #600
 - Fix id shard key save issue #636
 - Fixes issue with recursive embedded document errors #557
 - Fix clear_changed_fields() clearing unsaved documents bug #602
