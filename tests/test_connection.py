@@ -48,7 +48,7 @@ class ConnectionTest(unittest.TestCase):
 
         connect('mongoenginetest', alias='testdb2')
         actual_connection = get_connection('testdb2')
-        self.assertIs(expected_connection, actual_connection)
+        self.assertEqual(expected_connection, actual_connection)
 
     def test_connect_uri(self):
         """Ensure that the connect() method works properly with uri's

@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Add authentication_source option to register_connection #178 #464 #573 #580 #590
 - Implemented equality between Documents and DBRefs #597
 - Fixed ReferenceField inside nested ListFields dereferencing problem #368
 - Added the ability to reload specific document fields #100
