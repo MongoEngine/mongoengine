@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Added the ability to reload specific document fields #100
 - Added db_alias support and fixes for custom map/reduce output #586
 - post_save signal now has access to delta information about field changes #594 #589
 - Don't query with $orderby for qs.get() #600

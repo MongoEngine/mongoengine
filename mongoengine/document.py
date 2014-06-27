@@ -54,7 +54,7 @@ class EmbeddedDocument(BaseDocument):
     `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
     dictionary.
     """
-    
+
     __slots__ = ('_instance')
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
@@ -463,27 +463,41 @@ class Document(BaseDocument):
         DeReference()([self], max_depth + 1)
         return self
 
-    def reload(self, max_depth=1):
+    def reload(self, *fields, **kwargs):
         """Reloads all attributes from the database.
+
+        :param fields: (optional) args list of fields to reload
+        :param max_depth: (optional) depth of dereferencing to follow
 
         .. versionadded:: 0.1.2
         .. versionchanged:: 0.6  Now chainable
+        .. versionchanged:: 0.9  Can provide specific fields to reload
         """
+        max_depth = 1
+        if fields and isinstance(fields[0], int):
+            max_depth = fields[0]
+            fields = fields[1:]
+        elif "max_depth" in kwargs:
+            max_depth = kwargs["max_depth"]
+
         if not self.pk:
             raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-                    **self._object_key).limit(1).select_related(max_depth=max_depth)
-
+                    **self._object_key).only(*fields).limit(1
+                    ).select_related(max_depth=max_depth)
 
         if obj:
             obj = obj[0]
         else:
             raise self.DoesNotExist("Document does not exist")
+
         for field in self._fields_ordered:
-            setattr(self, field, self._reload(field, obj[field]))
+            if not fields or field in fields:
+                setattr(self, field, self._reload(field, obj[field]))
+
         self._changed_fields = obj._changed_fields
         self._created = False
-        return obj
+        return self
 
     def _reload(self, key, value):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the
