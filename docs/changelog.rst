@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Added support for progressive JPEG #486 #548
 - Allow strings to be used in index creation #675
 - Fixed EmbeddedDoc weakref proxy issue #592
 - Fixed nested reference field distinct error #583
