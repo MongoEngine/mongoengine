@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Added db_alias support and fixes for custom map/reduce output #586
 - post_save signal now has access to delta information about field changes #594 #589
 - Don't query with $orderby for qs.get() #600
 - Fix id shard key save issue #636
