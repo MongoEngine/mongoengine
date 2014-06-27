@@ -2717,9 +2717,11 @@ class FieldTest(unittest.TestCase):
 
         class Animal(Document):
             id = SequenceField(primary_key=True)
+            name = StringField()
 
         class Person(Document):
             id = SequenceField(primary_key=True)
+            name = StringField()
 
         self.db['mongoengine.counters'].drop()
         Animal.drop_collection()

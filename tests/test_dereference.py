@@ -947,6 +947,8 @@ class FieldTest(unittest.TestCase):
 
         class Asset(Document):
             name = StringField(max_length=250, required=True)
+            path = StringField()
+            title = StringField()
             parent = GenericReferenceField(default=None)
             parents = ListField(GenericReferenceField())
             children = ListField(GenericReferenceField())

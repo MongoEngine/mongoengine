@@ -176,7 +176,7 @@ class QuerySetTest(unittest.TestCase):
 
         class Note(Document):
             meta = dict(queryset_class=LimitCountQuerySet)
-            text = StringField()
+            name = StringField()
 
         Note.drop_collection()
 

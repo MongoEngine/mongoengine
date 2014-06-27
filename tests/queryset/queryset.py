@@ -1492,6 +1492,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that atomic updates work properly.
         """
         class BlogPost(Document):
+            name = StringField()
             title = StringField()
             hits = IntField()
             tags = ListField(StringField())
@@ -2879,11 +2880,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(authors, [mark_twain, john_tolkien])
 
     def test_distinct_ListField_ReferenceField(self):
-        class Foo(Document):
-            bar_lst = ListField(ReferenceField('Bar'))
 
         class Bar(Document):
             text = StringField()
+
+        class Foo(Document):
+            bar = ReferenceField('Bar')
+            bar_lst = ListField(ReferenceField('Bar'))
 
         Bar.drop_collection()
         Foo.drop_collection()
