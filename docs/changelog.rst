@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Dynamic fields in embedded documents now visible to queryset.only() / qs.exclude() #425 #507
 - Add authentication_source option to register_connection #178 #464 #573 #580 #590
 - Implemented equality between Documents and DBRefs #597
 - Fixed ReferenceField inside nested ListFields dereferencing problem #368
