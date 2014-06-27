@@ -727,5 +727,20 @@ class IndexesTest(unittest.TestCase):
                          report.to_mongo())
         self.assertEqual(report, Report.objects.get(pk=my_key))
 
+
+    def test_string_indexes(self):
+
+        class MyDoc(Document):
+            provider_ids = DictField()
+            meta = {
+                "indexes": ["provider_ids.foo", "provider_ids.bar"],
+            }
+
+        info = MyDoc.objects._collection.index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('provider_ids.foo', 1)] in info)
+        self.assertTrue([('provider_ids.bar', 1)] in info)
+
+
 if __name__ == '__main__':
     unittest.main()
