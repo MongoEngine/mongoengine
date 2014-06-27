@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Fix id shard key save issue #636
 - Fixes issue with recursive embedded document errors #557
 - Fix clear_changed_fields() clearing unsaved documents bug #602
 - Removing support for Django 1.4.x, pymongo 2.5.x, pymongo 2.6.x.
