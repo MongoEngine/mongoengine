@@ -334,7 +334,10 @@ class BaseDocument(object):
             if hasattr(self, 'pk'):
                 pk = self.pk
             elif self._instance and hasattr(self._instance, 'pk'):
-                pk = self._instance.pk
+                _instance = self._instance
+                while not hasattr(_instance, 'pk'):
+                    _instance = _instance._instance
+                pk = _instance.pk
             message = "ValidationError (%s:%s) " % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
