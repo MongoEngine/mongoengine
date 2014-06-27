@@ -651,7 +651,10 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            self.assertEqual(q, 99)  # profiling logs each doc now :(
+            if (get_connection().max_wire_version <= 1):
+                self.assertEqual(q, 1)
+            else:
+                self.assertEqual(q, 99)  # profiling logs each doc now in the bulk op
 
         Blog.drop_collection()
         Blog.ensure_indexes()
@@ -660,7 +663,10 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            self.assertEqual(q, 100)  # 99 or insert, and 1 for in bulk fetch
+            if (get_connection().max_wire_version <= 1):
+                self.assertEqual(q, 2) # 1 for insert, and 1 for in bulk fetch
+            else:
+                self.assertEqual(q, 100)  # 99 for insert, and 1 for in bulk fetch
 
         Blog.drop_collection()
 
