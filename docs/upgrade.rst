@@ -2,6 +2,12 @@
 Upgrading
 #########
 
+0.8.7
+*****
+
+Calling reload on deleted / nonexistant documents now raises a DoesNotExist
+exception.
+
 
 0.8.2 to 0.8.3
 **************
@@ -270,7 +276,7 @@ queryset you should upgrade to use count::
     len(Animal.objects(type="mammal"))
 
     # New code
-    Animal.objects(type="mammal").count())
+    Animal.objects(type="mammal").count()
 
 
 .only() now inline with .exclude()

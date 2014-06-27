@@ -713,6 +713,69 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual({}, removals)
         self.assertTrue('employees' in updates)
 
+    def test_nested_nested_fields_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(MapField(EmbeddedDocumentField(EmbeddedDoc)))
+            name = StringField()
+
+        MyDoc.drop_collection()
+
+        mydoc = MyDoc(name='testcase1', subs={'a': {'b': EmbeddedDoc(name='foo')}}).save()
+
+        mydoc = MyDoc.objects.first()
+        subdoc = mydoc.subs['a']['b']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a.b.name"], mydoc._get_changed_fields())
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
+
+    def test_referenced_object_changed_attributes(self):
+        """Ensures that when you save a new reference to a field, the referenced object isn't altered"""
+
+        class Organization(Document):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            org = ReferenceField('Organization', required=True)
+
+        Organization.drop_collection()
+        User.drop_collection()
+
+        org1 = Organization(name='Org 1')
+        org1.save()
+
+        org2 = Organization(name='Org 2')
+        org2.save()
+
+        user = User(name='Fred', org=org1)
+        user.save()
+
+        org1.reload()
+        org2.reload()
+        user.reload()
+        self.assertEqual(org1.name, 'Org 1')
+        self.assertEqual(org2.name, 'Org 2')
+        self.assertEqual(user.name, 'Fred')
+
+        user.name = 'Harold'
+        user.org = org2
+
+        org2.name = 'New Org 2'
+        self.assertEqual(org2.name, 'New Org 2')
+
+        user.save()
+        org2.save()
+
+        self.assertEqual(org2.name, 'New Org 2')
+        org2.reload()
+        self.assertEqual(org2.name, 'New Org 2')
 
 if __name__ == '__main__':
     unittest.main()

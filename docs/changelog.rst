@@ -2,6 +2,65 @@
 Changelog
 =========
 
+
+Changes in 0.9.X - DEV
+======================
+
+- Add authentication_source option to register_connection #178 #464 #573 #580 #590
+- Implemented equality between Documents and DBRefs #597
+- Fixed ReferenceField inside nested ListFields dereferencing problem #368
+- Added the ability to reload specific document fields #100
+- Added db_alias support and fixes for custom map/reduce output #586
+- post_save signal now has access to delta information about field changes #594 #589
+- Don't query with $orderby for qs.get() #600
+- Fix id shard key save issue #636
+- Fixes issue with recursive embedded document errors #557
+- Fix clear_changed_fields() clearing unsaved documents bug #602
+- Removing support for Django 1.4.x, pymongo 2.5.x, pymongo 2.6.x.
+- Removing support for Python < 2.6.6
+- Fixed $maxDistance location for geoJSON $near queries with MongoDB 2.6+ #664
+- QuerySet.modify() method to provide find_and_modify() like behaviour #677
+- Added support for the using() method on a queryset #676
+- PYPY support #673
+- Connection pooling #674
+- Avoid to open all documents from cursors in an if stmt #655
+- Ability to clear the ordering #657
+- Raise NotUniqueError in Document.update() on pymongo.errors.DuplicateKeyError #626
+- Slots - memory improvements #625
+- Fixed incorrectly split a query key when it ends with "_" #619
+- Geo docs updates #613
+- Workaround a dateutil bug #608
+- Conditional save for atomic-style operations #511
+- Allow dynamic dictionary-style field access #559
+
+Changes in 0.8.7
+================
+- Calling reload on deleted / nonexistant documents raises DoesNotExist (#538)
+- Stop ensure_indexes running on a secondaries (#555)
+- Fix circular import issue with django auth (#531) (#545)
+
+Changes in 0.8.6
+================
+- Fix django auth import (#531)
+
+Changes in 0.8.5
+================
+- Fix multi level nested fields getting marked as changed (#523)
+- Django 1.6 login fix (#522) (#527)
+- Django 1.6 session fix (#509)
+- EmbeddedDocument._instance is now set when settng the attribute (#506)
+- Fixed EmbeddedDocument with ReferenceField equality issue (#502)
+- Fixed GenericReferenceField serialization order (#499)
+- Fixed count and none bug (#498)
+- Fixed bug with .only() and DictField with digit keys (#496)
+- Added user_permissions to Django User object (#491, #492)
+- Fix updating Geo Location fields (#488)
+- Fix handling invalid dict field value (#485)
+- Added app_label to MongoUser (#484)
+- Use defaults when host and port are passed as None (#483)
+- Fixed distinct casting issue with ListField of EmbeddedDocuments (#470)
+- Fixed Django 1.6 sessions (#454, #480)
+
 Changes in 0.8.4
 ================
 - Remove database name necessity in uri connection schema (#452)

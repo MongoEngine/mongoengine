@@ -6,22 +6,28 @@ python:
     - "2.7"
     - "3.2"
     - "3.3"
+    - "3.4"
+    - "pypy"
 env:
-  - PYMONGO=dev DJANGO=1.5.1
-  - PYMONGO=dev DJANGO=1.4.2
-  - PYMONGO=2.5 DJANGO=1.5.1
-  - PYMONGO=2.5 DJANGO=1.4.2
-  - PYMONGO=3.2 DJANGO=1.5.1
-  - PYMONGO=3.3 DJANGO=1.5.1
+  - PYMONGO=dev DJANGO=1.6.5
+  - PYMONGO=dev DJANGO=1.5.8
+  - PYMONGO=2.7.1 DJANGO=1.6.5
+  - PYMONGO=2.7.1 DJANGO=1.5.8
+
+matrix:
+    fast_finish: true
+
 install:
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then cp /usr/lib/*/libz.so $VIRTUAL_ENV/lib/; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.'* ]]; then pip install pil --use-mirrors ; true; fi
+    - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev python-tk
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
-    - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO --use-mirrors; true; fi
+    - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO; true; fi
+    - pip install Django==$DJANGO
     - pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
     - python setup.py install
 script:
     - python setup.py test
+    - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
+    - python benchmark.py
 notifications:
   irc: "irc.freenode.org#mongoengine"
 branches:
