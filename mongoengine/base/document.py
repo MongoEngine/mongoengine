@@ -16,7 +16,7 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
 from mongoengine.python_support import PY3, txt_type
 
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
-from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict, SemiStrictDict 
+from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict, SemiStrictDict
 from mongoengine.base.fields import ComplexBaseField
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
@@ -54,12 +54,12 @@ class BaseDocument(object):
                 values[name] = value
         __auto_convert = values.pop("__auto_convert", True)
         signals.pre_init.send(self.__class__, document=self, values=values)
-        
+
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields.keys())()
         else:
             self._data = SemiStrictDict.create(allowed_keys=self._fields.keys())()
-            
+
         self._dynamic_fields = SON()
 
         # Assign default values to instance
@@ -150,7 +150,7 @@ class BaseDocument(object):
         try:
             self__initialised = self._initialised
         except AttributeError:
-            self__initialised = False 
+            self__initialised = False
         # Check if the user has created a new instance of a class
         if (self._is_document and self__initialised
            and self__created and name == self._meta['id_field']):
@@ -407,6 +407,8 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
                 if hasattr(data, "_changed_fields"):
+                    if hasattr(data, "_is_document") and data._is_document:
+                        continue
                     data._changed_fields = []
         self._changed_fields = []
 
@@ -596,7 +598,7 @@ class BaseDocument(object):
             msg = ("Invalid data to create a `%s` instance.\n%s"
                    % (cls._class_name, errors))
             raise InvalidDocumentError(msg)
-        
+
         if cls.STRICT:
             data = dict((k, v) for k,v in data.iteritems() if k in cls._fields)
         obj = cls(__auto_convert=False, **data)
