@@ -307,7 +307,6 @@ class BaseQuerySet(object):
             return_one = True
             docs = [docs]
 
-        raw = []
         for doc in docs:
             if not isinstance(doc, self._document):
                 msg = ("Some documents inserted aren't instances of %s"
@@ -316,9 +315,10 @@ class BaseQuerySet(object):
             if doc.pk and not doc._created:
                 msg = "Some documents have ObjectIds use doc.update() instead"
                 raise OperationError(msg)
-            raw.append(doc.to_mongo())
 
         signals.pre_bulk_insert.send(self._document, documents=docs)
+        
+        raw = [doc.to_mongo() for doc in docs]
         try:
             ids = self._collection.insert(raw, **write_concern)
         except pymongo.errors.DuplicateKeyError, err:
