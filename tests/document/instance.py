@@ -15,7 +15,7 @@ from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError)
+                                InvalidQueryError, NotUniqueError)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
@@ -57,7 +57,7 @@ class InstanceTest(unittest.TestCase):
             date = DateTimeField(default=datetime.now)
             meta = {
                 'max_documents': 10,
-                'max_size': 90000,
+                'max_size': 4096,
             }
 
         Log.drop_collection()
@@ -75,7 +75,7 @@ class InstanceTest(unittest.TestCase):
         options = Log.objects._collection.options()
         self.assertEqual(options['capped'], True)
         self.assertEqual(options['max'], 10)
-        self.assertEqual(options['size'], 90000)
+        self.assertTrue(options['size'] >= 4096)
 
         # Check that the document cannot be redefined with different options
         def recreate_log_document():
@@ -353,6 +353,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 20)
 
+        person.reload('age')
+        self.assertEqual(person.name, "Test User")
+        self.assertEqual(person.age, 21)
+
+        person.reload()
+        self.assertEqual(person.name, "Mr Test User")
+        self.assertEqual(person.age, 21)
+
         person.reload()
         self.assertEqual(person.name, "Mr Test User")
         self.assertEqual(person.age, 21)
@@ -402,10 +410,21 @@ class InstanceTest(unittest.TestCase):
             'embedded_field.dict_field.woot'])
         doc.save()
 
+        self.assertEqual(len(doc.list_field), 4)
         doc = doc.reload(10)
         self.assertEqual(doc._get_changed_fields(), [])
         self.assertEqual(len(doc.list_field), 4)
         self.assertEqual(len(doc.dict_field), 2)
+        self.assertEqual(len(doc.embedded_field.list_field), 4)
+        self.assertEqual(len(doc.embedded_field.dict_field), 2)
+
+        doc.list_field.append(1)
+        doc.save()
+        doc.dict_field['extra'] = 1
+        doc = doc.reload(10, 'list_field')
+        self.assertEqual(doc._get_changed_fields(), [])
+        self.assertEqual(len(doc.list_field), 5)
+        self.assertEqual(len(doc.dict_field), 3)
         self.assertEqual(len(doc.embedded_field.list_field), 4)
         self.assertEqual(len(doc.embedded_field.dict_field), 2)
 
@@ -515,9 +534,6 @@ class InstanceTest(unittest.TestCase):
 
         class Email(EmbeddedDocument):
             email = EmailField()
-            def clean(self):
-                print "instance:"
-                print self._instance
 
         class Account(Document):
             email = EmbeddedDocumentField(Email)
@@ -820,6 +836,80 @@ class InstanceTest(unittest.TestCase):
         p1.reload()
         self.assertEqual(p1.name, p.parent.name)
 
+    def test_save_atomicity_condition(self):
+
+        class Widget(Document):
+            toggle = BooleanField(default=False)
+            count = IntField(default=0)
+            save_id = UUIDField()
+
+        def flip(widget):
+            widget.toggle = not widget.toggle
+            widget.count += 1
+
+        def UUID(i):
+            return uuid.UUID(int=i)
+
+        Widget.drop_collection()
+
+        w1 = Widget(toggle=False, save_id=UUID(1))
+
+        # ignore save_condition on new record creation
+        w1.save(save_condition={'save_id':UUID(42)})
+        w1.reload()
+        self.assertFalse(w1.toggle)
+        self.assertEqual(w1.save_id, UUID(1))
+        self.assertEqual(w1.count, 0)
+
+        # mismatch in save_condition prevents save
+        flip(w1)
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 1)
+        w1.save(save_condition={'save_id':UUID(42)})
+        w1.reload()
+        self.assertFalse(w1.toggle)
+        self.assertEqual(w1.count, 0)
+
+        # matched save_condition allows save
+        flip(w1)
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 1)
+        w1.save(save_condition={'save_id':UUID(1)})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 1)
+
+        # save_condition can be used to ensure atomic read & updates
+        # i.e., prevent interleaved reads and writes from separate contexts
+        w2 = Widget.objects.get()
+        self.assertEqual(w1, w2)
+        old_id = w1.save_id
+
+        flip(w1)
+        w1.save_id = UUID(2)
+        w1.save(save_condition={'save_id':old_id})
+        w1.reload()
+        self.assertFalse(w1.toggle)
+        self.assertEqual(w1.count, 2)
+        flip(w2)
+        flip(w2)
+        w2.save(save_condition={'save_id':old_id})
+        w2.reload()
+        self.assertFalse(w2.toggle)
+        self.assertEqual(w2.count, 2)
+
+        # save_condition uses mongoengine-style operator syntax
+        flip(w1)
+        w1.save(save_condition={'count__lt':w1.count})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 3)
+        flip(w1)
+        w1.save(save_condition={'count__gte':w1.count})
+        w1.reload()
+        self.assertTrue(w1.toggle)
+        self.assertEqual(w1.count, 3)
+
     def test_update(self):
         """Ensure that an existing document is updated instead of be
         overwritten."""
@@ -989,6 +1079,16 @@ class InstanceTest(unittest.TestCase):
             person.update(name="Dan")
 
         self.assertRaises(InvalidQueryError, update_no_op_raises)
+
+    def test_update_unique_field(self):
+        class Doc(Document):
+            name = StringField(unique=True)
+
+        doc1 = Doc(name="first").save()
+        doc2 = Doc(name="second").save()
+
+        self.assertRaises(NotUniqueError, lambda:
+                          doc2.update(set__name=doc1.name))
 
     def test_embedded_update(self):
         """
@@ -2281,6 +2381,8 @@ class InstanceTest(unittest.TestCase):
         log.machine = "Localhost"
         log.save()
 
+        self.assertTrue(log.id is not None)
+
         log.log = "Saving"
         log.save()
 
@@ -2303,6 +2405,8 @@ class InstanceTest(unittest.TestCase):
         log = LogEntry()
         log.machine = "Localhost"
         log.save()
+
+        self.assertTrue(log.id is not None)
 
         log.log = "Saving"
         log.save()
@@ -2411,7 +2515,7 @@ class InstanceTest(unittest.TestCase):
                 for parameter_name, parameter in self.parameters.iteritems():
                     parameter.expand()
 
-        class System(Document):
+        class NodesSystem(Document):
             name = StringField(required=True)
             nodes = MapField(ReferenceField(Node, dbref=False))
 
@@ -2419,18 +2523,18 @@ class InstanceTest(unittest.TestCase):
                 for node_name, node in self.nodes.iteritems():
                     node.expand()
                     node.save(*args, **kwargs)
-                super(System, self).save(*args, **kwargs)
+                super(NodesSystem, self).save(*args, **kwargs)
 
-        System.drop_collection()
+        NodesSystem.drop_collection()
         Node.drop_collection()
 
-        system = System(name="system")
+        system = NodesSystem(name="system")
         system.nodes["node"] = Node()
         system.save()
         system.nodes["node"].parameters["param"] = Parameter()
         system.save()
 
-        system = System.objects.first()
+        system = NodesSystem.objects.first()
         self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
     def test_embedded_document_equality(self):
@@ -2451,6 +2555,66 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(f1, f2)
         f1.ref  # Dereferences lazily
         self.assertEqual(f1, f2)
+
+    def test_dbref_equality(self):
+        class Test2(Document):
+            name = StringField()
+
+        class Test3(Document):
+            name = StringField()
+
+        class Test(Document):
+            name = StringField()
+            test2 = ReferenceField('Test2')
+            test3 = ReferenceField('Test3')
+
+        Test.drop_collection()
+        Test2.drop_collection()
+        Test3.drop_collection()
+
+        t2 = Test2(name='a')
+        t2.save()
+
+        t3 = Test3(name='x')
+        t3.id = t2.id
+        t3.save()
+
+        t = Test(name='b', test2=t2, test3=t3)
+
+        f = Test._from_son(t.to_mongo())
+
+        dbref2 = f._data['test2']
+        obj2 = f.test2
+        self.assertTrue(isinstance(dbref2, DBRef))
+        self.assertTrue(isinstance(obj2, Test2))
+        self.assertTrue(obj2.id == dbref2.id)
+        self.assertTrue(obj2 == dbref2)
+        self.assertTrue(dbref2 == obj2)
+
+        dbref3 = f._data['test3']
+        obj3 = f.test3
+        self.assertTrue(isinstance(dbref3, DBRef))
+        self.assertTrue(isinstance(obj3, Test3))
+        self.assertTrue(obj3.id == dbref3.id)
+        self.assertTrue(obj3 == dbref3)
+        self.assertTrue(dbref3 == obj3)
+
+        self.assertTrue(obj2.id == obj3.id)
+        self.assertTrue(dbref2.id == dbref3.id)
+        self.assertFalse(dbref2 == dbref3)
+        self.assertFalse(dbref3 == dbref2)
+        self.assertTrue(dbref2 != dbref3)
+        self.assertTrue(dbref3 != dbref2)
+
+        self.assertFalse(obj2 == dbref3)
+        self.assertFalse(dbref3 == obj2)
+        self.assertTrue(obj2 != dbref3)
+        self.assertTrue(dbref3 != obj2)
+
+        self.assertFalse(obj3 == dbref2)
+        self.assertFalse(dbref2 == obj3)
+        self.assertTrue(obj3 != dbref2)
+        self.assertTrue(dbref2 != obj3)
 
 if __name__ == '__main__':
     unittest.main()

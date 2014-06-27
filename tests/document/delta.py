@@ -732,5 +732,47 @@ class DeltaTest(unittest.TestCase):
         mydoc._clear_changed_fields()
         self.assertEqual([], mydoc._get_changed_fields())
 
+    def test_referenced_object_changed_attributes(self):
+        """Ensures that when you save a new reference to a field, the referenced object isn't altered"""
+
+        class Organization(Document):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            org = ReferenceField('Organization', required=True)
+
+        Organization.drop_collection()
+        User.drop_collection()
+
+        org1 = Organization(name='Org 1')
+        org1.save()
+
+        org2 = Organization(name='Org 2')
+        org2.save()
+
+        user = User(name='Fred', org=org1)
+        user.save()
+
+        org1.reload()
+        org2.reload()
+        user.reload()
+        self.assertEqual(org1.name, 'Org 1')
+        self.assertEqual(org2.name, 'Org 2')
+        self.assertEqual(user.name, 'Fred')
+
+        user.name = 'Harold'
+        user.org = org2
+
+        org2.name = 'New Org 2'
+        self.assertEqual(org2.name, 'New Org 2')
+
+        user.save()
+        org2.save()
+
+        self.assertEqual(org2.name, 'New Org 2')
+        org2.reload()
+        self.assertEqual(org2.name, 'New Org 2')
+
 if __name__ == '__main__':
     unittest.main()
