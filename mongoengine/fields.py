@@ -1554,6 +1554,14 @@ class SequenceField(BaseField):
 
         return super(SequenceField, self).__set__(instance, value)
 
+    def prepare_query_value(self, op, value):
+        """
+        This method is overriden in order to convert the query value into to required
+        type. We need to do this in order to be able to successfully compare query   
+        values passed as string, the base implementation returns the value as is.
+        """
+        return self.value_decorator(value)
+
     def to_python(self, value):
         if value is None:
             value = self.generate()
