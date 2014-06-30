@@ -1,6 +1,5 @@
 # http://travis-ci.org/#!/MongoEngine/mongoengine
 language: python
-cache: apt
 services: mongodb
 python:
     - "2.6"
