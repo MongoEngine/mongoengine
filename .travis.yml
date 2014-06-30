@@ -33,8 +33,7 @@ install:
     - pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
     - python setup.py install
 
-before_script:
-    - mongo --eval 'db.adminCommand( { setParameter : 1, textSearchEnabled : true } )'
+before_script: mongo --eval 'db.adminCommand( { setParameter : 1, textSearchEnabled : true } )'
 
 script:
     - python setup.py test
