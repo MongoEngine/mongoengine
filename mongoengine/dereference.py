@@ -12,7 +12,7 @@ class DeReference(object):
     def __call__(self, items, max_depth=1, instance=None, name=None):
         """
         Cheaply dereferences the items to a set depth.
-        Also handles the convertion of complex data types.
+        Also handles the conversion of complex data types.
 
         :param items: The iterable (dict, list, queryset) to be dereferenced.
         :param max_depth: The maximum depth to recurse to
