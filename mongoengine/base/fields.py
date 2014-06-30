@@ -43,7 +43,7 @@ class BaseField(object):
         :param required: If the field is required. Whether it has to have a
             value or not. Defaults to False.
         :param default: (optional) The default value for this field if no value
-            has been set (or if the value has been unset).  It Can be a
+            has been set (or if the value has been unset).  It can be a
             callable.
         :param unique: Is the field value unique or not.  Defaults to False.
         :param unique_with: (optional) The other field this field should be

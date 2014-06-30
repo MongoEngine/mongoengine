@@ -601,7 +601,7 @@ class BaseQuerySet(object):
 
         :param alias: The database alias
 
-        .. versionadded:: 0.8
+        .. versionadded:: 0.9
         """
 
         with switch_db(self._document, alias) as cls:

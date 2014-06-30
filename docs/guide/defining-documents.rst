@@ -459,7 +459,8 @@ by creating a list of index specifications called :attr:`indexes` in the
 either be a single field name, a tuple containing multiple field names, or a
 dictionary containing a full index definition. A direction may be specified on
 fields by prefixing the field name with a **+** (for ascending) or a **-** sign
-(for descending). Note that direction only matters on multi-field indexes. ::
+(for descending). Note that direction only matters on multi-field indexes.
+Text indexes may be specified by prefixing the field name with a **$**. ::
 
     class Page(Document):
         title = StringField()
