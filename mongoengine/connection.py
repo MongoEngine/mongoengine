@@ -19,7 +19,7 @@ _dbs = {}
 
 
 def register_connection(alias, name, host=None, port=None,
-                        is_slave=False, read_preference=False, slaves=None,
+                        read_preference=False,
                         username=None, password=None, authentication_source=None,
                         **kwargs):
     """Add a connection.
@@ -29,12 +29,8 @@ def register_connection(alias, name, host=None, port=None,
     :param name: the name of the specific database to use
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
-    :param is_slave: whether the connection can act as a slave
-      ** Depreciated pymongo 2.0.1+
     :param read_preference: The read preference for the collection
        ** Added pymongo 2.1
-    :param slaves: a list of aliases of slave connections; each of these must
-        be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with
     :param password: password to authenticate with
     :param authentication_source: database to authenticate against
@@ -47,9 +43,7 @@ def register_connection(alias, name, host=None, port=None,
         'name': name,
         'host': host or 'localhost',
         'port': port or 27017,
-        'is_slave': is_slave,
         'read_preference': read_preference,
-        'slaves': slaves or [],
         'username': username,
         'password': password,
         'authentication_source': authentication_source
@@ -66,6 +60,10 @@ def register_connection(alias, name, host=None, port=None,
         })
         if "replicaSet" in conn_settings['host']:
             conn_settings['replicaSet'] = True
+
+    # Deprecated parameters that should not be passed on
+    kwargs.pop('slaves', None)
+    kwargs.pop('is_slave', None)
 
     conn_settings.update(kwargs)
     _connection_settings[alias] = conn_settings
@@ -97,8 +95,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings = _connection_settings[alias].copy()
 
         conn_settings.pop('name', None)
-        conn_settings.pop('slaves', None)
-        conn_settings.pop('is_slave', None)
         conn_settings.pop('username', None)
         conn_settings.pop('password', None)
         conn_settings.pop('authentication_source', None)
@@ -118,8 +114,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             connection_settings_iterator = ((alias, settings.copy()) for alias, settings in _connection_settings.iteritems())
             for alias, connection_settings in connection_settings_iterator:
                 connection_settings.pop('name', None)
-                connection_settings.pop('slaves', None)
-                connection_settings.pop('is_slave', None)
                 connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
                 if conn_settings == connection_settings and _connections.get(alias, None):
