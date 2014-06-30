@@ -3068,6 +3068,16 @@ class FieldTest(unittest.TestCase):
         except Exception:
             self.fail()
 
+    def test_undefined_field_exception(self):
+        """Tests if a `FieldDoesNotExist` exception is raised when trying to
+        set a value to a field that's not defined.
+        """
+
+        class Doc(Document):
+            foo = StringField(db_field='f')
+
+        with self.assertRaises(FieldDoesNotExist):
+            Doc(bar='test')
 
 if __name__ == '__main__':
     unittest.main()
