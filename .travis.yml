@@ -32,9 +32,10 @@ install:
     - if [[ $DJANGO != 'dev' ]]; then pip install Django==$DJANGO; fi
     - pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
     - python setup.py install
+
 before_script:
-    - sleep 15
     - mongo --eval 'db.adminCommand( { setParameter : 1, textSearchEnabled : true } )'
+
 script:
     - python setup.py test
     - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
