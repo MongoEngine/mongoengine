@@ -56,9 +56,9 @@ class BaseDocument(object):
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         if self.STRICT and not self._dynamic:
-            self._data = StrictDict.create(allowed_keys=self._fields.keys())()
+            self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
         else:
-            self._data = SemiStrictDict.create(allowed_keys=self._fields.keys())()
+            self._data = SemiStrictDict.create(allowed_keys=self._fields_ordered)()
 
         self._dynamic_fields = SON()
 
