@@ -367,9 +367,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class._fields['id'] = ObjectIdField(db_field='_id')
             new_class._fields['id'].name = 'id'
             new_class.id = new_class._fields['id']
-
-        # Prepend id field to _fields_ordered
-        if 'id' in new_class._fields and 'id' not in new_class._fields_ordered:
+            new_class._db_field_map['id'] = '_id'
+            new_class._reverse_db_field_map['_id'] = 'id'
+            # Prepend id field to _fields_ordered
+            if 'id' in new_class._fields_ordered:
+                # An existing id field will be overwritten anyway, so remove it
+                loc = new_class._fields_ordered.index('id')
+                new_class._fields_ordered = new_class._fields_ordered[:loc] + \
+                                            new_class._fields_ordered[loc+1:]
             new_class._fields_ordered = ('id', ) + new_class._fields_ordered
 
         # Merge in exceptions with parent hierarchy
