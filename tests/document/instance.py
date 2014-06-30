@@ -2443,30 +2443,6 @@ class InstanceTest(unittest.TestCase):
         group = Group.objects.first()
         self.assertEqual("hello - default", group.name)
 
-    def test_no_overwritting_no_data_loss(self):
-
-        class User(Document):
-            username = StringField(primary_key=True)
-            name = StringField()
-
-            @property
-            def foo(self):
-                return True
-
-        User.drop_collection()
-
-        user = User(username="Ross", foo="bar")
-        self.assertTrue(user.foo)
-
-        User._get_collection().save({"_id": "Ross", "foo": "Bar",
-                                     "data": [1, 2, 3]})
-
-        user = User.objects.first()
-        self.assertEqual("Ross", user.username)
-        self.assertEqual(True, user.foo)
-        self.assertEqual("Bar", user._data["foo"])
-        self.assertEqual([1, 2, 3], user._data["data"])
-
     def test_spaces_in_keys(self):
 
         class Embedded(DynamicEmbeddedDocument):
