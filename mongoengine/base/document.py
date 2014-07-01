@@ -67,7 +67,7 @@ class BaseDocument(object):
             for var in values.keys():
                 if var not in self._fields.keys() + ['id', 'pk', '_cls']:
                     msg = (
-                        "The field '{}' does not exist on the document '{}'"
+                        "The field '{0}' does not exist on the document '{1}'"
                     ).format(var, self._class_name)
                     raise FieldDoesNotExist(msg)
 
