@@ -3076,8 +3076,10 @@ class FieldTest(unittest.TestCase):
         class Doc(Document):
             foo = StringField(db_field='f')
 
-        with self.assertRaises(FieldDoesNotExist):
+        def test():
             Doc(bar='test')
+
+        self.assertRaises(FieldDoesNotExist, test)
 
 if __name__ == '__main__':
     unittest.main()
