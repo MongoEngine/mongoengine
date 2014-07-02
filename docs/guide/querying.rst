@@ -527,7 +527,7 @@ modifier comes before the field, not after it::
 
 .. note::
 
-    If no modifier operator is specified the default will be `set` the both following sentences are identical::
+    If no modifier operator is specified the default will be ``$set``. So the following sentences are identical::
 
         >>> BlogPost.objects(id=post.id).update(title='Example Post')
         >>> BlogPost.objects(id=post.id).update(set__title='Example Post')
