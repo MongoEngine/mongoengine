@@ -527,6 +527,13 @@ modifier comes before the field, not after it::
 
 .. note::
 
+    If no modifier operator is specified the default will be ``$set``. So the following sentences are identical::
+
+        >>> BlogPost.objects(id=post.id).update(title='Example Post')
+        >>> BlogPost.objects(id=post.id).update(set__title='Example Post')
+
+.. note::
+
     In version 0.5 the :meth:`~mongoengine.Document.save` runs atomic updates
     on changed documents by tracking changes to that document.
 

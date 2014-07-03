@@ -1074,11 +1074,13 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(OperationError, update_no_value_raises)
 
-        def update_no_op_raises():
+        def update_no_op_should_default_to_set():
             person = self.Person.objects.first()
             person.update(name="Dan")
+            person.reload()
+            return person.name
 
-        self.assertRaises(InvalidQueryError, update_no_op_raises)
+        self.assertEqual("Dan", update_no_op_should_default_to_set())
 
     def test_update_unique_field(self):
         class Doc(Document):

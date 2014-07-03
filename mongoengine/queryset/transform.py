@@ -164,6 +164,9 @@ def update(_doc_cls=None, **update):
             mongo_update.update(value)
             continue
         parts = key.split('__')
+        # if there is no operator, default to "set"
+        if len(parts) < 3 and parts[0] not in UPDATE_OPERATORS:
+            parts.insert(0, 'set')
         # Check for an operator and transform to mongo-style if there is
         op = None
         if parts[0] in UPDATE_OPERATORS:
