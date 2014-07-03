@@ -383,59 +383,6 @@ class QuerySet(object):
 
     @property
     def _collection(self):
-        """Property that returns the collection object. This allows us to
-        perform operations only if the collection is accessed.
-        """
-        if not self._accessed_collection:
-            self._accessed_collection = True
-
-            col = self._document._pymongo(use_async=False)
-
-            background = self._document._meta.get('index_background', True)
-            drop_dups = self._document._meta.get('index_drop_dups', False)
-            index_opts = self._document._meta.get('index_options', {})
-
-            if col.full_name not in QuerySet._index_specs:
-                index_info = col.index_information()
-                QuerySet._index_specs[col.full_name] = \
-                        [i['key'] for i in index_info.itervalues()]
-
-            index_specs = QuerySet._index_specs[col.full_name]
-
-            # Ensure document-defined indexes are created
-            if self._document._meta['indexes']:
-                for key_or_list in self._document._meta['indexes']:
-                    if key_or_list not in index_specs:
-                        if QuerySet._allow_index_creation:
-                            col.ensure_index(key_or_list,
-                                background=background, **index_opts)
-                        else:
-                            raise InvalidCollectionError("Index %s on %s does "
-                             "not exist" % (key_or_list, col.name))
-
-            # Ensure indexes created by uniqueness constraints
-            for index in self._document._meta['unique_indexes']:
-                if index not in index_specs:
-                    if QuerySet._allow_index_creation:
-                        col.ensure_index(index, unique=True,
-                            background=background, drop_dups=drop_dups,
-                            **index_opts)
-                    else:
-                        raise InvalidCollectionError("Index %s on %s does "
-                         "not exist" % (index, col.name))
-
-            # If _types is being used (for polymorphism), it needs an index
-            if '_types' in self._query:
-                col.ensure_index('_types',
-                    background=background, **index_opts)
-
-            # Ensure all needed field indexes are created
-            for field in self._document._fields.values():
-                if field.__class__._geo_index:
-                    index_spec = [(field.db_field, pymongo.GEO2D)]
-                    col.ensure_index(index_spec,
-                        background=background, **index_opts)
-
         return self._collection_obj
 
     @property
