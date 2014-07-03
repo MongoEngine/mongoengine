@@ -241,7 +241,7 @@ class StrictDict(object):
             class SpecificStrictDict(cls):
                 __slots__ = allowed_keys_tuple
                 def __repr__(self):
-                    return "{%s}" % ', '.join('"{!s}": {!r}'.format(k,v) for (k,v) in self.iteritems())
+                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k,v) for (k,v) in self.iteritems())
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]
 

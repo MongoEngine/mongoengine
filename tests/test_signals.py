@@ -37,7 +37,8 @@ class SignalTests(unittest.TestCase):
 
             @classmethod
             def post_init(cls, sender, document, **kwargs):
-                signal_output.append('post_init signal, %s' % document)
+                signal_output.append('post_init signal, %s, document._created = %s' % (document, document._created))
+
 
             @classmethod
             def pre_save(cls, sender, document, **kwargs):
@@ -193,10 +194,16 @@ class SignalTests(unittest.TestCase):
             a1 = self.Author(name='Bill Shakespeare')
             self.Author.objects.insert([a1], load_bulk=False)
 
+        def load_existing_author():
+            a  = self.Author(name='Bill Shakespeare')
+            a.save()
+            self.get_signal_output(lambda: None) # eliminate signal output
+            a1 = self.Author.objects(name='Bill Shakespeare')[0]
+        
         self.assertEqual(self.get_signal_output(create_author), [
             "pre_init signal, Author",
             "{'name': 'Bill Shakespeare'}",
-            "post_init signal, Bill Shakespeare",
+            "post_init signal, Bill Shakespeare, document._created = True",
         ])
 
         a1 = self.Author(name='Bill Shakespeare')
@@ -225,12 +232,22 @@ class SignalTests(unittest.TestCase):
             'post_delete signal, William Shakespeare',
         ])
 
+        signal_output = self.get_signal_output(load_existing_author)
+        # test signal_output lines separately, because of random ObjectID after object load
+        self.assertEqual(signal_output[0],
+            "pre_init signal, Author",
+        )
+        self.assertEqual(signal_output[2],
+            "post_init signal, Bill Shakespeare, document._created = False",
+        )
+
+
         signal_output = self.get_signal_output(bulk_create_author_with_load)
 
         # The output of this signal is not entirely deterministic. The reloaded
         # object will have an object ID. Hence, we only check part of the output
-        self.assertEqual(signal_output[3],
-            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]")
+        self.assertEqual(signal_output[3], "pre_bulk_insert signal, [<Author: Bill Shakespeare>]"
+        )
         self.assertEqual(signal_output[-2:],
             ["post_bulk_insert signal, [<Author: Bill Shakespeare>]",
              "Is loaded",])
@@ -238,7 +255,7 @@ class SignalTests(unittest.TestCase):
         self.assertEqual(self.get_signal_output(bulk_create_author_without_load), [
             "pre_init signal, Author",
             "{'name': 'Bill Shakespeare'}",
-            "post_init signal, Bill Shakespeare",
+            "post_init signal, Bill Shakespeare, document._created = True",
             "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
             "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
             "Not loaded",
