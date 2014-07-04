@@ -26,7 +26,11 @@ class MongoTestCase(TestCase):
     """
     TestCase class that clear the collection between the tests
     """
-    db_name = 'test_%s' % settings.MONGO_DATABASE_NAME
+
+    @property
+    def db_name(self):
+        return 'test_%s' % settings.MONGO_DATABASE_NAME
+
     def __init__(self, methodName='runtest'):
         self.db = connect(self.db_name).get_db()
         super(MongoTestCase, self).__init__(methodName)
