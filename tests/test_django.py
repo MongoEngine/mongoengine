@@ -7,6 +7,7 @@ from mongoengine import *
 
 from mongoengine.django.shortcuts import get_document_or_404
 
+import django
 from django.http import Http404
 from django.template import Context, Template
 from django.conf import settings
@@ -18,6 +19,10 @@ settings.configure(
     AUTH_USER_MODEL=('mongo_auth.MongoUser'),
     AUTHENTICATION_BACKENDS = ('mongoengine.django.auth.MongoEngineBackend',)
 )
+
+# For Django >= 1.7
+if hasattr(django, 'setup'):
+    django.setup()
 
 try:
     from django.contrib.auth import authenticate, get_user_model
