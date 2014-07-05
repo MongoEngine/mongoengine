@@ -301,8 +301,7 @@ class MongoAuthTest(unittest.TestCase):
 
 class MongoTestCaseTest(MongoTestCase):
     def test_mongo_test_case(self):
-        # test __init__ and teardown in MongoTestCase
-        pass
+        self.db.dummy_collection.insert({'collection': 'will be dropped'})
 
 
 if __name__ == '__main__':
