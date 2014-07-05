@@ -1,38 +1,31 @@
 #coding: utf-8
-from nose.plugins.skip import SkipTest
 
-from mongoengine.python_support import PY3
 from mongoengine import connect
+from mongoengine.connection import get_db
+from mongoengine.python_support import PY3
 
 try:
     from django.test import TestCase
-    from django.conf import settings
 except Exception as err:
     if PY3:
         from unittest import TestCase
-        # Dummy value so no error
-        class settings:
-            MONGO_DATABASE_NAME = 'dummy'
     else:
         raise err
 
 
 class MongoTestCase(TestCase):
-
-    def setUp(self):
-        if PY3:
-            raise SkipTest('django does not have Python 3 support')
-
     """
     TestCase class that clear the collection between the tests
     """
 
     @property
     def db_name(self):
-        return 'test_%s' % settings.MONGO_DATABASE_NAME
+        from django.conf import settings
+        return 'test_%s' % getattr(settings, 'MONGO_DATABASE_NAME', 'dummy')
 
     def __init__(self, methodName='runtest'):
-        self.db = connect(self.db_name).get_db()
+        connect(self.db_name)
+        self.db = get_db()
         super(MongoTestCase, self).__init__(methodName)
 
     def _post_teardown(self):
@@ -41,3 +34,14 @@ class MongoTestCase(TestCase):
             if collection == 'system.indexes':
                 continue
             self.db.drop_collection(collection)
+
+    # prevent standard db init
+
+    def _databases_names(self, *args, **kwargs):
+        return []
+
+    def _fixture_setup(self):
+        pass
+
+    def _fixture_teardown(self):
+        pass

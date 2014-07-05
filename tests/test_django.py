@@ -2,9 +2,8 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 from nose.plugins.skip import SkipTest
+
 from mongoengine import *
-
-
 from mongoengine.django.shortcuts import get_document_or_404
 
 import django
@@ -37,6 +36,7 @@ except Exception:
     DJ15 = False
 from django.contrib.sessions.tests import SessionTestsMixin
 from mongoengine.django.sessions import SessionStore, MongoSession
+from mongoengine.django.tests import MongoTestCase
 from datetime import tzinfo, timedelta
 ZERO = timedelta(0)
 
@@ -297,6 +297,13 @@ class MongoAuthTest(unittest.TestCase):
         user = authenticate(username='user', password='test')
         db_user = User.objects.get(username='user')
         self.assertEqual(user.id, db_user.id)
+
+
+class MongoTestCaseTest(MongoTestCase):
+    def test_mongo_test_case(self):
+        # test __init__ and teardown in MongoTestCase
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
