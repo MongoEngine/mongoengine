@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 
+- Fixed tests for Django 1.7 #696
 - Follow ReferenceFields in EmbeddedDocuments with select_related #690
 - Added preliminary support for text indexes #680
 - Added `elemMatch` operator as well - `match` is too obscure #653
