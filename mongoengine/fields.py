@@ -311,7 +311,7 @@ class DecimalField(BaseField):
             return value
         return value.quantize(self.precision, rounding=self.rounding)
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, use_db_field=True):
         if value is None:
             return value
         if self.force_string:
@@ -551,10 +551,10 @@ class EmbeddedDocumentField(BaseField):
             return self.document_type._from_son(value)
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, use_db_field=True):
         if not isinstance(value, self.document_type):
             return value
-        return self.document_type.to_mongo(value)
+        return self.document_type.to_mongo(value, use_db_field)
 
     def validate(self, value, clean=True):
         """Make sure that the document instance is an instance of the
@@ -601,11 +601,11 @@ class GenericEmbeddedDocumentField(BaseField):
 
         value.validate(clean=clean)
 
-    def to_mongo(self, document):
+    def to_mongo(self, document, use_db_field=True):
         if document is None:
             return None
 
-        data = document.to_mongo()
+        data = document.to_mongo(use_db_field)
         if not '_cls' in data:
             data['_cls'] = document._class_name
         return data
@@ -628,7 +628,7 @@ class DynamicField(BaseField):
             cls = value.__class__
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
-            if (isinstance(value, Document)):
+            if (isinstance(value,   Document)):
                 val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
             if (isinstance(value, EmbeddedDocument)):
                 val['_cls'] = cls.__name__
@@ -1001,7 +1001,7 @@ class GenericReferenceField(BaseField):
             doc = doc_cls._from_son(doc)
         return doc
 
-    def to_mongo(self, document):
+    def to_mongo(self, document, use_db_field=True):
         if document is None:
             return None
 
@@ -1567,7 +1567,7 @@ class SequenceField(BaseField):
     def prepare_query_value(self, op, value):
         """
         This method is overriden in order to convert the query value into to required
-        type. We need to do this in order to be able to successfully compare query   
+        type. We need to do this in order to be able to successfully compare query
         values passed as string, the base implementation returns the value as is.
         """
         return self.value_decorator(value)
@@ -1631,12 +1631,12 @@ class UUIDField(BaseField):
 
 
 class GeoPointField(BaseField):
-    """A list storing a longitude and latitude coordinate. 
+    """A list storing a longitude and latitude coordinate.
 
-    .. note:: this represents a generic point in a 2D plane and a legacy way of 
-        representing a geo point. It admits 2d indexes but not "2dsphere" indexes 
-        in MongoDB > 2.4 which are more natural for modeling geospatial points. 
-        See :ref:`geospatial-indexes` 
+    .. note:: this represents a generic point in a 2D plane and a legacy way of
+        representing a geo point. It admits 2d indexes but not "2dsphere" indexes
+        in MongoDB > 2.4 which are more natural for modeling geospatial points.
+        See :ref:`geospatial-indexes`
 
     .. versionadded:: 0.4
     """
