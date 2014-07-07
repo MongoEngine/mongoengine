@@ -2,11 +2,11 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 from nose.plugins.skip import SkipTest
+
 from mongoengine import *
-
-
 from mongoengine.django.shortcuts import get_document_or_404
 
+import django
 from django.http import Http404
 from django.template import Context, Template
 from django.conf import settings
@@ -18,6 +18,10 @@ settings.configure(
     AUTH_USER_MODEL=('mongo_auth.MongoUser'),
     AUTHENTICATION_BACKENDS = ('mongoengine.django.auth.MongoEngineBackend',)
 )
+
+# For Django >= 1.7
+if hasattr(django, 'setup'):
+    django.setup()
 
 try:
     from django.contrib.auth import authenticate, get_user_model
@@ -32,6 +36,7 @@ except Exception:
     DJ15 = False
 from django.contrib.sessions.tests import SessionTestsMixin
 from mongoengine.django.sessions import SessionStore, MongoSession
+from mongoengine.django.tests import MongoTestCase
 from datetime import tzinfo, timedelta
 ZERO = timedelta(0)
 
@@ -292,6 +297,12 @@ class MongoAuthTest(unittest.TestCase):
         user = authenticate(username='user', password='test')
         db_user = User.objects.get(username='user')
         self.assertEqual(user.id, db_user.id)
+
+
+class MongoTestCaseTest(MongoTestCase):
+    def test_mongo_test_case(self):
+        self.db.dummy_collection.insert({'collection': 'will be dropped'})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1219,6 +1219,30 @@ class FieldTest(unittest.TestCase):
         page = Page.objects.first()
         self.assertEqual(page.tags[0], page.posts[0].tags[0])
 
+    def test_select_related_follows_embedded_referencefields(self):
+        class Playlist(Document):
+            items = ListField(EmbeddedDocumentField("PlaylistItem"))
+
+        class PlaylistItem(EmbeddedDocument):
+            song = ReferenceField("Song")
+
+        class Song(Document):
+            title = StringField()
+
+        Playlist.drop_collection()
+        Song.drop_collection()
+
+        songs = [Song.objects.create(title="song %d" % i) for i in range(3)]
+        items = [PlaylistItem(song=song) for song in songs]
+        playlist = Playlist.objects.create(items=items)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+
+            playlist = Playlist.objects.first().select_related()
+            songs = [item.song for item in playlist.items]
+
+            self.assertEqual(q, 2)
+
 if __name__ == '__main__':
     unittest.main()
-
