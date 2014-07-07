@@ -47,7 +47,8 @@ class FieldTest(unittest.TestCase):
 
         # Confirm saving now would store values
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'name', 'userid'])
+        self.assertEqual(
+            data_to_be_saved, ['age', 'created', 'name', 'userid'])
 
         self.assertTrue(person.validate() is None)
 
@@ -63,7 +64,8 @@ class FieldTest(unittest.TestCase):
 
         # Confirm introspection changes nothing
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'name', 'userid'])
+        self.assertEqual(
+            data_to_be_saved, ['age', 'created', 'name', 'userid'])
 
     def test_default_values_set_to_None(self):
         """Ensure that default field values are used when creating a document.
@@ -587,7 +589,8 @@ class FieldTest(unittest.TestCase):
 
         LogEntry.drop_collection()
 
-        # Post UTC - microseconds are rounded (down) nearest millisecond and dropped
+        # Post UTC - microseconds are rounded (down) nearest millisecond and
+        # dropped
         d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
         d2 = datetime.datetime(1970, 01, 01, 00, 00, 01)
         log = LogEntry()
@@ -688,7 +691,8 @@ class FieldTest(unittest.TestCase):
 
         LogEntry.drop_collection()
 
-        # Post UTC - microseconds are rounded (down) nearest millisecond and dropped - with default datetimefields
+        # Post UTC - microseconds are rounded (down) nearest millisecond and
+        # dropped - with default datetimefields
         d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
         log = LogEntry()
         log.date = d1
@@ -696,14 +700,16 @@ class FieldTest(unittest.TestCase):
         log.reload()
         self.assertEqual(log.date, d1)
 
-        # Post UTC - microseconds are rounded (down) nearest millisecond - with default datetimefields
+        # Post UTC - microseconds are rounded (down) nearest millisecond - with
+        # default datetimefields
         d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 9999)
         log.date = d1
         log.save()
         log.reload()
         self.assertEqual(log.date, d1)
 
-        # Pre UTC dates microseconds below 1000 are dropped - with default datetimefields
+        # Pre UTC dates microseconds below 1000 are dropped - with default
+        # datetimefields
         d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
         log.date = d1
         log.save()
@@ -929,12 +935,16 @@ class FieldTest(unittest.TestCase):
         post.save()
 
         self.assertEqual(BlogPost.objects.count(), 3)
-        self.assertEqual(BlogPost.objects.filter(info__exact='test').count(), 1)
-        self.assertEqual(BlogPost.objects.filter(info__0__test='test').count(), 1)
+        self.assertEqual(
+            BlogPost.objects.filter(info__exact='test').count(), 1)
+        self.assertEqual(
+            BlogPost.objects.filter(info__0__test='test').count(), 1)
 
         # Confirm handles non strings or non existing keys
-        self.assertEqual(BlogPost.objects.filter(info__0__test__exact='5').count(), 0)
-        self.assertEqual(BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
+        self.assertEqual(
+            BlogPost.objects.filter(info__0__test__exact='5').count(), 0)
+        self.assertEqual(
+            BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
         BlogPost.drop_collection()
 
     def test_list_field_passed_in_value(self):
@@ -950,7 +960,6 @@ class FieldTest(unittest.TestCase):
         foo = Foo(bars=[])
         foo.bars.append(bar)
         self.assertEqual(repr(foo.bars), '[<Bar: Bar object>]')
-
 
     def test_list_field_strict(self):
         """Ensure that list field handles validation if provided a strict field type."""
@@ -1082,20 +1091,28 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(e2.mapping[1], IntegerSetting))
 
         # Test querying
-        self.assertEqual(Simple.objects.filter(mapping__1__value=42).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__2__number=1).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__2__complex__value=42).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__2__list__0__value=42).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__2__list__1__value='foo').count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__1__value=42).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__2__number=1).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__2__complex__value=42).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__2__list__0__value=42).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__2__list__1__value='foo').count(), 1)
 
         # Confirm can update
         Simple.objects().update(set__mapping__1=IntegerSetting(value=10))
-        self.assertEqual(Simple.objects.filter(mapping__1__value=10).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__1__value=10).count(), 1)
 
         Simple.objects().update(
             set__mapping__2__list__1=StringSetting(value='Boo'))
-        self.assertEqual(Simple.objects.filter(mapping__2__list__1__value='foo').count(), 0)
-        self.assertEqual(Simple.objects.filter(mapping__2__list__1__value='Boo').count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__2__list__1__value='foo').count(), 0)
+        self.assertEqual(
+            Simple.objects.filter(mapping__2__list__1__value='Boo').count(), 1)
 
         Simple.drop_collection()
 
@@ -1141,12 +1158,16 @@ class FieldTest(unittest.TestCase):
         post.save()
 
         self.assertEqual(BlogPost.objects.count(), 3)
-        self.assertEqual(BlogPost.objects.filter(info__title__exact='test').count(), 1)
-        self.assertEqual(BlogPost.objects.filter(info__details__test__exact='test').count(), 1)
+        self.assertEqual(
+            BlogPost.objects.filter(info__title__exact='test').count(), 1)
+        self.assertEqual(
+            BlogPost.objects.filter(info__details__test__exact='test').count(), 1)
 
         # Confirm handles non strings or non existing keys
-        self.assertEqual(BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
-        self.assertEqual(BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
+        self.assertEqual(
+            BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
+        self.assertEqual(
+            BlogPost.objects.filter(info__made_up__test__exact='test').count(), 0)
 
         post = BlogPost.objects.create(info={'title': 'original'})
         post.info.update({'title': 'updated'})
@@ -1207,19 +1228,26 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
 
         # Test querying
-        self.assertEqual(Simple.objects.filter(mapping__someint__value=42).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__nested_dict__number=1).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__nested_dict__complex__value=42).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__nested_dict__list__0__value=42).count(), 1)
-        self.assertEqual(Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__someint__value=42).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__nested_dict__number=1).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__nested_dict__complex__value=42).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__nested_dict__list__0__value=42).count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 1)
 
         # Confirm can update
         Simple.objects().update(
             set__mapping={"someint": IntegerSetting(value=10)})
         Simple.objects().update(
             set__mapping__nested_dict__list__1=StringSetting(value='Boo'))
-        self.assertEqual(Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 0)
-        self.assertEqual(Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
+        self.assertEqual(
+            Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 0)
+        self.assertEqual(
+            Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
 
         Simple.drop_collection()
 
@@ -1290,7 +1318,7 @@ class FieldTest(unittest.TestCase):
 
         class Test(Document):
             my_map = MapField(field=EmbeddedDocumentField(Embedded),
-                                    db_field='x')
+                              db_field='x')
 
         Test.drop_collection()
 
@@ -1334,7 +1362,7 @@ class FieldTest(unittest.TestCase):
         Log(name="wilson", visited={'friends': datetime.datetime.now()}).save()
 
         self.assertEqual(1, Log.objects(
-                                visited__friends__exists=True).count())
+            visited__friends__exists=True).count())
 
     def test_embedded_db_field(self):
 
@@ -1476,6 +1504,151 @@ class FieldTest(unittest.TestCase):
                                'parent': "50a234ea469ac1eda42d347d"})
         mongoed = p1.to_mongo()
         self.assertTrue(isinstance(mongoed['parent'], ObjectId))
+
+    def test_cached_reference_fields(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(
+                Animal, fields=['tag'])
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        a = Animal(nam="Leopard", tag="heavy")
+        a.save()
+
+        o = Ocorrence(person="teste", animal=a)
+        o.save()
+        self.assertEqual(
+            a.to_mongo(fields=['tag']), {'tag': 'heavy', "_id": a.pk})
+
+        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
+
+        # counts
+        Ocorrence(person="teste 2").save()
+        Ocorrence(person="teste 3").save()
+
+        count = Ocorrence.objects(animal__tag='heavy').count()
+        self.assertEqual(count, 1)
+
+        ocorrence = Ocorrence.objects(animal__tag='heavy').first()
+        self.assertEqual(ocorrence.person, "teste")
+        self.assertTrue(isinstance(ocorrence.animal, Animal))
+
+    def test_cached_reference_embedded_fields(self):
+        class Owner(EmbeddedDocument):
+            TPS = (
+                ('n', "Normal"),
+                ('u', "Urgent")
+            )
+            name = StringField()
+            tp = StringField(
+                verbose_name="Type",
+                db_field="t",
+                choices=TPS)
+
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+            owner = EmbeddedDocumentField(Owner)
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(
+                Animal, fields=['tag', 'owner.tp'])
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        a = Animal(nam="Leopard", tag="heavy",
+                   owner=Owner(tp='u', name="Wilson Júnior")
+                   )
+        a.save()
+
+        o = Ocorrence(person="teste", animal=a)
+        o.save()
+        self.assertEqual(dict(a.to_mongo(fields=['tag', 'owner.tp'])), {
+            '_id': a.pk,
+            'tag': 'heavy',
+            'owner': {
+                't': 'u'
+            }
+        })
+        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
+        self.assertEqual(o.to_mongo()['animal']['owner']['t'], 'u')
+
+        # counts
+        Ocorrence(person="teste 2").save()
+        Ocorrence(person="teste 3").save()
+
+        count = Ocorrence.objects(
+            animal__tag='heavy', animal__owner__tp='u').count()
+        self.assertEqual(count, 1)
+
+        ocorrence = Ocorrence.objects(
+            animal__tag='heavy',
+            animal__owner__tp='u').first()
+        self.assertEqual(ocorrence.person, "teste")
+        self.assertTrue(isinstance(ocorrence.animal, Animal))
+
+    def test_cached_reference_embedded_list_fields(self):
+        class Owner(EmbeddedDocument):
+            name = StringField()
+            tags = ListField(StringField())
+
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+            owner = EmbeddedDocumentField(Owner)
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(
+                Animal, fields=['tag', 'owner.tags'])
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        a = Animal(nam="Leopard", tag="heavy",
+                   owner=Owner(tags=['cool', 'funny'],
+                               name="Wilson Júnior")
+                   )
+        a.save()
+
+        o = Ocorrence(person="teste 2", animal=a)
+        o.save()
+        self.assertEqual(dict(a.to_mongo(fields=['tag', 'owner.tags'])), {
+            '_id': a.pk,
+            'tag': 'heavy',
+            'owner': {
+                'tags': ['cool', 'funny']
+            }
+        })
+
+        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
+        self.assertEqual(o.to_mongo()['animal']['owner']['tags'],
+                         ['cool', 'funny'])
+
+        # counts
+        Ocorrence(person="teste 2").save()
+        Ocorrence(person="teste 3").save()
+
+        query = Ocorrence.objects(
+            animal__tag='heavy', animal__owner__tags='cool')._query
+        self.assertEqual(
+            query, {'animal.owner.tags': 'cool', 'animal.tag': 'heavy'})
+
+        ocorrence = Ocorrence.objects(
+            animal__tag='heavy',
+            animal__owner__tags='cool').first()
+        self.assertEqual(ocorrence.person, "teste 2")
+        self.assertTrue(isinstance(ocorrence.animal, Animal))
 
     def test_objectid_reference_fields(self):
 
@@ -1834,8 +2007,7 @@ class FieldTest(unittest.TestCase):
         Person(name="Wilson Jr").save()
 
         self.assertEqual(repr(Person.objects(city=None)),
-                            "[<Person: Person object>]")
-
+                         "[<Person: Person object>]")
 
     def test_generic_reference_choices(self):
         """Ensure that a GenericReferenceField can handle choices
@@ -1982,7 +2154,8 @@ class FieldTest(unittest.TestCase):
         attachment_required.blob = Binary(b('\xe6\x00\xc4\xff\x07'))
         attachment_required.validate()
 
-        attachment_size_limit = AttachmentSizeLimit(blob=b('\xe6\x00\xc4\xff\x07'))
+        attachment_size_limit = AttachmentSizeLimit(
+            blob=b('\xe6\x00\xc4\xff\x07'))
         self.assertRaises(ValidationError, attachment_size_limit.validate)
         attachment_size_limit.blob = b('\xe6\x00\xc4\xff')
         attachment_size_limit.validate()
@@ -2030,8 +2203,8 @@ class FieldTest(unittest.TestCase):
         """
         class Shirt(Document):
             size = StringField(max_length=3, choices=(
-                    ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                    ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+                ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
+                ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
             style = StringField(max_length=3, choices=(
                 ('S', 'Small'), ('B', 'Baggy'), ('W', 'wide')), default='S')
 
@@ -2061,7 +2234,7 @@ class FieldTest(unittest.TestCase):
         """
         class Shirt(Document):
             size = StringField(max_length=3,
-                              choices=('S', 'M', 'L', 'XL', 'XXL'))
+                               choices=('S', 'M', 'L', 'XL', 'XXL'))
 
         Shirt.drop_collection()
 
@@ -2178,7 +2351,6 @@ class FieldTest(unittest.TestCase):
         Person.id.set_next_value(1000)
         c = self.db['mongoengine.counters'].find_one({'_id': 'person.id'})
         self.assertEqual(c['next'], 1000)
-
 
     def test_sequence_field_get_next_value(self):
         class Person(Document):
@@ -2368,7 +2540,6 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(1, post.comments[0].id)
         self.assertEqual(2, post.comments[1].id)
 
-
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()
@@ -2478,7 +2649,7 @@ class FieldTest(unittest.TestCase):
             self.assertTrue('comments' in error.errors)
             self.assertTrue(1 in error.errors['comments'])
             self.assertTrue(isinstance(error.errors['comments'][1]['content'],
-                            ValidationError))
+                                       ValidationError))
 
             # ValidationError.schema property
             error_dict = error.to_dict()
@@ -2604,11 +2775,11 @@ class FieldTest(unittest.TestCase):
         DictFieldTest.drop_collection()
 
         test = DictFieldTest(dictionary=None)
-        test.dictionary # Just access to test getter
+        test.dictionary  # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
 
         test = DictFieldTest(dictionary=False)
-        test.dictionary # Just access to test getter
+        test.dictionary  # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
 
 
