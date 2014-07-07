@@ -257,7 +257,7 @@ class BaseDocument(object):
         """
         pass
 
-    def to_mongo(self):
+    def to_mongo(self, use_db_field=True):
         """Return as SON data ready for use with MongoDB.
         """
         data = SON()
@@ -271,7 +271,11 @@ class BaseDocument(object):
                 field = self._dynamic_fields.get(field_name)
 
             if value is not None:
-                value = field.to_mongo(value)
+                EmbeddedDocument = _import_class("EmbeddedDocument")
+                if isinstance(value, (EmbeddedDocument)) and use_db_field==False:
+                    value = field.to_mongo(value, use_db_field)
+                else:
+                    value = field.to_mongo(value)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
@@ -279,7 +283,10 @@ class BaseDocument(object):
                 self._data[field_name] = value
 
             if value is not None:
-                data[field.db_field] = value
+                if use_db_field:
+                    data[field.db_field] = value
+                else:
+                    data[field.name] = value
 
         # If "_id" has not been set, then try and set it
         Document = _import_class("Document")
@@ -342,8 +349,11 @@ class BaseDocument(object):
             raise ValidationError(message, errors=errors)
 
     def to_json(self, *args, **kwargs):
-        """Converts a document to JSON"""
-        return json_util.dumps(self.to_mongo(),  *args, **kwargs)
+        """Converts a document to JSON.
+        :param use_db_field: Set to True by default but enables the output of the json structure with the field names and not the mongodb store db_names in case of set to False
+        """
+        use_db_field = kwargs.pop('use_db_field') if kwargs.has_key('use_db_field') else True
+        return json_util.dumps(self.to_mongo(use_db_field),  *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data):
