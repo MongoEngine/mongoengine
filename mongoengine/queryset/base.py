@@ -206,7 +206,7 @@ class BaseQuerySet(object):
             raise OperationError(
                 "Is not possible to use search_text two times.")
 
-        query_kwargs = {'$search': text}
+        query_kwargs = SON({'$search': text})
         if language:
             query_kwargs['$language'] = language
 
