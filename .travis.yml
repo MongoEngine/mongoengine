@@ -21,9 +21,6 @@ matrix:
           env: PYMONGO=dev DJANGO=dev
         - python: "2.6"
           env: PYMONGO=2.7.1 DJANGO=dev
-    allow_failures:
-        - env: PYMONGO=dev DJANGO=dev
-        - env: PYMONGO=2.7.1 DJANGO=dev
     fast_finish: true
 
 before_install:
@@ -34,15 +31,15 @@ before_install:
 
 install:
     - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev python-tk
-    - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
-    - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO; true; fi
-    - if [[ $DJANGO == 'dev' ]]; then pip install https://www.djangoproject.com/download/1.7c1/tarball/; fi
-    - if [[ $DJANGO != 'dev' ]]; then pip install Django==$DJANGO; fi
-    - pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
-    - python setup.py install
+    - if [[ $PYMONGO == 'dev' ]]; then travis_retry pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
+    - if [[ $PYMONGO != 'dev' ]]; then travis_retry pip install pymongo==$PYMONGO; true; fi
+    - if [[ $DJANGO == 'dev' ]]; then travis_retry pip install https://www.djangoproject.com/download/1.7c1/tarball/; fi
+    - if [[ $DJANGO != 'dev' ]]; then travis_retry pip install Django==$DJANGO; fi
+    - travis_retry pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
+    - travis_retry python setup.py install
 
 script:
-    - python setup.py test
+    - travis_retry python setup.py test
     - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
     - python benchmark.py
 notifications:
