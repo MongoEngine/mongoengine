@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 - Added support to show original model fields on to_json calls instead of db_field #697
+- Added Queryset.search_text to Text indexes searchs #700
 - Fixed tests for Django 1.7 #696
 - Follow ReferenceFields in EmbeddedDocuments with select_related #690
 - Added preliminary support for text indexes #680

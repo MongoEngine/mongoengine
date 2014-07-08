@@ -39,6 +39,7 @@ RE_TYPE = type(re.compile(''))
 
 
 class BaseQuerySet(object):
+
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
     """
@@ -64,6 +65,8 @@ class BaseQuerySet(object):
         self._none = False
         self._as_pymongo = False
         self._as_pymongo_coerce = False
+        self._search_text = None
+        self._include_text_scores = False
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -71,7 +74,8 @@ class BaseQuerySet(object):
             if len(self._document._subclasses) == 1:
                 self._initial_query = {"_cls": self._document._subclasses[0]}
             else:
-                self._initial_query = {"_cls": {"$in": self._document._subclasses}}
+                self._initial_query = {
+                    "_cls": {"$in": self._document._subclasses}}
             self._loaded_fields = QueryFieldList(always_include=['_cls'])
         self._cursor_obj = None
         self._limit = None
@@ -148,6 +152,7 @@ class BaseQuerySet(object):
                 return queryset._get_scalar(
                     queryset._document._from_son(queryset._cursor[key],
                                                  _auto_dereference=self._auto_dereference))
+
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
             return queryset._document._from_son(queryset._cursor[key],
@@ -183,6 +188,36 @@ class BaseQuerySet(object):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
         return self.__call__(*q_objs, **query)
+
+    def search_text(self, text, language=None, include_text_scores=False):
+        """
+        Start a text search, using text indexes.
+        Require: MongoDB server version 2.6+.
+
+        :param language:  The language that determines the list of stop words
+            for the search and the rules for the stemmer and tokenizer.
+            If not specified, the search uses the default language of the index.
+            For supported languages, see `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+
+        :param include_text_scores: If True, automaticaly add a text_score attribute to Document.
+
+        """
+        queryset = self.clone()
+        if queryset._search_text:
+            raise OperationError(
+                "Is not possible to use search_text two times.")
+
+        query_kwargs = SON({'$search': text})
+        if language:
+            query_kwargs['$language'] = language
+
+        queryset._query_obj &= Q(__raw__={'$text': query_kwargs})
+        queryset._mongo_query = None
+        queryset._cursor_obj = None
+        queryset._search_text = text
+        queryset._include_text_scores = include_text_scores
+
+        return queryset
 
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
@@ -322,10 +357,10 @@ class BaseQuerySet(object):
         try:
             ids = self._collection.insert(raw, **write_concern)
         except pymongo.errors.DuplicateKeyError, err:
-            message = 'Could not save document (%s)';
+            message = 'Could not save document (%s)'
             raise NotUniqueError(message % unicode(err))
         except pymongo.errors.OperationFailure, err:
-            message = 'Could not save document (%s)';
+            message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
@@ -408,7 +443,7 @@ class BaseQuerySet(object):
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
                 if (doc != document_cls and ref_q_count > 0
-                    or (doc == document_cls and ref_q_count > 0)):
+                        or (doc == document_cls and ref_q_count > 0)):
                     ref_q.delete(write_concern=write_concern)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
@@ -418,7 +453,8 @@ class BaseQuerySet(object):
                     write_concern=write_concern,
                     **{'pull_all__%s' % field_name: self})
 
-        queryset._collection.remove(queryset._query, write_concern=write_concern)
+        queryset._collection.remove(
+            queryset._query, write_concern=write_concern)
 
     def update(self, upsert=False, multi=True, write_concern=None,
                full_result=False, **update):
@@ -515,7 +551,8 @@ class BaseQuerySet(object):
             raise OperationError("Conflicting parameters: remove and new")
 
         if not update and not upsert and not remove:
-            raise OperationError("No update parameters, must either update or remove")
+            raise OperationError(
+                "No update parameters, must either update or remove")
 
         queryset = self.clone()
         query = queryset._query
@@ -622,13 +659,15 @@ class BaseQuerySet(object):
           :class:`~mongoengine.queryset.base.BaseQuerySet` into another child class
         """
         if not isinstance(cls, BaseQuerySet):
-            raise OperationError('%s is not a subclass of BaseQuerySet' % cls.__name__)
+            raise OperationError(
+                '%s is not a subclass of BaseQuerySet' % cls.__name__)
 
         copy_props = ('_mongo_query', '_initial_query', '_none', '_query_obj',
                       '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
-                      '_limit', '_skip', '_hint', '_auto_dereference')
+                      '_limit', '_skip', '_hint', '_auto_dereference',
+                      '_search_text', '_include_text_scores')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -714,11 +753,14 @@ class BaseQuerySet(object):
             distinct = self._dereference(queryset._cursor.distinct(field), 1,
                                          name=field, instance=self._document)
 
-            # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
-            doc_field = getattr(self._document._fields.get(field), "field", None)
+            # We may need to cast to the correct type eg.
+            # ListField(EmbeddedDocumentField)
+            doc_field = getattr(
+                self._document._fields.get(field), "field", None)
             instance = getattr(doc_field, "document_type", False)
             EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
-            GenericEmbeddedDocumentField = _import_class('GenericEmbeddedDocumentField')
+            GenericEmbeddedDocumentField = _import_class(
+                'GenericEmbeddedDocumentField')
             if instance and isinstance(doc_field, (EmbeddedDocumentField,
                                                    GenericEmbeddedDocumentField)):
                 distinct = [instance(**doc) for doc in distinct]
@@ -799,7 +841,8 @@ class BaseQuerySet(object):
         for value, group in itertools.groupby(fields, lambda x: x[1]):
             fields = [field for field, value in group]
             fields = queryset._fields_to_dbfields(fields)
-            queryset._loaded_fields += QueryFieldList(fields, value=value, _only_called=_only_called)
+            queryset._loaded_fields += QueryFieldList(
+                fields, value=value, _only_called=_only_called)
 
         return queryset
 
@@ -1035,7 +1078,6 @@ class BaseQuerySet(object):
                 if db_alias:
                     ordered_output.append(('db', get_db(db_alias).name))
                     del remaing_args[0]
-
 
                 for part in remaing_args:
                     value = output.get(part)
@@ -1292,6 +1334,13 @@ class BaseQuerySet(object):
             cursor_args['slave_okay'] = self._slave_okay
         if self._loaded_fields:
             cursor_args['fields'] = self._loaded_fields.as_dict()
+
+        if self._include_text_scores:
+            if 'fields' not in cursor_args:
+                cursor_args['fields'] = {}
+
+            cursor_args['fields']['text_score'] = {'$meta': "textScore"}
+
         return cursor_args
 
     @property
@@ -1500,6 +1549,13 @@ class BaseQuerySet(object):
         for key in keys:
             if not key:
                 continue
+
+            if key == '$text_score':
+                # automatically set to include text scores
+                self._include_text_scores = True
+                key_list.append(('text_score', {'$meta': "textScore"}))
+                continue
+
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING

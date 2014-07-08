@@ -41,6 +41,7 @@ class InvalidCollectionError(Exception):
 
 
 class EmbeddedDocument(BaseDocument):
+
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -59,7 +60,7 @@ class EmbeddedDocument(BaseDocument):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = DocumentMetaclass
+    my_metaclass = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
     def __init__(self, *args, **kwargs):
@@ -77,6 +78,7 @@ class EmbeddedDocument(BaseDocument):
 
 
 class Document(BaseDocument):
+
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -124,14 +126,15 @@ class Document(BaseDocument):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = TopLevelDocumentMetaclass
+    my_metaclass = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
-    __slots__ = ('__objects' )
+    __slots__ = ('__objects')
 
     def pk():
         """Primary key alias
         """
+
         def fget(self):
             return getattr(self, self._meta['id_field'])
 
@@ -139,6 +142,13 @@ class Document(BaseDocument):
             return setattr(self, self._meta['id_field'], value)
         return property(fget, fset)
     pk = pk()
+
+    @property
+    def text_score(self):
+        """
+        Used for text searchs
+        """
+        return self._data.get('text_score')
 
     @classmethod
     def _get_db(cls):
@@ -165,7 +175,7 @@ class Document(BaseDocument):
                     if options.get('max') != max_documents or \
                        options.get('size') != max_size:
                         msg = (('Cannot create collection "%s" as a capped '
-                               'collection as it already exists')
+                                'collection as it already exists')
                                % cls._collection)
                         raise InvalidCollectionError(msg)
                 else:
@@ -282,9 +292,9 @@ class Document(BaseDocument):
                                                    upsert=upsert, **write_concern)
                     created = is_new_object(last_error)
 
-
             if cascade is None:
-                cascade = self._meta.get('cascade', False) or cascade_kwargs is not None
+                cascade = self._meta.get(
+                    'cascade', False) or cascade_kwargs is not None
 
             if cascade:
                 kwargs = {
@@ -377,7 +387,8 @@ class Document(BaseDocument):
                     del(query["_cls"])
                 return self._qs.filter(**query).update_one(**kwargs)
             else:
-                raise OperationError('attempt to update a document not yet saved')
+                raise OperationError(
+                    'attempt to update a document not yet saved')
 
         # Need to add shard key to query, or you get an error
         return self._qs.filter(**self._object_key).update_one(**kwargs)
@@ -396,7 +407,8 @@ class Document(BaseDocument):
         signals.pre_delete.send(self.__class__, document=self)
 
         try:
-            self._qs.filter(**self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
+            self._qs.filter(
+                **self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
@@ -483,8 +495,8 @@ class Document(BaseDocument):
         if not self.pk:
             raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-                    **self._object_key).only(*fields).limit(1
-                    ).select_related(max_depth=max_depth)
+            **self._object_key).only(*fields).limit(1
+                                                    ).select_related(max_depth=max_depth)
 
         if obj:
             obj = obj[0]
@@ -528,8 +540,8 @@ class Document(BaseDocument):
         object.
         """
         classes = [get_document(class_name)
-                    for class_name in cls._subclasses
-                    if class_name != cls.__name__] + [cls]
+                   for class_name in cls._subclasses
+                   if class_name != cls.__name__] + [cls]
         documents = [get_document(class_name)
                      for class_name in document_cls._subclasses
                      if class_name != document_cls.__name__] + [document_cls]
@@ -551,7 +563,7 @@ class Document(BaseDocument):
 
     @classmethod
     def ensure_index(cls, key_or_list, drop_dups=False, background=False,
-        **kwargs):
+                     **kwargs):
         """Ensure that the given indexes are in place.
 
         :param key_or_list: a single index key or a list of index keys (to
@@ -606,7 +618,7 @@ class Document(BaseDocument):
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
         if (index_cls and not cls_indexed and
-           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+                cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
 
@@ -621,24 +633,25 @@ class Document(BaseDocument):
 
         # get all the base classes, subclasses and sieblings
         classes = []
+
         def get_classes(cls):
 
             if (cls not in classes and
-               isinstance(cls, TopLevelDocumentMetaclass)):
+                    isinstance(cls, TopLevelDocumentMetaclass)):
                 classes.append(cls)
 
             for base_cls in cls.__bases__:
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
-                   base_cls != Document and
-                   not base_cls._meta.get('abstract') and
-                   base_cls._get_collection().full_name == cls._get_collection().full_name and
-                   base_cls not in classes):
+                        base_cls != Document and
+                        not base_cls._meta.get('abstract') and
+                        base_cls._get_collection().full_name == cls._get_collection().full_name and
+                        base_cls not in classes):
                     classes.append(base_cls)
                     get_classes(base_cls)
             for subclass in cls.__subclasses__():
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
-                   subclass._get_collection().full_name == cls._get_collection().full_name and
-                   subclass not in classes):
+                        subclass._get_collection().full_name == cls._get_collection().full_name and
+                        subclass not in classes):
                     classes.append(subclass)
                     get_classes(subclass)
 
@@ -666,8 +679,8 @@ class Document(BaseDocument):
         if [(u'_id', 1)] not in indexes:
             indexes.append([(u'_id', 1)])
         if (cls._meta.get('index_cls', True) and
-           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-             indexes.append([(u'_cls', 1)])
+                cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+            indexes.append([(u'_cls', 1)])
 
         return indexes
 
@@ -678,7 +691,8 @@ class Document(BaseDocument):
         """
 
         required = cls.list_indexes()
-        existing = [info['key'] for info in cls._get_collection().index_information().values()]
+        existing = [info['key']
+                    for info in cls._get_collection().index_information().values()]
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
@@ -696,6 +710,7 @@ class Document(BaseDocument):
 
 
 class DynamicDocument(Document):
+
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expando style properties.  Any data
@@ -711,7 +726,7 @@ class DynamicDocument(Document):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = TopLevelDocumentMetaclass
+    my_metaclass = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
@@ -727,6 +742,7 @@ class DynamicDocument(Document):
 
 
 class DynamicEmbeddedDocument(EmbeddedDocument):
+
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -734,7 +750,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
-    my_metaclass  = DocumentMetaclass
+    my_metaclass = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
     _dynamic = True
@@ -753,6 +769,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
 
 class MapReduceDocument(object):
+
     """A document returned from a map/reduce query.
 
     :param collection: An instance of :class:`~pymongo.Collection`
@@ -783,7 +800,7 @@ class MapReduceDocument(object):
             try:
                 self.key = id_field_type(self.key)
             except:
-                raise Exception("Could not cast key as %s" % \
+                raise Exception("Could not cast key as %s" %
                                 id_field_type.__name__)
 
         if not hasattr(self, "_key_object"):

@@ -12,3 +12,4 @@ User Guide
    querying
    gridfs
    signals
+   text-indexes
