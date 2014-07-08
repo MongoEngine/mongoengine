@@ -8,12 +8,12 @@ python:
     - "3.4"
     - "pypy"
 env:
-  - PYMONGO=dev DJANGO=dev
-  - PYMONGO=dev DJANGO=1.6.5
-  - PYMONGO=dev DJANGO=1.5.8
-  - PYMONGO=2.7.1 DJANGO=dev
-  - PYMONGO=2.7.1 DJANGO=1.6.5
-  - PYMONGO=2.7.1 DJANGO=1.5.8
+    - PYMONGO=dev DJANGO=dev
+    - PYMONGO=dev DJANGO=1.6.5
+    - PYMONGO=dev DJANGO=1.5.8
+    - PYMONGO=2.7.1 DJANGO=dev
+    - PYMONGO=2.7.1 DJANGO=1.6.5
+    - PYMONGO=2.7.1 DJANGO=1.5.8
 
 matrix:
     exclude:
@@ -27,7 +27,7 @@ before_install:
     - "sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10"
     - "echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list"
     - "sudo apt-get update"
-    - "sudo apt-get install mongodb-org"
+    - "sudo apt-get install mongodb-org-server"
 
 install:
     - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev python-tk
