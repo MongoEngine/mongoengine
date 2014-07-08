@@ -1549,6 +1549,13 @@ class BaseQuerySet(object):
         for key in keys:
             if not key:
                 continue
+
+            if key == '$text_score':
+                # automatically set to include text scores
+                self._include_text_scores = True
+                key_list.append(('text_score', {'$meta': "textScore"}))
+                continue
+
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING

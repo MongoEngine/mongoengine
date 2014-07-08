@@ -2791,6 +2791,28 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertTrue(isinstance(new.text_score, float))
 
+        # count
+        query = News.objects.search_text('brasil').order_by('$text_score')
+        self.assertTrue(query._include_text_scores)
+
+        self.assertEqual(query.count(), 3)
+        self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
+        cursor_args = query._cursor_args
+        self.assertEqual(
+            cursor_args['fields'], {'text_score': {'$meta': 'textScore'}})
+
+        text_scores = [i.text_score for i in query]
+        self.assertEqual(len(text_scores), 3)
+
+        self.assertTrue(text_scores[0] > text_scores[1])
+        self.assertTrue(text_scores[1] > text_scores[2])
+        max_text_score = text_scores[0]
+
+        # get item
+        item = News.objects.search_text(
+            'brasil').order_by('$text_score').first()
+        self.assertEqual(item.text_score, max_text_score)
+
     @skip_older_mongodb
     def test_distinct_handles_references_to_alias(self):
         register_connection('testdb', 'mongoenginetest2')
