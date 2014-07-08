@@ -192,6 +192,7 @@ class BaseQuerySet(object):
     def search_text(self, text, language=None, include_text_scores=False):
         """
         Start a text search, using text indexes.
+        Require: MongoDB server version 2.6+.
 
         :param language:  The language that determines the list of stop words
             for the search and the rules for the stemmer and tokenizer.

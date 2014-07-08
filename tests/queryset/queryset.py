@@ -34,6 +34,23 @@ class db_ops_tracker(query_counter):
         return list(self.db.system.profile.find(ignore_query))
 
 
+def skip_older_mongodb(f):
+    def _inner(*args, **kwargs):
+        connection = get_connection()
+        info = connection.test.command('buildInfo')
+        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
+
+        if mongodb_version < (2, 6):
+            raise SkipTest("Need MongoDB version 2.6+")
+
+        return f(*args, **kwargs)
+
+    _inner.__name__ = f.__name__
+    _inner.__doc__ = f.__doc__
+
+    return _inner
+
+
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
@@ -2711,6 +2728,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
 
+    @skip_older_mongodb
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -2773,6 +2791,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertTrue(isinstance(new.text_score, float))
 
+    @skip_older_mongodb
     def test_distinct_handles_references_to_alias(self):
         register_connection('testdb', 'mongoenginetest2')
 
