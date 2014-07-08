@@ -27,8 +27,7 @@ before_install:
     - "sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10"
     - "echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list"
     - "sudo apt-get update"
-    - "sudo apt-get install mongodb-org mongodb-org-shell mongodb-org-server"
-    - "sudo /etc/init.d/mongod start"
+    - "sudo apt-get install mongodb-org"
 
 install:
     - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev python-tk
@@ -38,7 +37,7 @@ install:
     - if [[ $DJANGO != 'dev' ]]; then travis_retry pip install Django==$DJANGO; fi
     - travis_retry pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
     - travis_retry python setup.py install
-before_script: "mongo --eval 'db.runCommand({setParameter: 1, textSearchEnabled: true})' admin"
+
 script:
     - travis_retry python setup.py test
     - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
