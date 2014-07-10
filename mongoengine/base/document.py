@@ -54,10 +54,13 @@ class BaseDocument(object):
                     raise TypeError(
                         "Multiple values for keyword argument '" + name + "'")
                 values[name] = value
+
         __auto_convert = values.pop("__auto_convert", True)
 
         # 399: set default values only to fields loaded from DB
         __only_fields = set(values.pop("__only_fields", values))
+
+        _created = values.pop("_created", True)
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
@@ -77,7 +80,6 @@ class BaseDocument(object):
             self._data = SemiStrictDict.create(
                 allowed_keys=self._fields_ordered)()
 
-        _created = values.pop("_created", True)
         self._data = {}
         self._dynamic_fields = SON()
 
