@@ -4341,6 +4341,55 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
+    def test_queryset_aggregation_framework(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects(age__lte=22).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
+            {'_id': p2.pk, 'name': "WILSON JUNIOR"}
+        ])
+
+        data = Person.objects(age__lte=22).order_by('-name').aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p2.pk, 'name': "WILSON JUNIOR"},
+            {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
+        ])
+
+        data = Person.objects(
+            age__gte=17, age__lte=40).order_by('-age').aggregate(
+                {'$group': {
+                    '_id': None,
+                    'total': {'$sum': 1},
+                    'avg': {'$avg': '$age'}
+                }
+                }
+
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': None, 'avg': 29, 'total': 2}
+        ])
+
 
 if __name__ == '__main__':
     unittest.main()

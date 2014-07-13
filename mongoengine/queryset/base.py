@@ -974,8 +974,33 @@ class BaseQuerySet(object):
         son_data = json_util.loads(json_data)
         return [self._document._from_son(data) for data in son_data]
 
-    # JS functionality
+    def aggregate(self, *pipeline, **kwargs):
+        """
+        Perform a aggreggate function based in your queryset params
+        :param pipeline: list of agreggation commands,
+            see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
 
+        .. versionadded:: 0.9
+        """
+        initial_pipeline = []
+
+        if self._query:
+            initial_pipeline.append({'$match': self._query})
+
+        if self._ordering:
+            initial_pipeline.append({'$sort': dict(self._ordering)})
+
+        if self._limit is not None:
+            initial_pipeline.append({'$limit': self._limit})
+
+        if self._skip is not None:
+            initial_pipeline.append({'$skip': self._skip})
+
+        pipeline = initial_pipeline + list(pipeline)
+
+        return self._collection.aggregate(pipeline, cursor={}, **kwargs)
+
+    # JS functionality
     def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
                    scope=None):
         """Perform a map/reduce query using the current query spec
