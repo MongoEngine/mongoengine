@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Added `Queryset.aggregate` wrapper to aggregation framework #703
 - Added support to show original model fields on to_json calls instead of db_field #697
 - Added Queryset.search_text to Text indexes searchs #700
 - Fixed tests for Django 1.7 #696
