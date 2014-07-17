@@ -570,7 +570,8 @@ class EmbeddedDocumentField(BaseField):
     def to_mongo(self, value, use_db_field=True, fields=[]):
         if not isinstance(value, self.document_type):
             return value
-        return self.document_type.to_mongo(value, use_db_field)
+        return self.document_type.to_mongo(value, use_db_field,
+                                           fields=fields)
 
     def validate(self, value, clean=True):
         """Make sure that the document instance is an instance of the
