@@ -1539,6 +1539,18 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(ocorrence.person, "teste")
         self.assertTrue(isinstance(ocorrence.animal, Animal))
 
+    def test_cached_reference_fields_on_embedded_documents(self):
+        def build():
+            class Test(Document):
+                name = StringField()
+
+            type('WrongEmbeddedDocument', (
+                EmbeddedDocument,), {
+                    'test': CachedReferenceField(Test)
+            })
+
+        self.assertRaises(InvalidDocumentError, build)
+
     def test_cached_reference_embedded_fields(self):
         class Owner(EmbeddedDocument):
             TPS = (
