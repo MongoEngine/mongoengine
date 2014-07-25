@@ -1047,13 +1047,12 @@ class CachedReferenceField(BaseField):
         doc_tipe = self.document_type
 
         if isinstance(document, Document):
-            # Wen need the id from the saved object to create the DBRef
+            # We need the id from the saved object to create the DBRef
             id_ = document.pk
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
         else:
-            raise SystemError(document)
             self.error('Only accept a document object')
 
         value = {
