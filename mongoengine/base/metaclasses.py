@@ -30,7 +30,8 @@ class DocumentMetaclass(type):
             return super_new(cls, name, bases, attrs)
 
         attrs['_is_document'] = attrs.get('_is_document', False)
-
+        attrs['_cached_reference_fields'] = []
+        
         # EmbeddedDocuments could have meta data for inheritance
         if 'meta' in attrs:
             attrs['_meta'] = attrs.pop('meta')
@@ -172,10 +173,17 @@ class DocumentMetaclass(type):
             f = field
             f.owner_document = new_class
             delete_rule = getattr(f, 'reverse_delete_rule', DO_NOTHING)
-            if isinstance(f, CachedReferenceField) and issubclass(
-                    new_class, EmbeddedDocument):
-                raise InvalidDocumentError(
-                    "CachedReferenceFields is not allowed in EmbeddedDocuments")
+            if isinstance(f, CachedReferenceField):
+
+                if issubclass(new_class, EmbeddedDocument):
+                    raise InvalidDocumentError(
+                        "CachedReferenceFields is not allowed in EmbeddedDocuments")
+                if not f.document_type:
+                    raise InvalidDocumentError(
+                        "Document is not avaiable to sync")
+                
+                f.document_type._cached_reference_fields.append(f)
+                
             if isinstance(f, ComplexBaseField) and hasattr(f, 'field'):
                 delete_rule = getattr(f.field,
                                       'reverse_delete_rule',

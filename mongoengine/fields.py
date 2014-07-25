@@ -1047,12 +1047,13 @@ class CachedReferenceField(BaseField):
         doc_tipe = self.document_type
 
         if isinstance(document, Document):
-            # We need the id from the saved object to create the DBRef
+            # Wen need the id from the saved object to create the DBRef
             id_ = document.pk
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
         else:
+            raise SystemError(document)
             self.error('Only accept a document object')
 
         value = {
@@ -1065,7 +1066,14 @@ class CachedReferenceField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return None
-        return self.to_mongo(value)
+
+        if isinstance(value, Document):
+            if value.pk is None:
+                self.error('You can only reference documents once they have'
+                           ' been saved to the database')
+            return {'_id': value.pk}
+
+        raise NotImplementedError
 
     def validate(self, value):
 
@@ -1078,6 +1086,22 @@ class CachedReferenceField(BaseField):
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
+
+    def sync_all(self):
+        update_key = 'set__%s' % self.name
+        errors = []
+
+        for doc in self.document_type.objects:
+            filter_kwargs = {}
+            filter_kwargs[self.name] = doc
+
+            update_kwargs = {}
+            update_kwargs[update_key] = doc
+
+            errors.append((filter_kwargs, update_kwargs))
+
+            self.owner_document.objects(
+                **filter_kwargs).update(**update_kwargs)
 
 
 class GenericReferenceField(BaseField):

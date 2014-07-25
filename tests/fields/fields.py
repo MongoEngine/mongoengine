@@ -1518,11 +1518,18 @@ class FieldTest(unittest.TestCase):
         Animal.drop_collection()
         Ocorrence.drop_collection()
 
-        a = Animal(nam="Leopard", tag="heavy")
+        a = Animal(name="Leopard", tag="heavy")
         a.save()
 
+        self.assertEqual(Animal._cached_reference_fields, [Ocorrence.animal])
         o = Ocorrence(person="teste", animal=a)
         o.save()
+
+        p = Ocorrence(person="Wilson")
+        p.save()
+
+        self.assertEqual(Ocorrence.objects(animal=None).count(), 1)
+
         self.assertEqual(
             a.to_mongo(fields=['tag']), {'tag': 'heavy', "_id": a.pk})
 
@@ -1538,6 +1545,56 @@ class FieldTest(unittest.TestCase):
         ocorrence = Ocorrence.objects(animal__tag='heavy').first()
         self.assertEqual(ocorrence.person, "teste")
         self.assertTrue(isinstance(ocorrence.animal, Animal))
+
+    def test_cached_reference_field_update_all(self):
+        class Person(Document):
+            TYPES = (
+                ('pf', "PF"),
+                ('pj', "PJ")
+            )
+            name = StringField()
+            tp = StringField(
+                choices=TYPES
+            )
+
+            father = CachedReferenceField('self', fields=('tp',))
+
+        Person.drop_collection()
+
+        a1 = Person(name="Wilson Father", tp="pj")
+        a1.save()
+
+        a2 = Person(name='Wilson Junior', tp='pf', father=a1)
+        a2.save()
+
+        self.assertEqual(dict(a2.to_mongo()), {
+            "_id": a2.pk,
+            "name": u"Wilson Junior",
+            "tp": u"pf",
+            "father": {
+                "_id": a1.pk,
+                "tp": u"pj"
+            }
+        })
+
+        self.assertEqual(Person.objects(father=a1)._query, {
+            'father._id': a1.pk
+        })
+        self.assertEqual(Person.objects(father=a1).count(), 1)
+
+        Person.objects.update(set__tp="pf")
+        Person.father.sync_all()
+
+        a2.reload()
+        self.assertEqual(dict(a2.to_mongo()), {
+            "_id": a2.pk,
+            "name": u"Wilson Junior",
+            "tp": u"pf",
+            "father": {
+                "_id": a1.pk,
+                "tp": u"pf"
+            }
+        })
 
     def test_cached_reference_fields_on_embedded_documents(self):
         def build():
