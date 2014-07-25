@@ -31,7 +31,7 @@ class DocumentMetaclass(type):
 
         attrs['_is_document'] = attrs.get('_is_document', False)
         attrs['_cached_reference_fields'] = []
-        
+
         # EmbeddedDocuments could have meta data for inheritance
         if 'meta' in attrs:
             attrs['_meta'] = attrs.pop('meta')
@@ -181,9 +181,12 @@ class DocumentMetaclass(type):
                 if not f.document_type:
                     raise InvalidDocumentError(
                         "Document is not avaiable to sync")
-                
+
+                if f.auto_sync:
+                    f.start_listener()
+
                 f.document_type._cached_reference_fields.append(f)
-                
+
             if isinstance(f, ComplexBaseField) and hasattr(f, 'field'):
                 delete_rule = getattr(f.field,
                                       'reverse_delete_rule',

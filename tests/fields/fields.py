@@ -1608,6 +1608,76 @@ class FieldTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, build)
 
+    def test_cached_reference_auto_sync(self):
+        class Person(Document):
+            TYPES = (
+                ('pf', "PF"),
+                ('pj', "PJ")
+            )
+            name = StringField()
+            tp = StringField(
+                choices=TYPES
+            )
+
+            father = CachedReferenceField('self', fields=('tp',))
+
+        Person.drop_collection()
+
+        a1 = Person(name="Wilson Father", tp="pj")
+        a1.save()
+
+        a2 = Person(name='Wilson Junior', tp='pf', father=a1)
+        a2.save()
+
+        a1.tp = 'pf'
+        a1.save()
+
+        a2.reload()
+        self.assertEqual(dict(a2.to_mongo()), {
+            '_id': a2.pk,
+            'name': 'Wilson Junior',
+            'tp': 'pf',
+            'father': {
+                '_id': a1.pk,
+                'tp': 'pf'
+            }
+        })
+
+    def test_cached_reference_auto_sync_disabled(self):
+        class Persone(Document):
+            TYPES = (
+                ('pf', "PF"),
+                ('pj', "PJ")
+            )
+            name = StringField()
+            tp = StringField(
+                choices=TYPES
+            )
+
+            father = CachedReferenceField(
+                'self', fields=('tp',), auto_sync=False)
+
+        Persone.drop_collection()
+
+        a1 = Persone(name="Wilson Father", tp="pj")
+        a1.save()
+
+        a2 = Persone(name='Wilson Junior', tp='pf', father=a1)
+        a2.save()
+
+        a1.tp = 'pf'
+        a1.save()
+
+        self.assertEqual(Persone.objects._collection.find_one({'_id': a2.pk}), {
+            '_id': a2.pk,
+            'name': 'Wilson Junior',
+            'tp': 'pf',
+            'father': {
+                '_id': a1.pk,
+                'tp': 'pj'
+            }
+        })
+
     def test_cached_reference_embedded_fields(self):
         class Owner(EmbeddedDocument):
             TPS = (

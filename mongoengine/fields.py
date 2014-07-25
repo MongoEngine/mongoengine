@@ -989,10 +989,11 @@ class CachedReferenceField(BaseField):
     .. versionadded:: 0.9
     """
 
-    def __init__(self, document_type, fields=[], **kwargs):
+    def __init__(self, document_type, fields=[], auto_sync=True, **kwargs):
         """Initialises the Cached Reference Field.
 
         :param fields:  A list of fields to be cached in document
+        :param auto_sync: if True documents are auto updated.
         """
         if not isinstance(document_type, basestring) and \
                 not issubclass(document_type, (Document, basestring)):
@@ -1000,9 +1001,32 @@ class CachedReferenceField(BaseField):
             self.error('Argument to CachedReferenceField constructor must be a'
                        ' document class or a string')
 
+        self.auto_sync = auto_sync
         self.document_type_obj = document_type
         self.fields = fields
         super(CachedReferenceField, self).__init__(**kwargs)
+
+    def start_listener(self):
+        """
+        Start listener for document alterations, and update relacted docs
+        """
+        from mongoengine import signals
+        signals.post_save.connect(self.on_document_pre_save,
+                                  sender=self.document_type)
+
+    def on_document_pre_save(self, sender, document, created, **kwargs):
+        if not created:
+            update_kwargs = {
+                'set__%s__%s' % (self.name, k): v
+                for k, v in document._delta()[0].items()
+                if k in self.fields}
+
+            if update_kwargs:
+                filter_kwargs = {}
+                filter_kwargs[self.name] = document
+
+                self.owner_document.objects(
+                    **filter_kwargs).update(**update_kwargs)
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -1088,7 +1112,6 @@ class CachedReferenceField(BaseField):
 
     def sync_all(self):
         update_key = 'set__%s' % self.name
-        errors = []
 
         for doc in self.document_type.objects:
             filter_kwargs = {}
@@ -1096,8 +1119,6 @@ class CachedReferenceField(BaseField):
 
             update_kwargs = {}
             update_kwargs[update_key] = doc
-
-            errors.append((filter_kwargs, update_kwargs))
 
             self.owner_document.objects(
                 **filter_kwargs).update(**update_kwargs)
