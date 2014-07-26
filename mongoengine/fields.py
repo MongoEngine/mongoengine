@@ -1016,10 +1016,10 @@ class CachedReferenceField(BaseField):
 
     def on_document_pre_save(self, sender, document, created, **kwargs):
         if not created:
-            update_kwargs = {
-                'set__%s__%s' % (self.name, k): v
+            update_kwargs = dict(
+                ('set__%s__%s' % (self.name, k), v)
                 for k, v in document._delta()[0].items()
-                if k in self.fields}
+                if k in self.fields)
 
             if update_kwargs:
                 filter_kwargs = {}
