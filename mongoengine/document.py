@@ -244,12 +244,12 @@ class Document(BaseDocument):
         if write_concern is None:
             write_concern = {"w": 1}
 
-        doc = self.to_mongo()
-
-        created = ('_id' not in doc or self._created or force_insert)
+        created = ('_id' not in self.to_mongo() or self._created or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created)
+
+        doc = self.to_mongo()
 
         try:
             collection = self._get_collection()
