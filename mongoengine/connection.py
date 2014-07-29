@@ -111,13 +111,13 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
         try:
             connection = None
-            connection_settings_iterator = ((alias, settings.copy()) for alias, settings in _connection_settings.iteritems())
-            for alias, connection_settings in connection_settings_iterator:
+            connection_settings_iterator = ((db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
+            for db_alias, connection_settings in connection_settings_iterator:
                 connection_settings.pop('name', None)
                 connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
-                if conn_settings == connection_settings and _connections.get(alias, None):
-                    connection = _connections[alias]
+                if conn_settings == connection_settings and _connections.get(db_alias, None):
+                    connection = _connections[db_alias]
                     break
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
