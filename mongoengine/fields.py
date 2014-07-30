@@ -985,7 +985,7 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
 
     """
-    A referencefield with cache fields support
+    A referencefield with cache fields to porpuse pseudo-joins
     .. versionadded:: 0.9
     """
 
@@ -1007,9 +1007,6 @@ class CachedReferenceField(BaseField):
         super(CachedReferenceField, self).__init__(**kwargs)
 
     def start_listener(self):
-        """
-        Start listener for document alterations, and update relacted docs
-        """
         from mongoengine import signals
         signals.post_save.connect(self.on_document_pre_save,
                                   sender=self.document_type)
@@ -1029,8 +1026,6 @@ class CachedReferenceField(BaseField):
                     **filter_kwargs).update(**update_kwargs)
 
     def to_python(self, value):
-        """Convert a MongoDB-compatible type to a Python type.
-        """
         if isinstance(value, dict):
             collection = self.document_type._get_collection_name()
             value = DBRef(
@@ -1048,8 +1043,6 @@ class CachedReferenceField(BaseField):
         return self.document_type_obj
 
     def __get__(self, instance, owner):
-        """Descriptor to allow lazy dereferencing.
-        """
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -1079,9 +1072,9 @@ class CachedReferenceField(BaseField):
         else:
             self.error('Only accept a document object')
 
-        value = {
-            "_id": id_field.to_mongo(id_)
-        }
+        value = SON((
+            ("_id", id_field.to_mongo(id_)),
+        ))
 
         value.update(dict(document.to_mongo(fields=self.fields)))
         return value
@@ -1111,6 +1104,10 @@ class CachedReferenceField(BaseField):
         return self.document_type._fields.get(member_name)
 
     def sync_all(self):
+        """
+        Sync all cached fields on demand.
+        Caution: this operation may be slower.
+        """
         update_key = 'set__%s' % self.name
 
         for doc in self.document_type.objects:

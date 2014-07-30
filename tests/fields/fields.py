@@ -1546,6 +1546,91 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(ocorrence.person, "teste")
         self.assertTrue(isinstance(ocorrence.animal, Animal))
 
+    def test_cached_reference_field_decimal(self):
+        class PersonAuto(Document):
+            name = StringField()
+            salary = DecimalField()
+
+        class SocialTest(Document):
+            group = StringField()
+            person = CachedReferenceField(
+                PersonAuto,
+                fields=('salary',))
+
+        PersonAuto.drop_collection()
+        SocialTest.drop_collection()
+
+        p = PersonAuto(name="Alberto", salary=Decimal('7000.00'))
+        p.save()
+
+        s = SocialTest(group="dev", person=p)
+        s.save()
+
+        self.assertEqual(
+            SocialTest.objects._collection.find_one({'person.salary': 7000.00}), {
+                '_id': s.pk,
+                'group': s.group,
+                'person': {
+                    '_id': p.pk,
+                    'salary': p.salary
+                }
+            })
+
+    def test_cached_reference_field_reference(self):
+        class Group(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            group = ReferenceField(Group)
+
+        class SocialData(Document):
+            obs = StringField()
+            tags = ListField(
+                StringField())
+            person = CachedReferenceField(
+                Person,
+                fields=('group',))
+
+        Group.drop_collection()
+        Person.drop_collection()
+        SocialData.drop_collection()
+
+        g1 = Group(name='dev')
+        g1.save()
+
+        g2 = Group(name="designers")
+        g2.save()
+
+        p1 = Person(name="Alberto", group=g1)
+        p1.save()
+
+        p2 = Person(name="Andre", group=g1)
+        p2.save()
+
+        p3 = Person(name="Afro design", group=g2)
+        p3.save()
+
+        s1 = SocialData(obs="testing 123", person=p1, tags=['tag1', 'tag2'])
+        s1.save()
+
+        s2 = SocialData(obs="testing 321", person=p3, tags=['tag3', 'tag4'])
+        s2.save()
+
+        self.assertEqual(SocialData.objects._collection.find_one(
+            {'tags': 'tag2'}), {
+                '_id': s1.pk,
+                'obs': 'testing 123',
+                'tags': ['tag1', 'tag2'],
+                'person': {
+                    '_id': p1.pk,
+                    'group': g1.pk
+                }
+        })
+
+        self.assertEqual(SocialData.objects(person__group=g2).count(), 1)
+        self.assertEqual(SocialData.objects(person__group=g2).first(), s2)
+
     def test_cached_reference_field_update_all(self):
         class Person(Document):
             TYPES = (
