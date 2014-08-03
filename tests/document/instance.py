@@ -2618,5 +2618,20 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(obj3 != dbref2)
         self.assertTrue(dbref2 != obj3)
 
+    def test_default_values(self):
+        class Person(Document):
+            created_on = DateTimeField(default=lambda: datetime.utcnow())
+            name = StringField()
+
+        p = Person(name='alon')
+        p.save()
+        orig_created_on = Person.objects().only('created_on')[0].created_on
+
+        p2 = Person.objects().only('name')[0]
+        p2.name = 'alon2'
+        p2.save()
+        p3 = Person.objects().only('created_on')[0]
+        self.assertEquals(orig_created_on, p3.created_on)
+
 if __name__ == '__main__':
     unittest.main()
