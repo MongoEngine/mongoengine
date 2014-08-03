@@ -4,7 +4,7 @@ Defining documents
 In MongoDB, a **document** is roughly equivalent to a **row** in an RDBMS. When
 working with relational databases, rows are stored in **tables**, which have a
 strict **schema** that the rows follow. MongoDB stores documents in
-**collections** rather than tables - the principle difference is that no schema
+**collections** rather than tables - the principal difference is that no schema
 is enforced at a database level.
 
 Defining a document's schema
