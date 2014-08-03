@@ -1572,7 +1572,7 @@ class FieldTest(unittest.TestCase):
                 'group': s.group,
                 'person': {
                     '_id': p.pk,
-                    'salary': p.salary
+                    'salary': 7000.00
                 }
             })
 
