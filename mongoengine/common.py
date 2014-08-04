@@ -25,6 +25,7 @@ def _import_class(cls_name):
                      'GenericEmbeddedDocumentField', 'GeoPointField',
                      'PointField', 'LineStringField', 'ListField',
                      'PolygonField', 'ReferenceField', 'StringField',
+                     'CachedReferenceField',
                      'ComplexBaseField', 'GeoJsonBaseField')
     queryset_classes = ('OperationError',)
     deref_classes = ('DeReference',)

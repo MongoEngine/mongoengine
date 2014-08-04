@@ -12,21 +12,21 @@ __all__ = ('query', 'update')
 
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                         'all', 'size', 'exists', 'not', 'elemMatch')
-GEO_OPERATORS        = ('within_distance', 'within_spherical_distance',
-                        'within_box', 'within_polygon', 'near', 'near_sphere',
-                        'max_distance', 'geo_within', 'geo_within_box',
-                        'geo_within_polygon', 'geo_within_center',
-                        'geo_within_sphere', 'geo_intersects')
-STRING_OPERATORS     = ('contains', 'icontains', 'startswith',
-                        'istartswith', 'endswith', 'iendswith',
-                        'exact', 'iexact')
-CUSTOM_OPERATORS     = ('match',)
-MATCH_OPERATORS      = (COMPARISON_OPERATORS + GEO_OPERATORS +
-                        STRING_OPERATORS + CUSTOM_OPERATORS)
+GEO_OPERATORS = ('within_distance', 'within_spherical_distance',
+                 'within_box', 'within_polygon', 'near', 'near_sphere',
+                 'max_distance', 'geo_within', 'geo_within_box',
+                 'geo_within_polygon', 'geo_within_center',
+                 'geo_within_sphere', 'geo_intersects')
+STRING_OPERATORS = ('contains', 'icontains', 'startswith',
+                    'istartswith', 'endswith', 'iendswith',
+                    'exact', 'iexact')
+CUSTOM_OPERATORS = ('match',)
+MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
+                   STRING_OPERATORS + CUSTOM_OPERATORS)
 
-UPDATE_OPERATORS     = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set',
-                        'set_on_insert')
+UPDATE_OPERATORS = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
+                    'push_all', 'pull', 'pull_all', 'add_to_set',
+                    'set_on_insert')
 
 
 def query(_doc_cls=None, _field_operation=False, **query):
@@ -60,14 +60,20 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 raise InvalidQueryError(e)
             parts = []
 
+            CachedReferenceField = _import_class('CachedReferenceField')
+
             cleaned_fields = []
             for field in fields:
                 append_field = True
                 if isinstance(field, basestring):
                     parts.append(field)
                     append_field = False
+                # is last and CachedReferenceField
+                elif isinstance(field, CachedReferenceField) and fields[-1] == field:
+                    parts.append('%s._id' % field.db_field)
                 else:
                     parts.append(field.db_field)
+
                 if append_field:
                     cleaned_fields.append(field)
 
@@ -79,13 +85,17 @@ def query(_doc_cls=None, _field_operation=False, **query):
             if op in singular_ops:
                 if isinstance(field, basestring):
                     if (op in STRING_OPERATORS and
-                       isinstance(value, basestring)):
+                            isinstance(value, basestring)):
                         StringField = _import_class('StringField')
                         value = StringField.prepare_query_value(op, value)
                     else:
                         value = field
                 else:
                     value = field.prepare_query_value(op, value)
+
+                    if isinstance(field, CachedReferenceField) and value:
+                        value = value['_id']
+
             elif op in ('in', 'nin', 'all', 'near') and not isinstance(value, dict):
                 # 'in', 'nin' and 'all' require a list of values
                 value = [field.prepare_query_value(op, v) for v in value]
@@ -125,10 +135,12 @@ def query(_doc_cls=None, _field_operation=False, **query):
                                 continue
                             value_son[k] = v
                         if (get_connection().max_wire_version <= 1):
-                            value_son['$maxDistance'] = value_dict['$maxDistance']
+                            value_son['$maxDistance'] = value_dict[
+                                '$maxDistance']
                         else:
                             value_son['$near'] = SON(value_son['$near'])
-                            value_son['$near']['$maxDistance'] = value_dict['$maxDistance']
+                            value_son['$near'][
+                                '$maxDistance'] = value_dict['$maxDistance']
                     else:
                         for k, v in value_dict.iteritems():
                             if k == '$maxDistance':
@@ -264,7 +276,8 @@ def update(_doc_cls=None, **update):
             if ListField in field_classes:
                 # Join all fields via dot notation to the last ListField
                 # Then process as normal
-                last_listField = len(cleaned_fields) - field_classes.index(ListField)
+                last_listField = len(
+                    cleaned_fields) - field_classes.index(ListField)
                 key = ".".join(parts[:last_listField])
                 parts = parts[last_listField:]
                 parts.insert(0, key)

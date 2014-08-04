@@ -11,10 +11,12 @@ from mongoengine.errors import ValidationError
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
 
-__all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
+__all__ = ("BaseField", "ComplexBaseField",
+           "ObjectIdField", "GeoJsonBaseField")
 
 
 class BaseField(object):
+
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
 
@@ -60,6 +62,7 @@ class BaseField(object):
             used when generating model forms from the document model.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
+
         if name:
             msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
             warnings.warn(msg, DeprecationWarning)
@@ -105,7 +108,7 @@ class BaseField(object):
         if instance._initialised:
             try:
                 if (self.name not in instance._data or
-                   instance._data[self.name] != value):
+                        instance._data[self.name] != value):
                     instance._mark_as_changed(self.name)
             except:
                 # Values cant be compared eg: naive and tz datetimes
@@ -175,6 +178,7 @@ class BaseField(object):
 
 
 class ComplexBaseField(BaseField):
+
     """Handles complex fields, such as lists / dictionaries.
 
     Allows for nesting of embedded documents inside complex types.
@@ -197,7 +201,7 @@ class ComplexBaseField(BaseField):
         GenericReferenceField = _import_class('GenericReferenceField')
         dereference = (self._auto_dereference and
                        (self.field is None or isinstance(self.field,
-                        (GenericReferenceField, ReferenceField))))
+                                                         (GenericReferenceField, ReferenceField))))
 
         _dereference = _import_class("DeReference")()
 
@@ -212,7 +216,7 @@ class ComplexBaseField(BaseField):
 
         # Convert lists / values so we can watch for any changes on them
         if (isinstance(value, (list, tuple)) and
-           not isinstance(value, BaseList)):
+                not isinstance(value, BaseList)):
             value = BaseList(value, instance, self.name)
             instance._data[self.name] = value
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
@@ -220,8 +224,8 @@ class ComplexBaseField(BaseField):
             instance._data[self.name] = value
 
         if (self._auto_dereference and instance._initialised and
-           isinstance(value, (BaseList, BaseDict))
-           and not value._dereferenced):
+                isinstance(value, (BaseList, BaseDict))
+                and not value._dereferenced):
             value = _dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )
@@ -384,6 +388,7 @@ class ComplexBaseField(BaseField):
 
 
 class ObjectIdField(BaseField):
+
     """A field wrapper around MongoDB's ObjectIds.
     """
 
@@ -412,6 +417,7 @@ class ObjectIdField(BaseField):
 
 
 class GeoJsonBaseField(BaseField):
+
     """A geo json field storing a geojson style object.
     .. versionadded:: 0.8
     """
@@ -435,7 +441,8 @@ class GeoJsonBaseField(BaseField):
         if isinstance(value, dict):
             if set(value.keys()) == set(['type', 'coordinates']):
                 if value['type'] != self._type:
-                    self.error('%s type must be "%s"' % (self._name, self._type))
+                    self.error('%s type must be "%s"' %
+                               (self._name, self._type))
                 return self.validate(value['coordinates'])
             else:
                 self.error('%s can only accept a valid GeoJson dictionary'
