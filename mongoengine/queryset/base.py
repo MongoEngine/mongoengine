@@ -81,6 +81,7 @@ class BaseQuerySet(object):
         self._limit = None
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
+        self.only_fields = []
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False,
                  read_preference=None, **query):
@@ -151,12 +152,13 @@ class BaseQuerySet(object):
             if queryset._scalar:
                 return queryset._get_scalar(
                     queryset._document._from_son(queryset._cursor[key],
-                                                 _auto_dereference=self._auto_dereference))
+                                                 _auto_dereference=self._auto_dereference,
+                                                 only_fields=self.only_fields))
 
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
             return queryset._document._from_son(queryset._cursor[key],
-                                                _auto_dereference=self._auto_dereference)
+                                                _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
         raise AttributeError
 
     def __iter__(self):
@@ -570,10 +572,10 @@ class BaseQuerySet(object):
 
         if full_response:
             if result["value"] is not None:
-                result["value"] = self._document._from_son(result["value"])
+                result["value"] = self._document._from_son(result["value"], only_fields=self.only_fields)
         else:
             if result is not None:
-                result = self._document._from_son(result)
+                result = self._document._from_son(result, only_fields=self.only_fields)
 
         return result
 
@@ -608,13 +610,13 @@ class BaseQuerySet(object):
         if self._scalar:
             for doc in docs:
                 doc_map[doc['_id']] = self._get_scalar(
-                    self._document._from_son(doc))
+                    self._document._from_son(doc, only_fields=self.only_fields))
         elif self._as_pymongo:
             for doc in docs:
                 doc_map[doc['_id']] = self._get_as_pymongo(doc)
         else:
             for doc in docs:
-                doc_map[doc['_id']] = self._document._from_son(doc)
+                doc_map[doc['_id']] = self._document._from_son(doc, only_fields=self.only_fields)
 
         return doc_map
 
@@ -667,7 +669,7 @@ class BaseQuerySet(object):
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
                       '_limit', '_skip', '_hint', '_auto_dereference',
-                      '_search_text', '_include_text_scores')
+                      '_search_text', '_include_text_scores', 'only_fields')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -785,6 +787,7 @@ class BaseQuerySet(object):
         .. versionchanged:: 0.5 - Added subfield support
         """
         fields = dict([(f, QueryFieldList.ONLY) for f in fields])
+        self.only_fields = fields.keys()
         return self.fields(True, **fields)
 
     def exclude(self, *fields):
@@ -972,7 +975,7 @@ class BaseQuerySet(object):
     def from_json(self, json_data):
         """Converts json data to unsaved objects"""
         son_data = json_util.loads(json_data)
-        return [self._document._from_son(data) for data in son_data]
+        return [self._document._from_son(data, only_fields=self.only_fields) for data in son_data]
 
     def aggregate(self, *pipeline, **kwargs):
         """
@@ -1324,7 +1327,7 @@ class BaseQuerySet(object):
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
         doc = self._document._from_son(raw_doc,
-                                       _auto_dereference=self._auto_dereference)
+                                       _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
         if self._scalar:
             return self._get_scalar(doc)
 
