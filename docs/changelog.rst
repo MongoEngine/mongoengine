@@ -5,6 +5,8 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Not overriding default values when loading a subset of fields #399
+- Saving document doesn't create new fields in existing collection #620
 - Added `Queryset.aggregate` wrapper to aggregation framework #703
 - Added support to show original model fields on to_json calls instead of db_field #697
 - Added Queryset.search_text to Text indexes searchs #700
