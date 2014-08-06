@@ -55,6 +55,10 @@ class BaseDocument(object):
                         "Multiple values for keyword argument '" + name + "'")
                 values[name] = value
         __auto_convert = values.pop("__auto_convert", True)
+
+        # 399: set default values only to fields loaded from DB
+        __only_fields = set(values.pop("__only_fields", values))
+
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         if self.STRICT and not self._dynamic:
@@ -69,7 +73,7 @@ class BaseDocument(object):
 
         # Assign default values to instance
         for key, field in self._fields.iteritems():
-            if self._db_field_map.get(key, key) in values:
+            if self._db_field_map.get(key, key) in __only_fields:
                 continue
             value = getattr(self, key, None)
             setattr(self, key, value)
@@ -610,7 +614,7 @@ class BaseDocument(object):
         return cls._meta.get('collection', None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=[]):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
 
@@ -647,6 +651,8 @@ class BaseDocument(object):
                     default = default()
                 if isinstance(default, BaseDocument):
                     changed_fields.append(field_name)
+                elif not only_fields or field_name in only_fields:
+                    changed_fields.append(field_name)
 
         if errors_dict:
             errors = "\n".join(["%s - %s" % (k, v)
@@ -658,10 +664,11 @@ class BaseDocument(object):
         if cls.STRICT:
             data = dict((k, v)
                         for k, v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, _created=False, **data)
+        obj = cls(__auto_convert=False, _created=False, __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
             obj._fields = fields
+
         return obj
 
     @classmethod
