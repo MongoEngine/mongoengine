@@ -4,7 +4,6 @@ from queryset import OperationError
 
 import pymongo
 import time
-import datetime
 import greenlet
 from timer import log_slow_event
 
@@ -14,6 +13,10 @@ from connection import _get_db, _get_tags
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
 
+# set the sleep function to be used after an AutoReconnect exception from
+# connection close. default to time.sleep(), but we can replace this with
+# async sleep in Tornado-based apps (i.e. FEs)
+_sleep = time.sleep
 
 class EmbeddedDocument(BaseDocument):
     """A :class:`~mongoengine.Document` that isn't stored in its own
@@ -60,8 +63,8 @@ class Document(BaseDocument):
     a **+** or **-** sign.
     """
 
-    MAX_AUTO_RECONNECT_TRIES = 2
-    AUTO_RECONNECT_SLEEP = 0.0
+    MAX_AUTO_RECONNECT_TRIES = 6
+    AUTO_RECONNECT_SLEEP = 5
 
     __metaclass__ = TopLevelDocumentMetaclass
 
@@ -240,7 +243,7 @@ class Document(BaseDocument):
                 if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
                     raise
                 else:
-                    time.sleep(cls.AUTO_RECONNECT_SLEEP)
+                    _sleep(cls.AUTO_RECONNECT_SLEEP)
 
 
     @classmethod
@@ -285,7 +288,7 @@ class Document(BaseDocument):
                     if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
                         raise
                     else:
-                        time.sleep(cls.AUTO_RECONNECT_SLEEP)
+                        _sleep(cls.AUTO_RECONNECT_SLEEP)
 
             yield doc
 
@@ -343,7 +346,7 @@ class Document(BaseDocument):
                 if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
                     raise
                 else:
-                    time.sleep(cls.AUTO_RECONNECT_SLEEP)
+                    _sleep(cls.AUTO_RECONNECT_SLEEP)
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True, **kwargs):
