@@ -96,9 +96,9 @@ class Document(BaseDocument):
         try:
             collection = self._pymongo()
             if force_insert:
-                object_id = collection.insert(doc, safe=safe)
+                object_id = collection.insert(doc)
             else:
-                object_id = collection.save(doc, safe=safe)
+                object_id = collection.save(doc)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if u'duplicate key' in unicode(err):
@@ -116,7 +116,7 @@ class Document(BaseDocument):
         id_field = self._meta['id_field']
         object_id = self._fields[id_field].to_mongo(self[id_field])
         try:
-            self.__class__.objects(**{id_field: object_id}).delete(safe=safe)
+            self.__class__.objects(**{id_field: object_id}).delete()
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
@@ -362,7 +362,7 @@ class Document(BaseDocument):
 
         with log_slow_event("update", cls._meta['collection'], spec):
             result = cls._pymongo().update(spec, document, upsert=upsert,
-                                           multi=multi, safe=True, **kwargs)
+                                           multi=multi, **kwargs)
         return result
 
     @classmethod
@@ -375,7 +375,7 @@ class Document(BaseDocument):
             spec['_types'] = cls._class_name
 
         with log_slow_event("remove", cls._meta['collection'], spec):
-            result = cls._pymongo().remove(spec, safe=True, **kwargs)
+            result = cls._pymongo().remove(spec, **kwargs)
         return result
 
     def update_one(self, document, spec=None, upsert=False,
@@ -434,7 +434,7 @@ class Document(BaseDocument):
 
         with log_slow_event("update_one", self._meta['collection'], spec):
             result = self._pymongo().update(query_spec, document, upsert=upsert,
-                                            safe=True, multi=False, **kwargs)
+                                            multi=False, **kwargs)
 
         # do in-memory updates on the object if the query succeeded
         if result['n'] == 1:
@@ -555,7 +555,7 @@ class Document(BaseDocument):
             # handle EmbeddedDocuments
             elif isinstance(value, BaseDocument):
                 value = value.to_mongo()
-            
+
             # handle EmbeddedDocuments in lists
             elif isinstance(value, list):
                 value = [v.to_mongo() if isinstance(v, BaseDocument) else v\
