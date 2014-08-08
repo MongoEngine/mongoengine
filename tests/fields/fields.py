@@ -2902,6 +2902,9 @@ class FieldTest(unittest.TestCase):
                            "aJIazqqWkm7.net"))
         self.assertTrue(user.validate() is None)
 
+        user = User(email="new-tld@example.technology")
+        self.assertTrue(user.validate() is None)
+
         user = User(email='me@localhost')
         self.assertRaises(ValidationError, user.validate)
 
