@@ -4390,6 +4390,17 @@ class QuerySetTest(unittest.TestCase):
             {'_id': None, 'avg': 29, 'total': 2}
         ])
 
+    def test_delete_count(self):
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        self.assertEqual(self.Person.objects().delete(), 3)  # test ordinary QuerySey delete count
+
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+
+        self.assertEqual(self.Person.objects().skip(1).delete(), 2)  # test Document delete with existing documents
+
+        self.Person.objects().delete()
+        self.assertEqual(self.Person.objects().skip(1).delete(), 0)  # test Document delete without existing documents
+
 
 if __name__ == '__main__':
     unittest.main()

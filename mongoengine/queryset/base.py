@@ -405,6 +405,7 @@ class BaseQuerySet(object):
             will force an fsync on the primary server.
         :param _from_doc_delete: True when called from document delete therefore
             signals will have been triggered so don't loop.
+        :returns number of deleted documents
         """
         queryset = self.clone()
         doc = queryset._document
@@ -422,9 +423,11 @@ class BaseQuerySet(object):
                                 has_delete_signal) and not _from_doc_delete
 
         if call_document_delete:
+            cnt = 0
             for doc in queryset:
                 doc.delete(write_concern=write_concern)
-            return
+                cnt += 1
+            return cnt
 
         delete_rules = doc._meta.get('delete_rules') or {}
         # Check for DENY rules before actually deleting/nullifying any other
@@ -455,8 +458,8 @@ class BaseQuerySet(object):
                     write_concern=write_concern,
                     **{'pull_all__%s' % field_name: self})
 
-        queryset._collection.remove(
-            queryset._query, write_concern=write_concern)
+        result = queryset._collection.remove(queryset._query, write_concern=write_concern)
+        return result["n"]
 
     def update(self, upsert=False, multi=True, write_concern=None,
                full_result=False, **update):
