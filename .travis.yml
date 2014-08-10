@@ -15,6 +15,9 @@ env:
   - PYMONGO=2.7.1 DJANGO=dev
   - PYMONGO=2.7.1 DJANGO=1.6.5
   - PYMONGO=2.7.1 DJANGO=1.5.8
+  - PYMONGO=2.7.2 DJANGO=dev
+  - PYMONGO=2.7.2 DJANGO=1.6.5
+  - PYMONGO=2.7.2 DJANGO=1.5.8
 
 matrix:
     exclude:
@@ -22,6 +25,8 @@ matrix:
           env: PYMONGO=dev DJANGO=dev
         - python: "2.6"
           env: PYMONGO=2.7.1 DJANGO=dev
+        - python: "2.6"
+          env: PYMONGO=2.7.2 DJANGO=dev
     fast_finish: true
 
 before_install:
