@@ -54,8 +54,8 @@ def register_connection(alias, name, host=None, port=None,
         uri_dict = uri_parser.parse_uri(conn_settings['host'])
         conn_settings.update({
             'name': uri_dict.get('database') or name,
-            'username': uri_dict.get('username'),
-            'password': uri_dict.get('password'),
+            'username': uri_dict.get('username') or username,
+            'password': uri_dict.get('password') or password,
             'read_preference': read_preference,
         })
         if "replicaSet" in conn_settings['host']:
