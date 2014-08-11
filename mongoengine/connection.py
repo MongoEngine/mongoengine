@@ -56,7 +56,6 @@ def register_connection(alias, name, host=None, port=None,
             'name': uri_dict.get('database') or name,
             'username': uri_dict.get('username') or username,
             'password': uri_dict.get('password') or password,
-            'read_preference': read_preference,
         })
         if "replicaSet" in conn_settings['host']:
             conn_settings['replicaSet'] = True
