@@ -2706,5 +2706,26 @@ class InstanceTest(unittest.TestCase):
         self.assertEquals(p4.height, 189)
         self.assertEquals(Person.objects(height=189).count(), 1)
 
+    def test_null_field(self):
+        # 734
+        class User(Document):
+            name = StringField()
+            height = IntField(default=184, null=True)
+        User.objects.delete()
+        u = User(name='user')
+        u.save()
+        u_from_db = User.objects.get(name='user')
+        u_from_db.height = None
+        u_from_db.save()
+        self.assertEquals(u_from_db.height, None)
+
+        # 735
+        User.objects.delete()
+        u = User(name='user')
+        u.save()
+        User.objects(name='user').update_one(set__height=None, upsert=True)
+        u_from_db = User.objects.get(name='user')
+        self.assertEquals(u_from_db.height, None)
+
 if __name__ == '__main__':
     unittest.main()

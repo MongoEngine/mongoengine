@@ -37,7 +37,7 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None):
+                 help_text=None, null=False):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -60,6 +60,8 @@ class BaseField(object):
             model forms from the document model.
         :param help_text: (optional) The help text for this field and is often
             used when generating model forms from the document model.
+        :param null: (optional) Is the field value can be null. If no and there is a default value
+            then the default value is set
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -75,6 +77,7 @@ class BaseField(object):
         self.choices = choices
         self.verbose_name = verbose_name
         self.help_text = help_text
+        self.null = null
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
@@ -100,10 +103,13 @@ class BaseField(object):
 
         # If setting to None and theres a default
         # Then set the value to the default value
-        if value is None and self.default is not None:
-            value = self.default
-            if callable(value):
-                value = value()
+        if value is None:
+            if self.null:
+                value = None
+            elif self.default is not None:
+                value = self.default
+                if callable(value):
+                    value = value()
 
         if instance._initialised:
             try:
