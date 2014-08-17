@@ -718,6 +718,9 @@ class BaseDocument(object):
                                           ALLOW_INHERITANCE)
         include_cls = (allow_inheritance and not spec.get('sparse', False) and
                        spec.get('cls',  True))
+
+        # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
+        include_cls = include_cls and (spec.get('cls', False) or cls._meta.get('index_cls', True))
         if "cls" in spec:
             spec.pop('cls')
         for key in spec['fields']:
