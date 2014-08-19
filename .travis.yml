@@ -7,6 +7,7 @@ python:
     - "3.3"
     - "3.4"
     - "pypy"
+    - "pypy3"
 env:
   - PYMONGO=dev DJANGO=dev
   - PYMONGO=dev DJANGO=1.6.5
@@ -14,6 +15,9 @@ env:
   - PYMONGO=2.7.1 DJANGO=dev
   - PYMONGO=2.7.1 DJANGO=1.6.5
   - PYMONGO=2.7.1 DJANGO=1.5.8
+  - PYMONGO=2.7.2 DJANGO=dev
+  - PYMONGO=2.7.2 DJANGO=1.6.5
+  - PYMONGO=2.7.2 DJANGO=1.5.8
 
 matrix:
     exclude:
@@ -21,6 +25,10 @@ matrix:
           env: PYMONGO=dev DJANGO=dev
         - python: "2.6"
           env: PYMONGO=2.7.1 DJANGO=dev
+        - python: "2.6"
+          env: PYMONGO=2.7.2 DJANGO=dev
+    allow_failures:
+        - python: "pypy3"
     fast_finish: true
 
 before_install:
@@ -36,12 +44,17 @@ install:
     - if [[ $DJANGO == 'dev' ]]; then travis_retry pip install https://www.djangoproject.com/download/1.7c2/tarball/; fi
     - if [[ $DJANGO != 'dev' ]]; then travis_retry pip install Django==$DJANGO; fi
     - travis_retry pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
+    - travis_retry pip install coveralls
     - travis_retry python setup.py install
 
 script:
     - travis_retry python setup.py test
     - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
+    - coverage run --source=mongoengine setup.py test
+    - coverage report -m
     - python benchmark.py
+after_script:
+  coveralls --verbose
 notifications:
   irc: "irc.freenode.org#mongoengine"
 branches:

@@ -11,6 +11,10 @@ MongoEngine
   
 .. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master 
   :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
+  
+.. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.png
+   :target: https://landscape.io/github/MongoEngine/mongoengine/master
+   :alt: Code Health
 
 About
 =====
