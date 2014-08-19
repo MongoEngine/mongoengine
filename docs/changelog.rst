@@ -47,6 +47,7 @@ Changes in 0.9.X - DEV
 - Conditional save for atomic-style operations #511
 - Allow dynamic dictionary-style field access #559
 - index_cls is ignored when deciding to set _cls as index prefix #733
+- Increase email field length to accommodate new TLDs #726
 
 Changes in 0.8.7
 ================
