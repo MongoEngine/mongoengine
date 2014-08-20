@@ -46,6 +46,7 @@ Changes in 0.9.X - DEV
 - Workaround a dateutil bug #608
 - Conditional save for atomic-style operations #511
 - Allow dynamic dictionary-style field access #559
+- Increase email field length to accommodate new TLDs #726
 - index_cls is ignored when deciding to set _cls as index prefix #733
 - Allow atomic update for the entire `DictField` #742
 
