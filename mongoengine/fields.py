@@ -826,6 +826,10 @@ class DictField(ComplexBaseField):
             return StringField().prepare_query_value(op, value)
 
         if hasattr(self.field, 'field'):
+            if op in ('set', 'unset') and isinstance(value, dict):
+                return dict(
+                    (k, self.field.prepare_query_value(op, v))
+                    for k, v in value.items())
             return self.field.prepare_query_value(op, value)
 
         return super(DictField, self).prepare_query_value(op, value)
