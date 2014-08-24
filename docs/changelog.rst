@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Stop ensure_indexes running on a secondaries unless connection is through mongos #746
 - Not overriding default values when loading a subset of fields #399
 - Saving document doesn't create new fields in existing collection #620
 - Added `Queryset.aggregate` wrapper to aggregation framework #703
