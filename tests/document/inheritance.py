@@ -163,7 +163,7 @@ class InheritanceTest(unittest.TestCase):
         class Employee(Person):
             salary = IntField()
 
-        self.assertEqual(['age', 'id', 'name', 'salary'],
+        self.assertEqual(['_cls', 'age', 'id', 'name', 'salary'],
                          sorted(Employee._fields.keys()))
         self.assertEqual(Employee._get_collection_name(),
                          Person._get_collection_name())
@@ -180,7 +180,7 @@ class InheritanceTest(unittest.TestCase):
         class Employee(Person):
             salary = IntField()
 
-        self.assertEqual(['age', 'id', 'name', 'salary'],
+        self.assertEqual(['_cls', 'age', 'id', 'name', 'salary'],
                          sorted(Employee._fields.keys()))
         self.assertEqual(Person(name="Bob", age=35).to_mongo().keys(),
                          ['_cls', 'name', 'age'])

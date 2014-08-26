@@ -3034,6 +3034,29 @@ class FieldTest(unittest.TestCase):
         test.dictionary  # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
 
+    def test_cls_field(self):
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
+
+        class Fish(Animal):
+            pass
+
+        class Mammal(Animal):
+            pass
+
+        class Dog(Mammal):
+            pass
+
+        class Human(Mammal):
+            pass
+
+        Animal.objects.delete()
+        Dog().save()
+        Fish().save()
+        Human().save()
+        self.assertEquals(Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count(), 2)
+        self.assertEquals(Animal.objects(_cls__in=["Animal.Fish.Guppy"]).count(), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

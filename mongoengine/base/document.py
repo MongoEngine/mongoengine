@@ -26,7 +26,7 @@ NON_FIELD_ERRORS = '__all__'
 
 class BaseDocument(object):
     __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
-                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '_cls', '__weakref__')
+                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '__weakref__')
 
     _dynamic = False
     _dynamic_lock = True
@@ -77,6 +77,9 @@ class BaseDocument(object):
                 continue
             value = getattr(self, key, None)
             setattr(self, key, value)
+
+        if "_cls" not in values:
+            self._cls = self._class_name
 
         # Set passed values after initialisation
         if self._dynamic:

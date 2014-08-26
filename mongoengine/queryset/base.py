@@ -1413,8 +1413,11 @@ class BaseQuerySet(object):
     def _query(self):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
-            if self._class_check:
-                self._mongo_query.update(self._initial_query)
+            if self._class_check and self._initial_query:
+                if "_cls" in self._mongo_query:
+                    self._mongo_query = {"$and": [self._initial_query, self._mongo_query]}
+                else:
+                    self._mongo_query.update(self._initial_query)
         return self._mongo_query
 
     @property
