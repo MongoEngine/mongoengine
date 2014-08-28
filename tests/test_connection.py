@@ -147,6 +147,18 @@ class ConnectionTest(unittest.TestCase):
         date_doc = DateDoc.objects.first()
         self.assertEqual(d, date_doc.the_date)
 
+    def test_multiple_connection_settings(self):
+        connect('mongoenginetest', alias='t1', host="localhost")
+
+        connect('mongoenginetest2', alias='t2', host="127.0.0.1")
+
+        mongo_connections = mongoengine.connection._connections
+        self.assertEqual(len(mongo_connections.items()), 2)
+        self.assertTrue('t1' in mongo_connections.keys())
+        self.assertTrue('t2' in mongo_connections.keys())
+        self.assertEqual(mongo_connections['t1'].host, 'localhost')
+        self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')
+
 
 if __name__ == '__main__':
     unittest.main()
