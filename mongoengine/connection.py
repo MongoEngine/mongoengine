@@ -115,6 +115,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 connection_settings.pop('name', None)
                 connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
+                connection_settings.pop('authentication_source', None)
                 if conn_settings == connection_settings and _connections.get(alias, None):
                     connection = _connections[alias]
                     break
