@@ -113,8 +113,6 @@ class ConnectionTest(unittest.TestCase):
         c.admin.authenticate("admin", "password")
         c.mongoenginetest.add_user("username", "password")
 
-        self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
-
         conn = connect(alias='test_uri_no_username', host='mongodb://localhost/mongoenginetest', username="username", password="password")
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
         db = get_db(alias='test_uri_no_username')
