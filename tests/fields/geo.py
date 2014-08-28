@@ -19,8 +19,8 @@ class GeoFieldTest(unittest.TestCase):
     def _test_for_expected_error(self, Cls, loc, expected):
         try:
             Cls(loc=loc).validate()
-            self.fail()
-        except ValidationError, e:
+            self.fail('Should not validate the location {0}'.format(loc))
+        except ValidationError as e:
             self.assertEqual(expected, e.to_dict()['loc'])
 
     def test_geopoint_validation(self):
@@ -154,6 +154,117 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         Location(loc=[[[1, 2], [3, 4], [5, 6], [1, 2]]]).validate()
+
+    def test_multipoint_validation(self):
+        class Location(Document):
+            loc = MultiPointField()
+
+        invalid_coords = {"x": 1, "y": 2}
+        expected = 'MultiPointField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
+        expected = 'MultiPointField type must be "MultiPoint"'
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = {"type": "MultiPoint", "coordinates": [[1, 2, 3]]}
+        expected = "Value ([1, 2, 3]) must be a two-dimensional point"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[]]
+        expected = "Invalid MultiPoint must contain at least one valid point"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[1]], [[1, 2, 3]]]
+        for coord in invalid_coords:
+            expected = "Value (%s) must be a two-dimensional point" % repr(coord[0])
+            self._test_for_expected_error(Location, coord, expected)
+
+        invalid_coords = [[[{}, {}]], [("a", "b")]]
+        for coord in invalid_coords:
+            expected = "Both values (%s) in point must be float or int" % repr(coord[0])
+            self._test_for_expected_error(Location, coord, expected)
+
+        Location(loc=[[1, 2]]).validate()
+        Location(loc={
+            "type": "MultiPoint",
+            "coordinates": [
+                [1, 2],
+                [81.4471435546875, 23.61432859499169]
+            ]}).validate()
+
+    def test_multilinestring_validation(self):
+        class Location(Document):
+            loc = MultiLineStringField()
+
+        invalid_coords = {"x": 1, "y": 2}
+        expected = 'MultiLineStringField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
+        expected = 'MultiLineStringField type must be "MultiLineString"'
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = {"type": "MultiLineString", "coordinates": [[[1, 2, 3]]]}
+        expected = "Invalid MultiLineString:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [5, "a"]
+        expected = "Invalid MultiLineString must contain at least one valid linestring"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[1]]]
+        expected = "Invalid MultiLineString:\nValue (%s) must be a two-dimensional point" % repr(invalid_coords[0][0])
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[1, 2, 3]]]
+        expected = "Invalid MultiLineString:\nValue (%s) must be a two-dimensional point" % repr(invalid_coords[0][0])
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[[{}, {}]]], [[("a", "b")]]]
+        for coord in invalid_coords:
+            expected = "Invalid MultiLineString:\nBoth values (%s) in point must be float or int" % repr(coord[0][0])
+            self._test_for_expected_error(Location, coord, expected)
+
+        Location(loc=[[[1, 2], [3, 4], [5, 6], [1,2]]]).validate()
+
+    def test_multipolygon_validation(self):
+        class Location(Document):
+            loc = MultiPolygonField()
+
+        invalid_coords = {"x": 1, "y": 2}
+        expected = 'MultiPolygonField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
+        expected = 'MultiPolygonField type must be "MultiPolygon"'
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = {"type": "MultiPolygon", "coordinates": [[[[1, 2, 3]]]]}
+        expected = "Invalid MultiPolygon:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[[5, "a"]]]]
+        expected = "Invalid MultiPolygon:\nBoth values ([5, 'a']) in point must be float or int"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[[]]]]
+        expected = "Invalid MultiPolygon must contain at least one valid Polygon"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[[1, 2, 3]]]]
+        expected = "Invalid MultiPolygon:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[[{}, {}]]], [[("a", "b")]]]
+        expected = "Invalid MultiPolygon:\nBoth values ([{}, {}]) in point must be float or int, Both values (('a', 'b')) in point must be float or int"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        invalid_coords = [[[[1, 2], [3, 4]]]]
+        expected = "Invalid MultiPolygon:\nLineStrings must start and end at the same point"
+        self._test_for_expected_error(Location, invalid_coords, expected)
+
+        Location(loc=[[[[1, 2], [3, 4], [5, 6], [1, 2]]]]).validate()
 
     def test_indexes_geopoint(self):
         """Ensure that indexes are created automatically for GeoPointFields.
