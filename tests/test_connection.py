@@ -101,6 +101,29 @@ class ConnectionTest(unittest.TestCase):
         c.admin.system.users.remove({})
         c.mongoenginetest.system.users.remove({})
 
+    def test_connect_uri_without_username_password(self):
+        """Ensure that the connect() method works properly with a uri,
+        when the username/password is specified outside the uri
+        """
+        c = connect(db='mongoenginetest', alias='admin')
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
+
+        c.admin.add_user("admin", "password")
+        c.admin.authenticate("admin", "password")
+        c.mongoenginetest.add_user("username", "password")
+
+        self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
+
+        conn = connect(alias='test_uri_no_username', host='mongodb://localhost/mongoenginetest', username="username", password="password")
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        db = get_db(alias='test_uri_no_username')
+        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertEqual(db.name, 'mongoenginetest')
+
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
+
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.
         """
