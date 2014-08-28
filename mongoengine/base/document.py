@@ -26,7 +26,7 @@ NON_FIELD_ERRORS = '__all__'
 
 class BaseDocument(object):
     __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
-                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '_cls', '__weakref__')
+                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '__weakref__')
 
     _dynamic = False
     _dynamic_lock = True
@@ -77,6 +77,9 @@ class BaseDocument(object):
                 continue
             value = getattr(self, key, None)
             setattr(self, key, value)
+
+        if "_cls" not in values:
+            self._cls = self._class_name
 
         # Set passed values after initialisation
         if self._dynamic:
@@ -718,6 +721,9 @@ class BaseDocument(object):
                                           ALLOW_INHERITANCE)
         include_cls = (allow_inheritance and not spec.get('sparse', False) and
                        spec.get('cls',  True))
+
+        # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
+        include_cls = include_cls and (spec.get('cls', False) or cls._meta.get('index_cls', True))
         if "cls" in spec:
             spec.pop('cls')
         for key in spec['fields']:

@@ -5,6 +5,8 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Allow specifying the '_cls' as a field for indexes #397
+- Stop ensure_indexes running on a secondaries unless connection is through mongos #746
 - Not overriding default values when loading a subset of fields #399
 - Saving document doesn't create new fields in existing collection #620
 - Added `Queryset.aggregate` wrapper to aggregation framework #703
@@ -46,6 +48,10 @@ Changes in 0.9.X - DEV
 - Workaround a dateutil bug #608
 - Conditional save for atomic-style operations #511
 - Allow dynamic dictionary-style field access #559
+- Increase email field length to accommodate new TLDs #726
+- index_cls is ignored when deciding to set _cls as index prefix #733
+- Make 'db' argument to connection optional #737
+- Allow atomic update for the entire `DictField` #742
 
 Changes in 0.8.7
 ================

@@ -18,6 +18,7 @@ from bson import Binary, DBRef, ObjectId
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import _document_registry
+from mongoengine.base.datastructures import BaseDict
 from mongoengine.errors import NotRegistered
 from mongoengine.python_support import PY3, b, bin_type
 
@@ -1248,6 +1249,30 @@ class FieldTest(unittest.TestCase):
             Simple.objects.filter(mapping__nested_dict__list__1__value='foo').count(), 0)
         self.assertEqual(
             Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
+
+        Simple.drop_collection()
+
+    def test_atomic_update_dict_field(self):
+        """Ensure that the entire DictField can be atomically updated."""
+
+
+        class Simple(Document):
+            mapping = DictField(field=ListField(IntField(required=True)))
+
+        Simple.drop_collection()
+
+        e = Simple()
+        e.mapping['someints'] = [1, 2]
+        e.save()
+        e.update(set__mapping={"ints": [3, 4]})
+        e.reload()
+        self.assertEqual(BaseDict, type(e.mapping))
+        self.assertEqual({"ints": [3, 4]}, e.mapping)
+
+        def create_invalid_mapping():
+            e.update(set__mapping={"somestrings": ["foo", "bar",]})
+
+        self.assertRaises(ValueError, create_invalid_mapping)
 
         Simple.drop_collection()
 
@@ -2902,6 +2927,9 @@ class FieldTest(unittest.TestCase):
                            "aJIazqqWkm7.net"))
         self.assertTrue(user.validate() is None)
 
+        user = User(email="new-tld@example.technology")
+        self.assertTrue(user.validate() is None)
+
         user = User(email='me@localhost')
         self.assertRaises(ValidationError, user.validate)
 
@@ -3005,6 +3033,29 @@ class FieldTest(unittest.TestCase):
         test = DictFieldTest(dictionary=False)
         test.dictionary  # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
+
+    def test_cls_field(self):
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
+
+        class Fish(Animal):
+            pass
+
+        class Mammal(Animal):
+            pass
+
+        class Dog(Mammal):
+            pass
+
+        class Human(Mammal):
+            pass
+
+        Animal.objects.delete()
+        Dog().save()
+        Fish().save()
+        Human().save()
+        self.assertEquals(Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count(), 2)
+        self.assertEquals(Animal.objects(_cls__in=["Animal.Fish.Guppy"]).count(), 0)
 
 
 if __name__ == '__main__':

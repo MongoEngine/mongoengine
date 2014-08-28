@@ -36,9 +36,9 @@ class ClassMethodsTest(unittest.TestCase):
     def test_definition(self):
         """Ensure that document may be defined using fields.
         """
-        self.assertEqual(['age', 'id', 'name'],
+        self.assertEqual(['_cls', 'age', 'id', 'name'],
                          sorted(self.Person._fields.keys()))
-        self.assertEqual(["IntField", "ObjectIdField", "StringField"],
+        self.assertEqual(["IntField", "ObjectIdField", "StringField", "StringField"],
                         sorted([x.__class__.__name__ for x in
                                 self.Person._fields.values()]))
 

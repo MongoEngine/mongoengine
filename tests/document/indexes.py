@@ -175,6 +175,16 @@ class IndexesTest(unittest.TestCase):
         info = A._get_collection().index_information()
         self.assertEqual(len(info.keys()), 2)
 
+        class B(A):
+            c = StringField()
+            d = StringField()
+            meta = {
+                'indexes': [{'fields': ['c']}, {'fields': ['d'], 'cls': True}],
+                'allow_inheritance': True
+            }
+        self.assertEqual([('c', 1)], B._meta['index_specs'][1]['fields'])
+        self.assertEqual([('_cls', 1), ('d', 1)], B._meta['index_specs'][2]['fields'])
+
     def test_build_index_spec_is_not_destructive(self):
 
         class MyDoc(Document):

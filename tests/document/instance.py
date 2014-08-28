@@ -462,7 +462,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person['name'], 'Another User')
 
         # Length = length(assigned fields + id)
-        self.assertEqual(len(person), 3)
+        self.assertEqual(len(person), 4)
 
         self.assertTrue('age' in person)
         person.age = None

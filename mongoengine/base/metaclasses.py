@@ -47,6 +47,10 @@ class DocumentMetaclass(type):
                     meta.merge(base._meta)
             attrs['_meta'] = meta
 
+        if '_meta' in attrs and attrs['_meta'].get('allow_inheritance', ALLOW_INHERITANCE):
+            StringField = _import_class('StringField')
+            attrs['_cls'] = StringField()
+
         # Handle document Fields
 
         # Merge all fields from subclasses

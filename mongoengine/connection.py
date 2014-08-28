@@ -18,7 +18,7 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name, host=None, port=None,
+def register_connection(alias, name=None, host=None, port=None,
                         read_preference=False,
                         username=None, password=None, authentication_source=None,
                         **kwargs):
@@ -40,7 +40,7 @@ def register_connection(alias, name, host=None, port=None,
     global _connection_settings
 
     conn_settings = {
-        'name': name,
+        'name': name or 'test',
         'host': host or 'localhost',
         'port': port or 27017,
         'read_preference': read_preference,
@@ -143,7 +143,7 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     return _dbs[alias]
 
 
-def connect(db, alias=DEFAULT_CONNECTION_NAME, **kwargs):
+def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     """Connect to the database specified by the 'db' argument.
 
     Connection settings may be provided here as well if the database is not
