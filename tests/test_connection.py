@@ -117,6 +117,11 @@ class ConnectionTest(unittest.TestCase):
         conn = connect(alias='test_uri_no_username', host='mongodb://localhost/mongoenginetest', username="username", password="password")
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
+        # Since the mongodb instance used for testing doesn't require
+        # authentication (and turning that on breaks some 85 tests), and there
+        # doesn't appear to be any way to check to see if a connection has
+        # authenticated, I instead expose some internals of mongoengine to
+        # make sure the correct settings have been saved.
         self.assertEqual(me_connection._connection_settings['test_uri_no_username']['username'], 'username')
         self.assertEqual(me_connection._connection_settings['test_uri_no_username']['password'], 'password')
 
