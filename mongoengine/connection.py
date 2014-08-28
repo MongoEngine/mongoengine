@@ -93,6 +93,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
+        # These settings aren't used until we connect to a specific db
         conn_settings.pop('name', None)
         conn_settings.pop('username', None)
         conn_settings.pop('password', None)
@@ -112,6 +113,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             connection = None
             connection_settings_iterator = ((alias, settings.copy()) for alias, settings in _connection_settings.iteritems())
             for alias, connection_settings in connection_settings_iterator:
+                # Need to pop these off as we did above so the dict comparison works
                 connection_settings.pop('name', None)
                 connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
