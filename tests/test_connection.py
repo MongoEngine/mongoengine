@@ -122,6 +122,9 @@ class ConnectionTest(unittest.TestCase):
         # doesn't appear to be any way to check to see if a connection has
         # authenticated, I instead expose some internals of mongoengine to
         # make sure the correct settings have been saved.
+        # Without this, instead of the test failing everything would appear to
+        # work fine, but there would be no username/password on the
+        # connection.
         self.assertEqual(me_connection._connection_settings['test_uri_no_username']['username'], 'username')
         self.assertEqual(me_connection._connection_settings['test_uri_no_username']['password'], 'password')
 
