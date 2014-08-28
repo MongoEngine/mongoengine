@@ -14,6 +14,7 @@ from bson.tz_util import utc
 from mongoengine import *
 import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
+import mongoengine.connection as me_connection
 
 
 class ConnectionTest(unittest.TestCase):
@@ -115,6 +116,10 @@ class ConnectionTest(unittest.TestCase):
 
         conn = connect(alias='test_uri_no_username', host='mongodb://localhost/mongoenginetest', username="username", password="password")
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
+        self.assertEqual(me_connection._connection_settings['test_uri_no_username']['username'], 'username')
+        self.assertEqual(me_connection._connection_settings['test_uri_no_username']['password'], 'password')
+
         db = get_db(alias='test_uri_no_username')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
