@@ -111,6 +111,11 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
         try:
             connection = None
+            # This loop allows us to detect different alias' that connect to the same mongodb instance, and have them
+            # share a single pymongo object.
+            # Ie: alias 'production' and 'readOnly' connect to the same database, just with a different
+            # username/password. This would have both alias' use the same pymongo connection object, but still
+            # authenticate separately.
             connection_settings_iterator = ((alias, settings.copy()) for alias, settings in _connection_settings.iteritems())
             for alias, connection_settings in connection_settings_iterator:
                 # Need to pop these off as we did above so the dict comparison works
