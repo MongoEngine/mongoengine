@@ -52,6 +52,7 @@ Changes in 0.9.X - DEV
 - index_cls is ignored when deciding to set _cls as index prefix #733
 - Make 'db' argument to connection optional #737
 - Allow atomic update for the entire `DictField` #742
+- Added MultiPointField, MultiLineField, MultiPolygonField
 
 Changes in 0.8.7
 ================
