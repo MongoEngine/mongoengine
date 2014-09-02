@@ -457,7 +457,7 @@ class GeoJsonBaseField(BaseField):
         if error:
             self.error(error)
 
-    def _validate_polygon(self, value):
+    def _validate_polygon(self, value, top_level=True):
         if not isinstance(value, (list, tuple)):
             return 'Polygons must contain list of linestrings'
 
@@ -475,7 +475,10 @@ class GeoJsonBaseField(BaseField):
             if error and error not in errors:
                 errors.append(error)
         if errors:
-            return "Invalid Polygon:\n%s" % ", ".join(errors)
+            if top_level:
+                return "Invalid Polygon:\n%s" % ", ".join(errors)
+            else:
+                return "%s" % ", ".join(errors)
 
     def _validate_linestring(self, value, top_level=True):
         """Validates a linestring"""
@@ -508,6 +511,66 @@ class GeoJsonBaseField(BaseField):
         elif (not isinstance(value[0], (float, int)) or
               not isinstance(value[1], (float, int))):
             return "Both values (%s) in point must be float or int" % repr(value)
+
+    def _validate_multipoint(self, value):
+        if not isinstance(value, (list, tuple)):
+            return 'MultiPoint must be a list of Point'
+
+        # Quick and dirty validator
+        try:
+            value[0][0]
+        except:
+            return "Invalid MultiPoint must contain at least one valid point"
+
+        errors = []
+        for point in value:
+            error = self._validate_point(point)
+            if error and error not in errors:
+                errors.append(error)
+
+        if errors:
+            return "%s" % ", ".join(errors)
+
+    def _validate_multilinestring(self, value, top_level=True):
+        if not isinstance(value, (list, tuple)):
+            return 'MultiLineString must be a list of LineString'
+
+        # Quick and dirty validator
+        try:
+            value[0][0][0]
+        except:
+            return "Invalid MultiLineString must contain at least one valid linestring"
+
+        errors = []
+        for linestring in value:
+            error = self._validate_linestring(linestring, False)
+            if error and error not in errors:
+                errors.append(error)
+
+        if errors:
+            if top_level:
+                return "Invalid MultiLineString:\n%s" % ", ".join(errors)
+            else:
+                return "%s" % ", ".join(errors)
+
+    def _validate_multipolygon(self, value):
+        if not isinstance(value, (list, tuple)):
+            return 'MultiPolygon must be a list of Polygon'
+
+        # Quick and dirty validator
+        try:
+            value[0][0][0][0]
+        except:
+            return "Invalid MultiPolygon must contain at least one valid Polygon"
+
+        errors = []
+        for polygon in value:
+            error = self._validate_polygon(polygon, False)
+            if error and error not in errors:
+                errors.append(error)
+
+        if errors:
+            return "Invalid MultiPolygon:\n%s" % ", ".join(errors)
 
     def to_mongo(self, value):
         if isinstance(value, dict):

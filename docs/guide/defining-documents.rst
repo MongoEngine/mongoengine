@@ -91,6 +91,12 @@ are as follows:
 * :class:`~mongoengine.fields.StringField`
 * :class:`~mongoengine.fields.URLField`
 * :class:`~mongoengine.fields.UUIDField`
+* :class:`~mongoengine.fields.PointField`
+* :class:`~mongoengine.fields.LineStringField`
+* :class:`~mongoengine.fields.PolygonField`
+* :class:`~mongoengine.fields.MultiPointField`
+* :class:`~mongoengine.fields.MultiLineStringField`
+* :class:`~mongoengine.fields.MultiPolygonField`
 
 Field arguments
 ---------------
@@ -544,6 +550,9 @@ The following fields will explicitly add a "2dsphere" index:
     - :class:`~mongoengine.fields.PointField`
     - :class:`~mongoengine.fields.LineStringField`
     - :class:`~mongoengine.fields.PolygonField`
+    - :class:`~mongoengine.fields.MultiPointField`
+    - :class:`~mongoengine.fields.MultiLineStringField`
+    - :class:`~mongoengine.fields.MultiPolygonField`
 
 As "2dsphere" indexes can be part of a compound index, you may not want the
 automatic index but would prefer a compound index.  In this example we turn off
