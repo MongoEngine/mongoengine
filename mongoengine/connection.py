@@ -123,9 +123,9 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings.pop('replicaSet', None)
 
             if async:
-                connection_class = MongoReplicaSetClient
-            else:
                 connection_class = motor.MotorReplicaSetClient
+            else:
+                connection_class = MongoReplicaSetClient
 
         try:
             connection = None
