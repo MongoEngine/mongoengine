@@ -256,7 +256,7 @@ class Document(BaseDocument):
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, timeout=False, **kwargs):
+             slave_ok=False, timeout=True, **kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
 
