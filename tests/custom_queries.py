@@ -292,7 +292,8 @@ class CustomQueryTest(unittest.TestCase):
 
         self.assertEquals(self.Person.find({}, sort=[('age', 1)]), [p1, p2, p3])
         self.assertEquals(self.Person.find({}, sort=[('age', -1)]), [p3, p2, p1])
-        self.assertRaises(TypeError, self.Person.find, {}, sort=[('age', 0)])
+        self.assertRaises(pymongo.errors.OperationFailure,
+                          self.Person.find, {}, sort=[('age', 0)])
         self.assertRaises(ValueError, self.Person.find, {}, sort=['age'])
         self.assertRaises(ValueError, self.Person.find, {}, sort='age')
 
@@ -880,6 +881,30 @@ class CustomQueryTest(unittest.TestCase):
         person.user
         # test the DBRef is now dereferenced
         self.assertNotEqual(person._data['user'], DBRef('user', user.id))
+
+    def testTransformHint(self):
+        self.assertEqual(
+            self.Person._transform_hint([("age", 1)]),
+            [("a", 1)])
+
+        self.assertEqual(
+            self.Person._transform_hint([("age", 1), ("name", 1)]),
+            [("a", 1), ("name", 1)])
+
+        self.assertEqual(
+            self.Person._transform_hint([]), [])
+
+        self.assertEqual(
+            self.Person._transform_hint([("_id", 1)]),
+            [("_id", 1)])
+
+        self.assertEqual(
+            self.Person._transform_hint([("age", 1), ("gender", 1)]),
+            [("a", 1), ("g", 1)])
+
+        self.assertEqual(
+            self.Person._transform_hint([("age", 1), ("favourite_colour.name", 1)]),
+            [("a", 1), ("c.n", 1)])
 
 if __name__ == '__main__':
     unittest.main()

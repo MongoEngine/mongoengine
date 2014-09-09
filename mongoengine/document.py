@@ -182,8 +182,18 @@ class Document(BaseDocument):
         return key
 
     @classmethod
+    def _transform_hint(cls, hint_doc):
+        for i, index_field in enumerate(hint_doc):
+            field, direction = hint_doc[i]
+            db_field, context = cls._transform_key(field, cls)
+            hint_doc[i] = (db_field, direction)
+
+        return hint_doc
+
+    @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
-                 slave_ok=False, find_one=False, allow_async=True, **kwargs):
+                 slave_ok=False, find_one=False, allow_async=True, hint=None,
+                 **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
 
@@ -220,6 +230,14 @@ class Document(BaseDocument):
         else:
             tags = None
 
+        # do field name transformation on hints
+        #
+        # the mongodb index {f1: 1, f2: 1} is expressed to pymongo as
+        # [ ("field1", 1), ("field2", 1) ]. here we need to transform
+        # "field1" to its db_field, etc.
+        if hint:
+            hint = cls._transform_hint(hint)
+
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 with log_slow_event('find', cls._meta['collection'], spec):
@@ -236,6 +254,10 @@ class Document(BaseDocument):
                                               tag_sets=tags,
                                               **kwargs)
                         cur.batch_size(10000)
+
+                        if hint:
+                            cur.hint(hint)
+
                         return cur
                 break
             # delay & retry once on AutoReconnect error
