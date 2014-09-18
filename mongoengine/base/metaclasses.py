@@ -217,6 +217,7 @@ class DocumentMetaclass(type):
                        "field name" % field.name)
                 raise InvalidDocumentError(msg)
 
+        signals.class_prepared.send(new_class)
         return new_class
 
     def add_to_class(self, name, value):
