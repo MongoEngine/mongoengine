@@ -884,6 +884,19 @@ class BaseDocument(object):
                 elif cls._dynamic:
                     DynamicField = _import_class('DynamicField')
                     field = DynamicField(db_field=field_name)
+                elif cls._meta.get("allow_inheritance", False) or cls._meta.get("abstract", False):
+                    # 744: in case the field is defined in a subclass
+                    field = None
+                    for subcls in cls.__subclasses__():
+                        try:
+                            field = subcls._lookup_field([field_name])[0]
+                        except LookUpError:
+                            continue
+
+                        if field is not None:
+                            break
+                    else:
+                        raise LookUpError('Cannot resolve field "%s"' % field_name)
                 else:
                     raise LookUpError('Cannot resolve field "%s"'
                                       % field_name)

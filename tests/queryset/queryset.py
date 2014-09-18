@@ -4405,6 +4405,23 @@ class QuerySetTest(unittest.TestCase):
         # 778: max_time_ms can get only int or None as input
         self.assertRaises(TypeError, self.Person.objects(name="name").max_time_ms, "not a number")
 
+    def test_subclass_field_query(self):
+        class Animal(Document):
+            is_mamal = BooleanField()
+            meta = dict(allow_inheritance=True)
+
+        class Cat(Animal):
+            whiskers_length = FloatField()
+
+        class ScottishCat(Cat):
+            folded_ears = BooleanField()
+
+        Animal(is_mamal=False).save()
+        Cat(is_mamal=True, whiskers_length=5.1).save()
+        ScottishCat(is_mamal=True, folded_ears=True).save()
+        self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
+        self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
+
 
 if __name__ == '__main__':
     unittest.main()
