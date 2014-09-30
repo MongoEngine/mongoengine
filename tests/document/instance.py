@@ -9,7 +9,7 @@ import unittest
 import uuid
 
 from datetime import datetime
-from bson import DBRef
+from bson import DBRef, ObjectId
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDyanmicEmbedded, PickleDynamicTest)
 
@@ -34,21 +34,30 @@ class InstanceTest(unittest.TestCase):
         connect(db='mongoenginetest')
         self.db = get_db()
 
+        class Job(EmbeddedDocument):
+            name = StringField()
+            years = IntField()
+
         class Person(Document):
             name = StringField()
             age = IntField()
+            job = EmbeddedDocumentField(Job)
 
             non_field = True
 
             meta = {"allow_inheritance": True}
 
         self.Person = Person
+        self.Job = Job
 
     def tearDown(self):
         for collection in self.db.collection_names():
             if 'system.' in collection:
                 continue
             self.db.drop_collection(collection)
+
+    def assertDbEqual(self, docs):
+        self.assertEqual(list(self.Person._get_collection().find().sort("id")), sorted(docs, key=lambda doc: doc["_id"]))
 
     def test_capped_collection(self):
         """Ensure that capped collections work properly.
@@ -452,7 +461,7 @@ class InstanceTest(unittest.TestCase):
     def test_dictionary_access(self):
         """Ensure that dictionary-style field access works properly.
         """
-        person = self.Person(name='Test User', age=30)
+        person = self.Person(name='Test User', age=30, job=self.Job())
         self.assertEqual(person['name'], 'Test User')
 
         self.assertRaises(KeyError, person.__getitem__, 'salary')
@@ -462,7 +471,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person['name'], 'Another User')
 
         # Length = length(assigned fields + id)
-        self.assertEqual(len(person), 4)
+        self.assertEqual(len(person), 5)
 
         self.assertTrue('age' in person)
         person.age = None
@@ -616,6 +625,61 @@ class InstanceTest(unittest.TestCase):
         # Asserts not raises
         t = TestDocument(doc=TestEmbeddedDocument(x=15, y=35, z=5))
         t.save(clean=False)
+
+    def test_modify_empty(self):
+        doc = self.Person(id=ObjectId(), name="bob", age=10).save()
+        self.assertRaises(InvalidDocumentError, lambda: self.Person().modify(set__age=10))
+        self.assertDbEqual([dict(doc.to_mongo())])
+
+    def test_modify_invalid_query(self):
+        doc1 = self.Person(id=ObjectId(), name="bob", age=10).save()
+        doc2 = self.Person(id=ObjectId(), name="jim", age=20).save()
+        docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
+
+        self.assertRaises(InvalidQueryError, lambda:
+            doc1.modify(dict(id=doc2.id), set__value=20))
+
+        self.assertDbEqual(docs)
+
+    def test_modify_match_another_document(self):
+        doc1 = self.Person(id=ObjectId(), name="bob", age=10).save()
+        doc2 = self.Person(id=ObjectId(), name="jim", age=20).save()
+        docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
+
+        assert not doc1.modify(dict(name=doc2.name), set__age=100)
+
+        self.assertDbEqual(docs)
+
+    def test_modify_not_exists(self):
+        doc1 = self.Person(id=ObjectId(), name="bob", age=10).save()
+        doc2 = self.Person(id=ObjectId(), name="jim", age=20)
+        docs = [dict(doc1.to_mongo())]
+
+        assert not doc2.modify(dict(name=doc2.name), set__age=100)
+
+        self.assertDbEqual(docs)
+
+    def test_modify_update(self):
+        other_doc = self.Person(id=ObjectId(), name="bob", age=10).save()
+        doc = self.Person(id=ObjectId(), name="jim", age=20,
+                          job=self.Job(name="10gen", years=3)).save()
+
+        doc_copy = doc._from_son(doc.to_mongo())
+
+        # these changes must go away
+        doc.name = "liza"
+        doc.job.name = "Google"
+        doc.job.years = 3
+
+        assert doc.modify(set__age=21, set__job__name="MongoDB", unset__job__years=True)
+        doc_copy.age = 21
+        doc_copy.job.name = "MongoDB"
+        del doc_copy.job.years
+
+        assert doc.to_json() == doc_copy.to_json()
+        assert doc._get_changed_fields() == []
+
+        self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
     def test_save(self):
         """Ensure that a document may be saved in the database.
