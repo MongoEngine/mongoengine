@@ -627,13 +627,13 @@ class InstanceTest(unittest.TestCase):
         t.save(clean=False)
 
     def test_modify_empty(self):
-        doc = self.Person(id=ObjectId(), name="bob", age=10).save()
+        doc = self.Person(name="bob", age=10).save()
         self.assertRaises(InvalidDocumentError, lambda: self.Person().modify(set__age=10))
         self.assertDbEqual([dict(doc.to_mongo())])
 
     def test_modify_invalid_query(self):
-        doc1 = self.Person(id=ObjectId(), name="bob", age=10).save()
-        doc2 = self.Person(id=ObjectId(), name="jim", age=20).save()
+        doc1 = self.Person(name="bob", age=10).save()
+        doc2 = self.Person(name="jim", age=20).save()
         docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
 
         self.assertRaises(InvalidQueryError, lambda:
@@ -642,8 +642,8 @@ class InstanceTest(unittest.TestCase):
         self.assertDbEqual(docs)
 
     def test_modify_match_another_document(self):
-        doc1 = self.Person(id=ObjectId(), name="bob", age=10).save()
-        doc2 = self.Person(id=ObjectId(), name="jim", age=20).save()
+        doc1 = self.Person(name="bob", age=10).save()
+        doc2 = self.Person(name="jim", age=20).save()
         docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
 
         assert not doc1.modify(dict(name=doc2.name), set__age=100)
@@ -651,7 +651,7 @@ class InstanceTest(unittest.TestCase):
         self.assertDbEqual(docs)
 
     def test_modify_not_exists(self):
-        doc1 = self.Person(id=ObjectId(), name="bob", age=10).save()
+        doc1 = self.Person(name="bob", age=10).save()
         doc2 = self.Person(id=ObjectId(), name="jim", age=20)
         docs = [dict(doc1.to_mongo())]
 
@@ -660,9 +660,8 @@ class InstanceTest(unittest.TestCase):
         self.assertDbEqual(docs)
 
     def test_modify_update(self):
-        other_doc = self.Person(id=ObjectId(), name="bob", age=10).save()
-        doc = self.Person(id=ObjectId(), name="jim", age=20,
-                          job=self.Job(name="10gen", years=3)).save()
+        other_doc = self.Person(name="bob", age=10).save()
+        doc = self.Person(name="jim", age=20, job=self.Job(name="10gen", years=3)).save()
 
         doc_copy = doc._from_son(doc.to_mongo())
 
