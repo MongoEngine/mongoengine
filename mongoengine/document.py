@@ -241,24 +241,23 @@ class Document(BaseDocument):
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 with log_slow_event('find', cls._meta['collection'], spec):
+                    cur = cls._pymongo(allow_async).find(spec, fields,
+                                          skip=skip, limit=limit, sort=sort,
+                                          read_preference=read_preference,
+                                          tag_sets=tags,
+                                          **kwargs)
+
+                    if hint:
+                        cur.hint(hint)
+
                     if find_one:
-                        return cls._pymongo(allow_async).find_one(spec, fields,
-                                              skip=skip, sort=sort,
-                                              read_preference=read_preference,
-                                              tag_sets=tags,
-                                              **kwargs)
+                        for result in cur.limit(-1):
+                            return result
+                        return None
                     else:
-                        cur = cls._pymongo(allow_async).find(spec, fields,
-                                              skip=skip, limit=limit, sort=sort,
-                                              read_preference=read_preference,
-                                              tag_sets=tags,
-                                              **kwargs)
                         cur.batch_size(10000)
 
-                        if hint:
-                            cur.hint(hint)
-
-                        return cur
+                    return cur
                 break
             # delay & retry once on AutoReconnect error
             except pymongo.errors.AutoReconnect:
