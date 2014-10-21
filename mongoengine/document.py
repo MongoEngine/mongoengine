@@ -507,6 +507,29 @@ class Document(BaseDocument):
                            '$max', '$min', '$showDiskLoc', '$hint', '$comment',
                            '$slice']
 
+        # recurse on list, unless we're at a ListField
+        if isinstance(value, list) and not isinstance(context, ListField):
+            transformed_list = []
+            for listel in value:
+                if isinstance(listel, dict) and not isinstance(context, DictField):
+                    transformed_value = SON()
+
+                    for key, subvalue in listel.iteritems():
+                        if key[0] == '$':
+                            op = key
+
+                        new_key, value_context = Document._transform_key(key, context,
+                                                     is_find=(op is None))
+
+                        transformed_value[new_key] = \
+                            Document._transform_value(subvalue, value_context,
+                                                      op, validate)
+
+                        transformed_list.append(transformed_value)
+                else:
+                    transformed_list.append(listel)
+            value = transformed_list
+
         # recurse on dict, unless we're at a DictField
         if isinstance(value, dict) and not isinstance(context, DictField):
             transformed_value = SON()

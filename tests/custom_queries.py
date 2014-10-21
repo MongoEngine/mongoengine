@@ -211,6 +211,26 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEqual(result['name'], 'Chu')
         self.assertEqual(result['o'], {'n': 'Red'})
 
+    def testTransformQueryOr(self):
+        blue = self.Colour(name='Blue')
+        red = self.Colour(name='Red')
+        query = {'$or': [{'name': 'Chu'}, {'age': 20}] }
+        result = self.Person._transform_value(query, self.Person)
+        self.assertEqual(set(result.keys()), set(['$or']))
+        self.assertEqual(set(x.keys()[0] for x in result['$or']), set(['name', 'a']))
+        self.assertEqual(result['$or'][0]['name'], 'Chu')
+        self.assertEqual(result['$or'][1]['a'], 20)
+
+        query = {'$and': [{'name': 'Chu'}, {'$or' : [{'age' : 20}, {'age': 21}]} ] }
+        result = self.Person._transform_value(query, self.Person)
+
+        self.assertEqual(set(result.keys()), set(['$and']))
+        self.assertEqual(set([x.keys()[0] for x in result['$and']]), set(['name', '$or']))
+        self.assertEqual(result['$and'][0]['name'], 'Chu')
+        self.assertEqual([x.keys()[0] for x in result['$and'][1]['$or']], ['a', 'a'])
+        self.assertEqual(result['$and'][1]['$or'][0]['a'], 20)
+        self.assertEqual(result['$and'][1]['$or'][1]['a'], 21)
+
     def testTransformQueryListIndex(self):
         blue = self.Colour(name='Blue')
         query = {'$set': {'other_colours.1': blue}}
@@ -292,8 +312,6 @@ class CustomQueryTest(unittest.TestCase):
 
         self.assertEquals(self.Person.find({}, sort=[('age', 1)]), [p1, p2, p3])
         self.assertEquals(self.Person.find({}, sort=[('age', -1)]), [p3, p2, p1])
-        self.assertRaises(pymongo.errors.OperationFailure,
-                          self.Person.find, {}, sort=[('age', 0)])
         self.assertRaises(ValueError, self.Person.find, {}, sort=['age'])
         self.assertRaises(ValueError, self.Person.find, {}, sort='age')
 
