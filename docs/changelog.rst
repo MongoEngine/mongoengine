@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- abstract shouldn't be inherited in EmbeddedDocument # 789
 - Allow specifying the '_cls' as a field for indexes #397
 - Stop ensure_indexes running on a secondaries unless connection is through mongos #746
 - Not overriding default values when loading a subset of fields #399

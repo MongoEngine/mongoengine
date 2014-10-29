@@ -397,6 +397,16 @@ class InheritanceTest(unittest.TestCase):
                 meta = {'abstract': True}
         self.assertRaises(ValueError, create_bad_abstract)
 
+    def test_abstract_embedded_documents(self):
+        # 789: EmbeddedDocument shouldn't inherit abstract
+        class A(EmbeddedDocument):
+            meta = {"abstract": True}
+
+        class B(A):
+            pass
+
+        self.assertFalse(B._meta["abstract"])
+
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents'
         collections
