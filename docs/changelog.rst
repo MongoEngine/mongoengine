@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Add Support For MongoDB 2.6.X's maxTimeMS #778
 - abstract shouldn't be inherited in EmbeddedDocument # 789
 - Allow specifying the '_cls' as a field for indexes #397
 - Stop ensure_indexes running on a secondaries unless connection is through mongos #746

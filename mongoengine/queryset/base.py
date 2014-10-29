@@ -82,6 +82,7 @@ class BaseQuerySet(object):
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
         self.only_fields = []
+        self._max_time_ms = None
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False,
                  read_preference=None, **query):
@@ -672,7 +673,7 @@ class BaseQuerySet(object):
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
                       '_limit', '_skip', '_hint', '_auto_dereference',
-                      '_search_text', '_include_text_scores', 'only_fields')
+                      '_search_text', '_include_text_scores', 'only_fields', '_max_time_ms')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -968,6 +969,13 @@ class BaseQuerySet(object):
         queryset._as_pymongo = True
         queryset._as_pymongo_coerce = coerce_types
         return queryset
+
+    def max_time_ms(self, ms):
+        """Wait `ms` milliseconds before killing the query on the server
+
+        :param ms: the number of milliseconds before killing the query on the server
+        """
+        return self._chainable_method("max_time_ms", ms)
 
     # JSON Helpers
 
@@ -1699,6 +1707,13 @@ class BaseQuerySet(object):
         code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
                       code)
         return code
+
+    def _chainable_method(self, method_name, val):
+        queryset = self.clone()
+        method = getattr(queryset._cursor, method_name)
+        method(val)
+        setattr(queryset, "_" + method_name, val)
+        return queryset
 
     # Deprecated
     def ensure_index(self, **kwargs):
