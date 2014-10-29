@@ -5,6 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.utils.importlib import import_module
 from django.utils.translation import ugettext_lazy as _
+import warnings
 
 
 __all__ = (
@@ -90,8 +91,14 @@ class MongoUserManager(UserManager):
     def get_empty_query_set(self):
         return self.model.objects.none()
 
-    def get_query_set(self):
+    def get_queryset(self):
         return self.model.objects
+
+    def get_query_set(self):
+        warnings.warn(
+                "The MongoUserManager get_query_set method has been deprecated.",
+                DeprecationWarning)
+        return self.get_queryset()
 
 
 class MongoUser(models.Model):
