@@ -145,7 +145,7 @@ cleaner looking while still allowing manual execution of the callback::
 ReferenceFields and Signals
 ---------------------------
 
-Currently `reverse_delete_rules` do not trigger signals on the other part of
+Currently `reverse_delete_rule` does not trigger signals on the other part of
 the relationship.  If this is required you must manually handle the
 reverse deletion.
 
