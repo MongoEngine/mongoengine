@@ -56,6 +56,8 @@ Changes in 0.9.X - DEV
 - Allow atomic update for the entire `DictField` #742
 - Added MultiPointField, MultiLineField, MultiPolygonField
 - Fix multiple connections aliases being rewritten #748
+- Fixed a few instances where reverse_delete_rule was written as reverse_delete_rules. #791
+
 
 Changes in 0.8.7
 ================

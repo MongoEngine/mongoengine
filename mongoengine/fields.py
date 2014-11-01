@@ -859,7 +859,7 @@ class ReferenceField(BaseField):
 
     Use the `reverse_delete_rule` to handle what should happen if the document
     the field is referencing is deleted.  EmbeddedDocuments, DictFields and
-    MapFields do not support reverse_delete_rules and an `InvalidDocumentError`
+    MapFields does not support reverse_delete_rule and an `InvalidDocumentError`
     will be raised if trying to set on one of these Document / Field types.
 
     The options are:
@@ -883,7 +883,7 @@ class ReferenceField(BaseField):
         Bar.register_delete_rule(Foo, 'bar', NULLIFY)
 
     .. note ::
-        `reverse_delete_rules` do not trigger pre / post delete signals to be
+        `reverse_delete_rule` does not trigger pre / post delete signals to be
         triggered.
 
     .. versionchanged:: 0.5 added `reverse_delete_rule`
