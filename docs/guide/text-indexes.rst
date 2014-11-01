@@ -46,4 +46,6 @@ Next, start a text search using :attr:`QuerySet.search_text` method::
 Ordering by text score
 ======================
 
+::
+
   objects = News.objects.search('mongo').order_by('$text_score')
