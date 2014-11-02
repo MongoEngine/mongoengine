@@ -491,8 +491,11 @@ Documents may be updated atomically by using the
 :meth:`~mongoengine.queryset.QuerySet.update_one`,
 :meth:`~mongoengine.queryset.QuerySet.update` and
 :meth:`~mongoengine.queryset.QuerySet.modify` methods on a
-:meth:`~mongoengine.queryset.QuerySet`. There are several different "modifiers"
-that you may use with these methods:
+:class:`~mongoengine.queryset.QuerySet` or
+:meth:`~mongoengine.Document.modify` and
+:meth:`~mongoengine.Document.save` (with :attr:`save_condition` argument) on a
+:class:`~mongoengine.Document`.
+There are several different "modifiers" that you may use with these methods:
 
 * ``set`` -- set a particular value
 * ``unset`` -- delete a particular value (since MongoDB v1.3+)

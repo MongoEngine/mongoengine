@@ -12,7 +12,7 @@ from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, BaseDict, BaseList,
                               ALLOW_INHERITANCE, get_document)
-from mongoengine.errors import ValidationError
+from mongoengine.errors import ValidationError, InvalidQueryError, InvalidDocumentError
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
@@ -191,6 +191,44 @@ class Document(BaseDocument):
             if cls._meta.get('auto_create_index', True):
                 cls.ensure_indexes()
         return cls._collection
+
+    def modify(self, query={}, **update):
+        """Perform an atomic update of the document in the database and reload
+        the document object using updated version.
+
+        Returns True if the document has been updated or False if the document
+        in the database doesn't match the query.
+
+        .. note:: All unsaved changes that has been made to the document are
+        rejected if the method returns True.
+
+        :param query: the update will be performed only if the document in the
+            database matches the query
+        :param update: Django-style update keyword arguments
+        """
+
+        if self.pk is None:
+            raise InvalidDocumentError("The document does not have a primary key.")
+
+        id_field = self._meta["id_field"]
+        query = query.copy() if isinstance(query, dict) else query.to_query(self)
+
+        if id_field not in query:
+            query[id_field] = self.pk
+        elif query[id_field] != self.pk:
+            raise InvalidQueryError("Invalid document modify query: it must modify only this document.")
+
+        updated = self._qs(**query).modify(new=True, **update)
+        if updated is None:
+            return False
+
+        for field in self._fields_ordered:
+            setattr(self, field, self._reload(field, updated[field]))
+
+        self._changed_fields = updated._changed_fields
+        self._created = False
+
+        return True
 
     def save(self, force_insert=False, validate=True, clean=True,
              write_concern=None,  cascade=None, cascade_kwargs=None,
