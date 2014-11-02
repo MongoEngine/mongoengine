@@ -37,7 +37,7 @@ Changes in 0.9.X - DEV
 - Removing support for Django 1.4.x, pymongo 2.5.x, pymongo 2.6.x.
 - Removing support for Python < 2.6.6
 - Fixed $maxDistance location for geoJSON $near queries with MongoDB 2.6+ #664
-- QuerySet.modify() method to provide find_and_modify() like behaviour #677
+- QuerySet.modify() and Document.modify() methods to provide find_and_modify() like behaviour #677 #773
 - Added support for the using() method on a queryset #676
 - PYPY support #673
 - Connection pooling #674
