@@ -46,8 +46,9 @@ class DocumentMetaclass(type):
                 elif hasattr(base, '_meta'):
                     meta.merge(base._meta)
             attrs['_meta'] = meta
+            attrs['_meta']['abstract'] = False  # 789: EmbeddedDocument shouldn't inherit abstract
 
-        if '_meta' in attrs and attrs['_meta'].get('allow_inheritance', ALLOW_INHERITANCE):
+        if attrs['_meta'].get('allow_inheritance', ALLOW_INHERITANCE):
             StringField = _import_class('StringField')
             attrs['_cls'] = StringField()
 

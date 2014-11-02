@@ -1858,7 +1858,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Bar.objects.count(), 1)  # No effect on the BlogPost
         self.assertEqual(Bar.objects.get().foo, None)
 
-    def test_invalid_reverse_delete_rules_raise_errors(self):
+    def test_invalid_reverse_delete_rule_raise_errors(self):
 
         def throw_invalid_document_error():
             class Blog(Document):

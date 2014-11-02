@@ -4401,6 +4401,10 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects().delete()
         self.assertEqual(self.Person.objects().skip(1).delete(), 0)  # test Document delete without existing documents
 
+    def test_max_time_ms(self):
+        # 778: max_time_ms can get only int or None as input
+        self.assertRaises(TypeError, self.Person.objects(name="name").max_time_ms, "not a number")
+
 
 if __name__ == '__main__':
     unittest.main()
