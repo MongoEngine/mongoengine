@@ -57,6 +57,7 @@ Changes in 0.9.X - DEV
 - Added MultiPointField, MultiLineField, MultiPolygonField
 - Fix multiple connections aliases being rewritten #748
 - Fixed a few instances where reverse_delete_rule was written as reverse_delete_rules. #791
+- Make `in_bulk()` respect `no_dereference()` #775
 
 
 Changes in 0.8.7
