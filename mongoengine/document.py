@@ -130,7 +130,7 @@ class Document(BaseDocument):
         .. versionadded:: 0.1.2
         """
         id_field = self._meta['id_field']
-        obj = self.__class__.objects(**{id_field: self[id_field]}).first()
+        obj = self.__class__.find_one({id_field: self[id_field]})
         for field in self._fields:
             setattr(self, field, obj[field])
 
