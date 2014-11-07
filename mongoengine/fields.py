@@ -308,7 +308,7 @@ class DecimalField(BaseField):
         self.min_value = min_value
         self.max_value = max_value
         self.force_string = force_string
-        self.precision = decimal.Decimal(".%s" % ("0" * precision))
+        self.precision = precision
         self.rounding = rounding
 
         super(DecimalField, self).__init__(**kwargs)
@@ -322,7 +322,7 @@ class DecimalField(BaseField):
             value = decimal.Decimal("%s" % value)
         except decimal.InvalidOperation:
             return value
-        return value.quantize(self.precision, rounding=self.rounding)
+        return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
 
     def to_mongo(self, value, use_db_field=True):
         if value is None:
