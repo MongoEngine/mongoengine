@@ -161,6 +161,11 @@ class Q(QNode):
     """
 
     def __init__(self, **query):
+        # Support for werkzeug.local.LocalProxy
+        for key, value in query.items():
+            if hasattr(value, '_get_current_object'):
+                query[key] = value._get_current_object()
+
         self.query = query
 
     def accept(self, visitor):
