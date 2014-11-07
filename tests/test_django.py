@@ -170,7 +170,12 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that a queryset and filters work as expected
         """
 
+        class LimitCountQuerySet(QuerySet):
+            def count(self, with_limit_and_skip=True):
+                return super(LimitCountQuerySet, self).count(with_limit_and_skip)
+
         class Note(Document):
+            meta = dict(queryset_class=LimitCountQuerySet)
             text = StringField()
 
         Note.drop_collection()

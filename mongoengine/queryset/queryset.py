@@ -94,7 +94,7 @@ class QuerySet(BaseQuerySet):
             except StopIteration:
                 self._has_more = False
 
-    def count(self, with_limit_and_skip=True):
+    def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
 
         :param with_limit_and_skip (optional): take any :meth:`limit` or
