@@ -914,7 +914,7 @@ class QuerySetTest(unittest.TestCase):
         docs = docs[1:4]
         self.assertEqual('[<Doc: 1>, <Doc: 2>, <Doc: 3>]', "%s" % docs)
 
-        self.assertEqual(docs.count(), 3)
+        self.assertEqual(docs.count(with_limit_and_skip=True), 3)
         for doc in docs:
             self.assertEqual('.. queryset mid-iteration ..', repr(docs))
 
@@ -3244,7 +3244,7 @@ class QuerySetTest(unittest.TestCase):
         for i in xrange(10):
             Post(title="Post %s" % i).save()
 
-        self.assertEqual(5, Post.objects.limit(5).skip(5).count())
+        self.assertEqual(5, Post.objects.limit(5).skip(5).count(with_limit_and_skip=True))
 
         self.assertEqual(
             10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False))
@@ -4013,7 +4013,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(100, people._len)  # Caused by list calling len
             self.assertEqual(q, 1)
 
-            people.count()  # count is cached
+            people.count(with_limit_and_skip=True)  # count is cached
             self.assertEqual(q, 1)
 
     def test_no_cached_queryset(self):
@@ -4109,7 +4109,7 @@ class QuerySetTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(q, 0)
 
-            self.assertEqual(users.count(), 7)
+            self.assertEqual(users.count(with_limit_and_skip=True), 7)
 
             for i, outer_user in enumerate(users):
                 self.assertEqual(outer_user.name, names[i])
@@ -4117,7 +4117,7 @@ class QuerySetTest(unittest.TestCase):
                 inner_count = 0
 
                 # Calling len might disrupt the inner loop if there are bugs
-                self.assertEqual(users.count(), 7)
+                self.assertEqual(users.count(with_limit_and_skip=True), 7)
 
                 for j, inner_user in enumerate(users):
                     self.assertEqual(inner_user.name, names[j])

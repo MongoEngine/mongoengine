@@ -384,7 +384,7 @@ class BaseQuerySet(object):
             self._document, documents=results, loaded=True)
         return return_one and results[0] or results
 
-    def count(self, with_limit_and_skip=True):
+    def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
 
         :param with_limit_and_skip (optional): take any :meth:`limit` or
