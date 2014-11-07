@@ -229,7 +229,7 @@ class BaseDocument(object):
             u = self.__str__()
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = '[Bad Unicode data]'
-        repr_type = type(u)
+        repr_type = str if u is None else type(u)
         return repr_type('<%s: %s>' % (self.__class__.__name__, u))
 
     def __str__(self):
