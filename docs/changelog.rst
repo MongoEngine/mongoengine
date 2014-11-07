@@ -6,6 +6,7 @@ Changelog
 Changes in 0.9.X - DEV
 ======================
 - with_limit_and_skip for count should default like in pymongo #759
+- Fix storing value of precision attribute in DecimalField #787
 - Querying by a field defined in a subclass raises InvalidQueryError #744
 - Add Support For MongoDB 2.6.X's maxTimeMS #778
 - abstract shouldn't be inherited in EmbeddedDocument # 789
