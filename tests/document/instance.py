@@ -112,6 +112,19 @@ class InstanceTest(unittest.TestCase):
 
         self.assertEqual('<Article: привет мир>', repr(doc))
 
+    def test_repr_none(self):
+        """Ensure None values handled correctly
+        """
+        class Article(Document):
+            title = StringField()
+
+            def __str__(self):
+                return None
+
+        doc = Article(title=u'привет мир')
+
+        self.assertEqual('<Article: None>', repr(doc))
+
     def test_queryset_resurrects_dropped_collection(self):
         self.Person.drop_collection()
 
