@@ -81,6 +81,13 @@ class DynamicTest(unittest.TestCase):
         obj = collection.find_one()
         self.assertEqual(sorted(obj.keys()), ['_cls', '_id', 'name'])
 
+    def test_reload_after_unsetting(self):
+        p = self.Person()
+        p.misc = 22
+        p.save()
+        p.update(unset__misc=1)
+        p.reload()
+
     def test_dynamic_document_queries(self):
         """Ensure we can query dynamic fields"""
         p = self.Person()
