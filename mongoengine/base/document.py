@@ -241,10 +241,12 @@ class BaseDocument(object):
         return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
-        if isinstance(other, self.__class__) and hasattr(other, 'id'):
+        if isinstance(other, self.__class__) and hasattr(other, 'id') and other.id is not None:
             return self.id == other.id
         if isinstance(other, DBRef):
             return self._get_collection_name() == other.collection and self.id == other.id
+        if self.id is None:
+            return self is other
         return False
 
     def __ne__(self, other):
