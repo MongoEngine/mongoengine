@@ -2719,5 +2719,16 @@ class InstanceTest(unittest.TestCase):
         self.assertEquals(p4.height, 189)
         self.assertEquals(Person.objects(height=189).count(), 1)
 
+    def test_from_son(self):
+        # 771
+        class MyPerson(self.Person):
+            meta = dict(shard_key=["id"])
+        p = MyPerson.from_json('{"name": "name", "age": 27}', created=True)
+        self.assertEquals(p.id, None)
+        p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
+        p = MyPerson._from_son({"name": "name", "age": 27}, created=True)
+        self.assertEquals(p.id, None)
+        p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
+
 if __name__ == '__main__':
     unittest.main()
