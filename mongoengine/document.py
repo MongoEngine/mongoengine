@@ -543,7 +543,13 @@ class Document(BaseDocument):
 
         for field in self._fields_ordered:
             if not fields or field in fields:
-                setattr(self, field, self._reload(field, obj[field]))
+                try:
+                    setattr(self, field, self._reload(field, obj[field]))
+                except KeyError:
+                    # If field is removed from the database while the object
+                    # is in memory, a reload would cause a KeyError
+                    # i.e. obj.update(unset__field=1) followed by obj.reload()
+                    delattr(self, field)
 
         self._changed_fields = obj._changed_fields
         self._created = False
