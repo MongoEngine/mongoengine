@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Better BaseDocument equality check when not saved #798
 - OperationError: Shard Keys are immutable. Tried to update id even though the document is not yet saved #771
 - with_limit_and_skip for count should default like in pymongo #759
 - Fix storing value of precision attribute in DecimalField #787

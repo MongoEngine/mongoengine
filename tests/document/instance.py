@@ -2542,6 +2542,10 @@ class InstanceTest(unittest.TestCase):
             doc_name = StringField()
             doc = EmbeddedDocumentField(Embedded)
 
+            def __eq__(self, other):
+                return (self.doc_name == other.doc_name and
+                        self.doc == other.doc)
+
         classic_doc = Doc(doc_name="my doc", doc=Embedded(name="embedded doc"))
         dict_doc = Doc(**{"doc_name": "my doc",
                           "doc": {"name": "embedded doc"}})
@@ -2557,6 +2561,10 @@ class InstanceTest(unittest.TestCase):
         class Doc(Document):
             doc_name = StringField()
             docs = ListField(EmbeddedDocumentField(Embedded))
+
+            def __eq__(self, other):
+                return (self.doc_name == other.doc_name and
+                        self.docs == other.docs)
 
         classic_doc = Doc(doc_name="my doc", docs=[
                           Embedded(name="embedded doc1"),
@@ -2791,6 +2799,17 @@ class InstanceTest(unittest.TestCase):
         User.objects(name='user').update_one(set__height=None, upsert=True)
         u_from_db = User.objects.get(name='user')
         self.assertEquals(u_from_db.height, None)
+
+    def test_not_saved_eq(self):
+        """Ensure we can compare documents not saved.
+        """
+        class Person(Document):
+            pass
+
+        p = Person()
+        p1 = Person()
+        self.assertNotEqual(p, p1)
+        self.assertEqual(p, p)
 
 if __name__ == '__main__':
     unittest.main()
