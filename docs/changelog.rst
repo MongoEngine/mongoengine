@@ -8,6 +8,7 @@ Changes in 0.9.X - DEV
 - OperationError: Shard Keys are immutable. Tried to update id even though the document is not yet saved #771
 - with_limit_and_skip for count should default like in pymongo #759
 - Fix storing value of precision attribute in DecimalField #787
+- Set attribute to None does not work (at least for fields with default values) #734
 - Querying by a field defined in a subclass raises InvalidQueryError #744
 - Add Support For MongoDB 2.6.X's maxTimeMS #778
 - abstract shouldn't be inherited in EmbeddedDocument # 789
