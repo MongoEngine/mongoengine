@@ -386,9 +386,9 @@ class BaseDocument(object):
         return json_util.dumps(self.to_mongo(use_db_field),  *args, **kwargs)
 
     @classmethod
-    def from_json(cls, json_data):
+    def from_json(cls, json_data, created=False):
         """Converts json data to an unsaved document instance"""
-        return cls._from_son(json_util.loads(json_data))
+        return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):
         """expand any dynamic values to their correct types / values"""
@@ -617,7 +617,7 @@ class BaseDocument(object):
         return cls._meta.get('collection', None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=[]):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=[], created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
 
@@ -667,7 +667,7 @@ class BaseDocument(object):
         if cls.STRICT:
             data = dict((k, v)
                         for k, v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, _created=False, __only_fields=only_fields, **data)
+        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
             obj._fields = fields
