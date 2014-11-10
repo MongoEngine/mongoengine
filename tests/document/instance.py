@@ -57,7 +57,9 @@ class InstanceTest(unittest.TestCase):
             self.db.drop_collection(collection)
 
     def assertDbEqual(self, docs):
-        self.assertEqual(list(self.Person._get_collection().find().sort("id")), sorted(docs, key=lambda doc: doc["_id"]))
+        self.assertEqual(
+            list(self.Person._get_collection().find().sort("id")),
+            sorted(docs, key=lambda doc: doc["_id"]))
 
     def test_capped_collection(self):
         """Ensure that capped collections work properly.
@@ -468,7 +470,7 @@ class InstanceTest(unittest.TestCase):
             f.reload()
         except Foo.DoesNotExist:
             pass
-        except Exception as ex:
+        except Exception:
             self.assertFalse("Threw wrong exception")
 
     def test_dictionary_access(self):
@@ -2613,7 +2615,9 @@ class InstanceTest(unittest.TestCase):
         system.save()
 
         system = NodesSystem.objects.first()
-        self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
+        self.assertEqual(
+            "UNDEFINED",
+            system.nodes["node"].parameters["param"].macros["test"].value)
 
     def test_embedded_document_equality(self):
 
@@ -2729,6 +2733,27 @@ class InstanceTest(unittest.TestCase):
         p = MyPerson._from_son({"name": "name", "age": 27}, created=True)
         self.assertEquals(p.id, None)
         p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
+
+    def test_null_field(self):
+        # 734
+        class User(Document):
+            name = StringField()
+            height = IntField(default=184, null=True)
+        User.objects.delete()
+        u = User(name='user')
+        u.save()
+        u_from_db = User.objects.get(name='user')
+        u_from_db.height = None
+        u_from_db.save()
+        self.assertEquals(u_from_db.height, None)
+
+        # 735
+        User.objects.delete()
+        u = User(name='user')
+        u.save()
+        User.objects(name='user').update_one(set__height=None, upsert=True)
+        u_from_db = User.objects.get(name='user')
+        self.assertEquals(u_from_db.height, None)
 
 if __name__ == '__main__':
     unittest.main()
