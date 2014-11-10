@@ -51,6 +51,10 @@ class TestJson(unittest.TestCase):
             string = StringField()
             embedded_field = EmbeddedDocumentField(Embedded)
 
+            def __eq__(self, other):
+                return (self.string == other.string and
+                        self.embedded_field == other.embedded_field)
+
         doc = Doc(string="Hi", embedded_field=Embedded(string="Hi"))
 
         doc_json = doc.to_json(sort_keys=True, separators=(',', ':'))
@@ -98,6 +102,10 @@ class TestJson(unittest.TestCase):
             uuid_field = UUIDField(default=uuid.uuid4)
             generic_embedded_document_field = GenericEmbeddedDocumentField(
                                         default=lambda: EmbeddedDoc())
+
+            def __eq__(self, other):
+                import json
+                return json.loads(self.to_json()) == json.loads(other.to_json())
 
         doc = Doc()
         self.assertEqual(doc, Doc.from_json(doc.to_json()))
