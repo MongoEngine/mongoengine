@@ -30,6 +30,12 @@ matrix:
           env: PYMONGO=2.7.1 DJANGO=dev
         - python: "2.6"
           env: PYMONGO=2.7.2 DJANGO=dev
+        - python: "2.6"
+          env: PYMONGO=dev DJANGO=1.7.1
+        - python: "2.6"
+          env: PYMONGO=2.7.1 DJANGO=1.7.1
+        - python: "2.6"
+          env: PYMONGO=2.7.2 DJANGO=1.7.1
     allow_failures:
         - python: "pypy3"
     fast_finish: true
