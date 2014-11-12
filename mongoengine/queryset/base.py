@@ -459,7 +459,7 @@ class BaseQuerySet(object):
                     write_concern=write_concern,
                     **{'pull_all__%s' % field_name: self})
 
-        result = queryset._collection.remove(queryset._query, write_concern=write_concern)
+        result = queryset._collection.remove(queryset._query, **write_concern)
         return result["n"]
 
     def update(self, upsert=False, multi=True, write_concern=None,
