@@ -3057,6 +3057,15 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count(), 2)
         self.assertEquals(Animal.objects(_cls__in=["Animal.Fish.Guppy"]).count(), 0)
 
+    def test_sparse_field(self):
+        class Doc(Document):
+            name = StringField(required=False, unique=True, sparse=True)
+        try:
+            Doc().save()
+            Doc().save()
+        except Exception:
+            self.fail()
+
 
 if __name__ == '__main__':
     unittest.main()
