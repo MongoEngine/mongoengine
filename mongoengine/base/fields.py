@@ -37,7 +37,7 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False):
+                 help_text=None, null=False, sparse=False):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -62,6 +62,8 @@ class BaseField(object):
             used when generating model forms from the document model.
         :param null: (optional) Is the field value can be null. If no and there is a default value
             then the default value is set
+        :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
+            means that uniqueness won't be enforced for `None` values
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -78,6 +80,7 @@ class BaseField(object):
         self.verbose_name = verbose_name
         self.help_text = help_text
         self.null = null
+        self.sparse = sparse
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
