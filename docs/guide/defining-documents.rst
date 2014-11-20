@@ -704,7 +704,7 @@ document.::
     class DatedPage(Page):
         date = DateTimeField()
 
-.. note:: From 0.8 onwards you must declare :attr:`allow_inheritance` defaults
+.. note:: From 0.8 onwards :attr:`allow_inheritance` defaults
           to False, meaning you must set it to True to use inheritance.
 
 Working with existing data
