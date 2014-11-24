@@ -71,7 +71,7 @@ Changes in 0.9.X - DEV
 
 Changes in 0.8.7
 ================
-- Calling reload on deleted / nonexistant documents raises DoesNotExist (#538)
+- Calling reload on deleted / nonexistent documents raises DoesNotExist (#538)
 - Stop ensure_indexes running on a secondaries (#555)
 - Fix circular import issue with django auth (#531) (#545)
 
@@ -84,7 +84,7 @@ Changes in 0.8.5
 - Fix multi level nested fields getting marked as changed (#523)
 - Django 1.6 login fix (#522) (#527)
 - Django 1.6 session fix (#509)
-- EmbeddedDocument._instance is now set when settng the attribute (#506)
+- EmbeddedDocument._instance is now set when setting the attribute (#506)
 - Fixed EmbeddedDocument with ReferenceField equality issue (#502)
 - Fixed GenericReferenceField serialization order (#499)
 - Fixed count and none bug (#498)
@@ -174,7 +174,7 @@ Changes in 0.8.0
 - Added `get_next_value` preview for SequenceFields (#319)
 - Added no_sub_classes context manager and queryset helper (#312)
 - Querysets now utilises a local cache
-- Changed __len__ behavour in the queryset (#247, #311)
+- Changed __len__ behaviour in the queryset (#247, #311)
 - Fixed querying string versions of ObjectIds issue with ReferenceField (#307)
 - Added $setOnInsert support for upserts (#308)
 - Upserts now possible with just query parameters (#309)
@@ -225,7 +225,7 @@ Changes in 0.8.0
 - Uses getlasterror to test created on updated saves (#163)
 - Fixed inheritance and unique index creation (#140)
 - Fixed reverse delete rule with inheritance (#197)
-- Fixed validation for GenericReferences which havent been dereferenced
+- Fixed validation for GenericReferences which haven't been dereferenced
 - Added switch_db context manager (#106)
 - Added switch_db method to document instances (#106)
 - Added no_dereference context manager (#82) (#61)
@@ -307,11 +307,11 @@ Changes in 0.7.2
 - Update index spec generation so its not destructive (#113)
 
 Changes in 0.7.1
-=================
+================
 - Fixed index spec inheritance (#111)
 
 Changes in 0.7.0
-=================
+================
 - Updated queryset.delete so you can use with skip / limit (#107)
 - Updated index creation allows kwargs to be passed through refs (#104)
 - Fixed Q object merge edge case (#109)
@@ -392,7 +392,7 @@ Changes in 0.6.12
 - Fixes error with _delta handling DBRefs
 
 Changes in 0.6.11
-==================
+=================
 - Fixed inconsistency handling None values field attrs
 - Fixed map_field embedded db_field issue
 - Fixed .save() _delta issue with DbRefs
@@ -472,7 +472,7 @@ Changes in 0.6.1
 - Fix for replicaSet connections
 
 Changes in 0.6
-================
+==============
 
 - Added FutureWarning to inherited classes not declaring 'allow_inheritance' as the default will change in 0.7
 - Added support for covered indexes when inheritance is off
@@ -560,8 +560,8 @@ Changes in v0.5
 - Updated default collection naming convention
 - Added Document Mixin support
 - Fixed queryet __repr__ mid iteration
-- Added hint() support, so cantell Mongo the proper index to use for the query
-- Fixed issue with inconsitent setting of _cls breaking inherited referencing
+- Added hint() support, so can tell Mongo the proper index to use for the query
+- Fixed issue with inconsistent setting of _cls breaking inherited referencing
 - Added help_text and verbose_name to fields to help with some form libs
 - Updated item_frequencies to handle embedded document lookups
 - Added delta tracking now only sets / unsets explicitly changed fields

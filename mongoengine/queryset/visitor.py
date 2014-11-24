@@ -29,7 +29,7 @@ class DuplicateQueryConditionsError(InvalidQueryError):
 
 
 class SimplificationVisitor(QNodeVisitor):
-    """Simplifies query trees by combinging unnecessary 'and' connection nodes
+    """Simplifies query trees by combining unnecessary 'and' connection nodes
     into a single Q-object.
     """
 

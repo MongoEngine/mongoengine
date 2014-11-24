@@ -272,7 +272,7 @@ class BaseQuerySet(object):
         .. note:: This requires two separate operations and therefore a
             race condition exists.  Because there are no transactions in
             mongoDB other approaches should be investigated, to ensure you
-            don't accidently duplicate data when using this method.  This is
+            don't accidentally duplicate data when using this method.  This is
             now scheduled to be removed before 1.0
 
         :param write_concern: optional extra keyword arguments used if we
@@ -992,8 +992,8 @@ class BaseQuerySet(object):
 
     def aggregate(self, *pipeline, **kwargs):
         """
-        Perform a aggreggate function based in your queryset params
-        :param pipeline: list of agreggation commands,
+        Perform a aggregate function based in your queryset params
+        :param pipeline: list of aggregation commands,
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
 
         .. versionadded:: 0.9

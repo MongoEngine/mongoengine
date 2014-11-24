@@ -334,7 +334,7 @@ Its value can take any of the following constants:
   Any object's fields still referring to the object being deleted are removed
   (using MongoDB's "unset" operation), effectively nullifying the relationship.
 :const:`mongoengine.CASCADE`
-  Any object containing fields that are refererring to the object being deleted
+  Any object containing fields that are referring to the object being deleted
   are deleted first.
 :const:`mongoengine.PULL`
   Removes the reference to the object (using MongoDB's "pull" operation)
@@ -428,7 +428,7 @@ Document collections
 ====================
 Document classes that inherit **directly** from :class:`~mongoengine.Document`
 will have their own **collection** in the database. The name of the collection
-is by default the name of the class, coverted to lowercase (so in the example
+is by default the name of the class, converted to lowercase (so in the example
 above, the collection would be called `page`). If you need to change the name
 of the collection (e.g. to use MongoEngine with an existing database), then
 create a class dictionary attribute called :attr:`meta` on your document, and
@@ -664,11 +664,11 @@ Shard keys
 ==========
 
 If your collection is sharded, then you need to specify the shard key as a tuple,
-using the :attr:`shard_key` attribute of :attr:`-mongoengine.Document.meta`.
+using the :attr:`shard_key` attribute of :attr:`~mongoengine.Document.meta`.
 This ensures that the shard key is sent with the query when calling the
 :meth:`~mongoengine.document.Document.save` or
 :meth:`~mongoengine.document.Document.update` method on an existing
-:class:`-mongoengine.Document` instance::
+:class:`~mongoengine.Document` instance::
 
     class LogEntry(Document):
         machine = StringField()

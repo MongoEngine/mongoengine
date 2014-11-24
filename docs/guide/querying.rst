@@ -17,7 +17,7 @@ fetch documents from the database::
 
     As of MongoEngine 0.8 the querysets utilise a local cache.  So iterating
     it multiple times will only cause a single query.  If this is not the
-    desired behavour you can call :class:`~mongoengine.QuerySet.no_cache`
+    desired behaviour you can call :class:`~mongoengine.QuerySet.no_cache`
     (version **0.8.3+**) to return a non-caching queryset.
 
 Filtering queries
@@ -252,7 +252,7 @@ To retrieve a result that should be unique in the collection, use
 no document matches the query, and
 :class:`~mongoengine.queryset.MultipleObjectsReturned`
 if more than one document matched the query.  These exceptions are merged into
-your document defintions eg: `MyDoc.DoesNotExist`
+your document definitions eg: `MyDoc.DoesNotExist`
 
 A variation of this method exists,
 :meth:`~mongoengine.queryset.Queryset.get_or_create`, that will create a new
@@ -658,3 +658,4 @@ following example shows how the substitutions are made::
         return comments;
     }
     """)
+
