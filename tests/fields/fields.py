@@ -1814,7 +1814,7 @@ class FieldTest(unittest.TestCase):
         Animal.drop_collection()
         Ocorrence.drop_collection()
 
-        a = Animal(nam="Leopard", tag="heavy",
+        a = Animal(name="Leopard", tag="heavy",
                    owner=Owner(tp='u', name="Wilson Júnior")
                    )
         a.save()
@@ -1864,7 +1864,7 @@ class FieldTest(unittest.TestCase):
         Animal.drop_collection()
         Ocorrence.drop_collection()
 
-        a = Animal(nam="Leopard", tag="heavy",
+        a = Animal(name="Leopard", tag="heavy",
                    owner=Owner(tags=['cool', 'funny'],
                                name="Wilson Júnior")
                    )
@@ -2717,9 +2717,11 @@ class FieldTest(unittest.TestCase):
 
         class Animal(Document):
             id = SequenceField(primary_key=True)
+            name = StringField()
 
         class Person(Document):
             id = SequenceField(primary_key=True)
+            name = StringField()
 
         self.db['mongoengine.counters'].drop()
         Animal.drop_collection()
@@ -3066,6 +3068,18 @@ class FieldTest(unittest.TestCase):
         except Exception:
             self.fail()
 
+    def test_undefined_field_exception(self):
+        """Tests if a `FieldDoesNotExist` exception is raised when trying to
+        set a value to a field that's not defined.
+        """
+
+        class Doc(Document):
+            foo = StringField(db_field='f')
+
+        def test():
+            Doc(bar='test')
+
+        self.assertRaises(FieldDoesNotExist, test)
 
 if __name__ == '__main__':
     unittest.main()
