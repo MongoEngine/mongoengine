@@ -291,7 +291,7 @@ class DecimalField(BaseField):
         :param max_value: Validation rule for the maximum acceptable value.
         :param force_string: Store as a string.
         :param precision: Number of decimal places to store.
-        :param rounding: The rounding rule from the python decimal libary:
+        :param rounding: The rounding rule from the python decimal library:
 
             - decimal.ROUND_CEILING (towards Infinity)
             - decimal.ROUND_DOWN (towards zero)
@@ -375,11 +375,11 @@ class DateTimeField(BaseField):
 
     Uses the python-dateutil library if available alternatively use time.strptime
     to parse the dates.  Note: python-dateutil's parser is fully featured and when
-    installed you can utilise it to convert varing types of date formats into valid
+    installed you can utilise it to convert varying types of date formats into valid
     python datetime objects.
 
     Note: Microseconds are rounded to the nearest millisecond.
-      Pre UTC microsecond support is effecively broken.
+      Pre UTC microsecond support is effectively broken.
       Use :class:`~mongoengine.fields.ComplexDateTimeField` if you
       need accurate microsecond support.
     """
@@ -638,7 +638,7 @@ class DynamicField(BaseField):
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
     def to_mongo(self, value):
-        """Convert a Python type to a MongoDBcompatible type.
+        """Convert a Python type to a MongoDB compatible type.
         """
 
         if isinstance(value, basestring):
@@ -1649,7 +1649,7 @@ class ImageField(FileField):
 
 class SequenceField(BaseField):
 
-    """Provides a sequental counter see:
+    """Provides a sequential counter see:
      http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
 
     .. note::
@@ -1750,7 +1750,7 @@ class SequenceField(BaseField):
 
     def prepare_query_value(self, op, value):
         """
-        This method is overriden in order to convert the query value into to required
+        This method is overridden in order to convert the query value into to required
         type. We need to do this in order to be able to successfully compare query
         values passed as string, the base implementation returns the value as is.
         """

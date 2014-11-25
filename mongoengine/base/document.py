@@ -692,7 +692,7 @@ class BaseDocument(object):
 
             spec_fields = [v['fields']
                            for k, v in enumerate(index_specs)]
-            # Merge unqiue_indexes with existing specs
+            # Merge unique_indexes with existing specs
             for k, v in enumerate(indices):
                 if v['fields'] in spec_fields:
                     index_specs[spec_fields.index(v['fields'])].update(v)

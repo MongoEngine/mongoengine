@@ -677,7 +677,7 @@ class Document(BaseDocument):
         if cls._meta.get('abstract'):
             return []
 
-        # get all the base classes, subclasses and sieblings
+        # get all the base classes, subclasses and siblings
         classes = []
 
         def get_classes(cls):

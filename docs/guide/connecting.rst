@@ -23,14 +23,14 @@ arguments should be provided::
 
     connect('project1', username='webapp', password='pwd123')
 
-Uri style connections are also supported - just supply the uri as
+URI style connections are also supported - just supply the uri as
 the :attr:`host` to
 :func:`~mongoengine.connect`::
 
     connect('project1', host='mongodb://localhost/database_name')
 
 Note that database name from uri has priority over name
-in ::func:`~mongoengine.connect`
+in :func:`~mongoengine.connect`
 
 ReplicaSets
 ===========
@@ -115,3 +115,4 @@ access to the same Group document across collection::
 
         with switch_collection(Group, 'group2000') as Group:
             Group(name="hello Group 2000 collection!").save()  # Saves in group2000 collection
+
