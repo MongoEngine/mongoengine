@@ -577,6 +577,38 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_unique_embedded_document_in_list(self):
+        """
+        Ensure that the uniqueness constraints are applied to fields in
+        embedded documents, even when the embedded documents in in a
+        list field.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField(db_field='yr')
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            subs = ListField(EmbeddedDocumentField(SubDocument))
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(
+            title='test1', subs=[
+                SubDocument(year=2009, slug='conflict'),
+                SubDocument(year=2009, slug='conflict')
+            ]
+        )
+        post1.save()
+
+        post2 = BlogPost(
+            title='test2', subs=[SubDocument(year=2014, slug='conflict')]
+        )
+
+        self.assertRaises(NotUniqueError, post2.save)
+
+        BlogPost.drop_collection()
+
     def test_unique_with_embedded_document_and_embedded_unique(self):
         """Ensure that uniqueness constraints are applied to fields on
         embedded documents.  And work with unique_with as well.

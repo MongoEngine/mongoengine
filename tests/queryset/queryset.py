@@ -512,15 +512,15 @@ class QuerySetTest(unittest.TestCase):
 
     def test_updates_can_have_match_operators(self):
 
-        class Post(Document):
-            title = StringField(required=True)
-            tags = ListField(StringField())
-            comments = ListField(EmbeddedDocumentField("Comment"))
-
         class Comment(EmbeddedDocument):
             content = StringField()
             name = StringField(max_length=120)
             vote = IntField()
+
+        class Post(Document):
+            title = StringField(required=True)
+            tags = ListField(StringField())
+            comments = ListField(EmbeddedDocumentField("Comment"))
 
         Post.drop_collection()
 

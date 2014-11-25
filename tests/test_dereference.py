@@ -318,16 +318,16 @@ class FieldTest(unittest.TestCase):
     def test_circular_reference(self):
         """Ensure you can handle circular references
         """
+        class Relation(EmbeddedDocument):
+            name = StringField()
+            person = ReferenceField('Person')
+
         class Person(Document):
             name = StringField()
             relations = ListField(EmbeddedDocumentField('Relation'))
 
             def __repr__(self):
                 return "<Person: %s>" % self.name
-
-        class Relation(EmbeddedDocument):
-            name = StringField()
-            person = ReferenceField('Person')
 
         Person.drop_collection()
         mother = Person(name="Mother")
@@ -1220,14 +1220,15 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(page.tags[0], page.posts[0].tags[0])
 
     def test_select_related_follows_embedded_referencefields(self):
-        class Playlist(Document):
-            items = ListField(EmbeddedDocumentField("PlaylistItem"))
+
+        class Song(Document):
+            title = StringField()
 
         class PlaylistItem(EmbeddedDocument):
             song = ReferenceField("Song")
 
-        class Song(Document):
-            title = StringField()
+        class Playlist(Document):
+            items = ListField(EmbeddedDocumentField("PlaylistItem"))
 
         Playlist.drop_collection()
         Song.drop_collection()

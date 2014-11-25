@@ -1974,13 +1974,13 @@ class FieldTest(unittest.TestCase):
     def test_recursive_embedding(self):
         """Ensure that EmbeddedDocumentFields can contain their own documents.
         """
-        class Tree(Document):
-            name = StringField()
-            children = ListField(EmbeddedDocumentField('TreeNode'))
-
         class TreeNode(EmbeddedDocument):
             name = StringField()
             children = ListField(EmbeddedDocumentField('self'))
+
+        class Tree(Document):
+            name = StringField()
+            children = ListField(EmbeddedDocumentField('TreeNode'))
 
         Tree.drop_collection()
         tree = Tree(name="Tree")

@@ -816,6 +816,9 @@ class BaseDocument(object):
                 index = {'fields': fields, 'unique': True, 'sparse': sparse}
                 unique_indexes.append(index)
 
+            if field.__class__.__name__ == "ListField":
+                field = field.field
+
             # Grab any embedded document field unique indexes
             if (field.__class__.__name__ == "EmbeddedDocumentField" and
                     field.document_type != cls):

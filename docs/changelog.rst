@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Generate Unique Indicies for Lists of EmbeddedDocuments #358
 - Sparse fields #515
 - write_concern not in params of Collection#remove #801
 - Better BaseDocument equality check when not saved #798
