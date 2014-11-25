@@ -1814,7 +1814,7 @@ class FieldTest(unittest.TestCase):
         Animal.drop_collection()
         Ocorrence.drop_collection()
 
-        a = Animal(nam="Leopard", tag="heavy",
+        a = Animal(name="Leopard", tag="heavy",
                    owner=Owner(tp='u', name="Wilson Júnior")
                    )
         a.save()
@@ -1864,7 +1864,7 @@ class FieldTest(unittest.TestCase):
         Animal.drop_collection()
         Ocorrence.drop_collection()
 
-        a = Animal(nam="Leopard", tag="heavy",
+        a = Animal(name="Leopard", tag="heavy",
                    owner=Owner(tags=['cool', 'funny'],
                                name="Wilson Júnior")
                    )
