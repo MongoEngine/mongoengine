@@ -2,7 +2,7 @@
 Documents instances
 ===================
 To create a new document object, create an instance of the relevant document
-class, providing values for its fields as its constructor keyword arguments.
+class, providing values for its fields as constructor keyword arguments.
 You may provide values for any of the fields on the document::
 
     >>> page = Page(title="Test Page")
@@ -32,11 +32,11 @@ already exist, then any changes will be updated atomically.  For example::
 
     Changes to documents are tracked and on the whole perform ``set`` operations.
 
-    * ``list_field.push(0)`` - *sets* the resulting list
-    * ``del(list_field)``   - *unsets* whole list
+    * ``list_field.push(0)`` --- *sets* the resulting list
+    * ``del(list_field)``   --- *unsets* whole list
 
     With lists its preferable to use ``Doc.update(push__list_field=0)`` as
-    this stops the whole list being updated - stopping any race conditions.
+    this stops the whole list being updated --- stopping any race conditions.
 
 .. seealso::
     :ref:`guide-atomic-updates`
@@ -74,7 +74,7 @@ Cascading Saves
 If your document contains :class:`~mongoengine.fields.ReferenceField` or
 :class:`~mongoengine.fields.GenericReferenceField` objects, then by default the
 :meth:`~mongoengine.Document.save` method will not save any changes to
-those objects.  If you want all references to also be saved also, noting each
+those objects.  If you want all references to be saved also, noting each
 save is a separate query, then passing :attr:`cascade` as True
 to the save method will cascade any saves.
 
@@ -113,12 +113,13 @@ you may still use :attr:`id` to access the primary key if you want::
     >>> bob.id == bob.email == 'bob@example.com'
     True
 
-You can also access the document's "primary key" using the :attr:`pk` field; in
-is an alias to :attr:`id`::
+You can also access the document's "primary key" using the :attr:`pk` field,
+it's an alias to :attr:`id`::
 
     >>> page = Page(title="Another Test Page")
     >>> page.save()
     >>> page.id == page.pk
+    True
 
 .. note::
 
