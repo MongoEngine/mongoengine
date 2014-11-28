@@ -146,7 +146,7 @@ class Document(BaseDocument):
     @property
     def text_score(self):
         """
-        Used for text searchs
+        Used for text searches
         """
         return self._data.get('text_score')
 
@@ -200,7 +200,7 @@ class Document(BaseDocument):
         in the database doesn't match the query.
 
         .. note:: All unsaved changes that has been made to the document are
-        rejected if the method returns True.
+            rejected if the method returns True.
 
         :param query: the update will be performed only if the document in the
             database matches the query
@@ -257,6 +257,7 @@ class Document(BaseDocument):
         :param _refs: A list of processed references used in cascading saves
         :param save_condition: only perform save if matching record in db
             satisfies condition(s) (e.g., version number)
+
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
             set / unset.  Saves are cascaded and any

@@ -1860,6 +1860,7 @@ class PointField(GeoJsonBaseField):
     to set the value.
 
     Requires mongodb >= 2.4
+
     .. versionadded:: 0.8
     """
     _type = "Point"
@@ -1879,6 +1880,7 @@ class LineStringField(GeoJsonBaseField):
     You can either pass a dict with the full information or a list of points.
 
     Requires mongodb >= 2.4
+
     .. versionadded:: 0.8
     """
     _type = "LineString"
@@ -1901,6 +1903,7 @@ class PolygonField(GeoJsonBaseField):
     holes.
 
     Requires mongodb >= 2.4
+
     .. versionadded:: 0.8
     """
     _type = "Polygon"
@@ -1921,6 +1924,7 @@ class MultiPointField(GeoJsonBaseField):
     to set the value.
 
     Requires mongodb >= 2.6
+
     .. versionadded:: 0.9
     """
     _type = "MultiPoint"
@@ -1941,6 +1945,7 @@ class MultiLineStringField(GeoJsonBaseField):
     You can either pass a dict with the full information or a list of points.
 
     Requires mongodb >= 2.6
+
     .. versionadded:: 0.9
     """
     _type = "MultiLineString"
@@ -1968,6 +1973,7 @@ class MultiPolygonField(GeoJsonBaseField):
     of Polygons.
 
     Requires mongodb >= 2.6
+
     .. versionadded:: 0.9
     """
     _type = "MultiPolygon"

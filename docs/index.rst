@@ -14,7 +14,7 @@ MongoDB. To install it, simply run
   MongoEngine.
 
 :doc:`guide/index`
-  The Full guide to MongoEngine - from modeling documents to storing files,
+  The Full guide to MongoEngine --- from modeling documents to storing files,
   from querying for data to firing signals and *everything* between.
 
 :doc:`apireference`

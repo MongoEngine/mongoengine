@@ -4,7 +4,7 @@ Defining documents
 In MongoDB, a **document** is roughly equivalent to a **row** in an RDBMS. When
 working with relational databases, rows are stored in **tables**, which have a
 strict **schema** that the rows follow. MongoDB stores documents in
-**collections** rather than tables - the principal difference is that no schema
+**collections** rather than tables --- the principal difference is that no schema
 is enforced at a database level.
 
 Defining a document's schema
@@ -171,15 +171,15 @@ arguments can be set on all fields:
             size = StringField(max_length=3, choices=SIZE)
 
 :attr:`help_text` (Default: None)
-    Optional help text to output with the field - used by form libraries
+    Optional help text to output with the field -- used by form libraries
 
 :attr:`verbose_name` (Default: None)
-    Optional human-readable name for the field - used by form libraries
+    Optional human-readable name for the field -- used by form libraries
 
 
 List fields
 -----------
-MongoDB allows the storage of lists of items. To add a list of items to a
+MongoDB allows storing lists of items. To add a list of items to a
 :class:`~mongoengine.Document`, use the :class:`~mongoengine.fields.ListField` field
 type. :class:`~mongoengine.fields.ListField` takes another field object as its first
 argument, which specifies which type elements may be stored within the list::
@@ -471,8 +471,16 @@ Text indexes may be specified by prefixing the field name with a **$**. ::
     class Page(Document):
         title = StringField()
         rating = StringField()
+        created = DateTimeField()
         meta = {
-            'indexes': ['title', ('title', '-rating')]
+            'indexes': [
+                'title',
+                ('title', '-rating'),
+                {
+                    'fields': ['created'],
+                    'expireAfterSeconds': 3600
+                }
+            ]
         }
 
 If a dictionary is passed then the following options are available:
@@ -690,7 +698,7 @@ defined, you may subclass it and add any extra fields or methods you may need.
 As this is new class is not a direct subclass of
 :class:`~mongoengine.Document`, it will not be stored in its own collection; it
 will use the same collection as its superclass uses. This allows for more
-convenient and efficient retrieval of related documents - all you need do is
+convenient and efficient retrieval of related documents -- all you need do is
 set :attr:`allow_inheritance` to True in the :attr:`meta` data for a
 document.::
 
@@ -709,7 +717,7 @@ document.::
 
 Working with existing data
 --------------------------
-As MongoEngine no longer defaults to needing :attr:`_cls` you can quickly and
+As MongoEngine no longer defaults to needing :attr:`_cls`, you can quickly and
 easily get working with existing data.  Just define the document to match
 the expected schema in your database ::
 
@@ -732,7 +740,7 @@ Abstract classes
 
 If you want to add some extra functionality to a group of Document classes but
 you don't need or want the overhead of inheritance you can use the
-:attr:`abstract` attribute of :attr:`-mongoengine.Document.meta`.
+:attr:`abstract` attribute of :attr:`~mongoengine.Document.meta`.
 This won't turn on :ref:`document-inheritance` but will allow you to keep your
 code DRY::
 
