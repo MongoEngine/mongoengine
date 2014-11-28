@@ -428,6 +428,7 @@ class ObjectIdField(BaseField):
 class GeoJsonBaseField(BaseField):
 
     """A geo json field storing a geojson style object.
+
     .. versionadded:: 0.8
     """
 
@@ -436,8 +437,8 @@ class GeoJsonBaseField(BaseField):
 
     def __init__(self, auto_index=True, *args, **kwargs):
         """
-        :param auto_index: Automatically create a "2dsphere" index. Defaults
-            to `True`.
+        :param bool auto_index: Automatically create a "2dsphere" index.\
+            Defaults to `True`.
         """
         self._name = "%sField" % self._type
         if not auto_index:

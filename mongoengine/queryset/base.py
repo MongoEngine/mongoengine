@@ -406,6 +406,7 @@ class BaseQuerySet(object):
             will force an fsync on the primary server.
         :param _from_doc_delete: True when called from document delete therefore
             signals will have been triggered so don't loop.
+
         :returns number of deleted documents
         """
         queryset = self.clone()
@@ -993,7 +994,7 @@ class BaseQuerySet(object):
     def aggregate(self, *pipeline, **kwargs):
         """
         Perform a aggregate function based in your queryset params
-        :param pipeline: list of aggregation commands,
+        :param pipeline: list of aggregation commands,\
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
 
         .. versionadded:: 0.9
