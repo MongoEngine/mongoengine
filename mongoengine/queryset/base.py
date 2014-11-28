@@ -763,8 +763,7 @@ class BaseQuerySet(object):
 
             # We may need to cast to the correct type eg.
             # ListField(EmbeddedDocumentField)
-            doc_field = getattr(
-                self._document._fields.get(field), "field", None)
+            doc_field = getattr(self._document._fields.get(field), "field", self._document._fields.get(field))
             instance = getattr(doc_field, "document_type", False)
             EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
             GenericEmbeddedDocumentField = _import_class(
