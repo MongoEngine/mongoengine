@@ -39,15 +39,15 @@ the :attr:`host` to
             host='mongodb://admin:qwerty@localhost/production'
         )
 
-    will establish connection to :code:`production` database using
-    :code:`admin` username and :code:`qwerty` password.
+    will establish connection to ``production`` database using
+    ``admin`` username and ``qwerty`` password.
 
 ReplicaSets
 ===========
 
 MongoEngine supports
 :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`. To use them,
-please use an URI style connection and provide the :code:`replicaSet` name
+please use an URI style connection and provide the ``replicaSet`` name
 in the connection kwargs.
 
 Read preferences are supported through the connection or via individual
