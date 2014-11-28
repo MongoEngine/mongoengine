@@ -35,25 +35,25 @@ Available signals include:
   :class:`~mongoengine.EmbeddedDocument` instance has been completed.
 
 `pre_save`
-  Called within :meth:`~mongoengine.document.Document.save` prior to performing
+  Called within :meth:`~mongoengine.Document.save` prior to performing
   any actions.
 
 `pre_save_post_validation`
-  Called within :meth:`~mongoengine.document.Document.save` after validation
+  Called within :meth:`~mongoengine.Document.save` after validation
   has taken place but before saving.
 
 `post_save`
-  Called within :meth:`~mongoengine.document.Document.save` after all actions
+  Called within :meth:`~mongoengine.Document.save` after all actions
   (validation, insert/update, cascades, clearing dirty flags) have completed
   successfully.  Passed the additional boolean keyword argument `created` to
   indicate if the save was an insert or an update.
 
 `pre_delete`
-  Called within :meth:`~mongoengine.document.Document.delete` prior to
+  Called within :meth:`~mongoengine.Document.delete` prior to
   attempting the delete operation.
 
 `post_delete`
-  Called within :meth:`~mongoengine.document.Document.delete` upon successful
+  Called within :meth:`~mongoengine.Document.delete` upon successful
   deletion of the record.
 
 `pre_bulk_insert`
