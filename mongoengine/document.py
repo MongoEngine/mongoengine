@@ -462,10 +462,11 @@ class Document(BaseDocument):
             user.switch_db('archive-db')
             user.save()
 
-        If you need to read from another database see
-        :class:`~mongoengine.context_managers.switch_db`
+        :param str db_alias: The database alias to use for saving the document
 
-        :param db_alias: The database alias to use for saving the document
+        .. seealso::
+            Use :class:`~mongoengine.context_managers.switch_collection`
+            if you need to read from another collection
         """
         with switch_db(self.__class__, db_alias) as cls:
             collection = cls._get_collection()
@@ -488,11 +489,12 @@ class Document(BaseDocument):
             user.switch_collection('old-users')
             user.save()
 
-        If you need to read from another database see
-        :class:`~mongoengine.context_managers.switch_db`
-
-        :param collection_name: The database alias to use for saving the
+        :param str collection_name: The database alias to use for saving the
             document
+
+        .. seealso::
+            Use :class:`~mongoengine.context_managers.switch_db`
+            if you need to read from another database
         """
         with switch_collection(self.__class__, collection_name) as cls:
             collection = cls._get_collection()
