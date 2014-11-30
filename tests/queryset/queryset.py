@@ -2785,15 +2785,14 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue('planejamento' in new.title)
 
         query = News.objects.search_text("candidata")
-
-        self.assertTrue(query._include_text_scores)
+        self.assertEqual(query._search_text, "candidata")
         new = query.first()
 
         self.assertTrue(isinstance(new.get_text_score(), float))
 
         # count
         query = News.objects.search_text('brasil').order_by('$text_score')
-        self.assertTrue(query._include_text_scores)
+        self.assertEqual(query._search_text, "brasil")
 
         self.assertEqual(query.count(), 3)
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})

@@ -68,7 +68,7 @@ class BaseDocument(object):
         # Exception.
         if not self._dynamic:
             for var in values.keys():
-                if var not in self._fields.keys() + ['id', 'pk', '_cls']:
+                if var not in self._fields.keys() + ['id', 'pk', '_cls', '_text_score']:
                     msg = (
                         "The field '{0}' does not exist on the document '{1}'"
                     ).format(var, self._class_name)
@@ -280,6 +280,16 @@ class BaseDocument(object):
         field defined by NON_FIELD_ERRORS.
         """
         pass
+
+    def get_text_score(self):
+        """
+        Get text score from text query
+        """
+
+        if '_text_score' not in self._data:
+            raise InvalidDocumentError('This document is not originally built from a text query')
+
+        return self._data['_text_score']
 
     def to_mongo(self, use_db_field=True, fields=[]):
         """

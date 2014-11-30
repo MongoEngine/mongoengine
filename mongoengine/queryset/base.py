@@ -6,7 +6,6 @@ import operator
 import pprint
 import re
 import warnings
-import types
 
 from bson import SON
 from bson.code import Code
@@ -38,8 +37,6 @@ PULL = 4
 
 RE_TYPE = type(re.compile(''))
 
-def get_text_score(doc):
-    return doc._data.get('_text_score')
 
 class BaseQuerySet(object):
 
@@ -69,7 +66,6 @@ class BaseQuerySet(object):
         self._as_pymongo = False
         self._as_pymongo_coerce = False
         self._search_text = None
-        self._include_text_scores = False
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -161,13 +157,8 @@ class BaseQuerySet(object):
 
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
-            doc = queryset._document._from_son(queryset._cursor[key],
-                                                _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
-
-            if self._include_text_scores:
-                doc.get_text_score = types.MethodType(get_text_score, doc)
-
-            return doc
+            return queryset._document._from_son(queryset._cursor[key],
+                                               _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
 
         raise AttributeError
 
@@ -201,7 +192,7 @@ class BaseQuerySet(object):
         """
         return self.__call__(*q_objs, **query)
 
-    def search_text(self, text, language=None, include_text_scores=True):
+    def search_text(self, text, language=None):
         """
         Start a text search, using text indexes.
         Require: MongoDB server version 2.6+.
@@ -210,14 +201,11 @@ class BaseQuerySet(object):
             for the search and the rules for the stemmer and tokenizer.
             If not specified, the search uses the default language of the index.
             For supported languages, see `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
-
-        :param include_text_scores: If True, automatically add a get_text_score method to Document.
-
         """
         queryset = self.clone()
         if queryset._search_text:
             raise OperationError(
-                "Is not possible to use search_text two times.")
+                "It is not possible to use search_text two times.")
 
         query_kwargs = SON({'$search': text})
         if language:
@@ -227,7 +215,6 @@ class BaseQuerySet(object):
         queryset._mongo_query = None
         queryset._cursor_obj = None
         queryset._search_text = text
-        queryset._include_text_scores = include_text_scores
 
         return queryset
 
@@ -684,7 +671,7 @@ class BaseQuerySet(object):
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
                       '_limit', '_skip', '_hint', '_auto_dereference',
-                      '_search_text', '_include_text_scores', 'only_fields', '_max_time_ms')
+                      '_search_text', 'only_fields', '_max_time_ms')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -1351,9 +1338,6 @@ class BaseQuerySet(object):
         doc = self._document._from_son(raw_doc,
                                        _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
 
-        if self._include_text_scores:
-            doc.get_text_score = types.MethodType(get_text_score, doc)
-
         if self._scalar:
             return self._get_scalar(doc)
 
@@ -1361,6 +1345,7 @@ class BaseQuerySet(object):
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
+
 
         .. versionadded:: 0.3
         """
@@ -1389,7 +1374,7 @@ class BaseQuerySet(object):
         if self._loaded_fields:
             cursor_args['fields'] = self._loaded_fields.as_dict()
 
-        if self._include_text_scores:
+        if self._search_text:
             if 'fields' not in cursor_args:
                 cursor_args['fields'] = {}
 
@@ -1608,8 +1593,6 @@ class BaseQuerySet(object):
                 continue
 
             if key == '$text_score':
-                # automatically set to include text scores
-                self._include_text_scores = True
                 key_list.append(('_text_score', {'$meta': "textScore"}))
                 continue
 
