@@ -143,13 +143,6 @@ class Document(BaseDocument):
         return property(fget, fset)
     pk = pk()
 
-    @property
-    def text_score(self):
-        """
-        Used for text searchs
-        """
-        return self._data.get('text_score')
-
     @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""

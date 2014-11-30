@@ -2783,13 +2783,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue('dilma' in new.content)
         self.assertTrue('planejamento' in new.title)
 
-        query = News.objects.search_text(
-            "candidata", include_text_scores=True)
+        query = News.objects.search_text("candidata")
 
         self.assertTrue(query._include_text_scores)
         new = query.first()
 
-        self.assertTrue(isinstance(new.text_score, float))
+        self.assertTrue(isinstance(new.get_text_score(), float))
 
         # count
         query = News.objects.search_text('brasil').order_by('$text_score')
@@ -2799,9 +2798,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
         cursor_args = query._cursor_args
         self.assertEqual(
-            cursor_args['fields'], {'text_score': {'$meta': 'textScore'}})
+            cursor_args['fields'], {'_text_score': {'$meta': 'textScore'}})
 
-        text_scores = [i.text_score for i in query]
+        text_scores = [i.get_text_score() for i in query]
         self.assertEqual(len(text_scores), 3)
 
         self.assertTrue(text_scores[0] > text_scores[1])
@@ -2811,7 +2810,7 @@ class QuerySetTest(unittest.TestCase):
         # get item
         item = News.objects.search_text(
             'brasil').order_by('$text_score').first()
-        self.assertEqual(item.text_score, max_text_score)
+        self.assertEqual(item.get_text_score(), max_text_score)
 
     @skip_older_mongodb
     def test_distinct_handles_references_to_alias(self):

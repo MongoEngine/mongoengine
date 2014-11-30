@@ -6,6 +6,7 @@ import operator
 import pprint
 import re
 import warnings
+import types
 
 from bson import SON
 from bson.code import Code
@@ -37,6 +38,8 @@ PULL = 4
 
 RE_TYPE = type(re.compile(''))
 
+def get_text_score(doc):
+    return doc._data.get('_text_score')
 
 class BaseQuerySet(object):
 
@@ -158,8 +161,14 @@ class BaseQuerySet(object):
 
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
-            return queryset._document._from_son(queryset._cursor[key],
+            doc = queryset._document._from_son(queryset._cursor[key],
                                                 _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
+
+            if self._include_text_scores:
+                doc.get_text_score = types.MethodType(get_text_score, doc)
+
+            return doc
+
         raise AttributeError
 
     def __iter__(self):
@@ -192,7 +201,7 @@ class BaseQuerySet(object):
         """
         return self.__call__(*q_objs, **query)
 
-    def search_text(self, text, language=None, include_text_scores=False):
+    def search_text(self, text, language=None, include_text_scores=True):
         """
         Start a text search, using text indexes.
         Require: MongoDB server version 2.6+.
@@ -202,7 +211,7 @@ class BaseQuerySet(object):
             If not specified, the search uses the default language of the index.
             For supported languages, see `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
 
-        :param include_text_scores: If True, automaticaly add a text_score attribute to Document.
+        :param include_text_scores: If True, automatically add a get_text_score method to Document.
 
         """
         queryset = self.clone()
@@ -1341,6 +1350,10 @@ class BaseQuerySet(object):
             return self._get_as_pymongo(raw_doc)
         doc = self._document._from_son(raw_doc,
                                        _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
+
+        if self._include_text_scores:
+            doc.get_text_score = types.MethodType(get_text_score, doc)
+
         if self._scalar:
             return self._get_scalar(doc)
 
@@ -1380,7 +1393,7 @@ class BaseQuerySet(object):
             if 'fields' not in cursor_args:
                 cursor_args['fields'] = {}
 
-            cursor_args['fields']['text_score'] = {'$meta': "textScore"}
+            cursor_args['fields']['_text_score'] = {'$meta': "textScore"}
 
         return cursor_args
 
@@ -1597,7 +1610,7 @@ class BaseQuerySet(object):
             if key == '$text_score':
                 # automatically set to include text scores
                 self._include_text_scores = True
-                key_list.append(('text_score', {'$meta': "textScore"}))
+                key_list.append(('_text_score', {'$meta': "textScore"}))
                 continue
 
             direction = pymongo.ASCENDING
