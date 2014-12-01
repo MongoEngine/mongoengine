@@ -2878,6 +2878,36 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(authors, [mark_twain, john_tolkien])
 
+    def test_distinct_ListField_EmbeddedDocumentField_EmbeddedDocumentField(self):
+
+        class Country(EmbeddedDocument):
+            country_name = StringField()
+
+        class Author(EmbeddedDocument):
+            name = StringField()
+            country = EmbeddedDocumentField(Country)
+
+        class Book(Document):
+            title = StringField()
+            authors = ListField(EmbeddedDocumentField(Author))
+
+        Book.drop_collection()
+
+        scotland = Country(country_name="Scotland")
+        tibet = Country(country_name="Tibet")
+
+        mark_twain = Author(name="Mark Twain", country=scotland)
+        john_tolkien = Author(name="John Ronald Reuel Tolkien", country=tibet)
+
+        book = Book(title="Tom Sawyer", authors=[mark_twain]).save()
+        book = Book(
+            title="The Lord of the Rings", authors=[john_tolkien]).save()
+        book = Book(
+            title="The Stories", authors=[mark_twain, john_tolkien]).save()
+        country_list = Book.objects.distinct("authors.country")
+
+        self.assertEqual(country_list, [scotland, tibet])
+
     def test_distinct_ListField_ReferenceField(self):
         class Foo(Document):
             bar_lst = ListField(ReferenceField('Bar'))
