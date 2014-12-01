@@ -193,7 +193,7 @@ class Document(BaseDocument):
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
-                 **kwargs):
+                 batch_size=10000, **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
 
@@ -255,7 +255,7 @@ class Document(BaseDocument):
                             return result
                         return None
                     else:
-                        cur.batch_size(10000)
+                        cur.batch_size(batch_size)
 
                     return cur
                 break
@@ -277,9 +277,10 @@ class Document(BaseDocument):
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, timeout=True, **kwargs):
+             slave_ok=False, timeout=True, batch_size=10000, **kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
-                           sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
+                           sort, slave_ok=slave_ok, timeout=timeout,
+                           batch_size=batch_size, **kwargs)
 
         for doc in cls._iterate_cursor(cur):
             yield cls._from_son(doc)
