@@ -18,11 +18,11 @@ from bson import Binary, DBRef, ObjectId
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import _document_registry
-from mongoengine.base.datastructures import BaseDict
+from mongoengine.base.datastructures import BaseDict, EmbeddedDocumentList
 from mongoengine.errors import NotRegistered
 from mongoengine.python_support import PY3, b, bin_type
 
-__all__ = ("FieldTest", )
+__all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
 
 class FieldTest(unittest.TestCase):
@@ -3158,6 +3158,474 @@ class FieldTest(unittest.TestCase):
             Doc(bar='test')
 
         self.assertRaises(FieldDoesNotExist, test)
+
+
+class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = connect(db='EmbeddedDocumentListFieldTestCase')
+
+        class Comments(EmbeddedDocument):
+            author = StringField()
+            message = StringField()
+
+        class BlogPost(Document):
+            comments = EmbeddedDocumentListField(Comments)
+
+        cls.Comments = Comments
+        cls.BlogPost = BlogPost
+
+    def setUp(self):
+        """
+        Create two BlogPost entries in the database, each with
+        several EmbeddedDocuments.
+        """
+        self.post1 = self.BlogPost(comments=[
+            self.Comments(author='user1', message='message1'),
+            self.Comments(author='user2', message='message1')
+        ]).save()
+
+        self.post2 = self.BlogPost(comments=[
+            self.Comments(author='user2', message='message2'),
+            self.Comments(author='user2', message='message3'),
+            self.Comments(author='user3', message='message1')
+        ]).save()
+
+    def tearDown(self):
+        self.BlogPost.drop_collection()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.db.drop_database('EmbeddedDocumentListFieldTestCase')
+
+    def test_no_keyword_filter(self):
+        """
+        Tests the filter method of a List of Embedded Documents
+        with a no keyword.
+        """
+        filtered = self.post1.comments.filter()
+
+        # Ensure nothing was changed
+        # < 2.6 Incompatible >
+        # self.assertListEqual(filtered, self.post1.comments)
+        self.assertEqual(filtered, self.post1.comments)
+
+    def test_single_keyword_filter(self):
+        """
+        Tests the filter method of a List of Embedded Documents
+        with a single keyword.
+        """
+        filtered = self.post1.comments.filter(author='user1')
+
+        # Ensure only 1 entry was returned.
+        self.assertEqual(len(filtered), 1)
+
+        # Ensure the entry returned is the correct entry.
+        self.assertEqual(filtered[0].author, 'user1')
+
+    def test_multi_keyword_filter(self):
+        """
+        Tests the filter method of a List of Embedded Documents
+        with multiple keywords.
+        """
+        filtered = self.post2.comments.filter(
+            author='user2', message='message2'
+        )
+
+        # Ensure only 1 entry was returned.
+        self.assertEqual(len(filtered), 1)
+
+        # Ensure the entry returned is the correct entry.
+        self.assertEqual(filtered[0].author, 'user2')
+        self.assertEqual(filtered[0].message, 'message2')
+
+    def test_chained_filter(self):
+        """
+        Tests chained filter methods of a List of Embedded Documents
+        """
+        filtered = self.post2.comments.filter(author='user2').filter(
+            message='message2'
+        )
+
+        # Ensure only 1 entry was returned.
+        self.assertEqual(len(filtered), 1)
+
+        # Ensure the entry returned is the correct entry.
+        self.assertEqual(filtered[0].author, 'user2')
+        self.assertEqual(filtered[0].message, 'message2')
+
+    def test_unknown_keyword_filter(self):
+        """
+        Tests the filter method of a List of Embedded Documents
+        when the keyword is not a known keyword.
+        """
+        # < 2.6 Incompatible >
+        # with self.assertRaises(AttributeError):
+        #    self.post2.comments.filter(year=2)
+        self.assertRaises(AttributeError, self.post2.comments.filter, year=2)
+
+    def test_no_keyword_exclude(self):
+        """
+        Tests the exclude method of a List of Embedded Documents
+        with a no keyword.
+        """
+        filtered = self.post1.comments.exclude()
+
+        # Ensure everything was removed
+        # < 2.6 Incompatible >
+        # self.assertListEqual(filtered, [])
+        self.assertEqual(filtered, [])
+
+    def test_single_keyword_exclude(self):
+        """
+        Tests the exclude method of a List of Embedded Documents
+        with a single keyword.
+        """
+        excluded = self.post1.comments.exclude(author='user1')
+
+        # Ensure only 1 entry was returned.
+        self.assertEqual(len(excluded), 1)
+
+        # Ensure the entry returned is the correct entry.
+        self.assertEqual(excluded[0].author, 'user2')
+
+    def test_multi_keyword_exclude(self):
+        """
+        Tests the exclude method of a List of Embedded Documents
+        with multiple keywords.
+        """
+        excluded = self.post2.comments.exclude(
+            author='user3', message='message1'
+        )
+
+        # Ensure only 2 entries were returned.
+        self.assertEqual(len(excluded), 2)
+
+        # Ensure the entries returned are the correct entries.
+        self.assertEqual(excluded[0].author, 'user2')
+        self.assertEqual(excluded[1].author, 'user2')
+
+    def test_non_matching_exclude(self):
+        """
+        Tests the exclude method of a List of Embedded Documents
+        when the keyword does not match any entries.
+        """
+        excluded = self.post2.comments.exclude(author='user4')
+
+        # Ensure the 3 entries still exist.
+        self.assertEqual(len(excluded), 3)
+
+    def test_unknown_keyword_exclude(self):
+        """
+        Tests the exclude method of a List of Embedded Documents
+        when the keyword is not a known keyword.
+        """
+        # < 2.6 Incompatible >
+        # with self.assertRaises(AttributeError):
+        #    self.post2.comments.exclude(year=2)
+        self.assertRaises(AttributeError, self.post2.comments.exclude, year=2)
+
+    def test_chained_filter_exclude(self):
+        """
+        Tests the exclude method after a filter method of a List of
+        Embedded Documents.
+        """
+        excluded = self.post2.comments.filter(author='user2').exclude(
+            message='message2'
+        )
+
+        # Ensure only 1 entry was returned.
+        self.assertEqual(len(excluded), 1)
+
+        # Ensure the entry returned is the correct entry.
+        self.assertEqual(excluded[0].author, 'user2')
+        self.assertEqual(excluded[0].message, 'message3')
+
+    def test_count(self):
+        """
+        Tests the count method of a List of Embedded Documents.
+        """
+        self.assertEqual(self.post1.comments.count(), 2)
+        self.assertEqual(self.post1.comments.count(), len(self.post1.comments))
+
+    def test_filtered_count(self):
+        """
+        Tests the filter + count method of a List of Embedded Documents.
+        """
+        count = self.post1.comments.filter(author='user1').count()
+        self.assertEqual(count, 1)
+
+    def test_single_keyword_get(self):
+        """
+        Tests the get method of a List of Embedded Documents using a
+        single keyword.
+        """
+        comment = self.post1.comments.get(author='user1')
+
+        # < 2.6 Incompatible >
+        # self.assertIsInstance(comment, self.Comments)
+        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertEqual(comment.author, 'user1')
+
+    def test_multi_keyword_get(self):
+        """
+        Tests the get method of a List of Embedded Documents using
+        multiple keywords.
+        """
+        comment = self.post2.comments.get(author='user2', message='message2')
+
+        # < 2.6 Incompatible >
+        # self.assertIsInstance(comment, self.Comments)
+        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertEqual(comment.author, 'user2')
+        self.assertEqual(comment.message, 'message2')
+
+    def test_no_keyword_multiple_return_get(self):
+        """
+        Tests the get method of a List of Embedded Documents without
+        a keyword to return multiple documents.
+        """
+        # < 2.6 Incompatible >
+        # with self.assertRaises(MultipleObjectsReturned):
+        #    self.post1.comments.get()
+        self.assertRaises(MultipleObjectsReturned, self.post1.comments.get)
+
+    def test_keyword_multiple_return_get(self):
+        """
+        Tests the get method of a List of Embedded Documents with a keyword
+        to return multiple documents.
+        """
+        # < 2.6 Incompatible >
+        # with self.assertRaises(MultipleObjectsReturned):
+        #    self.post2.comments.get(author='user2')
+        self.assertRaises(
+            MultipleObjectsReturned, self.post2.comments.get, author='user2'
+        )
+
+    def test_unknown_keyword_get(self):
+        """
+        Tests the get method of a List of Embedded Documents with an
+        unknown keyword.
+        """
+        # < 2.6 Incompatible >
+        # with self.assertRaises(AttributeError):
+        #    self.post2.comments.get(year=2020)
+        self.assertRaises(AttributeError, self.post2.comments.get, year=2020)
+
+    def test_no_result_get(self):
+        """
+        Tests the get method of a List of Embedded Documents where get
+        returns no results.
+        """
+        # < 2.6 Incompatible >
+        # with self.assertRaises(DoesNotExist):
+        #    self.post1.comments.get(author='user3')
+        self.assertRaises(
+            DoesNotExist, self.post1.comments.get, author='user3'
+        )
+
+    def test_first(self):
+        """
+        Tests the first method of a List of Embedded Documents to
+        ensure it returns the first comment.
+        """
+        comment = self.post1.comments.first()
+
+        # Ensure a Comment object was returned.
+        # < 2.6 Incompatible >
+        # self.assertIsInstance(comment, self.Comments)
+        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertEqual(comment, self.post1.comments[0])
+
+    def test_create(self):
+        """
+        Test the create method of a List of Embedded Documents.
+        """
+        comment = self.post1.comments.create(
+            author='user4', message='message1'
+        )
+        self.post1.save()
+
+        # Ensure the returned value is the comment object.
+        # < 2.6 Incompatible >
+        # self.assertIsInstance(comment, self.Comments)
+        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertEqual(comment.author, 'user4')
+        self.assertEqual(comment.message, 'message1')
+
+        # Ensure the new comment was actually saved to the database.
+        # < 2.6 Incompatible >
+        # self.assertIn(
+        #    comment,
+        #    self.BlogPost.objects(comments__author='user4')[0].comments
+        # )
+        self.assertTrue(
+            comment in self.BlogPost.objects(
+                comments__author='user4'
+            )[0].comments
+        )
+
+    def test_filtered_create(self):
+        """
+        Test the create method of a List of Embedded Documents chained
+        to a call to the filter method. Filtering should have no effect
+        on creation.
+        """
+        comment = self.post1.comments.filter(author='user1').create(
+            author='user4', message='message1'
+        )
+        self.post1.save()
+
+        # Ensure the returned value is the comment object.
+        # < 2.6 Incompatible >
+        # self.assertIsInstance(comment, self.Comments)
+        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertEqual(comment.author, 'user4')
+        self.assertEqual(comment.message, 'message1')
+
+        # Ensure the new comment was actually saved to the database.
+        # < 2.6 Incompatible >
+        # self.assertIn(
+        #    comment,
+        #    self.BlogPost.objects(comments__author='user4')[0].comments
+        # )
+        self.assertTrue(
+            comment in self.BlogPost.objects(
+                comments__author='user4'
+            )[0].comments
+        )
+
+    def test_no_keyword_update(self):
+        """
+        Tests the update method of a List of Embedded Documents with
+        no keywords.
+        """
+        original = list(self.post1.comments)
+        number = self.post1.comments.update()
+        self.post1.save()
+
+        # Ensure that nothing was altered.
+        # < 2.6 Incompatible >
+        # self.assertIn(
+        #    original[0],
+        #    self.BlogPost.objects(id=self.post1.id)[0].comments
+        # )
+        self.assertTrue(
+            original[0] in self.BlogPost.objects(id=self.post1.id)[0].comments
+        )
+
+        # < 2.6 Incompatible >
+        # self.assertIn(
+        #    original[1],
+        #    self.BlogPost.objects(id=self.post1.id)[0].comments
+        # )
+        self.assertTrue(
+            original[1] in self.BlogPost.objects(id=self.post1.id)[0].comments
+        )
+
+        # Ensure the method returned 0 as the number of entries
+        # modified
+        self.assertEqual(number, 0)
+
+    def test_single_keyword_update(self):
+        """
+        Tests the update method of a List of Embedded Documents with
+        a single keyword.
+        """
+        number = self.post1.comments.update(author='user4')
+        self.post1.save()
+
+        comments = self.BlogPost.objects(id=self.post1.id)[0].comments
+
+        # Ensure that the database was updated properly.
+        self.assertEqual(comments[0].author, 'user4')
+        self.assertEqual(comments[1].author, 'user4')
+
+        # Ensure the method returned 2 as the number of entries
+        # modified
+        self.assertEqual(number, 2)
+
+    def test_save(self):
+        """
+        Tests the save method of a List of Embedded Documents.
+        """
+        comments = self.post1.comments
+        new_comment = self.Comments(author='user4')
+        comments.append(new_comment)
+        comments.save()
+
+        # Ensure that the new comment has been added to the database.
+        # < 2.6 Incompatible >
+        # self.assertIn(
+        #    new_comment,
+        #    self.BlogPost.objects(id=self.post1.id)[0].comments
+        # )
+        self.assertTrue(
+            new_comment in self.BlogPost.objects(id=self.post1.id)[0].comments
+        )
+
+    def test_delete(self):
+        """
+        Tests the delete method of a List of Embedded Documents.
+        """
+        number = self.post1.comments.delete()
+        self.post1.save()
+
+        # Ensure that all the comments under post1 were deleted in the
+        # database.
+        # < 2.6 Incompatible >
+        # self.assertListEqual(
+        #    self.BlogPost.objects(id=self.post1.id)[0].comments, []
+        # )
+        self.assertEqual(
+            self.BlogPost.objects(id=self.post1.id)[0].comments, []
+        )
+
+        # Ensure that post1 comments were deleted from the list.
+        # < 2.6 Incompatible >
+        # self.assertListEqual(self.post1.comments, [])
+        self.assertEqual(self.post1.comments, [])
+
+        # Ensure that comments still returned a EmbeddedDocumentList object.
+        # < 2.6 Incompatible >
+        # self.assertIsInstance(self.post1.comments, EmbeddedDocumentList)
+        self.assertTrue(isinstance(self.post1.comments, EmbeddedDocumentList))
+
+        # Ensure that the delete method returned 2 as the number of entries
+        # deleted from the database
+        self.assertEqual(number, 2)
+
+    def test_filtered_delete(self):
+        """
+        Tests the delete method of a List of Embedded Documents
+        after the filter method has been called.
+        """
+        comment = self.post1.comments[1]
+        number = self.post1.comments.filter(author='user2').delete()
+        self.post1.save()
+
+        # Ensure that only the user2 comment was deleted.
+        # < 2.6 Incompatible >
+        # self.assertNotIn(
+        #     comment, self.BlogPost.objects(id=self.post1.id)[0].comments
+        # )
+        self.assertTrue(
+            comment not in self.BlogPost.objects(id=self.post1.id)[0].comments
+        )
+        self.assertEqual(
+            len(self.BlogPost.objects(id=self.post1.id)[0].comments), 1
+        )
+
+        # Ensure that the user2 comment no longer exists in the list.
+        # < 2.6 Incompatible >
+        # self.assertNotIn(comment, self.post1.comments)
+        self.assertTrue(comment not in self.post1.comments)
+        self.assertEqual(len(self.post1.comments), 1)
+
+        # Ensure that the delete method returned 1 as the number of entries
+        # deleted from the database
+        self.assertEqual(number, 1)
 
 if __name__ == '__main__':
     unittest.main()

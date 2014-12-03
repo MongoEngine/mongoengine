@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Added `EmbeddedDocumentListField` for Lists of Embedded Documents. #826
 - ComplexDateTimeField should fall back to None when null=True #864
 - Request Support for $min, $max Field update operators #863
 - `BaseDict` does not follow `setdefault` #866

@@ -16,7 +16,13 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
 from mongoengine.python_support import PY3, txt_type
 
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
-from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict, SemiStrictDict
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    EmbeddedDocumentList,
+    StrictDict,
+    SemiStrictDict
+)
 from mongoengine.base.fields import ComplexBaseField
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
@@ -419,6 +425,8 @@ class BaseDocument(object):
         if not isinstance(value, (dict, list, tuple)):
             return value
 
+        EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
+
         is_list = False
         if not hasattr(value, 'items'):
             is_list = True
@@ -442,7 +450,10 @@ class BaseDocument(object):
         # Convert lists / values so we can watch for any changes on them
         if (isinstance(value, (list, tuple)) and
                 not isinstance(value, BaseList)):
-            value = BaseList(value, self, name)
+            if issubclass(type(self), EmbeddedDocumentListField):
+                value = EmbeddedDocumentList(value, self, name)
+            else:
+                value = BaseList(value, self, name)
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, self, name)
 
