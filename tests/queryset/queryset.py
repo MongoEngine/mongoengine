@@ -2916,7 +2916,7 @@ class QuerySetTest(unittest.TestCase):
         
         continent_list = Book.objects.distinct("authors.country.continent")
         
-        self.assertEqual(continent_list, [asia, europe])
+        self.assertEqual(continent_list, [europe, asia])
 
     def test_distinct_ListField_ReferenceField(self):
         class Foo(Document):
