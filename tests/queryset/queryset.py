@@ -1302,6 +1302,31 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects(name='Test User').delete()
         self.assertEqual(1, BlogPost.objects.count())
 
+    def test_reverse_delete_rule_cascade_on_abstract_document(self):
+        """Ensure cascading deletion of referring documents from the database 
+        does not fail on abstract document.
+        """
+        class AbstractBlogPost(Document):
+            meta = {'abstract': True}
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+
+        class BlogPost(AbstractBlogPost):
+            content = StringField()
+        BlogPost.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
+
+        BlogPost(content='Watching TV', author=me).save()
+        BlogPost(content='Chilling out', author=me).save()
+        BlogPost(content='Pro Testing', author=someoneelse).save()
+
+        self.assertEqual(3, BlogPost.objects.count())
+        self.Person.objects(name='Test User').delete()
+        self.assertEqual(1, BlogPost.objects.count())  
+
     def test_reverse_delete_rule_cascade_self_referencing(self):
         """Ensure self-referencing CASCADE deletes do not result in infinite
         loop
@@ -1361,6 +1386,31 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, BlogPost.objects.count())
         self.assertEqual(None, BlogPost.objects.first().category)
 
+    def test_reverse_delete_rule_nullify_on_abstract_document(self): 
+        """Ensure nullification of references to deleted documents when 
+        reference is on an abstract document.
+        """
+        class AbstractBlogPost(Document):
+            meta = {'abstract': True}
+            author = ReferenceField(self.Person, reverse_delete_rule=NULLIFY)
+
+        class BlogPost(AbstractBlogPost):
+            content = StringField()
+        BlogPost.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
+
+        BlogPost(content='Watching TV', author=me).save()
+
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertEqual(me, BlogPost.objects.first().author)
+        self.Person.objects(name='Test User').delete()
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertEqual(None, BlogPost.objects.first().author)
+
     def test_reverse_delete_rule_deny(self):
         """Ensure deletion gets denied on documents that still have references
         to them.
@@ -1380,6 +1430,26 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertRaises(OperationError, self.Person.objects.delete)
 
+    def test_reverse_delete_rule_deny_on_abstract_document(self):
+        """Ensure deletion gets denied on documents that still have references
+        to them, when reference is on an abstract document.
+        """
+        class AbstractBlogPost(Document):
+            meta = {'abstract': True}
+            author = ReferenceField(self.Person, reverse_delete_rule=DENY)
+
+        class BlogPost(AbstractBlogPost):
+            content = StringField()
+        BlogPost.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+
+        BlogPost(content='Watching TV', author=me).save()
+
+        self.assertEqual(1, BlogPost.objects.count())
+        self.assertRaises(OperationError, self.Person.objects.delete)
+    
     def test_reverse_delete_rule_pull(self):
         """Ensure pulling of references to deleted documents.
         """
@@ -1410,6 +1480,40 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.authors, [me])
         self.assertEqual(another.authors, [])
 
+    def test_reverse_delete_rule_pull_on_abstract_documents(self):
+        """Ensure pulling of references to deleted documents when reference
+        is defined on an abstract document..
+        """
+        class AbstractBlogPost(Document):
+            meta = {'abstract': True}
+            authors = ListField(ReferenceField(self.Person, 
+                                               reverse_delete_rule=PULL))
+        
+        class BlogPost(AbstractBlogPost):
+            content = StringField()
+
+        BlogPost.drop_collection()
+        self.Person.drop_collection()
+
+        me = self.Person(name='Test User')
+        me.save()
+
+        someoneelse = self.Person(name='Some-one Else')
+        someoneelse.save()
+
+        post = BlogPost(content='Watching TV', authors=[me, someoneelse])
+        post.save()
+
+        another = BlogPost(content='Chilling Out', authors=[someoneelse])
+        another.save()
+
+        someoneelse.delete()
+        post.reload()
+        another.reload()
+
+        self.assertEqual(post.authors, [me])
+        self.assertEqual(another.authors, [])
+    
     def test_delete_with_limits(self):
 
         class Log(Document):
