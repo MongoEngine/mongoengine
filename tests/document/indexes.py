@@ -18,7 +18,7 @@ __all__ = ("IndexesTest", )
 class IndexesTest(unittest.TestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
+        self.connection = connect(db='mongoenginetest')
         self.db = get_db()
 
         class Person(Document):
@@ -795,6 +795,33 @@ class IndexesTest(unittest.TestCase):
         key = indexes["title_text"]["key"]
         self.assertTrue(('_fts', 'text') in key)
 
+    def test_indexes_after_database_drop(self):
+        """
+        Test to ensure that indexes are re-created on a collection even
+        after the database has been dropped.
+
+        Issue #812
+        """
+        class BlogPost(Document):
+            title = StringField()
+            slug = StringField(unique=True)
+
+        BlogPost.drop_collection()
+
+        # Create Post #1
+        post1 = BlogPost(title='test1', slug='test')
+        post1.save()
+
+        # Drop the Database
+        self.connection.drop_database(BlogPost._get_db().name)
+
+        # Re-create Post #1
+        post1 = BlogPost(title='test1', slug='test')
+        post1.save()
+
+        # Create Post #2
+        post2 = BlogPost(title='test2', slug='test')
+        self.assertRaises(NotUniqueError, post2.save)
 
 if __name__ == '__main__':
     unittest.main()

@@ -285,6 +285,8 @@ class Document(BaseDocument):
 
         try:
             collection = self._get_collection()
+            if self._meta.get('auto_create_index', True):
+                self.ensure_indexes()
             if created:
                 if force_insert:
                     object_id = collection.insert(doc, **write_concern)
