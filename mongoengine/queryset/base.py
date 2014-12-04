@@ -432,6 +432,8 @@ class BaseQuerySet(object):
         # references
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
+            if document_cls._meta.get('abstract'):
+                continue
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == DENY and document_cls.objects(
                     **{field_name + '__in': self}).count() > 0:
@@ -441,6 +443,8 @@ class BaseQuerySet(object):
 
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
+            if document_cls._meta.get('abstract'):
+                continue
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
                 ref_q = document_cls.objects(**{field_name + '__in': self})
