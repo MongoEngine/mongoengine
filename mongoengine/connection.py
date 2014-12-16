@@ -18,9 +18,10 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name, host='localhost', port=27017,
+def register_connection(alias, name, host=None, port=None,
                         is_slave=False, read_preference=False, slaves=None,
-                        username=None, password=None, **kwargs):
+                        username=None, password=None, authentication_source=None,
+                        **kwargs):
     """Add a connection.
 
     :param alias: the name that will be used to refer to this connection
@@ -36,6 +37,7 @@ def register_connection(alias, name, host='localhost', port=27017,
         be a registered connection that has :attr:`is_slave` set to ``True``
     :param username: username to authenticate with
     :param password: password to authenticate with
+    :param authentication_source: database to authenticate against
     :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
 
     """
@@ -43,29 +45,26 @@ def register_connection(alias, name, host='localhost', port=27017,
 
     conn_settings = {
         'name': name,
-        'host': host,
-        'port': port,
+        'host': host or 'localhost',
+        'port': port or 27017,
         'is_slave': is_slave,
+        'read_preference': read_preference,
         'slaves': slaves or [],
         'username': username,
         'password': password,
-        'read_preference': read_preference
+        'authentication_source': authentication_source
     }
 
     # Handle uri style connections
-    if "://" in host:
-        uri_dict = uri_parser.parse_uri(host)
-        if uri_dict.get('database') is None:
-            raise ConnectionError("If using URI style connection include "\
-                                  "database name in string")
+    if "://" in conn_settings['host']:
+        uri_dict = uri_parser.parse_uri(conn_settings['host'])
         conn_settings.update({
-            'host': host,
-            'name': uri_dict.get('database'),
+            'name': uri_dict.get('database') or name,
             'username': uri_dict.get('username'),
             'password': uri_dict.get('password'),
             'read_preference': read_preference,
         })
-        if "replicaSet" in host:
+        if "replicaSet" in conn_settings['host']:
             conn_settings['replicaSet'] = True
 
     conn_settings.update(kwargs)
@@ -103,6 +102,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             conn_settings.pop('is_slave', None)
             conn_settings.pop('username', None)
             conn_settings.pop('password', None)
+            conn_settings.pop('authentication_source', None)
         else:
             # Get all the slave connections
             if 'slaves' in conn_settings:
@@ -141,7 +141,8 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         # Authenticate if necessary
         if conn_settings['username'] and conn_settings['password']:
             db.authenticate(conn_settings['username'],
-                            conn_settings['password'])
+                            conn_settings['password'],
+                            source=conn_settings['authentication_source'])
         _dbs[alias] = db
     return _dbs[alias]
 
