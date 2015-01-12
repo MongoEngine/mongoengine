@@ -2446,6 +2446,49 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_choices_validation_documents(self):
+        """
+        Ensure that a field with choices which are documents are
+        validated correctly.
+        """
+        class UserComments(EmbeddedDocument):
+            author = StringField()
+            message = StringField()
+
+        class BlogPost(Document):
+            comments = ListField(
+                GenericEmbeddedDocumentField(choices=(UserComments,))
+            )
+
+        BlogPost(comments=[
+            UserComments(author='user2', message='message2'),
+        ]).save()
+
+    def test_choices_validation_documents_inheritance(self):
+        """
+        Ensure that a field with choices which are documents are
+        validated correctly when a subclass of a valid choice is used.
+        """
+        class Comments(EmbeddedDocument):
+            meta = {
+                'abstract': True
+            }
+
+            author = StringField()
+            message = StringField()
+
+        class UserComments(Comments):
+            pass
+
+        class BlogPost(Document):
+            comments = ListField(
+                GenericEmbeddedDocumentField(choices=(Comments,))
+            )
+
+        BlogPost(comments=[
+            UserComments(author='user2', message='message2'),
+        ]).save()
+
     def test_choices_get_field_display(self):
         """Test dynamic helper for returning the display value of a choices
         field.
