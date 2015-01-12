@@ -2448,8 +2448,7 @@ class FieldTest(unittest.TestCase):
 
     def test_choices_validation_documents(self):
         """
-        Ensure that a field with choices which are documents are
-        validated correctly.
+        Ensure fields with document choices validate given a valid choice.
         """
         class UserComments(EmbeddedDocument):
             author = StringField()
@@ -2460,20 +2459,50 @@ class FieldTest(unittest.TestCase):
                 GenericEmbeddedDocumentField(choices=(UserComments,))
             )
 
+        # Ensure Validation Passes
         BlogPost(comments=[
             UserComments(author='user2', message='message2'),
         ]).save()
 
+    def test_choices_validation_documents_invalid(self):
+        """
+        Ensure fields with document choices validate given an invalid choice.
+        This should throw a ValidationError exception.
+        """
+        class UserComments(EmbeddedDocument):
+            author = StringField()
+            message = StringField()
+
+        class ModeratorComments(EmbeddedDocument):
+            author = StringField()
+            message = StringField()
+
+        class BlogPost(Document):
+            comments = ListField(
+                GenericEmbeddedDocumentField(choices=(UserComments,))
+            )
+
+        # Single Entry Failure
+        post = BlogPost(comments=[
+            ModeratorComments(author='mod1', message='message1'),
+        ])
+        self.assertRaises(ValidationError, post.save)
+
+        # Mixed Entry Failure
+        post = BlogPost(comments=[
+            ModeratorComments(author='mod1', message='message1'),
+            UserComments(author='user2', message='message2'),
+        ])
+        self.assertRaises(ValidationError, post.save)
+
     def test_choices_validation_documents_inheritance(self):
         """
-        Ensure that a field with choices which are documents are
-        validated correctly when a subclass of a valid choice is used.
+        Ensure fields with document choices validate given subclass of choice.
         """
         class Comments(EmbeddedDocument):
             meta = {
                 'abstract': True
             }
-
             author = StringField()
             message = StringField()
 
@@ -2485,6 +2514,7 @@ class FieldTest(unittest.TestCase):
                 GenericEmbeddedDocumentField(choices=(Comments,))
             )
 
+        # Save Valid EmbeddedDocument Type
         BlogPost(comments=[
             UserComments(author='user2', message='message2'),
         ]).save()
