@@ -160,7 +160,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
         if isinstance(v, list):
             value = [{k: val} for val in v]
             if '$and' in mongo_query.keys():
-                mongo_query['$and'].append(value)
+                mongo_query['$and'].extend(value)
             else:
                 mongo_query['$and'] = value
 
