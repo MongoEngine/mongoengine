@@ -147,10 +147,10 @@ def query(_doc_cls=None, _field_operation=False, **query):
                             if k == '$maxDistance' or k == '$minDistance':
                                 continue
                             value_son[k] = v
-                            if '$maxDistance' in value_dict:
-                                value_son['$maxDistance'] = value_dict['$maxDistance']
-                            if '$minDistance' in value_dict:
-                                value_son['$minDistance'] = value_dict['$minDistance']
+                        if '$maxDistance' in value_dict:
+                            value_son['$maxDistance'] = value_dict['$maxDistance']
+                        if '$minDistance' in value_dict:
+                            value_son['$minDistance'] = value_dict['$minDistance']
 
                     mongo_query[key] = value_son
             else:
