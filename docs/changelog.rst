@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Field Choices Now Accept Subclasses of Documents
 - Ensure Indexes before Each Save #812
 - Generate Unique Indices for Lists of EmbeddedDocuments #358
 - Sparse fields #515

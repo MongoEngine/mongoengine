@@ -158,21 +158,23 @@ class BaseField(object):
     def _validate(self, value, **kwargs):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
-        # check choices
+
+        # Check the Choices Constraint
         if self.choices:
-            is_cls = isinstance(value, (Document, EmbeddedDocument))
-            value_to_check = value.__class__ if is_cls else value
-            err_msg = 'an instance' if is_cls else 'one'
+
+            choice_list = self.choices
             if isinstance(self.choices[0], (list, tuple)):
-                option_keys = [k for k, v in self.choices]
-                if value_to_check not in option_keys:
-                    msg = ('Value must be %s of %s' %
-                           (err_msg, unicode(option_keys)))
-                    self.error(msg)
-            elif value_to_check not in self.choices:
-                msg = ('Value must be %s of %s' %
-                       (err_msg, unicode(self.choices)))
-                self.error(msg)
+                choice_list = [k for k, v in self.choices]
+
+            # Choices which are other types of Documents
+            if isinstance(value, (Document, EmbeddedDocument)):
+                if not any(isinstance(value, c) for c in choice_list):
+                    self.error(
+                        'Value must be instance of %s' % unicode(choice_list)
+                    )
+            # Choices which are types other than Documents
+            elif value not in choice_list:
+                self.error('Value must be one of %s' % unicode(choice_list))
 
         # check validation argument
         if self.validation is not None:
