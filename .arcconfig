@@ -1,4 +1,4 @@
 {   
   "project_id" : "MongoEngine", 
-  "conduit_uri" : "http://phab.wish.com/"
+  "conduit_uri" : "https://phab.wish.com/"
 }
