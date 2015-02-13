@@ -78,14 +78,17 @@ class SiteProfileNotAvailable(Exception):
 
 
 class PermissionManager(models.Manager):
+
     def get_by_natural_key(self, codename, app_label, model):
         return self.get(
             codename=codename,
-            content_type=ContentType.objects.get_by_natural_key(app_label, model)
+            content_type=ContentType.objects.get_by_natural_key(
+                app_label, model)
         )
 
 
 class Permission(Document):
+
     """The permissions system provides a way to assign permissions to specific
     users and groups of users.
 
@@ -110,8 +113,8 @@ class Permission(Document):
     name = StringField(max_length=50, verbose_name=_('username'))
     content_type = ReferenceField(ContentType)
     codename = StringField(max_length=100, verbose_name=_('codename'))
-        # FIXME: don't access field of the other class
-        # unique_with=['content_type__app_label', 'content_type__model'])
+    # FIXME: don't access field of the other class
+    # unique_with=['content_type__app_label', 'content_type__model'])
 
     objects = PermissionManager()
 
@@ -133,6 +136,7 @@ class Permission(Document):
 
 
 class Group(Document):
+
     """Groups are a generic way of categorizing users to apply permissions,
     or some other label, to those users. A user can belong to any number of
     groups.
@@ -149,7 +153,8 @@ class Group(Document):
     e-mail messages.
     """
     name = StringField(max_length=80, unique=True, verbose_name=_('name'))
-    permissions = ListField(ReferenceField(Permission, verbose_name=_('permissions'), required=False))
+    permissions = ListField(
+        ReferenceField(Permission, verbose_name=_('permissions'), required=False))
 
     class Meta:
         verbose_name = _('group')
@@ -160,6 +165,7 @@ class Group(Document):
 
 
 class UserManager(models.Manager):
+
     def create_user(self, username, email, password=None):
         """
         Creates and saves a User with the given username, e-mail and password.
@@ -200,6 +206,7 @@ class UserManager(models.Manager):
 
 
 class User(Document):
+
     """A User document that aims to mirror most of the API specified by Django
     at http://docs.djangoproject.com/en/dev/topics/auth/#users
     """
@@ -231,7 +238,7 @@ class User(Document):
                                 verbose_name=_('date joined'))
 
     user_permissions = ListField(ReferenceField(Permission), verbose_name=_('user permissions'),
-                                                help_text=_('Permissions for the user.'))
+                                 help_text=_('Permissions for the user.'))
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
@@ -358,16 +365,17 @@ class User(Document):
                 app_label, model_name = settings.AUTH_PROFILE_MODULE.split('.')
             except ValueError:
                 raise SiteProfileNotAvailable('app_label and model_name should'
-                        ' be separated by a dot in the AUTH_PROFILE_MODULE set'
-                        'ting')
+                                              ' be separated by a dot in the AUTH_PROFILE_MODULE set'
+                                              'ting')
 
             try:
                 model = models.get_model(app_label, model_name)
                 if model is None:
                     raise SiteProfileNotAvailable('Unable to load the profile '
-                        'model, check AUTH_PROFILE_MODULE in your project sett'
-                        'ings')
-                self._profile_cache = model._default_manager.using(self._state.db).get(user__id__exact=self.id)
+                                                  'model, check AUTH_PROFILE_MODULE in your project sett'
+                                                  'ings')
+                self._profile_cache = model._default_manager.using(
+                    self._state.db).get(user__id__exact=self.id)
                 self._profile_cache.user = self
             except (ImportError, ImproperlyConfigured):
                 raise SiteProfileNotAvailable
@@ -375,6 +383,7 @@ class User(Document):
 
 
 class MongoEngineBackend(object):
+
     """Authenticate using MongoEngine and mongoengine.django.auth.User.
     """
 
@@ -388,7 +397,8 @@ class MongoEngineBackend(object):
         if user:
             if password and user.check_password(password):
                 backend = auth.get_backends()[0]
-                user.backend = "%s.%s" % (backend.__module__, backend.__class__.__name__)
+                user.backend = "%s.%s" % (
+                    backend.__module__, backend.__class__.__name__)
                 return user
         return None
 
@@ -401,6 +411,7 @@ class MongoEngineBackend(object):
             from .mongo_auth.models import get_user_document
             self._user_doc = get_user_document()
         return self._user_doc
+
 
 def get_user(userid):
     """Returns a User object from an id (User.id). Django's equivalent takes
