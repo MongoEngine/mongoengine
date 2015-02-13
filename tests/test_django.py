@@ -19,9 +19,12 @@ settings.configure(
     AUTHENTICATION_BACKENDS = ('mongoengine.django.auth.MongoEngineBackend',)
 )
 
-# For Django >= 1.7
-if hasattr(django, 'setup'):
-    django.setup()
+try:
+    # For Django >= 1.7
+    if hasattr(django, 'setup'):
+        django.setup()
+except RuntimeError:
+    pass
 
 try:
     from django.contrib.auth import authenticate, get_user_model
@@ -34,7 +37,6 @@ try:
     DJ15 = True
 except Exception:
     DJ15 = False
-from django.contrib.sessions.tests import SessionTestsMixin
 from mongoengine.django.sessions import SessionStore, MongoSession
 from mongoengine.django.tests import MongoTestCase
 from datetime import tzinfo, timedelta
@@ -226,13 +228,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(t.render(c), "10")
 
 
-class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
+class _BaseMongoDBSessionTest(unittest.TestCase):
     backend = SessionStore
 
     def setUp(self):
         connect(db='mongoenginetest')
         MongoSession.drop_collection()
-        super(MongoDBSessionTest, self).setUp()
+        super(_BaseMongoDBSessionTest, self).setUp()
 
     def assertIn(self, first, second, msg=None):
         self.assertTrue(first in second, msg)
@@ -257,6 +259,21 @@ class MongoDBSessionTest(SessionTestsMixin, unittest.TestCase):
         key = session.session_key
         session = SessionStore(key)
         self.assertTrue('test_expire' in session, 'Session has expired before it is expected')
+
+
+try:
+    # SessionTestsMixin isn't available for import on django > 1.8a1
+    from django.contrib.sessions.tests import SessionTestsMixin
+
+    class _MongoDBSessionTest(SessionTestsMixin):
+        pass
+
+    class MongoDBSessionTest(_BaseMongoDBSessionTest):
+        pass
+
+except ImportError:
+    class MongoDBSessionTest(_BaseMongoDBSessionTest):
+        pass
 
 
 class MongoAuthTest(unittest.TestCase):
