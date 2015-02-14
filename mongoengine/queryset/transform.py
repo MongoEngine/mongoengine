@@ -11,7 +11,7 @@ __all__ = ('query', 'update')
 
 
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                        'all', 'size', 'exists', 'not', 'elemMatch')
+                        'all', 'size', 'exists', 'not', 'elemMatch', 'type')
 GEO_OPERATORS = ('within_distance', 'within_spherical_distance',
                  'within_box', 'within_polygon', 'near', 'near_sphere',
                  'max_distance', 'geo_within', 'geo_within_box',
