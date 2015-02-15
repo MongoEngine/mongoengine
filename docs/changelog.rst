@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- No module named 'django.utils.importlib' (Django dev) #872
 - Field Choices Now Accept Subclasses of Documents
 - Ensure Indexes before Each Save #812
 - Generate Unique Indices for Lists of EmbeddedDocuments #358
