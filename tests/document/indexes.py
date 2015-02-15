@@ -495,9 +495,12 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
 
-        def invalid_index():
-            BlogPost.objects.hint('tags')
-        self.assertRaises(TypeError, invalid_index)
+        if pymongo.version >= '2.8':
+            self.assertEqual(BlogPost.objects.hint('tags').count(), 10)
+        else:
+            def invalid_index():
+                BlogPost.objects.hint('tags')
+            self.assertRaises(TypeError, invalid_index)
 
         def invalid_index_2():
             return BlogPost.objects.hint(('tags', 1))

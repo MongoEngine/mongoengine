@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Fix tests for pymongo 2.8+ #877
 - No module named 'django.utils.importlib' (Django dev) #872
 - Field Choices Now Accept Subclasses of Documents
 - Ensure Indexes before Each Save #812
