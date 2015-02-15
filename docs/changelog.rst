@@ -3,6 +3,8 @@ Changelog
 =========
 
 
+Further changes not tracked, although some fixes for MongoDB 2.6 were cherry-picked from upstream/master
+
 Changes in 0.8.2
 ================
 - Added compare_indexes helper (#361)
