@@ -197,5 +197,17 @@ class TransformTest(unittest.TestCase):
         update = transform.update(Location, set__poly={"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
         self.assertEqual(update, {'$set': {'poly': {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]}}})
 
+    def test_type(self):
+        class Doc(Document):
+            df = DynamicField()
+        Doc(df=True).save()
+        Doc(df=7).save()
+        Doc(df="df").save()
+        self.assertEqual(Doc.objects(df__type=1).count(), 0)  # double
+        self.assertEqual(Doc.objects(df__type=8).count(), 1)  # bool
+        self.assertEqual(Doc.objects(df__type=2).count(), 1)  # str
+        self.assertEqual(Doc.objects(df__type=16).count(), 1)  # int
+
+
 if __name__ == '__main__':
     unittest.main()
