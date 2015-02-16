@@ -1176,6 +1176,11 @@ class FieldTest(unittest.TestCase):
         post.reload()
         self.assertEqual('updated', post.info['title'])
 
+        post.info.setdefault('authors', [])
+        post.save()
+        post.reload()
+        self.assertEqual([], post.info['authors'])
+
         BlogPost.drop_collection()
 
     def test_dictfield_strict(self):
