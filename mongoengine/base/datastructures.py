@@ -75,6 +75,10 @@ class BaseDict(dict):
         self._mark_as_changed()
         return super(BaseDict, self).popitem(*args, **kwargs)
 
+    def setdefault(self, *args, **kwargs):
+        self._mark_as_changed()
+        return super(BaseDict, self).setdefault(*args, **kwargs)
+
     def update(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseDict, self).update(*args, **kwargs)
