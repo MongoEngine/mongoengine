@@ -11,7 +11,7 @@ __all__ = ('query', 'update')
 
 
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
-                        'all', 'size', 'exists', 'not', 'elemMatch')
+                        'all', 'size', 'exists', 'not', 'elemMatch', 'type')
 GEO_OPERATORS = ('within_distance', 'within_spherical_distance',
                  'within_box', 'within_polygon', 'near', 'near_sphere',
                  'max_distance', 'geo_within', 'geo_within_box',
@@ -26,7 +26,7 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
 
 UPDATE_OPERATORS = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
                     'push_all', 'pull', 'pull_all', 'add_to_set',
-                    'set_on_insert')
+                    'set_on_insert', 'min', 'max')
 
 
 def query(_doc_cls=None, _field_operation=False, **query):

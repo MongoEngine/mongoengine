@@ -5,6 +5,12 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Request Support for $min, $max Field update operators #863
+- `BaseDict` does not follow `setdefault` #866
+- Add support for $type operator # 766
+- Fix tests for pymongo 2.8+ #877
+- No module named 'django.utils.importlib' (Django dev) #872
+- Field Choices Now Accept Subclasses of Documents
 - Ensure Indexes before Each Save #812
 - Generate Unique Indices for Lists of EmbeddedDocuments #358
 - Sparse fields #515
