@@ -2760,6 +2760,12 @@ class InstanceTest(unittest.TestCase):
         class User(Document):
             name = StringField()
             height = IntField(default=184, null=True)
+            str_fld = StringField(null=True)
+            int_fld = IntField(null=True)
+            flt_fld = FloatField(null=True)
+            dt_fld = DateTimeField(null=True)
+            cdt_fld = ComplexDateTimeField(null=True)
+
         User.objects.delete()
         u = User(name='user')
         u.save()
@@ -2775,6 +2781,18 @@ class InstanceTest(unittest.TestCase):
         User.objects(name='user').update_one(set__height=None, upsert=True)
         u_from_db = User.objects.get(name='user')
         self.assertEquals(u_from_db.height, None)
+
+        # 864
+        User.objects.delete()
+        u = User(name='user')
+        u.save()
+        u_from_db = User.objects.get(name='user')
+
+        self.assertIsNone(u_from_db.str_fld)
+        self.assertIsNone(u_from_db.int_fld)
+        self.assertIsNone(u_from_db.flt_fld)
+        self.assertIsNone(u_from_db.dt_fld)
+        self.assertIsNone(u_from_db.cdt_fld)
 
     def test_not_saved_eq(self):
         """Ensure we can compare documents not saved.

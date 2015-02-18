@@ -510,7 +510,7 @@ class ComplexDateTimeField(StringField):
     def __get__(self, instance, owner):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
         if data is None:
-            return datetime.datetime.now()
+            return None if self.null else datetime.datetime.now()
         if isinstance(data, datetime.datetime):
             return data
         return self._convert_from_string(data)
