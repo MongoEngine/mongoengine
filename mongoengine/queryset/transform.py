@@ -26,7 +26,7 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
 
 UPDATE_OPERATORS = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
                     'push_all', 'pull', 'pull_all', 'add_to_set',
-                    'set_on_insert')
+                    'set_on_insert', 'min', 'max')
 
 
 def query(_doc_cls=None, _field_operation=False, **query):

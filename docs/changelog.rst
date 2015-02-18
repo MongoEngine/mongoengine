@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Request Support for $min, $max Field update operators #863
 - `BaseDict` does not follow `setdefault` #866
 - Add support for $type operator # 766
 - Fix tests for pymongo 2.8+ #877
