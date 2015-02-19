@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- ComplexDateTimeField should fall back to None when null=True #864
 - Request Support for $min, $max Field update operators #863
 - `BaseDict` does not follow `setdefault` #866
 - Add support for $type operator # 766
@@ -75,7 +76,6 @@ Changes in 0.9.X - DEV
 - Fixed a few instances where reverse_delete_rule was written as reverse_delete_rules. #791
 - Make `in_bulk()` respect `no_dereference()` #775
 - Handle None from model __str__; Fixes #753 #754
-
 
 Changes in 0.8.7
 ================
