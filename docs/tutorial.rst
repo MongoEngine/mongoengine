@@ -65,7 +65,7 @@ which fields a :class:`User` may have, and what types of data they might store::
         first_name = StringField(max_length=50)
         last_name = StringField(max_length=50)
 
-This looks similar to how a the structure of a table would be defined in a
+This looks similar to how the structure of a table would be defined in a
 regular ORM. The key difference is that this schema will never be passed on to
 MongoDB --- this will only be enforced at the application level, making future
 changes easy to manage. Also, the User documents will be stored in a
