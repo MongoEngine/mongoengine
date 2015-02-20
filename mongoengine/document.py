@@ -126,7 +126,7 @@ class Document(BaseDocument):
     a **+** or **-** sign.
 
     Automatic index creation can be disabled by specifying
-    attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
+    :attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
     False then indexes will not be created by MongoEngine.  This is useful in
     production systems where index creation is performed as part of a
     deployment system.
