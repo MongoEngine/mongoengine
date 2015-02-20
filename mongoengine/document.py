@@ -9,9 +9,16 @@ from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
-from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
-                              BaseDocument, BaseDict, BaseList,
-                              ALLOW_INHERITANCE, get_document)
+from mongoengine.base import (
+    DocumentMetaclass,
+    TopLevelDocumentMetaclass,
+    BaseDocument,
+    BaseDict,
+    BaseList,
+    EmbeddedDocumentList,
+    ALLOW_INHERITANCE,
+    get_document
+)
 from mongoengine.errors import ValidationError, InvalidQueryError, InvalidDocumentError
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
@@ -75,6 +82,12 @@ class EmbeddedDocument(BaseDocument):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def save(self, *args, **kwargs):
+        self._instance.save(*args, **kwargs)
+
+    def reload(self, *args, **kwargs):
+        self._instance.reload(*args, **kwargs)
 
 
 class Document(BaseDocument):
@@ -560,6 +573,9 @@ class Document(BaseDocument):
         if isinstance(value, BaseDict):
             value = [(k, self._reload(k, v)) for k, v in value.items()]
             value = BaseDict(value, self, key)
+        elif isinstance(value, EmbeddedDocumentList):
+            value = [self._reload(key, v) for v in value]
+            value = EmbeddedDocumentList(value, self, key)
         elif isinstance(value, BaseList):
             value = [self._reload(key, v) for v in value]
             value = BaseList(value, self, key)

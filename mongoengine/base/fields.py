@@ -9,7 +9,9 @@ from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
 
 from mongoengine.base.common import ALLOW_INHERITANCE
-from mongoengine.base.datastructures import BaseDict, BaseList
+from mongoengine.base.datastructures import (
+    BaseDict, BaseList, EmbeddedDocumentList
+)
 
 __all__ = ("BaseField", "ComplexBaseField",
            "ObjectIdField", "GeoJsonBaseField")
@@ -210,6 +212,7 @@ class ComplexBaseField(BaseField):
 
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
+        EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
         dereference = (self._auto_dereference and
                        (self.field is None or isinstance(self.field,
                                                          (GenericReferenceField, ReferenceField))))
@@ -226,9 +229,12 @@ class ComplexBaseField(BaseField):
         value = super(ComplexBaseField, self).__get__(instance, owner)
 
         # Convert lists / values so we can watch for any changes on them
-        if (isinstance(value, (list, tuple)) and
-                not isinstance(value, BaseList)):
-            value = BaseList(value, instance, self.name)
+        if isinstance(value, (list, tuple)):
+            if (issubclass(type(self), EmbeddedDocumentListField) and
+                    not isinstance(value, EmbeddedDocumentList)):
+                value = EmbeddedDocumentList(value, instance, self.name)
+            elif not isinstance(value, BaseList):
+                value = BaseList(value, instance, self.name)
             instance._data[self.name] = value
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, instance, self.name)

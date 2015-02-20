@@ -1,6 +1,9 @@
 from bson import DBRef, SON
 
-from base import (BaseDict, BaseList, TopLevelDocumentMetaclass, get_document)
+from base import (
+    BaseDict, BaseList, EmbeddedDocumentList,
+    TopLevelDocumentMetaclass, get_document
+)
 from fields import (ReferenceField, ListField, DictField, MapField)
 from connection import get_db
 from queryset import QuerySet
@@ -189,6 +192,9 @@ class DeReference(object):
 
         if not hasattr(items, 'items'):
             is_list = True
+            list_type = BaseList
+            if isinstance(items, EmbeddedDocumentList):
+                list_type = EmbeddedDocumentList
             as_tuple = isinstance(items, tuple)
             iterator = enumerate(items)
             data = []
@@ -225,7 +231,7 @@ class DeReference(object):
 
         if instance and name:
             if is_list:
-                return tuple(data) if as_tuple else BaseList(data, instance, name)
+                return tuple(data) if as_tuple else list_type(data, instance, name)
             return BaseDict(data, instance, name)
         depth += 1
         return data

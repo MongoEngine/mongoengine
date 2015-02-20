@@ -1,4 +1,5 @@
 _class_registry_cache = {}
+_field_list_cache = []
 
 
 def _import_class(cls_name):
@@ -20,13 +21,16 @@ def _import_class(cls_name):
 
     doc_classes = ('Document', 'DynamicEmbeddedDocument', 'EmbeddedDocument',
                    'MapReduceDocument')
-    field_classes = ('DictField', 'DynamicField', 'EmbeddedDocumentField',
-                     'FileField', 'GenericReferenceField',
-                     'GenericEmbeddedDocumentField', 'GeoPointField',
-                     'PointField', 'LineStringField', 'ListField',
-                     'PolygonField', 'ReferenceField', 'StringField',
-                     'CachedReferenceField',
-                     'ComplexBaseField', 'GeoJsonBaseField')
+
+    # Field Classes
+    if not _field_list_cache:
+        from mongoengine.fields import __all__ as fields
+        _field_list_cache.extend(fields)
+        from mongoengine.base.fields import __all__ as fields
+        _field_list_cache.extend(fields)
+
+    field_classes = _field_list_cache
+
     queryset_classes = ('OperationError',)
     deref_classes = ('DeReference',)
 
