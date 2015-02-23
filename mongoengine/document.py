@@ -335,6 +335,12 @@ class Document(BaseDocument):
         select_dict = {field.db_field: field.to_mongo(self.pk)}
         shard_key = self.__class__._meta.get('shard_key', tuple())
         for k in shard_key:
+            # for a lazy instance of a reference field, we can't access any
+            # attributes other than the pk (accessing anything else would cause
+            # a reload, which causes _db_object key to be called, which causes
+            # an infinite recursion loop
+            if self._lazy and k != self._meta['id_field']:
+                continue
             actual_key = self._db_field_map.get(k, k)
             select_dict[actual_key] = self._fields[k].to_mongo(getattr(self, k))
         return select_dict
