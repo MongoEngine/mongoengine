@@ -1985,7 +1985,7 @@ class MultiPolygonField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "Polygon" ,
+        { "type" : "MultiPolygon" ,
           "coordinates" : [[
                 [[x1, y1], [x1, y1] ... [xn, yn]],
                 [[x1, y1], [x1, y1] ... [xn, yn]]
