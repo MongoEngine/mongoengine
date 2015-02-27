@@ -513,6 +513,8 @@ class QuerySet(object):
                                               upsert=upsert, **write_concern)
             if ret is not None and 'n' in ret:
                 return ret['n']
+        except pymongo.errors.DuplicateKeyError, err:
+            raise NotUniqueError(u'Update failed (%s)' % unicode(err))
         except pymongo.errors.OperationFailure, err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
