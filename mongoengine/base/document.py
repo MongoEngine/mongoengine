@@ -411,8 +411,7 @@ class BaseDocument(object):
         """Converts a document to JSON.
         :param use_db_field: Set to True by default but enables the output of the json structure with the field names and not the mongodb store db_names in case of set to False
         """
-        use_db_field = kwargs.pop('use_db_field') if kwargs.has_key(
-            'use_db_field') else True
+        use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field),  *args, **kwargs)
 
     @classmethod
