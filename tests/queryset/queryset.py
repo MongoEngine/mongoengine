@@ -14,6 +14,7 @@ from pymongo.read_preferences import ReadPreference
 from bson import ObjectId
 
 from mongoengine import *
+from mongoengine.connection import get_connection
 from mongoengine.python_support import PY3
 from mongoengine.context_managers import query_counter
 from mongoengine.queryset import (QuerySet, QuerySetManager,

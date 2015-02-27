@@ -371,6 +371,9 @@ class QuerySet(object):
         signals.pre_bulk_insert.send(self._document, documents=docs)
         try:
             ids = self._collection.insert(raw, **write_concern)
+        except pymongo.errors.DuplicateKeyError, err:
+            message = 'Could not save document (%s)'
+            raise NotUniqueError(message % unicode(err))
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
