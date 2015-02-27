@@ -32,7 +32,8 @@ NON_FIELD_ERRORS = '__all__'
 
 class BaseDocument(object):
     __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
-                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '__weakref__')
+                 '_dynamic_fields', '_auto_id_field', '_db_field_map',
+                 '_cls', '_dynamic_lock', '_fields_ordered', '__weakref__')
 
     _dynamic = False
     _dynamic_lock = True
