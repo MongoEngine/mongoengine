@@ -1,5 +1,5 @@
 from pymongo.mongo_client import MongoClient
-from cl.utils.pymongo_greenlet import GreenletClient
+from pymongo_greenlet import GreenletClient
 import collections
 
 __all__ = ['ConnectionError', 'connect', 'set_default_db']
