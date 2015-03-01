@@ -297,10 +297,13 @@ class BaseDocument(object):
 
         return self._data['_text_score']
 
-    def to_mongo(self, use_db_field=True, fields=[]):
+    def to_mongo(self, use_db_field=True, fields=None):
         """
         Return as SON data ready for use with MongoDB.
         """
+        if not fields:
+            fields = []
+        
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
@@ -652,9 +655,11 @@ class BaseDocument(object):
         return cls._meta.get('collection', None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=[], created=False):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
+        if not only_fields:
+            only_fields = []
 
         # get the class name from the document, falling back to the given
         # class if unavailable
