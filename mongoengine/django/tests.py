@@ -23,7 +23,7 @@ class MongoTestCase(TestCase):
 
     def dropCollections(self):
         for collection in self.db.collection_names():
-            if collection == 'system.indexes':
+            if collection.startswith('system.'):
                 continue
             self.db.drop_collection(collection)
 
