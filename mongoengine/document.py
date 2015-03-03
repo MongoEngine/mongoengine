@@ -540,6 +540,12 @@ class Document(BaseDocument):
                 cls_indexed = cls_indexed or includes_cls(fields)
                 opts = index_opts.copy()
                 opts.update(spec)
+
+                # we shouldn't pass 'cls' to the collection.ensureIndex options
+                # because of https://jira.mongodb.org/browse/SERVER-769
+                if 'cls' in opts:
+                    del opts['cls']
+
                 collection.ensure_index(fields, background=background,
                                         drop_dups=drop_dups, **opts)
 
@@ -547,6 +553,12 @@ class Document(BaseDocument):
         # only if another index doesn't begin with _cls
         if (index_cls and not cls_indexed and
            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+
+            # we shouldn't pass 'cls' to the collection.ensureIndex options
+            # because of https://jira.mongodb.org/browse/SERVER-769
+            if 'cls' in index_opts:
+                del index_opts['cls']
+
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
 
