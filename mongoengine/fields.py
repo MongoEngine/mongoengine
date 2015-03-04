@@ -1002,8 +1002,8 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
 
-        if not isinstance(value, (self.document_type, DBRef)):
-            self.error("A ReferenceField only accepts DBRef or documents")
+        if not isinstance(value, (self.document_type, DBRef, ObjectId)):
+            self.error("A ReferenceField only accepts DBRef, ObjectId or documents")
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
