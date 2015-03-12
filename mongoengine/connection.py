@@ -138,9 +138,21 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         db = conn[conn_settings['name']]
         # Authenticate if necessary
         if conn_settings['username'] and conn_settings['password']:
-            db.authenticate(conn_settings['username'],
-                            conn_settings['password'],
-                            source=conn_settings['authentication_source'])
+            # PyMongo new signature include mechanism an MongoDB 3 as default
+            # have SCRAM-SHA-1. To can get back compatibility use
+            # 'authmechanism'
+            # as extra arguments with connect or register_connection methods.
+            args = {
+                'name': conn_settings['username'],
+                'password': conn_settings['password'],
+                'source': conn_settings['authentication_source']
+            }
+
+            if 'authmechanism' in conn_settings:
+                args['mechanism'] = conn_settings['authmechanism']
+
+            db.authenticate(**args)
+
         _dbs[alias] = db
     return _dbs[alias]
 
