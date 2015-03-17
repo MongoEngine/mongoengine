@@ -98,10 +98,11 @@ class Document(BaseDocument):
         doc = self.to_mongo()
         try:
             collection = self._pymongo()
+            w = self._meta.get('write_concern', 1)
             if force_insert:
-                object_id = collection.insert(doc)
+                object_id = collection.insert(doc, w=w)
             else:
-                object_id = collection.save(doc)
+                object_id = collection.save(doc, w=w)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if u'duplicate key' in unicode(err):
@@ -153,7 +154,15 @@ class Document(BaseDocument):
         # nothing to yield back to
         use_async &= bool(greenlet.getcurrent().parent)
 
-        return _get_db(cls._meta['db_name'], allow_async=use_async)[cls._meta['collection']]
+        if not hasattr(cls, '_pymongo_collection'):
+            cls._pymongo_collection = {}
+
+        if use_async not in cls._pymongo_collection:
+            cls._pymongo_collection[use_async] = \
+                    _get_db(cls._meta['db_name'],
+                            allow_async=use_async)[cls._meta['collection']]
+
+        return cls._pymongo_collection[use_async]
 
     def _update_one_key(self):
         """
@@ -386,8 +395,12 @@ class Document(BaseDocument):
             spec['_types'] = cls._class_name
 
         with log_slow_event("update", cls._meta['collection'], spec):
-            result = cls._pymongo().update(spec, document, upsert=upsert,
-                                           multi=multi, **kwargs)
+            result = cls._pymongo().update(spec,
+                                           document,
+                                           upsert=upsert,
+                                           multi=multi,
+                                           w=cls._meta['write_concern'],
+                                           **kwargs)
         return result
 
     @classmethod
@@ -458,8 +471,12 @@ class Document(BaseDocument):
         query_spec = self._transform_value(query_spec, type(self))
 
         with log_slow_event("update_one", self._meta['collection'], spec):
-            result = self._pymongo().update(query_spec, document, upsert=upsert,
-                                            multi=False, **kwargs)
+            result = self._pymongo().update(query_spec,
+                                            document,
+                                            upsert=upsert,
+                                            multi=False,
+                                            w=self._meta['write_concern'],
+                                            **kwargs)
 
         # do in-memory updates on the object if the query succeeded
         if result['n'] == 1:

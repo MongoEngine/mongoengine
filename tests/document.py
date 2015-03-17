@@ -1,6 +1,7 @@
 import pymongo
 import bson
 import unittest
+import mock
 
 from datetime import datetime
 
@@ -815,9 +816,9 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(all_user_dic.get(b2, False), False ) # Other object
 
         # in Set
-        all_user_set = set(User.objects.all())
+        all_user_set = set(User.find({}))
 
-        self.assertTrue(u1 in all_user_set )
+        self.assertTrue(u1 in all_user_set)
 
     def throw_invalid_document_error(self):
 
@@ -827,6 +828,65 @@ class DocumentTest(unittest.TestCase):
                 validate = DictField()
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
+
+    def test_write_concern(self):
+        class ImportantThing(Document):
+            meta = {'write_concern': 2}
+            name = StringField()
+
+        class MajorityThing(Document):
+            meta = {'write_concern': 'majority',
+                    'force_insert': True}
+            name = StringField()
+
+        class NormalThing(Document):
+            name = StringField()
+
+        # test save() of ImportantThing gets w=2
+        with mock.patch.object(ImportantThing._pymongo(), "save") as save_mock:
+            it = ImportantThing(id=bson.ObjectId())
+            save_mock.return_value = it.id
+            it.save()
+
+            save_mock.assert_called_with(it.to_mongo(), w=2)
+
+        # test insert() of MajorityThing gets w=majority
+        # note: uses insert() because force_insert is set
+        with mock.patch.object(MajorityThing._pymongo(), "insert") as insert_mock:
+            mt = MajorityThing(id=bson.ObjectId())
+            insert_mock.return_value = mt.id
+            mt.save()
+
+            insert_mock.assert_called_with(mt.to_mongo(), w='majority')
+
+        # test NormalThing gets default w=1
+        with mock.patch.object(NormalThing._pymongo(), "save") as save_mock:
+            nt = NormalThing(id=bson.ObjectId())
+            save_mock.return_value = nt.id
+            nt.save()
+
+            save_mock.assert_called_with(nt.to_mongo(), w=1)
+
+        # test ImportantThing update gets w=2
+        with mock.patch.object(ImportantThing._pymongo(), "update") as update_mock:
+            it.set(name="Adam")
+
+            self.assertEquals(update_mock.call_count, 1)
+            self.assertEquals(update_mock.call_args[1]['w'], 2)
+
+        # test MajorityThing update gets w=majority
+        with mock.patch.object(MajorityThing._pymongo(), "update") as update_mock:
+            mt.set(name="Adam")
+
+            self.assertEquals(update_mock.call_count, 1)
+            self.assertEquals(update_mock.call_args[1]['w'], "majority")
+
+        # test NormalThing update gets w=1
+        with mock.patch.object(NormalThing._pymongo(), "update") as update_mock:
+            nt.set(name="Adam")
+
+            self.assertEquals(update_mock.call_count, 1)
+            self.assertEquals(update_mock.call_args[1]['w'], 1)
 
 
 if __name__ == '__main__':
