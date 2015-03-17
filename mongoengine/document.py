@@ -486,6 +486,10 @@ class Document(BaseDocument):
     def add_to_set(self, **kwargs):
         return self.update_one({'$addToSet': kwargs})
 
+    @classmethod
+    def drop_collection(cls):
+        cls._pymongo().drop()
+
     def _transform_query(self, query, validate=True):
         cls = type(self)
         return cls._transform_value(query, cls, validate=validate)

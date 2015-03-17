@@ -382,6 +382,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         return new_class
 
+    def _get_collection_name(cls):
+        return cls._meta.get('collection', None)
+
 
 class BaseDocument(object):
 
