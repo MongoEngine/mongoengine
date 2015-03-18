@@ -9,33 +9,25 @@ python:
     - "pypy"
     - "pypy3"
 env:
-  - PYMONGO=dev DJANGO=dev
-  - PYMONGO=dev DJANGO=1.7.1
-  - PYMONGO=dev DJANGO=1.6.8
-  - PYMONGO=dev DJANGO=1.5.11
-  - PYMONGO=2.7.1 DJANGO=dev
-  - PYMONGO=2.7.1 DJANGO=1.7.1
-  - PYMONGO=2.7.1 DJANGO=1.6.8
-  - PYMONGO=2.7.1 DJANGO=1.5.11
   - PYMONGO=2.7.2 DJANGO=dev
   - PYMONGO=2.7.2 DJANGO=1.7.1
   - PYMONGO=2.7.2 DJANGO=1.6.8
   - PYMONGO=2.7.2 DJANGO=1.5.11
+  - PYMONGO=2.8 DJANGO=dev
+  - PYMONGO=2.8 DJANGO=1.7.1
+  - PYMONGO=2.8 DJANGO=1.6.8
+  - PYMONGO=2.8 DJANGO=1.5.11
 
 matrix:
     exclude:
         - python: "2.6"
-          env: PYMONGO=dev DJANGO=dev
-        - python: "2.6"
-          env: PYMONGO=2.7.1 DJANGO=dev
-        - python: "2.6"
           env: PYMONGO=2.7.2 DJANGO=dev
         - python: "2.6"
-          env: PYMONGO=dev DJANGO=1.7.1
-        - python: "2.6"
-          env: PYMONGO=2.7.1 DJANGO=1.7.1
+          env: PYMONGO=2.8 DJANGO=dev
         - python: "2.6"
           env: PYMONGO=2.7.2 DJANGO=1.7.1
+        - python: "2.6"
+          env: PYMONGO=2.8 DJANGO=1.7.1
     allow_failures:
         - python: "pypy3"
     fast_finish: true
