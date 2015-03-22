@@ -114,6 +114,42 @@ class FileTest(unittest.TestCase):
         # Ensure deleted file returns None
         self.assertTrue(result.the_file.read() == None)
 
+    def test_file_fields_stream_after_none(self):
+        """Ensure that a file field can be written to after it has been saved as
+        None
+        """
+        class StreamFile(Document):
+            the_file = FileField()
+
+        StreamFile.drop_collection()
+
+        text = b('Hello, World!')
+        more_text = b('Foo Bar')
+        content_type = 'text/plain'
+
+        streamfile = StreamFile()
+        streamfile.save()
+        streamfile.the_file.new_file()
+        streamfile.the_file.write(text)
+        streamfile.the_file.write(more_text)
+        streamfile.the_file.close()
+        streamfile.save()
+
+        result = StreamFile.objects.first()
+        self.assertTrue(streamfile == result)
+        self.assertEqual(result.the_file.read(), text + more_text)
+        #self.assertEqual(result.the_file.content_type, content_type)
+        result.the_file.seek(0)
+        self.assertEqual(result.the_file.tell(), 0)
+        self.assertEqual(result.the_file.read(len(text)), text)
+        self.assertEqual(result.the_file.tell(), len(text))
+        self.assertEqual(result.the_file.read(len(more_text)), more_text)
+        self.assertEqual(result.the_file.tell(), len(text + more_text))
+        result.the_file.delete()
+
+        # Ensure deleted file returns None
+        self.assertTrue(result.the_file.read() == None)
+
     def test_file_fields_set(self):
 
         class SetFile(Document):

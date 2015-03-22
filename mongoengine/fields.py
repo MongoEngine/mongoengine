@@ -1357,6 +1357,7 @@ class GridFSProxy(object):
     def new_file(self, **kwargs):
         self.newfile = self.fs.new_file(**kwargs)
         self.grid_id = self.newfile._id
+        self._mark_as_changed()
 
     def put(self, file_obj, **kwargs):
         if self.grid_id:
