@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Update FileField when creating a new file #714
 - Added `EmbeddedDocumentListField` for Lists of Embedded Documents. #826
 - ComplexDateTimeField should fall back to None when null=True #864
 - Request Support for $min, $max Field update operators #863
