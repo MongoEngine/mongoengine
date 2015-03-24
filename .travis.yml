@@ -61,6 +61,7 @@ notifications:
 branches:
   only:
   - master
+  - /^v.*$/
 deploy:
   provider: pypi
   user: the_drow
