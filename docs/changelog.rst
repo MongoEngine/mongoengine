@@ -5,6 +5,10 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Support += and *= for ListField #595
+
+Changes in 0.9.0
+================
 - Update FileField when creating a new file #714
 - Added `EmbeddedDocumentListField` for Lists of Embedded Documents. #826
 - ComplexDateTimeField should fall back to None when null=True #864
