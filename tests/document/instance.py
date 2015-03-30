@@ -2799,5 +2799,21 @@ class InstanceTest(unittest.TestCase):
         self.assertNotEqual(p, p1)
         self.assertEqual(p, p)
 
+    def test_list_iter(self):
+        # 914
+        class B(EmbeddedDocument):
+            v = StringField()
+
+        class A(Document):
+            l = ListField(EmbeddedDocumentField(B))
+
+        A.objects.delete()
+        A(l=[B(v='1'), B(v='2'), B(v='3')]).save()
+        a = A.objects.get()
+        self.assertEqual(a.l._instance, a)
+        for idx, b in enumerate(a.l):
+            self.assertEqual(b._instance, a)
+        self.assertEqual(idx, 2)
+
 if __name__ == '__main__':
     unittest.main()
