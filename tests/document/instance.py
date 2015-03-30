@@ -2097,7 +2097,6 @@ class InstanceTest(unittest.TestCase):
         # Test that when a document's definition changes the new
         # definition is used
         fixtures.PickleTest = fixtures.NewDocumentPickleTest
-        self.assertIn('new_field', fixtures.PickleTest._fields_ordered)
 
         resurrected = pickle.loads(pickled_doc)
         self.assertEqual(resurrected.__class__,
