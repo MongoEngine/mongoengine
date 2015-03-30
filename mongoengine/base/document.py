@@ -206,7 +206,12 @@ class BaseDocument(object):
             if k in data:
                 setattr(self, k, data[k])
         if '_fields_ordered' in data:
-            setattr(type(self), '_fields_ordered', data['_fields_ordered'])
+            if self._dynamic:
+                setattr(self, '_fields_ordered', data['_fields_ordered'])
+            else:
+                _super_fields_ordered = type(self)._fields_ordered
+                setattr(self, '_fields_ordered', _super_fields_ordered)
+
         dynamic_fields = data.get('_dynamic_fields') or SON()
         for k in dynamic_fields.keys():
             setattr(self, k, data["_data"].get(k))
