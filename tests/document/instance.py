@@ -2097,7 +2097,6 @@ class InstanceTest(unittest.TestCase):
         # Test that when a document's definition changes the new
         # definition is used
         fixtures.PickleTest = fixtures.NewDocumentPickleTest
-        self.assertIn('new_field', fixtures.PickleTest._fields_ordered)
 
         resurrected = pickle.loads(pickled_doc)
         self.assertEqual(resurrected.__class__,
@@ -2109,7 +2108,6 @@ class InstanceTest(unittest.TestCase):
 
         # The local PickleTest is still a ref to the original
         fixtures.PickleTest = PickleTest
-        self.assertNotIn('new_field', fixtures.PickleTest._fields_ordered)
 
     def test_dynamic_document_pickle(self):
 
@@ -2824,6 +2822,22 @@ class InstanceTest(unittest.TestCase):
         p1 = Person()
         self.assertNotEqual(p, p1)
         self.assertEqual(p, p)
+
+    def test_list_iter(self):
+        # 914
+        class B(EmbeddedDocument):
+            v = StringField()
+
+        class A(Document):
+            l = ListField(EmbeddedDocumentField(B))
+
+        A.objects.delete()
+        A(l=[B(v='1'), B(v='2'), B(v='3')]).save()
+        a = A.objects.get()
+        self.assertEqual(a.l._instance, a)
+        for idx, b in enumerate(a.l):
+            self.assertEqual(b._instance, a)
+        self.assertEqual(idx, 2)
 
 if __name__ == '__main__':
     unittest.main()

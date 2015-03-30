@@ -125,6 +125,10 @@ class BaseList(list):
             value._instance = self._instance
         return value
 
+    def __iter__(self):
+        for i in xrange(self.__len__()):
+            yield self[i]
+
     def __setitem__(self, key, value, *args, **kwargs):
         if isinstance(key, slice):
             self._mark_as_changed()
@@ -155,6 +159,14 @@ class BaseList(list):
     def __setstate__(self, state):
         self = state
         return self
+
+    def __iadd__(self, other):
+        self._mark_as_changed()
+        return super(BaseList, self).__iadd__(other)
+
+    def __imul__(self, other):
+        self._mark_as_changed()
+        return super(BaseList, self).__imul__(other)
 
     def append(self, *args, **kwargs):
         self._mark_as_changed()
