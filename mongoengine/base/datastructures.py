@@ -1,5 +1,4 @@
 import weakref
-import functools
 import itertools
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
@@ -23,7 +22,7 @@ class BaseDict(dict):
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
 
-    def __getitem__(self, key, *args, **kwargs):
+    def __getitem__(self, key):
         value = super(BaseDict, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
@@ -39,7 +38,7 @@ class BaseDict(dict):
             value._instance = self._instance
         return value
 
-    def __setitem__(self, key, value, *args, **kwargs):
+    def __setitem__(self, key, value):
         self._mark_as_changed(key)
         return super(BaseDict, self).__setitem__(key, value)
 
@@ -47,11 +46,11 @@ class BaseDict(dict):
         self._mark_as_changed()
         return super(BaseDict, self).__delete__(*args, **kwargs)
 
-    def __delitem__(self, key, *args, **kwargs):
+    def __delitem__(self, key):
         self._mark_as_changed(key)
         return super(BaseDict, self).__delitem__(key)
 
-    def __delattr__(self, key, *args, **kwargs):
+    def __delattr__(self, key):
         self._mark_as_changed(key)
         return super(BaseDict, self).__delattr__(key)
 
@@ -64,21 +63,21 @@ class BaseDict(dict):
         self = state
         return self
 
-    def clear(self, *args, **kwargs):
+    def clear(self):
         self._mark_as_changed()
-        return super(BaseDict, self).clear(*args, **kwargs)
+        return super(BaseDict, self).clear()
 
-    def pop(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).pop(*args, **kwargs)
+    def pop(self, key, *args):
+        self._mark_as_changed(key)
+        return super(BaseDict, self).pop(key, *args)
 
-    def popitem(self, *args, **kwargs):
+    def popitem(self):
         self._mark_as_changed()
-        return super(BaseDict, self).popitem(*args, **kwargs)
+        return super(BaseDict, self).popitem()
 
-    def setdefault(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).setdefault(*args, **kwargs)
+    def setdefault(self, key, *args):
+        self._mark_as_changed(key)
+        return super(BaseDict, self).setdefault(key, *args)
 
     def update(self, *args, **kwargs):
         self._mark_as_changed()
@@ -109,7 +108,7 @@ class BaseList(list):
         self._name = name
         super(BaseList, self).__init__(list_items)
 
-    def __getitem__(self, key, *args, **kwargs):
+    def __getitem__(self, key):
         value = super(BaseList, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
@@ -125,14 +124,14 @@ class BaseList(list):
             value._instance = self._instance
         return value
 
-    def __setitem__(self, key, value, *args, **kwargs):
+    def __setitem__(self, key, value):
         if isinstance(key, slice):
             self._mark_as_changed()
         else:
             self._mark_as_changed(key)
         return super(BaseList, self).__setitem__(key, value)
 
-    def __delitem__(self, key, *args, **kwargs):
+    def __delitem__(self, key):
         if isinstance(key, slice):
             self._mark_as_changed()
         else:
