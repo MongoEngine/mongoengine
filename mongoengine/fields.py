@@ -630,7 +630,7 @@ class GenericEmbeddedDocumentField(BaseField):
         return data
 
 
-class DynamicField(BaseField):
+class DynamicField(ComplexBaseField):
 
     """A truly dynamic field type capable of handling different and varying
     types of data.
