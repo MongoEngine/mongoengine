@@ -2108,7 +2108,6 @@ class InstanceTest(unittest.TestCase):
 
         # The local PickleTest is still a ref to the original
         fixtures.PickleTest = PickleTest
-        self.assertNotIn('new_field', fixtures.PickleTest._fields_ordered)
 
     def test_dynamic_document_pickle(self):
 
