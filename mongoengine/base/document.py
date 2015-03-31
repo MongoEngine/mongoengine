@@ -693,7 +693,8 @@ class BaseDocument(object):
                     default = default()
                 if isinstance(default, BaseDocument):
                     changed_fields.append(field_name)
-                elif not only_fields or field_name in only_fields:
+                elif (not isinstance(field, ComplexBaseField) and
+                        (not only_fields or field_name in only_fields)):
                     changed_fields.append(field_name)
 
         if errors_dict:
