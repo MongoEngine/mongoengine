@@ -303,7 +303,7 @@ class BaseDocument(object):
         """
         if not fields:
             fields = []
-        
+
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
@@ -548,7 +548,7 @@ class BaseDocument(object):
             if hasattr(data, 'id'):
                 if data.id in inspected:
                     continue
-                inspected.add(data.id)
+                #inspected.add(data.id)
             if isinstance(field, ReferenceField):
                 continue
             elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
