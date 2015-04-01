@@ -946,6 +946,18 @@ class FieldTest(unittest.TestCase):
             BlogPost.objects.filter(info__0__test__exact='5').count(), 0)
         self.assertEqual(
             BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
+
+        post = BlogPost()
+        post.info = ['1', '2']
+        post.save()
+        post = BlogPost.objects(info=['1', '2']).get()
+        post.info += ['3', '4']
+        post.save()
+        self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4']).count(), 1)
+        post = BlogPost.objects(info=['1', '2', '3', '4']).get()
+        post.info *= 2
+        post.save()
+        self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
         BlogPost.drop_collection()
 
     def test_list_field_passed_in_value(self):

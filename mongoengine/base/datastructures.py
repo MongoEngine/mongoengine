@@ -156,6 +156,14 @@ class BaseList(list):
         self = state
         return self
 
+    def __iadd__(self, other):
+        self._mark_as_changed()
+        return super(BaseList, self).__iadd__(other)
+
+    def __imul__(self, other):
+        self._mark_as_changed()
+        return super(BaseList, self).__imul__(other)
+
     def append(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseList, self).append(*args, **kwargs)
