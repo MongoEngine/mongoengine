@@ -677,6 +677,8 @@ class DynamicField(ComplexBaseField):
             if '_ref' in value:
                 value = doc_cls._get_db().dereference(value['_ref'])
             return doc_cls._from_son(value)
+        if isinstance(value, BaseDocument):
+            return value
 
         return super(DynamicField, self).to_python(value)
 

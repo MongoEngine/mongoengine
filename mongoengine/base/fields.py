@@ -214,8 +214,8 @@ class ComplexBaseField(BaseField):
         GenericReferenceField = _import_class('GenericReferenceField')
         EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
         dereference = (self._auto_dereference and
-                       (self.field is None or isinstance(self.field,
-                                                         (GenericReferenceField, ReferenceField))))
+                       self.field and
+                       isinstance(self.field, (GenericReferenceField, ReferenceField)))
 
         _dereference = _import_class("DeReference")()
 
