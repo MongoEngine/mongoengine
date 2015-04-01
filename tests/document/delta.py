@@ -93,6 +93,7 @@ class DeltaTest(unittest.TestCase):
     def delta_recursive(self, DocClass, EmbeddedClass):
 
         class Embedded(EmbeddedClass):
+            id = StringField()
             string_field = StringField()
             int_field = IntField()
             dict_field = DictField()
@@ -114,6 +115,7 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._delta(), ({}, {}))
 
         embedded_1 = Embedded()
+        embedded_1.id = "010101"
         embedded_1.string_field = 'hello'
         embedded_1.int_field = 1
         embedded_1.dict_field = {'hello': 'world'}
@@ -123,6 +125,7 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._get_changed_fields(), ['embedded_field'])
 
         embedded_delta = {
+            'id': "010101",
             'string_field': 'hello',
             'int_field': 1,
             'dict_field': {'hello': 'world'},

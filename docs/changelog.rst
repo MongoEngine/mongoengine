@@ -85,6 +85,7 @@ Changes in 0.9.0
 - Fixed a few instances where reverse_delete_rule was written as reverse_delete_rules. #791
 - Make `in_bulk()` respect `no_dereference()` #775
 - Handle None from model __str__; Fixes #753 #754
+- _get_changed_fields fix for embedded documents with id field. #925
 
 Changes in 0.8.7
 ================
