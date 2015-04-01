@@ -485,12 +485,13 @@ class BaseDocument(object):
                     break
                 idx += 1
             else:
-                level = '.'.join(levels) + '.'
                 self._changed_fields.append(key)
                 # remove lower level changed fields
+                level = '.'.join(levels) + '.'
                 remove = self._changed_fields.remove
-                [remove(field) for field in self._changed_fields[:]
-                 if field.startswith(level)]
+                for field in self._changed_fields[:]:
+                    if field.startswith(level):
+                        remove(field)
 
     def _clear_changed_fields(self):
         """Using get_changed_fields iterate and remove any fields that are
