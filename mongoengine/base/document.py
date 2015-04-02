@@ -489,7 +489,7 @@ class BaseDocument(object):
                 # remove lower level changed fields
                 level = '.'.join(levels) + '.'
                 remove = self._changed_fields.remove
-                for field in self._changed_fields[:]:
+                for field in self._changed_fields:
                     if field.startswith(level):
                         remove(field)
 
