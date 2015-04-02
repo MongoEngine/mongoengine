@@ -125,6 +125,10 @@ class BaseList(list):
             value._instance = self._instance
         return value
 
+    def __iter__(self):
+        for i in xrange(self.__len__()):
+            yield self[i]
+
     def __setitem__(self, key, value, *args, **kwargs):
         if isinstance(key, slice):
             self._mark_as_changed()

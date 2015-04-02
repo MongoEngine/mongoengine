@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- ListField of embedded docs doesn't set the _instance attribute when iterating over it #914
 - Support += and *= for ListField #595
 
 Changes in 0.9.0
