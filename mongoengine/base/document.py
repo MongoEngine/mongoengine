@@ -548,7 +548,6 @@ class BaseDocument(object):
             if hasattr(data, 'id'):
                 if data.id in inspected:
                     continue
-                #inspected.add(data.id)
             if isinstance(field, ReferenceField):
                 continue
             elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
