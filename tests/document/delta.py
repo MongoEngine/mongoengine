@@ -776,7 +776,6 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(["subs.a.name"], mydoc._get_changed_fields())
 
         mydoc.subs['a'] = EmbeddedDoc()
-        self.assertEqual(["name"], subdoc._get_changed_fields())
         self.assertEqual(["subs.a"], mydoc._get_changed_fields())
         mydoc.save()
 
