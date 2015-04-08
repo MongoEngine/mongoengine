@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.8.8
+================
+- Fixed pypi artifact (#919)
+
 Changes in 0.8.7
 ================
 - Calling reload on deleted / nonexistant documents raises DoesNotExist (#538)
