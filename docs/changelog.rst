@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Fixed mark_as_changed handle higher/lower level field changed. #927
 - ListField of embedded docs doesn't set the _instance attribute when iterating over it #914
 - Support += and *= for ListField #595
 - Use sets for populating dbrefs to dereference
