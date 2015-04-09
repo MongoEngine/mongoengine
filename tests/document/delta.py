@@ -828,12 +828,17 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(org2.name, 'New Org 2')
 
     def test_delta_for_nested_map_fields(self):
+        class UInfoDocument(Document):
+            phone = StringField()
+
         class EmbeddedRole(EmbeddedDocument):
             type = StringField()
 
         class EmbeddedUser(EmbeddedDocument):
             name = StringField()
             roles = MapField(field=EmbeddedDocumentField(EmbeddedRole))
+            rolist = ListField(field=EmbeddedDocumentField(EmbeddedRole))
+            info = ReferenceField(UInfoDocument)
 
         class Doc(Document):
             users = MapField(field=EmbeddedDocumentField(EmbeddedUser))
@@ -845,11 +850,21 @@ class DeltaTest(unittest.TestCase):
         doc.users["007"] = EmbeddedUser(name="Agent007")
         doc.save()
 
+        uinfo = UInfoDocument(phone="79089269066")
+        uinfo.save()
+
         d = Doc.objects(num=1).first()
         d.users["007"]["roles"]["666"] = EmbeddedRole(type="superadmin")
+        d.users["007"]["rolist"].append(EmbeddedRole(type="oops"))
+        d.users["007"]["info"] = uinfo
         delta = d._delta()
+        print delta
         self.assertEqual(True, "users.007.roles.666" in delta[0])
+        self.assertEqual(True, "users.007.rolist" in delta[0])
+        self.assertEqual(True, "users.007.info" in delta[0])
         self.assertEqual('superadmin', delta[0]["users.007.roles.666"]["type"])
+        self.assertEqual('oops', delta[0]["users.007.rolist"][0]["type"])
+        self.assertEqual(uinfo.id, delta[0]["users.007.info"])
 
 if __name__ == '__main__':
     unittest.main()
