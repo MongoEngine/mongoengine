@@ -3,14 +3,28 @@ sys.path[0:0] = [""]
 import unittest
 
 import pymongo
-from pymongo import ReadPreference, ReplicaSetConnection
+from pymongo import ReadPreference
+
+if pymongo.version_tuple[0] >= 3:
+    from pymongo import MongoClient
+    CONN_CLASS = MongoClient
+    READ_PREF = ReadPreference.SECONDARY
+else:
+    from pymongo import ReplicaSetConnection
+    CONN_CLASS = ReplicaSetConnection
+    READ_PREF = ReadPreference.SECONDARY_ONLY
 
 import mongoengine
 from mongoengine import *
-from mongoengine.connection import get_db, get_connection, ConnectionError
+from mongoengine.connection import ConnectionError
 
 
 class ConnectionTest(unittest.TestCase):
+
+    def setUp(self):
+        mongoengine.connection._connection_settings = {}
+        mongoengine.connection._connections = {}
+        mongoengine.connection._dbs = {}
 
     def tearDown(self):
         mongoengine.connection._connection_settings = {}
@@ -22,14 +36,17 @@ class ConnectionTest(unittest.TestCase):
         """
 
         try:
-            conn = connect(db='mongoenginetest', host="mongodb://localhost/mongoenginetest?replicaSet=rs", read_preference=ReadPreference.SECONDARY_ONLY)
+            conn = connect(db='mongoenginetest',
+                           host="mongodb://localhost/mongoenginetest?replicaSet=rs",
+                           read_preference=READ_PREF)
         except ConnectionError, e:
             return
 
-        if not isinstance(conn, ReplicaSetConnection):
+        if not isinstance(conn, CONN_CLASS):
+            # really???
             return
 
-        self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_ONLY)
+        self.assertEqual(conn.read_preference, READ_PREF)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,4 +1,6 @@
 import sys
+from time import sleep
+
 sys.path[0:0] = [""]
 
 try:
@@ -17,6 +19,13 @@ from mongoengine import (
 )
 import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
+
+
+def get_tz_awareness(connection):
+    if pymongo.version_tuple[0] < 3:
+        return connection.tz_aware
+    else:
+        return connection.codec_options.tz_aware
 
 
 class ConnectionTest(unittest.TestCase):
@@ -51,6 +60,9 @@ class ConnectionTest(unittest.TestCase):
 
         connect('mongoenginetest', alias='testdb2')
         actual_connection = get_connection('testdb2')
+
+        # horrible, but since PyMongo3+, connection are created asynchronously
+        sleep(0.1)
         self.assertEqual(expected_connection, actual_connection)
 
     def test_connect_uri(self):
@@ -64,7 +76,8 @@ class ConnectionTest(unittest.TestCase):
         c.admin.authenticate("admin", "password")
         c.mongoenginetest.add_user("username", "password")
 
-        self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
+        if pymongo.version_tuple[0] < 3:
+            self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
 
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
 
@@ -90,7 +103,8 @@ class ConnectionTest(unittest.TestCase):
         c.admin.authenticate("admin", "password")
         c.mongoenginetest.add_user("username", "password")
 
-        self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
+        if pymongo.version_tuple[0] < 3:
+            self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
 
         connect("mongoenginetest", host='mongodb://localhost/')
 
@@ -160,11 +174,11 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest', alias='t1', tz_aware=True)
         conn = get_connection('t1')
 
-        self.assertTrue(conn.tz_aware)
+        self.assertTrue(get_tz_awareness(conn))
 
         connect('mongoenginetest2', alias='t2')
         conn = get_connection('t2')
-        self.assertFalse(conn.tz_aware)
+        self.assertFalse(get_tz_awareness(conn))
 
     def test_datetime(self):
         connect('mongoenginetest', tz_aware=True)
@@ -188,8 +202,14 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(len(mongo_connections.items()), 2)
         self.assertTrue('t1' in mongo_connections.keys())
         self.assertTrue('t2' in mongo_connections.keys())
-        self.assertEqual(mongo_connections['t1'].host, 'localhost')
-        self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')
+        if pymongo.version_tuple[0] < 3:
+            self.assertEqual(mongo_connections['t1'].host, 'localhost')
+            self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')
+        else:
+            # horrible, but since PyMongo3+, connection are created asynchronously
+            sleep(0.1)
+            self.assertEqual(mongo_connections['t1'].address[0], 'localhost')
+            self.assertEqual(mongo_connections['t2'].address[0], '127.0.0.1')
 
 
 if __name__ == '__main__':
