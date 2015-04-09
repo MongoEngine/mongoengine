@@ -47,6 +47,9 @@ def query(_doc_cls=None, _field_operation=False, **query):
         if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
+        if len(parts) > 1 and not parts[-1]:
+            parts.pop()
+
         negate = False
         if len(parts) > 1 and parts[-1] == 'not':
             parts.pop()

@@ -1314,7 +1314,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, BlogPost.objects.count())
 
     def test_reverse_delete_rule_cascade_on_abstract_document(self):
-        """Ensure cascading deletion of referring documents from the database 
+        """Ensure cascading deletion of referring documents from the database
         does not fail on abstract document.
         """
         class AbstractBlogPost(Document):
@@ -1336,7 +1336,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(3, BlogPost.objects.count())
         self.Person.objects(name='Test User').delete()
-        self.assertEqual(1, BlogPost.objects.count())  
+        self.assertEqual(1, BlogPost.objects.count())
 
     def test_reverse_delete_rule_cascade_self_referencing(self):
         """Ensure self-referencing CASCADE deletes do not result in infinite
@@ -1397,8 +1397,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, BlogPost.objects.count())
         self.assertEqual(None, BlogPost.objects.first().category)
 
-    def test_reverse_delete_rule_nullify_on_abstract_document(self): 
-        """Ensure nullification of references to deleted documents when 
+    def test_reverse_delete_rule_nullify_on_abstract_document(self):
+        """Ensure nullification of references to deleted documents when
         reference is on an abstract document.
         """
         class AbstractBlogPost(Document):
@@ -1460,7 +1460,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, BlogPost.objects.count())
         self.assertRaises(OperationError, self.Person.objects.delete)
-    
+
     def test_reverse_delete_rule_pull(self):
         """Ensure pulling of references to deleted documents.
         """
@@ -1497,9 +1497,9 @@ class QuerySetTest(unittest.TestCase):
         """
         class AbstractBlogPost(Document):
             meta = {'abstract': True}
-            authors = ListField(ReferenceField(self.Person, 
+            authors = ListField(ReferenceField(self.Person,
                                                reverse_delete_rule=PULL))
-        
+
         class BlogPost(AbstractBlogPost):
             content = StringField()
 
@@ -1524,7 +1524,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(post.authors, [me])
         self.assertEqual(another.authors, [])
-    
+
     def test_delete_with_limits(self):
 
         class Log(Document):
@@ -2995,7 +2995,7 @@ class QuerySetTest(unittest.TestCase):
     def test_distinct_ListField_EmbeddedDocumentField_EmbeddedDocumentField(self):
         class Continent(EmbeddedDocument):
             continent_name = StringField()
-        
+
         class Country(EmbeddedDocument):
             country_name = StringField()
             continent = EmbeddedDocumentField(Continent)
@@ -3012,7 +3012,7 @@ class QuerySetTest(unittest.TestCase):
 
         europe = Continent(continent_name='europe')
         asia = Continent(continent_name='asia')
-        
+
         scotland = Country(country_name="Scotland", continent=europe)
         tibet = Country(country_name="Tibet", continent=asia)
 
@@ -3027,9 +3027,9 @@ class QuerySetTest(unittest.TestCase):
         country_list = Book.objects.distinct("authors.country")
 
         self.assertEqual(country_list, [scotland, tibet])
-        
+
         continent_list = Book.objects.distinct("authors.country.continent")
-        
+
         self.assertEqual(continent_list, [europe, asia])
 
     def test_distinct_ListField_ReferenceField(self):
@@ -4578,6 +4578,19 @@ class QuerySetTest(unittest.TestCase):
         self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
         self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
 
+    def test_last_field_name_like_operator(self):
+        class EmbeddedItem(EmbeddedDocument):
+            type = StringField()
+
+        class Doc(Document):
+            item = EmbeddedDocumentField(EmbeddedItem)
+
+        Doc.drop_collection()
+
+        doc = Doc(item=EmbeddedItem(type="axe"))
+        doc.save()
+
+        self.assertEqual(1, Doc.objects(item__type__="axe").count())
 
 if __name__ == '__main__':
     unittest.main()
