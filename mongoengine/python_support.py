@@ -12,7 +12,7 @@ if PY3:
         return codecs.latin_1_encode(s)[0]
 
     bin_type = bytes
-    txt_type   = str
+    txt_type = str
 else:
     try:
         from cStringIO import StringIO
