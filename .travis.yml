@@ -1,4 +1,5 @@
 language: python
+
 python:
 - '2.6'
 - '2.7'
@@ -7,6 +8,7 @@ python:
 - '3.4'
 - pypy
 - pypy3
+
 env:
 - PYMONGO=2.7.2 DJANGO=dev
 - PYMONGO=2.7.2 DJANGO=1.7.1
@@ -16,6 +18,11 @@ env:
 - PYMONGO=2.8 DJANGO=1.7.1
 - PYMONGO=2.8 DJANGO=1.6.8
 - PYMONGO=2.8 DJANGO=1.5.11
+- PYMONGO=3.0 DJANGO=dev
+- PYMONGO=3.0 DJANGO=1.7.1
+- PYMONGO=3.0 DJANGO=1.6.8
+- PYMONGO=3.0 DJANGO=1.5.11
+
 matrix:
   exclude:
   - python: '2.6'
@@ -23,18 +30,24 @@ matrix:
   - python: '2.6'
     env: PYMONGO=2.8 DJANGO=dev
   - python: '2.6'
+    env: PYMONGO=3.0 DJANGO=dev
+  - python: '2.6'
     env: PYMONGO=2.7.2 DJANGO=1.7.1
   - python: '2.6'
     env: PYMONGO=2.8 DJANGO=1.7.1
+  - python: '2.6'
+    env: PYMONGO=3.0 DJANGO=1.7.1
   allow_failures:
   - python: pypy3
   fast_finish: true
+
 before_install:
 - travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
 - echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' |
   sudo tee /etc/apt/sources.list.d/mongodb.list
 - travis_retry sudo apt-get update
 - travis_retry sudo apt-get install mongodb-org-server
+
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
@@ -49,19 +62,24 @@ install:
 - travis_retry pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
 - travis_retry pip install coveralls
 - travis_retry python setup.py install
+
 script:
 - travis_retry python setup.py test
 - if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
 - coverage run --source=mongoengine setup.py test
 - coverage report -m
 - python benchmark.py
+
 after_script: coveralls --verbose
+
 notifications:
   irc: irc.freenode.org#mongoengine
+
 branches:
   only:
   - master
   - /^v.*$/
+
 deploy:
   provider: pypi
   user: the_drow
