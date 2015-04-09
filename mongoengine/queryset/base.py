@@ -158,7 +158,8 @@ class BaseQuerySet(object):
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
             return queryset._document._from_son(queryset._cursor[key],
-                                               _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
+                                               _auto_dereference=self._auto_dereference,
+                                               only_fields=self.only_fields)
 
         raise AttributeError
 
@@ -423,7 +424,9 @@ class BaseQuerySet(object):
         if call_document_delete:
             cnt = 0
             for doc in queryset:
-                doc.delete(write_concern=write_concern)
+                # How the fuck did this worked before ???
+                # doc.delete(write_concern=write_concern)
+                doc.delete(**write_concern)
                 cnt += 1
             return cnt
 
@@ -929,6 +932,7 @@ class BaseQuerySet(object):
         queryset._timeout = enabled
         return queryset
 
+    # DEPRECATED. Has no more impact on PyMongo 3+
     def slave_okay(self, enabled):
         """Enable or disable the slave_okay when querying.
 
@@ -1383,22 +1387,30 @@ class BaseQuerySet(object):
 
     @property
     def _cursor_args(self):
-        cursor_args = {
-            'snapshot': self._snapshot,
-            'timeout': self._timeout
-        }
-        if self._read_preference is not None:
-            cursor_args['read_preference'] = self._read_preference
+        if pymongo.version_tuple[0] < 3:
+            fields_name = 'fields'
+            cursor_args = {
+                'timeout': self._timeout,
+                'snapshot': self._snapshot
+            }
+            if self._read_preference is not None:
+                cursor_args['read_preference'] = self._read_preference
+            else:
+                cursor_args['slave_okay'] = self._slave_okay
         else:
-            cursor_args['slave_okay'] = self._slave_okay
+            fields_name = 'projection'
+            # snapshot seems not to be handled at all by PyMongo 3+
+            cursor_args = {
+                'no_cursor_timeout': self._timeout
+            }
         if self._loaded_fields:
-            cursor_args['fields'] = self._loaded_fields.as_dict()
+            cursor_args[fields_name] = self._loaded_fields.as_dict()
 
         if self._search_text:
-            if 'fields' not in cursor_args:
-                cursor_args['fields'] = {}
+            if fields_name not in cursor_args:
+                cursor_args[fields_name] = {}
 
-            cursor_args['fields']['_text_score'] = {'$meta': "textScore"}
+            cursor_args[fields_name]['_text_score'] = {'$meta': "textScore"}
 
         return cursor_args
 
