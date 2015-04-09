@@ -424,8 +424,6 @@ class BaseQuerySet(object):
         if call_document_delete:
             cnt = 0
             for doc in queryset:
-                # How the fuck did this worked before ???
-                # doc.delete(write_concern=write_concern)
                 doc.delete(**write_concern)
                 cnt += 1
             return cnt
