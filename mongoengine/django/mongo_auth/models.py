@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
-from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 try:
     from django.utils.module_loading import import_module

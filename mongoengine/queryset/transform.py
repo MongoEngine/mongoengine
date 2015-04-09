@@ -5,7 +5,7 @@ from bson import SON
 
 from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidQueryError, LookUpError
+from mongoengine.errors import InvalidQueryError
 
 __all__ = ('query', 'update')
 

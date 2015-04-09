@@ -1,8 +1,5 @@
 import copy
 
-from itertools import product
-from functools import reduce
-
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
 

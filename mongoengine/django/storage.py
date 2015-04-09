@@ -5,7 +5,6 @@ import urlparse
 from mongoengine import *
 from django.conf import settings
 from django.core.files.storage import Storage
-from django.core.exceptions import ImproperlyConfigured
 
 
 class FileDocument(Document):
