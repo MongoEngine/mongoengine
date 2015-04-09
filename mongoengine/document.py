@@ -290,10 +290,10 @@ class Document(BaseDocument):
 
         # I think the self._created flag is not necessarily required in PyMongo3
         # but may cause test test_collection_name_and_primary to fail
-        if pymongo.version_tuple[0] < 3:
-            created = ('_id' not in doc or self._created or force_insert)
-        else:
-            created = ('_id' not in doc or force_insert)
+        # if pymongo.version_tuple[0] < 3:
+        created = ('_id' not in doc or self._created or force_insert)
+        # else:
+        #     created = ('_id' not in doc or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created)

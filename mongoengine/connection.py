@@ -8,8 +8,9 @@ __all__ = ['ConnectionError', 'connect', 'register_connection',
 
 DEFAULT_CONNECTION_NAME = 'default'
 if pymongo.version_tuple[0] >= 3:
-    READ_PREFERENCE = ReadPreference.SECONDARY_PREFERRED
+    READ_PREFERENCE = ReadPreference.PRIMARY
 else:
+    from pymongo import MongoReplicaSetClient
     READ_PREFERENCE = False
 
 
@@ -123,6 +124,8 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 if conn_settings == connection_settings and _connections.get(db_alias, None):
                     connection = _connections[db_alias]
                     break
+                if pymongo.version_tuple[0] < 3:
+                    connection_class = MongoReplicaSetClient
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
         except Exception, e:

@@ -509,12 +509,12 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(BlogPost.objects.count(), 10)
         self.assertEqual(BlogPost.objects.hint().count(), 10)
-        # here we seem to have find a bug in PyMongo 3.
-        # The cursor first makes a SON out of the list of tuples
-        # Then later reuses it and wonders why is it not a list of tuples
-        self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
 
-        self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
+        # PyMongo 3.0 bug
+        if pymongo.version != '3.0':
+            self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
+
+            self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
 
         if pymongo.version >= '2.8':
             self.assertEqual(BlogPost.objects.hint('tags').count(), 10)
