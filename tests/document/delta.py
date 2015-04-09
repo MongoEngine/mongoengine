@@ -858,7 +858,6 @@ class DeltaTest(unittest.TestCase):
         d.users["007"]["rolist"].append(EmbeddedRole(type="oops"))
         d.users["007"]["info"] = uinfo
         delta = d._delta()
-        print delta
         self.assertEqual(True, "users.007.roles.666" in delta[0])
         self.assertEqual(True, "users.007.rolist" in delta[0])
         self.assertEqual(True, "users.007.info" in delta[0])
