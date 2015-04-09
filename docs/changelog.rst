@@ -7,6 +7,8 @@ Changes in 0.9.X - DEV
 ======================
 - ListField of embedded docs doesn't set the _instance attribute when iterating over it #914
 - Support += and *= for ListField #595
+- Use sets for populating dbrefs to dereference
+- Fixed unpickled documents replacing the global field's list. #888
 
 Changes in 0.9.0
 ================

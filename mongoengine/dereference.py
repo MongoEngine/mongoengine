@@ -102,24 +102,24 @@ class DeReference(object):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
-                        reference_map.setdefault(field.document_type, []).append(v.id)
+                        reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
-                        reference_map.setdefault(get_document(v['_cls']), []).append(v['_ref'].id)
+                        reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
                         references = self._find_references(v, depth)
                         for key, refs in references.iteritems():
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
-                            reference_map.setdefault(key, []).extend(refs)
+                            reference_map.setdefault(key, set()).update(refs)
             elif isinstance(item, (DBRef)):
-                reference_map.setdefault(item.collection, []).append(item.id)
+                reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and '_ref' in item:
-                reference_map.setdefault(get_document(item['_cls']), []).append(item['_ref'].id)
+                reference_map.setdefault(get_document(item['_cls']), set()).add(item['_ref'].id)
             elif isinstance(item, (dict, list, tuple)) and depth - 1 <= self.max_depth:
                 references = self._find_references(item, depth - 1)
                 for key, refs in references.iteritems():
-                    reference_map.setdefault(key, []).extend(refs)
+                    reference_map.setdefault(key, set()).update(refs)
 
         return reference_map
 
@@ -128,8 +128,8 @@ class DeReference(object):
         """
         object_map = {}
         for collection, dbrefs in self.reference_map.iteritems():
-            keys = object_map.keys()
-            refs = list(set([dbref for dbref in dbrefs if unicode(dbref).encode('utf-8') not in keys]))
+            refs = [dbref for dbref in dbrefs
+                    if unicode(dbref).encode('utf-8') not in object_map]
             if hasattr(collection, 'objects'):  # We have a document class for the refs
                 references = collection.objects.in_bulk(refs)
                 for key, doc in references.iteritems():
