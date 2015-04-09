@@ -1,11 +1,8 @@
-import warnings
 
-import hashlib
 import pymongo
 import re
 
 from pymongo.read_preferences import ReadPreference
-from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
@@ -19,7 +16,7 @@ from mongoengine.base import (
     ALLOW_INHERITANCE,
     get_document
 )
-from mongoengine.errors import ValidationError, InvalidQueryError, InvalidDocumentError
+from mongoengine.errors import InvalidQueryError, InvalidDocumentError
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
@@ -296,7 +293,12 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        created = ('_id' not in doc or self._created or force_insert)
+        # I think the self._created flag is not necessarily required in PyMongo3
+        # but may cause test test_collection_name_and_primary to fail
+        if pymongo.version_tuple[0] < 3:
+            created = ('_id' not in doc or self._created or force_insert)
+        else:
+            created = ('_id' not in doc or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created)
