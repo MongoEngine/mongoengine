@@ -51,6 +51,20 @@ def skip_older_mongodb(f):
     return _inner
 
 
+def skip_pymongo3(f):
+    def _inner(*args, **kwargs):
+
+        if pymongo.version_tuple[0] >= 3:
+            raise SkipTest("Useless with PyMongo 3+")
+
+        return f(*args, **kwargs)
+
+    _inner.__name__ = f.__name__
+    _inner.__doc__ = f.__doc__
+
+    return _inner
+
+
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
@@ -869,6 +883,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
+    @skip_older_mongodb
+    @skip_pymongo3
     def test_cursor_args(self):
         """Ensures the cursor args can be set as expected
         """
@@ -2926,8 +2942,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(query.count(), 3)
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
         cursor_args = query._cursor_args
+        if pymongo.version_tuple[0] < 3:
+            cursor_args_fields = cursor_args['fields']
+        else:
+            cursor_args_fields = cursor_args['projection']
         self.assertEqual(
-            cursor_args['fields'], {'_text_score': {'$meta': 'textScore'}})
+            cursor_args_fields, {'_text_score': {'$meta': 'textScore'}})
 
         text_scores = [i.get_text_score() for i in query]
         self.assertEqual(len(text_scores), 3)
@@ -3992,8 +4012,11 @@ class QuerySetTest(unittest.TestCase):
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
         self.assertEqual([], bars)
 
-        self.assertRaises(ConfigurationError, Bar.objects,
-                          read_preference='Primary')
+        if pymongo.version_tuple[0] < 3:
+            error_class = ConfigurationError
+        else:
+            error_class = TypeError
+        self.assertRaises(error_class, Bar.objects, read_preference='Primary')
 
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(
