@@ -3627,7 +3627,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.assertEqual(app2.my_list, [])
 
         app3 = A.objects(id=app.id).only('my_list').get()
-        self.assertIsNone(app3.my_list)
+        self.assertTrue(app3.my_list is None)
 
         # This creates a document with a my_list key mapped to an empty list.
         app4 = A(my_list=[]).save()
