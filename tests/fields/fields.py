@@ -3608,7 +3608,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         # deleted from the database
         self.assertEqual(number, 2)
 
-    def test_remove_empty_collection_issue(self):
+    def test_only_populates_missing_listfield(self):
         class A(Document):
             my_list = ListField(IntField())
 
