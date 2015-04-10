@@ -2488,10 +2488,11 @@ class FieldTest(unittest.TestCase):
             id = BinaryField(primary_key=True)
 
         Attachment.drop_collection()
-
-        att = Attachment(id=uuid.uuid4().bytes).save()
+        binary_id = uuid.uuid4().bytes
+        att = Attachment(id=binary_id).save()
+        self.assertEqual(1, Attachment.objects.count())
+        self.assertIsNotNone(Attachment.objects.filter(id=binary_id).first())
         att.delete()
-
         self.assertEqual(0, Attachment.objects.count())
 
     def test_choices_validation(self):
