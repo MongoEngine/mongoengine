@@ -166,6 +166,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
+        #TODO: use new get_collection() with PyMongo3 ?
         if not hasattr(cls, '_collection') or cls._collection is None:
             db = cls._get_db()
             collection_name = cls._get_collection_name()
@@ -293,12 +294,7 @@ class Document(BaseDocument):
 
         doc = self.to_mongo()
 
-        # I think the self._created flag is not necessarily required in PyMongo3
-        # but may cause test test_collection_name_and_primary to fail
-        # if not IS_PYMONGO_3:
         created = ('_id' not in doc or self._created or force_insert)
-        # else:
-        #     created = ('_id' not in doc or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created)
@@ -312,6 +308,10 @@ class Document(BaseDocument):
                     object_id = collection.insert(doc, **write_concern)
                 else:
                     object_id = collection.save(doc, **write_concern)
+                    # Pymongo 3.0 bug, fix scheduled for 3.0.1
+                    if not object_id and pymongo.version_tuple == (3, 0):
+                        object_id = self._qs.filter(**self._object_key).first() and \
+                                    self._qs.filter(**self._object_key).first().pk
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
