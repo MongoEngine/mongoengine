@@ -735,6 +735,56 @@ class DeltaTest(unittest.TestCase):
         mydoc._clear_changed_fields()
         self.assertEqual([], mydoc._get_changed_fields())
 
+    def test_lower_level_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(EmbeddedDocumentField(EmbeddedDoc))
+
+        MyDoc.drop_collection()
+
+        MyDoc().save()
+
+        mydoc = MyDoc.objects.first()
+        mydoc.subs['a'] = EmbeddedDoc()
+        self.assertEqual(["subs.a"], mydoc._get_changed_fields())
+
+        subdoc = mydoc.subs['a']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a"], mydoc._get_changed_fields())
+        mydoc.save()
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
+
+    def test_upper_level_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(EmbeddedDocumentField(EmbeddedDoc))
+
+        MyDoc.drop_collection()
+
+        MyDoc(subs={'a': EmbeddedDoc(name='foo')}).save()
+
+        mydoc = MyDoc.objects.first()
+        subdoc = mydoc.subs['a']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a.name"], mydoc._get_changed_fields())
+
+        mydoc.subs['a'] = EmbeddedDoc()
+        self.assertEqual(["subs.a"], mydoc._get_changed_fields())
+        mydoc.save()
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
+
     def test_referenced_object_changed_attributes(self):
         """Ensures that when you save a new reference to a field, the referenced object isn't altered"""
 

@@ -483,7 +483,19 @@ class BaseDocument(object):
             key = self._db_field_map.get(key, key)
 
         if key not in self._changed_fields:
-            self._changed_fields.append(key)
+            levels, idx = key.split('.'), 1
+            while idx <= len(levels):
+                if '.'.join(levels[:idx]) in self._changed_fields:
+                    break
+                idx += 1
+            else:
+                self._changed_fields.append(key)
+                # remove lower level changed fields
+                level = '.'.join(levels[:idx]) + '.'
+                remove = self._changed_fields.remove
+                for field in self._changed_fields:
+                    if field.startswith(level):
+                        remove(field)
 
     def _clear_changed_fields(self):
         """Using get_changed_fields iterate and remove any fields that are
