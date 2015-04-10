@@ -3608,6 +3608,27 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         # deleted from the database
         self.assertEqual(number, 2)
 
+    def test_remove_empty_collection_issue(self):
+        class A(Document):
+            my_list = ListField(IntField())
+
+        app = A(my_list=[3]).save()
+        app.my_list = []
+        app.save()
+        # This creates a document without a my_list key in the a collection.
+
+
+        app2 = A.objects(id=app.id).get()
+        self.assertEqual(app2.my_list, [])
+
+        app3 = A.objects(id=app.id).only('my_list').get()
+        self.assertIsNone(app3.my_list)
+
+        # This creates a document with a my_list key mapped to an empty list.
+        app4 = A(my_list=[]).save()
+        app5 = A.objects(id=app4.id).only('my_list').get()
+        self.assertEqual(app5.my_list, [])
+
     def test_filtered_delete(self):
         """
         Tests the delete method of a List of Embedded Documents
