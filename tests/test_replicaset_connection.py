@@ -1,11 +1,13 @@
 import sys
+
 sys.path[0:0] = [""]
 import unittest
 
-import pymongo
 from pymongo import ReadPreference
 
-if pymongo.version_tuple[0] >= 3:
+from mongoengine.python_support import IS_PYMONGO_3
+
+if IS_PYMONGO_3:
     from pymongo import MongoClient
     CONN_CLASS = MongoClient
     READ_PREF = ReadPreference.SECONDARY

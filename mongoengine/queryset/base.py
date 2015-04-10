@@ -21,6 +21,7 @@ from mongoengine.common import _import_class
 from mongoengine.base.common import get_document
 from mongoengine.errors import (OperationError, NotUniqueError,
                                 InvalidQueryError, LookUpError)
+from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -1385,7 +1386,7 @@ class BaseQuerySet(object):
 
     @property
     def _cursor_args(self):
-        if pymongo.version_tuple[0] < 3:
+        if not IS_PYMONGO_3:
             fields_name = 'fields'
             cursor_args = {
                 'timeout': self._timeout,

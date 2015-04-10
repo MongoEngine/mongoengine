@@ -1,13 +1,12 @@
-import pymongo
 from pymongo import MongoClient, ReadPreference, uri_parser
-
+from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
-if pymongo.version_tuple[0] >= 3:
+if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
 else:
     from pymongo import MongoReplicaSetClient
@@ -112,7 +111,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             # Discard replicaSet if not base string
             if not isinstance(conn_settings['replicaSet'], basestring):
                 conn_settings.pop('replicaSet', None)
-            if pymongo.version_tuple[0] < 3:
+            if not IS_PYMONGO_3:
                 connection_class = MongoReplicaSetClient
 
         try:

@@ -17,7 +17,7 @@ from bson import ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
-from mongoengine.python_support import PY3
+from mongoengine.python_support import PY3, IS_PYMONGO_3
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
@@ -54,7 +54,7 @@ def skip_older_mongodb(f):
 def skip_pymongo3(f):
     def _inner(*args, **kwargs):
 
-        if pymongo.version_tuple[0] >= 3:
+        if IS_PYMONGO_3:
             raise SkipTest("Useless with PyMongo 3+")
 
         return f(*args, **kwargs)
@@ -2928,7 +2928,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(query.count(), 3)
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
         cursor_args = query._cursor_args
-        if pymongo.version_tuple[0] < 3:
+        if not IS_PYMONGO_3:
             cursor_args_fields = cursor_args['fields']
         else:
             cursor_args_fields = cursor_args['projection']
@@ -3998,7 +3998,7 @@ class QuerySetTest(unittest.TestCase):
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
         self.assertEqual([], bars)
 
-        if pymongo.version_tuple[0] < 3:
+        if not IS_PYMONGO_3:
             error_class = ConfigurationError
         else:
             error_class = TypeError

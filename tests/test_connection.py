@@ -14,12 +14,13 @@ import pymongo
 from bson.tz_util import utc
 
 from mongoengine import *
+from mongoengine.python_support import IS_PYMONGO_3
 import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
 
 
 def get_tz_awareness(connection):
-    if pymongo.version_tuple[0] < 3:
+    if not IS_PYMONGO_3:
         return connection.tz_aware
     else:
         return connection.codec_options.tz_aware
@@ -73,7 +74,7 @@ class ConnectionTest(unittest.TestCase):
         c.admin.authenticate("admin", "password")
         c.mongoenginetest.add_user("username", "password")
 
-        if pymongo.version_tuple[0] < 3:
+        if not IS_PYMONGO_3:
             self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
 
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
@@ -100,7 +101,7 @@ class ConnectionTest(unittest.TestCase):
         c.admin.authenticate("admin", "password")
         c.mongoenginetest.add_user("username", "password")
 
-        if pymongo.version_tuple[0] < 3:
+        if not IS_PYMONGO_3:
             self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
 
         connect("mongoenginetest", host='mongodb://localhost/')
@@ -170,7 +171,7 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(len(mongo_connections.items()), 2)
         self.assertTrue('t1' in mongo_connections.keys())
         self.assertTrue('t2' in mongo_connections.keys())
-        if pymongo.version_tuple[0] < 3:
+        if not IS_PYMONGO_3:
             self.assertEqual(mongo_connections['t1'].host, 'localhost')
             self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')
         else:
