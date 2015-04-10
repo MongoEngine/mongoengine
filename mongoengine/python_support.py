@@ -1,6 +1,13 @@
 """Helper functions and types to aid with Python 2.5 - 3 support."""
 
 import sys
+import pymongo
+
+
+if pymongo.version_tuple[0] < 3:
+    IS_PYMONGO_3 = False
+else:
+    IS_PYMONGO_3 = True
 
 PY3 = sys.version_info[0] == 3
 
