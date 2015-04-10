@@ -3621,8 +3621,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
             my_list = ListField(EmbeddedDocumentField(EmbeddedWithUnique))
 
         a1 = A(my_list=[]).save()
-        with self.assertRaises(NotUniqueError):
-            a2 = A(my_list=[]).save()
+        self.assertRaises(NotUniqueError, lambda : A(my_list=[]).save())
 
         class EmbeddedWithSparseUnique(EmbeddedDocument):
             number = IntField(unique=True, sparse=True)
