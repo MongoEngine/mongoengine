@@ -3609,6 +3609,11 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.assertEqual(number, 2)
 
     def test_only_populates_missing_listfield(self):
+        """
+        Tests that getting a query result filtered by only() doesn't populate
+        missing list fields with an empty list.
+        """
+
         class A(Document):
             my_list = ListField(IntField())
 
