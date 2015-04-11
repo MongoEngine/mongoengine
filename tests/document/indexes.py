@@ -11,7 +11,6 @@ from datetime import datetime
 
 from mongoengine import *
 from mongoengine.connection import get_db, get_connection
-from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ("IndexesTest", )
 
@@ -445,29 +444,32 @@ class IndexesTest(unittest.TestCase):
         obj = Test(a=1)
         obj.save()
 
+        connection = get_connection()
+        IS_MONGODB_3 = connection.server_info()['versionArray'][0] >= 3
+
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
         query_plan = Test.objects(id=obj.id).exclude('a').explain()
-        if not IS_PYMONGO_3:
+        if not IS_MONGODB_3:
             self.assertFalse(query_plan['indexOnly'])
         else:
             self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IDHACK')
 
         query_plan = Test.objects(id=obj.id).only('id').explain()
-        if not IS_PYMONGO_3:
+        if not IS_MONGODB_3:
             self.assertTrue(query_plan['indexOnly'])
         else:
             self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IDHACK')
 
         query_plan = Test.objects(a=1).only('a').exclude('id').explain()
-        if not IS_PYMONGO_3:
+        if not IS_MONGODB_3:
             self.assertTrue(query_plan['indexOnly'])
         else:
             self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IXSCAN')
             self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('stage'), 'PROJECTION')
 
         query_plan = Test.objects(a=1).explain()
-        if not IS_PYMONGO_3:
+        if not IS_MONGODB_3:
             self.assertFalse(query_plan['indexOnly'])
         else:
             self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IXSCAN')
