@@ -2439,7 +2439,7 @@ class FieldTest(unittest.TestCase):
         binary_id = uuid.uuid4().bytes
         att = Attachment(id=binary_id).save()
         self.assertEqual(1, Attachment.objects.count())
-        self.assertIsNotNone(Attachment.objects.filter(id=binary_id).first())
+        self.assertNotEqual(None, Attachment.objects.filter(id=binary_id).first())
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 
