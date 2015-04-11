@@ -568,7 +568,7 @@ class BaseQuerySet(object):
 
         queryset = self.clone()
         query = queryset._query
-        if not remove and IS_PYMONGO_3:
+        if not IS_PYMONGO_3 or not remove:
             update = transform.update(queryset._document, **update)
         sort = queryset._ordering
 
