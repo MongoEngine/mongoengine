@@ -166,7 +166,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
-        #TODO: use new get_collection() with PyMongo3 ?
+        # TODO: use new get_collection() with PyMongo3 ?
         if not hasattr(cls, '_collection') or cls._collection is None:
             db = cls._get_db()
             collection_name = cls._get_collection_name()
@@ -308,7 +308,9 @@ class Document(BaseDocument):
                     object_id = collection.insert(doc, **write_concern)
                 else:
                     object_id = collection.save(doc, **write_concern)
-                    # Pymongo 3.0 bug, fix scheduled for 3.0.1
+                    # TODO: Pymongo 3.0 bug, fix scheduled for 3.0.1
+                    # In PyMongo 3.0, the save() call calls internally the _update() call
+                    # but they forget to return the _id value passed back, therefore getting it back here
                     if not object_id and pymongo.version_tuple == (3, 0):
                         object_id = self._qs.filter(**self._object_key).first() and \
                                     self._qs.filter(**self._object_key).first().pk

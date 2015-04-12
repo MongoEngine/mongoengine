@@ -2491,7 +2491,8 @@ class FieldTest(unittest.TestCase):
         binary_id = uuid.uuid4().bytes
         att = Attachment(id=binary_id).save()
         self.assertEqual(1, Attachment.objects.count())
-        self.assertNotEqual(None, Attachment.objects.filter(id=binary_id).first())
+        # TODO use assertIsNotNone once Python 2.6 support is dropped
+        self.assertFalse(Attachment.objects.filter(id=binary_id).first() is not None)
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 
