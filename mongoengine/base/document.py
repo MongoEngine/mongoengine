@@ -70,7 +70,7 @@ class BaseDocument(object):
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
-        __ignore_undefined_fields = values.pop("__ignore_undefined_fields", False)
+        __ignore_undefined_fields = self._meta.get("ignore_undefined_fields", False)
 
         # Check if there are undefined fields supplied, if so raise an
         # Exception.
@@ -672,7 +672,7 @@ class BaseDocument(object):
         return cls._meta.get('collection', None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, ignore_undefined_fields=True):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         if not only_fields:
@@ -724,7 +724,7 @@ class BaseDocument(object):
         if cls.STRICT:
             data = dict((k, v)
                         for k, v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, __ignore_undefined_fields=ignore_undefined_fields, **data)
+        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
             obj._fields = fields
