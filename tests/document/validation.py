@@ -165,6 +165,24 @@ class ValidatorErrorTest(unittest.TestCase):
 
         self.assertRaises(ValidationError, lambda: d2.validate())
 
+    def test_parent_reference_in_child_document(self):
+        """ Test to demonstrate behavior in Issue #954
+        """
+        class Parent(Document):
+            meta = {'allow_inheritance': True}
+            reference = ReferenceField('self')
+
+        class Child(Parent):
+            pass
+
+        parent = Parent()
+        parent.save()
+
+        child = Child(reference=parent)
+        # Saving child should not raise a ValidationError
+        with self.assertRaises(ValidationError):
+            child.save()
+
 
 if __name__ == '__main__':
     unittest.main()
