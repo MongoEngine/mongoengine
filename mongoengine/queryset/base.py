@@ -937,6 +937,7 @@ class BaseQuerySet(object):
         :param enabled: whether or not snapshot mode is enabled
 
         ..versionchanged:: 0.5 - made chainable
+        .. deprecated:: Ignored with PyMongo 3+
         """
         queryset = self.clone()
         queryset._snapshot = enabled
@@ -958,6 +959,8 @@ class BaseQuerySet(object):
         """Enable or disable the slave_okay when querying.
 
         :param enabled: whether or not the slave_okay is enabled
+
+        .. deprecated:: Ignored with PyMongo 3+
         """
         queryset = self.clone()
         queryset._slave_okay = enabled
@@ -1420,8 +1423,11 @@ class BaseQuerySet(object):
                 cursor_args['slave_okay'] = self._slave_okay
         else:
             fields_name = 'projection'
-            # snapshot is not to handled at all by PyMongo 3+
-            # TODO: raise a warning?
+            # snapshot is not handled at all by PyMongo 3+
+            # TODO: evaluate similar possibilities using modifiers
+            if self._snapshot:
+                msg = "The snapshot option is not anymore available with PyMongo 3+"
+                warnings.warn(msg, DeprecationWarning)
             cursor_args = {
                 'no_cursor_timeout': self._timeout
             }
