@@ -179,10 +179,11 @@ class ValidatorErrorTest(unittest.TestCase):
         parent.save()
 
         child = Child(reference=parent)
-        # Saving child should not raise a ValidationError
-        with self.assertRaises(ValidationError):
+        try:
+            # Saving child should not raise a ValidationError
             child.save()
-
+        except ValidationError as e:
+            self.fail("test should not throw validation error. %s" % e.message)
 
 if __name__ == '__main__':
     unittest.main()
