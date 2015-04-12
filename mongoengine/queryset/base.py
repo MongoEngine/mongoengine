@@ -930,6 +930,7 @@ class BaseQuerySet(object):
             plan = pprint.pformat(plan)
         return plan
 
+    # DEPRECATED. Has no more impact on PyMongo 3+
     def snapshot(self, enabled):
         """Enable or disable snapshot mode when querying.
 
@@ -1419,7 +1420,8 @@ class BaseQuerySet(object):
                 cursor_args['slave_okay'] = self._slave_okay
         else:
             fields_name = 'projection'
-            # snapshot seems not to be handled at all by PyMongo 3+
+            # snapshot is not to handled at all by PyMongo 3+
+            # TODO: raise a warning?
             cursor_args = {
                 'no_cursor_timeout': self._timeout
             }
