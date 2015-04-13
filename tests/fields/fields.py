@@ -3172,6 +3172,86 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(FieldDoesNotExist, test)
 
 
+    def test_undefined_field_allowed_read(self):
+        """
+        Test read from data wtih undefined fields #934 #953
+        """
+
+        class A(Document):
+            test = StringField(required=True)
+            test2 = StringField(required=True)
+            meta = {'collection': 'undefined_test'}
+
+        class B(Document):
+            test = StringField(required=True)
+            meta = {'collection': 'undefined_test', 'ignore_undefined_fields': True}
+
+        a = A()
+        a.test = 'one'
+        a.test2 = 'two'
+        a.save()
+
+        try:
+            b = B.objects.get()
+            self.assertEqual(b.test, a.test)
+        except Exception:
+            self.fail()
+
+    def test_undefined_field_not_allowed_read(self):
+        """
+        Test read from data wtih undefined fields #934 #953
+        """
+
+        class A(Document):
+            test = StringField(required=True)
+            test2 = StringField(required=True)
+            meta = {'collection': 'undefined_test'}
+
+        class B(Document):
+            test = StringField(required=True)
+            meta = {'collection': 'undefined_test'}
+
+        a = A()
+        a.test = 'one'
+        a.test2 = 'two'
+        a.save()
+
+        def test():
+            b = B.objects.get()
+
+        self.assertRaises(FieldDoesNotExist, test)
+
+
+    def test_undefined_field_allowed_write(self):
+        """
+        Test write to undefined fields
+        """
+
+        class A(Document):
+            test = StringField(required=True)
+            meta = {'ignore_undefined_fields': True}
+
+        def test():
+            A(test2='test')
+
+        self.assertRaises(FieldDoesNotExist, test)
+
+    def test_undefined_field_not_allowed_write(self):
+        """
+        Test write to undefined fields
+        """
+
+        class A(Document):
+            test = StringField(required=True)
+
+        def test():
+            A(test2='test')
+
+        self.assertRaises(FieldDoesNotExist, test)
+
+
+
+
 class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
     @classmethod
