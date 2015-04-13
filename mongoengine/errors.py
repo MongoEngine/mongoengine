@@ -42,7 +42,14 @@ class NotUniqueError(OperationError):
 
 
 class FieldDoesNotExist(Exception):
-    pass
+    """Raised when trying to set a field
+    not declared in a :class:`~mongoengine.Document`
+    or an :class:`~mongoengine.EmbeddedDocument`.
+
+    To avoid this behavior on data loading,
+    you should the :attr:`strict` to ``False``
+    in the :attr:`meta` dictionnary.
+    """
 
 
 class ValidationError(AssertionError):

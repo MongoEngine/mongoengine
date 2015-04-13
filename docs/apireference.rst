@@ -34,6 +34,9 @@ Documents
 .. autoclass:: mongoengine.ValidationError
   :members:
 
+.. autoclass:: mongoengine.FieldDoesNotExist
+
+
 Context Managers
 ================
 
