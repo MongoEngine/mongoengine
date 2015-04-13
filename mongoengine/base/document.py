@@ -70,9 +70,9 @@ class BaseDocument(object):
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
-        # Check if there are undefined fields supplied, if so raise an
-        # Exception.
-        if not self._dynamic and self._meta.get('strict', True):
+        # Check if there are undefined fields supplied to the constructor,
+        # if so raise an Exception.
+        if not self._dynamic and (self._meta.get('strict', True) or _created):
             for var in values.keys():
                 if var not in self._fields.keys() + ['id', 'pk', '_cls', '_text_score']:
                     msg = (
