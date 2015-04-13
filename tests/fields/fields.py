@@ -3191,11 +3191,8 @@ class FieldTest(unittest.TestCase):
         a.test2 = 'two'
         a.save()
 
-        try:
-            b = B.objects.get()
-            self.assertEqual(b.test, a.test)
-        except Exception:
-            self.fail()
+        b = B.objects.get()
+        self.assertEqual(b.test, a.test)
 
     def test_undefined_field_not_allowed_read(self):
         """
