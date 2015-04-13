@@ -16,7 +16,8 @@ from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError, NotUniqueError)
+                                InvalidQueryError, NotUniqueError,
+                                FieldDoesNotExist)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
@@ -2466,6 +2467,117 @@ class InstanceTest(unittest.TestCase):
 
         group = Group.objects.first()
         self.assertEqual("hello - default", group.name)
+
+    def test_load_undefined_fields(self):
+        class User(Document):
+            name = StringField()
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'foo': 'Bar',
+            'data': [1, 2, 3]
+        })
+
+        with self.assertRaises(FieldDoesNotExist):
+            User.objects.first()
+
+    def test_load_undefined_fields_with_strict_false(self):
+        class User(Document):
+            name = StringField()
+
+            meta = {'strict': False}
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'foo': 'Bar',
+            'data': [1, 2, 3]
+        })
+
+        user = User.objects.first()
+        self.assertEqual(user.name, 'John')
+        self.assertFalse(hasattr(user, 'foo'))
+        self.assertEqual(user._data['foo'], 'Bar')
+        self.assertFalse(hasattr(user, 'data'))
+        self.assertEqual(user._data['data'], [1, 2, 3])
+
+    def test_load_undefined_fields_on_embedded_document(self):
+        class Thing(EmbeddedDocument):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            thing = EmbeddedDocumentField(Thing)
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'thing': {
+                'name': 'My thing',
+                'foo': 'Bar',
+                'data': [1, 2, 3]
+            }
+        })
+
+        with self.assertRaises(FieldDoesNotExist):
+            User.objects.first()
+
+    def test_load_undefined_fields_on_embedded_document_with_strict_false_on_doc(self):
+        class Thing(EmbeddedDocument):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            thing = EmbeddedDocumentField(Thing)
+
+            meta = {'strict': False}
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'thing': {
+                'name': 'My thing',
+                'foo': 'Bar',
+                'data': [1, 2, 3]
+            }
+        })
+
+        with self.assertRaises(FieldDoesNotExist):
+            User.objects.first()
+
+    def test_load_undefined_fields_on_embedded_document_with_strict_false(self):
+        class Thing(EmbeddedDocument):
+            name = StringField()
+
+            meta = {'strict': False}
+
+        class User(Document):
+            name = StringField()
+            thing = EmbeddedDocumentField(Thing)
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'thing': {
+                'name': 'My thing',
+                'foo': 'Bar',
+                'data': [1, 2, 3]
+            }
+        })
+
+        user = User.objects.first()
+        self.assertEqual(user.name, 'John')
+        self.assertEqual(user.thing.name, 'My thing')
+        self.assertFalse(hasattr(user.thing, 'foo'))
+        self.assertEqual(user.thing._data['foo'], 'Bar')
+        self.assertFalse(hasattr(user.thing, 'data'))
+        self.assertEqual(user.thing._data['data'], [1, 2, 3])
 
     def test_spaces_in_keys(self):
 
