@@ -2480,8 +2480,7 @@ class InstanceTest(unittest.TestCase):
             'data': [1, 2, 3]
         })
 
-        with self.assertRaises(FieldDoesNotExist):
-            User.objects.first()
+        self.assertRaises(FieldDoesNotExist, User.objects.first)
 
     def test_load_undefined_fields_with_strict_false(self):
         class User(Document):
@@ -2523,8 +2522,7 @@ class InstanceTest(unittest.TestCase):
             }
         })
 
-        with self.assertRaises(FieldDoesNotExist):
-            User.objects.first()
+        self.assertRaises(FieldDoesNotExist, User.objects.first)
 
     def test_load_undefined_fields_on_embedded_document_with_strict_false_on_doc(self):
         class Thing(EmbeddedDocument):
@@ -2547,8 +2545,7 @@ class InstanceTest(unittest.TestCase):
             }
         })
 
-        with self.assertRaises(FieldDoesNotExist):
-            User.objects.first()
+        self.assertRaises(FieldDoesNotExist, User.objects.first)
 
     def test_load_undefined_fields_on_embedded_document_with_strict_false(self):
         class Thing(EmbeddedDocument):
