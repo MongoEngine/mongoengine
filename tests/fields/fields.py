@@ -3174,7 +3174,7 @@ class FieldTest(unittest.TestCase):
 
     def test_undefined_field_allowed_read(self):
         """
-        Test read from data wtih undefined fields #934 #953
+        Test read from data with undefined fields #934 #953
         """
 
         class A(Document):
@@ -3196,7 +3196,7 @@ class FieldTest(unittest.TestCase):
 
     def test_undefined_field_not_allowed_read(self):
         """
-        Test read from data wtih undefined fields #934 #953
+        Test read from data with undefined fields #934 #953
         """
 
         class A(Document):
