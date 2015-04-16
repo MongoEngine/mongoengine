@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
+from nose.plugins.skip import SkipTest
+
 sys.path[0:0] = [""]
 
 import datetime
@@ -2439,8 +2441,25 @@ class FieldTest(unittest.TestCase):
         binary_id = uuid.uuid4().bytes
         att = Attachment(id=binary_id).save()
         self.assertEqual(1, Attachment.objects.count())
+        self.assertEqual(1, Attachment.objects.filter(id=att.id).count())
         # TODO use assertIsNotNone once Python 2.6 support is dropped
-        self.assertFalse(Attachment.objects.filter(id=binary_id).first() is not None)
+        self.assertTrue(Attachment.objects.filter(id=att.id).first() is not None)
+        att.delete()
+        self.assertEqual(0, Attachment.objects.count())
+
+    def test_binary_field_primary_filter_by_binary_pk_as_str(self):
+
+        raise SkipTest("Querying by id as string is not currently supported")
+
+        class Attachment(Document):
+            id = BinaryField(primary_key=True)
+
+        Attachment.drop_collection()
+        binary_id = uuid.uuid4().bytes
+        att = Attachment(id=binary_id).save()
+        self.assertEqual(1, Attachment.objects.filter(id=binary_id).count())
+        # TODO use assertIsNotNone once Python 2.6 support is dropped
+        self.assertTrue(Attachment.objects.filter(id=binary_id).first() is not None)
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 

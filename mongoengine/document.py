@@ -307,8 +307,9 @@ class Document(BaseDocument):
                     # In PyMongo 3.0, the save() call calls internally the _update() call
                     # but they forget to return the _id value passed back, therefore getting it back here
                     if not object_id and pymongo.version_tuple == (3, 0):
-                        object_id = self._qs.filter(**self._object_key).first() and \
-                                    self._qs.filter(**self._object_key).first().pk
+                        pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
+                        object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
+                                    self._qs.filter(pk=pk_as_mongo_obj).first().pk
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
