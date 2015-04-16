@@ -46,6 +46,8 @@ General Guidelines
 - Write tests and make sure they pass (make sure you have a mongod
   running on the default port, then execute ``python setup.py test``
   from the cmd line to run the test suite).
+- Ensure tests pass on every Python and PyMongo versions.
+  You can test on these versions locally by executing ``tox``
 - Add yourself to AUTHORS :)
 
 Documentation

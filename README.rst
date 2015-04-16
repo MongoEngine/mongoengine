@@ -8,10 +8,10 @@ MongoEngine
 
 .. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
   :target: http://travis-ci.org/MongoEngine/mongoengine
-  
-.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master 
+
+.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master
   :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
-  
+
 .. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.png
    :target: https://landscape.io/github/MongoEngine/mongoengine/master
    :alt: Code Health
@@ -97,6 +97,17 @@ Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
 the standard port, and run: ``python setup.py test``.
+
+To run the test suite on every supported Python version and every supported PyMongo version,
+you can use ``tox``.
+tox and each supported Python version should be installed in your environment:
+
+.. code-block:: shell
+
+    # Install tox
+    $ pip install tox
+    # Run the test suites
+    $ tox
 
 Community
 =========
