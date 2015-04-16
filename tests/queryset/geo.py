@@ -1,4 +1,6 @@
 import sys
+from mongoengine.connection import get_connection
+
 sys.path[0:0] = [""]
 
 import unittest
@@ -141,7 +143,13 @@ class GeoQueriesTest(unittest.TestCase):
     def test_spherical_geospatial_operators(self):
         """Ensure that spherical geospatial queries are working
         """
-        raise SkipTest("https://jira.mongodb.org/browse/SERVER-14039")
+        # Needs MongoDB > 2.6.4 https://jira.mongodb.org/browse/SERVER-14039
+        connection = get_connection()
+        info = connection.test.command('buildInfo')
+        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
+        if mongodb_version < (2, 6, 4):
+            raise SkipTest("Need MongoDB version 2.6.4+")
+
         class Point(Document):
             location = GeoPointField()
 
