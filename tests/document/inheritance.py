@@ -324,6 +324,24 @@ class InheritanceTest(unittest.TestCase):
         self.assertEqual(len(berlin._fields_ordered), 4)
         self.assertEqual(berlin._fields_ordered[0], 'id')
 
+    def test_auto_id_vs_non_pk_id_field(self):
+
+        class City(Document):
+            continent = StringField()
+            id = IntField()
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class EuropeanCity(City):
+            name = StringField()
+            country = StringField()
+
+        berlin = EuropeanCity(name='Berlin', continent='Europe')
+        self.assertEqual(len(berlin._db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._reverse_db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._fields_ordered), 5)
+        self.assertEqual(berlin._fields_ordered[0], 'id')
+
     def test_abstract_document_creation_does_not_fail(self):
 
         class City(Document):
