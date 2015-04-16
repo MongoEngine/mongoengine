@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
-from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 try:
     from django.utils.module_loading import import_module
@@ -78,7 +77,6 @@ class MongoUserManager(UserManager):
         for name in self.dj_model.REQUIRED_FIELDS:
             field = models.CharField(_(name), max_length=30)
             field.contribute_to_class(self.dj_model, name)
-
 
     def get(self, *args, **kwargs):
         try:

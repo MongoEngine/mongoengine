@@ -395,12 +395,15 @@ class MongoEngineBackend(object):
     def get_user(self, user_id):
         return self.user_document.objects.with_id(user_id)
 
+    # TODO: needs the whole permissions logic
+
     @property
     def user_document(self):
         if self._user_doc is False:
             from .mongo_auth.models import get_user_document
             self._user_doc = get_user_document()
         return self._user_doc
+
 
 def get_user(userid):
     """Returns a User object from an id (User.id). Django's equivalent takes

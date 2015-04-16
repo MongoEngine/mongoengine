@@ -11,6 +11,7 @@ from django.http import Http404
 from django.template import Context, Template
 from django.conf import settings
 from django.core.paginator import Paginator
+from django.test import modify_settings
 
 settings.configure(
     USE_TZ=True,
@@ -28,7 +29,7 @@ except RuntimeError:
 
 try:
     from django.contrib.auth import authenticate, get_user_model
-    from mongoengine.django.auth import User
+    from mongoengine.django.auth import User, ContentType, Permission, Group
     from mongoengine.django.mongo_auth.models import (
         MongoUser,
         MongoUserManager,
@@ -319,6 +320,82 @@ class MongoAuthTest(unittest.TestCase):
         user = authenticate(username='user', password='test')
         db_user = User.objects.get(username='user')
         self.assertEqual(user.id, db_user.id)
+
+
+class MongoAuthBackendTest(MongoTestCase):
+    user_data = {
+        'username': 'user',
+        'email': 'user@example.com',
+        'password': 'test',
+    }
+    backend = 'mongoengine.django.auth.MongoEngineBackend'
+
+    UserModel = MongoUser
+
+    def create_users(self):
+        self.user = MongoUser.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='test',
+        )
+        self.superuser = MongoUser.objects.create_superuser(
+            username='test2',
+            email='test2@example.com',
+            password='test',
+        )
+
+    def setUp(self):
+        if not DJ15:
+            raise SkipTest('mongo_auth requires Django 1.5')
+        self.patched_settings = modify_settings(
+            AUTHENTICATION_BACKENDS={'append': self.backend},
+        )
+        self.patched_settings.enable()
+        connect(db='mongoenginetest')
+        User.drop_collection()
+        ContentType.drop_collection()
+        Permission.drop_collection()
+        self.create_users()
+        super(MongoAuthBackendTest, self).setUp()
+
+    def tearDown(self):
+        self.patched_settings.disable()
+        ContentType.objects.clear_cache()
+
+    def test_has_perm(self):
+        user = self.UserModel._default_manager.get(pk=self.user.pk)
+        self.assertEqual(user.has_perm('auth.test'), False)
+
+        user.is_staff = True
+        user.save()
+        self.assertEqual(user.has_perm('auth.test'), False)
+
+        user.is_superuser = True
+        user.save()
+        self.assertEqual(user.has_perm('auth.test'), True)
+
+        user.is_staff = True
+        user.is_superuser = True
+        user.is_active = False
+        user.save()
+        self.assertEqual(user.has_perm('auth.test'), False)
+
+    def test_custom_perms(self):
+        user = self.UserModel._default_manager.get(pk=self.user.pk)
+        content_type = ContentType(app_label='test', model='group').save()
+        perm = Permission(name='test', content_type=content_type, codename='test').save()
+        user.user_permissions.append(perm)
+        user.save()
+
+        # reloading user to purge the _perm_cache
+        user = self.UserModel._default_manager.get(pk=self.user.pk)
+        raise SkipTest("Permission logic not implemented on Mongo Backend")
+        self.assertEqual(user.get_all_permissions() == {'auth.test'}, True)
+        self.assertEqual(user.get_group_permissions(), set())
+        self.assertEqual(user.has_module_perms('Group'), False)
+        self.assertEqual(user.has_module_perms('auth'), True)
+        self.assertEqual(user.has_perm('auth.test'), True)
+        self.assertEqual(user.has_perms(['auth.test']), True)
 
 
 class MongoTestCaseTest(MongoTestCase):
