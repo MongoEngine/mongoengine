@@ -152,6 +152,8 @@ class Document(BaseDocument):
         """
 
         def fget(self):
+            if not 'id_field' in self._meta:
+                return None
             return getattr(self, self._meta['id_field'])
 
         def fset(self, value):

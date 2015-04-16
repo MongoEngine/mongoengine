@@ -184,7 +184,7 @@ class BaseDocument(object):
             self__initialised = False
         # Check if the user has created a new instance of a class
         if (self._is_document and self__initialised
-                and self__created and name == self._meta['id_field']):
+                and self__created and name == self._meta.get('id_field')):
             super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
