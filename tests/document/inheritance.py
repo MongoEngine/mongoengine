@@ -307,6 +307,23 @@ class InheritanceTest(unittest.TestCase):
         doc = Animal(name='dog')
         self.assertFalse('_cls' in doc.to_mongo())
 
+    def test_abstract_handle_ids_in_metaclass_properly(self):
+
+        class City(Document):
+            continent = StringField()
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class EuropeanCity(City):
+            name = StringField()
+            country = StringField()
+
+        berlin = EuropeanCity(name='Berlin', continent='Europe')
+        self.assertEqual(len(berlin._db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._reverse_db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._fields_ordered), 4)
+        self.assertEqual(berlin._fields_ordered[0], 'id')
+
     def test_abstract_document_creation_does_not_fail(self):
 
         class City(Document):
