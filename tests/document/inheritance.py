@@ -307,6 +307,17 @@ class InheritanceTest(unittest.TestCase):
         doc = Animal(name='dog')
         self.assertFalse('_cls' in doc.to_mongo())
 
+    def test_abstract_document_creation_does_not_fail(self):
+
+        class City(Document):
+            continent = StringField()
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+        bkk = City(continent='asia')
+        self.assertEqual(None, bkk.pk)
+        # TODO: expected error? Shouldn'twe created a new error type
+        self.assertRaises(KeyError, lambda: setattr(bkk, 'pk', 1))
+
     def test_allow_inheritance_embedded_document(self):
         """Ensure embedded documents respect inheritance
         """
