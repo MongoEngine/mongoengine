@@ -96,7 +96,7 @@ Some simple examples of what MongoEngine code looks like::
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port, and run: ``python setup.py test``.
+the standard port, and run: ``python setup.py nosetests``.
 
 To run the test suite on every supported Python version and every supported PyMongo version,
 you can use ``tox``.

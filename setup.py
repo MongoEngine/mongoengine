@@ -29,7 +29,6 @@ init = os.path.join(os.path.dirname(__file__), 'mongoengine', '__init__.py')
 version_line = list(filter(lambda l: l.startswith('VERSION'), open(init)))[0]
 
 VERSION = get_version(eval(version_line.split('=')[-1]))
-print(VERSION)
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
@@ -79,5 +78,6 @@ setup(name='mongoengine',
       classifiers=CLASSIFIERS,
       install_requires=['pymongo>=2.7.1'],
       test_suite='nose.collector',
+      setup_requires=['nose', 'rednose'],  # Allow proper nose usage with setuptols and tox
       **extra_opts
 )
