@@ -109,6 +109,11 @@ tox and each supported Python version should be installed in your environment:
     # Run the test suites
     $ tox
 
+If you wish to run one single or selected tests, use the nosetest convention. It will find the folder,
+eventually the file, go to the TestClass specified after the colon and eventually right to the single test.
+Also use the -s argument if you want to print out whatever or access pdb while testing.
+``python setup.py nosetests --tests tests/test_django.py:QuerySetTest.test_get_document_or_404 -s``
+
 Community
 =========
 - `MongoEngine Users mailing list
