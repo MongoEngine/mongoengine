@@ -11,7 +11,6 @@ from django.http import Http404
 from django.template import Context, Template
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.test import modify_settings
 
 settings.configure(
     USE_TZ=True,
@@ -38,6 +37,11 @@ try:
     DJ15 = True
 except Exception:
     DJ15 = False
+try:
+    from django.test import modify_settings
+    DJ17 = True
+except ImproperlyConfigured:
+    DJ17 = False
 from mongoengine.django.sessions import SessionStore, MongoSession
 from mongoengine.django.tests import MongoTestCase
 from datetime import tzinfo, timedelta
@@ -345,8 +349,8 @@ class MongoAuthBackendTest(MongoTestCase):
         )
 
     def setUp(self):
-        if not DJ15:
-            raise SkipTest('mongo_auth requires Django 1.5')
+        if not DJ17:
+            raise SkipTest('mongo_auth backend tests require Django 1.7')
         self.patched_settings = modify_settings(
             AUTHENTICATION_BACKENDS={'append': self.backend},
         )
@@ -390,7 +394,7 @@ class MongoAuthBackendTest(MongoTestCase):
         # reloading user to purge the _perm_cache
         user = self.UserModel._default_manager.get(pk=self.user.pk)
         raise SkipTest("Permission logic not implemented on Mongo Backend")
-        self.assertEqual(user.get_all_permissions() == {'auth.test'}, True)
+        self.assertEqual(user.get_all_permissions() == set(['auth.test']), True)
         self.assertEqual(user.get_group_permissions(), set())
         self.assertEqual(user.has_module_perms('Group'), False)
         self.assertEqual(user.has_module_perms('auth'), True)
