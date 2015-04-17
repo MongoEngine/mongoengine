@@ -98,6 +98,11 @@ Tests
 To run the test suite, ensure you are running a local instance of MongoDB on
 the standard port, and run: ``python setup.py test``.
 
+If you wish to run one single or selected tests, use the nosetest convention. It will find the folder,
+eventually the file, go to the TestClass specified after the colon and eventually right to the single test.
+Also use the -s argument if you want to print out whatever or access pdb while testing.
+``python setup.py nosetests --tests tests/test_django.py:QuerySetTest.test_get_document_or_404 -s``
+
 Community
 =========
 - `MongoEngine Users mailing list
