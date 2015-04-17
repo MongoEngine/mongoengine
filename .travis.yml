@@ -43,7 +43,7 @@ install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
   python-tk
-- travis_retry pip install tox>=1.9
+- travis_retry pip install tox>=1.9 coveralls
 script:
 - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
 after_script: coveralls --verbose
