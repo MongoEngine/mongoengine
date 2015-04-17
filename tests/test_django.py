@@ -40,7 +40,7 @@ except Exception:
 try:
     from django.test import modify_settings
     DJ17 = True
-except ImproperlyConfigured:
+except Exception:
     DJ17 = False
 from mongoengine.django.sessions import SessionStore, MongoSession
 from mongoengine.django.tests import MongoTestCase
