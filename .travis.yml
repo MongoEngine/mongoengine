@@ -45,7 +45,7 @@ install:
   python-tk
 - travis_retry pip install tox>=1.9 coveralls
 script:
-- tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
+- travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
 after_script: coveralls --verbose
 notifications:
   irc: irc.freenode.org#mongoengine
