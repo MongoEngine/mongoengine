@@ -458,22 +458,10 @@ class ComplexDateTimeField(StringField):
     """
 
     def __init__(self, separator=',', **kwargs):
-        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second',
-                      'microsecond']
-        self.separtor = separator
+        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second', 'microsecond']
+        self.separator = separator
+        self.format = separator.join(['%Y', '%m', '%d', '%H', '%M', '%S', '%f'])
         super(ComplexDateTimeField, self).__init__(**kwargs)
-
-    def _leading_zero(self, number):
-        """
-        Converts the given number to a string.
-
-        If it has only one digit, a leading zero so as it has always at least
-        two digits.
-        """
-        if int(number) < 10:
-            return "0%s" % number
-        else:
-            return str(number)
 
     def _convert_from_datetime(self, val):
         """
@@ -481,14 +469,11 @@ class ComplexDateTimeField(StringField):
         stored in MongoDB). This is the reverse function of
         `_convert_from_string`.
 
-        >>> a = datetime(2011, 6, 8, 20, 26, 24, 192284)
-        >>> RealDateTimeField()._convert_from_datetime(a)
-        '2011,06,08,20,26,24,192284'
+        >>> a = datetime(2011, 6, 8, 20, 26, 24, 92284)
+        >>> ComplexDateTimeField()._convert_from_datetime(a)
+        '2011,06,08,20,26,24,092284'
         """
-        data = []
-        for name in self.names:
-            data.append(self._leading_zero(getattr(val, name)))
-        return ','.join(data)
+        return val.strftime(self.format)
 
     def _convert_from_string(self, data):
         """
@@ -496,16 +481,12 @@ class ComplexDateTimeField(StringField):
         will manipulate). This is the reverse function of
         `_convert_from_datetime`.
 
-        >>> a = '2011,06,08,20,26,24,192284'
+        >>> a = '2011,06,08,20,26,24,092284'
         >>> ComplexDateTimeField()._convert_from_string(a)
-        datetime.datetime(2011, 6, 8, 20, 26, 24, 192284)
+        datetime.datetime(2011, 6, 8, 20, 26, 24, 92284)
         """
-        data = data.split(',')
-        data = map(int, data)
-        values = {}
-        for i in range(7):
-            values[self.names[i]] = data[i]
-        return datetime.datetime(**values)
+        values = map(int, data.split(self.separator))
+        return datetime.datetime(*values)
 
     def __get__(self, instance, owner):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)

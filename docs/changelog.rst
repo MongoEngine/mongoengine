@@ -10,6 +10,7 @@ Changes in 0.9.X - DEV
 - Support += and *= for ListField #595
 - Use sets for populating dbrefs to dereference
 - Fixed unpickled documents replacing the global field's list. #888
+- Fixed storage of microseconds in ComplexDateTimeField and unused separator option. #910
 
 Changes in 0.9.0
 ================
