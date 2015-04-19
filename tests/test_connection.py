@@ -14,6 +14,7 @@ from bson.tz_util import utc
 from mongoengine import *
 import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
+import mongoengine.connection as me_connection
 
 
 class ConnectionTest(unittest.TestCase):
@@ -95,6 +96,39 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
         db = get_db()
+        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertEqual(db.name, 'mongoenginetest')
+
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
+
+    def test_connect_uri_without_username_password(self):
+        """Ensure that the connect() method works properly with a uri,
+        when the username/password is specified outside the uri
+        """
+        c = connect(db='mongoenginetest', alias='admin')
+        c.admin.system.users.remove({})
+        c.mongoenginetest.system.users.remove({})
+
+        c.admin.add_user("admin", "password")
+        c.admin.authenticate("admin", "password")
+        c.mongoenginetest.add_user("username", "password")
+
+        conn = connect(alias='test_uri_no_username', host='mongodb://localhost/mongoenginetest', username="username", password="password")
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
+        # Since the mongodb instance used for testing doesn't require
+        # authentication (and turning that on breaks some 85 tests), and there
+        # doesn't appear to be any way to check to see if a connection has
+        # authenticated, I instead expose some internals of mongoengine to
+        # make sure the correct settings have been saved.
+        # Without this, instead of the test failing everything would appear to
+        # work fine, but there would be no username/password on the
+        # connection.
+        self.assertEqual(me_connection._connection_settings['test_uri_no_username']['username'], 'username')
+        self.assertEqual(me_connection._connection_settings['test_uri_no_username']['password'], 'password')
+
+        db = get_db(alias='test_uri_no_username')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
 

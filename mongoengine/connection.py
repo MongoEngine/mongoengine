@@ -54,9 +54,8 @@ def register_connection(alias, name=None, host=None, port=None,
         uri_dict = uri_parser.parse_uri(conn_settings['host'])
         conn_settings.update({
             'name': uri_dict.get('database') or name,
-            'username': uri_dict.get('username'),
-            'password': uri_dict.get('password'),
-            'read_preference': read_preference,
+            'username': uri_dict.get('username') or username,
+            'password': uri_dict.get('password') or password,
         })
         if "replicaSet" in conn_settings['host']:
             conn_settings['replicaSet'] = True
@@ -94,6 +93,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
+        # These settings aren't used until we connect to a specific db
         conn_settings.pop('name', None)
         conn_settings.pop('username', None)
         conn_settings.pop('password', None)
@@ -111,14 +111,20 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
         try:
             connection = None
-            # check for shared connections
-            connection_settings_iterator = ((db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
-            for db_alias, connection_settings in connection_settings_iterator:
+            # This loop allows us to detect different alias' that connect to the same mongodb instance, and have them
+            # share a single pymongo object.
+            # Ie: alias 'production' and 'readOnly' connect to the same database, just with a different
+            # username/password. This would have both alias' use the same pymongo connection object, but still
+            # authenticate separately.
+            connection_settings_iterator = ((alias, settings.copy()) for alias, settings in _connection_settings.iteritems())
+            for alias, connection_settings in connection_settings_iterator:
+                # Need to pop these off as we did above so the dict comparison works
                 connection_settings.pop('name', None)
                 connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
-                if conn_settings == connection_settings and _connections.get(db_alias, None):
-                    connection = _connections[db_alias]
+                connection_settings.pop('authentication_source', None)
+                if conn_settings == connection_settings and _connections.get(alias, None):
+                    connection = _connections[alias]
                     break
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
