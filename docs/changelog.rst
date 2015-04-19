@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Added Document meta option to restore backwards compatibility of allowing data to be loaded from a Mongo collection which contains fields that are undefined in the Document model. #953
 - Fixed mark_as_changed to handle higher/lower level fields changed. #927
 - ListField of embedded docs doesn't set the _instance attribute when iterating over it #914
 - Support += and *= for ListField #595
