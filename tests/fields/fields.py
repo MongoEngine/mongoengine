@@ -5,6 +5,9 @@ sys.path[0:0] = [""]
 import datetime
 import unittest
 import uuid
+import math
+import itertools
+import re
 
 try:
     import dateutil
@@ -689,6 +692,7 @@ class FieldTest(unittest.TestCase):
         """
         class LogEntry(Document):
             date = ComplexDateTimeField()
+            date_with_dots = ComplexDateTimeField(separator='.')
 
         LogEntry.drop_collection()
 
@@ -728,6 +732,18 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(log.date, d1)
             log1 = LogEntry.objects.get(date=d1)
             self.assertEqual(log, log1)
+
+        # Test string padding
+        microsecond = map(int, [math.pow(10, x) for x in xrange(6)])
+        mm = dd = hh = ii = ss = [1, 10]
+
+        for values in itertools.product([2014], mm, dd, hh, ii, ss, microsecond):
+            stored = LogEntry(date=datetime.datetime(*values)).to_mongo()['date']
+            self.assertTrue(re.match('^\d{4},\d{2},\d{2},\d{2},\d{2},\d{2},\d{6}$', stored) is not None)
+
+        # Test separator
+        stored = LogEntry(date_with_dots=datetime.datetime(2014, 1, 1)).to_mongo()['date_with_dots']
+        self.assertTrue(re.match('^\d{4}.\d{2}.\d{2}.\d{2}.\d{2}.\d{2}.\d{6}$', stored) is not None)
 
         LogEntry.drop_collection()
 
@@ -784,6 +800,25 @@ class FieldTest(unittest.TestCase):
             date__gte=datetime.datetime(2000, 1, 1),
         )
         self.assertEqual(logs.count(), 10)
+
+        LogEntry.drop_collection()
+
+        # Test microsecond-level ordering/filtering
+        for microsecond in (99, 999, 9999, 10000):
+            LogEntry(date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)).save()
+
+        logs = list(LogEntry.objects.order_by('date'))
+        for next_idx, log in enumerate(logs[:-1], start=1):
+            next_log = logs[next_idx]
+            self.assertTrue(log.date < next_log.date)
+
+        logs = list(LogEntry.objects.order_by('-date'))
+        for next_idx, log in enumerate(logs[:-1], start=1):
+            next_log = logs[next_idx]
+            self.assertTrue(log.date > next_log.date)
+
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(2015, 1, 1, 0, 0, 0, 10000))
+        self.assertEqual(logs.count(), 4)
 
         LogEntry.drop_collection()
 
