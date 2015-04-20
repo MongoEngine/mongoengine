@@ -1,4 +1,3 @@
-import pymongo
 from pymongo import MongoClient, MongoReplicaSetClient, uri_parser
 
 
@@ -58,8 +57,11 @@ def register_connection(alias, name=None, host=None, port=None,
             'password': uri_dict.get('password'),
             'read_preference': read_preference,
         })
-        if "replicaSet" in conn_settings['host']:
+        uri_options = uri_dict['options']
+        if 'replicaset' in uri_options:
             conn_settings['replicaSet'] = True
+        if 'authsource' in uri_options:
+            conn_settings['authentication_source'] = uri_options['authsource']
 
     # Deprecated parameters that should not be passed on
     kwargs.pop('slaves', None)
