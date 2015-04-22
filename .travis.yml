@@ -44,8 +44,9 @@ install:
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
   python-tk
 - travis_retry pip install tox>=1.9 coveralls
+- travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 script:
-- travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
+- tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
 after_script: coveralls --verbose
 notifications:
   irc: irc.freenode.org#mongoengine
