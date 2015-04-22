@@ -384,7 +384,8 @@ class MongoEngineBackend(object):
     _user_doc = False
 
     def authenticate(self, username=None, password=None):
-        user = self.user_document.objects(username=username).first()
+        user = self.user_document.objects(
+            __raw__={self.user_document.USERNAME_FIELD: username}).first()
         if user:
             if password and user.check_password(password):
                 backend = auth.get_backends()[0]
