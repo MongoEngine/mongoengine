@@ -2,6 +2,7 @@
 Changelog
 =========
 
+- Django support was removed and will be available as a separate extension. #958
 
 Further changes not tracked, although some fixes for MongoDB 2.6 were cherry-picked from upstream/master
 
