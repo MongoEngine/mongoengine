@@ -3610,7 +3610,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
     def test_only_populates_missing_listfield(self):
         """
-        Tests that getting a query result filtered by only() doesn't populate
+        Tests that getting a query result filtered by only() still populates
         missing list fields with an empty list.
         """
 
@@ -3627,7 +3627,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.assertEqual(app2.my_list, [])
 
         app3 = A.objects(id=app.id).only('my_list').get()
-        self.assertTrue(app3.my_list is None)
+        self.assertEqual(app3.my_list, [])
 
         # This creates a document with a my_list key mapped to an empty list.
         app4 = A(my_list=[]).save()
