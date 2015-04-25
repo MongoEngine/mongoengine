@@ -109,27 +109,24 @@ class ConnectionTest(unittest.TestCase):
         the option `authSource` in URI.
         """
         # Create users
-        c = connect(db='mongoenginetest', alias='test')
+        c = connect('mongoenginetest')
         c.admin.system.users.remove({})
         c.admin.add_user('username', 'password')
 
         # Authentication fails without "authSource"
         self.assertRaises(
-            ConnectionError, connect, 'mongoenginetest',
+            ConnectionError, connect, 'mongoenginetest', alias='test1',
             host='mongodb://username:password@localhost/mongoenginetest'
         )
+        self.assertRaises(ConnectionError, get_db, 'test1')
 
         # Authentication succeeds with "authSource"
         connect(
-            'mongoenginetest',
+            'mongoenginetest', alias='test2',
             host=('mongodb://username:password@localhost/'
                   'mongoenginetest?authSource=admin')
         )
-
-        conn = get_connection('test')
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
-
-        db = get_db('test')
+        db = get_db('test2')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
 
