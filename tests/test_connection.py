@@ -11,7 +11,10 @@ import datetime
 import pymongo
 from bson.tz_util import utc
 
-from mongoengine import *
+from mongoengine import (
+    connect, register_connection,
+    Document, DateTimeField
+)
 import mongoengine.connection
 from mongoengine.connection import get_db, get_connection, ConnectionError
 
@@ -100,6 +103,38 @@ class ConnectionTest(unittest.TestCase):
 
         c.admin.system.users.remove({})
         c.mongoenginetest.system.users.remove({})
+
+    def test_connect_uri_with_authsource(self):
+        """Ensure that the connect() method works well with
+        the option `authSource` in URI.
+        """
+        # Create users
+        c = connect(db='mongoenginetest', alias='test')
+        c.admin.system.users.remove({})
+        c.admin.add_user('username', 'password')
+
+        # Authentication fails without "authSource"
+        self.assertRaises(
+            ConnectionError, connect, 'mongoenginetest',
+            host='mongodb://username:password@localhost/mongoenginetest'
+        )
+
+        # Authentication succeeds with "authSource"
+        connect(
+            'mongoenginetest',
+            host=('mongodb://username:password@localhost/'
+                  'mongoenginetest?authSource=admin')
+        )
+
+        conn = get_connection('test')
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
+        db = get_db('test')
+        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertEqual(db.name, 'mongoenginetest')
+
+        # Clear all users
+        c.admin.system.users.remove({})
 
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.
