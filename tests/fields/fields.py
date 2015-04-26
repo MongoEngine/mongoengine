@@ -3610,9 +3610,9 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
     def test_empty_list_embedded_documents_with_unique_field(self):
         """
-        Tests that multiple documents with an empty list of embedded documents
-        that have a unique field can be saved, even if the unique field is
-        not sparse.
+        Tests that only one document with an empty list of embedded documents
+        that have a unique field can be saved, but if the unique field is
+        also sparse then multiple documents with an empty list can be saved.
         """
         class EmbeddedWithUnique(EmbeddedDocument):
             number = IntField(unique=True)
@@ -3621,7 +3621,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
             my_list = ListField(EmbeddedDocumentField(EmbeddedWithUnique))
 
         a1 = A(my_list=[]).save()
-        a2 = A(my_list=[]).save()
+        self.assertRaises(NotUniqueError, lambda: A(my_list=[]).save())
 
         class EmbeddedWithSparseUnique(EmbeddedDocument):
             number = IntField(unique=True, sparse=True)
