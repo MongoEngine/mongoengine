@@ -1016,7 +1016,7 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
 
     """
-    A referencefield with cache fields to porpuse pseudo-joins
+    A referencefield with cache fields to purpose pseudo-joins
     .. versionadded:: 0.9
     """
 
