@@ -94,8 +94,11 @@ class MongoUserManager(UserManager):
     def get_empty_query_set(self):
         return self.model.objects.none()
 
-    def get_query_set(self):
+    def get_queryset(self):
         return self.model.objects
+
+    def get_query_set(self):
+        return self.get_queryset()
 
 
 class MongoUser(models.Model):

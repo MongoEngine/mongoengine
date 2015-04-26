@@ -298,7 +298,8 @@ class BaseDocument(object):
         """
 
         if '_text_score' not in self._data:
-            raise InvalidDocumentError('This document is not originally built from a text query')
+            raise InvalidDocumentError(
+                'This document is not originally built from a text query')
 
         return self._data['_text_score']
 
@@ -722,7 +723,8 @@ class BaseDocument(object):
         if cls.STRICT:
             data = dict((k, v)
                         for k, v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
+        obj = cls(__auto_convert=False, _created=created,
+                  __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
             obj._fields = fields
@@ -777,8 +779,10 @@ class BaseDocument(object):
         include_cls = (allow_inheritance and not spec.get('sparse', False) and
                        spec.get('cls',  True))
 
-        # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
-        include_cls = include_cls and (spec.get('cls', False) or cls._meta.get('index_cls', True))
+        # 733: don't include cls if index_cls is False unless there is an
+        # explicit cls with the index
+        include_cls = include_cls and (
+            spec.get('cls', False) or cls._meta.get('index_cls', True))
         if "cls" in spec:
             spec.pop('cls')
         for key in spec['fields']:
@@ -953,7 +957,8 @@ class BaseDocument(object):
                         if field is not None:
                             break
                     else:
-                        raise LookUpError('Cannot resolve field "%s"' % field_name)
+                        raise LookUpError(
+                            'Cannot resolve field "%s"' % field_name)
                 else:
                     raise LookUpError('Cannot resolve field "%s"'
                                       % field_name)
