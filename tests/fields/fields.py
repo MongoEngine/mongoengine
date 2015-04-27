@@ -3612,7 +3612,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         """
         Tests that only one document with an empty list of embedded documents
         that have a unique field can be saved, but if the unique field is
-        also sparse then multiple documents with an empty list can be saved.
+        also sparse than multiple documents with an empty list can be saved.
         """
         class EmbeddedWithUnique(EmbeddedDocument):
             number = IntField(unique=True)
