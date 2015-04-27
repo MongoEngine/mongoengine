@@ -328,6 +328,17 @@ class User(Document):
         # Otherwise we need to check the backends.
         return _user_has_perm(self, perm, obj)
 
+    def has_perms(self, perm_list, obj=None):
+        """
+        Returns True if the user has each of the specified permissions. If
+        object is passed, it checks if the user has all required perms for this
+        object.
+        """
+        for perm in perm_list:
+            if not self.has_perm(perm, obj):
+                return False
+        return True
+
     def has_module_perms(self, app_label):
         """
         Returns True if the user has any permissions in the given app label.
@@ -395,12 +406,15 @@ class MongoEngineBackend(object):
     def get_user(self, user_id):
         return self.user_document.objects.with_id(user_id)
 
+    # TODO: needs the whole permissions logic
+
     @property
     def user_document(self):
         if self._user_doc is False:
             from .mongo_auth.models import get_user_document
             self._user_doc = get_user_document()
         return self._user_doc
+
 
 def get_user(userid):
     """Returns a User object from an id (User.id). Django's equivalent takes
