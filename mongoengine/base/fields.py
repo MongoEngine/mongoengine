@@ -83,6 +83,7 @@ class BaseField(object):
         self.help_text = help_text
         self.null = null
         self.sparse = sparse
+        self._owner_document = None
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
@@ -188,6 +189,17 @@ class BaseField(object):
                                  'callable.' % self.name)
 
         self.validate(value, **kwargs)
+
+    @property
+    def owner_document(self):
+        return self._owner_document
+
+    def _set_owner_document(self, owner_document):
+        self._owner_document = owner_document
+
+    @owner_document.setter
+    def owner_document(self, owner_document):
+        self._set_owner_document(owner_document)
 
 
 class ComplexBaseField(BaseField):
@@ -397,11 +409,6 @@ class ComplexBaseField(BaseField):
         if self.field:
             self.field.owner_document = owner_document
         self._owner_document = owner_document
-
-    def _get_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
-    owner_document = property(_get_owner_document, _set_owner_document)
 
 
 class ObjectIdField(BaseField):
