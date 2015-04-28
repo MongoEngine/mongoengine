@@ -38,12 +38,11 @@ Dependencies
 
 Optional Dependencies
 ---------------------
-- **Django Integration:** Django>=1.4.0 for Python 2.x or PyPy and Django>=1.5.0 for Python 3.x
 - **Image Fields**: Pillow>=2.0.0
 - dateutil>=2.1.0
 
 .. note
-   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: Django 1.6.5
+   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: PyMongo 3.0.1
 
 Examples
 ========

@@ -8,30 +8,11 @@ python:
 - pypy
 - pypy3
 env:
-- PYMONGO=2.7 DJANGO=dev
-- PYMONGO=2.7 DJANGO=1.8
-- PYMONGO=2.7 DJANGO=1.7
-- PYMONGO=2.7 DJANGO=1.6
-- PYMONGO=2.7 DJANGO=1.5
-- PYMONGO=2.8 DJANGO=dev
-- PYMONGO=2.8 DJANGO=1.8
-- PYMONGO=2.8 DJANGO=1.7
-- PYMONGO=2.8 DJANGO=1.6
-- PYMONGO=2.8 DJANGO=1.5
+- PYMONGO=2.7
+- PYMONGO=2.8
+# - PYMONGO=3.0
+# - PYMONGO=dev
 matrix:
-  exclude:
-  - python: '2.6'
-    env: PYMONGO=2.7 DJANGO=dev
-  - python: '2.6'
-    env: PYMONGO=2.8
-  - python: '2.6'
-    env: PYMONGO=2.7 DJANGO=1.7
-  - python: '2.6'
-    env: PYMONGO=2.8 DJANGO=1.7
-  - python: '2.6'
-    env: PYMONGO=2.7 DJANGO=1.8
-  - python: '2.6'
-    env: PYMONGO=2.8 DJANGO=1.8
   fast_finish: true
 before_install:
 - travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
@@ -44,9 +25,9 @@ install:
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
   python-tk
 - travis_retry pip install tox>=1.9 coveralls
-- travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
+- travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 script:
-- tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO-dj$DJANGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
+- tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
 after_script: coveralls --verbose
 notifications:
   irc: irc.freenode.org#mongoengine
