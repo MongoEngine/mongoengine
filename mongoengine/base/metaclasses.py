@@ -176,7 +176,8 @@ class DocumentMetaclass(type):
         # Handle delete rules
         for field in new_class._fields.itervalues():
             f = field
-            f.owner_document = new_class
+            if f.owner_document is None:
+                f.owner_document = new_class
             delete_rule = getattr(f, 'reverse_delete_rule', DO_NOTHING)
             if isinstance(f, CachedReferenceField):
 
