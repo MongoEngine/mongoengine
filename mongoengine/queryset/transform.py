@@ -2,6 +2,7 @@ from collections import defaultdict
 
 import pymongo
 from bson import SON
+from mongoengine.base.fields import UPDATE_OPERATORS
 
 from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
@@ -23,10 +24,6 @@ STRING_OPERATORS = ('contains', 'icontains', 'startswith',
 CUSTOM_OPERATORS = ('match',)
 MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
-
-UPDATE_OPERATORS = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
-                    'push_all', 'pull', 'pull_all', 'add_to_set',
-                    'set_on_insert', 'min', 'max')
 
 
 def query(_doc_cls=None, _field_operation=False, **query):
