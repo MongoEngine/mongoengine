@@ -939,6 +939,9 @@ class BaseQuerySet(object):
         ..versionchanged:: 0.5 - made chainable
         .. deprecated:: Ignored with PyMongo 3+
         """
+        if IS_PYMONGO_3:
+            msg = ("snapshot is deprecated as it has no impact when using PyMongo 3+.")
+            warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._snapshot = enabled
         return queryset
@@ -962,6 +965,9 @@ class BaseQuerySet(object):
 
         .. deprecated:: Ignored with PyMongo 3+
         """
+        if IS_PYMONGO_3:
+            msg = ("slave_okay is deprecated as it has no impact when using PyMongo 3+.")
+            warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._slave_okay = enabled
         return queryset
