@@ -135,6 +135,11 @@ class Document(BaseDocument):
     doesn't contain a list) if allow_inheritance is True. This can be
     disabled by either setting cls to False on the specific index or
     by setting index_cls to False on the meta dictionary for the document.
+
+    By default, any extra attribute existing in stored data but not declared
+    in your model will raise a :class:`~mongoengine.FieldDoesNotExist` error.
+    This can be disabled by setting :attr:`strict` to ``False``
+    in the :attr:`meta` dictionnary.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3

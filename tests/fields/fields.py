@@ -3195,11 +3195,26 @@ class FieldTest(unittest.TestCase):
 
     def test_undefined_field_exception(self):
         """Tests if a `FieldDoesNotExist` exception is raised when trying to
-        set a value to a field that's not defined.
+        instanciate a document with a field that's not defined.
         """
 
         class Doc(Document):
             foo = StringField(db_field='f')
+
+        def test():
+            Doc(bar='test')
+
+        self.assertRaises(FieldDoesNotExist, test)
+
+    def test_undefined_field_exception_with_strict(self):
+        """Tests if a `FieldDoesNotExist` exception is raised when trying to
+        instanciate a document with a field that's not defined,
+        even when strict is set to False.
+        """
+
+        class Doc(Document):
+            foo = StringField(db_field='f')
+            meta = {'strict': False}
 
         def test():
             Doc(bar='test')
