@@ -183,7 +183,10 @@ class ValidatorErrorTest(unittest.TestCase):
         child = Child(reference=parent)
 
         # Saving child should not raise a ValidationError
-        child.save()
+        try:
+            child.save()
+        except ValidationError as e:
+            self.fail("ValidationError raised: %s" % e.message)
 
     def test_parent_reference_set_as_attribute_in_child_document(self):
         """
@@ -204,7 +207,11 @@ class ValidatorErrorTest(unittest.TestCase):
         child.reference = parent
 
         # Saving the child should not raise a ValidationError
-        child.save()
+        try:
+            child.save()
+        except ValidationError as e:
+            self.fail("ValidationError raised: %s" % e.message)
+
 
 if __name__ == '__main__':
     unittest.main()
