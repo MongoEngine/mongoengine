@@ -3405,6 +3405,18 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(
             10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False))
 
+        count = 0
+        posts = Post.objects.limit(5)
+
+        for i in xrange(0, 10):
+            try:
+                posts[i]
+                count += 1
+            except IndexError:
+                pass
+
+        self.assertEqual(count, 5)
+
     def test_count_and_none(self):
         """Test count works with None()"""
 
