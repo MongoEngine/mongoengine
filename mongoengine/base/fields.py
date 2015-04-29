@@ -17,6 +17,11 @@ __all__ = ("BaseField", "ComplexBaseField",
            "ObjectIdField", "GeoJsonBaseField")
 
 
+UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
+                        'push_all', 'pull', 'pull_all', 'add_to_set',
+                        'set_on_insert', 'min', 'max'])
+
+
 class BaseField(object):
 
     """A base class for fields in a MongoDB document. Instances of this class
@@ -150,6 +155,8 @@ class BaseField(object):
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo.
         """
+        if op in UPDATE_OPERATORS:
+            self.validate(value)
         return value
 
     def validate(self, value, clean=True):

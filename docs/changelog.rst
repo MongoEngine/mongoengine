@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- Queryset update doesn't go through field validation #453
 - Added support for specifying authentication source as option `authSource` in URI. #967
 - Fixed mark_as_changed to handle higher/lower level fields changed. #927
 - ListField of embedded docs doesn't set the _instance attribute when iterating over it #914

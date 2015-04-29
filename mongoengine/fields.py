@@ -108,7 +108,7 @@ class StringField(BaseField):
             # escape unsafe characters which could lead to a re.error
             value = re.escape(value)
             value = re.compile(regex % value, flags)
-        return value
+        return super(StringField, self).prepare_query_value(op, value)
 
 
 class URLField(StringField):
@@ -203,7 +203,7 @@ class IntField(BaseField):
         if value is None:
             return value
 
-        return int(value)
+        return super(IntField, self).prepare_query_value(op, int(value))
 
 
 class LongField(BaseField):
@@ -238,7 +238,7 @@ class LongField(BaseField):
         if value is None:
             return value
 
-        return long(value)
+        return super(LongField, self).prepare_query_value(op, long(value))
 
 
 class FloatField(BaseField):
@@ -273,7 +273,7 @@ class FloatField(BaseField):
         if value is None:
             return value
 
-        return float(value)
+        return super(FloatField, self).prepare_query_value(op, float(value))
 
 
 class DecimalField(BaseField):
@@ -347,7 +347,7 @@ class DecimalField(BaseField):
             self.error('Decimal value is too large')
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)
+        return super(DecimalField, self).prepare_query_value(op, self.to_mongo(value))
 
 
 class BooleanField(BaseField):
@@ -434,7 +434,7 @@ class DateTimeField(BaseField):
                     return None
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)
+        return super(DateTimeField, self).prepare_query_value(op, self.to_mongo(value))
 
 
 class ComplexDateTimeField(StringField):
@@ -518,7 +518,7 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
-        return self._convert_from_datetime(value)
+        return super(ComplexDateTimeField, self).prepare_query_value(op, self._convert_from_datetime(value))
 
 
 class EmbeddedDocumentField(BaseField):
@@ -569,6 +569,9 @@ class EmbeddedDocumentField(BaseField):
         return self.document_type._fields.get(member_name)
 
     def prepare_query_value(self, op, value):
+        if not isinstance(value, self.document_type):
+            value = self.document_type._from_son(value)
+        super(EmbeddedDocumentField, self).prepare_query_value(op, value)
         return self.to_mongo(value)
 
 
@@ -585,7 +588,7 @@ class GenericEmbeddedDocumentField(BaseField):
     """
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)
+        return super(GenericEmbeddedDocumentField, self).prepare_query_value(op, self.to_mongo(value))
 
     def to_python(self, value):
         if isinstance(value, dict):
@@ -668,7 +671,8 @@ class DynamicField(BaseField):
         if isinstance(value, basestring):
             from mongoengine.fields import StringField
             return StringField().prepare_query_value(op, value)
-        return self.to_mongo(value)
+        return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
+
 
     def validate(self, value, clean=True):
         if hasattr(value, "validate"):
@@ -979,7 +983,9 @@ class ReferenceField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return None
+        super(ReferenceField, self).prepare_query_value(op, value)
         return self.to_mongo(value)
+
 
     def validate(self, value):
 
