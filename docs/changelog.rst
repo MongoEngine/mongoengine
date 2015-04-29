@@ -13,6 +13,7 @@ Changes in 0.9.X - DEV
 - Fixed unpickled documents replacing the global field's list. #888
 - Fixed storage of microseconds in ComplexDateTimeField and unused separator option. #910
 - Django support was removed and will be available as a separate extension. #958
+- Fix for updating sorting in SortedListField. #978
 
 Changes in 0.9.0
 ================
