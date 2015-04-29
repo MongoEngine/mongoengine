@@ -547,6 +547,7 @@ class BaseDocument(object):
         EmbeddedDocument = _import_class("EmbeddedDocument")
         DynamicEmbeddedDocument = _import_class("DynamicEmbeddedDocument")
         ReferenceField = _import_class("ReferenceField")
+        SortedListField = _import_class("SortedListField")
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
 
@@ -577,6 +578,12 @@ class BaseDocument(object):
                 if (hasattr(field, 'field') and
                         isinstance(field.field, ReferenceField)):
                     continue
+                elif (isinstance(field, SortedListField) and field._ordering):
+                    # if ordering is affected whole list is changed
+                    if any(map(lambda d: field._ordering in d._changed_fields, data)):
+                        changed_fields.append(db_field_name)
+                        continue
+
                 self._nestable_types_changed_fields(
                     changed_fields, key, data, inspected)
         return changed_fields
