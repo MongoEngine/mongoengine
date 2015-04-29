@@ -409,6 +409,9 @@ class StrictDict(object):
     def items(self):
         return [(k, self[k]) for k in iter(self)]
 
+    def iterkeys(self):
+        return iter(self)
+
     def keys(self):
         return list(iter(self))
 
@@ -433,7 +436,7 @@ class StrictDict(object):
                 __slots__ = allowed_keys_tuple
 
                 def __repr__(self):
-                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k, v) for (k, v) in self.iteritems())
+                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k) for k in self.iterkeys())
 
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]
