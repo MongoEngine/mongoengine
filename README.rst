@@ -8,10 +8,10 @@ MongoEngine
 
 .. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
   :target: http://travis-ci.org/MongoEngine/mongoengine
-  
-.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master 
+
+.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master
   :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
-  
+
 .. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.png
    :target: https://landscape.io/github/MongoEngine/mongoengine/master
    :alt: Code Health
@@ -38,12 +38,11 @@ Dependencies
 
 Optional Dependencies
 ---------------------
-- **Django Integration:** Django>=1.4.0 for Python 2.x or PyPy and Django>=1.5.0 for Python 3.x
 - **Image Fields**: Pillow>=2.0.0
 - dateutil>=2.1.0
 
 .. note
-   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: Django 1.6.5
+   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: PyMongo 3.0.1
 
 Examples
 ========
@@ -96,7 +95,26 @@ Some simple examples of what MongoEngine code looks like::
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port, and run: ``python setup.py test``.
+the standard port, and run: ``python setup.py nosetests``.
+
+To run the test suite on every supported Python version and every supported PyMongo version,
+you can use ``tox``.
+tox and each supported Python version should be installed in your environment:
+
+.. code-block:: shell
+
+    # Install tox
+    $ pip install tox
+    # Run the test suites
+    $ tox
+
+If you wish to run one single or selected tests, use the nosetest convention. It will find the folder,
+eventually the file, go to the TestClass specified after the colon and eventually right to the single test.
+Also use the -s argument if you want to print out whatever or access pdb while testing.
+
+.. code-block:: shell
+
+    $ python setup.py nosetests --tests tests/test_django.py:QuerySetTest.test_get_document_or_404 -s
 
 Community
 =========
