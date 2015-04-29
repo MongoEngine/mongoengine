@@ -120,7 +120,8 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         try:
             connection = None
             # check for shared connections
-            connection_settings_iterator = ((db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
+            connection_settings_iterator = (
+                (db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
             for db_alias, connection_settings in connection_settings_iterator:
                 connection_settings.pop('name', None)
                 connection_settings.pop('username', None)

@@ -11,7 +11,6 @@ from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ('query', 'update')
 
-
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                         'all', 'size', 'exists', 'not', 'elemMatch', 'type')
 GEO_OPERATORS = ('within_distance', 'within_spherical_distance',
@@ -27,7 +26,7 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
 
 
-def query(_doc_cls=None, _field_operation=False, **query):
+def query(_doc_cls=None, **query):
     """Transform a query from Django-style format to Mongo format.
     """
     mongo_query = {}
@@ -359,6 +358,7 @@ def _infer_geometry(value):
         raise InvalidQueryError("Invalid $geometry dictionary should have "
                                 "type and coordinates keys")
     elif isinstance(value, (list, set)):
+        # TODO: shouldn't we test value[0][0][0][0] to see if it is MultiPolygon?
         try:
             value[0][0][0]
             return {"$geometry": {"type": "Polygon", "coordinates": value}}

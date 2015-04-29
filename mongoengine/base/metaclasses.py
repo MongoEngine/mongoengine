@@ -14,7 +14,6 @@ __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
 
 
 class DocumentMetaclass(type):
-
     """Metaclass for all documents.
     """
 
@@ -144,7 +143,7 @@ class DocumentMetaclass(type):
         for base in document_bases:
             if _cls not in base._subclasses:
                 base._subclasses += (_cls,)
-            base._types = base._subclasses   # TODO depreciate _types
+            base._types = base._subclasses  # TODO depreciate _types
 
         (Document, EmbeddedDocument, DictField,
          CachedReferenceField) = cls._import_classes()
@@ -250,7 +249,6 @@ class DocumentMetaclass(type):
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
-
     """Metaclass for top-level documents (i.e. documents that have their own
     collection in the database.
     """
@@ -260,7 +258,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         super_new = super(TopLevelDocumentMetaclass, cls).__new__
 
         # Set default _meta data if base class, otherwise get user defined meta
-        if (attrs.get('my_metaclass') == TopLevelDocumentMetaclass):
+        if attrs.get('my_metaclass') == TopLevelDocumentMetaclass:
             # defaults
             attrs['_meta'] = {
                 'abstract': True,
@@ -279,7 +277,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             attrs['_meta'].update(attrs.get('meta', {}))
         else:
             attrs['_meta'] = attrs.get('meta', {})
-            # Explictly set abstract to false unless set
+            # Explicitly set abstract to false unless set
             attrs['_meta']['abstract'] = attrs['_meta'].get('abstract', False)
             attrs['_is_base_cls'] = False
 
@@ -294,7 +292,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Clean up top level meta
         if 'meta' in attrs:
-            del(attrs['meta'])
+            del attrs['meta']
 
         # Find the parent document class
         parent_doc_cls = [b for b in flattened_bases
@@ -307,7 +305,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 and not parent_doc_cls._meta.get('abstract', True)):
             msg = "Trying to set a collection on a subclass (%s)" % name
             warnings.warn(msg, SyntaxWarning)
-            del(attrs['_meta']['collection'])
+            del attrs['_meta']['collection']
 
         # Ensure abstract documents have abstract bases
         if attrs.get('_is_base_cls') or attrs['_meta'].get('abstract'):
@@ -425,7 +423,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
 
 class MetaDict(dict):
-
     """Custom dictionary for meta classes.
     Handles the merging of set indexes
     """
@@ -440,6 +437,5 @@ class MetaDict(dict):
 
 
 class BasesTuple(tuple):
-
     """Special class to handle introspection of bases tuple in __new__"""
     pass

@@ -7,7 +7,6 @@ import pymongo
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
-
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList
@@ -23,7 +22,6 @@ UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
 
 
 class BaseField(object):
-
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
 
@@ -212,7 +210,6 @@ class BaseField(object):
 
 
 class ComplexBaseField(BaseField):
-
     """Handles complex fields, such as lists / dictionaries.
 
     Allows for nesting of embedded documents inside complex types.
@@ -330,8 +327,8 @@ class ComplexBaseField(BaseField):
                 return GenericReferenceField().to_mongo(value)
             cls = value.__class__
             val = value.to_mongo()
-            # If we its a document thats not inherited add _cls
-            if (isinstance(value, EmbeddedDocument)):
+            # If it's a document that is not inherited add _cls
+            if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
             return val
 
@@ -370,8 +367,8 @@ class ComplexBaseField(BaseField):
                 elif hasattr(v, 'to_mongo'):
                     cls = v.__class__
                     val = v.to_mongo()
-                    # If we its a document thats not inherited add _cls
-                    if (isinstance(v, (Document, EmbeddedDocument))):
+                    # If it's a document that is not inherited add _cls
+                    if isinstance(v, (Document, EmbeddedDocument)):
                         val['_cls'] = cls.__name__
                     value_dict[k] = val
                 else:
@@ -422,7 +419,6 @@ class ComplexBaseField(BaseField):
 
 
 class ObjectIdField(BaseField):
-
     """A field wrapper around MongoDB's ObjectIds.
     """
 
@@ -454,7 +450,6 @@ class ObjectIdField(BaseField):
 
 
 class GeoJsonBaseField(BaseField):
-
     """A geo json field storing a geojson style object.
 
     .. versionadded:: 0.8

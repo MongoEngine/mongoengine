@@ -115,6 +115,7 @@ class ValidationError(AssertionError):
             else:
                 return unicode(source)
             return errors_dict
+
         if not self.errors:
             return {}
         return build_dict(self.errors)
@@ -127,7 +128,7 @@ class ValidationError(AssertionError):
                 value = ' '.join([generate_key(k) for k in value])
             if isinstance(value, dict):
                 value = ' '.join(
-                        [generate_key(v, k) for k, v in value.iteritems()])
+                    [generate_key(v, k) for k, v in value.iteritems()])
 
             results = "%s.%s" % (prefix, value) if prefix else value
             return results

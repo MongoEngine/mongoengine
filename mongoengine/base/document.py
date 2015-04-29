@@ -14,7 +14,6 @@ from mongoengine.common import _import_class
 from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
-
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
     BaseDict,
@@ -420,7 +419,7 @@ class BaseDocument(object):
         :param use_db_field: Set to True by default but enables the output of the json structure with the field names and not the mongodb store db_names in case of set to False
         """
         use_db_field = kwargs.pop('use_db_field', True)
-        return json_util.dumps(self.to_mongo(use_db_field),  *args, **kwargs)
+        return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data, created=False):
@@ -570,7 +569,7 @@ class BaseDocument(object):
                 continue
             elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
                   and db_field_name not in changed_fields):
-                 # Find all embedded fields that have been changed
+                # Find all embedded fields that have been changed
                 changed = data._get_changed_fields(inspected)
                 changed_fields += ["%s%s" % (key, k) for k in changed if k]
             elif (isinstance(data, (list, tuple, dict)) and
@@ -621,7 +620,7 @@ class BaseDocument(object):
         else:
             set_data = doc
             if '_id' in set_data:
-                del(set_data['_id'])
+                del set_data['_id']
 
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
@@ -632,7 +631,7 @@ class BaseDocument(object):
             default = None
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
-                del(set_data[path])
+                del set_data[path]
                 unset_data[path] = 1
                 continue
             elif path in self._fields:
@@ -666,7 +665,7 @@ class BaseDocument(object):
             if default != value:
                 continue
 
-            del(set_data[path])
+            del set_data[path]
             unset_data[path] = 1
         return set_data, unset_data
 
@@ -821,7 +820,6 @@ class BaseDocument(object):
             parts = key.split('.')
             if parts in (['pk'], ['id'], ['_id']):
                 key = '_id'
-                fields = []
             else:
                 fields = cls._lookup_field(parts)
                 parts = []

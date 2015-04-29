@@ -43,7 +43,6 @@ RE_TYPE = type(re.compile(''))
 
 
 class BaseQuerySet(object):
-
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
     """
@@ -162,8 +161,8 @@ class BaseQuerySet(object):
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
             return queryset._document._from_son(queryset._cursor[key],
-                                               _auto_dereference=self._auto_dereference,
-                                               only_fields=self.only_fields)
+                                                _auto_dereference=self._auto_dereference,
+                                                only_fields=self.only_fields)
 
         raise AttributeError
 
@@ -597,9 +596,10 @@ class BaseQuerySet(object):
                 doc_map[doc['_id']] = self._get_as_pymongo(doc)
         else:
             for doc in docs:
-                doc_map[doc['_id']] = self._document._from_son(doc,
-                        only_fields=self.only_fields,
-                        _auto_dereference=self._auto_dereference)
+                doc_map[doc['_id']] = self._document._from_son(
+                    doc,
+                    only_fields=self.only_fields,
+                    _auto_dereference=self._auto_dereference)
 
         return doc_map
 
@@ -830,7 +830,6 @@ class BaseQuerySet(object):
         cleaned_fields = []
         for key, value in kwargs.items():
             parts = key.split('__')
-            op = None
             if parts[0] in operators:
                 op = parts.pop(0)
                 value = {'$' + op: value}
@@ -1616,7 +1615,7 @@ class BaseQuerySet(object):
 
         return frequencies
 
-    def _fields_to_dbfields(self, fields, subdoc=False):
+    def _fields_to_dbfields(self, fields):
         """Translate fields paths to its db equivalents"""
         ret = []
         subclasses = []

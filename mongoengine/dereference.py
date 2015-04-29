@@ -11,7 +11,6 @@ from document import Document, EmbeddedDocument
 
 
 class DeReference(object):
-
     def __call__(self, items, max_depth=1, instance=None, name=None):
         """
         Cheaply dereferences the items to a set depth.
@@ -49,8 +48,8 @@ class DeReference(object):
 
                 if is_list and all([i.__class__ == doc_type for i in items]):
                     return items
-                elif not is_list and all([i.__class__ == doc_type
-                                         for i in items.values()]):
+                elif not is_list and all(
+                        [i.__class__ == doc_type for i in items.values()]):
                     return items
                 elif not field.dbref:
                     if not hasattr(items, 'items'):
@@ -155,7 +154,7 @@ class DeReference(object):
                         elif doc_type is None:
                             doc = get_document(
                                 ''.join(x.capitalize()
-                                    for x in collection.split('_')))._from_son(ref)
+                                        for x in collection.split('_')))._from_son(ref)
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc

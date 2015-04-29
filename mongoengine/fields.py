@@ -47,12 +47,10 @@ __all__ = [
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
     'MultiPolygonField', 'GeoJsonBaseField']
 
-
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
 
 class StringField(BaseField):
-
     """A unicode string field.
     """
 
@@ -112,7 +110,6 @@ class StringField(BaseField):
 
 
 class URLField(StringField):
-
     """A field that validates input as an URL.
 
     .. versionadded:: 0.3
@@ -159,7 +156,6 @@ class URLField(StringField):
 
 
 class EmailField(StringField):
-
     """A field that validates input as an E-Mail-Address.
 
     .. versionadded:: 0.4
@@ -181,7 +177,6 @@ class EmailField(StringField):
 
 
 class IntField(BaseField):
-
     """An 32-bit integer field.
     """
 
@@ -216,7 +211,6 @@ class IntField(BaseField):
 
 
 class LongField(BaseField):
-
     """An 64-bit integer field.
     """
 
@@ -251,7 +245,6 @@ class LongField(BaseField):
 
 
 class FloatField(BaseField):
-
     """An floating point number field.
     """
 
@@ -286,7 +279,6 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-
     """A fixed-point decimal number field.
 
     .. versionchanged:: 0.8
@@ -360,7 +352,6 @@ class DecimalField(BaseField):
 
 
 class BooleanField(BaseField):
-
     """A boolean field type.
 
     .. versionadded:: 0.1.2
@@ -379,7 +370,6 @@ class BooleanField(BaseField):
 
 
 class DateTimeField(BaseField):
-
     """A datetime field.
 
     Uses the python-dateutil library if available alternatively use time.strptime
@@ -447,7 +437,6 @@ class DateTimeField(BaseField):
 
 
 class ComplexDateTimeField(StringField):
-
     """
     ComplexDateTimeField handles microseconds exactly instead of rounding
     like DateTimeField does.
@@ -531,7 +520,6 @@ class ComplexDateTimeField(StringField):
 
 
 class EmbeddedDocumentField(BaseField):
-
     """An embedded document field - with a declared document_type.
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
     """
@@ -585,7 +573,6 @@ class EmbeddedDocumentField(BaseField):
 
 
 class GenericEmbeddedDocumentField(BaseField):
-
     """A generic embedded document field - allows any
     :class:`~mongoengine.EmbeddedDocument` to be stored.
 
@@ -624,7 +611,6 @@ class GenericEmbeddedDocumentField(BaseField):
 
 
 class DynamicField(BaseField):
-
     """A truly dynamic field type capable of handling different and varying
     types of data.
 
@@ -641,9 +627,9 @@ class DynamicField(BaseField):
             cls = value.__class__
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
-            if (isinstance(value,   Document)):
+            if isinstance(value, Document):
                 val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
-            if (isinstance(value, EmbeddedDocument)):
+            if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
             return val
 
@@ -678,7 +664,6 @@ class DynamicField(BaseField):
 
     def prepare_query_value(self, op, value):
         if isinstance(value, basestring):
-            from mongoengine.fields import StringField
             return StringField().prepare_query_value(op, value)
         return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
 
@@ -689,7 +674,6 @@ class DynamicField(BaseField):
 
 
 class ListField(ComplexBaseField):
-
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
@@ -749,7 +733,6 @@ class EmbeddedDocumentListField(ListField):
 
 
 class SortedListField(ListField):
-
     """A ListField that sorts the contents of its list before writing to
     the database in order to ensure that a sorted list is always
     retrieved.
@@ -801,7 +784,6 @@ def key_has_dot_or_dollar(d):
 
 
 class DictField(ComplexBaseField):
-
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
@@ -857,7 +839,6 @@ class DictField(ComplexBaseField):
 
 
 class MapField(DictField):
-
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
@@ -873,7 +854,6 @@ class MapField(DictField):
 
 
 class ReferenceField(BaseField):
-
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
 
@@ -1010,7 +990,6 @@ class ReferenceField(BaseField):
 
 
 class CachedReferenceField(BaseField):
-
     """
     A referencefield with cache fields to purpose pseudo-joins
     
@@ -1025,7 +1004,6 @@ class CachedReferenceField(BaseField):
         """
         if not isinstance(document_type, basestring) and \
                 not issubclass(document_type, (Document, basestring)):
-
             self.error('Argument to CachedReferenceField constructor must be a'
                        ' document class or a string')
 
@@ -1036,6 +1014,7 @@ class CachedReferenceField(BaseField):
 
     def start_listener(self):
         from mongoengine import signals
+
         signals.post_save.connect(self.on_document_pre_save,
                                   sender=self.document_type)
 
@@ -1089,7 +1068,6 @@ class CachedReferenceField(BaseField):
     def to_mongo(self, document):
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
-        doc_tipe = self.document_type
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
@@ -1099,6 +1077,7 @@ class CachedReferenceField(BaseField):
                            ' been saved to the database')
         else:
             self.error('Only accept a document object')
+            # TODO: should raise here or will fail next statement
 
         value = SON((
             ("_id", id_field.to_mongo(id_)),
@@ -1150,7 +1129,6 @@ class CachedReferenceField(BaseField):
 
 
 class GenericReferenceField(BaseField):
-
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
@@ -1232,7 +1210,6 @@ class GenericReferenceField(BaseField):
 
 
 class BinaryField(BaseField):
-
     """A binary data field.
     """
 
@@ -1264,7 +1241,6 @@ class GridFSError(Exception):
 
 
 class GridFSProxy(object):
-
     """Proxy object to handle writing and reading of files to and from GridFS
 
     .. versionadded:: 0.4
@@ -1278,12 +1254,12 @@ class GridFSProxy(object):
                  instance=None,
                  db_alias=DEFAULT_CONNECTION_NAME,
                  collection_name='fs'):
-        self.grid_id = grid_id                  # Store GridFS id for file
+        self.grid_id = grid_id  # Store GridFS id for file
         self.key = key
         self.instance = instance
         self.db_alias = db_alias
         self.collection_name = collection_name
-        self.newfile = None                     # Used for partial writes
+        self.newfile = None  # Used for partial writes
         self.gridout = None
 
     def __getattr__(self, name):
@@ -1410,7 +1386,6 @@ class GridFSProxy(object):
 
 
 class FileField(BaseField):
-
     """A GridFS storage field.
 
     .. versionadded:: 0.4
@@ -1444,7 +1419,7 @@ class FileField(BaseField):
     def __set__(self, instance, value):
         key = self.name
         if ((hasattr(value, 'read') and not
-             isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
+        isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
@@ -1494,7 +1469,6 @@ class FileField(BaseField):
 
 
 class ImageGridFsProxy(GridFSProxy):
-
     """
     Proxy for ImageField
 
@@ -1518,6 +1492,7 @@ class ImageGridFsProxy(GridFSProxy):
             raise ValidationError('Invalid image: %s' % e)
 
         # Progressive JPEG
+        # TODO: fixme, at least unused, at worst bad implementation
         progressive = img.info.get('progressive') or False
 
         if (kwargs.get('progressive') and
@@ -1633,7 +1608,6 @@ class ImproperlyConfigured(Exception):
 
 
 class ImageField(FileField):
-
     """
     A Image File storage field.
 
@@ -1672,7 +1646,6 @@ class ImageField(FileField):
 
 
 class SequenceField(BaseField):
-
     """Provides a sequential counter see:
      http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
 
@@ -1796,7 +1769,6 @@ class SequenceField(BaseField):
 
 
 class UUIDField(BaseField):
-
     """A UUID field.
 
     .. versionadded:: 0.6
@@ -1843,13 +1815,12 @@ class UUIDField(BaseField):
             if not isinstance(value, basestring):
                 value = str(value)
             try:
-                value = uuid.UUID(value)
+                uuid.UUID(value)
             except Exception, exc:
                 self.error('Could not convert to UUID: %s' % exc)
 
 
 class GeoPointField(BaseField):
-
     """A list storing a longitude and latitude coordinate.
 
     .. note:: this represents a generic point in a 2D plane and a legacy way of
@@ -1879,7 +1850,6 @@ class GeoPointField(BaseField):
 
 
 class PointField(GeoJsonBaseField):
-
     """A GeoJSON field storing a longitude and latitude coordinate.
 
     The data is represented as:
@@ -1900,7 +1870,6 @@ class PointField(GeoJsonBaseField):
 
 
 class LineStringField(GeoJsonBaseField):
-
     """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is represented as:
@@ -1920,7 +1889,6 @@ class LineStringField(GeoJsonBaseField):
 
 
 class PolygonField(GeoJsonBaseField):
-
     """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is represented as:
@@ -1943,7 +1911,6 @@ class PolygonField(GeoJsonBaseField):
 
 
 class MultiPointField(GeoJsonBaseField):
-
     """A GeoJSON field storing a list of Points.
 
     The data is represented as:
@@ -1964,7 +1931,6 @@ class MultiPointField(GeoJsonBaseField):
 
 
 class MultiLineStringField(GeoJsonBaseField):
-
     """A GeoJSON field storing a list of LineStrings.
 
     The data is represented as:
@@ -1985,7 +1951,6 @@ class MultiLineStringField(GeoJsonBaseField):
 
 
 class MultiPolygonField(GeoJsonBaseField):
-
     """A GeoJSON field storing  list of Polygons.
 
     The data is represented as:
