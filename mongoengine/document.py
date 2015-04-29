@@ -308,9 +308,9 @@ class Document(BaseDocument):
                     object_id = collection.insert(doc, **write_concern)
                 else:
                     object_id = collection.save(doc, **write_concern)
-                    # TODO: Pymongo 3.0 bug, fix scheduled for 3.0.1
                     # In PyMongo 3.0, the save() call calls internally the _update() call
                     # but they forget to return the _id value passed back, therefore getting it back here
+                    # Correct behaviour in 2.X and in 3.0.1+ versions
                     if not object_id and pymongo.version_tuple == (3, 0):
                         pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
                         object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
