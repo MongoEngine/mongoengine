@@ -42,7 +42,7 @@ and any pull requests are automatically tested by Travis. Any pull requests
 without tests will take longer to be integrated and might be refused.
 
 You may also submit a simple failing test as a PullRequest if you don't know
-how to fix it, it will be easier for other peopl to work on it and it may get
+how to fix it, it will be easier for other people to work on it and it may get
 fixed faster.
 
 General Guidelines
