@@ -165,6 +165,53 @@ class ValidatorErrorTest(unittest.TestCase):
 
         self.assertRaises(ValidationError, lambda: d2.validate())
 
+    def test_parent_reference_in_child_document(self):
+        """
+        Test to ensure a ReferenceField can store a reference to a parent
+        class when inherited. Issue #954.
+        """
+        class Parent(Document):
+            meta = {'allow_inheritance': True}
+            reference = ReferenceField('self')
+
+        class Child(Parent):
+            pass
+
+        parent = Parent()
+        parent.save()
+
+        child = Child(reference=parent)
+
+        # Saving child should not raise a ValidationError
+        try:
+            child.save()
+        except ValidationError as e:
+            self.fail("ValidationError raised: %s" % e.message)
+
+    def test_parent_reference_set_as_attribute_in_child_document(self):
+        """
+        Test to ensure a ReferenceField can store a reference to a parent
+        class when inherited and when set via attribute. Issue #954.
+        """
+        class Parent(Document):
+            meta = {'allow_inheritance': True}
+            reference = ReferenceField('self')
+
+        class Child(Parent):
+            pass
+
+        parent = Parent()
+        parent.save()
+
+        child = Child()
+        child.reference = parent
+
+        # Saving the child should not raise a ValidationError
+        try:
+            child.save()
+        except ValidationError as e:
+            self.fail("ValidationError raised: %s" % e.message)
+
 
 if __name__ == '__main__':
     unittest.main()
