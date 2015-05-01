@@ -401,7 +401,7 @@ MongoEngine allows you to specify that a field should be unique across a
 collection by providing ``unique=True`` to a :class:`~mongoengine.fields.Field`\ 's
 constructor. If you try to save a document that has the same value for a unique
 field as a document that is already in the database, a
-:class:`~mongoengine.OperationError` will be raised. You may also specify
+:class:`~mongoengine.NotUniqueError` will be raised. You may also specify
 multi-field uniqueness constraints by using :attr:`unique_with`, which may be
 either a single field name, or a list or tuple of field names::
 
