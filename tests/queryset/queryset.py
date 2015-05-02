@@ -602,6 +602,20 @@ class QuerySetTest(unittest.TestCase):
             set__name="bobby", multi=True)
         self.assertEqual(result, 2)
 
+    def test_update_validate(self):
+        class EmDoc(EmbeddedDocument):
+            str_f = StringField()
+
+        class Doc(Document):
+            str_f = StringField()
+            dt_f = DateTimeField()
+            cdt_f = ComplexDateTimeField()
+            ed_f = EmbeddedDocumentField(EmDoc)
+
+        self.assertRaises(ValidationError, Doc.objects().update, str_f=1, upsert=True)
+        self.assertRaises(ValidationError, Doc.objects().update, dt_f="datetime", upsert=True)
+        self.assertRaises(ValidationError, Doc.objects().update, ed_f__str_f=1, upsert=True)
+
     def test_upsert(self):
         self.Person.drop_collection()
 
