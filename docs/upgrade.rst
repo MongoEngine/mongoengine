@@ -7,8 +7,6 @@ Upgrading
 
 The 0.8.7 package on pypi was corrupted.  If upgrading from 0.8.7 to 0.9.0 please follow:
 
-.. code-block::
-
     pip uninstall pymongo
     pip uninstall mongoengine
     pip install pymongo==2.8
