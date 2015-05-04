@@ -2040,7 +2040,7 @@ class MultiLingualField(BaseField):
         return instance.current_lang
 
     def to_python(self, value):
-        return {lang_obj['language']: lang_obj['value'] for lang_obj in value.iteritems()}
+        return {lang_obj['language']: lang_obj['value'] for lang_obj in value}
 
     def to_mongo(self, value):
         return [{'language': lang, 'value': v} for lang, v in copy.deepcopy(value).iteritems()]
