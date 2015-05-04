@@ -6,7 +6,9 @@ import time
 import urllib2
 import uuid
 import warnings
+import copy
 from operator import itemgetter
+from mongoengine.base.document import SUPPORTED_LANGUAGES
 
 try:
     import dateutil
@@ -45,7 +47,7 @@ __all__ = [
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
-    'MultiPolygonField', 'GeoJsonBaseField']
+    'MultiPolygonField', 'GeoJsonBaseField', 'MultiLingualField']
 
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -1991,3 +1993,66 @@ class MultiPolygonField(GeoJsonBaseField):
     .. versionadded:: 0.9
     """
     _type = "MultiPolygon"
+
+
+
+class MultiLingualField(BaseField):
+    """
+    Special field, that will be automatically transformed to MultiLingualString
+    after extracting from MongoDB.
+    """
+
+    def __init__(self, **kwargs):
+        super(MultiLingualField, self).__init__(**kwargs)
+        self.default = dict
+
+    def __set__(self, instance, value):
+        assert value is None or isinstance(value, basestring), "MultiLingualField value must be of type basestring"
+        # Handle None value, and setting the default if needed, identical to super method
+        if value is None:
+            if self.null:
+                value = None
+            elif self.default is not None:
+                value = self.default
+                if callable(value):
+                    value = value()
+
+        # get the current object language
+        lang = self.get_current_language(instance)
+        # check if the field should be marked as changed
+        if instance._initialised:
+            if self.name not in instance._data \
+                    or lang not in instance._data[self.name] \
+                    or instance._data[self.name][lang] != value \
+                    or instance._data[self.name] != type(value):
+                instance._mark_as_changed(self.name)
+
+        instance._data.setdefault(self.name, {})[lang] = value
+
+    def __get__(self, instance, owner):
+        # TODO: Not sure what this line is for
+        if instance is None:
+            return self
+
+        return instance._data.get(self.name, {}).get(self.get_current_language(instance), u'')
+
+    def get_current_language(self, instance):
+        return instance.current_lang
+
+    def to_python(self, value):
+        return {lang_obj['language']: lang_obj['value'] for lang_obj in value.iteritems()}
+
+    def to_mongo(self, value):
+        return [{'language': lang, 'value': v} for lang, v in copy.deepcopy(value).iteritems()]
+
+    def validate(self, value, **kwargs):
+        for lang, lang_value in value.iteritems():
+            if isinstance(lang, basestring):
+                if lang in SUPPORTED_LANGUAGES:
+                    # check the value
+                    if not isinstance(lang_value, basestring):
+                        self.error('MultiLingualField: %s value type must be string (and not %s)' % (lang, type(lang_value)))
+                else:
+                    self.error('MultiLingualField: Unknown language set: %s' % lang)
+            else:
+                self.error('MultiLingualField: Language identifier must be string (and not: %s)' % type(lang))
