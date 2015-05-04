@@ -2007,27 +2007,34 @@ class MultiLingualField(BaseField):
         self.default = dict
 
     def __set__(self, instance, value):
-        assert value is None or isinstance(value, basestring), "MultiLingualField value must be of type basestring"
-        # Handle None value, and setting the default if needed, identical to super method
-        if value is None:
-            if self.null:
-                value = None
-            elif self.default is not None:
-                value = self.default
-                if callable(value):
-                    value = value()
+        assert value is None or isinstance(value, (basestring, dict)), "MultiLingualField value must be of type basestring or dict"
 
-        # get the current object language
-        lang = self.get_current_language(instance)
-        # check if the field should be marked as changed
-        if instance._initialised:
-            if self.name not in instance._data \
-                    or lang not in instance._data[self.name] \
-                    or instance._data[self.name][lang] != value \
-                    or instance._data[self.name] != type(value):
-                instance._mark_as_changed(self.name)
+        # Handle language dict, usall comes from the DB
+        if isinstance(value, dict):
+            for lang, val in value.items():
+                instance._data.setdefault(self.name, {})[lang] = val
 
-        instance._data.setdefault(self.name, {})[lang] = value
+        else:
+            # Handle None value, and setting the default if needed, identical to super method
+            if value is None:
+                if self.null:
+                    value = None
+                elif self.default is not None:
+                    value = self.default
+                    if callable(value):
+                        value = value()
+
+            # get the current object language
+            lang = self.get_current_language(instance)
+            # check if the field should be marked as changed
+            if instance._initialised:
+                if self.name not in instance._data \
+                        or lang not in instance._data[self.name] \
+                        or instance._data[self.name][lang] != value \
+                        or instance._data[self.name] != type(value):
+                    instance._mark_as_changed(self.name)
+
+            instance._data.setdefault(self.name, {})[lang] = value
 
     def __get__(self, instance, owner):
         # TODO: Not sure what this line is for
