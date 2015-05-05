@@ -284,6 +284,31 @@ class QuerySetTest(unittest.TestCase):
         query = query.filter(boolfield=True)
         self.assertEqual(query.count(), 1)
 
+    def test_batch_size(self):
+        """Test that batch_size works."""
+        class A(Document):
+            s = StringField()
+
+        A.drop_collection()
+
+        for i in range(100):
+            A.objects.create(s=str(i))
+
+        cnt = 0
+        for a in A.objects.batch_size(10):
+            cnt += 1
+
+        self.assertEqual(cnt, 100)
+
+        # test chaining
+        qs = A.objects.all()
+        qs = qs.limit(10).batch_size(20).skip(91)
+        cnt = 0
+        for a in qs:
+            cnt += 1
+
+        self.assertEqual(cnt, 9)
+
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
 

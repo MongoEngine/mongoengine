@@ -80,6 +80,7 @@ class QuerySet(object):
         self._limit = None
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
+        self._batch_size = None
 
     def __call__(self, q_obj=None, class_check=True, slave_okay=False,
                  read_preference=None, **query):
@@ -634,7 +635,7 @@ class QuerySet(object):
                       '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
-                      '_limit', '_skip', '_hint', '_auto_dereference')
+                      '_limit', '_skip', '_hint', '_batch_size', '_auto_dereference')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -699,6 +700,12 @@ class QuerySet(object):
         queryset = self.clone()
         queryset._cursor.hint(index)
         queryset._hint = index
+        return queryset
+
+    def batch_size(self, size):
+        queryset = self.clone()
+        queryset._cursor.batch_size(size)
+        queryset._batch_size = size
         return queryset
 
     def distinct(self, field, dereference=True):
@@ -1290,6 +1297,9 @@ class QuerySet(object):
             if self._hint != -1:
                 self._cursor_obj.hint(self._hint)
 
+            if self._batch_size is not None:
+                self._cursor_obj.batch_size(self._batch_size)
+
         return self._cursor_obj
 
     def __deepcopy__(self, memo):
@@ -1475,6 +1485,7 @@ class QuerySet(object):
 
         if self._cursor_obj:
             self._cursor_obj.sort(key_list)
+
         return key_list
 
     def _get_scalar(self, doc):
