@@ -1431,15 +1431,25 @@ class FieldTest(unittest.TestCase):
     def test_map_field_lookup(self):
         """Ensure MapField lookups succeed on Fields without a lookup method"""
 
+        class Action(EmbeddedDocument):
+            operation = StringField()
+            object    = StringField()
+
         class Log(Document):
             name = StringField()
             visited = MapField(DateTimeField())
+            actions = MapField(EmbeddedDocumentField(Action))
 
         Log.drop_collection()
-        Log(name="wilson", visited={'friends': datetime.datetime.now()}).save()
+        Log(name="wilson", visited={'friends': datetime.datetime.now()},
+            actions={'friends': Action(operation='drink', object='beer')}).save()
 
         self.assertEqual(1, Log.objects(
             visited__friends__exists=True).count())
+
+        self.assertEqual(1, Log.objects(
+            actions__friends__operation='drink',
+            actions__friends__object='beer').count())
 
     def test_embedded_db_field(self):
 
