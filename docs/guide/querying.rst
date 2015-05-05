@@ -39,6 +39,14 @@ syntax::
     # been written by a user whose 'country' field is set to 'uk'
     uk_pages = Page.objects(author__country='uk')
 
+.. note::
+
+   (version **0.9.0+**) if your field name is like mongodb operator name (for example
+   type, lte, lt...) and you want to place it at the end of lookup keyword
+   mongoengine automatically  prepend $ to it. To avoid this use  __ at the end of
+   your lookup keyword. For example if you field name is ``type`` and you want to
+   query by this field you must use ``.objects(user__type__="admin")`` instead of
+   ``.objects(user__type="admin")``
 
 Query operators
 ===============
@@ -663,4 +671,3 @@ following example shows how the substitutions are made::
         return comments;
     }
     """)
-
