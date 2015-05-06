@@ -826,5 +826,63 @@ class IndexesTest(unittest.TestCase):
         post2 = BlogPost(title='test2', slug='test')
         self.assertRaises(NotUniqueError, post2.save)
 
+    def test_index_dont_send_cls_option(self):
+        """
+        Ensure that 'cls' option is not sent through ensureIndex. We shouldn't
+        send internal MongoEngine arguments that are not a part of the index
+        spec.
+
+        This is directly related to the fact that MongoDB doesn't validate the
+        options that are passed to ensureIndex. For more details, see:
+        https://jira.mongodb.org/browse/SERVER-769
+        """
+        class TestDoc(Document):
+            txt = StringField()
+
+            meta = {
+                'allow_inheritance': True,
+                'indexes': [
+                    { 'fields': ('txt',), 'cls': False }
+                ]
+            }
+
+        class TestChildDoc(TestDoc):
+            txt2 = StringField()
+
+            meta = {
+                'indexes': [
+                    { 'fields': ('txt2',), 'cls': False }
+                ]
+            }
+
+        TestDoc.drop_collection()
+        TestDoc.ensure_indexes()
+        TestChildDoc.ensure_indexes()
+
+        index_info = TestDoc._get_collection().index_information()
+        for key in index_info:
+            del index_info[key]['v']  # drop the index version - we don't care about that here
+
+        self.assertEqual(index_info, {
+            'txt_1': {
+                'key': [('txt', 1)],
+                'dropDups': False,
+                'background': False
+            },
+            '_id_': {
+                'key': [('_id', 1)],
+            },
+            'txt2_1': {
+                'key': [('txt2', 1)],
+                'dropDups': False,
+                'background': False
+            },
+            '_cls_1': {
+                'key': [('_cls', 1)],
+                'background': False,
+            }
+        })
+
+
 if __name__ == '__main__':
     unittest.main()
