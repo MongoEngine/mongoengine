@@ -146,6 +146,8 @@ arguments can be set on all fields:
     When True, use this field as a primary key for the collection.  `DictField`
     and `EmbeddedDocuments` both support being the primary key for a document.
 
+    .. note:: If set, this field is also accessible through the `pk` field.
+
 :attr:`choices` (Default: None)
     An iterable (e.g. a list or tuple) of choices to which the value of this
     field should be limited.
