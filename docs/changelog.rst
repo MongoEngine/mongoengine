@@ -15,6 +15,7 @@ Changes in 0.9.X - DEV
 - Fixed storage of microseconds in ComplexDateTimeField and unused separator option. #910
 - Django support was removed and will be available as a separate extension. #958
 - Don't send a "cls" option to ensureIndex (related to https://jira.mongodb.org/browse/SERVER-769)
+- Fix for updating sorting in SortedListField. #978
 
 Changes in 0.9.0
 ================

@@ -916,6 +916,13 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(post.comments[0].content, comment2.content)
         self.assertEqual(post.comments[1].content, comment1.content)
 
+        post.comments[0].order = 2
+        post.save()
+        post.reload()
+
+        self.assertEqual(post.comments[0].content, comment1.content)
+        self.assertEqual(post.comments[1].content, comment2.content)
+
         BlogPost.drop_collection()
 
     def test_reverse_list_sorting(self):
