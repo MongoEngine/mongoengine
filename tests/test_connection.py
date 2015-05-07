@@ -1,5 +1,5 @@
 import sys
-from time import sleep
+import datetime
 
 sys.path[0:0] = [""]
 
@@ -7,8 +7,6 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-
-import datetime
 
 import pymongo
 from bson.tz_util import utc
@@ -62,8 +60,12 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest', alias='testdb2')
         actual_connection = get_connection('testdb2')
 
-        # horrible, but since PyMongo3+, connection are created asynchronously
-        sleep(0.1)
+        # Handle PyMongo 3+ Async Connection
+        if IS_PYMONGO_3:
+            # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
+            # Purposely not catching exception to fail test if thrown.
+            expected_connection.server_info()
+
         self.assertEqual(expected_connection, actual_connection)
 
     def test_connect_uri(self):
@@ -207,8 +209,11 @@ class ConnectionTest(unittest.TestCase):
             self.assertEqual(mongo_connections['t1'].host, 'localhost')
             self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')
         else:
-            # horrible, but since PyMongo3+, connection are created asynchronously
-            sleep(0.1)
+            # Handle PyMongo 3+ Async Connection
+            # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
+            # Purposely not catching exception to fail test if thrown.
+            mongo_connections['t1'].server_info()
+            mongo_connections['t2'].server_info()
             self.assertEqual(mongo_connections['t1'].address[0], 'localhost')
             self.assertEqual(mongo_connections['t2'].address[0], '127.0.0.1')
 
