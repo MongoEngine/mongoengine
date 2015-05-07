@@ -3675,6 +3675,31 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         # deleted from the database
         self.assertEqual(number, 2)
 
+    def test_empty_list_embedded_documents_with_unique_field(self):
+        """
+        Tests that only one document with an empty list of embedded documents
+        that have a unique field can be saved, but if the unique field is
+        also sparse than multiple documents with an empty list can be saved.
+        """
+        class EmbeddedWithUnique(EmbeddedDocument):
+            number = IntField(unique=True)
+
+        class A(Document):
+            my_list = ListField(EmbeddedDocumentField(EmbeddedWithUnique))
+
+        a1 = A(my_list=[]).save()
+        self.assertRaises(NotUniqueError, lambda: A(my_list=[]).save())
+
+        class EmbeddedWithSparseUnique(EmbeddedDocument):
+            number = IntField(unique=True, sparse=True)
+
+        class B(Document):
+            my_list = ListField(EmbeddedDocumentField(EmbeddedWithSparseUnique))
+
+        b1 = B(my_list=[]).save()
+        b2 = B(my_list=[]).save()
+
+
     def test_filtered_delete(self):
         """
         Tests the delete method of a List of Embedded Documents
