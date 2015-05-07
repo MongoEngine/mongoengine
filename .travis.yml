@@ -10,8 +10,8 @@ python:
 env:
 - PYMONGO=2.7
 - PYMONGO=2.8
-# - PYMONGO=3.0
-# - PYMONGO=dev
+- PYMONGO=3.0
+- PYMONGO=dev
 matrix:
   fast_finish: true
 before_install:
