@@ -41,10 +41,10 @@ syntax::
 
 .. note::
 
-   (version **0.9.0+**) if your field name is like mongodb operator name (for example
+   (version **0.9.1+**) if your field name is like mongodb operator name (for example
    type, lte, lt...) and you want to place it at the end of lookup keyword
    mongoengine automatically  prepend $ to it. To avoid this use  __ at the end of
-   your lookup keyword. For example if you field name is ``type`` and you want to
+   your lookup keyword. For example if your field name is ``type`` and you want to
    query by this field you must use ``.objects(user__type__="admin")`` instead of
    ``.objects(user__type="admin")``
 

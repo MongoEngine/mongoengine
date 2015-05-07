@@ -4592,21 +4592,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
         self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
 
-    def test_last_field_name_like_operator(self):
-        class EmbeddedItem(EmbeddedDocument):
-            type = StringField()
-            name = StringField()
-
-        class Doc(Document):
-            item = EmbeddedDocumentField(EmbeddedItem)
-
-        Doc.drop_collection()
-
-        doc = Doc(item=EmbeddedItem(type="axe", name="Heroic axe"))
-        doc.save()
-
-        self.assertEqual(1, Doc.objects(item__type__="axe").count())
-        self.assertEqual(1, Doc.objects(item__name__="Heroic axe").count())
 
 if __name__ == '__main__':
     unittest.main()
