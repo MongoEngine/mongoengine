@@ -1,5 +1,6 @@
 import sys
 import datetime
+from pymongo.errors import OperationFailure
 
 sys.path[0:0] = [""]
 
@@ -124,6 +125,7 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with
         the option `authSource` in URI.
+        This feature was introduced in MongoDB 2.4 and removed in 2.6
         """
         # Create users
         c = connect('mongoenginetest')
@@ -131,18 +133,25 @@ class ConnectionTest(unittest.TestCase):
         c.admin.add_user('username', 'password')
 
         # Authentication fails without "authSource"
-        self.assertRaises(
-            ConnectionError, connect, 'mongoenginetest', alias='test1',
-            host='mongodb://username:password@localhost/mongoenginetest'
-        )
-        self.assertRaises(ConnectionError, get_db, 'test1')
+        if IS_PYMONGO_3:
+            test_conn = connect('mongoenginetest', alias='test2',
+                                host='mongodb://username:password@localhost/mongoenginetest')
+            self.assertRaises(OperationFailure, test_conn.server_info)
+        else:
+            self.assertRaises(
+                ConnectionError, connect, 'mongoenginetest', alias='test1',
+                host='mongodb://username:password@localhost/mongoenginetest'
+            )
+            self.assertRaises(ConnectionError, get_db, 'test1')
 
         # Authentication succeeds with "authSource"
-        connect(
+        test_conn2 = connect(
             'mongoenginetest', alias='test2',
             host=('mongodb://username:password@localhost/'
                   'mongoenginetest?authSource=admin')
         )
+        # This will fail starting from MongoDB 2.6+
+        # test_conn2.server_info()
         db = get_db('test2')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
