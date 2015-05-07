@@ -208,6 +208,22 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(Doc.objects(df__type=2).count(), 1)  # str
         self.assertEqual(Doc.objects(df__type=16).count(), 1)  # int
 
+    def test_last_field_name_like_operator(self):
+        class EmbeddedItem(EmbeddedDocument):
+            type = StringField()
+            name = StringField()
+
+        class Doc(Document):
+            item = EmbeddedDocumentField(EmbeddedItem)
+
+        Doc.drop_collection()
+
+        doc = Doc(item=EmbeddedItem(type="axe", name="Heroic axe"))
+        doc.save()
+
+        self.assertEqual(1, Doc.objects(item__type__="axe").count())
+        self.assertEqual(1, Doc.objects(item__name__="Heroic axe").count())
+
 
 if __name__ == '__main__':
     unittest.main()
