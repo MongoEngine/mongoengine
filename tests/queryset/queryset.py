@@ -708,6 +708,11 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+        # get MongoDB version info
+        connection = get_connection()
+        info = connection.test.command('buildInfo')
+        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
+
         # Recreates the collection
         self.assertEqual(0, Blog.objects.count())
 
@@ -724,7 +729,7 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            if (get_connection().max_wire_version <= 1):
+            if mongodb_version < (2, 6):
                 self.assertEqual(q, 1)
             else:
                 # profiling logs each doc now in the bulk op
@@ -737,7 +742,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            if (get_connection().max_wire_version <= 1):
+            if mongodb_version < (2, 6):
                 self.assertEqual(q, 2)  # 1 for insert, and 1 for in bulk fetch
             else:
                 # 99 for insert, and 1 for in bulk fetch
@@ -869,8 +874,10 @@ class QuerySetTest(unittest.TestCase):
 
             self.assertEqual(q, 3)
 
+    @skip_pymongo3
     def test_slave_okay(self):
-        """Ensures that a query can take slave_okay syntax
+        """Ensures that a query can take slave_okay syntax.
+        Useless with PyMongo 3+ as well as with MongoDB 3+.
         """
         person1 = self.Person(name="User A", age=20)
         person1.save()
