@@ -886,10 +886,10 @@ class IndexesTest(unittest.TestCase):
         index_info = TestDoc._get_collection().index_information()
         for key in index_info:
             del index_info[key]['v']  # drop the index version - we don't care about that here
-            del index_info[key]['ns']  # drop the index namespace - we don't care about that here
+            if 'ns' in index_info[key]:
+                del index_info[key]['ns']  # drop the index namespace - we don't care about that here, MongoDB 3+
             if 'dropDups' in index_info[key]:
                 del index_info[key]['dropDups']  # drop the index dropDups - it is deprecated in MongoDB 3+
-        print index_info
 
         self.assertEqual(index_info, {
             'txt_1': {
