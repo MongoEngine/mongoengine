@@ -866,7 +866,7 @@ class IndexesTest(unittest.TestCase):
             meta = {
                 'allow_inheritance': True,
                 'indexes': [
-                    { 'fields': ('txt',), 'cls': False }
+                    {'fields': ('txt',), 'cls': False}
                 ]
             }
 
@@ -875,7 +875,7 @@ class IndexesTest(unittest.TestCase):
 
             meta = {
                 'indexes': [
-                    { 'fields': ('txt2',), 'cls': False }
+                    {'fields': ('txt2',), 'cls': False}
                 ]
             }
 
@@ -886,11 +886,14 @@ class IndexesTest(unittest.TestCase):
         index_info = TestDoc._get_collection().index_information()
         for key in index_info:
             del index_info[key]['v']  # drop the index version - we don't care about that here
+            del index_info[key]['ns']  # drop the index namespace - we don't care about that here
+            if 'dropDups' in index_info[key]:
+                del index_info[key]['dropDups']  # drop the index dropDups - it is deprecated in MongoDB 3+
+        print index_info
 
         self.assertEqual(index_info, {
             'txt_1': {
                 'key': [('txt', 1)],
-                'dropDups': False,
                 'background': False
             },
             '_id_': {
@@ -898,7 +901,6 @@ class IndexesTest(unittest.TestCase):
             },
             'txt2_1': {
                 'key': [('txt2', 1)],
-                'dropDups': False,
                 'background': False
             },
             '_cls_1': {
