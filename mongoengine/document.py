@@ -637,14 +637,19 @@ class Document(BaseDocument):
         :param key_or_list: a single index key or a list of index keys (to
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
+        :param background: Allows index creation in the background
+        :param drop_dups: Was removed with MongoDB 3. The value will be
+            removed if PyMongo3+ is used
         """
         index_spec = cls._build_index_spec(key_or_list)
         index_spec = index_spec.copy()
         fields = index_spec.pop('fields')
         index_spec['drop_dups'] = drop_dups
+        # TODO: raise warning if dropdups given and remove with PyMongo3+
         index_spec['background'] = background
         index_spec.update(kwargs)
 
+        # TODO: ensure_index is deprecated
         return cls._get_collection().ensure_index(fields, **index_spec)
 
     @classmethod
@@ -688,6 +693,7 @@ class Document(BaseDocument):
                 if 'cls' in opts:
                     del opts['cls']
 
+                # TODO: ensure_index is deprecated in PyMongo 3+ and drop_dups removed
                 collection.ensure_index(fields, background=background,
                                         drop_dups=drop_dups, **opts)
 
@@ -701,6 +707,7 @@ class Document(BaseDocument):
             if 'cls' in index_opts:
                 del index_opts['cls']
 
+            # TODO: ensure_index is deprecated in PyMongo 3+
             collection.ensure_index('_cls', background=background,
                                     **index_opts)
 

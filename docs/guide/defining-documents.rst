@@ -465,19 +465,26 @@ You can specify indexes on collections to make querying faster. This is done
 by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
 either be a single field name, a tuple containing multiple field names, or a
-dictionary containing a full index definition. A direction may be specified on
-fields by prefixing the field name with a **+** (for ascending) or a **-** sign
-(for descending). Note that direction only matters on multi-field indexes.
-Text indexes may be specified by prefixing the field name with a **$**. ::
+dictionary containing a full index definition.
+
+A direction may be specified on fields by prefixing the field name with a
+**+** (for ascending) or a **-** sign (for descending). Note that direction
+only matters on multi-field indexes. Text indexes may be specified by prefixing
+the field name with a **$**. Hashed indexes may be specified by prefixing
+the field name with a **#**::
 
     class Page(Document):
+        category = IntField()
         title = StringField()
         rating = StringField()
         created = DateTimeField()
         meta = {
             'indexes': [
                 'title',
+                '$title',  # text index
+                '#title',  # hashed index
                 ('title', '-rating'),
+                ('category', '_cls'),
                 {
                     'fields': ['created'],
                     'expireAfterSeconds': 3600
@@ -532,11 +539,14 @@ There are a few top level defaults for all indexes that can be set::
 :attr:`index_background` (Optional)
     Set the default value for if an index should be indexed in the background
 
+:attr:`index_cls` (Optional)
+    A way to turn off a specific index for _cls.
+
 :attr:`index_drop_dups` (Optional)
     Set the default value for if an index should drop duplicates
 
-:attr:`index_cls` (Optional)
-    A way to turn off a specific index for _cls.
+.. note:: Since MongoDB 3.0 drop_dups is not supported anymore. Raises a Warning
+    and has no effect
 
 
 Compound Indexes and Indexing sub documents
