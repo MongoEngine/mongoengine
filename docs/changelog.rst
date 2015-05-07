@@ -17,6 +17,7 @@ Changes in 0.9.X - DEV
 - Don't send a "cls" option to ensureIndex (related to https://jira.mongodb.org/browse/SERVER-769)
 - Fix for updating sorting in SortedListField. #978
 - Added __ support to escape field name in fields lookup keywords that match operators names #949
+- Support for PyMongo 3+ #946
 
 Changes in 0.9.0
 ================
