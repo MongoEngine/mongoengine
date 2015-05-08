@@ -15,7 +15,7 @@ COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                         'all', 'size', 'exists', 'not', 'elemMatch', 'type')
 GEO_OPERATORS = ('within_distance', 'within_spherical_distance',
                  'within_box', 'within_polygon', 'near', 'near_sphere',
-                 'max_distance', 'geo_within', 'geo_within_box',
+                 'max_distance', 'min_distance', 'geo_within', 'geo_within_box',
                  'geo_within_polygon', 'geo_within_center',
                  'geo_within_sphere', 'geo_intersects')
 STRING_OPERATORS = ('contains', 'icontains', 'startswith',
@@ -128,26 +128,36 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 mongo_query[key].update(value)
                 # $maxDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
-                if ('$maxDistance' in value_dict and '$near' in value_dict):
+                if (('$maxDistance' in value_dict or '$minDistance' in value_dict)
+                   and '$near' in value_dict):
                     value_son = SON()
                     if isinstance(value_dict['$near'], dict):
                         for k, v in value_dict.iteritems():
-                            if k == '$maxDistance':
+                            if k == '$maxDistance' or k == '$minDistance':
                                 continue
                             value_son[k] = v
                         if (get_connection().max_wire_version <= 1):
-                            value_son['$maxDistance'] = value_dict[
-                                '$maxDistance']
+                            if '$maxDistance' in value_dict:
+                                value_son['$maxDistance'] = value_dict['$maxDistance']
+                            if '$minDistance' in value_dict:
+                                value_son['$minDistance'] = value_dict['$minDistance']
                         else:
                             value_son['$near'] = SON(value_son['$near'])
-                            value_son['$near'][
-                                '$maxDistance'] = value_dict['$maxDistance']
+                            if '$maxDistance' in value_dict:
+                                value_son['$near'][
+                                    '$maxDistance'] = value_dict['$maxDistance']
+                            if '$minDistance' in value_dict:
+                                value_son['$near'][
+                                    '$minDistance'] = value_dict['$minDistance']
                     else:
                         for k, v in value_dict.iteritems():
-                            if k == '$maxDistance':
+                            if k == '$maxDistance' or k == '$minDistance':
                                 continue
                             value_son[k] = v
-                        value_son['$maxDistance'] = value_dict['$maxDistance']
+                        if '$maxDistance' in value_dict:
+                            value_son['$maxDistance'] = value_dict['$maxDistance']
+                        if '$minDistance' in value_dict:
+                            value_son['$minDistance'] = value_dict['$minDistance']
 
                     mongo_query[key] = value_son
             else:
@@ -317,6 +327,8 @@ def _geo_operator(field, op, value):
             value = {'$within': {'$box': value}}
         elif op == "max_distance":
             value = {'$maxDistance': value}
+        elif op == "min_distance":
+            value = {'$minDistance': value}
         else:
             raise NotImplementedError("Geo method '%s' has not "
                                       "been implemented for a GeoPointField" % op)
@@ -337,6 +349,8 @@ def _geo_operator(field, op, value):
             value = {'$near': _infer_geometry(value)}
         elif op == "max_distance":
             value = {'$maxDistance': value}
+        elif op == "min_distance":
+            value = {'$minDistance': value}
         else:
             raise NotImplementedError("Geo method '%s' has not "
                                       "been implemented for a %s " % (op, field._name))
