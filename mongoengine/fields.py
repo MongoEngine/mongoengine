@@ -609,7 +609,7 @@ class GenericEmbeddedDocumentField(BaseField):
             return None
 
         data = document.to_mongo(use_db_field)
-        if not '_cls' in data:
+        if '_cls' not in data:
             data['_cls'] = document._class_name
         return data
 
