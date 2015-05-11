@@ -6,7 +6,7 @@ from bson import SON
 from mongoengine.base.fields import UPDATE_OPERATORS
 from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidQueryError, LookUpError
+from mongoengine.errors import InvalidQueryError
 
 __all__ = ('query', 'update')
 
@@ -128,20 +128,15 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 mongo_query[key].update(value)
                 # $maxDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
-                if ('$maxDistance' in value_dict and '$near' in value_dict):
+                if '$maxDistance' in value_dict and '$near' in value_dict:
                     value_son = SON()
                     if isinstance(value_dict['$near'], dict):
                         for k, v in value_dict.iteritems():
                             if k == '$maxDistance':
                                 continue
                             value_son[k] = v
-                        if (get_connection().max_wire_version <= 1):
-                            value_son['$maxDistance'] = value_dict[
-                                '$maxDistance']
-                        else:
-                            value_son['$near'] = SON(value_son['$near'])
-                            value_son['$near'][
-                                '$maxDistance'] = value_dict['$maxDistance']
+                        value_son['$near'] = SON(value_son['$near'])
+                        value_son['$near']['$maxDistance'] = value_dict['$maxDistance']
                     else:
                         for k, v in value_dict.iteritems():
                             if k == '$maxDistance':

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import unittest
 import sys
+
 sys.path[0:0] = [""]
 
-import os
 import pymongo
 
 from nose.plugins.skip import SkipTest
@@ -432,6 +432,7 @@ class IndexesTest(unittest.TestCase):
 
         class Test(Document):
             a = IntField()
+            b = IntField()
 
             meta = {
                 'indexes': ['a'],
@@ -443,16 +444,36 @@ class IndexesTest(unittest.TestCase):
         obj = Test(a=1)
         obj.save()
 
+        connection = get_connection()
+        IS_MONGODB_3 = connection.server_info()['versionArray'][0] >= 3
+
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
         query_plan = Test.objects(id=obj.id).exclude('a').explain()
-        self.assertFalse(query_plan['indexOnly'])
+        if not IS_MONGODB_3:
+            self.assertFalse(query_plan['indexOnly'])
+        else:
+            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IDHACK')
 
         query_plan = Test.objects(id=obj.id).only('id').explain()
-        self.assertTrue(query_plan['indexOnly'])
+        if not IS_MONGODB_3:
+            self.assertTrue(query_plan['indexOnly'])
+        else:
+            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IDHACK')
 
         query_plan = Test.objects(a=1).only('a').exclude('id').explain()
-        self.assertTrue(query_plan['indexOnly'])
+        if not IS_MONGODB_3:
+            self.assertTrue(query_plan['indexOnly'])
+        else:
+            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IXSCAN')
+            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('stage'), 'PROJECTION')
+
+        query_plan = Test.objects(a=1).explain()
+        if not IS_MONGODB_3:
+            self.assertFalse(query_plan['indexOnly'])
+        else:
+            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IXSCAN')
+            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('stage'), 'FETCH')
 
     def test_index_on_id(self):
 
@@ -491,9 +512,12 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(BlogPost.objects.count(), 10)
         self.assertEqual(BlogPost.objects.hint().count(), 10)
-        self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
 
-        self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
+        # PyMongo 3.0 bug only, works correctly with 2.X and 3.0.1+ versions
+        if pymongo.version != '3.0':
+            self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
+
+            self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
 
         if pymongo.version >= '2.8':
             self.assertEqual(BlogPost.objects.hint('tags').count(), 10)
@@ -842,7 +866,7 @@ class IndexesTest(unittest.TestCase):
             meta = {
                 'allow_inheritance': True,
                 'indexes': [
-                    { 'fields': ('txt',), 'cls': False }
+                    {'fields': ('txt',), 'cls': False}
                 ]
             }
 
@@ -851,7 +875,7 @@ class IndexesTest(unittest.TestCase):
 
             meta = {
                 'indexes': [
-                    { 'fields': ('txt2',), 'cls': False }
+                    {'fields': ('txt2',), 'cls': False}
                 ]
             }
 
@@ -862,11 +886,14 @@ class IndexesTest(unittest.TestCase):
         index_info = TestDoc._get_collection().index_information()
         for key in index_info:
             del index_info[key]['v']  # drop the index version - we don't care about that here
+            if 'ns' in index_info[key]:
+                del index_info[key]['ns']  # drop the index namespace - we don't care about that here, MongoDB 3+
+            if 'dropDups' in index_info[key]:
+                del index_info[key]['dropDups']  # drop the index dropDups - it is deprecated in MongoDB 3+
 
         self.assertEqual(index_info, {
             'txt_1': {
                 'key': [('txt', 1)],
-                'dropDups': False,
                 'background': False
             },
             '_id_': {
@@ -874,7 +901,6 @@ class IndexesTest(unittest.TestCase):
             },
             'txt2_1': {
                 'key': [('txt2', 1)],
-                'dropDups': False,
                 'background': False
             },
             '_cls_1': {

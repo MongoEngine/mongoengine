@@ -17,7 +17,7 @@ from bson import ObjectId
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
-from mongoengine.python_support import PY3
+from mongoengine.python_support import PY3, IS_PYMONGO_3
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.queryset import (QuerySet, QuerySetManager,
                                   MultipleObjectsReturned, DoesNotExist,
@@ -42,6 +42,20 @@ def skip_older_mongodb(f):
 
         if mongodb_version < (2, 6):
             raise SkipTest("Need MongoDB version 2.6+")
+
+        return f(*args, **kwargs)
+
+    _inner.__name__ = f.__name__
+    _inner.__doc__ = f.__doc__
+
+    return _inner
+
+
+def skip_pymongo3(f):
+    def _inner(*args, **kwargs):
+
+        if IS_PYMONGO_3:
+            raise SkipTest("Useless with PyMongo 3+")
 
         return f(*args, **kwargs)
 
@@ -694,6 +708,11 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
+        # get MongoDB version info
+        connection = get_connection()
+        info = connection.test.command('buildInfo')
+        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
+
         # Recreates the collection
         self.assertEqual(0, Blog.objects.count())
 
@@ -710,7 +729,7 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            if (get_connection().max_wire_version <= 1):
+            if mongodb_version < (2, 6):
                 self.assertEqual(q, 1)
             else:
                 # profiling logs each doc now in the bulk op
@@ -723,7 +742,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            if (get_connection().max_wire_version <= 1):
+            if mongodb_version < (2, 6):
                 self.assertEqual(q, 2)  # 1 for insert, and 1 for in bulk fetch
             else:
                 # 99 for insert, and 1 for in bulk fetch
@@ -855,8 +874,10 @@ class QuerySetTest(unittest.TestCase):
 
             self.assertEqual(q, 3)
 
+    @skip_pymongo3
     def test_slave_okay(self):
-        """Ensures that a query can take slave_okay syntax
+        """Ensures that a query can take slave_okay syntax.
+        Useless with PyMongo 3+ as well as with MongoDB 3+.
         """
         person1 = self.Person(name="User A", age=20)
         person1.save()
@@ -869,6 +890,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
+    @skip_older_mongodb
+    @skip_pymongo3
     def test_cursor_args(self):
         """Ensures the cursor args can be set as expected
         """
@@ -2926,8 +2949,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(query.count(), 3)
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
         cursor_args = query._cursor_args
+        if not IS_PYMONGO_3:
+            cursor_args_fields = cursor_args['fields']
+        else:
+            cursor_args_fields = cursor_args['projection']
         self.assertEqual(
-            cursor_args['fields'], {'_text_score': {'$meta': 'textScore'}})
+            cursor_args_fields, {'_text_score': {'$meta': 'textScore'}})
 
         text_scores = [i.get_text_score() for i in query]
         self.assertEqual(len(text_scores), 3)
@@ -3992,8 +4019,11 @@ class QuerySetTest(unittest.TestCase):
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
         self.assertEqual([], bars)
 
-        self.assertRaises(ConfigurationError, Bar.objects,
-                          read_preference='Primary')
+        if not IS_PYMONGO_3:
+            error_class = ConfigurationError
+        else:
+            error_class = TypeError
+        self.assertRaises(error_class, Bar.objects, read_preference='Primary')
 
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(

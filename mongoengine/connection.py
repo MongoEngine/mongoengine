@@ -1,11 +1,16 @@
-from pymongo import MongoClient, MongoReplicaSetClient, uri_parser
-
+from pymongo import MongoClient, ReadPreference, uri_parser
+from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
+if IS_PYMONGO_3:
+    READ_PREFERENCE = ReadPreference.PRIMARY
+else:
+    from pymongo import MongoReplicaSetClient
+    READ_PREFERENCE = False
 
 
 class ConnectionError(Exception):
@@ -18,7 +23,7 @@ _dbs = {}
 
 
 def register_connection(alias, name=None, host=None, port=None,
-                        read_preference=False,
+                        read_preference=READ_PREFERENCE,
                         username=None, password=None, authentication_source=None,
                         **kwargs):
     """Add a connection.
@@ -109,7 +114,8 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             # Discard replicaSet if not base string
             if not isinstance(conn_settings['replicaSet'], basestring):
                 conn_settings.pop('replicaSet', None)
-            connection_class = MongoReplicaSetClient
+            if not IS_PYMONGO_3:
+                connection_class = MongoReplicaSetClient
 
         try:
             connection = None

@@ -1,11 +1,8 @@
-import warnings
 
-import hashlib
 import pymongo
 import re
 
 from pymongo.read_preferences import ReadPreference
-from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
@@ -19,7 +16,7 @@ from mongoengine.base import (
     ALLOW_INHERITANCE,
     get_document
 )
-from mongoengine.errors import ValidationError, InvalidQueryError, InvalidDocumentError
+from mongoengine.errors import InvalidQueryError, InvalidDocumentError
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
@@ -169,6 +166,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
+        # TODO: use new get_collection() with PyMongo3 ?
         if not hasattr(cls, '_collection') or cls._collection is None:
             db = cls._get_db()
             collection_name = cls._get_collection_name()
@@ -310,6 +308,13 @@ class Document(BaseDocument):
                     object_id = collection.insert(doc, **write_concern)
                 else:
                     object_id = collection.save(doc, **write_concern)
+                    # In PyMongo 3.0, the save() call calls internally the _update() call
+                    # but they forget to return the _id value passed back, therefore getting it back here
+                    # Correct behaviour in 2.X and in 3.0.1+ versions
+                    if not object_id and pymongo.version_tuple == (3, 0):
+                        pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
+                        object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
+                                    self._qs.filter(pk=pk_as_mongo_obj).first().pk
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()

@@ -1,13 +1,11 @@
 import warnings
 
-import pymongo
-
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
 from mongoengine.python_support import PY3
 from mongoengine.queryset import (DO_NOTHING, DoesNotExist,
                                   MultipleObjectsReturned,
-                                  QuerySet, QuerySetManager)
+                                  QuerySetManager)
 
 from mongoengine.base.common import _document_registry, ALLOW_INHERITANCE
 from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField

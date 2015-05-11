@@ -336,12 +336,11 @@ class GeoFieldTest(unittest.TestCase):
         Location.drop_collection()
         Parent.drop_collection()
 
-        list(Parent.objects)
-
-        collection = Parent._get_collection()
-        info = collection.index_information()
-
+        Parent(name='Berlin').save()
+        info = Parent._get_collection().index_information()
         self.assertFalse('location_2d' in info)
+        info = Location._get_collection().index_information()
+        self.assertTrue('location_2d' in info)
 
         self.assertEqual(len(Parent._geo_indices()), 0)
         self.assertEqual(len(Location._geo_indices()), 1)
