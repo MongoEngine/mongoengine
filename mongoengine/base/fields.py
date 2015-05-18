@@ -98,7 +98,7 @@ class BaseField(object):
                 validators = [validators]
             else:
                 if not isinstance(validators, list):
-                    raise TypeError("'validators' must be a list argument")
+                    raise TypeError("Argument 'validators' must be a list value")
         self.validators = validators
 
         # Adjust the appropriate creation counter, and save our local copy.
