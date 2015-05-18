@@ -91,6 +91,14 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
+        
+        # Ensure we have a list of validators
+        if validators is not None:
+            if callable(validators):
+                validators = [validators]
+            else:
+                if not isinstance(validators, list):
+                    raise TypeError("'validators' must be a list argument")
         self.validators = validators
 
         # Adjust the appropriate creation counter, and save our local copy.
