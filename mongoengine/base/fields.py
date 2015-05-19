@@ -44,7 +44,7 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False, sparse=False, validators=None):
+                 help_text=None, null=False, sparse=False):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -71,8 +71,6 @@ class BaseField(object):
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
-        :param validators: (optional)  WTForm validators. These validators are 
-            often used when generating model form from the document model.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -91,15 +89,6 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
-        
-        # Ensure we have a list of validators
-        if validators is not None:
-            if callable(validators):
-                validators = [validators]
-            else:
-                if not isinstance(validators, list):
-                    raise TypeError("Argument 'validators' must be a list value")
-        self.validators = validators
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
