@@ -630,6 +630,40 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(ValidationError, Doc.objects().update, dt_f="datetime", upsert=True)
         self.assertRaises(ValidationError, Doc.objects().update, ed_f__str_f=1, upsert=True)
 
+    def test_update_related_models( self ):
+            class TestPerson( Document ):
+                name = StringField()
+
+            class TestOrganization( Document ):
+                name = StringField()
+                owner = ReferenceField( TestPerson )
+
+            TestPerson.drop_collection()
+            TestOrganization.drop_collection()
+
+            p = TestPerson( name='p1' )
+            p.save()
+            o = TestOrganization( name='o1' )
+            o.save()
+
+            o.owner = p
+            p.name = 'p2'
+
+            self.assertListEqual( o._get_changed_fields(), [ 'owner' ] )
+            self.assertListEqual( p._get_changed_fields(), [ 'name' ] )
+
+            o.save()
+
+            self.assertListEqual( o._get_changed_fields(), [] )
+            self.assertListEqual( p._get_changed_fields(), [ 'name' ] ) # Fails; it's empty
+
+            # This will do NOTHING at all, even though we changed the name
+            p.save()
+
+            p.reload()
+
+            self.assertEqual( p.name, 'p2' ) # Fails; it's still `p1`
+
     def test_upsert(self):
         self.Person.drop_collection()
 
