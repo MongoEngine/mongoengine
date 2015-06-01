@@ -298,25 +298,36 @@ class IndexesTest(unittest.TestCase):
     def test_explicit_geohaystack_index(self):
         """Ensure that geohaystack indexes work when created via meta[indexes]
         """
-        raise SkipTest('GeoHaystack index creation seems broken on PyMongo'
-                       'side, as it requires a bucketSize parameter.')
+        raise SkipTest('GeoHaystack index creation is not supported for now'
+                       'from meta, as it requires a bucketSize parameter.')
 
         class Place(Document):
             location = DictField()
+            name = StringField()
             meta = {
-                'allow_inheritance': True,
                 'indexes': [
-                    ')location.point',
+                    (')location.point', 'name')
                 ]
             }
-
-        self.assertEqual([{'fields': [('location.point', 'geoHaystack')]}],
+        self.assertEqual([{'fields': [('location.point', 'geoHaystack'), ('name', 1)]}],
                          Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', 'geoHaystack')] in info)
+
+    def test_create_geohaystack_index(self):
+        """Ensure that geohaystack indexes can be created
+        """
+        class Place(Document):
+            location = DictField()
+            name = StringField()
+
+        Place.ensure_index({'fields': (')location.point', 'name')}, bucketSize=10)
+        info = Place._get_collection().index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('location.point', 'geoHaystack'), ('name', 1)] in info)
 
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
