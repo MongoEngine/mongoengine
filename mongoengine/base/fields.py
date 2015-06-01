@@ -44,7 +44,7 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False, sparse=False):
+                 help_text=None, null=False, sparse=False, custom_data=None):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -71,6 +71,7 @@ class BaseField(object):
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
+        :param custom_data: (optional) Custom metadata for this field.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -89,6 +90,7 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
+        self.custom_data = custom_data
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
