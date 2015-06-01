@@ -324,7 +324,7 @@ class IndexesTest(unittest.TestCase):
             location = DictField()
             name = StringField()
 
-        Place.ensure_index({'fields': (')location.point', 'name')}, bucketSize=10)
+        Place.create_index({'fields': (')location.point', 'name')}, bucketSize=10)
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', 'geoHaystack'), ('name', 1)] in info)
