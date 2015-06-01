@@ -114,7 +114,7 @@ arguments can be set on all fields:
 :attr:`default` (Default: None)
     A value to use when no value is set for this field.
 
-    The definion of default parameters follow `the general rules on Python
+    The definition of default parameters follow `the general rules on Python
     <http://docs.python.org/reference/compound_stmts.html#function-definitions>`__,
     which means that some care should be taken when dealing with default mutable objects
     (like in :class:`~mongoengine.fields.ListField` or :class:`~mongoengine.fields.DictField`)::
