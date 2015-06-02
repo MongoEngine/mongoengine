@@ -18,6 +18,7 @@ Changes in 0.9.X - DEV
 - Fix for updating sorting in SortedListField. #978
 - Added __ support to escape field name in fields lookup keywords that match operators names #949
 - Support for PyMongo 3+ #946
+- Fix for issue where FileField deletion did not free space in GridFS. 
 
 Changes in 0.9.0
 ================
