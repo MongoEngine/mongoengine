@@ -290,6 +290,7 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
+            self.field._auto_dereference = self._auto_dereference
             value_dict = dict([(key, self.field.to_python(item))
                                for key, item in value.items()])
         else:

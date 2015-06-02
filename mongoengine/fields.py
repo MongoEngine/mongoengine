@@ -546,7 +546,7 @@ class EmbeddedDocumentField(BaseField):
 
     def to_python(self, value):
         if not isinstance(value, self.document_type):
-            return self.document_type._from_son(value)
+            return self.document_type._from_son(value, _auto_dereference=self._auto_dereference)
         return value
 
     def to_mongo(self, value, use_db_field=True, fields=[]):
