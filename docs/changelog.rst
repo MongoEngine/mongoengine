@@ -19,6 +19,7 @@ Changes in 0.9.X - DEV
 - Added __ support to escape field name in fields lookup keywords that match operators names #949
 - Support for PyMongo 3+ #946
 - Fix for issue where FileField deletion did not free space in GridFS. 
+- Document save raise an exception if save_condition fails 
 
 Changes in 0.9.0
 ================
