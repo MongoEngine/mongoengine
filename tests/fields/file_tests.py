@@ -309,7 +309,7 @@ class FileTest(unittest.TestCase):
         testfile.the_file.put(text, content_type=content_type, filename="hello")
         testfile.save()
         
-        #Now check fs.files and fs.chunks 
+        # Now check fs.files and fs.chunks 
         db = TestFile._get_db()
         
         files = db.fs.files.find()
@@ -317,7 +317,7 @@ class FileTest(unittest.TestCase):
         self.assertEquals(len(list(files)), 1)
         self.assertEquals(len(list(chunks)), 1)
 
-        #Deleting the docoument should delete the files 
+        # Deleting the docoument should delete the files 
         testfile.delete()
         
         files = db.fs.files.find()
@@ -325,7 +325,7 @@ class FileTest(unittest.TestCase):
         self.assertEquals(len(list(files)), 0)
         self.assertEquals(len(list(chunks)), 0)
         
-        #Test case where we don't store a file in the first place 
+        # Test case where we don't store a file in the first place 
         testfile = TestFile()
         testfile.save()
         
@@ -341,7 +341,7 @@ class FileTest(unittest.TestCase):
         self.assertEquals(len(list(files)), 0)
         self.assertEquals(len(list(chunks)), 0)
         
-        #Test case where we overwrite the file 
+        # Test case where we overwrite the file 
         testfile = TestFile()
         testfile.the_file.put(text, content_type=content_type, filename="hello")
         testfile.save()
