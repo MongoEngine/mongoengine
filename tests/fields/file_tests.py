@@ -297,6 +297,71 @@ class FileTest(unittest.TestCase):
         test_file = TestFile()
         self.assertFalse(test_file.the_file in [{"test": 1}])
 
+    def test_file_disk_space(self): 
+        """ Test disk space usage when we delete/replace a file """ 
+        class TestFile(Document):
+            the_file = FileField()
+            
+        text = b('Hello, World!')
+        content_type = 'text/plain'
+
+        testfile = TestFile()
+        testfile.the_file.put(text, content_type=content_type, filename="hello")
+        testfile.save()
+        
+        # Now check fs.files and fs.chunks 
+        db = TestFile._get_db()
+        
+        files = db.fs.files.find()
+        chunks = db.fs.chunks.find()
+        self.assertEquals(len(list(files)), 1)
+        self.assertEquals(len(list(chunks)), 1)
+
+        # Deleting the docoument should delete the files 
+        testfile.delete()
+        
+        files = db.fs.files.find()
+        chunks = db.fs.chunks.find()
+        self.assertEquals(len(list(files)), 0)
+        self.assertEquals(len(list(chunks)), 0)
+        
+        # Test case where we don't store a file in the first place 
+        testfile = TestFile()
+        testfile.save()
+        
+        files = db.fs.files.find()
+        chunks = db.fs.chunks.find()
+        self.assertEquals(len(list(files)), 0)
+        self.assertEquals(len(list(chunks)), 0)
+        
+        testfile.delete()
+        
+        files = db.fs.files.find()
+        chunks = db.fs.chunks.find()
+        self.assertEquals(len(list(files)), 0)
+        self.assertEquals(len(list(chunks)), 0)
+        
+        # Test case where we overwrite the file 
+        testfile = TestFile()
+        testfile.the_file.put(text, content_type=content_type, filename="hello")
+        testfile.save()
+        
+        text = b('Bonjour, World!')
+        testfile.the_file.replace(text, content_type=content_type, filename="hello")
+        testfile.save()
+        
+        files = db.fs.files.find()
+        chunks = db.fs.chunks.find()
+        self.assertEquals(len(list(files)), 1)
+        self.assertEquals(len(list(chunks)), 1)
+        
+        testfile.delete()
+        
+        files = db.fs.files.find()
+        chunks = db.fs.chunks.find()
+        self.assertEquals(len(list(files)), 0)
+        self.assertEquals(len(list(chunks)), 0)
+
     def test_image_field(self):
         if not HAS_PIL:
             raise SkipTest('PIL not installed')

@@ -463,6 +463,12 @@ class Document(BaseDocument):
         """
         signals.pre_delete.send(self.__class__, document=self)
 
+        # Delete FileFields separately 
+        FileField = _import_class('FileField')
+        for name, field in self._fields.iteritems():
+            if isinstance(field, FileField): 
+                getattr(self, name).delete()
+
         try:
             self._qs.filter(
                 **self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
