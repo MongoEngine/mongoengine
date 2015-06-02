@@ -266,7 +266,7 @@ class Document(BaseDocument):
             to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
         :param save_condition: only perform save if matching record in db
-            satisfies condition(s) (e.g., version number).
+            satisfies condition(s) (e.g. version number).
             Raises :class:`OperationError` if the conditions are not satisfied
 
         .. versionchanged:: 0.5
@@ -285,6 +285,8 @@ class Document(BaseDocument):
         .. versionchanged:: 0.8.5
             Optional save_condition that only overwrites existing documents
             if the condition is satisfied in the current db record.
+        .. versionchanged:: 0.10
+            :class:`OperationError` exception raised if save_condition fails.
         """
         signals.pre_save.send(self.__class__, document=self)
 
