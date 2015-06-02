@@ -20,6 +20,7 @@ Changes in 0.9.X - DEV
 - Support for PyMongo 3+ #946
 - Fix for issue where FileField deletion did not free space in GridFS. 
 - No_dereference() not respected on embedded docs containing reference. #517
+- Document save raise an exception if save_condition fails 
 
 Changes in 0.9.0
 ================
