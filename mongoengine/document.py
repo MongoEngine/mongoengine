@@ -463,7 +463,7 @@ class Document(BaseDocument):
         """
         signals.pre_delete.send(self.__class__, document=self)
 
-        #Delete FileFields seperately 
+        # Delete FileFields separately 
         FileField = _import_class('FileField')
         for name, field in self._fields.iteritems():
             if isinstance(field, FileField): 
