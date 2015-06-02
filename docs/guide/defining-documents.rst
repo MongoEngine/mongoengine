@@ -315,9 +315,9 @@ reference with a delete rule specification.  A delete rule is specified by
 supplying the :attr:`reverse_delete_rule` attributes on the
 :class:`ReferenceField` definition, like this::
 
-    class Employee(Document):
+    class ProfilePage(Document):
         ...
-        profile_page = ReferenceField('ProfilePage', reverse_delete_rule=mongoengine.NULLIFY)
+        profile_page = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
 removed, the :class:`ProfilePage` that belongs to that employee is removed as
