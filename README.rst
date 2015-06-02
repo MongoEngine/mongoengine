@@ -81,7 +81,7 @@ Some simple examples of what MongoEngine code looks like::
 
     >>> len(BlogPost.objects)
     2
-    >>> len(HtmlPost.objects)
+    >>> len(TextPost.objects)
     1
     >>> len(LinkPost.objects)
     1
