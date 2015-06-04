@@ -317,10 +317,10 @@ supplying the :attr:`reverse_delete_rule` attributes on the
 
     class ProfilePage(Document):
         ...
-        profile_page = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
+        employee = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
-removed, the :class:`ProfilePage` that belongs to that employee is removed as
+removed, the :class:`ProfilePage` that references that employee is removed as
 well.  If a whole batch of employees is removed, all profile pages that are
 linked are removed as well.
 
