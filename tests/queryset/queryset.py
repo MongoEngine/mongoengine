@@ -649,13 +649,13 @@ class QuerySetTest(unittest.TestCase):
             o.owner = p
             p.name = 'p2'
 
-            self.assertListEqual( o._get_changed_fields(), [ 'owner' ] )
-            self.assertListEqual( p._get_changed_fields(), [ 'name' ] )
+            self.assertEqual( o._get_changed_fields(), [ 'owner' ] )
+            self.assertEqual( p._get_changed_fields(), [ 'name' ] )
 
             o.save()
 
-            self.assertListEqual( o._get_changed_fields(), [] )
-            self.assertListEqual( p._get_changed_fields(), [ 'name' ] ) # Fails; it's empty
+            self.assertEqual( o._get_changed_fields(), [] )
+            self.assertEqual( p._get_changed_fields(), [ 'name' ] ) # Fails; it's empty
 
             # This will do NOTHING at all, even though we changed the name
             p.save()
