@@ -958,8 +958,9 @@ class InstanceTest(unittest.TestCase):
         flip(w1)
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 1)
-        self.assertRaises(OperationError,
-                          w1.save, save_condition={'save_id': UUID(42)})
+        self.assertRaisesRegexp(OperationError,
+            "Race condition preventing document update detected",
+            w1.save, save_condition={'save_id': UUID(42)})
         w1.reload()
         self.assertFalse(w1.toggle)
         self.assertEqual(w1.count, 0)
@@ -987,8 +988,9 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(w1.count, 2)
         flip(w2)
         flip(w2)
-        self.assertRaises(OperationError,
-                          w2.save, save_condition={'save_id': old_id})
+        self.assertRaisesRegexp(OperationError,
+            "Race condition preventing document update detected",
+            w2.save, save_condition={'save_id': old_id})
         w2.reload()
         self.assertFalse(w2.toggle)
         self.assertEqual(w2.count, 2)
@@ -1000,8 +1002,9 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
         flip(w1)
-        self.assertRaises(OperationError,
-                          w1.save, save_condition={'count__gte': w1.count})
+        self.assertRaisesRegexp(OperationError,
+            "Race condition preventing document update detected",
+            w1.save, save_condition={'count__gte': w1.count})
         w1.reload()
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
