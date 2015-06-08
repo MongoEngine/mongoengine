@@ -1261,8 +1261,13 @@ class BaseQuerySet(object):
             { '$match': self._query },
             { '$group': { '_id': 'sum', 'total': { '$sum': '$' + field } } }
         ])
-        if result['result']:
-            return result['result'][0]['total']
+        if IS_PYMONGO_3:
+            result = list(result)
+            if result:
+                return result[0]['total']
+        else:
+            if result['result']:
+                return result['result'][0]['total']
         return 0
 
     def average(self, field):
@@ -1333,8 +1338,13 @@ class BaseQuerySet(object):
             { '$match': self._query },
             { '$group': { '_id': 'avg', 'total': { '$avg': '$' + field } } }
         ])
-        if result['result']:
-            return result['result'][0]['total']
+        if IS_PYMONGO_3:
+            result = list(result)
+            if result:
+                return result[0]['total']
+        else:
+            if result['result']:
+                return result['result'][0]['total']
         return 0
 
     def item_frequencies(self, field, normalize=False, map_reduce=True):
