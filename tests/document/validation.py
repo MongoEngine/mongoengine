@@ -88,6 +88,21 @@ class ValidatorErrorTest(unittest.TestCase):
         p = Person(age=15)
         self.assertRaises(ValidationError, p.validate)
 
+    def test_datetime_validation(self):
+        class DTDoc(Document):
+            date = DateTimeField()
+
+        dtd = DTDoc()
+        dtd.date = 'whatever'
+        self.assertRaises(ValidationError, dtd.save)
+
+        # make sure that passing a parsable datetime works
+        dtd = DTDoc()
+        dtd.date = str(datetime.utcnow())
+        dtd.save()
+        dtd.reload()
+        self.assertTrue(isinstance(dtd.date, datetime))
+
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.
         """
