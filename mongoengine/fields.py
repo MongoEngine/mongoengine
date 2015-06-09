@@ -223,31 +223,12 @@ class DateTimeField(BaseField):
       need accurate microsecond support.
     """
 
-    def validate(self, value):
-        if not isinstance(value, (datetime.datetime, datetime.date)):
-            self.error(u'cannot parse date "%s"' % value)
-
-    def from_python(self, value):
-        return self.prepare_query_value(None, value) or value
-
-    def prepare_query_value(self, op, value):
-        if value is None:
-            return value
-        if isinstance(value, datetime.datetime):
-            return value
-        if isinstance(value, datetime.date):
-            return datetime.datetime(value.year, value.month, value.day)
-        if callable(value):
-            return value()
-
-        if not isinstance(value, basestring):
-            return None
-
+    def _parse_datetime(self, value):
         # Attempt to parse a datetime:
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except ValueError:
+            except (TypeError, ValueError, OverflowError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
@@ -273,6 +254,31 @@ class DateTimeField(BaseField):
                                              '%Y-%m-%d')[:3], **kwargs)
                 except ValueError:
                     return None
+
+    def validate(self, value):
+        orig_value = value
+        if not isinstance(value, (datetime.datetime, datetime.date)):
+            value = self._parse_datetime(value)
+            if not value:
+                self.error(u'cannot parse date "%s"' % orig_value)
+
+    def from_python(self, value):
+        return self.prepare_query_value(None, value) or value
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        if isinstance(value, datetime.datetime):
+            return value
+        if isinstance(value, datetime.date):
+            return datetime.datetime(value.year, value.month, value.day)
+        if callable(value):
+            return value()
+
+        if not isinstance(value, basestring):
+            return None
+
+        return self._parse_datetime(value)
 
 
 class ComplexDateTimeField(StringField):
