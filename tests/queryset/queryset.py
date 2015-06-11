@@ -13,7 +13,7 @@ import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
 
-from bson import ObjectId
+from bson import ObjectId, DBRef
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
@@ -4218,6 +4218,41 @@ class QuerySetTest(unittest.TestCase):
         self.assertFalse(isinstance(qs.no_dereference().get().organization,
                                     Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
+
+    def test_no_dereference_embedded_doc(self):
+
+        class User(Document):
+            name = StringField()
+
+        class Member(EmbeddedDocument):
+            name = StringField()
+            user = ReferenceField(User)
+
+        class Organization(Document):
+            name = StringField()
+            members = ListField(EmbeddedDocumentField(Member))
+            ceo = ReferenceField(User)
+            member = EmbeddedDocumentField(Member)
+            admin = ListField(ReferenceField(User))
+
+        Organization.drop_collection()
+        User.drop_collection()
+
+        user = User(name="Flash")
+        user.save()
+
+        member = Member(name="Flash", user=user)
+
+        company = Organization(name="Mongo Inc", ceo=user, member=member)
+        company.admin.append(user)
+        company.members.append(member)
+        company.save()
+
+        result = Organization.objects().no_dereference().first()
+
+        self.assertTrue(isinstance(result.admin[0], (DBRef, ObjectId)))
+        self.assertTrue(isinstance(result.member.user, (DBRef, ObjectId)))
+        self.assertTrue(isinstance(result.members[0].user, (DBRef, ObjectId)))
 
     def test_cached_queryset(self):
         class Person(Document):
