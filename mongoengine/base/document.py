@@ -782,7 +782,7 @@ class BaseDocument(object):
         allow_inheritance = cls._meta.get('allow_inheritance',
                                           ALLOW_INHERITANCE)
         include_cls = (allow_inheritance and not spec.get('sparse', False) and
-                       spec.get('cls',  True))
+                       spec.get('cls',  True) and '_cls' not in spec['fields'])
 
         # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
         include_cls = include_cls and (spec.get('cls', False) or cls._meta.get('index_cls', True))
@@ -795,16 +795,25 @@ class BaseDocument(object):
 
             # ASCENDING from +
             # DESCENDING from -
-            # GEO2D from *
             # TEXT from $
+            # HASHED from #
+            # GEOSPHERE from (
+            # GEOHAYSTACK from )
+            # GEO2D from *
             direction = pymongo.ASCENDING
             if key.startswith("-"):
                 direction = pymongo.DESCENDING
-            elif key.startswith("*"):
-                direction = pymongo.GEO2D
             elif key.startswith("$"):
                 direction = pymongo.TEXT
-            if key.startswith(("+", "-", "*", "$")):
+            elif key.startswith("#"):
+                direction = pymongo.HASHED
+            elif key.startswith("("):
+                direction = pymongo.GEOSPHERE
+            elif key.startswith(")"):
+                direction = pymongo.GEOHAYSTACK
+            elif key.startswith("*"):
+                direction = pymongo.GEO2D
+            if key.startswith(("+", "-", "*", "$", "#", "(", ")")):
                 key = key[1:]
 
             # Use real field name, do it manually because we need field
@@ -827,7 +836,8 @@ class BaseDocument(object):
             index_list.append((key, direction))
 
         # Don't add cls to a geo index
-        if include_cls and direction is not pymongo.GEO2D:
+        if include_cls and direction not in (
+                pymongo.GEO2D, pymongo.GEOHAYSTACK, pymongo.GEOSPHERE):
             index_list.insert(0, ('_cls', 1))
 
         if index_list:

@@ -1,4 +1,4 @@
-
+import warnings
 import pymongo
 import re
 
@@ -17,6 +17,7 @@ from mongoengine.base import (
     get_document
 )
 from mongoengine.errors import InvalidQueryError, InvalidDocumentError
+from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
@@ -636,22 +637,50 @@ class Document(BaseDocument):
         db.drop_collection(cls._get_collection_name())
 
     @classmethod
+    def create_index(cls, keys, background=False, **kwargs):
+        """Creates the given indexes if required.
+
+        :param keys: a single index key or a list of index keys (to
+            construct a multi-field index); keys may be prefixed with a **+**
+            or a **-** to determine the index ordering
+        :param background: Allows index creation in the background
+        """
+        index_spec = cls._build_index_spec(keys)
+        index_spec = index_spec.copy()
+        fields = index_spec.pop('fields')
+        drop_dups = kwargs.get('drop_dups', False)
+        if IS_PYMONGO_3 and drop_dups:
+            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            warnings.warn(msg, DeprecationWarning)
+        elif not IS_PYMONGO_3:
+            index_spec['drop_dups'] = drop_dups
+        index_spec['background'] = background
+        index_spec.update(kwargs)
+
+        if IS_PYMONGO_3:
+            return cls._get_collection().create_index(fields, **index_spec)
+        else:
+            return cls._get_collection().ensure_index(fields, **index_spec)
+
+    @classmethod
     def ensure_index(cls, key_or_list, drop_dups=False, background=False,
                      **kwargs):
-        """Ensure that the given indexes are in place.
+        """Ensure that the given indexes are in place. Deprecated in favour
+        of create_index.
 
         :param key_or_list: a single index key or a list of index keys (to
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
+        :param background: Allows index creation in the background
+        :param drop_dups: Was removed/ignored with MongoDB >2.7.5. The value
+            will be removed if PyMongo3+ is used
         """
-        index_spec = cls._build_index_spec(key_or_list)
-        index_spec = index_spec.copy()
-        fields = index_spec.pop('fields')
-        index_spec['drop_dups'] = drop_dups
-        index_spec['background'] = background
-        index_spec.update(kwargs)
-
-        return cls._get_collection().ensure_index(fields, **index_spec)
+        if IS_PYMONGO_3 and drop_dups:
+            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            warnings.warn(msg, DeprecationWarning)
+        elif not IS_PYMONGO_3:
+            kwargs.update({'drop_dups': drop_dups})
+        return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
     def ensure_indexes(cls):
@@ -666,6 +695,9 @@ class Document(BaseDocument):
         drop_dups = cls._meta.get('index_drop_dups', False)
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
+        if IS_PYMONGO_3 and drop_dups:
+            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            warnings.warn(msg, DeprecationWarning)
 
         collection = cls._get_collection()
         # 746: when connection is via mongos, the read preference is not necessarily an indication that
@@ -694,8 +726,11 @@ class Document(BaseDocument):
                 if 'cls' in opts:
                     del opts['cls']
 
-                collection.ensure_index(fields, background=background,
-                                        drop_dups=drop_dups, **opts)
+                if IS_PYMONGO_3:
+                    collection.create_index(fields, background=background, **opts)
+                else:
+                    collection.ensure_index(fields, background=background,
+                                            drop_dups=drop_dups, **opts)
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
@@ -707,8 +742,12 @@ class Document(BaseDocument):
             if 'cls' in index_opts:
                 del index_opts['cls']
 
-            collection.ensure_index('_cls', background=background,
-                                    **index_opts)
+            if IS_PYMONGO_3:
+                collection.create_index('_cls', background=background,
+                                        **index_opts)
+            else:
+                collection.ensure_index('_cls', background=background,
+                                        **index_opts)
 
     @classmethod
     def list_indexes(cls, go_up=True, go_down=True):
