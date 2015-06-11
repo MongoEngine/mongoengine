@@ -418,8 +418,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         id_basename, id_db_basename, i = 'auto_id', '_auto_id', 0
         while id_name in self._fields or \
                 id_db_name in (v.db_field for v in self._fields.values()):
-            id_name = '{}_{}'.format(id_basename, i)
-            id_db_name = '{}_{}'.format(id_db_basename, i)
+            id_name = '{0}_{1}'.format(id_basename, i)
+            id_db_name = '{0}_{1}'.format(id_db_basename, i)
             i += 1
         return id_name, id_db_name
 
