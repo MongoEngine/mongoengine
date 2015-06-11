@@ -983,8 +983,13 @@ class BaseDocument(object):
                 if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
                 else:
-                   # Look up subfield on the previous field
-                    new_field = field.lookup_member(field_name)
+                    # Look up subfield on the previous field or raise
+                    try:
+                        new_field = field.lookup_member(field_name)
+                    except AttributeError:
+                        raise LookUpError('Cannot resolve subfield or operator {} '
+                                          'on the field {}'.format(
+                                              field_name, field.name))
                 if not new_field and isinstance(field, ComplexBaseField):
                     if hasattr(field.field, 'document_type') and cls._dynamic \
                             and field.field.document_type._dynamic:

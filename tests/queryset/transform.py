@@ -224,6 +224,15 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
         self.assertEqual(1, Doc.objects(item__name__="Heroic axe").count())
 
+    def test_understandable_error_raised(self):
+        class Event(Document):
+            title = StringField()
+            location = GeoPointField()
+
+        box = [(35.0, -125.0), (40.0, -100.0)]
+        # I *meant* to execute location__within_box=box
+        events = Event.objects(location__within=box)
+        self.assertRaises(InvalidQueryError, lambda: events.count())
 
 if __name__ == '__main__':
     unittest.main()

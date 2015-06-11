@@ -44,7 +44,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
         if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
-        #if user escape field name by __
+        # if user escape field name by __
         if len(parts) > 1 and parts[-1] == "":
             parts.pop()
 
