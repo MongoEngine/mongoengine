@@ -385,21 +385,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         new_class._auto_id_field = getattr(parent_doc_cls,
                                            '_auto_id_field', False)
         if not new_class._meta.get('id_field'):
+            # After 0.10, find not existing names, instead of overwriting
+            id_name, id_db_name = cls.get_auto_id_names(new_class)
             new_class._auto_id_field = True
-            new_class._meta['id_field'] = 'id'
-            new_class._fields['id'] = ObjectIdField(db_field='_id')
-            new_class._fields['id'].name = 'id'
-            new_class.id = new_class._fields['id']
-            new_class._db_field_map['id'] = '_id'
-            new_class._reverse_db_field_map['_id'] = 'id'
-            if 'id' in new_class._fields_ordered:
-                # An existing id field will be overwritten anyway, so remove it
-                loc = new_class._fields_ordered.index('id')
-                new_class._fields_ordered = new_class._fields_ordered[:loc] + \
-                                            new_class._fields_ordered[loc+1:]
-            else:
-                # Prepend id field to _fields_ordered
-                new_class._fields_ordered = ('id', ) + new_class._fields_ordered
+            new_class._meta['id_field'] = id_name
+            new_class._fields[id_name] = ObjectIdField(db_field=id_db_name)
+            new_class._fields[id_name].name = id_name
+            new_class.id = new_class._fields[id_name]
+            new_class._db_field_map[id_name] = id_db_name
+            new_class._reverse_db_field_map[id_db_name] = id_name
+            # Prepend id field to _fields_ordered
+            new_class._fields_ordered = (id_name, ) + new_class._fields_ordered
 
         # Merge in exceptions with parent hierarchy
         exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
@@ -413,6 +409,20 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             setattr(new_class, name, exception)
 
         return new_class
+
+    def get_auto_id_names(self):
+        id_name, id_db_name = ('id', '_id')
+        if id_name not in self._fields and \
+                id_db_name not in (v.db_field for v in self._fields.values()):
+            return id_name, id_db_name
+        id_basename, id_db_basename, i = 'auto_id', '_auto_id', 0
+        while id_name in self._fields or \
+                id_db_name in (v.db_field for v in self._fields.values()):
+            id_name = '{}_{}'.format(id_basename, i)
+            id_db_name = '{}_{}'.format(id_db_basename, i)
+            i += 1
+        return id_name, id_db_name
+
 
 
 class MetaDict(dict):

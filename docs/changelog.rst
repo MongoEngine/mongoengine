@@ -21,6 +21,7 @@ Changes in 0.9.X - DEV
 - Fix for issue where FileField deletion did not free space in GridFS. 
 - No_dereference() not respected on embedded docs containing reference. #517
 - Document save raise an exception if save_condition fails #1005
+- Fixes some internal _id handling issue. #961
 
 Changes in 0.9.0
 ================

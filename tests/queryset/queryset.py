@@ -3689,11 +3689,9 @@ class QuerySetTest(unittest.TestCase):
     def test_scalar(self):
 
         class Organization(Document):
-            id = ObjectIdField('_id')
             name = StringField()
 
         class User(Document):
-            id = ObjectIdField('_id')
             name = StringField()
             organization = ObjectIdField()
 
