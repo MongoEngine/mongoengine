@@ -672,7 +672,7 @@ class BaseDocument(object):
 
     @classmethod
     def _get_collection_name(cls):
-        """Returns the collection name for this class.
+        """Returns the collection name for this class. None for abstract class
         """
         return cls._meta.get('collection', None)
 

@@ -1694,7 +1694,7 @@ class SequenceField(BaseField):
         self.sequence_name = sequence_name
         self.value_decorator = (callable(value_decorator) and
                                 value_decorator or self.VALUE_DECORATOR)
-        return super(SequenceField, self).__init__(*args, **kwargs)
+        super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate(self):
         """
@@ -1740,7 +1740,7 @@ class SequenceField(BaseField):
         if self.sequence_name:
             return self.sequence_name
         owner = self.owner_document
-        if issubclass(owner, Document):
+        if issubclass(owner, Document) and not owner._meta.get('abstract'):
             return owner._get_collection_name()
         else:
             return ''.join('_%s' % c if c.isupper() else c
