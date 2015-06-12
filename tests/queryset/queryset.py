@@ -340,8 +340,7 @@ class QuerySetTest(unittest.TestCase):
 
         write_concern = {"fsync": True}
 
-        author, created = self.Person.objects.get_or_create(
-            name='Test User', write_concern=write_concern)
+        author = self.Person.objects.create(name='Test User')
         author.save(write_concern=write_concern)
 
         result = self.Person.objects.update(
@@ -729,38 +728,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(record.field, 2)
         self.assertEqual(record.embed_no_default.field, 2)
         self.assertEqual(record.embed.field, 2)
-
-    def test_get_or_create(self):
-        """Ensure that ``get_or_create`` returns one result or creates a new
-        document.
-        """
-        person1 = self.Person(name="User A", age=20)
-        person1.save()
-        person2 = self.Person(name="User B", age=30)
-        person2.save()
-
-        # Retrieve the first person from the database
-        self.assertRaises(MultipleObjectsReturned,
-                          self.Person.objects.get_or_create)
-        self.assertRaises(self.Person.MultipleObjectsReturned,
-                          self.Person.objects.get_or_create)
-
-        # Use a query to filter the people found to just person2
-        person, created = self.Person.objects.get_or_create(age=30)
-        self.assertEqual(person.name, "User B")
-        self.assertEqual(created, False)
-
-        person, created = self.Person.objects.get_or_create(age__lt=30)
-        self.assertEqual(person.name, "User A")
-        self.assertEqual(created, False)
-
-        # Try retrieving when no objects exists - new doc should be created
-        kwargs = dict(age=50, defaults={'name': 'User C'})
-        person, created = self.Person.objects.get_or_create(**kwargs)
-        self.assertEqual(created, True)
-
-        person = self.Person.objects.get(age=50)
-        self.assertEqual(person.name, "User C")
 
     def test_bulk_insert(self):
         """Ensure that bulk insert works
