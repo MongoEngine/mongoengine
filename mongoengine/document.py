@@ -145,7 +145,7 @@ class Document(BaseDocument):
     my_metaclass = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
-    __slots__ = ('__objects')
+    __slots__ = ('__objects',)
 
     def pk():
         """Primary key alias
@@ -174,10 +174,10 @@ class Document(BaseDocument):
             db = cls._get_db()
             collection_name = cls._get_collection_name()
             # Create collection as a capped collection if specified
-            if cls._meta['max_size'] or cls._meta['max_documents']:
+            if cls._meta.get('max_size') or cls._meta.get('max_documents'):
                 # Get max document limit and max byte size from meta
-                max_size = cls._meta['max_size'] or 10000000  # 10MB default
-                max_documents = cls._meta['max_documents']
+                max_size = cls._meta.get('max_size') or 10000000  # 10MB default
+                max_documents = cls._meta.get('max_documents')
 
                 if collection_name in db.collection_names():
                     cls._collection = db[collection_name]

@@ -424,7 +424,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         return id_name, id_db_name
 
 
-
 class MetaDict(dict):
 
     """Custom dictionary for meta classes.

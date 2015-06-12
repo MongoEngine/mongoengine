@@ -39,6 +39,7 @@ class FieldTest(unittest.TestCase):
     def tearDown(self):
         self.db.drop_collection('fs.files')
         self.db.drop_collection('fs.chunks')
+        self.db.drop_collection('mongoengine.counters')
 
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating a document.
@@ -2953,6 +2954,57 @@ class FieldTest(unittest.TestCase):
         post = Post.objects.first()
         self.assertEqual(1, post.comments[0].id)
         self.assertEqual(2, post.comments[1].id)
+
+    def test_inherited_sequencefield(self):
+        class Base(Document):
+            name = StringField()
+            counter = SequenceField()
+            meta = {'abstract': True}
+
+        class Foo(Base):
+            pass
+
+        class Bar(Base):
+            pass
+
+        bar = Bar(name='Bar')
+        bar.save()
+
+        foo = Foo(name='Foo')
+        foo.save()
+
+        self.assertTrue('base.counter' in
+                        self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertFalse(('foo.counter' or 'bar.counter') in
+                         self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertNotEqual(foo.counter, bar.counter)
+        self.assertEqual(foo._fields['counter'].owner_document, Base)
+        self.assertEqual(bar._fields['counter'].owner_document, Base)
+
+    def test_no_inherited_sequencefield(self):
+        class Base(Document):
+            name = StringField()
+            meta = {'abstract': True}
+
+        class Foo(Base):
+            counter = SequenceField()
+
+        class Bar(Base):
+            counter = SequenceField()
+
+        bar = Bar(name='Bar')
+        bar.save()
+
+        foo = Foo(name='Foo')
+        foo.save()
+
+        self.assertFalse('base.counter' in
+                         self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertTrue(('foo.counter' and 'bar.counter') in
+                         self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertEqual(foo.counter, bar.counter)
+        self.assertEqual(foo._fields['counter'].owner_document, Foo)
+        self.assertEqual(bar._fields['counter'].owner_document, Bar)
 
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
