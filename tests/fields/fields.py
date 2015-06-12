@@ -2152,9 +2152,7 @@ class FieldTest(unittest.TestCase):
         obj = Product.objects(company=None).first()
         self.assertEqual(obj, me)
 
-        obj, created = Product.objects.get_or_create(company=None)
-
-        self.assertEqual(created, False)
+        obj = Product.objects.get(company=None)
         self.assertEqual(obj, me)
 
     def test_reference_query_conversion(self):
