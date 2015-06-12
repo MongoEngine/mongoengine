@@ -310,7 +310,7 @@ Dealing with deletion of referred documents
 By default, MongoDB doesn't check the integrity of your data, so deleting
 documents that other documents still hold references to will lead to consistency
 issues.  Mongoengine's :class:`ReferenceField` adds some functionality to
-safeguard against these kinds of database integrit2y problems, providing each
+safeguard against these kinds of database integrity problems, providing each
 reference with a delete rule specification.  A delete rule is specified by
 supplying the :attr:`reverse_delete_rule` attributes on the
 :class:`ReferenceField` definition, like this::
