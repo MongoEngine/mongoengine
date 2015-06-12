@@ -1026,6 +1026,43 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(type(foo.bar), Bar)
         self.assertEqual(type(foo.baz), Baz)
 
+
+    def test_document_reload_reference_integrity(self):
+        """
+        Ensure reloading a document with multiple similar id
+        in different collections doesn't mix them.
+        """
+        class Topic(Document):
+            id = IntField(primary_key=True)
+        class User(Document):
+            id = IntField(primary_key=True)
+            name = StringField()
+        class Message(Document):
+            id = IntField(primary_key=True)
+            topic = ReferenceField(Topic)
+            author = ReferenceField(User)
+
+        Topic.drop_collection()
+        User.drop_collection()
+        Message.drop_collection()
+
+        # All objects share the same id, but each in a different collection
+        topic = Topic(id=1).save()
+        user = User(id=1, name='user-name').save()
+        Message(id=1, topic=topic, author=user).save()
+
+        concurrent_change_user = User.objects.get(id=1)
+        concurrent_change_user.name = 'new-name'
+        concurrent_change_user.save()
+        self.assertNotEqual(user.name, 'new-name')
+
+        msg = Message.objects.get(id=1)
+        msg.reload()
+        self.assertEqual(msg.topic, topic)
+        self.assertEqual(msg.author, user)
+        self.assertEqual(msg.author.name, 'new-name')
+
+
     def test_list_lookup_not_checked_in_map(self):
         """Ensure we dereference list data correctly
         """
