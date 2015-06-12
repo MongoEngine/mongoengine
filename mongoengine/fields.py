@@ -1013,6 +1013,7 @@ class CachedReferenceField(BaseField):
 
     """
     A referencefield with cache fields to purpose pseudo-joins
+    
     .. versionadded:: 0.9
     """
 
@@ -1683,12 +1684,21 @@ class SequenceField(BaseField):
              cluster of machines, it is easier to create an object ID than have
              global, uniformly increasing sequence numbers.
 
+    :param collection_name:  Name of the counter collection (default 'mongoengine.counters')
+    :param sequence_name: Name of the sequence in the collection (default 'ClassName.counter')
+    :param value_decorator: Any callable to use as a counter (default int)
+        
     Use any callable as `value_decorator` to transform calculated counter into
     any value suitable for your needs, e.g. string or hexadecimal
     representation of the default integer counter value.
-
+    
+    .. note::
+    
+        In case the counter is defined in the abstract document, it will be 
+        common to all inherited documents and the default sequence name will 
+        be the class name of the abstract document.
+    
     .. versionadded:: 0.5
-
     .. versionchanged:: 0.8 added `value_decorator`
     """
 
