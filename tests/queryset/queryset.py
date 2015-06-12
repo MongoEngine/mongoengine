@@ -693,6 +693,43 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
 
+    def test_save_and_only_on_fields_with_default(self):
+        class Embed(EmbeddedDocument):
+            field = IntField()
+
+        class B(Document):
+            meta = {'collection': 'b'}
+
+            field = IntField(default=1)
+            embed = EmbeddedDocumentField(Embed, default=Embed)
+            embed_no_default = EmbeddedDocumentField(Embed)
+
+        # Creating {field : 2, embed : {field: 2}, embed_no_default: {field: 2}}
+        val = 2
+        embed = Embed()
+        embed.field = val
+        record = B()
+        record.field = val
+        record.embed = embed
+        record.embed_no_default = embed
+        record.save()
+
+        # Checking it was saved correctly
+        record.reload()
+        self.assertEqual(record.field, 2)
+        self.assertEqual(record.embed_no_default.field, 2)
+        self.assertEqual(record.embed.field, 2)
+
+        # Request only the _id field and save
+        clone = B.objects().only('id').first()
+        clone.save()
+
+        # Reload the record and see that the embed data is not lost
+        record.reload()
+        self.assertEqual(record.field, 2)
+        self.assertEqual(record.embed_no_default.field, 2)
+        self.assertEqual(record.embed.field, 2)
+
     def test_get_or_create(self):
         """Ensure that ``get_or_create`` returns one result or creates a new
         document.
