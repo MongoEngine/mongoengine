@@ -342,6 +342,23 @@ class FieldTest(unittest.TestCase):
         link.url = 'http://www.google.com:8080'
         link.validate()
 
+    def test_url_scheme_validation(self):
+        """Ensure that URLFields validate urls with specific schemes properly.
+        """
+        class Link(Document):
+            url = URLField()
+
+        class SchemeLink(Document):
+            url = URLField(schemes=['ws', 'irc'])
+
+        link = Link()
+        link.url = 'ws://google.com'
+        self.assertRaises(ValidationError, link.validate)
+
+        scheme_link = SchemeLink()
+        scheme_link.url = 'ws://google.com'
+        scheme_link.validate()
+
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
@@ -3140,7 +3157,6 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(user.validate() is None)
 
         user = User(email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S"
-                           "ucictfqpdkK9iS1zeFw8sg7s7cwAF7suIfUfeyueLpfosjn3"
                            "aJIazqqWkm7.net"))
         self.assertTrue(user.validate() is None)
 
