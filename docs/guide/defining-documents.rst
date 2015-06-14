@@ -447,8 +447,10 @@ A :class:`~mongoengine.Document` may use a **Capped Collection** by specifying
 :attr:`max_documents` and :attr:`max_size` in the :attr:`meta` dictionary.
 :attr:`max_documents` is the maximum number of documents that is allowed to be
 stored in the collection, and :attr:`max_size` is the maximum size of the
-collection in bytes. If :attr:`max_size` is not specified and
-:attr:`max_documents` is, :attr:`max_size` defaults to 10000000 bytes (10MB).
+collection in bytes. :attr:`max_size` is rounded up to the next multiple of 256
+by MongoDB internally and mongoengine before. Use also a multiple of 256 to
+avoid confusions. If :attr:`max_size` is not specified and
+:attr:`max_documents` is, :attr:`max_size` defaults to 10485760 bytes (10MB).
 The following example shows a :class:`Log` document that will be limited to
 1000 entries and 2MB of disk space::
 

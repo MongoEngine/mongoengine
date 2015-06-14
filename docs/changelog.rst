@@ -24,6 +24,7 @@ Changes in 0.9.X - DEV
 - Fixes some internal _id handling issue. #961
 - Updated URL and Email Field regex validators, added schemes argument to URLField validation. #652
 - Removed get_or_create() deprecated since 0.8.0. #300
+- Capped collection multiple of 256. #1011
 
 Changes in 0.9.0
 ================
