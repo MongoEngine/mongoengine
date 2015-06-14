@@ -4693,6 +4693,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
         self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
 
+    def test_loop_via_invalid_id_does_not_crash(self):
+        class Person(Document):
+            name = StringField()
+        Person.objects.delete()
+        Person._get_collection().update({"name": "a"}, {"$set": {"_id": ""}}, upsert=True)
+        for p in Person.objects():
+            self.assertEqual(p.name, 'a')
 
 if __name__ == '__main__':
     unittest.main()
