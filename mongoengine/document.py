@@ -114,9 +114,11 @@ class Document(BaseDocument):
     specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
     dictionary. :attr:`max_documents` is the maximum number of documents that
     is allowed to be stored in the collection, and :attr:`max_size` is the
-    maximum size of the collection in bytes. If :attr:`max_size` is not
+    maximum size of the collection in bytes. :attr:`max_size` is rounded up
+    to the next multiple of 256 by MongoDB internally and mongoengine before.
+    Use also a multiple of 256 to avoid confusions.  If :attr:`max_size` is not
     specified and :attr:`max_documents` is, :attr:`max_size` defaults to
-    10000000 bytes (10MB).
+    10485760 bytes (10MB).
 
     Indexes may be created by specifying :attr:`indexes` in the :attr:`meta`
     dictionary. The value should be a list of field names or tuples of field
@@ -137,7 +139,7 @@ class Document(BaseDocument):
     By default, any extra attribute existing in stored data but not declared
     in your model will raise a :class:`~mongoengine.FieldDoesNotExist` error.
     This can be disabled by setting :attr:`strict` to ``False``
-    in the :attr:`meta` dictionnary.
+    in the :attr:`meta` dictionary.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
@@ -176,8 +178,11 @@ class Document(BaseDocument):
             # Create collection as a capped collection if specified
             if cls._meta.get('max_size') or cls._meta.get('max_documents'):
                 # Get max document limit and max byte size from meta
-                max_size = cls._meta.get('max_size') or 10000000  # 10MB default
+                max_size = cls._meta.get('max_size') or 10 * 2 ** 20  # 10MB default
                 max_documents = cls._meta.get('max_documents')
+                # Round up to next 256 bytes as MongoDB would do it to avoid exception
+                if max_size % 256:
+                    max_size = (max_size // 256 + 1) * 256
 
                 if collection_name in db.collection_names():
                     cls._collection = db[collection_name]

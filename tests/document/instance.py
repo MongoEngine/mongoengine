@@ -88,7 +88,7 @@ class InstanceTest(unittest.TestCase):
         options = Log.objects._collection.options()
         self.assertEqual(options['capped'], True)
         self.assertEqual(options['max'], 10)
-        self.assertTrue(options['size'] >= 4096)
+        self.assertEqual(options['size'], 4096)
 
         # Check that the document cannot be redefined with different options
         def recreate_log_document():
@@ -101,6 +101,69 @@ class InstanceTest(unittest.TestCase):
             Log.objects
         self.assertRaises(InvalidCollectionError, recreate_log_document)
 
+        Log.drop_collection()
+
+    def test_capped_collection_default(self):
+        """Ensure that capped collections defaults work properly.
+        """
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_documents': 10,
+            }
+
+        Log.drop_collection()
+
+        # Create a doc to create the collection
+        Log().save()
+
+        options = Log.objects._collection.options()
+        self.assertEqual(options['capped'], True)
+        self.assertEqual(options['max'], 10)
+        self.assertEqual(options['size'], 10 * 2**20)
+
+        # Check that the document with default value can be recreated
+        def recreate_log_document():
+            class Log(Document):
+                date = DateTimeField(default=datetime.now)
+                meta = {
+                    'max_documents': 10,
+                }
+            # Create the collection by accessing Document.objects
+            Log.objects
+        recreate_log_document()
+        Log.drop_collection()
+
+    def test_capped_collection_no_max_size_problems(self):
+        """Ensure that capped collections with odd max_size work properly.
+        MongoDB rounds up max_size to next multiple of 256, recreating a doc
+        with the same spec failed in mongoengine <0.10
+        """
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_size': 10000,
+            }
+
+        Log.drop_collection()
+
+        # Create a doc to create the collection
+        Log().save()
+
+        options = Log.objects._collection.options()
+        self.assertEqual(options['capped'], True)
+        self.assertTrue(options['size'] >= 10000)
+
+        # Check that the document with odd max_size value can be recreated
+        def recreate_log_document():
+            class Log(Document):
+                date = DateTimeField(default=datetime.now)
+                meta = {
+                    'max_size': 10000,
+                }
+            # Create the collection by accessing Document.objects
+            Log.objects
+        recreate_log_document()
         Log.drop_collection()
 
     def test_repr(self):
