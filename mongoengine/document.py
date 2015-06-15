@@ -182,7 +182,7 @@ class Document(BaseDocument):
                 max_documents = cls._meta.get('max_documents')
                 # Round up to next 256 bytes as MongoDB would do it to avoid exception
                 if max_size % 256:
-                    max_size = (max_size / 256 + 1) * 256
+                    max_size = (max_size // 256 + 1) * 256
 
                 if collection_name in db.collection_names():
                     cls._collection = db[collection_name]
