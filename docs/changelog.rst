@@ -5,6 +5,7 @@ Changelog
 
 Changes in 0.9.X - DEV
 ======================
+- improve Document._created status when switch collection and db #1020
 - Queryset update doesn't go through field validation #453
 - Added support for specifying authentication source as option `authSource` in URI. #967
 - Fixed mark_as_changed to handle higher/lower level fields changed. #927

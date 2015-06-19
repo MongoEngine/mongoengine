@@ -503,6 +503,10 @@ class Document(BaseDocument):
 
         :param str db_alias: The database alias to use for saving the document
 
+        :param bool keep_created: keep self._created value after call `swith_db()` when True,
+                    else will always set self._created value to True
+
+
         .. seealso::
             Use :class:`~mongoengine.context_managers.switch_collection`
             if you need to read from another collection
@@ -530,6 +534,10 @@ class Document(BaseDocument):
 
         :param str collection_name: The database alias to use for saving the
             document
+
+        :param bool keep_created: keep self._created value after call `swith_db()` when True,
+                    else will always set self._created value to True
+
 
         .. seealso::
             Use :class:`~mongoengine.context_managers.switch_db`
