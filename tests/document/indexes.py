@@ -275,6 +275,60 @@ class IndexesTest(unittest.TestCase):
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('current.location.point', '2d')] in info)
 
+    def test_explicit_geosphere_index(self):
+        """Ensure that geosphere indexes work when created via meta[indexes]
+        """
+        class Place(Document):
+            location = DictField()
+            meta = {
+                'allow_inheritance': True,
+                'indexes': [
+                    '(location.point',
+                ]
+            }
+
+        self.assertEqual([{'fields': [('location.point', '2dsphere')]}],
+                         Place._meta['index_specs'])
+
+        Place.ensure_indexes()
+        info = Place._get_collection().index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('location.point', '2dsphere')] in info)
+
+    def test_explicit_geohaystack_index(self):
+        """Ensure that geohaystack indexes work when created via meta[indexes]
+        """
+        raise SkipTest('GeoHaystack index creation is not supported for now'
+                       'from meta, as it requires a bucketSize parameter.')
+
+        class Place(Document):
+            location = DictField()
+            name = StringField()
+            meta = {
+                'indexes': [
+                    (')location.point', 'name')
+                ]
+            }
+        self.assertEqual([{'fields': [('location.point', 'geoHaystack'), ('name', 1)]}],
+                         Place._meta['index_specs'])
+
+        Place.ensure_indexes()
+        info = Place._get_collection().index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('location.point', 'geoHaystack')] in info)
+
+    def test_create_geohaystack_index(self):
+        """Ensure that geohaystack indexes can be created
+        """
+        class Place(Document):
+            location = DictField()
+            name = StringField()
+
+        Place.create_index({'fields': (')location.point', 'name')}, bucketSize=10)
+        info = Place._get_collection().index_information()
+        info = [value['key'] for key, value in info.iteritems()]
+        self.assertTrue([('location.point', 'geoHaystack'), ('name', 1)] in info)
+
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
         dictionaries instead of lists.
@@ -822,6 +876,18 @@ class IndexesTest(unittest.TestCase):
         key = indexes["title_text"]["key"]
         self.assertTrue(('_fts', 'text') in key)
 
+    def test_hashed_indexes(self):
+
+        class Book(Document):
+            ref_id = StringField()
+            meta = {
+                "indexes": ["#ref_id"],
+            }
+
+        indexes = Book.objects._collection.index_information()
+        self.assertTrue("ref_id_hashed" in indexes)
+        self.assertTrue(('ref_id', 'hashed') in indexes["ref_id_hashed"]["key"])
+
     def test_indexes_after_database_drop(self):
         """
         Test to ensure that indexes are re-created on a collection even
@@ -908,6 +974,30 @@ class IndexesTest(unittest.TestCase):
                 'background': False,
             }
         })
+
+    def test_compound_index_underscore_cls_not_overwritten(self):
+        """
+        Test that the compound index doesn't get another _cls when it is specified
+        """
+        class TestDoc(Document):
+            shard_1 = StringField()
+            txt_1 = StringField()
+
+            meta = {
+                'collection': 'test',
+                'allow_inheritance': True,
+                'sparse': True,
+                'shard_key': 'shard_1',
+                'indexes': [
+                    ('shard_1', '_cls', 'txt_1'),
+                ]
+            }
+
+        TestDoc.drop_collection()
+        TestDoc.ensure_indexes()
+
+        index_info = TestDoc._get_collection().index_information()
+        self.assertTrue('shard_1_1__cls_1_txt_1_1' in index_info)
 
 
 if __name__ == '__main__':

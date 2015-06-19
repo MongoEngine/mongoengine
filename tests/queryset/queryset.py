@@ -13,7 +13,7 @@ import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
 
-from bson import ObjectId
+from bson import ObjectId, DBRef
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
@@ -340,8 +340,7 @@ class QuerySetTest(unittest.TestCase):
 
         write_concern = {"fsync": True}
 
-        author, created = self.Person.objects.get_or_create(
-            name='Test User', write_concern=write_concern)
+        author = self.Person.objects.create(name='Test User')
         author.save(write_concern=write_concern)
 
         result = self.Person.objects.update(
@@ -630,6 +629,40 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(ValidationError, Doc.objects().update, dt_f="datetime", upsert=True)
         self.assertRaises(ValidationError, Doc.objects().update, ed_f__str_f=1, upsert=True)
 
+    def test_update_related_models( self ):
+            class TestPerson( Document ):
+                name = StringField()
+
+            class TestOrganization( Document ):
+                name = StringField()
+                owner = ReferenceField( TestPerson )
+
+            TestPerson.drop_collection()
+            TestOrganization.drop_collection()
+
+            p = TestPerson( name='p1' )
+            p.save()
+            o = TestOrganization( name='o1' )
+            o.save()
+
+            o.owner = p
+            p.name = 'p2'
+
+            self.assertEqual( o._get_changed_fields(), [ 'owner' ] )
+            self.assertEqual( p._get_changed_fields(), [ 'name' ] )
+
+            o.save()
+
+            self.assertEqual( o._get_changed_fields(), [] )
+            self.assertEqual( p._get_changed_fields(), [ 'name' ] ) # Fails; it's empty
+
+            # This will do NOTHING at all, even though we changed the name
+            p.save()
+
+            p.reload()
+
+            self.assertEqual( p.name, 'p2' ) # Fails; it's still `p1`
+
     def test_upsert(self):
         self.Person.drop_collection()
 
@@ -659,37 +692,42 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
 
-    def test_get_or_create(self):
-        """Ensure that ``get_or_create`` returns one result or creates a new
-        document.
-        """
-        person1 = self.Person(name="User A", age=20)
-        person1.save()
-        person2 = self.Person(name="User B", age=30)
-        person2.save()
+    def test_save_and_only_on_fields_with_default(self):
+        class Embed(EmbeddedDocument):
+            field = IntField()
 
-        # Retrieve the first person from the database
-        self.assertRaises(MultipleObjectsReturned,
-                          self.Person.objects.get_or_create)
-        self.assertRaises(self.Person.MultipleObjectsReturned,
-                          self.Person.objects.get_or_create)
+        class B(Document):
+            meta = {'collection': 'b'}
 
-        # Use a query to filter the people found to just person2
-        person, created = self.Person.objects.get_or_create(age=30)
-        self.assertEqual(person.name, "User B")
-        self.assertEqual(created, False)
+            field = IntField(default=1)
+            embed = EmbeddedDocumentField(Embed, default=Embed)
+            embed_no_default = EmbeddedDocumentField(Embed)
 
-        person, created = self.Person.objects.get_or_create(age__lt=30)
-        self.assertEqual(person.name, "User A")
-        self.assertEqual(created, False)
+        # Creating {field : 2, embed : {field: 2}, embed_no_default: {field: 2}}
+        val = 2
+        embed = Embed()
+        embed.field = val
+        record = B()
+        record.field = val
+        record.embed = embed
+        record.embed_no_default = embed
+        record.save()
 
-        # Try retrieving when no objects exists - new doc should be created
-        kwargs = dict(age=50, defaults={'name': 'User C'})
-        person, created = self.Person.objects.get_or_create(**kwargs)
-        self.assertEqual(created, True)
+        # Checking it was saved correctly
+        record.reload()
+        self.assertEqual(record.field, 2)
+        self.assertEqual(record.embed_no_default.field, 2)
+        self.assertEqual(record.embed.field, 2)
 
-        person = self.Person.objects.get(age=50)
-        self.assertEqual(person.name, "User C")
+        # Request only the _id field and save
+        clone = B.objects().only('id').first()
+        clone.save()
+
+        # Reload the record and see that the embed data is not lost
+        record.reload()
+        self.assertEqual(record.field, 2)
+        self.assertEqual(record.embed_no_default.field, 2)
+        self.assertEqual(record.embed.field, 2)
 
     def test_bulk_insert(self):
         """Ensure that bulk insert works
@@ -2668,26 +2706,58 @@ class QuerySetTest(unittest.TestCase):
 
         avg = float(sum(ages)) / (len(ages) + 1)  # take into account the 0
         self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
+        self.assertAlmostEqual(
+            int(self.Person.objects.aggregate_average('age')), avg
+        )
 
         self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.average('age')), avg)
+        self.assertEqual(
+            int(self.Person.objects.aggregate_average('age')), avg
+        )
 
         # dot notation
         self.Person(
             name='person meta', person_meta=self.PersonMeta(weight=0)).save()
         self.assertAlmostEqual(
             int(self.Person.objects.average('person_meta.weight')), 0)
+        self.assertAlmostEqual(
+            int(self.Person.objects.aggregate_average('person_meta.weight')),
+            0
+        )
 
         for i, weight in enumerate(ages):
             self.Person(
                 name='test meta%i', person_meta=self.PersonMeta(weight=weight)).save()
 
         self.assertAlmostEqual(
-            int(self.Person.objects.average('person_meta.weight')), avg)
+            int(self.Person.objects.average('person_meta.weight')), avg
+        )
+        self.assertAlmostEqual(
+            int(self.Person.objects.aggregate_average('person_meta.weight')),
+            avg
+        )
 
         self.Person(name='test meta none').save()
         self.assertEqual(
-            int(self.Person.objects.average('person_meta.weight')), avg)
+            int(self.Person.objects.average('person_meta.weight')), avg
+        )
+        self.assertEqual(
+            int(self.Person.objects.aggregate_average('person_meta.weight')),
+            avg
+        )
+
+        # test summing over a filtered queryset
+        over_50 = [a for a in ages if a >= 50]
+        avg = float(sum(over_50)) / len(over_50)
+        self.assertEqual(
+            self.Person.objects.filter(age__gte=50).average('age'),
+            avg
+        )
+        self.assertEqual(
+            self.Person.objects.filter(age__gte=50).aggregate_average('age'),
+            avg
+        )
 
     def test_sum(self):
         """Ensure that field can be summed over correctly.
@@ -2696,20 +2766,44 @@ class QuerySetTest(unittest.TestCase):
         for i, age in enumerate(ages):
             self.Person(name='test%s' % i, age=age).save()
 
-        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+        self.assertEqual(self.Person.objects.sum('age'), sum(ages))
+        self.assertEqual(
+            self.Person.objects.aggregate_sum('age'), sum(ages)
+        )
 
         self.Person(name='ageless person').save()
-        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+        self.assertEqual(self.Person.objects.sum('age'), sum(ages))
+        self.assertEqual(
+            self.Person.objects.aggregate_sum('age'), sum(ages)
+        )
 
         for i, age in enumerate(ages):
             self.Person(name='test meta%s' %
                         i, person_meta=self.PersonMeta(weight=age)).save()
 
         self.assertEqual(
-            int(self.Person.objects.sum('person_meta.weight')), sum(ages))
+            self.Person.objects.sum('person_meta.weight'), sum(ages)
+        )
+        self.assertEqual(
+            self.Person.objects.aggregate_sum('person_meta.weight'),
+            sum(ages)
+        )
 
         self.Person(name='weightless person').save()
-        self.assertEqual(int(self.Person.objects.sum('age')), sum(ages))
+        self.assertEqual(self.Person.objects.sum('age'), sum(ages))
+        self.assertEqual(
+            self.Person.objects.aggregate_sum('age'), sum(ages)
+        )
+
+        # test summing over a filtered queryset
+        self.assertEqual(
+            self.Person.objects.filter(age__gte=50).sum('age'),
+            sum([a for a in ages if a >= 50])
+        )
+        self.assertEqual(
+            self.Person.objects.filter(age__gte=50).aggregate_sum('age'),
+            sum([a for a in ages if a >= 50])
+        )
 
     def test_embedded_average(self):
         class Pay(EmbeddedDocument):
@@ -3655,11 +3749,9 @@ class QuerySetTest(unittest.TestCase):
     def test_scalar(self):
 
         class Organization(Document):
-            id = ObjectIdField('_id')
             name = StringField()
 
         class User(Document):
-            id = ObjectIdField('_id')
             name = StringField()
             organization = ObjectIdField()
 
@@ -4185,6 +4277,41 @@ class QuerySetTest(unittest.TestCase):
                                     Organization))
         self.assertTrue(isinstance(qs.first().organization, Organization))
 
+    def test_no_dereference_embedded_doc(self):
+
+        class User(Document):
+            name = StringField()
+
+        class Member(EmbeddedDocument):
+            name = StringField()
+            user = ReferenceField(User)
+
+        class Organization(Document):
+            name = StringField()
+            members = ListField(EmbeddedDocumentField(Member))
+            ceo = ReferenceField(User)
+            member = EmbeddedDocumentField(Member)
+            admin = ListField(ReferenceField(User))
+
+        Organization.drop_collection()
+        User.drop_collection()
+
+        user = User(name="Flash")
+        user.save()
+
+        member = Member(name="Flash", user=user)
+
+        company = Organization(name="Mongo Inc", ceo=user, member=member)
+        company.admin.append(user)
+        company.members.append(member)
+        company.save()
+
+        result = Organization.objects().no_dereference().first()
+
+        self.assertTrue(isinstance(result.admin[0], (DBRef, ObjectId)))
+        self.assertTrue(isinstance(result.member.user, (DBRef, ObjectId)))
+        self.assertTrue(isinstance(result.members[0].user, (DBRef, ObjectId)))
+
     def test_cached_queryset(self):
         class Person(Document):
             name = StringField()
@@ -4622,6 +4749,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
         self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
 
+    def test_loop_via_invalid_id_does_not_crash(self):
+        class Person(Document):
+            name = StringField()
+        Person.objects.delete()
+        Person._get_collection().update({"name": "a"}, {"$set": {"_id": ""}}, upsert=True)
+        for p in Person.objects():
+            self.assertEqual(p.name, 'a')
 
 if __name__ == '__main__':
     unittest.main()

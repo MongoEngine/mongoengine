@@ -290,6 +290,7 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
+            self.field._auto_dereference = self._auto_dereference
             value_dict = dict([(key, self.field.to_python(item))
                                for key, item in value.items()])
         else:
@@ -424,8 +425,11 @@ class ObjectIdField(BaseField):
     """
 
     def to_python(self, value):
-        if not isinstance(value, ObjectId):
-            value = ObjectId(value)
+        try:
+            if not isinstance(value, ObjectId):
+                value = ObjectId(value)
+        except:
+            pass
         return value
 
     def to_mongo(self, value):

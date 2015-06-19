@@ -307,6 +307,69 @@ class InheritanceTest(unittest.TestCase):
         doc = Animal(name='dog')
         self.assertFalse('_cls' in doc.to_mongo())
 
+    def test_abstract_handle_ids_in_metaclass_properly(self):
+
+        class City(Document):
+            continent = StringField()
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class EuropeanCity(City):
+            name = StringField()
+
+        berlin = EuropeanCity(name='Berlin', continent='Europe')
+        self.assertEqual(len(berlin._db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._reverse_db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._fields_ordered), 3)
+        self.assertEqual(berlin._fields_ordered[0], 'id')
+
+    def test_auto_id_not_set_if_specific_in_parent_class(self):
+
+        class City(Document):
+            continent = StringField()
+            city_id = IntField(primary_key=True)
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class EuropeanCity(City):
+            name = StringField()
+
+        berlin = EuropeanCity(name='Berlin', continent='Europe')
+        self.assertEqual(len(berlin._db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._reverse_db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._fields_ordered), 3)
+        self.assertEqual(berlin._fields_ordered[0], 'city_id')
+
+    def test_auto_id_vs_non_pk_id_field(self):
+
+        class City(Document):
+            continent = StringField()
+            id = IntField()
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+
+        class EuropeanCity(City):
+            name = StringField()
+
+        berlin = EuropeanCity(name='Berlin', continent='Europe')
+        self.assertEqual(len(berlin._db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._reverse_db_field_map), len(berlin._fields_ordered))
+        self.assertEqual(len(berlin._fields_ordered), 4)
+        self.assertEqual(berlin._fields_ordered[0], 'auto_id_0')
+        berlin.save()
+        self.assertEqual(berlin.pk, berlin.auto_id_0)
+
+    def test_abstract_document_creation_does_not_fail(self):
+
+        class City(Document):
+            continent = StringField()
+            meta = {'abstract': True,
+                    'allow_inheritance': False}
+        bkk = City(continent='asia')
+        self.assertEqual(None, bkk.pk)
+        # TODO: expected error? Shouldn't we create a new error type?
+        self.assertRaises(KeyError, lambda: setattr(bkk, 'pk', 1))
+
     def test_allow_inheritance_embedded_document(self):
         """Ensure embedded documents respect inheritance
         """

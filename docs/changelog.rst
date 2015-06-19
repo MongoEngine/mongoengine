@@ -19,6 +19,13 @@ Changes in 0.9.X - DEV
 - Added __ support to escape field name in fields lookup keywords that match operators names #949
 - Support for PyMongo 3+ #946
 - Fix for issue where FileField deletion did not free space in GridFS. 
+- No_dereference() not respected on embedded docs containing reference. #517
+- Document save raise an exception if save_condition fails #1005
+- Fixes some internal _id handling issue. #961
+- Updated URL and Email Field regex validators, added schemes argument to URLField validation. #652
+- Removed get_or_create() deprecated since 0.8.0. #300
+- Capped collection multiple of 256. #1011
+- Added `BaseQuerySet.aggregate_sum` and `BaseQuerySet.aggregate_average` methods.
 
 Changes in 0.9.0
 ================

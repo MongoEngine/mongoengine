@@ -39,6 +39,7 @@ class FieldTest(unittest.TestCase):
     def tearDown(self):
         self.db.drop_collection('fs.files')
         self.db.drop_collection('fs.chunks')
+        self.db.drop_collection('mongoengine.counters')
 
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating a document.
@@ -340,6 +341,23 @@ class FieldTest(unittest.TestCase):
 
         link.url = 'http://www.google.com:8080'
         link.validate()
+
+    def test_url_scheme_validation(self):
+        """Ensure that URLFields validate urls with specific schemes properly.
+        """
+        class Link(Document):
+            url = URLField()
+
+        class SchemeLink(Document):
+            url = URLField(schemes=['ws', 'irc'])
+
+        link = Link()
+        link.url = 'ws://google.com'
+        self.assertRaises(ValidationError, link.validate)
+
+        scheme_link = SchemeLink()
+        scheme_link.url = 'ws://google.com'
+        scheme_link.validate()
 
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
@@ -2134,9 +2152,7 @@ class FieldTest(unittest.TestCase):
         obj = Product.objects(company=None).first()
         self.assertEqual(obj, me)
 
-        obj, created = Product.objects.get_or_create(company=None)
-
-        self.assertEqual(created, False)
+        obj = Product.objects.get(company=None)
         self.assertEqual(obj, me)
 
     def test_reference_query_conversion(self):
@@ -2954,6 +2970,57 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(1, post.comments[0].id)
         self.assertEqual(2, post.comments[1].id)
 
+    def test_inherited_sequencefield(self):
+        class Base(Document):
+            name = StringField()
+            counter = SequenceField()
+            meta = {'abstract': True}
+
+        class Foo(Base):
+            pass
+
+        class Bar(Base):
+            pass
+
+        bar = Bar(name='Bar')
+        bar.save()
+
+        foo = Foo(name='Foo')
+        foo.save()
+
+        self.assertTrue('base.counter' in
+                        self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertFalse(('foo.counter' or 'bar.counter') in
+                         self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertNotEqual(foo.counter, bar.counter)
+        self.assertEqual(foo._fields['counter'].owner_document, Base)
+        self.assertEqual(bar._fields['counter'].owner_document, Base)
+
+    def test_no_inherited_sequencefield(self):
+        class Base(Document):
+            name = StringField()
+            meta = {'abstract': True}
+
+        class Foo(Base):
+            counter = SequenceField()
+
+        class Bar(Base):
+            counter = SequenceField()
+
+        bar = Bar(name='Bar')
+        bar.save()
+
+        foo = Foo(name='Foo')
+        foo.save()
+
+        self.assertFalse('base.counter' in
+                         self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertTrue(('foo.counter' and 'bar.counter') in
+                         self.db['mongoengine.counters'].find().distinct('_id'))
+        self.assertEqual(foo.counter, bar.counter)
+        self.assertEqual(foo._fields['counter'].owner_document, Foo)
+        self.assertEqual(bar._fields['counter'].owner_document, Bar)
+
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()
@@ -3088,7 +3155,6 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(user.validate() is None)
 
         user = User(email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S"
-                           "ucictfqpdkK9iS1zeFw8sg7s7cwAF7suIfUfeyueLpfosjn3"
                            "aJIazqqWkm7.net"))
         self.assertTrue(user.validate() is None)
 
