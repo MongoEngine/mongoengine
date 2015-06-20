@@ -935,6 +935,7 @@ class BaseDocument(object):
         """
 
         ListField = _import_class("ListField")
+        DynamicField = _import_class('DynamicField')
 
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
@@ -944,7 +945,6 @@ class BaseDocument(object):
         for field_name in parts:
             # Handle ListField indexing:
             if field_name.isdigit() and isinstance(field, ListField):
-                new_field = field.field
                 fields.append(field_name)
                 continue
 
@@ -956,11 +956,9 @@ class BaseDocument(object):
                 if field_name in cls._fields:
                     field = cls._fields[field_name]
                 elif cls._dynamic:
-                    DynamicField = _import_class('DynamicField')
                     field = DynamicField(db_field=field_name)
                 elif cls._meta.get("allow_inheritance", False) or cls._meta.get("abstract", False):
                     # 744: in case the field is defined in a subclass
-                    field = None
                     for subcls in cls.__subclasses__():
                         try:
                             field = subcls._lookup_field([field_name])[0]
@@ -982,6 +980,9 @@ class BaseDocument(object):
                                       '__'.join(parts))
                 if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
+                elif cls._dynamic and (isinstance(field, DynamicField) or
+                                           getattr(getattr(field, 'document_type'), '_dynamic')):
+                    new_field = DynamicField(db_field=field_name)
                 else:
                     # Look up subfield on the previous field or raise
                     try:
@@ -991,17 +992,8 @@ class BaseDocument(object):
                                           'on the field {}'.format(
                                               field_name, field.name))
                 if not new_field and isinstance(field, ComplexBaseField):
-                    if hasattr(field.field, 'document_type') and cls._dynamic \
-                            and field.field.document_type._dynamic:
-                        DynamicField = _import_class('DynamicField')
-                        new_field = DynamicField(db_field=field_name)
-                    else:
-                        fields.append(field_name)
-                        continue
-                elif not new_field and hasattr(field, 'document_type') and cls._dynamic \
-                        and field.document_type._dynamic:
-                    DynamicField = _import_class('DynamicField')
-                    new_field = DynamicField(db_field=field_name)
+                    fields.append(field_name)
+                    continue
                 elif not new_field:
                     raise LookUpError('Cannot resolve field "%s"'
                                       % field_name)
