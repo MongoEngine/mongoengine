@@ -1637,7 +1637,8 @@ class QuerySetTest(unittest.TestCase):
     def test_limit_with_write_concern_0(self):
 
         p1 = self.Person(name="User Z", age=20).save()
-        p1.delete(w=0)
+        del_result = p1.delete(w=0)
+        self.assertEqual(None, del_result)
 
     def test_reference_field_find(self):
         """Ensure cascading deletion of referring documents from the database.
