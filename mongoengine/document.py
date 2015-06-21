@@ -491,7 +491,7 @@ class Document(BaseDocument):
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self)
 
-    def switch_db(self, db_alias):
+    def switch_db(self, db_alias, keep_created=True):
         """
         Temporarily switch the database for a document instance.
 
@@ -503,6 +503,9 @@ class Document(BaseDocument):
 
         :param str db_alias: The database alias to use for saving the document
 
+        :param bool keep_created: keep self._created value after switching db, else is reset to True
+
+
         .. seealso::
             Use :class:`~mongoengine.context_managers.switch_collection`
             if you need to read from another collection
@@ -513,12 +516,12 @@ class Document(BaseDocument):
         self._get_collection = lambda: collection
         self._get_db = lambda: db
         self._collection = collection
-        self._created = True
+        self._created = True if not keep_created else self._created
         self.__objects = self._qs
         self.__objects._collection_obj = collection
         return self
 
-    def switch_collection(self, collection_name):
+    def switch_collection(self, collection_name, keep_created=True):
         """
         Temporarily switch the collection for a document instance.
 
@@ -531,6 +534,9 @@ class Document(BaseDocument):
         :param str collection_name: The database alias to use for saving the
             document
 
+        :param bool keep_created: keep self._created value after switching collection, else is reset to True
+
+
         .. seealso::
             Use :class:`~mongoengine.context_managers.switch_db`
             if you need to read from another database
@@ -539,7 +545,7 @@ class Document(BaseDocument):
             collection = cls._get_collection()
         self._get_collection = lambda: collection
         self._collection = collection
-        self._created = True
+        self._created = True if not keep_created else self._created
         self.__objects = self._qs
         self.__objects._collection_obj = collection
         return self
