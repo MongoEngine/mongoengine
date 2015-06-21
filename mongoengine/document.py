@@ -503,8 +503,7 @@ class Document(BaseDocument):
 
         :param str db_alias: The database alias to use for saving the document
 
-        :param bool keep_created: keep self._created value after call `swith_db()` when True,
-                    else will always set self._created value to True
+        :param bool keep_created: keep self._created value after switching db, else is reset to True
 
 
         .. seealso::
@@ -535,8 +534,7 @@ class Document(BaseDocument):
         :param str collection_name: The database alias to use for saving the
             document
 
-        :param bool keep_created: keep self._created value after call `swith_db()` when True,
-                    else will always set self._created value to True
+        :param bool keep_created: keep self._created value after switching collection, else is reset to True
 
 
         .. seealso::
