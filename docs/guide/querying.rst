@@ -146,9 +146,10 @@ The following were added in MongoEngine 0.8 for
         loc.objects(point__near=[40, 5])
         loc.objects(point__near={"type": "Point", "coordinates": [40, 5]})
 
-  You can also set the maximum distance in meters as well::
+  You can also set the maximum and/or the minimum distance in meters as well::
 
         loc.objects(point__near=[40, 5], point__max_distance=1000)
+        loc.objects(point__near=[40, 5], point__min_distance=100)
 
 The older 2D indexes are still supported with the
 :class:`~mongoengine.fields.GeoPointField`:
@@ -168,7 +169,8 @@ The older 2D indexes are still supported with the
 
 * ``max_distance`` -- can be added to your location queries to set a maximum
   distance.
-
+* ``min_distance`` -- can be added to your location queries to set a minimum
+  distance.
 
 Querying lists
 --------------

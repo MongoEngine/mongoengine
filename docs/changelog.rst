@@ -26,6 +26,7 @@ Changes in 0.9.X - DEV
 - Removed get_or_create() deprecated since 0.8.0. #300
 - Capped collection multiple of 256. #1011
 - Added `BaseQuerySet.aggregate_sum` and `BaseQuerySet.aggregate_average` methods.
+- Added support for min_distance on geo queries. #831
 
 Changes in 0.9.0
 ================

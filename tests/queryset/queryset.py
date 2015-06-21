@@ -4757,5 +4757,19 @@ class QuerySetTest(unittest.TestCase):
         for p in Person.objects():
             self.assertEqual(p.name, 'a')
 
+    def test_last_field_name_like_operator(self):
+        class EmbeddedItem(EmbeddedDocument):
+            type = StringField()
+
+        class Doc(Document):
+            item = EmbeddedDocumentField(EmbeddedItem)
+
+        Doc.drop_collection()
+
+        doc = Doc(item=EmbeddedItem(type="axe"))
+        doc.save()
+
+        self.assertEqual(1, Doc.objects(item__type__="axe").count())
+
 if __name__ == '__main__':
     unittest.main()

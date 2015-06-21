@@ -70,6 +70,11 @@ class GeoQueriesTest(unittest.TestCase):
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
 
+        # find events at least 10 degrees away of san francisco
+        point = [-122.415579, 37.7566023]
+        events = Event.objects(location__near=point, location__min_distance=10)
+        self.assertEqual(events.count(), 2)
+
         # find events within 10 degrees of san francisco
         point_and_distance = [[-122.415579, 37.7566023], 10]
         events = Event.objects(location__within_distance=point_and_distance)
@@ -171,7 +176,7 @@ class GeoQueriesTest(unittest.TestCase):
 
         # Same behavior for _within_spherical_distance
         points = Point.objects(
-            location__within_spherical_distance=[[-122, 37.5], 60/earth_radius]
+            location__within_spherical_distance=[[-122, 37.5], 60 / earth_radius]
         )
         self.assertEqual(points.count(), 2)
 
@@ -185,6 +190,16 @@ class GeoQueriesTest(unittest.TestCase):
             raise SkipTest("Sometimes MongoDB ignores its capacities on maxDistance")
 
         self.assertEqual(points.count(), 2)
+
+        # Test query works with max_distance being farer from one point
+        points = Point.objects(location__near_sphere=[-122, 37.8],
+                               location__min_distance=60 / earth_radius)
+        self.assertEqual(points.count(), 1)
+
+        # Test query works with min_distance being farer from one point
+        points = Point.objects(location__near_sphere=[-122, 37.8],
+                               location__min_distance=60 / earth_radius)
+        self.assertEqual(points.count(), 1)
 
         # Finds both points, but orders the north point first because it's
         # closer to the reference point to the north.
@@ -267,6 +282,20 @@ class GeoQueriesTest(unittest.TestCase):
                                location__max_distance=10000).order_by("-date")
         self.assertEqual(events.count(), 2)
         self.assertEqual(events[0], event3)
+
+        # ensure min_distance and max_distance combine well
+        events = Event.objects(location__near=[-87.67892, 41.9120459],
+                               location__min_distance=1000,
+                               location__max_distance=10000).order_by("-date")
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0], event3)
+
+        # ensure ordering is respected by "near"
+        events = Event.objects(location__near=[-87.67892, 41.9120459],
+                               # location__min_distance=10000
+                               location__min_distance=10000).order_by("-date")
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0], event2)
 
         # check that within_box works
         box = [(-125.0, 35.0), (-100.0, 40.0)]
