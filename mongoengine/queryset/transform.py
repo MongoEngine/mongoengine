@@ -128,7 +128,8 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 mongo_query[key].update(value)
                 # $max/minDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
-                if ('$maxDistance' in value_dict or '$minDistance' in value_dict) and '$near' in value_dict:
+                if ('$maxDistance' in value_dict or '$minDistance' in value_dict) and \
+                        ('$near' in value_dict or '$nearSphere' in value_dict):
                     value_son = SON()
                     for k, v in value_dict.iteritems():
                         if k == '$maxDistance' or k == '$minDistance':

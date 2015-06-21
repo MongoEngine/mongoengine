@@ -182,13 +182,6 @@ class GeoQueriesTest(unittest.TestCase):
 
         points = Point.objects(location__near_sphere=[-122, 37.5],
                                location__max_distance=60 / earth_radius)
-        # This test is sometimes failing with Mongo internals non-sense.
-        # See https://travis-ci.org/MongoEngine/mongoengine/builds/58729101
-        try:
-            points.count()
-        except OperationFailure:
-            raise SkipTest("Sometimes MongoDB ignores its capacities on maxDistance")
-
         self.assertEqual(points.count(), 2)
 
         # Test query works with max_distance being farer from one point
