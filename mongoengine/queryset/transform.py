@@ -135,16 +135,20 @@ def query(_doc_cls=None, _field_operation=False, **query):
                         if k == '$maxDistance' or k == '$minDistance':
                             continue
                         value_son[k] = v
-                    if isinstance(value_dict['$near'], dict) and\
-                        get_connection().max_wire_version > 1:
-                        value_son['$near'] = SON(value_son['$near'])
-                        if '$maxDistance' in value_dict:
-                            value_son['$near'][
-                                '$maxDistance'] = value_dict['$maxDistance']
-                        if '$minDistance' in value_dict:
-                            value_son['$near'][
-                                '$minDistance'] = value_dict['$minDistance']
-                    else:
+                    # seems only required for 2.6=<MongoDB<3
+                    near_embedded = False
+                    for near_op in ('$near', '$nearSphere'):
+                        if isinstance(value_dict.get(near_op), dict) and \
+                                get_connection().max_wire_version > 1:
+                            value_son[near_op] = SON(value_son[near_op])
+                            if '$maxDistance' in value_dict:
+                                value_son[near_op][
+                                    '$maxDistance'] = value_dict['$maxDistance']
+                            if '$minDistance' in value_dict:
+                                value_son[near_op][
+                                    '$minDistance'] = value_dict['$minDistance']
+                            near_embedded = True
+                    if not near_embedded:
                         if '$maxDistance' in value_dict:
                             value_son['$maxDistance'] = value_dict['$maxDistance']
                         if '$minDistance' in value_dict:
