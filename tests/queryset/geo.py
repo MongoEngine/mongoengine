@@ -189,15 +189,23 @@ class GeoQueriesTest(unittest.TestCase):
                                location__max_distance=60 / earth_radius)
         self.assertEqual(points.count(), 2)
 
-        # Test query works with max_distance being farer from one point
+        # Test query works with max_distance, being farer from one point
         points = Point.objects(location__near_sphere=[-122, 37.8],
-                               location__min_distance=60 / earth_radius)
+                               location__max_distance=60 / earth_radius)
+        close_point = points.first()
         self.assertEqual(points.count(), 1)
 
-        # Test query works with min_distance being farer from one point
+        # Test query works with min_distance, being farer from one point
         points = Point.objects(location__near_sphere=[-122, 37.8],
                                location__min_distance=60 / earth_radius)
-        self.assertEqual(points.count(), 1)
+        # The following real test passes on MongoDB 3 but minDistance seems
+        # buggy on older MongoDB versions
+        if get_connection().server_info()['versionArray'][0] > 2:
+            self.assertEqual(points.count(), 1)
+            far_point = points.first()
+            self.assertNotEqual(close_point, far_point)
+        else:
+            self.assertTrue(points.count() >= 1)
 
         # Finds both points, but orders the north point first because it's
         # closer to the reference point to the north.
