@@ -28,6 +28,7 @@ Changes in 0.9.X - DEV
 - Capped collection multiple of 256. #1011
 - Added `BaseQuerySet.aggregate_sum` and `BaseQuerySet.aggregate_average` methods.
 - Fix for delete with write_concern {'w': 0}. #1008
+- Allow dynamic lookup for more than two parts. #882
 
 Changes in 0.9.0
 ================
