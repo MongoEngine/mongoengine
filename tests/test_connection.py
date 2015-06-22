@@ -54,11 +54,10 @@ class ConnectionTest(unittest.TestCase):
     def test_sharing_connections(self):
         """Ensure that connections are shared when the connection settings are exactly the same
         """
-        connect('mongoenginetest', alias='testdb1')
-
+        connect('mongoenginetests', alias='testdb1')
         expected_connection = get_connection('testdb1')
 
-        connect('mongoenginetest', alias='testdb2')
+        connect('mongoenginetests', alias='testdb2')
         actual_connection = get_connection('testdb2')
 
         # Handle PyMongo 3+ Async Connection
@@ -96,8 +95,7 @@ class ConnectionTest(unittest.TestCase):
         c.mongoenginetest.system.users.remove({})
 
     def test_connect_uri_without_db(self):
-        """Ensure that the connect() method works properly with uri's
-        without database_name
+        """Ensure connect() method works properly with uri's without database_name
         """
         c = connect(db='mongoenginetest', alias='admin')
         c.admin.system.users.remove({})
@@ -130,28 +128,27 @@ class ConnectionTest(unittest.TestCase):
         # Create users
         c = connect('mongoenginetest')
         c.admin.system.users.remove({})
-        c.admin.add_user('username', 'password')
+        c.admin.add_user('username2', 'password')
 
         # Authentication fails without "authSource"
         if IS_PYMONGO_3:
-            test_conn = connect('mongoenginetest', alias='test2',
-                                host='mongodb://username:password@localhost/mongoenginetest')
+            test_conn = connect('mongoenginetest', alias='test1',
+                                host='mongodb://username2:password@localhost/mongoenginetest')
             self.assertRaises(OperationFailure, test_conn.server_info)
         else:
             self.assertRaises(
                 ConnectionError, connect, 'mongoenginetest', alias='test1',
-                host='mongodb://username:password@localhost/mongoenginetest'
+                host='mongodb://username2:password@localhost/mongoenginetest'
             )
             self.assertRaises(ConnectionError, get_db, 'test1')
 
         # Authentication succeeds with "authSource"
         test_conn2 = connect(
             'mongoenginetest', alias='test2',
-            host=('mongodb://username:password@localhost/'
+            host=('mongodb://username2:password@localhost/'
                   'mongoenginetest?authSource=admin')
         )
         # This will fail starting from MongoDB 2.6+
-        # test_conn2.server_info()
         db = get_db('test2')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
