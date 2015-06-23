@@ -3818,5 +3818,22 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         # deleted from the database
         self.assertEqual(number, 1)
 
+    def test_custom_data(self):
+        """
+        Tests that custom data is saved in the field object
+        and doesn't interfere with the rest of field functionalities.
+        """
+        custom_data = {'a': 'a_value', 'b': [1, 2]}
+        class CustomData(Document):
+            a_field = IntField()
+            c_field = IntField(custom_data=custom_data)
+
+        a1 = CustomData(a_field=1, c_field=2).save()
+        self.assertEqual(2, a1.c_field)
+        self.assertFalse(hasattr(a1.c_field, 'custom_data'))
+        self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
+        self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
+
+
 if __name__ == '__main__':
     unittest.main()

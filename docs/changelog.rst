@@ -19,7 +19,7 @@ Changes in 0.9.X - DEV
 - Fix for updating sorting in SortedListField. #978
 - Added __ support to escape field name in fields lookup keywords that match operators names #949
 - Support for PyMongo 3+ #946
-- Fix for issue where FileField deletion did not free space in GridFS. 
+- Fix for issue where FileField deletion did not free space in GridFS.
 - No_dereference() not respected on embedded docs containing reference. #517
 - Document save raise an exception if save_condition fails #1005
 - Fixes some internal _id handling issue. #961
@@ -30,6 +30,7 @@ Changes in 0.9.X - DEV
 - Fix for delete with write_concern {'w': 0}. #1008
 - Allow dynamic lookup for more than two parts. #882
 - Added support for min_distance on geo queries. #831
+- Allow to add custom metadata to fields #705
 
 Changes in 0.9.0
 ================
