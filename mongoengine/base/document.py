@@ -149,7 +149,6 @@ class BaseDocument(object):
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
 
-            field = None
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name)
@@ -182,8 +181,8 @@ class BaseDocument(object):
         except AttributeError:
             self__initialised = False
         # Check if the user has created a new instance of a class
-        if (self._is_document and self__initialised
-                and self__created and name == self._meta.get('id_field')):
+        if (self._is_document and self__initialised and
+                self__created and name == self._meta.get('id_field')):
             super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
@@ -327,7 +326,7 @@ class BaseDocument(object):
 
             if value is not None:
 
-                if isinstance(field, (EmbeddedDocumentField)):
+                if isinstance(field, EmbeddedDocumentField):
                     if fields:
                         key = '%s.' % field_name
                         embedded_fields = [
@@ -416,7 +415,8 @@ class BaseDocument(object):
 
     def to_json(self, *args, **kwargs):
         """Converts a document to JSON.
-        :param use_db_field: Set to True by default but enables the output of the json structure with the field names and not the mongodb store db_names in case of set to False
+        :param use_db_field: Set to True by default but enables the output of the json structure with the field names
+            and not the mongodb store db_names in case of set to False
         """
         use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
@@ -577,7 +577,7 @@ class BaseDocument(object):
                 if (hasattr(field, 'field') and
                         isinstance(field.field, ReferenceField)):
                     continue
-                elif (isinstance(field, SortedListField) and field._ordering):
+                elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed
                     if any(map(lambda d: field._ordering in d._changed_fields, data)):
                         changed_fields.append(db_field_name)
@@ -627,7 +627,7 @@ class BaseDocument(object):
             if value or isinstance(value, (numbers.Number, bool)):
                 continue
 
-            # If we've set a value that ain't the default value dont unset it.
+            # If we've set a value that ain't the default value don't unset it.
             default = None
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
@@ -979,7 +979,7 @@ class BaseDocument(object):
                 if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
                 elif cls._dynamic and (isinstance(field, DynamicField) or
-                                           getattr(getattr(field, 'document_type'), '_dynamic')):
+                                       getattr(getattr(field, 'document_type'), '_dynamic')):
                     new_field = DynamicField(db_field=field_name)
                 else:
                     # Look up subfield on the previous field or raise

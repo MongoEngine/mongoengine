@@ -1,11 +1,14 @@
 import unittest
 from mongoengine.base.datastructures import StrictDict, SemiStrictDict 
 
+
 class TestStrictDict(unittest.TestCase):
     def strict_dict_class(self, *args, **kwargs):
         return StrictDict.create(*args, **kwargs)
+
     def setUp(self):
         self.dtype = self.strict_dict_class(("a", "b", "c"))
+
     def test_init(self):
         d = self.dtype(a=1, b=1, c=1)
         self.assertEqual((d.a, d.b, d.c), (1, 1, 1))
@@ -38,8 +41,9 @@ class TestStrictDict(unittest.TestCase):
     
     def test_setattr_raises_on_nonexisting_attr(self):
         d = self.dtype()
+
         def _f():
-            d.x=1
+            d.x = 1
         self.assertRaises(AttributeError, _f)
     
     def test_setattr_getattr_special(self):

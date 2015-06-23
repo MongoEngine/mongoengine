@@ -115,7 +115,7 @@ class GeoFieldTest(unittest.TestCase):
             expected = "Invalid LineString:\nBoth values (%s) in point must be float or int" % repr(coord[0])
             self._test_for_expected_error(Location, coord, expected)
 
-        Location(loc=[[1, 2], [3, 4], [5, 6], [1,2]]).validate()
+        Location(loc=[[1, 2], [3, 4], [5, 6], [1, 2]]).validate()
 
     def test_polygon_validation(self):
         class Location(Document):
@@ -226,7 +226,7 @@ class GeoFieldTest(unittest.TestCase):
             expected = "Invalid MultiLineString:\nBoth values (%s) in point must be float or int" % repr(coord[0][0])
             self._test_for_expected_error(Location, coord, expected)
 
-        Location(loc=[[[1, 2], [3, 4], [5, 6], [1,2]]]).validate()
+        Location(loc=[[[1, 2], [3, 4], [5, 6], [1, 2]]]).validate()
 
     def test_multipolygon_validation(self):
         class Location(Document):

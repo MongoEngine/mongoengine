@@ -12,7 +12,7 @@ import gridfs
 from nose.plugins.skip import SkipTest
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.python_support import PY3, b, StringIO
+from mongoengine.python_support import b, StringIO
 
 try:
     from PIL import Image
@@ -112,7 +112,7 @@ class FileTest(unittest.TestCase):
         result.the_file.delete()
 
         # Ensure deleted file returns None
-        self.assertTrue(result.the_file.read() == None)
+        self.assertTrue(result.the_file.read() is None)
 
     def test_file_fields_stream_after_none(self):
         """Ensure that a file field can be written to after it has been saved as
@@ -138,7 +138,7 @@ class FileTest(unittest.TestCase):
         result = StreamFile.objects.first()
         self.assertTrue(streamfile == result)
         self.assertEqual(result.the_file.read(), text + more_text)
-        #self.assertEqual(result.the_file.content_type, content_type)
+        # self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.seek(0)
         self.assertEqual(result.the_file.tell(), 0)
         self.assertEqual(result.the_file.read(len(text)), text)
@@ -148,7 +148,7 @@ class FileTest(unittest.TestCase):
         result.the_file.delete()
 
         # Ensure deleted file returns None
-        self.assertTrue(result.the_file.read() == None)
+        self.assertTrue(result.the_file.read() is None)
 
     def test_file_fields_set(self):
 

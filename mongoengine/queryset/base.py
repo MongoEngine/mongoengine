@@ -86,8 +86,8 @@ class BaseQuerySet(object):
         self.only_fields = []
         self._max_time_ms = None
 
-    def __call__(self, q_obj=None, class_check=True, slave_okay=False,
-                 read_preference=None, **query):
+    def __call__(self, q_obj=None, class_check=True, read_preference=None,
+                 **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -97,9 +97,7 @@ class BaseQuerySet(object):
             objects, only the last one will be used
         :param class_check: If set to False bypass class name check when
             querying collection
-        :param slave_okay: if True, allows this query to be run against a
-            replica secondary.
-        :params read_preference: if set, overrides connection-level
+        :param read_preference: if set, overrides connection-level
             read_preference from `ReplicaSetConnection`.
         :param query: Django-style query keyword arguments
         """
@@ -204,7 +202,8 @@ class BaseQuerySet(object):
         :param language:  The language that determines the list of stop words
             for the search and the rules for the stemmer and tokenizer.
             If not specified, the search uses the default language of the index.
-            For supported languages, see `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+            For supported languages, see
+            `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
         """
         queryset = self.clone()
         if queryset._search_text:
@@ -270,7 +269,7 @@ class BaseQuerySet(object):
     def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
         """bulk insert documents
 
-        :param docs_or_doc: a document or list of documents to be inserted
+        :param doc_or_docs: a document or list of documents to be inserted
         :param load_bulk (optional): If True returns the list of document
             instances
         :param write_concern: Extra keyword arguments are passed down to
@@ -405,8 +404,8 @@ class BaseQuerySet(object):
             if rule == CASCADE:
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
-                if (doc != document_cls and ref_q_count > 0
-                        or (doc == document_cls and ref_q_count > 0)):
+                if (doc != document_cls and ref_q_count > 0 or
+                        (doc == document_cls and ref_q_count > 0)):
                     ref_q.delete(write_concern=write_concern)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
@@ -527,7 +526,7 @@ class BaseQuerySet(object):
         try:
             if IS_PYMONGO_3:
                 if full_response:
-                    msg = ("With PyMongo 3+, it is not possible anymore to get the full response.")
+                    msg = "With PyMongo 3+, it is not possible anymore to get the full response."
                     warnings.warn(msg, DeprecationWarning)
                 if remove:
                     result = queryset._collection.find_one_and_delete(
@@ -619,7 +618,8 @@ class BaseQuerySet(object):
         return self
 
     def using(self, alias):
-        """This method is for controlling which database the QuerySet will be evaluated against if you are using more than one database.
+        """This method is for controlling which database the QuerySet will be
+        evaluated against if you are using more than one database.
 
         :param alias: The database alias
 
@@ -966,7 +966,7 @@ class BaseQuerySet(object):
         """Instead of returning Document instances, return raw values from
         pymongo.
 
-        :param coerce_type: Field types (if applicable) would be use to
+        :param coerce_types: Field types (if applicable) would be use to
             coerce types.
         """
         queryset = self.clone()
@@ -1258,8 +1258,8 @@ class BaseQuerySet(object):
         the aggregation framework instead of map-reduce.
         """
         result = self._document._get_collection().aggregate([
-            { '$match': self._query },
-            { '$group': { '_id': 'sum', 'total': { '$sum': '$' + field } } }
+            {'$match': self._query},
+            {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
         ])
         if IS_PYMONGO_3:
             result = list(result)
@@ -1334,8 +1334,8 @@ class BaseQuerySet(object):
         uses the aggregation framework instead of map-reduce.
         """
         result = self._document._get_collection().aggregate([
-            { '$match': self._query },
-            { '$group': { '_id': 'avg', 'total': { '$avg': '$' + field } } }
+            {'$match': self._query},
+            {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
         ])
         if IS_PYMONGO_3:
             result = list(result)
@@ -1637,7 +1637,7 @@ class BaseQuerySet(object):
                         ret.append(subfield)
                         found = True
                         break
-                    except LookUpError, e:
+                    except LookUpError:
                         pass
 
                 if not found:

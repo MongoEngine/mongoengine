@@ -3,7 +3,6 @@ import pymongo
 import re
 
 from pymongo.read_preferences import ReadPreference
-from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
@@ -61,7 +60,7 @@ class EmbeddedDocument(BaseDocument):
     dictionary.
     """
 
-    __slots__ = ('_instance')
+    __slots__ = ('_instance', )
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3

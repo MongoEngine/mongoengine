@@ -126,7 +126,7 @@ class ValidationError(AssertionError):
         def generate_key(value, prefix=''):
             if isinstance(value, list):
                 value = ' '.join([generate_key(k) for k in value])
-            if isinstance(value, dict):
+            elif isinstance(value, dict):
                 value = ' '.join(
                     [generate_key(v, k) for k, v in value.iteritems()])
 

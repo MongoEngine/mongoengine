@@ -72,7 +72,7 @@ class DynamicTest(unittest.TestCase):
         obj = collection.find_one()
         self.assertEqual(sorted(obj.keys()), ['_cls', '_id', 'misc', 'name'])
 
-        del(p.misc)
+        del p.misc
         p.save()
 
         p = self.Person.objects.get()
@@ -340,7 +340,7 @@ class DynamicTest(unittest.TestCase):
         person = Person.objects.first()
         person.attrval = "This works"
 
-        person["phone"] = "555-1212" # but this should too
+        person["phone"] = "555-1212"  # but this should too
 
         # Same thing two levels deep
         person["address"]["city"] = "Lundenne"
@@ -355,7 +355,6 @@ class DynamicTest(unittest.TestCase):
         person.save()
 
         self.assertEqual(Person.objects.first().address.city, "Londinium")
-
 
         person = Person.objects.first()
         person["age"] = 35

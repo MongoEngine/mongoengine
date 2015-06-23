@@ -667,7 +667,6 @@ class DynamicField(BaseField):
             return StringField().prepare_query_value(op, value)
         return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
 
-
     def validate(self, value, clean=True):
         if hasattr(value, "validate"):
             value.validate(clean=clean)
@@ -698,9 +697,10 @@ class ListField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         if self.field:
-            if op in ('set', 'unset') and (not isinstance(value, basestring)
-                                           and not isinstance(value, BaseDocument)
-                                           and hasattr(value, '__iter__')):
+            if op in ('set', 'unset') and (
+                    not isinstance(value, basestring) and
+                    not isinstance(value, BaseDocument) and
+                    hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)
         return super(ListField, self).prepare_query_value(op, value)
@@ -718,12 +718,10 @@ class EmbeddedDocumentListField(ListField):
 
     """
 
-    def __init__(self, document_type, *args, **kwargs):
+    def __init__(self, document_type, **kwargs):
         """
         :param document_type: The type of
          :class:`~mongoengine.EmbeddedDocument` the list will hold.
-        :param args: Arguments passed directly into the parent
-         :class:`~mongoengine.ListField`.
         :param kwargs: Keyword arguments passed directly into the parent
          :class:`~mongoengine.ListField`.
         """
@@ -975,7 +973,6 @@ class ReferenceField(BaseField):
         super(ReferenceField, self).prepare_query_value(op, value)
         return self.to_mongo(value)
 
-
     def validate(self, value):
 
         if not isinstance(value, (self.document_type, DBRef)):
@@ -1100,7 +1097,7 @@ class CachedReferenceField(BaseField):
 
     def validate(self, value):
 
-        if not isinstance(value, (self.document_type)):
+        if not isinstance(value, self.document_type):
             self.error("A CachedReferenceField only accepts documents")
 
         if isinstance(value, Document) and value.id is None:
@@ -1419,7 +1416,7 @@ class FileField(BaseField):
     def __set__(self, instance, value):
         key = self.name
         if ((hasattr(value, 'read') and not
-        isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
+                isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
@@ -1553,7 +1550,7 @@ class ImageGridFsProxy(GridFSProxy):
         if out and out.thumbnail_id:
             self.fs.delete(out.thumbnail_id)
 
-        return super(ImageGridFsProxy, self).delete(*args, **kwargs)
+        return super(ImageGridFsProxy, self).delete()
 
     def _put_thumbnail(self, thumbnail, format, progressive, **kwargs):
         w, h = thumbnail.size

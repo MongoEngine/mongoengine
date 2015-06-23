@@ -443,7 +443,7 @@ class StrictDict(object):
 
 
 class SemiStrictDict(StrictDict):
-    __slots__ = ('_extras')
+    __slots__ = ('_extras', )
     _classes = {}
 
     def __getattr__(self, attr):

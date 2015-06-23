@@ -112,7 +112,7 @@ class BaseField(object):
         """Descriptor for assigning a value to a field in a document.
         """
 
-        # If setting to None and theres a default
+        # If setting to None and there is a default
         # Then set the value to the default value
         if value is None:
             if self.null:
@@ -259,8 +259,8 @@ class ComplexBaseField(BaseField):
             instance._data[self.name] = value
 
         if (self._auto_dereference and instance._initialised and
-                isinstance(value, (BaseList, BaseDict))
-                and not value._dereferenced):
+                isinstance(value, (BaseList, BaseDict)) and
+                not value._dereferenced):
             value = _dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )

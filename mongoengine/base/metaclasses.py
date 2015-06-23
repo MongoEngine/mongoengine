@@ -110,7 +110,7 @@ class DocumentMetaclass(type):
         for base in flattened_bases:
             if (not getattr(base, '_is_base_cls', True) and
                     not getattr(base, '_meta', {}).get('abstract', True)):
-                # Collate heirarchy for _cls and _subclasses
+                # Collate hierarchy for _cls and _subclasses
                 class_name.append(base.__name__)
 
             if hasattr(base, '_meta'):
@@ -183,7 +183,7 @@ class DocumentMetaclass(type):
                         "CachedReferenceFields is not allowed in EmbeddedDocuments")
                 if not f.document_type:
                     raise InvalidDocumentError(
-                        "Document is not avaiable to sync")
+                        "Document is not available to sync")
 
                 if f.auto_sync:
                     f.start_listener()
@@ -245,7 +245,7 @@ class DocumentMetaclass(type):
         EmbeddedDocument = _import_class('EmbeddedDocument')
         DictField = _import_class('DictField')
         CachedReferenceField = _import_class('CachedReferenceField')
-        return (Document, EmbeddedDocument, DictField, CachedReferenceField)
+        return Document, EmbeddedDocument, DictField, CachedReferenceField
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
@@ -301,8 +301,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Prevent classes setting collection different to their parents
         # If parent wasn't an abstract class
-        if (parent_doc_cls and 'collection' in attrs.get('_meta', {})
-                and not parent_doc_cls._meta.get('abstract', True)):
+        if (parent_doc_cls and 'collection' in attrs.get('_meta', {}) and
+                not parent_doc_cls._meta.get('abstract', True)):
             msg = "Trying to set a collection on a subclass (%s)" % name
             warnings.warn(msg, SyntaxWarning)
             del attrs['_meta']['collection']
@@ -408,14 +408,15 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         return new_class
 
-    def get_auto_id_names(self):
+    @classmethod
+    def get_auto_id_names(cls, new_class):
         id_name, id_db_name = ('id', '_id')
-        if id_name not in self._fields and \
-                id_db_name not in (v.db_field for v in self._fields.values()):
+        if id_name not in new_class._fields and \
+                id_db_name not in (v.db_field for v in new_class._fields.values()):
             return id_name, id_db_name
         id_basename, id_db_basename, i = 'auto_id', '_auto_id', 0
-        while id_name in self._fields or \
-                id_db_name in (v.db_field for v in self._fields.values()):
+        while id_name in new_class._fields or \
+                id_db_name in (v.db_field for v in new_class._fields.values()):
             id_name = '{0}_{1}'.format(id_basename, i)
             id_db_name = '{0}_{1}'.format(id_db_basename, i)
             i += 1
