@@ -14,6 +14,7 @@ PY3 = sys.version_info[0] == 3
 if PY3:
     import codecs
     from io import BytesIO as StringIO
+
     # return s converted to binary.  b('test') should be equivalent to b'test'
     def b(s):
         return codecs.latin_1_encode(s)[0]

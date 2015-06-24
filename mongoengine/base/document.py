@@ -14,7 +14,6 @@ from mongoengine.common import _import_class
 from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
-
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
     BaseDict,
@@ -150,7 +149,6 @@ class BaseDocument(object):
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
 
-            field = None
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name)
@@ -183,8 +181,8 @@ class BaseDocument(object):
         except AttributeError:
             self__initialised = False
         # Check if the user has created a new instance of a class
-        if (self._is_document and self__initialised
-                and self__created and name == self._meta.get('id_field')):
+        if (self._is_document and self__initialised and
+                self__created and name == self._meta.get('id_field')):
             super(BaseDocument, self).__setattr__('_created', False)
 
         super(BaseDocument, self).__setattr__(name, value)
@@ -328,7 +326,7 @@ class BaseDocument(object):
 
             if value is not None:
 
-                if isinstance(field, (EmbeddedDocumentField)):
+                if isinstance(field, EmbeddedDocumentField):
                     if fields:
                         key = '%s.' % field_name
                         embedded_fields = [
@@ -417,10 +415,11 @@ class BaseDocument(object):
 
     def to_json(self, *args, **kwargs):
         """Converts a document to JSON.
-        :param use_db_field: Set to True by default but enables the output of the json structure with the field names and not the mongodb store db_names in case of set to False
+        :param use_db_field: Set to True by default but enables the output of the json structure with the field names
+            and not the mongodb store db_names in case of set to False
         """
         use_db_field = kwargs.pop('use_db_field', True)
-        return json_util.dumps(self.to_mongo(use_db_field),  *args, **kwargs)
+        return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data, created=False):
@@ -570,7 +569,7 @@ class BaseDocument(object):
                 continue
             elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
                   and db_field_name not in changed_fields):
-                 # Find all embedded fields that have been changed
+                # Find all embedded fields that have been changed
                 changed = data._get_changed_fields(inspected)
                 changed_fields += ["%s%s" % (key, k) for k in changed if k]
             elif (isinstance(data, (list, tuple, dict)) and
@@ -578,7 +577,7 @@ class BaseDocument(object):
                 if (hasattr(field, 'field') and
                         isinstance(field.field, ReferenceField)):
                     continue
-                elif (isinstance(field, SortedListField) and field._ordering):
+                elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed
                     if any(map(lambda d: field._ordering in d._changed_fields, data)):
                         changed_fields.append(db_field_name)
@@ -621,18 +620,18 @@ class BaseDocument(object):
         else:
             set_data = doc
             if '_id' in set_data:
-                del(set_data['_id'])
+                del set_data['_id']
 
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
             if value or isinstance(value, (numbers.Number, bool)):
                 continue
 
-            # If we've set a value that ain't the default value dont unset it.
+            # If we've set a value that ain't the default value don't unset it.
             default = None
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
-                del(set_data[path])
+                del set_data[path]
                 unset_data[path] = 1
                 continue
             elif path in self._fields:
@@ -666,7 +665,7 @@ class BaseDocument(object):
             if default != value:
                 continue
 
-            del(set_data[path])
+            del set_data[path]
             unset_data[path] = 1
         return set_data, unset_data
 
@@ -821,7 +820,6 @@ class BaseDocument(object):
             parts = key.split('.')
             if parts in (['pk'], ['id'], ['_id']):
                 key = '_id'
-                fields = []
             else:
                 fields = cls._lookup_field(parts)
                 parts = []
@@ -981,7 +979,7 @@ class BaseDocument(object):
                 if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
                 elif cls._dynamic and (isinstance(field, DynamicField) or
-                                           getattr(getattr(field, 'document_type'), '_dynamic')):
+                                       getattr(getattr(field, 'document_type'), '_dynamic')):
                     new_field = DynamicField(db_field=field_name)
                 else:
                     # Look up subfield on the previous field or raise

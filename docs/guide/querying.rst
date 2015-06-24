@@ -598,7 +598,7 @@ Some variables are made available in the scope of the Javascript function:
 
 The following example demonstrates the intended usage of
 :meth:`~mongoengine.queryset.QuerySet.exec_js` by defining a function that sums
-over a field on a document (this functionality is already available throught
+over a field on a document (this functionality is already available through
 :meth:`~mongoengine.queryset.QuerySet.sum` but is shown here for sake of
 example)::
 

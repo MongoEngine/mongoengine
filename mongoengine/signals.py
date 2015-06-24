@@ -6,6 +6,7 @@ __all__ = ['pre_init', 'post_init', 'pre_save', 'pre_save_post_validation',
 signals_available = False
 try:
     from blinker import Namespace
+
     signals_available = True
 except ImportError:
     class Namespace(object):
@@ -27,6 +28,7 @@ except ImportError:
             raise RuntimeError('signalling support is unavailable '
                                'because the blinker library is '
                                'not installed.')
+
         send = lambda *a, **kw: None
         connect = disconnect = has_receivers_for = receivers_for = \
             temporarily_connected_to = _fail

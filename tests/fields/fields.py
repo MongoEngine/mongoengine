@@ -946,7 +946,7 @@ class FieldTest(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_reverse_list_sorting(self):
-        '''Ensure that a reverse sorted list field properly sorts values'''
+        """Ensure that a reverse sorted list field properly sorts values"""
 
         class Category(EmbeddedDocument):
             count = IntField()
@@ -1334,7 +1334,6 @@ class FieldTest(unittest.TestCase):
     def test_atomic_update_dict_field(self):
         """Ensure that the entire DictField can be atomically updated."""
 
-
         class Simple(Document):
             mapping = DictField(field=ListField(IntField(required=True)))
 
@@ -1349,7 +1348,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual({"ints": [3, 4]}, e.mapping)
 
         def create_invalid_mapping():
-            e.update(set__mapping={"somestrings": ["foo", "bar",]})
+            e.update(set__mapping={"somestrings": ["foo", "bar", ]})
 
         self.assertRaises(ValueError, create_invalid_mapping)
 
@@ -1460,7 +1459,7 @@ class FieldTest(unittest.TestCase):
 
         class Action(EmbeddedDocument):
             operation = StringField()
-            object    = StringField()
+            object = StringField()
 
         class Log(Document):
             name = StringField()
@@ -3774,7 +3773,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         class A(Document):
             my_list = ListField(EmbeddedDocumentField(EmbeddedWithUnique))
 
-        a1 = A(my_list=[]).save()
+        A(my_list=[]).save()
         self.assertRaises(NotUniqueError, lambda: A(my_list=[]).save())
 
         class EmbeddedWithSparseUnique(EmbeddedDocument):
@@ -3783,9 +3782,8 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         class B(Document):
             my_list = ListField(EmbeddedDocumentField(EmbeddedWithSparseUnique))
 
-        b1 = B(my_list=[]).save()
-        b2 = B(my_list=[]).save()
-
+        B(my_list=[]).save()
+        B(my_list=[]).save()
 
     def test_filtered_delete(self):
         """
@@ -3824,6 +3822,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         and doesn't interfere with the rest of field functionalities.
         """
         custom_data = {'a': 'a_value', 'b': [1, 2]}
+
         class CustomData(Document):
             a_field = IntField()
             c_field = IntField(custom_data=custom_data)

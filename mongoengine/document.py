@@ -46,7 +46,6 @@ class InvalidCollectionError(Exception):
 
 
 class EmbeddedDocument(BaseDocument):
-
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -61,7 +60,7 @@ class EmbeddedDocument(BaseDocument):
     dictionary.
     """
 
-    __slots__ = ('_instance')
+    __slots__ = ('_instance', )
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
@@ -89,7 +88,6 @@ class EmbeddedDocument(BaseDocument):
 
 
 class Document(BaseDocument):
-
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -160,7 +158,9 @@ class Document(BaseDocument):
 
         def fset(self, value):
             return setattr(self, self._meta['id_field'], value)
+
         return property(fget, fset)
+
     pk = pk()
 
     @classmethod
@@ -190,7 +190,7 @@ class Document(BaseDocument):
                     # options match the specified capped options
                     options = cls._collection.options()
                     if options.get('max') != max_documents or \
-                       options.get('size') != max_size:
+                            options.get('size') != max_size:
                         msg = (('Cannot create collection "%s" as a capped '
                                 'collection as it already exists')
                                % cls._collection)
@@ -248,7 +248,7 @@ class Document(BaseDocument):
         return True
 
     def save(self, force_insert=False, validate=True, clean=True,
-             write_concern=None,  cascade=None, cascade_kwargs=None,
+             write_concern=None, cascade=None, cascade_kwargs=None,
              _refs=None, save_condition=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -455,7 +455,7 @@ class Document(BaseDocument):
             if kwargs.get('upsert', False):
                 query = self.to_mongo()
                 if "_cls" in query:
-                    del(query["_cls"])
+                    del query["_cls"]
                 return self._qs.filter(**query).update_one(**kwargs)
             else:
                 raise OperationError(
@@ -580,8 +580,8 @@ class Document(BaseDocument):
         if not self.pk:
             raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-            **self._object_key).only(*fields).limit(1
-                                                    ).select_related(max_depth=max_depth)
+            **self._object_key).only(*fields).limit(
+            1).select_related(max_depth=max_depth)
 
         if obj:
             obj = obj[0]
@@ -640,11 +640,11 @@ class Document(BaseDocument):
                      for class_name in document_cls._subclasses
                      if class_name != document_cls.__name__] + [document_cls]
 
-        for cls in classes:
+        for klass in classes:
             for document_cls in documents:
-                delete_rules = cls._meta.get('delete_rules') or {}
+                delete_rules = klass._meta.get('delete_rules') or {}
                 delete_rules[(document_cls, field_name)] = rule
-                cls._meta['delete_rules'] = delete_rules
+                klass._meta['delete_rules'] = delete_rules
 
     @classmethod
     def drop_collection(cls):
@@ -769,7 +769,7 @@ class Document(BaseDocument):
                                         **index_opts)
 
     @classmethod
-    def list_indexes(cls, go_up=True, go_down=True):
+    def list_indexes(cls):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
@@ -816,8 +816,8 @@ class Document(BaseDocument):
             return indexes
 
         indexes = []
-        for cls in classes:
-            for index in get_indexes_spec(cls):
+        for klass in classes:
+            for index in get_indexes_spec(klass):
                 if index not in indexes:
                     indexes.append(index)
 
@@ -856,7 +856,6 @@ class Document(BaseDocument):
 
 
 class DynamicDocument(Document):
-
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expando style properties.  Any data
@@ -888,7 +887,6 @@ class DynamicDocument(Document):
 
 
 class DynamicEmbeddedDocument(EmbeddedDocument):
-
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -915,7 +913,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
 
 class MapReduceDocument(object):
-
     """A document returned from a map/reduce query.
 
     :param collection: An instance of :class:`~pymongo.Collection`

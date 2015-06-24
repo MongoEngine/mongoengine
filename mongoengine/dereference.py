@@ -11,7 +11,6 @@ from document import Document, EmbeddedDocument
 
 
 class DeReference(object):
-
     def __call__(self, items, max_depth=1, instance=None, name=None):
         """
         Cheaply dereferences the items to a set depth.
@@ -49,8 +48,8 @@ class DeReference(object):
 
                 if is_list and all([i.__class__ == doc_type for i in items]):
                     return items
-                elif not is_list and all([i.__class__ == doc_type
-                                         for i in items.values()]):
+                elif not is_list and all(
+                        [i.__class__ == doc_type for i in items.values()]):
                     return items
                 elif not field.dbref:
                     if not hasattr(items, 'items'):
@@ -101,7 +100,7 @@ class DeReference(object):
             if isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
-                    if isinstance(v, (DBRef)):
+                    if isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
@@ -112,7 +111,7 @@ class DeReference(object):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, set()).update(refs)
-            elif isinstance(item, (DBRef)):
+            elif isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and '_ref' in item:
                 reference_map.setdefault(get_document(item['_cls']), set()).add(item['_ref'].id)
@@ -155,7 +154,7 @@ class DeReference(object):
                         elif doc_type is None:
                             doc = get_document(
                                 ''.join(x.capitalize()
-                                    for x in collection.split('_')))._from_son(ref)
+                                        for x in collection.split('_')))._from_son(ref)
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc
@@ -220,12 +219,12 @@ class DeReference(object):
             elif isinstance(v, (Document, EmbeddedDocument)):
                 for field_name, field in v._fields.iteritems():
                     v = data[k]._data.get(field_name, None)
-                    if isinstance(v, (DBRef)):
+                    if isinstance(v, DBRef):
                         data[k]._data[field_name] = self.object_map.get(
                             (v.collection, v.id), v)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         data[k]._data[field_name] = self.object_map.get(
-                            (v['_ref'].collection , v['_ref'].id), v)
+                            (v['_ref'].collection, v['_ref'].id), v)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         item_name = "{0}.{1}.{2}".format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)

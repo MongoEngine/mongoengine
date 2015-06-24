@@ -29,7 +29,10 @@ Style Guide
 -----------
 
 MongoEngine aims to follow `PEP8 <http://www.python.org/dev/peps/pep-0008/>`_
-including 4 space indents and 79 character line limits.
+including 4 space indents. When possible we try to stick to 79 character line limits.
+However, screens got bigger and an ORM has a strong focus on readability and
+if it can help, we accept 119 as maximum line length, in a similar way as
+`django does <https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/coding-style/#python-style>`_
 
 Testing
 -------
@@ -37,6 +40,10 @@ Testing
 All tests are run on `Travis <http://travis-ci.org/MongoEngine/mongoengine>`_
 and any pull requests are automatically tested by Travis. Any pull requests
 without tests will take longer to be integrated and might be refused.
+
+You may also submit a simple failing test as a PullRequest if you don't know
+how to fix it, it will be easier for other people to work on it and it may get
+fixed faster.
 
 General Guidelines
 ------------------
@@ -48,6 +55,7 @@ General Guidelines
   from the cmd line to run the test suite).
 - Ensure tests pass on every Python and PyMongo versions.
   You can test on these versions locally by executing ``tox``
+- Add enhancements or problematic bug fixes to docs/changelog.rst
 - Add yourself to AUTHORS :)
 
 Documentation

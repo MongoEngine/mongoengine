@@ -143,7 +143,7 @@ class IndexesTest(unittest.TestCase):
             meta = {
                 'indexes': [
                         {
-                        'fields': ('title',),
+                            'fields': ('title',),
                         },
                 ],
                 'allow_inheritance': True,

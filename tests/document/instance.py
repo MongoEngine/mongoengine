@@ -1897,11 +1897,11 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects.count(), 0)
 
     def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
-        ''' ensure the pre_delete signal is triggered upon a cascading deletion
+        """ ensure the pre_delete signal is triggered upon a cascading deletion
         setup a blog post with content, an author and editor
         delete the author which triggers deletion of blogpost via cascade
         blog post's pre_delete signal alters an editor attribute
-        '''
+        """
         class Editor(self.Person):
             review_queue = IntField(default=0)
 

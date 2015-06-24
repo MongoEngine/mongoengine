@@ -26,7 +26,9 @@ a `tutorial <http://readthedocs.org/docs/mongoengine-odm/en/latest/tutorial.html
 
 Installation
 ============
-If you have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
+We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
+`pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
+You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_ and thus
 you can use ``easy_install -U mongoengine``. Otherwise, you can download the
 source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and run ``python
 setup.py install``.
@@ -114,7 +116,7 @@ Also use the -s argument if you want to print out whatever or access pdb while t
 
 .. code-block:: shell
 
-    $ python setup.py nosetests --tests tests/test_django.py:QuerySetTest.test_get_document_or_404 -s
+    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest.test_cls_field -s
 
 Community
 =========

@@ -61,7 +61,6 @@ class QuerySet(BaseQuerySet):
             data[-1] = "...(remaining elements truncated)..."
         return repr(data)
 
-
     def _iter_results(self):
         """A generator for iterating over the result cache.
 
@@ -74,7 +73,7 @@ class QuerySet(BaseQuerySet):
             upper = len(self._result_cache)
             while pos < upper:
                 yield self._result_cache[pos]
-                pos = pos + 1
+                pos += 1
             if not self._has_more:
                 raise StopIteration
             if len(self._result_cache) <= pos:

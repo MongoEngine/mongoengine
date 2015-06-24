@@ -253,13 +253,13 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
                          [1, 2, {'hello': 'world'}])
 
-        del(doc.embedded_field.list_field[2].list_field[2]['hello'])
+        del doc.embedded_field.list_field[2].list_field[2]['hello']
         self.assertEqual(doc._delta(),
                          ({}, {'embedded_field.list_field.2.list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
-        del(doc.embedded_field.list_field[2].list_field)
+        del doc.embedded_field.list_field[2].list_field
         self.assertEqual(doc._delta(),
                          ({}, {'embedded_field.list_field.2.list_field': 1}))
 
@@ -593,13 +593,13 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
             [1, 2, {'hello': 'world'}])
 
-        del(doc.embedded_field.list_field[2].list_field[2]['hello'])
+        del doc.embedded_field.list_field[2].list_field[2]['hello']
         self.assertEqual(doc._delta(),
             ({}, {'db_embedded_field.db_list_field.2.db_list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
-        del(doc.embedded_field.list_field[2].list_field)
+        del doc.embedded_field.list_field[2].list_field
         self.assertEqual(doc._delta(), ({},
             {'db_embedded_field.db_list_field.2.db_list_field': 1}))
 
@@ -615,7 +615,7 @@ class DeltaTest(unittest.TestCase):
             SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
         p.doc = 123
-        del(p.doc)
+        del p.doc
         self.assertEqual(p._delta(), (
             SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
