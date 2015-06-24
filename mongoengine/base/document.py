@@ -438,8 +438,15 @@ class BaseDocument(object):
             value = dict([(k, v) for k, v in enumerate(value)])
 
         if not is_list and '_cls' in value:
-            cls = get_document(value['_cls'])
-            return cls(**value)
+            doc_cls = get_document(value['_cls'])
+            if '_ref' in value and isinstance(value['_ref'], DBRef):
+                reference = value['_ref']
+                doc = doc_cls._get_db().dereference(reference)
+                if doc is not None:
+                    doc = doc_cls._from_son(doc)
+                return doc
+            else:
+                return doc_cls(**value)
 
         data = {}
         for k, v in value.items():
