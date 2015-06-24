@@ -558,6 +558,28 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, len(Post.objects.first().comments))
 
+    def test_updates_using_bulk_insert(self):
+
+        class Comment(EmbeddedDocument):
+            content = StringField()
+            name = StringField(max_length=120)
+            vote = IntField()
+
+        class Post(Document):
+            title = StringField(required=True)
+            tags = ListField(StringField())
+            comments = ListField(EmbeddedDocumentField("Comment"))
+
+        Post.drop_collection()
+
+        result = Post.objects(title__in=['tittle1', 'tittle2', 'tittle3']).update(
+            set__tags=['bulk update'], upsert=True, full_result=True)
+
+        # it should creates 3 documents...
+        # one per title
+        self.assertEqual(3, result['n'])
+
+
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""
         class Member(EmbeddedDocument):
