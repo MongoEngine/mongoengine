@@ -896,6 +896,7 @@ class QuerySet(object):
         validate_read_preference('read_preference', read_preference)
         queryset = self.clone()
         queryset._read_preference = read_preference
+        queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_preference
         return queryset
 
     def scalar(self, *fields):
