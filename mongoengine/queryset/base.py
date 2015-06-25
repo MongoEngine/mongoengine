@@ -404,8 +404,7 @@ class BaseQuerySet(object):
             if rule == CASCADE:
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
-                if (doc != document_cls and ref_q_count > 0 or
-                        (doc == document_cls and ref_q_count > 0)):
+                if ref_q_count > 0:
                     ref_q.delete(write_concern=write_concern)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
