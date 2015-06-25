@@ -4165,7 +4165,11 @@ class QuerySetTest(unittest.TestCase):
 
     def test_read_preference(self):
         class Bar(Document):
-            pass
+            txt = StringField()
+
+            meta = {
+                'indexes': [ 'txt' ]
+            }
 
         Bar.drop_collection()
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
@@ -4177,9 +4181,51 @@ class QuerySetTest(unittest.TestCase):
             error_class = TypeError
         self.assertRaises(error_class, Bar.objects, read_preference='Primary')
 
+        # read_preference as a kwarg
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(
             bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._cursor._Cursor__read_preference,
+            ReadPreference.SECONDARY_PREFERRED)
+
+        # read_preference as a query set method
+        bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._cursor._Cursor__read_preference,
+            ReadPreference.SECONDARY_PREFERRED)
+
+        # read_preference after skip
+        bars = Bar.objects.skip(1) \
+            .read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._cursor._Cursor__read_preference,
+            ReadPreference.SECONDARY_PREFERRED)
+
+        # read_preference after limit
+        bars = Bar.objects.limit(1) \
+            .read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._cursor._Cursor__read_preference,
+            ReadPreference.SECONDARY_PREFERRED)
+
+        # read_preference after order_by
+        bars = Bar.objects.order_by('txt') \
+            .read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._cursor._Cursor__read_preference,
+            ReadPreference.SECONDARY_PREFERRED)
+
+        # read_preference after hint
+        bars = Bar.objects.hint([('txt', 1)]) \
+            .read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._cursor._Cursor__read_preference,
+            ReadPreference.SECONDARY_PREFERRED)
 
     def test_json_simple(self):
 
