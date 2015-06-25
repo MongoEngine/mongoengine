@@ -1413,6 +1413,20 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects(name='Test User').delete()
         self.assertEqual(1, BlogPost.objects.count())
 
+    def test_reverse_delete_rule_cascade_cycle(self):
+        """Ensure reference cascading doesn't loop if reference graph isn't
+        a tree
+        """
+        class Category(Document):
+            reference = ReferenceField('self', reverse_delete_rule=CASCADE)
+
+        base = Category().save()
+        other = Category(reference=base).save()
+        base.reference = other
+        base.save()
+
+        self.assertEqual(2, base.delete())
+
     def test_reverse_delete_rule_cascade_self_referencing(self):
         """Ensure self-referencing CASCADE deletes do not result in infinite
         loop
