@@ -34,6 +34,7 @@ Changes in 0.10.0
 - Allow dynamic lookup for more than two parts. #882
 - Added support for min_distance on geo queries. #831
 - Allow to add custom metadata to fields #705
+- Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
 
 Changes in 0.9.0
 ================
