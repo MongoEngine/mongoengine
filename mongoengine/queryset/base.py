@@ -363,10 +363,8 @@ class BaseQuerySet(object):
         queryset = self.clone()
         doc = queryset._document
 
-        cascade_refs = set() if cascade_refs is None else cascade_refs
-        if doc in cascade_refs:
+        if cascade_refs and doc in cascade_refs:
             return 0
-        cascade_refs.add(doc)
 
         if write_concern is None:
             write_concern = {}
@@ -410,6 +408,8 @@ class BaseQuerySet(object):
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = ref_q.count()
                 if ref_q_count > 0:
+                    cascade_refs = set() if cascade_refs is None else cascade_refs
+                    cascade_refs.add(doc)
                     ref_q.delete(write_concern=write_concern, cascade_refs=cascade_refs)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
