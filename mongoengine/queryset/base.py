@@ -346,7 +346,7 @@ class BaseQuerySet(object):
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
-    def delete(self, write_concern=None, _from_doc_delete=False):
+    def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
         """Delete the documents matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
@@ -402,11 +402,13 @@ class BaseQuerySet(object):
                 continue
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
-                ref_q = document_cls.objects(**{field_name + '__in': self})
+                cascade_refs = set() if cascade_refs is None else cascade_refs
+                for ref in queryset:
+                    cascade_refs.add(ref.id)
+                ref_q = document_cls.objects(**{field_name + '__in': self, 'id__nin': cascade_refs})
                 ref_q_count = ref_q.count()
-                if (doc != document_cls and ref_q_count > 0 or
-                        (doc == document_cls and ref_q_count > 0)):
-                    ref_q.delete(write_concern=write_concern)
+                if ref_q_count > 0:
+                    ref_q.delete(write_concern=write_concern, cascade_refs=cascade_refs)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
                     write_concern=write_concern, **{'unset__%s' % field_name: 1})
