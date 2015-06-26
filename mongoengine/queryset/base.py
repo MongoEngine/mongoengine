@@ -409,7 +409,8 @@ class BaseQuerySet(object):
                 ref_q_count = ref_q.count()
                 if ref_q_count > 0:
                     cascade_refs = set() if cascade_refs is None else cascade_refs
-                    cascade_refs.add(doc)
+                    if doc != document_cls:
+                        cascade_refs.add(doc)
                     ref_q.delete(write_concern=write_concern, cascade_refs=cascade_refs)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
