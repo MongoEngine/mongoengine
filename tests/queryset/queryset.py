@@ -1430,6 +1430,30 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(DoesNotExist, base.reload)
         self.assertRaises(DoesNotExist, other.reload)
 
+    def test_reverse_delete_rule_cascade_complex_cycle(self):
+        """Ensure reference cascading doesn't loop if reference graph isn't
+        a tree
+        """
+        class Category(Document):
+            name = StringField()
+
+        class Dummy(Document):
+            reference = ReferenceField('self', reverse_delete_rule=CASCADE)
+            cat = ReferenceField(Category, reverse_delete_rule=CASCADE)
+
+        cat = Category(name='cat').save()
+        base = Dummy(cat=cat).save()
+        other = Dummy(reference=base).save()
+        other2 = Dummy(reference=other).save()
+        base.reference = other
+        base.save()
+
+        cat.delete()
+
+        self.assertRaises(DoesNotExist, base.reload)
+        self.assertRaises(DoesNotExist, other.reload)
+        self.assertRaises(DoesNotExist, other2.reload)
+
     def test_reverse_delete_rule_cascade_self_referencing(self):
         """Ensure self-referencing CASCADE deletes do not result in infinite
         loop
