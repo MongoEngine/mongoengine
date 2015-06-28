@@ -684,11 +684,7 @@ class BaseQuerySet(object):
         :param n: the maximum number of objects to return
         """
         queryset = self.clone()
-        if n == 0:
-            queryset._cursor.limit(1)
-        else:
-            queryset._cursor.limit(n)
-        queryset._limit = n
+        queryset._limit = n if n != 0 else 1
         # Return self to allow chaining
         return queryset
 
@@ -699,7 +695,6 @@ class BaseQuerySet(object):
         :param n: the number of objects to skip before returning results
         """
         queryset = self.clone()
-        queryset._cursor.skip(n)
         queryset._skip = n
         return queryset
 
@@ -717,7 +712,6 @@ class BaseQuerySet(object):
         .. versionadded:: 0.5
         """
         queryset = self.clone()
-        queryset._cursor.hint(index)
         queryset._hint = index
         return queryset
 

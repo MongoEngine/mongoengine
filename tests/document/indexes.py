@@ -577,11 +577,11 @@ class IndexesTest(unittest.TestCase):
             self.assertEqual(BlogPost.objects.hint('tags').count(), 10)
         else:
             def invalid_index():
-                BlogPost.objects.hint('tags')
+                BlogPost.objects.hint('tags').next()
             self.assertRaises(TypeError, invalid_index)
 
         def invalid_index_2():
-            return BlogPost.objects.hint(('tags', 1))
+            return BlogPost.objects.hint(('tags', 1)).next()
         self.assertRaises(Exception, invalid_index_2)
 
     def test_unique(self):

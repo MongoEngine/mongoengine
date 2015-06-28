@@ -188,6 +188,10 @@ class QuerySetTest(unittest.TestCase):
             "[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[1:3])
         self.assertEqual(
             "[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[51:53])
+        # Test only after limit
+        self.assertEqual(self.Person.objects().limit(2).only('name')[0].age, None)
+        # Test only after skip
+        self.assertEqual(self.Person.objects().skip(2).only('name')[0].age, None)
 
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
