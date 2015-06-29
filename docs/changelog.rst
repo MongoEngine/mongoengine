@@ -6,6 +6,7 @@ Changes in 0.10.1 - DEV
 =======================
 - Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
 - Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047
+- Ability to define truly arbitrary field metadata. #916
 
 Changes in 0.10.0
 =================
@@ -35,7 +36,7 @@ Changes in 0.10.0
 - Fix for delete with write_concern {'w': 0}. #1008
 - Allow dynamic lookup for more than two parts. #882
 - Added support for min_distance on geo queries. #831
-- Allow to add custom metadata to fields #705
+- Allow to add custom metadata to fields. #705
 
 Changes in 0.9.0
 ================
