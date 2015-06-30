@@ -591,7 +591,7 @@ class Document(BaseDocument):
         else:
             raise self.DoesNotExist("Document does not exist")
 
-        for field in self._fields_ordered:
+        for field in obj._data:
             if not fields or field in fields:
                 try:
                     setattr(self, field, self._reload(field, obj[field]))
