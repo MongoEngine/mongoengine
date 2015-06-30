@@ -88,6 +88,18 @@ class DynamicTest(unittest.TestCase):
         p.update(unset__misc=1)
         p.reload()
 
+    def test_reload_dynamic_field(self):
+        self.Person.objects.delete()
+        p = self.Person.objects.create()
+        p.update(age=1)
+
+        self.assertEqual(len(p._data), 3)
+        self.assertEqual(sorted(p._data.keys()), ['_cls', 'id', 'name'])
+
+        p.reload()
+        self.assertEqual(len(p._data), 4)
+        self.assertEqual(sorted(p._data.keys()), ['_cls', 'age', 'id', 'name'])
+
     def test_dynamic_document_queries(self):
         """Ensure we can query dynamic fields"""
         p = self.Person()
