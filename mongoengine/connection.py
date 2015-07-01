@@ -108,7 +108,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
         connection_class = MongoClient
         if 'replicaSet' in conn_settings:
-            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
             # Discard replicaSet if not base string
@@ -116,6 +115,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings.pop('replicaSet', None)
             if not IS_PYMONGO_3:
                 connection_class = MongoReplicaSetClient
+                conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
 
         try:
             connection = None
