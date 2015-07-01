@@ -41,8 +41,8 @@ class BaseField(object):
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
-                 validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False, sparse=False, custom_data=None):
+                 validation=None, choices=None,
+                 null=False, sparse=False, **metadata):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -60,16 +60,13 @@ class BaseField(object):
             field.  Generally this is deprecated in favour of the
             `FIELD.validate` method
         :param choices: (optional) The valid choices
-        :param verbose_name: (optional)  The verbose name for the field.
-            Designed to be human readable and is often used when generating
-            model forms from the document model.
-        :param help_text: (optional) The help text for this field and is often
-            used when generating model forms from the document model.
         :param null: (optional) Is the field value can be null. If no and there is a default value
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
-        :param custom_data: (optional) Custom metadata for this field.
+        :param **metadata: (optional) Custom metadata for this field.  This incorporates
+            `verbose_name` (human readable field name) and `help_text` (often used when generating
+            forms) while efficiently only storing the metadata actually associated with the field. 
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -83,12 +80,11 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
-        self.verbose_name = verbose_name
-        self.help_text = help_text
         self.null = null
         self.sparse = sparse
         self._owner_document = None
-        self.custom_data = custom_data
+
+        self.__dict__.update(metadata)
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
