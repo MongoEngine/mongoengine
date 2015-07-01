@@ -1617,6 +1617,27 @@ class FieldTest(unittest.TestCase):
                                'parent': "50a234ea469ac1eda42d347d"})
         mongoed = p1.to_mongo()
         self.assertTrue(isinstance(mongoed['parent'], ObjectId))
+        
+    def test_cached_reference_field_get_and_save(self):
+        """
+        Tests #1047: CachedReferenceField creates DBRefs on to_python, but can't save them on to_mongo
+        """
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(Animal)
+        
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+        
+        Ocorrence(person="testte", 
+                  animal=Animal(name="Leopard", tag="heavy").save()).save()
+        p = Ocorrence.objects.get()
+        p.person = 'new_testte'
+        p.save()
 
     def test_cached_reference_fields(self):
         class Animal(Document):
