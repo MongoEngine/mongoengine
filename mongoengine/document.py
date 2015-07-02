@@ -314,6 +314,16 @@ class Document(BaseDocument):
                         # the StopIteration from .next() will bubble up and kill
                         # this while loop
                         doc = cur.next()
+
+                        # handle pymongo letting an error document slip through
+                        # (T18431 / CS-22167). convert it into an exception
+                        if '$err' in doc:
+                            err_code = None
+                            if 'code' in doc:
+                                err_code = doc['code']
+
+                            raise pymongo.errors.OperationFailure(doc['$err'],
+                                                                  err_code)
                     break
                 except pymongo.errors.AutoReconnect:
                     if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
