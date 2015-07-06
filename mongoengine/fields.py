@@ -1140,6 +1140,35 @@ class GenericReferenceField(BaseField):
     .. versionadded:: 0.3
     """
 
+    def __init__(self, *args, **kwargs):
+        choices = kwargs.pop('choices', None)
+        super(GenericReferenceField, self).__init__(*args, **kwargs)
+        self._original_choices = choices or []
+        self._cooked_choices = None
+
+    def _validate_choices(self, value):
+        if isinstance(value, dict):
+            # If the field has not been dereferenced, it is still a dict
+            # of class and DBRef
+            if value.get('_cls') in [c.__name__ for c in self.choices]:
+                return
+        super(GenericReferenceField, self)._validate_choices(value)
+
+    @property
+    def choices(self):
+        if self._cooked_choices is None:
+            self._cooked_choices = []
+            for choice in self._original_choices:
+                if isinstance(choice, basestring):
+                    choice = get_document(choice)
+                self._cooked_choices.append(choice)
+        return self._cooked_choices
+
+    @choices.setter
+    def choices(self, value):
+        self._original_choices = value
+        self._cooked_choices = None
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
