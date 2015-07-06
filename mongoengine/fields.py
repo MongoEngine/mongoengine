@@ -1143,31 +1143,26 @@ class GenericReferenceField(BaseField):
     def __init__(self, *args, **kwargs):
         choices = kwargs.pop('choices', None)
         super(GenericReferenceField, self).__init__(*args, **kwargs)
-        self._original_choices = choices or []
-        self._cooked_choices = None
+        self.choices = []
+        # Keep the choices as a list of allowed Document class names
+        if choices:
+            for choice in choices:
+                if isinstance(choice, basestring):
+                    self.choices.append(choice)
+                elif isinstance(choice, type) and issubclass(choice, Document):
+                    self.choices.append(choice._class_name)
+                else:
+                    self.error('Invalid choices provided: must be a list of'
+                               'Document subclasses and/or basestrings')
 
     def _validate_choices(self, value):
         if isinstance(value, dict):
             # If the field has not been dereferenced, it is still a dict
             # of class and DBRef
-            if value.get('_cls') in [c.__name__ for c in self.choices]:
-                return
+            value = value.get('_cls')
+        elif isinstance(value, Document):
+            value = value._class_name
         super(GenericReferenceField, self)._validate_choices(value)
-
-    @property
-    def choices(self):
-        if self._cooked_choices is None:
-            self._cooked_choices = []
-            for choice in self._original_choices:
-                if isinstance(choice, basestring):
-                    choice = get_document(choice)
-                self._cooked_choices.append(choice)
-        return self._cooked_choices
-
-    @choices.setter
-    def choices(self, value):
-        self._original_choices = value
-        self._cooked_choices = None
 
     def __get__(self, instance, owner):
         if instance is None:
