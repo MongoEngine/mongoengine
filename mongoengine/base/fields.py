@@ -171,7 +171,7 @@ class BaseField(object):
 
         choice_list = self.choices
         if isinstance(choice_list[0], (list, tuple)):
-            choice_list = [k for k, v in choice_list]
+            choice_list = [k for k, _ in choice_list]
 
         # Choices which are other types of Documents
         if isinstance(value, (Document, EmbeddedDocument)):
@@ -311,7 +311,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for _, v in sorted(value_dict.items(),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -378,7 +378,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for _, v in sorted(value_dict.items(),
                                          key=operator.itemgetter(0))]
         return value_dict
 
