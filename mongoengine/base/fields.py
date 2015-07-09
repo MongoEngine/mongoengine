@@ -165,26 +165,29 @@ class BaseField(object):
         """
         pass
 
-    def _validate(self, value, **kwargs):
+    def _validate_choices(self, value):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
+        choice_list = self.choices
+        if isinstance(choice_list[0], (list, tuple)):
+            choice_list = [k for k, _ in choice_list]
+
+        # Choices which are other types of Documents
+        if isinstance(value, (Document, EmbeddedDocument)):
+            if not any(isinstance(value, c) for c in choice_list):
+                self.error(
+                    'Value must be instance of %s' % unicode(choice_list)
+                )
+        # Choices which are types other than Documents
+        elif value not in choice_list:
+            self.error('Value must be one of %s' % unicode(choice_list))
+
+
+    def _validate(self, value, **kwargs):
         # Check the Choices Constraint
         if self.choices:
-
-            choice_list = self.choices
-            if isinstance(self.choices[0], (list, tuple)):
-                choice_list = [k for k, v in self.choices]
-
-            # Choices which are other types of Documents
-            if isinstance(value, (Document, EmbeddedDocument)):
-                if not any(isinstance(value, c) for c in choice_list):
-                    self.error(
-                        'Value must be instance of %s' % unicode(choice_list)
-                    )
-            # Choices which are types other than Documents
-            elif value not in choice_list:
-                self.error('Value must be one of %s' % unicode(choice_list))
+            self._validate_choices(value)
 
         # check validation argument
         if self.validation is not None:
@@ -308,7 +311,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for _, v in sorted(value_dict.items(),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -375,7 +378,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for _, v in sorted(value_dict.items(),
                                          key=operator.itemgetter(0))]
         return value_dict
 

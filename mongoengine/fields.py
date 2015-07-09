@@ -1140,6 +1140,30 @@ class GenericReferenceField(BaseField):
     .. versionadded:: 0.3
     """
 
+    def __init__(self, *args, **kwargs):
+        choices = kwargs.pop('choices', None)
+        super(GenericReferenceField, self).__init__(*args, **kwargs)
+        self.choices = []
+        # Keep the choices as a list of allowed Document class names
+        if choices:
+            for choice in choices:
+                if isinstance(choice, basestring):
+                    self.choices.append(choice)
+                elif isinstance(choice, type) and issubclass(choice, Document):
+                    self.choices.append(choice._class_name)
+                else:
+                    self.error('Invalid choices provided: must be a list of'
+                               'Document subclasses and/or basestrings')
+
+    def _validate_choices(self, value):
+        if isinstance(value, dict):
+            # If the field has not been dereferenced, it is still a dict
+            # of class and DBRef
+            value = value.get('_cls')
+        elif isinstance(value, Document):
+            value = value._class_name
+        super(GenericReferenceField, self)._validate_choices(value)
+
     def __get__(self, instance, owner):
         if instance is None:
             return self

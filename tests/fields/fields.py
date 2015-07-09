@@ -2396,6 +2396,62 @@ class FieldTest(unittest.TestCase):
         bm = Bookmark.objects.first()
         self.assertEqual(bm.bookmark_object, post_1)
 
+    def test_generic_reference_string_choices(self):
+        """Ensure that a GenericReferenceField can handle choices as strings
+        """
+        class Link(Document):
+            title = StringField()
+
+        class Post(Document):
+            title = StringField()
+
+        class Bookmark(Document):
+            bookmark_object = GenericReferenceField(choices=('Post', Link))
+
+        Link.drop_collection()
+        Post.drop_collection()
+        Bookmark.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+
+        bm = Bookmark(bookmark_object=link_1)
+        bm.save()
+
+        bm = Bookmark(bookmark_object=post_1)
+        bm.save()
+
+        bm = Bookmark(bookmark_object=bm)
+        self.assertRaises(ValidationError, bm.validate)
+
+    def test_generic_reference_choices_no_dereference(self):
+        """Ensure that a GenericReferenceField can handle choices on
+        non-derefenreced (i.e. DBRef) elements
+        """
+        class Post(Document):
+            title = StringField()
+
+        class Bookmark(Document):
+            bookmark_object = GenericReferenceField(choices=(Post, ))
+            other_field = StringField()
+
+        Post.drop_collection()
+        Bookmark.drop_collection()
+
+        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
+        post_1.save()
+
+        bm = Bookmark(bookmark_object=post_1)
+        bm.save()
+
+        bm = Bookmark.objects.get(id=bm.id)
+        # bookmark_object is now a DBRef
+        bm.other_field = 'dummy_change'
+        bm.save()
+
     def test_generic_reference_list_choices(self):
         """Ensure that a ListField properly dereferences generic references and
         respects choices.
