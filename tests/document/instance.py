@@ -2398,6 +2398,27 @@ class InstanceTest(unittest.TestCase):
         system = System.objects.first()
         self.assertEqual("UNDEFINED", system.nodes["node"].parameters["param"].macros["test"].value)
 
+    def test_copyable(self):
+        import copy
+
+        class Author(EmbeddedDocument):
+            name = StringField()
+
+        class Book(Document):
+            authors = ListField(EmbeddedDocumentField(Author))
+
+        book = Book(authors=[Author(name='John')])
+        author = book.authors[0]
+        del book
+        new_author = copy.deepcopy(author)
+        self.assertEqual(author.name, 'John')
+
+        authors = Book(authors=[Author(name='John')]).authors
+        new_authors = copy.deepcopy(authors)
+        self.assertEqual(new_authors[0].name, 'John')
+        new_author = copy.deepcopy(authors[0])
+        self.assertEqual(author.name, 'John')
+
 
 if __name__ == '__main__':
     unittest.main()

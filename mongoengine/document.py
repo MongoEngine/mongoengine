@@ -6,6 +6,7 @@ from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
                               BaseDocument, ALLOW_INHERITANCE, get_document)
+from mongoengine.base.datastructures import WeakInstanceMixin
 from mongoengine.queryset import OperationError, NotUniqueError, QuerySet, DoesNotExist
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
@@ -33,7 +34,7 @@ class InvalidCollectionError(Exception):
     pass
 
 
-class EmbeddedDocument(BaseDocument):
+class EmbeddedDocument(WeakInstanceMixin, BaseDocument):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -52,8 +53,6 @@ class EmbeddedDocument(BaseDocument):
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass  = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
-
-    _instance = None
 
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)

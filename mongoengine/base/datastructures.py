@@ -4,12 +4,26 @@ from mongoengine.common import _import_class
 __all__ = ("BaseDict", "BaseList")
 
 
-class BaseDict(dict):
+class WeakInstanceMixin(object):
+    _instance_ref = None
+
+    def _get_instance(self):
+        return self._instance_ref and self._instance_ref()
+
+    def _set_instance(self, instance):
+        if instance is None:
+            self._instance_ref = None
+        else:
+            self._instance_ref = weakref.ref(instance)
+
+    _instance = property(_get_instance, _set_instance)
+
+
+class BaseDict(WeakInstanceMixin, dict):
     """A special dict so we can watch any changes
     """
 
     _dereferenced = False
-    _instance = None
     _name = None
 
     def __init__(self, dict_items, instance, name):
@@ -17,7 +31,7 @@ class BaseDict(dict):
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
         if isinstance(instance, (Document, EmbeddedDocument)):
-            self._instance = weakref.proxy(instance)
+            self._instance = instance
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
 
@@ -75,12 +89,11 @@ class BaseDict(dict):
             self._instance._mark_as_changed(self._name)
 
 
-class BaseList(list):
+class BaseList(WeakInstanceMixin, list):
     """A special list so we can watch any changes
     """
 
     _dereferenced = False
-    _instance = None
     _name = None
 
     def __init__(self, list_items, instance, name):
@@ -88,7 +101,7 @@ class BaseList(list):
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
         if isinstance(instance, (Document, EmbeddedDocument)):
-            self._instance = weakref.proxy(instance)
+            self._instance = instance
         self._name = name
         return super(BaseList, self).__init__(list_items)
 
