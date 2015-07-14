@@ -1,6 +1,5 @@
 # http://travis-ci.org/#!/MongoEngine/mongoengine
 language: python
-services: mongodb
 python:
     - "2.7"
     - "3.2"
@@ -9,6 +8,12 @@ python:
 env:
   - PYMONGO=2.7
   - PYMONGO=2.8
+before_install:
+    - travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    - echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' |
+      sudo tee /etc/apt/sources.list.d/mongodb.list
+    - travis_retry sudo apt-get update
+    - travis_retry sudo apt-get install mongodb-org-server
 install:
     - if [[ $PYMONGO == 'dev' ]]; then pip install https://github.com/mongodb/mongo-python-driver/tarball/master; true; fi
     - if [[ $PYMONGO != 'dev' ]]; then pip install pymongo==$PYMONGO --use-mirrors; true; fi
