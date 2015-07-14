@@ -47,12 +47,12 @@ CLASSIFIERS = [
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 
-extra_opts = {}
+extra_opts = {"packages": find_packages(exclude=["tests", "tests.*"])}
 if sys.version_info[0] == 3:
     extra_opts['use_2to3'] = True
     extra_opts['tests_require'] = ['nose', 'coverage', 'blinker']
     if "test" in sys.argv or "nosetests" in sys.argv:
-        extra_opts['packages'].append("tests")
+        extra_opts['packages'] = find_packages()
         extra_opts['package_data'] = {"tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]}
 else:
     extra_opts['tests_require'] = ['nose', 'coverage', 'blinker', 'python-dateutil']
