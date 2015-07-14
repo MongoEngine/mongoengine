@@ -135,6 +135,9 @@ class ObjectIdField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
+        if value is None and not self.primary_key:
+            # allow None value if field not primary_key
+            return
         try:
             bson.objectid.ObjectId(unicode(value))
         except:
@@ -367,7 +370,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         if not new_class._meta['id_field']:
             new_class._meta['id_field'] = 'id'
-            new_class._fields['id'] = ObjectIdField(db_field='_id')
+            id_field = ObjectIdField(db_field='_id')
+            id_field.primary_key = True
+            id_field.required = False
+            new_class._fields['id'] = id_field
             new_class.id = new_class._fields['id']
 
         if meta['hash_field']:

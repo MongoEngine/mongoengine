@@ -21,6 +21,7 @@ class DocumentTest(unittest.TestCase):
         class Person(Document):
             name = StringField()
             age = IntField()
+            uid = ObjectIdField()
         self.Person = Person
 
     def tearDown(self):
@@ -341,7 +342,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(person['name'], 'Another User')
 
         # Length = length(assigned fields + id)
-        self.assertEquals(len(person), 3)
+        self.assertEquals(len(person), 4)
 
         self.assertTrue('age' in person)
         person.age = None
@@ -477,7 +478,8 @@ class DocumentTest(unittest.TestCase):
 
     def test_document_update(self):
 
-        person = self.Person(name='dcrosta')
+        person = self.Person(name='dcrosta',
+                id=bson.ObjectId(), uid=bson.ObjectId())
         resp = person.set(name='Dan Crosta')
 
         self.assertEquals(resp['n'], 0)
@@ -491,10 +493,19 @@ class DocumentTest(unittest.TestCase):
         p1 = self.Person.find_one({})
         self.assertEquals(p1.name, author.name)
 
+        p1.set(uid=None)
+        p1.reload()
+        self.assertEquals(p1.uid, None)
+
+        def unset_primary_key():
+            person = self.Person.find_one({})
+            person.set(id=None)
+
         def update_no_value_raises():
             person = self.Person.find_one({})
             person.set()
 
+        self.assertRaises(pymongo.errors.OperationFailure, unset_primary_key)
         self.assertRaises(pymongo.errors.OperationFailure, update_no_value_raises)
 
     def test_embedded_update(self):

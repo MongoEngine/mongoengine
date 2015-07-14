@@ -734,6 +734,8 @@ class Document(BaseDocument):
                     return value
                 return DBRef(type(value)._meta['collection'], value.id)
             else:
+                if value is None and not f.primary_key:
+                    return value
                 return ObjectId(value)
 
         raise AssertionError("Failed to convert")
