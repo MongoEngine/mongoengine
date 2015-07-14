@@ -2,9 +2,6 @@
 language: python
 python:
     - "2.7"
-    - "3.2"
-    - "3.3"
-    - "3.4"
 env:
   - PYMONGO=2.7
   - PYMONGO=2.8
