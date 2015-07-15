@@ -16,7 +16,8 @@ from mongoengine.base import (
     ALLOW_INHERITANCE,
     get_document
 )
-from mongoengine.errors import InvalidQueryError, InvalidDocumentError
+from mongoengine.errors import (InvalidQueryError, InvalidDocumentError,
+                                SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
@@ -359,8 +360,8 @@ class Document(BaseDocument):
                     last_error = collection.update(select_dict, update_query,
                                                    upsert=upsert, **write_concern)
                     if not upsert and last_error['nModified'] == 0:
-                        raise OperationError('Race condition preventing'
-                                             ' document update detected')
+                        raise SaveConditionError('Race condition preventing'
+                                                 ' document update detected')
                     created = is_new_object(last_error)
 
             if cascade is None:
