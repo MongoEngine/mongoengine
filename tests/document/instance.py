@@ -17,7 +17,7 @@ from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError, NotUniqueError,
-                                FieldDoesNotExist)
+                                FieldDoesNotExist, SaveConditionError)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
@@ -1021,7 +1021,7 @@ class InstanceTest(unittest.TestCase):
         flip(w1)
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 1)
-        self.assertRaises(OperationError,
+        self.assertRaises(SaveConditionError,
             w1.save, save_condition={'save_id': UUID(42)})
         w1.reload()
         self.assertFalse(w1.toggle)
@@ -1050,7 +1050,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(w1.count, 2)
         flip(w2)
         flip(w2)
-        self.assertRaises(OperationError,
+        self.assertRaises(SaveConditionError,
             w2.save, save_condition={'save_id': old_id})
         w2.reload()
         self.assertFalse(w2.toggle)
@@ -1063,7 +1063,7 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
         flip(w1)
-        self.assertRaises(OperationError,
+        self.assertRaises(SaveConditionError,
             w1.save, save_condition={'count__gte': w1.count})
         w1.reload()
         self.assertTrue(w1.toggle)
