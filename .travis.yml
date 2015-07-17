@@ -9,15 +9,15 @@ python:
 - pypy3
 env:
 # MongoDB 2.4
-- PYMONGO=2.7 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
-- PYMONGO=2.8 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
-- PYMONGO=3.0 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
-- PYMONGO=dev REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=dev REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
 # MongoDB 2.6
-- PYMONGO=2.7 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
-- PYMONGO=2.8 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
-- PYMONGO=3.0 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
-- PYMONGO=dev REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=dev REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
 # MongoDB 3.0
 - PYMONGO=3.0 REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
 - PYMONGO=dev REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
