@@ -4822,5 +4822,30 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
 
+    def test_len_during_iteration(self):
+        """
+        Tests that calling len on a queyset during iteration doesn't stop
+        paging.
+        """
+
+        class Data(Document):
+            pass
+
+        for i in xrange(500):
+            Data().save()
+
+        records = Data.objects.limit(250)
+        len(records)
+        for i, r in enumerate(records):
+            if i == 58:
+                len(records)
+        self.assertEqual(i, 249)
+
+        records = Data.objects.limit(250)
+        for i, r in enumerate(records):
+            if i == 58:
+                len(records)
+        self.assertEqual(i, 249)
+
 if __name__ == '__main__':
     unittest.main()
