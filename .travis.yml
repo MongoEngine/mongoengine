@@ -28,6 +28,7 @@ before_install:
 - echo $REPOSITORY | sudo tee /etc/apt/sources.list.d/mongodb.list
 - travis_retry sudo apt-get update
 - travis_retry sudo apt-get install $PACKAGE_NAME
+- sudo service mongod start
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
