@@ -19,8 +19,8 @@ env:
 - PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
 - PYMONGO=dev REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
 # MongoDB 3.0
-- PYMONGO=3.0 REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
-- PYMONGO=dev REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
+- PYMONGO=3.0 REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
+- PYMONGO=dev REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
 matrix:
   fast_finish: true
 before_install:
