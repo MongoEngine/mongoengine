@@ -8,18 +8,26 @@ python:
 - pypy
 - pypy3
 env:
-- PYMONGO=2.7
-- PYMONGO=2.8
-- PYMONGO=3.0
-- PYMONGO=dev
+# MongoDB 2.4
+- PYMONGO=2.7 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=2.8 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=3.0 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=dev REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+# MongoDB 2.6
+- PYMONGO=2.7 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=2.8 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=3.0 REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+- PYMONGO=dev REPOSITORY='http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
+# MongoDB 3.0
+- PYMONGO=3.0 REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
+- PYMONGO=dev REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
 matrix:
   fast_finish: true
 before_install:
 - travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-- echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' |
-  sudo tee /etc/apt/sources.list.d/mongodb.list
+- echo $REPOSITORY | sudo tee /etc/apt/sources.list.d/mongodb.list
 - travis_retry sudo apt-get update
-- travis_retry sudo apt-get install mongodb-org-server
+- travis_retry sudo apt-get install $PACKAGE_NAME
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
