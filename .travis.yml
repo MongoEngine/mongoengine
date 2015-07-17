@@ -9,10 +9,10 @@ python:
 - pypy3
 env:
 # MongoDB 2.4
-- PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
-- PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
-- PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
-- PYMONGO=dev REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'
+- PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14' SERVICE_NAME='mongodb'
+- PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'  SERVICE_NAME='mongodb'
+- PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14' SERVICE_NAME='mongodb'
+- PYMONGO=dev REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14' SERVICE_NAME='mongodb'
 # MongoDB 2.6
 - PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
 - PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
@@ -28,7 +28,7 @@ before_install:
 - echo $REPOSITORY | sudo tee /etc/apt/sources.list.d/mongodb.list
 - travis_retry sudo apt-get update
 - travis_retry sudo apt-get install $PACKAGE_NAME
-- sudo service mongod start
+- if [ -z $SERVICE_NAME ]; then echo "MongoDB is already started"; else sudo service $SERVICE_NAME start; fi
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
