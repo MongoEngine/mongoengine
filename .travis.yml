@@ -31,6 +31,7 @@ before_install:
     travis_retry sudo apt-get update &&
     if [ `echo $MONGODB | sed -e 's/.\.\(.\).*/\1/'` = '4' ]; then
       travis_retry sudo apt-get install -y mongodb-10gen=$MONGODB;
+      sudo service mongodb start
     else
       travis_retry sudo apt-get install -y mongodb-org=$MONGODB;
     fi
