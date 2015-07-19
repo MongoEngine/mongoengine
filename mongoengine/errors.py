@@ -41,6 +41,10 @@ class NotUniqueError(OperationError):
     pass
 
 
+class SaveConditionError(OperationError):
+    pass
+
+
 class FieldDoesNotExist(Exception):
     """Raised when trying to set a field
     not declared in a :class:`~mongoengine.Document`
