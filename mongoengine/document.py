@@ -295,6 +295,8 @@ class Document(BaseDocument):
             if the condition is satisfied in the current db record.
         .. versionchanged:: 0.10
             :class:`OperationError` exception raised if save_condition fails.
+        .. versionchanged:: 0.10.1
+            :class: save_condition failure now raises a `SaveConditionError`
         """
         signals.pre_save.send(self.__class__, document=self)
 
