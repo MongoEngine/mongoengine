@@ -1617,7 +1617,7 @@ class FieldTest(unittest.TestCase):
                                'parent': "50a234ea469ac1eda42d347d"})
         mongoed = p1.to_mongo()
         self.assertTrue(isinstance(mongoed['parent'], ObjectId))
-        
+
     def test_cached_reference_field_get_and_save(self):
         """
         Tests #1047: CachedReferenceField creates DBRefs on to_python, but can't save them on to_mongo
@@ -1629,11 +1629,11 @@ class FieldTest(unittest.TestCase):
         class Ocorrence(Document):
             person = StringField()
             animal = CachedReferenceField(Animal)
-        
+
         Animal.drop_collection()
         Ocorrence.drop_collection()
-        
-        Ocorrence(person="testte", 
+
+        Ocorrence(person="testte",
                   animal=Animal(name="Leopard", tag="heavy").save()).save()
         p = Ocorrence.objects.get()
         p.person = 'new_testte'
@@ -3909,6 +3909,24 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.assertFalse(hasattr(a1.c_field, 'custom_data'))
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
+
+    def test_default_value_copy(self):
+        """
+        Tests that reference passed in the `default` field parameter
+        is properly copied unless specified otherwise with the
+        `default_copy' parameter.
+        """
+        class A(Document):
+            field = DynamicField(default={})
+            field_without_copy = DynamicField(default={}, copy_default=False)
+
+        obj1 = A()
+        obj1.field['foo'] = 'foo'
+        obj1.field_without_copy['bar'] = 'bar'
+        obj2 = A()
+        self.assertTrue('bar' in obj2.field_without_copy)
+        self.assertNotEqual(id(obj1.field), id(obj2.field))
+        self.assertEqual(id(obj1.field_without_copy), id(obj2.field_without_copy))
 
 
 if __name__ == '__main__':
