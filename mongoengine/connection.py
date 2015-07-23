@@ -1,7 +1,8 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
 from mongoengine.python_support import IS_PYMONGO_3
 
-__all__ = ['ConnectionError', 'connect', 'register_connection', 'BaseConnectionHandler']
+__all__ = ['ConnectionError', 'BaseConnectionHandler',
+           'connect', 'register_connection', 'set_connection_handler']
 
 
 class ConnectionError(Exception):
