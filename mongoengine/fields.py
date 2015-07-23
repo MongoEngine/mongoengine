@@ -26,7 +26,7 @@ from base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
                   get_document, BaseDocument)
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
-from connection import get_db, DEFAULT_CONNECTION_NAME
+from connection import get_db
 
 try:
     from PIL import Image, ImageOps
@@ -989,7 +989,7 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
     """
     A referencefield with cache fields to purpose pseudo-joins
-    
+
     .. versionadded:: 0.9
     """
 
@@ -1274,7 +1274,7 @@ class GridFSProxy(object):
 
     def __init__(self, grid_id=None, key=None,
                  instance=None,
-                 db_alias=DEFAULT_CONNECTION_NAME,
+                 db_alias=None,
                  collection_name='fs'):
         self.grid_id = grid_id  # Store GridFS id for file
         self.key = key
@@ -1417,7 +1417,7 @@ class FileField(BaseField):
     proxy_class = GridFSProxy
 
     def __init__(self,
-                 db_alias=DEFAULT_CONNECTION_NAME,
+                 db_alias=None,
                  collection_name="fs", **kwargs):
         super(FileField, self).__init__(**kwargs)
         self.collection_name = collection_name
@@ -1688,11 +1688,11 @@ class SequenceField(BaseField):
     representation of the default integer counter value.
     
     .. note::
-    
-        In case the counter is defined in the abstract document, it will be 
-        common to all inherited documents and the default sequence name will 
+
+        In case the counter is defined in the abstract document, it will be
+        common to all inherited documents and the default sequence name will
         be the class name of the abstract document.
-    
+
     .. versionadded:: 0.5
     .. versionchanged:: 0.8 added `value_decorator`
     """
@@ -1704,7 +1704,7 @@ class SequenceField(BaseField):
     def __init__(self, collection_name=None, db_alias=None, sequence_name=None,
                  value_decorator=None, *args, **kwargs):
         self.collection_name = collection_name or self.COLLECTION_NAME
-        self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
+        self.db_alias = db_alias
         self.sequence_name = sequence_name
         self.value_decorator = (callable(value_decorator) and
                                 value_decorator or self.VALUE_DECORATOR)

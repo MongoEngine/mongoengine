@@ -1,5 +1,5 @@
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import get_db
 
 
 __all__ = ("switch_db", "switch_collection", "no_dereference",
@@ -34,7 +34,7 @@ class switch_db(object):
         self.cls = cls
         self.collection = cls._get_collection()
         self.db_alias = db_alias
-        self.ori_db_alias = cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        self.ori_db_alias = cls._meta.get("db_alias")
 
     def __enter__(self):
         """ change the db_alias and clear the cached collection """

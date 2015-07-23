@@ -21,7 +21,7 @@ from mongoengine.errors import (InvalidQueryError, InvalidDocumentError,
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
-from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
+from mongoengine.connection import get_db
 from mongoengine.context_managers import switch_db, switch_collection
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
@@ -167,7 +167,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
+        return get_db(alias=cls._meta.get("db_alias"))
 
     @classmethod
     def _get_collection(cls):
@@ -480,10 +480,10 @@ class Document(BaseDocument):
         """
         signals.pre_delete.send(self.__class__, document=self)
 
-        # Delete FileFields separately 
+        # Delete FileFields separately
         FileField = _import_class('FileField')
         for name, field in self._fields.iteritems():
-            if isinstance(field, FileField): 
+            if isinstance(field, FileField):
                 getattr(self, name).delete()
 
         try:

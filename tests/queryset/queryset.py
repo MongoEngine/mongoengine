@@ -16,7 +16,7 @@ from pymongo.read_preferences import ReadPreference
 from bson import ObjectId, DBRef
 
 from mongoengine import *
-from mongoengine.connection import get_connection, get_db
+from mongoengine.connection import get_connection, get_db, purge
 from mongoengine.python_support import PY3, IS_PYMONGO_3
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.queryset import (QuerySet, QuerySetManager,
@@ -68,6 +68,7 @@ def skip_pymongo3(f):
 class QuerySetTest(unittest.TestCase):
 
     def setUp(self):
+        purge()
         connect(db='mongoenginetest')
         connect(db='mongoenginetest2', alias='test2')
 
@@ -83,6 +84,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
         self.PersonMeta = PersonMeta
         self.Person = Person
+
+    def tearDown(self):
+        purge()
 
     def test_initialisation(self):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager.

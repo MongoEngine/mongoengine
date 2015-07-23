@@ -31,9 +31,7 @@ def get_tz_awareness(connection):
 class ConnectionTest(unittest.TestCase):
 
     def tearDown(self):
-        mongoengine.connection._connection_settings = {}
-        mongoengine.connection._connections = {}
-        mongoengine.connection._dbs = {}
+        mongoengine.connection._connection_handler.purge()
 
     def test_connect(self):
         """Ensure that the connect() method works properly.
@@ -207,7 +205,7 @@ class ConnectionTest(unittest.TestCase):
 
         connect('mongoenginetest2', alias='t2', host="127.0.0.1")
 
-        mongo_connections = mongoengine.connection._connections
+        mongo_connections = mongoengine.connection._connection_handler.__connections__
         self.assertEqual(len(mongo_connections.items()), 2)
         self.assertTrue('t1' in mongo_connections.keys())
         self.assertTrue('t2' in mongo_connections.keys())

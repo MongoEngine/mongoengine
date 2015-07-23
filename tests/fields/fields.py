@@ -21,7 +21,7 @@ from decimal import Decimal
 from bson import Binary, DBRef, ObjectId
 
 from mongoengine import *
-from mongoengine.connection import get_db
+from mongoengine.connection import get_db, purge
 from mongoengine.base import _document_registry
 from mongoengine.base.datastructures import BaseDict, EmbeddedDocumentList
 from mongoengine.errors import NotRegistered
@@ -33,6 +33,7 @@ __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 class FieldTest(unittest.TestCase):
 
     def setUp(self):
+        purge()
         connect(db='mongoenginetest')
         self.db = get_db()
 
@@ -40,6 +41,7 @@ class FieldTest(unittest.TestCase):
         self.db.drop_collection('fs.files')
         self.db.drop_collection('fs.chunks')
         self.db.drop_collection('mongoengine.counters')
+        purge()
 
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating a document.
@@ -575,9 +577,7 @@ class FieldTest(unittest.TestCase):
         from mongoengine import connection
 
         # Reset the connections
-        connection._connection_settings = {}
-        connection._connections = {}
-        connection._dbs = {}
+        purge()
 
         connect(db='mongoenginetest', tz_aware=True)
 
@@ -1617,7 +1617,7 @@ class FieldTest(unittest.TestCase):
                                'parent': "50a234ea469ac1eda42d347d"})
         mongoed = p1.to_mongo()
         self.assertTrue(isinstance(mongoed['parent'], ObjectId))
-        
+
     def test_cached_reference_field_get_and_save(self):
         """
         Tests #1047: CachedReferenceField creates DBRefs on to_python, but can't save them on to_mongo
@@ -1629,11 +1629,11 @@ class FieldTest(unittest.TestCase):
         class Ocorrence(Document):
             person = StringField()
             animal = CachedReferenceField(Animal)
-        
+
         Animal.drop_collection()
         Ocorrence.drop_collection()
-        
-        Ocorrence(person="testte", 
+
+        Ocorrence(person="testte",
                   animal=Animal(name="Leopard", tag="heavy").save()).save()
         p = Ocorrence.objects.get()
         p.person = 'new_testte'

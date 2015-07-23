@@ -24,14 +24,10 @@ from mongoengine.connection import ConnectionError
 class ConnectionTest(unittest.TestCase):
 
     def setUp(self):
-        mongoengine.connection._connection_settings = {}
-        mongoengine.connection._connections = {}
-        mongoengine.connection._dbs = {}
+        mongoengine.connection._connection_handler.purge()
 
     def tearDown(self):
-        mongoengine.connection._connection_settings = {}
-        mongoengine.connection._connections = {}
-        mongoengine.connection._dbs = {}
+        mongoengine.connection._connection_handler.purge()
 
     def test_replicaset_uri_passes_read_preference(self):
         """Requires a replica set called "rs" on port 27017
