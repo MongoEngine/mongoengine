@@ -494,8 +494,7 @@ class Document(BaseDocument):
         db.drop_collection(cls._get_collection_name())
 
     @classmethod
-    def ensure_index(cls, key_or_list, drop_dups=False, background=False,
-        **kwargs):
+    def ensure_index(cls, key_or_list, **kwargs):
         """Ensure that the given indexes are in place.
 
         :param key_or_list: a single index key or a list of index keys (to
@@ -505,8 +504,7 @@ class Document(BaseDocument):
         index_spec = cls._build_index_spec(key_or_list)
         index_spec = index_spec.copy()
         fields = index_spec.pop('fields')
-        index_spec['drop_dups'] = drop_dups
-        index_spec['background'] = background
+        index_spec['background'] = True  # all of the indexes are created in the background
         index_spec.update(kwargs)
 
         return cls._get_collection().ensure_index(fields, **index_spec)
@@ -518,8 +516,6 @@ class Document(BaseDocument):
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
         """
-        background = cls._meta.get('index_background', False)
-        drop_dups = cls._meta.get('index_drop_dups', False)
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
 
@@ -537,7 +533,8 @@ class Document(BaseDocument):
             for spec in index_spec:
                 spec = spec.copy()
                 fields = spec.pop('fields')
-                cls_indexed = cls_indexed or includes_cls(fields)
+                if includes_cls(fields):
+                    cls_indexed = True
                 opts = index_opts.copy()
                 opts.update(spec)
 
@@ -546,8 +543,7 @@ class Document(BaseDocument):
                 if 'cls' in opts:
                     del opts['cls']
 
-                collection.ensure_index(fields, background=background,
-                                        drop_dups=drop_dups, **opts)
+                collection.ensure_index(fields, **opts)
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
@@ -559,11 +555,10 @@ class Document(BaseDocument):
             if 'cls' in index_opts:
                 del index_opts['cls']
 
-            collection.ensure_index('_cls', background=background,
-                                    **index_opts)
+            collection.ensure_index('_cls', **index_opts)
 
     @classmethod
-    def list_indexes(cls, go_up=True, go_down=True):
+    def list_indexes(cls):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
@@ -596,30 +591,30 @@ class Document(BaseDocument):
 
         get_classes(cls)
 
-        # get the indexes spec for all of the gathered classes
-        def get_indexes_spec(cls):
-            indexes = []
-
-            if cls._meta['index_specs']:
-                index_spec = cls._meta['index_specs']
-                for spec in index_spec:
-                    spec = spec.copy()
-                    fields = spec.pop('fields')
-                    indexes.append(fields)
-            return indexes
-
         indexes = []
         for cls in classes:
-            for index in get_indexes_spec(cls):
-                if index not in indexes:
-                    indexes.append(index)
+            for idx in cls._meta.get('index_specs', []):
+                idx = idx.copy()
+                idx['key'] = idx.pop('fields')
+                if idx not in indexes:
+                    indexes.append(idx)
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
-        if [(u'_id', 1)] not in indexes:
-            indexes.append([(u'_id', 1)])
-        if (cls._meta.get('index_cls', True) and
-           cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-             indexes.append([(u'_cls', 1)])
+
+        _id_spec = { 'key': [('_id', 1)] }
+        if _id_spec not in indexes:
+            indexes.append(_id_spec)
+
+        if (
+            cls._meta['index_cls'] and
+            cls._meta.get('allow_inheritance', ALLOW_INHERITANCE)
+        ):
+            cls_exists = False
+            for idx in indexes:
+                if idx['key'][0] == ('_cls', 1):
+                    cls_exists = True
+            if cls_exists:
+                indexes.append({ 'key': [('_cls', 1)] })
 
         return indexes
 
