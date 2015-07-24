@@ -17,7 +17,7 @@ Use the *$* prefix to set a text index, Look the declaration::
       meta = {'indexes': [
           {'fields': ['$title', "$content"],
            'default_language': 'english',
-           'weight': {'title': 10, 'content': 2}
+           'weights': {'title': 10, 'content': 2}
           }
       ]}
 
