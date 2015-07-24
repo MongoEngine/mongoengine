@@ -1,8 +1,9 @@
 from mongoengine.errors import NotRegistered
 
-__all__ = ('ALLOW_INHERITANCE', 'get_document', '_document_registry')
+__all__ = ('ALLOW_INHERITANCE', 'AUTO_CREATE_INDEX', 'get_document', '_document_registry')
 
 ALLOW_INHERITANCE = False
+AUTO_CREATE_INDEX = False
 
 _document_registry = {}
 

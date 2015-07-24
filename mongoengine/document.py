@@ -5,7 +5,8 @@ from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.base import (DocumentMetaclass, TopLevelDocumentMetaclass,
-                              BaseDocument, ALLOW_INHERITANCE, get_document)
+                              BaseDocument, get_document, ALLOW_INHERITANCE,
+                              AUTO_CREATE_INDEX)
 from mongoengine.base.datastructures import WeakInstanceMixin
 from mongoengine.queryset import OperationError, NotUniqueError, QuerySet, DoesNotExist
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
@@ -167,7 +168,7 @@ class Document(BaseDocument):
                     )
             else:
                 cls._collection = db[collection_name]
-            if cls._meta.get('auto_create_index', True):
+            if cls._meta.get('auto_create_index', AUTO_CREATE_INDEX):
                 cls.ensure_indexes()
         return cls._collection
 

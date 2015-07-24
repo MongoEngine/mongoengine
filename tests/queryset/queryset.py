@@ -709,18 +709,20 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(OperationError, throw_operation_error_not_a_document)
 
         Blog.drop_collection()
-
+        Blog.ensure_indexes()
         blog1 = Blog(title="code", posts=[post1, post2])
         blog1 = Blog.objects.insert(blog1)
         self.assertEqual(blog1.title, "code")
         self.assertEqual(Blog.objects.count(), 1)
 
         Blog.drop_collection()
+        Blog.ensure_indexes()
         blog1 = Blog(title="code", posts=[post1, post2])
         obj_id = Blog.objects.insert(blog1, load_bulk=False)
         self.assertEqual(obj_id.__class__.__name__, 'ObjectId')
 
         Blog.drop_collection()
+        Blog.ensure_indexes()
         post3 = Post(comments=[comment1, comment1])
         blog1 = Blog(title="foo", posts=[post1, post2])
         blog2 = Blog(title="bar", posts=[post2, post3])
