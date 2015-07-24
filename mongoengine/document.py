@@ -606,7 +606,7 @@ class Document(BaseDocument):
             indexes.append(_id_spec)
 
         if (
-            cls._meta['index_cls'] and
+            cls._meta.get('index_cls', True) and
             cls._meta.get('allow_inheritance', ALLOW_INHERITANCE)
         ):
             cls_exists = False
@@ -617,29 +617,6 @@ class Document(BaseDocument):
                 indexes.append({ 'key': [('_cls', 1)] })
 
         return indexes
-
-    @classmethod
-    def compare_indexes(cls):
-        """ Compares the indexes defined in MongoEngine with the ones existing
-        in the database. Returns any missing/extra indexes.
-        """
-
-        required = cls.list_indexes()
-        existing = [info['key'] for info in cls._get_collection().index_information().values()]
-        missing = [index for index in required if index not in existing]
-        extra = [index for index in existing if index not in required]
-
-        # if { _cls: 1 } is missing, make sure it's *really* necessary
-        if [(u'_cls', 1)] in missing:
-            cls_obsolete = False
-            for index in existing:
-                if includes_cls(index) and index not in extra:
-                    cls_obsolete = True
-                    break
-            if cls_obsolete:
-                missing.remove([(u'_cls', 1)])
-
-        return {'missing': missing, 'extra': extra}
 
 
 class DynamicDocument(Document):

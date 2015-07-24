@@ -764,20 +764,15 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(index_info, {
             'txt_1': {
                 'key': [('txt', 1)],
-                'dropDups': False,
-                'background': False
             },
             '_id_': {
                 'key': [('_id', 1)],
             },
             'txt2_1': {
                 'key': [('txt2', 1)],
-                'dropDups': False,
-                'background': False
             },
             '_cls_1': {
                 'key': [('_cls', 1)],
-                'background': False,
             }
         })
 
