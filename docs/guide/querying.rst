@@ -347,6 +347,8 @@ way of achieving this::
 
     num_users = len(User.objects)
 
+Even if len() is the Pythonic way of counting results, keep in mind that if you concerned about performance, :meth:`~mongoengine.queryset.QuerySet.count` is the way to go since it only execute a server side count query, while len() retrieves the results, places them in cache, and finally counts them. If we compare the performance of the two operations, len() is much slower than :meth:`~mongoengine.queryset.QuerySet.count`.
+
 Further aggregation
 -------------------
 You may sum over the values of a specific field on documents using
