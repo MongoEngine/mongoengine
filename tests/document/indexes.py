@@ -197,8 +197,7 @@ class IndexesTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        # Indexes are lazy so use list() to perform query
-        list(Person.objects)
+        Person.ensure_indexes()
         info = Person.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('rank.title', 1)] in info)
@@ -266,6 +265,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         # _id, '-date'
         self.assertEqual(len(info), 2)
@@ -298,6 +298,8 @@ class IndexesTest(unittest.TestCase):
                 'indexes': ['name'],
             }
         Person.drop_collection()
+
+        Person.ensure_indexes()
 
         Person(name="test", user_guid='123').save()
 
@@ -353,6 +355,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         self.assertEqual(sorted(info.keys()), ['_id_', 'date.yr_-1'])
         BlogPost.drop_collection()
@@ -375,6 +378,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         # we don't use _cls in with list fields by default
         self.assertEqual(sorted(info.keys()), ['_id_', 'tags.tag_1'])
@@ -411,6 +415,8 @@ class IndexesTest(unittest.TestCase):
 
         Test.drop_collection()
 
+        Test.ensure_indexes()
+
         obj = Test(a=1)
         obj.save()
 
@@ -440,6 +446,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         indexes = BlogPost.objects._collection.index_information()
         self.assertEqual(indexes['categories_1__id_1']['key'],
                                  [('categories', 1), ('_id', 1)])
@@ -485,6 +492,7 @@ class IndexesTest(unittest.TestCase):
             slug = StringField(unique=True)
 
         BlogPost.drop_collection()
+        BlogPost.ensure_indexes()
 
         post1 = BlogPost(title='test1', slug='test')
         post1.save()
@@ -508,6 +516,7 @@ class IndexesTest(unittest.TestCase):
             slug = StringField(unique_with='date.year')
 
         BlogPost.drop_collection()
+        BlogPost.ensure_indexes()
 
         post1 = BlogPost(title='test1', date=Date(year=2009), slug='test')
         post1.save()
@@ -535,6 +544,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         post1 = BlogPost(title='test1',
                          sub=SubDocument(year=2009, slug="test"))
         post1.save()
@@ -564,6 +574,7 @@ class IndexesTest(unittest.TestCase):
             sub = EmbeddedDocumentField(SubDocument)
 
         BlogPost.drop_collection()
+        BlogPost.ensure_indexes()
 
         post1 = BlogPost(title='test1',
                          sub=SubDocument(year=2009, slug="test"))
@@ -606,8 +617,7 @@ class IndexesTest(unittest.TestCase):
         if version_array[0] < 2 and version_array[1] < 2:
             raise SkipTest('MongoDB needs to be 2.2 or higher for this test')
 
-        # Indexes are lazy so use list() to perform query
-        list(Log.objects)
+        Log.ensure_indexes()
         info = Log.objects._collection.index_information()
         self.assertEqual(3600,
                          info['created_1']['expireAfterSeconds'])
@@ -624,6 +634,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         Customer.drop_collection()
+        Customer.ensure_indexes()
         cust = Customer(cust_id=1)
         cust.save()
 
@@ -673,6 +684,7 @@ class IndexesTest(unittest.TestCase):
         except UnboundLocalError:
             self.fail('Unbound local error at index + pk definition')
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         index_item = [('_id', 1), ('comments.comment_id', 1)]
@@ -752,20 +764,15 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(index_info, {
             'txt_1': {
                 'key': [('txt', 1)],
-                'dropDups': False,
-                'background': False
             },
             '_id_': {
                 'key': [('_id', 1)],
             },
             'txt2_1': {
                 'key': [('txt2', 1)],
-                'dropDups': False,
-                'background': False
             },
             '_cls_1': {
                 'key': [('_cls', 1)],
-                'background': False,
             }
         })
 
