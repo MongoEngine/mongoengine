@@ -191,6 +191,17 @@ class Document(BaseDocument):
         return key
 
     @classmethod
+    def _by_ids_key(cls, doc_ids):
+        key = {'_id': {'$in': doc_ids}}
+
+        if cls._meta['hash_field'] == cls._meta['id_field'] \
+           and cls._meta['sharded']:
+            key['shard_hash'] = {'$in': [cls._hash(doc_id)
+                                         for doc_id in doc_ids]}
+
+        return key
+
+    @classmethod
     def _transform_hint(cls, hint_doc):
         for i, index_field in enumerate(hint_doc):
             field, direction = hint_doc[i]

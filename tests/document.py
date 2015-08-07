@@ -899,6 +899,68 @@ class DocumentTest(unittest.TestCase):
             self.assertEquals(update_mock.call_count, 1)
             self.assertEquals(update_mock.call_args[1]['w'], 1)
 
+    def test_by_id_key(self):
+        class UnshardedCollection(Document):
+            pass
+
+        class IdShardedCollection(Document):
+            meta = {'hash_field': 'id'}
+
+        class NonIdShardedCollection(Document):
+            meta = {'hash_field': 'name'}
+
+            name = mongoengine.fields.StringField()
+
+        doc_id = bson.ObjectId()
+
+        # unsharded and non-ID sharded collections don't have anything injected
+        self.assertEquals(UnshardedCollection._by_id_key(doc_id),
+                          {'_id': doc_id})
+        self.assertEquals(NonIdShardedCollection._by_id_key(doc_id),
+                          {'_id': doc_id})
+
+        # ID-sharded collections get the hash injected
+        self.assertEquals(IdShardedCollection._by_id_key(doc_id),
+                          {'_id': doc_id,
+                           'shard_hash': IdShardedCollection._hash(doc_id)})
+
+    def test_by_ids_key(self):
+        class UnshardedCollection(Document):
+            pass
+
+        class IdShardedCollection(Document):
+            meta = {'hash_field': 'id'}
+
+        class NonIdShardedCollection(Document):
+            meta = {'hash_field': 'name'}
+
+            name = mongoengine.fields.StringField()
+
+        doc_ids = [bson.ObjectId() for i in xrange(5)]
+
+        # unsharded and non-ID sharded collections don't have anything injected
+        self.assertEquals(UnshardedCollection._by_ids_key(doc_ids),
+                          {'_id': {'$in': doc_ids}})
+        self.assertEquals(NonIdShardedCollection._by_ids_key(doc_ids),
+                          {'_id': {'$in': doc_ids}})
+
+        # ID-sharded collections get the hash injected
+        doc_hashes = [IdShardedCollection._hash(doc_id) for doc_id in doc_ids]
+        self.assertEquals(IdShardedCollection._by_ids_key(doc_ids),
+                          {'_id': {'$in': doc_ids},
+                           'shard_hash': {'$in': doc_hashes}})
+
+        # unsharded and non-ID sharded collections don't have anything injected
+        self.assertEquals(UnshardedCollection._by_ids_key([]),
+                          {'_id': {'$in': []}})
+        self.assertEquals(NonIdShardedCollection._by_ids_key([]),
+                          {'_id': {'$in': []}})
+
+        # ID-sharded collections get the hash injected
+        self.assertEquals(IdShardedCollection._by_ids_key([]),
+                          {'_id': {'$in': []},
+                           'shard_hash': {'$in': []}})
+
 
 if __name__ == '__main__':
     unittest.main()
