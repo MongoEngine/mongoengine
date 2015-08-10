@@ -51,6 +51,14 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection('testdb')
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
+    def test_disconnect(self):
+        """Ensure that the disconnect() method works properly
+        """
+        conn1 = connect('mongoenginetest')
+        mongoengine.connection.disconnect()
+        conn2 = connect('mongoenginetest')
+        self.assertTrue(conn1 is not conn2)
+
     def test_sharing_connections(self):
         """Ensure that connections are shared when the connection settings are exactly the same
         """
