@@ -361,7 +361,8 @@ class Document(BaseDocument):
                     upsert = save_condition is None
                     last_error = collection.update(select_dict, update_query,
                                                    upsert=upsert, **write_concern)
-                    if not upsert and last_error['nModified'] == 0:
+                    n_modified = last_error.get('nModified', last_error["n"])
+                    if not upsert and n_modified == 0:
                         raise SaveConditionError('Race condition preventing'
                                                  ' document update detected')
                     created = is_new_object(last_error)
