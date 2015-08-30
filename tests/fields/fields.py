@@ -1257,6 +1257,44 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_dictfield_dump_document(self):
+        """Ensure a DictField can handle another document's dump
+        """
+        class Doc(Document):
+            field = DictField()
+
+        class ToEmbed(Document):
+            id = IntField(primary_key=True, default=1)
+            recursive = DictField()
+
+        class ToEmbedParent(Document):
+            id = IntField(primary_key=True, default=1)
+            recursive = DictField()
+
+            meta = {'allow_inheritance': True}
+
+        class ToEmbedChild(ToEmbedParent):
+            pass
+
+        to_embed_recursive = ToEmbed(id=1).save()
+        to_embed = ToEmbed(
+            id=2, recursive=to_embed_recursive.to_mongo().to_dict()).save()
+        doc = Doc(field=to_embed.to_mongo().to_dict())
+        doc.save()
+        assert isinstance(doc.field, dict)
+        assert doc.field == {'_id': 2, 'recursive': {'_id': 1, 'recursive': {}}}
+        # Same thing with a Document with a _cls field
+        to_embed_recursive = ToEmbedChild(id=1).save()
+        to_embed_child = ToEmbedChild(
+            id=2, recursive=to_embed_recursive.to_mongo().to_dict()).save()
+        doc = Doc(field=to_embed_child.to_mongo().to_dict())
+        doc.save()
+        assert isinstance(doc.field, dict)
+        assert doc.field == {
+            '_id': 2, '_cls': 'ToEmbedParent.ToEmbedChild',
+            'recursive': {'_id': 1, '_cls': 'ToEmbedParent.ToEmbedChild', 'recursive': {}}
+        }
+
     def test_dictfield_strict(self):
         """Ensure that dict field handles validation if provided a strict field type."""
 
@@ -3326,6 +3364,39 @@ class FieldTest(unittest.TestCase):
 
         doc = Doc.objects.get()
         self.assertEqual(doc.embed_me.field_1, "hello")
+
+    def test_dynamicfield_dump_document(self):
+        """Ensure a DynamicField can handle another document's dump
+        """
+        class Doc(Document):
+            field = DynamicField()
+
+        class ToEmbed(Document):
+            id = IntField(primary_key=True, default=1)
+            recursive = DynamicField()
+
+        class ToEmbedParent(Document):
+            id = IntField(primary_key=True, default=1)
+            recursive = DynamicField()
+
+            meta = {'allow_inheritance': True}
+
+        class ToEmbedChild(ToEmbedParent):
+            pass
+
+        to_embed_recursive = ToEmbed(id=1).save()
+        to_embed = ToEmbed(id=2, recursive=to_embed_recursive).save()
+        doc = Doc(field=to_embed)
+        doc.save()
+        assert isinstance(doc.field, ToEmbed)
+        assert doc.field == to_embed
+        # Same thing with a Document with a _cls field
+        to_embed_recursive = ToEmbedChild(id=1).save()
+        to_embed_child = ToEmbedChild(id=2, recursive=to_embed_recursive).save()
+        doc = Doc(field=to_embed_child)
+        doc.save()
+        assert isinstance(doc.field, ToEmbedChild)
+        assert doc.field == to_embed_child
 
     def test_invalid_dict_value(self):
         class DictFieldTest(Document):
