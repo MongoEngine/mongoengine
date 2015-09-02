@@ -8,6 +8,7 @@ Changes in 0.10.1 - DEV
 - Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047
 - Fix ignored chained options #842
 - Document save's save_condition error raises `SaveConditionError` exception #1070
+- Fix Document.reload for DynamicDocument. #1050
 
 Changes in 0.10.0
 =================
