@@ -4794,6 +4794,8 @@ class QuerySetTest(unittest.TestCase):
         class ScottishCat(Cat):
             folded_ears = BooleanField()
 
+        Animal.drop_collection()
+
         Animal(is_mamal=False).save()
         Cat(is_mamal=True, whiskers_length=5.1).save()
         ScottishCat(is_mamal=True, folded_ears=True).save()
