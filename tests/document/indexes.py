@@ -863,6 +863,20 @@ class IndexesTest(unittest.TestCase):
         self.assertTrue([('provider_ids.foo', 1)] in info)
         self.assertTrue([('provider_ids.bar', 1)] in info)
 
+    def test_sparse_compound_indexes(self):
+
+        class MyDoc(Document):
+            provider_ids = DictField()
+            meta = {
+                "indexes": [{'fields': ("provider_ids.foo", "provider_ids.bar"),
+                             'sparse': True}],
+            }
+
+        info = MyDoc.objects._collection.index_information()
+        self.assertEqual([('provider_ids.foo', 1), ('provider_ids.bar', 1)],
+                         info['provider_ids.foo_1_provider_ids.bar_1']['key'])
+        self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
+
     def test_text_indexes(self):
 
         class Book(Document):

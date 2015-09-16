@@ -839,10 +839,6 @@ class BaseDocument(object):
 
         if index_list:
             spec['fields'] = index_list
-        if spec.get('sparse', False) and len(spec['fields']) > 1:
-            raise ValueError(
-                'Sparse indexes can only have one field in them. '
-                'See https://jira.mongodb.org/browse/SERVER-2193')
 
         return spec
 
