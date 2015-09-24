@@ -26,12 +26,12 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
 
 
-def query(_doc_cls=None, **query):
+def query(_doc_cls=None, **kwargs):
     """Transform a query from Django-style format to Mongo format.
     """
     mongo_query = {}
     merge_query = defaultdict(list)
-    for key, value in sorted(query.items()):
+    for key, value in sorted(kwargs.items()):
         if key == "__raw__":
             mongo_query.update(value)
             continue
@@ -105,13 +105,18 @@ def query(_doc_cls=None, **query):
         if op:
             if op in GEO_OPERATORS:
                 value = _geo_operator(field, op, value)
-            elif op in CUSTOM_OPERATORS:
-                if op in ('elem_match', 'match'):
-                    value = field.prepare_query_value(op, value)
-                    value = {"$elemMatch": value}
+            elif op in ('match', 'elemMatch'):
+                ListField = _import_class('ListField')
+                EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
+                if (isinstance(value, dict) and isinstance(field, ListField) and
+                    isinstance(field.field, EmbeddedDocumentField)):
+                    value = query(field.field.document_type, **value)
                 else:
-                    NotImplementedError("Custom method '%s' has not "
-                                        "been implemented" % op)
+                    value = field.prepare_query_value(op, value)
+                value = {"$elemMatch": value}
+            elif op in CUSTOM_OPERATORS:
+                NotImplementedError("Custom method '%s' has not "
+                                    "been implemented" % op)
             elif op not in STRING_OPERATORS:
                 value = {'$' + op: value}
 
