@@ -38,8 +38,8 @@ def green_sock_method(method):
     """
     @functools.wraps(method)
     def _green_sock_method(self, *args, **kwargs):
-        child_gr = greenlet.getcurrent()
-        main = child_gr.parent
+        self.child_gr = greenlet.getcurrent()
+        main = self.child_gr.parent
         assert main, "Should be on child greenlet"
 
         # Run on main greenlet
@@ -57,9 +57,14 @@ def green_sock_method(method):
 
         # send the error to this greenlet if something goes wrong during the
         # query
-        self.stream.set_close_callback(functools.partial(closed, child_gr))
+        self.stream.set_close_callback(functools.partial(closed, self.child_gr))
 
         try:
+            # Add timeout for closing non-blocking method call
+            if self.timeout and not self.timeout_handle:
+                self.timeout_handle = self.io_loop.add_timeout(
+                    time.time() + self.timeout, self._switch_and_close)
+
             # method is GreenletSocket.send(), recv(), etc. method() begins a
             # non-blocking operation on an IOStream and arranges for
             # callback() to be executed on the main greenlet once the
@@ -70,6 +75,11 @@ def green_sock_method(method):
             # will pass the result of the socket operation (data for recv,
             # number of bytes written for sendall) to us.
             socket_result = main.switch()
+
+            # Remove timeout handle if set, since we've completed call
+            if self.timeout_handle:
+                self.io_loop.remove_timeout(self.timeout_handle)
+                self.timeout_handle = None
 
             # disable the callback to raise exception in this greenlet on socket
             # close, since the greenlet won't be around to raise the exception
@@ -101,6 +111,8 @@ class GreenletSocket(object):
     def __init__(self, sock, io_loop, use_ssl=False):
         self.use_ssl = use_ssl
         self.io_loop = io_loop
+        self.timeout = None
+        self.timeout_handle = None
         if self.use_ssl:
             raise Exception("SSL isn't supported")
         else:
@@ -110,14 +122,13 @@ class GreenletSocket(object):
         self.stream.socket.setsockopt(*args, **kwargs)
 
     def settimeout(self, timeout):
-        # I'm not implementing timeouts here. could be done with a time-delayed
-        # callback to the IOLoop, but since we don't use them anywhere, I'm not
-        # going to bother.
-        #
-        # need to implement this method since a non-blocking socket has timeout
-        # of None or 0.0, but if anything else is specified, raise exception
-        if timeout:
-            raise NotImplementedError
+        self.timeout = timeout
+
+    def _switch_and_close(self):
+        # called on timeout to switch back to child greenlet
+        self.close()
+        if self.child_gr is not None:
+            self.child_gr.throw(IOError("Socket timed out"))
 
     @green_sock_method
     def connect(self, pair):
@@ -214,11 +225,11 @@ class GreenletPool(pymongo.pool.Pool):
                 green_sock = GreenletSocket(
                     sock, self.io_loop, use_ssl=self.use_ssl)
 
-                assert not self.conn_timeout, "Timeouts aren't supported"
-
                 # GreenletSocket will pause the current greenlet and resume it
                 # when connection has completed
+                green_sock.settimeout(self.conn_timeout)
                 green_sock.connect(sa)
+                green_sock.settimeout(self.net_timeout)
                 return green_sock
             except socket.error, e:
                 err = e
