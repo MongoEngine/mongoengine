@@ -1,5 +1,5 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, get_document)
+                  ValidationError, get_document, get_comment)
 from queryset import OperationError
 
 import pymongo
@@ -269,6 +269,12 @@ class Document(BaseDocument):
 
                     if hint:
                         cur.hint(hint)
+
+                    # if comment not passed through, one extra stack in trace
+                    comment = kwargs['comment'] if 'comment' in kwargs \
+                        else get_comment(num_stacks_up=4)
+                    if comment:
+                        cur.comment(comment)
 
                     if find_one:
                         for result in cur.limit(-1):
