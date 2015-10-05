@@ -863,12 +863,11 @@ class ReferenceField(BaseField):
 
     The options are:
 
-      * DO_NOTHING  - don't do anything (default).
-      * NULLIFY     - Updates the reference to null.
-      * CASCADE     - Deletes the documents associated with the reference.
-      * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.fields.ListField`
-                      of references
+      * DO_NOTHING (0)  - don't do anything (default).
+      * NULLIFY    (1)  - Updates the reference to null.
+      * CASCADE    (2)  - Deletes the documents associated with the reference.
+      * DENY       (3)  - Prevent the deletion of the reference object.
+      * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
 
     Alternative syntax for registering delete rules (useful when implementing
     bi-directional delete rules)
