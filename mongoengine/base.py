@@ -589,7 +589,7 @@ def get_comment(num_stacks_up=3):
     # num_stacks_up to be # of stacks up to figure out file/line numbers
     try:
         caller_file, line_num, call_fn, fn_line = \
-                traceback.extract_stack()[-1*num_stacks_up]
+                traceback.extract_stack(limit=4)[-1*num_stacks_up]
         return '%s:%s' % ('/'.join(caller_file.split('/')[4:]), line_num)
     except:
         pass
