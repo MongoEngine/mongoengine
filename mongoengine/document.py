@@ -411,6 +411,9 @@ class Document(BaseDocument):
         if not document:
             raise ValueError("Cannot do empty updates")
 
+        if not spec:
+            raise ValueError("Cannot do empty specs")
+
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
