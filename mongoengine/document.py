@@ -1,5 +1,5 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, get_document, get_comment)
+                  ValidationError, MongoComment, get_document)
 from queryset import OperationError
 
 import pymongo
@@ -272,7 +272,7 @@ class Document(BaseDocument):
 
                     # if comment not passed through, one extra stack in trace
                     comment = kwargs['comment'] if 'comment' in kwargs \
-                        else get_comment(num_stacks_up=4)
+                        else MongoComment.get_comment(num_stacks_up=4)
                     if comment:
                         cur.comment(comment)
 

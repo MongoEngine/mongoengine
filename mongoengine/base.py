@@ -5,6 +5,7 @@ import sys
 import pymongo
 import bson.objectid
 import bson.dbref
+import socket
 import traceback
 
 _document_registry = {}
@@ -585,11 +586,19 @@ else:
     def subclass_exception(name, parents, module):
         return type(name, parents, {'__module__': module})
 
-def get_comment(num_stacks_up=3):
-    # num_stacks_up to be # of stacks up to figure out file/line numbers
-    try:
-        caller_file, line_num, call_fn, fn_line = \
-                traceback.extract_stack(limit=4)[-1*num_stacks_up]
-        return '%s:%s' % ('/'.join(caller_file.split('/')[4:]), line_num)
-    except:
-        pass
+class MongoComment(object):
+    _ip_address = None
+    @classmethod
+    def get_comment(cls, num_stacks_up=3):
+        # num_stacks_up to be # of stacks up to figure out file/line numbers
+        try:
+            if cls._ip_address == None:
+                bob=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                bob.connect(('8.8.8.8',80))
+                cls._ip_address = bob.getsockname()[0]
+            caller_file, line_num, call_fn, fn_line = \
+                    traceback.extract_stack(limit=4)[-1*num_stacks_up]
+            return '%s-%s:%s' % (cls._ip_address,
+                    '/'.join(caller_file.split('/')[4:]), line_num)
+        except:
+            pass
