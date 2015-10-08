@@ -593,9 +593,9 @@ class MongoComment(object):
         # num_stacks_up to be # of stacks up to figure out file/line numbers
         try:
             if cls._ip_address == None:
-                bob=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                bob.connect(('8.8.8.8',80))
-                cls._ip_address = bob.getsockname()[0]
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.connect(('8.8.8.8',80))
+                cls._ip_address = sock.getsockname()[0]
             caller_file, line_num, call_fn, fn_line = \
                     traceback.extract_stack(limit=4)[-1*num_stacks_up]
             return '%s-%s:%s' % (cls._ip_address,

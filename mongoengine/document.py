@@ -5,6 +5,11 @@ from queryset import OperationError
 import pymongo
 import time
 import greenlet
+import raven
+import smtplib
+import socket
+import sys
+import traceback
 from timer import log_slow_event
 
 from bson import SON, ObjectId, DBRef
@@ -17,6 +22,9 @@ __all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
 # connection close. default to time.sleep(), but we can replace this with
 # async sleep in Tornado-based apps (i.e. FEs)
 _sleep = time.sleep
+OPS_EMAIL = 'ops@wish.com'
+SENTRY_DSN = 'threaded+http://008e8e98273346d782db8bc407917e76:' \
+    'dedc6b38b0dd484fa4db1543a19cb0f5@sentry.i.wish.com/2'
 
 class EmbeddedDocument(BaseDocument):
     """A :class:`~mongoengine.Document` that isn't stored in its own
@@ -418,7 +426,37 @@ class Document(BaseDocument):
             raise ValueError("Cannot do empty updates")
 
         if not spec:
-            raise ValueError("Cannot do empty specs")
+            # send email to ops
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.connect(('8.8.8.8',80))
+                ip_address = sock.getsockname()[0]
+
+                # send email to ops
+                tb_msg = []
+                for file_name, line_num, call_fn, fn_line in \
+                        traceback.extract_stack():
+                    tb_msg.append('%s / %d / %s / %s' % (file_name, line_num,
+                            call_fn, fn_line))
+                trace_msg = "Subject: [Mongo] Empty Spec Update\n\n%s\n%s" % \
+                    (ip_address, '\n'.join(tb_msg))
+                smtpObj = smtplib.SMTP('localhost')
+                smtpObj.sendmail('ubuntu@localhost', OPS_EMAIL, trace_msg)
+            except:
+                pass
+
+            # log to sentry
+            sentry_client = None
+            empty_spec_error = ValueError("Cannot do empty specs")
+            try:
+                sentry_client = raven.Client(dsn=SENTRY_DSN)
+                raise empty_spec_error
+            except:
+                if sentry_client is not None:
+                    trace_info = sys.exc_info()
+                    sentry_client.captureException(trace_info)
+            finally:
+                raise empty_spec_error
 
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
