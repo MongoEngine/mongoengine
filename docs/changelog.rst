@@ -9,6 +9,7 @@ Changes in 0.10.1 - DEV
 - Fix ignored chained options #842
 - Document save's save_condition error raises `SaveConditionError` exception #1070
 - Fix Document.reload for DynamicDocument. #1050
+- StrictDict & SemiStrictDict are shadowed at init time. #1105
 
 Changes in 0.10.0
 =================
