@@ -79,6 +79,6 @@ setup(name='mongoengine',
       classifiers=CLASSIFIERS,
       install_requires=['pymongo>=2.7.1'],
       test_suite='nose.collector',
-      setup_requires=['nose', 'rednose'],  # Allow proper nose usage with setuptols and tox
+      setup_requires=['nose'],  # Allow proper nose usage with setuptols and tox
       **extra_opts
 )
