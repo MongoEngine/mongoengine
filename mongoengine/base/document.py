@@ -606,7 +606,9 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
                         break
-                    elif isinstance(d, list) and p.isdigit():
+                    elif isinstance(d, list) and p.lstrip('-').isdigit():
+                        if p[0] == '-':
+                            p = str(len(d)+int(p))
                         try:
                             d = d[int(p)]
                         except IndexError:
@@ -640,7 +642,9 @@ class BaseDocument(object):
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if isinstance(d, list) and p.isdigit():
+                    if isinstance(d, list) and p.lstrip('-').isdigit():
+                        if p[0] == '-':
+                            p = str(len(d)+int(p))
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):

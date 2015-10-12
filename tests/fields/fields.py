@@ -1022,6 +1022,54 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
         BlogPost.drop_collection()
 
+    def test_list_assignment(self):
+        """Ensure that list field element assignment and slicing work 
+        """
+        class BlogPost(Document):
+            info = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.info = ['e1', 'e2', 3, '4', 5]
+        post.save()
+        
+        post.info[0] = 1
+        post.save()
+        post.reload()
+        self.assertEqual(post.info[0], 1)
+        
+        post.info[1:3] = ['n2', 'n3']
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', '4', 5])
+
+        post.info[-1] = 'n5'
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', '4', 'n5'])
+
+        post.info[-2] = 4
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', 4, 'n5'])
+
+        post.info[1:-1] = [2]
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 2, 'n5'])
+
+        post.info[:-1] = [1, 'n2', 'n3', 4]
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', 4, 'n5'])
+
+        post.info[-4:3] = [2, 3]
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 2, 3, 4, 'n5'])
+
+
     def test_list_field_passed_in_value(self):
         class Foo(Document):
             bars = ListField(ReferenceField("Bar"))
