@@ -82,13 +82,14 @@ class BaseField(object):
         self.sparse = sparse
         self._owner_document = None
         
+        # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)).intersect(kwargs)
         if conflicts:
             raise TypeError("%s already has attribute(s): %s" % (
-                self.__class__.__name__,
-                ', '.join(conflicts)
-            ))
-            
+                self.__class__.__name__, ', '.join(conflicts) ))
+        
+        # Assign metadata to the instance
+        # This efficient method is available because no __slots__ are defined.
         self.__dict__.update(kwargs)
 
         # Adjust the appropriate creation counter, and save our local copy.
