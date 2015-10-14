@@ -64,7 +64,11 @@ class BaseField(object):
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
-        :param **kwargs: (optional) Arbitrary indirection-free metadata for this field.
+        :param **kwargs: (optional) Arbitrary indirection-free metadata for
+            this field can be supplied as additional keyword arguments and
+            accessed as attributes of the field. Must not conflict with any
+            existing attributes. Common metadata includes `verbose_name` and
+            `help_text`.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
