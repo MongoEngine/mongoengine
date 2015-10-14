@@ -83,7 +83,7 @@ class BaseField(object):
         self._owner_document = None
         
         # Detect and report conflicts between metadata and base properties.
-        conflicts = set(dir(self)).intersect(kwargs)
+        conflicts = set(dir(self)) & set(kwargs)
         if conflicts:
             raise TypeError("%s already has attribute(s): %s" % (
                 self.__class__.__name__, ', '.join(conflicts) ))
