@@ -406,6 +406,10 @@ class QuerySet(object):
         """
         if self._limit == 0:
             return 0
+
+        if self._none:
+            return 0
+
         if with_limit_and_skip and self._len is not None:
             return self._len
         count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
