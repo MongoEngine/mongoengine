@@ -2941,6 +2941,17 @@ class InstanceTest(unittest.TestCase):
         p4 = Person.objects()[0]
         p4.save()
         self.assertEquals(p4.height, 189)
+        
+        # However the default will not be fixed in DB
+        self.assertEquals(Person.objects(height=189).count(), 0)
+        
+        # alter DB for the new default
+        coll = Person._get_collection()
+        for person in Person.objects.as_pymongo():
+            if 'height' not in person:
+                person['height'] = 189
+                coll.save(person)
+                
         self.assertEquals(Person.objects(height=189).count(), 1)
 
     def test_from_son(self):
