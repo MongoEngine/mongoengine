@@ -68,7 +68,7 @@ class InstanceTest(unittest.TestCase):
 
     def assertHasInstance(self, field, instance):
         self.assertTrue(hasattr(field, "_instance"))
-        self.assertIsNotNone(field._instance)
+        self.assertTrue(field._instance is not None)
         if isinstance(field._instance, weakref.ProxyType):
             self.assertTrue(field._instance.__eq__(instance))
         else:
