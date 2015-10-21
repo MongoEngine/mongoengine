@@ -246,7 +246,7 @@ class Document(BaseDocument):
             sort = new_sort
 
         # set read preference
-        read_preference = pymongo.ReadPreference.SECONDARY_PREFERRED \
+        read_preference = pymongo.ReadPreference.NEAREST \
                 if slave_ok else pymongo.ReadPreference.PRIMARY
 
         # if we're reading from secondaries, set the tags based on slave_ok
