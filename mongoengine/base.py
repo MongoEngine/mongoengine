@@ -144,6 +144,47 @@ class ObjectIdField(BaseField):
         except:
             raise ValidationError('Invalid Object ID')
 
+'''
+A class for specifying relationships in Mongo Documents
+'''
+class Relationship(object):
+
+    '''
+    model            - The model class (or name) of the related document
+    id_field         - The name of the attribute in this document which
+                        holds the id of the related document
+    related_id_field - The name of the attribute in the related docment
+                        which id_field references
+    '''
+    def __init__(self, model, id_field, related_id_field="id", multi=False):
+        self.model            = model
+        self.id_field         = id_field
+        self.related_id_field = related_id_field
+        self.multi            = multi
+        self.name             = None
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        # Get value from document instance if available, if not use default
+        value = instance._data.get(self.name)
+        if isinstance(value, Relationship):
+            # Not resolved
+            raise RuntimeError("Relationship %s not resolved" % self.name)
+        return value
+
+    def __set__(self, instance, value):
+        instance._data[self.name] = value
+
+    # Converts the string name to a model object (if necessary)
+    # Validates model object
+    def validate_model(self):
+        if isinstance(self.model, basestring):
+            self.model = get_document(self.model)
+        if not issubclass(self.model, BaseDocument):
+            raise RuntimeError("model must be a subclass of BaseDocument")
 
 class DocumentMetaclass(type):
     """Metaclass for all documents.
@@ -159,6 +200,7 @@ class DocumentMetaclass(type):
         class_name = [name]
         superclasses = {}
         simple_class = True
+        doc_relationships = {}
 
         # maps db_field to their name, for db_field de-dup purpose
         field_to_name_map = {}
@@ -187,6 +229,11 @@ class DocumentMetaclass(type):
                 else:
                     simple_class = False
 
+            # Include all relationships present in superclasses
+            if hasattr(base, '_relationships'):
+                doc_relationships.update(base._relationships)
+
+
         meta = attrs.get('_meta', attrs.get('meta', {}))
 
         if 'allow_inheritance' not in meta:
@@ -202,28 +249,33 @@ class DocumentMetaclass(type):
         attrs['_class_name'] = '.'.join(reversed(class_name))
         attrs['_superclasses'] = superclasses
 
-        # Add the document's fields to the _fields attribute
+        # Add the document's fields and relationships to the _fields attribute
         for attr_name, attr_value in attrs.items():
-            if hasattr(attr_value, "__class__") and \
-               issubclass(attr_value.__class__, BaseField):
-                attr_value.name = attr_name
-                if not attr_value.db_field:
-                    attr_value.db_field = attr_name
-                    field_name = attr_name
-                else:
-                    field_name = attr_value.db_field
+            if hasattr(attr_value, "__class__"):
+                if issubclass(attr_value.__class__, BaseField):
+                    attr_value.name = attr_name
+                    if not attr_value.db_field:
+                        attr_value.db_field = attr_name
+                        field_name = attr_name
+                    else:
+                        field_name = attr_value.db_field
 
-                if attr_value.dup_check:
-                    # a sanity check, can't have two fields with same db_field
-                    # unless they also have the same name
-                    assert field_name not in field_to_name_map or \
-                            field_to_name_map[field_name] == attr_name, \
-                            "Field %s with db_field %s already exists in %s " \
-                            "or its superclass!" % (attr_name, field_name, name)
-                    field_to_name_map[field_name] = attr_name
+                    if attr_value.dup_check:
+                        # a sanity check, can't have two fields with same db_field
+                        # unless they also have the same name
+                        assert field_name not in field_to_name_map or \
+                                field_to_name_map[field_name] == attr_name, \
+                                "Field %s with db_field %s already exists in %s " \
+                                "or its superclass!" % (attr_name, field_name, name)
+                        field_to_name_map[field_name] = attr_name
+                    doc_fields[attr_name] = attr_value
 
-                doc_fields[attr_name] = attr_value
+                elif issubclass(attr_value.__class__, Relationship):
+                    attr_value.name = attr_name
+                    doc_relationships[attr_name] = attr_value
+
         attrs['_fields'] = doc_fields
+        attrs['_relationships'] = doc_relationships
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
@@ -404,6 +456,9 @@ class BaseDocument(object):
             # Use default value if present
             value = getattr(self, attr_name, None)
             setattr(self, attr_name, value)
+        for rel_name, rel in self._relationships.iteritems():
+            setattr(self, rel_name, rel)
+
         # Assign initial values to instance
         for attr_name in values.keys():
             try:
