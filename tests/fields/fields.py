@@ -2367,6 +2367,9 @@ class FieldTest(unittest.TestCase):
         user = User(email='me@localhost')
         self.assertRaises(ValidationError, user.validate)
 
+        user = User(email="me@newtld.international")
+        self.assertTrue(user.validate() is None)
+
     def test_email_field_honors_regex(self):
         class User(Document):
             email = EmailField(regex=r'\w+@example.com')

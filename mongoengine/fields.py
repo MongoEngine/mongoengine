@@ -139,7 +139,7 @@ class EmailField(StringField):
     .. versionadded:: 0.4
     """
 
-    EMAIL_REGEX = re.compile(r'^.+@[^.].*\.[a-z]{2,10}$', re.IGNORECASE)
+    EMAIL_REGEX = re.compile(r'^.+@[^.].*\.[a-z]{2,63}$', re.IGNORECASE)
 
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
