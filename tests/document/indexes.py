@@ -401,36 +401,6 @@ class IndexesTest(unittest.TestCase):
         info = RecursiveDocument._get_collection().index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1', '_id_'])
 
-    def test_covered_index(self):
-        """Ensure that covered indexes can be used
-        """
-
-        class Test(Document):
-            a = IntField()
-
-            meta = {
-                'indexes': ['a'],
-                'allow_inheritance': False
-            }
-
-        Test.drop_collection()
-
-        Test.ensure_indexes()
-
-        obj = Test(a=1)
-        obj.save()
-
-        # Need to be explicit about covered indexes as mongoDB doesn't know if
-        # the documents returned might have more keys in that here.
-        query_plan = Test.objects(id=obj.id).exclude('a').explain()
-        self.assertFalse(query_plan['indexOnly'])
-
-        query_plan = Test.objects(id=obj.id).only('id').explain()
-        self.assertTrue(query_plan['indexOnly'])
-
-        query_plan = Test.objects(a=1).only('a').exclude('id').explain()
-        self.assertTrue(query_plan['indexOnly'])
-
     def test_index_on_id(self):
 
         class BlogPost(Document):
@@ -759,6 +729,8 @@ class IndexesTest(unittest.TestCase):
 
         index_info = TestDoc._get_collection().index_information()
         for key in index_info:
+            if 'ns' in index_info[key]:
+                del index_info[key]['ns']  # drop the namespace - we don't care about that here
             del index_info[key]['v']  # drop the index version - we don't care about that here
 
         self.assertEqual(index_info, {
