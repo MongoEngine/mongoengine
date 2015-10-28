@@ -6,7 +6,8 @@ from mongoengine import *
 import mongoengine.base
 from mongoengine.connection import _get_db
 
-from bson import ObjectId, DBRef
+from bson import ObjectId, DBRef, SON
+import mock
 
 class CustomQueryTest(unittest.TestCase):
 
@@ -17,6 +18,7 @@ class CustomQueryTest(unittest.TestCase):
 
         class Person(Document):
             meta = {'allow_inheritance': False}
+            INCLUDE_SHARD_KEY = ['shard_key']
             name = StringField()
             age = IntField(db_field='a')
             gender = StringField(db_field='g')
@@ -28,6 +30,7 @@ class CustomQueryTest(unittest.TestCase):
             id_list = ListField(ObjectIdField())
             user = ReferenceField("User")
             friends = ListField(ReferenceField("Person"))
+            shard_key = StringField(db_field='s')
 
         class Colour(EmbeddedDocument):
             meta = {'allow_inheritance': False}
@@ -923,6 +926,26 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEqual(
             self.Person._transform_hint([("age", 1), ("favourite_colour.name", 1)]),
             [("a", 1), ("c.n", 1)])
+
+    @mock.patch('pymongo.collection.Collection.update')
+    def testUpdateOneShardCriteria(self, updater_mock):
+        # normal update_one
+        old_name = 'Old Name'
+        new_name = 'New Name'
+        obj_id = ObjectId('0'* 24)
+        user = self.User(id=obj_id, name=old_name)
+        user.update_one({'$set':{'name':new_name}})
+        updater_mock.assert_called_with(SON([('_id', obj_id)]),
+            SON([('$set', SON([('name', new_name)]))]),
+            multi=False, w=1, upsert=False)
+
+        # shard key update one auto-add shard key to criteria
+        existing_shard_key = 'existing'
+        person = self.Person(id=obj_id, name=old_name, shard_key=existing_shard_key)
+        person.update_one({'$set':{'name':new_name}})
+        updater_mock.assert_called_with(SON([('_id', obj_id),
+            ('s', existing_shard_key)]), # <-- added shard key to db query call
+            SON([('$set', SON([('name', new_name)]))]), multi=False, w=1, upsert=False)
 
 if __name__ == '__main__':
     unittest.main()

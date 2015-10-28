@@ -73,6 +73,7 @@ class Document(BaseDocument):
 
     MAX_AUTO_RECONNECT_TRIES = 6
     AUTO_RECONNECT_SLEEP = 5
+    INCLUDE_SHARD_KEY = []
 
     __metaclass__ = TopLevelDocumentMetaclass
 
@@ -530,6 +531,13 @@ class Document(BaseDocument):
         query_spec = self._update_one_key()
 
         # add in extra criteria, if it exists
+        for field in self.INCLUDE_SHARD_KEY:
+            value = getattr(self, field)
+            if value:
+                if criteria is None:
+                    criteria = {}
+                criteria[field] = value
+
         if criteria:
             query_spec.update(criteria)
 
