@@ -470,6 +470,26 @@ class InheritanceTest(unittest.TestCase):
 
         self.assertFalse(B._meta["abstract"])
 
+    def test_abstract_makes_abcmeta(self):
+        from abc import abstractmethod
+
+        class A(EmbeddedDocument):
+            meta = {"abstract": True}
+
+            @abstractmethod
+            def method(self):
+                """ Must be implemented in subclasses """
+
+        class B(A):
+            """ Does not implement ``method`` """
+
+        class C(A):
+            def method(self):
+                """ Everything is good, method is implemented """
+
+        self.assertRaises(Exception, B)
+        self.assertNotEqual(C(), None)
+
     def test_inherited_collections(self):
         """Ensure that subclassed documents don't override parents'
         collections
