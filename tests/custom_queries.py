@@ -935,17 +935,51 @@ class CustomQueryTest(unittest.TestCase):
         obj_id = ObjectId('0'* 24)
         user = self.User(id=obj_id, name=old_name)
         user.update_one({'$set':{'name':new_name}})
-        updater_mock.assert_called_with(SON([('_id', obj_id)]),
-            SON([('$set', SON([('name', new_name)]))]),
-            multi=False, w=1, upsert=False)
+
+        # not called with shard key
+        called_with = updater_mock.call_args_list[-1][0]
+        self.assertTrue('s' not in called_with[0].keys())
 
         # shard key update one auto-add shard key to criteria
         existing_shard_key = 'existing'
         person = self.Person(id=obj_id, name=old_name, shard_key=existing_shard_key)
         person.update_one({'$set':{'name':new_name}})
-        updater_mock.assert_called_with(SON([('_id', obj_id),
-            ('s', existing_shard_key)]), # <-- added shard key to db query call
-            SON([('$set', SON([('name', new_name)]))]), multi=False, w=1, upsert=False)
+
+        # called with shard key
+        called_with = updater_mock.call_args_list[-1][0]
+        self.assertTrue('s' in called_with[0].keys())
+
+    @mock.patch('pymongo.collection.Collection.find')
+    @mock.patch('pymongo.collection.Collection.find_and_modify')
+    @mock.patch('pymongo.collection.Collection.remove')
+    @mock.patch('pymongo.collection.Collection.update')
+    def testComment(self, update_mock, remove_mock, fam_mock, find_mock):
+        # fetch what spec keys were passed to pymongo query
+        _get_mock_spec_keys = lambda x: x.call_args_list[0][0][0].keys()
+
+        p = self.Person(name="Name", age=12)
+        p.save() # comment currently not working for inserts..
+
+        # call update twice with comment auto-added
+        p.set(name='New Name')
+        self.Person.update({'name':'New Name'}, {'$inc':{'age':1}})
+        for update_calls in update_mock.call_args_list:
+            spec_keys = update_calls[0][0]
+            self.assertTrue('$comment' in spec_keys)
+
+        # can't remove everything
+        self.assertRaises(ValueError, self.Person.remove, {})
+        self.assertEqual(remove_mock.call_count, 0)
+
+        # comment passed through find, find_and_modify, remove calls
+        self.Person.find_one({'name': 'New Name'})
+        self.assertTrue('$comment' in _get_mock_spec_keys(find_mock))
+        self.Person.find_and_modify({'name':'New Name'},
+            {'$inc': {'age':1}})
+        self.assertTrue('$comment' in _get_mock_spec_keys(fam_mock))
+        self.Person.remove({'name':'New Name'})
+        self.assertEqual(remove_mock.call_count, 1)
+        self.assertTrue('$comment' in _get_mock_spec_keys(remove_mock))
 
 if __name__ == '__main__':
     unittest.main()

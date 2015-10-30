@@ -220,15 +220,22 @@ class Document(BaseDocument):
         return hint_doc
 
     @classmethod
+    def _update_spec(cls, spec, **kwargs):
+        # handle queries with inheritance
+        if cls._meta.get('allow_inheritance'):
+            spec['_types'] = cls._class_name
+        if spec: # comment doesn't with empty spec..
+            spec['$comment'] = kwargs['comment'] if 'comment' in kwargs \
+                else MongoComment.get_comment(num_stacks_up=4)
+        return spec
+
+    @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
-
-        # handle queries with inheritance
-        if cls._meta.get('allow_inheritance'):
-            spec['_types'] = cls._class_name
+        spec = cls._update_spec(spec, **kwargs)
 
         # transform fields to include
         if isinstance(fields, list) or isinstance(fields, tuple):
@@ -380,8 +387,7 @@ class Document(BaseDocument):
             raise ValueError("Cannot have empty update and no remove flag")
 
         # handle queries with inheritance
-        if cls._meta.get('allow_inheritance'):
-            spec['_types'] = cls._class_name
+        spec = cls._update_spec(spec, **kwargs)
         if sort is None:
             sort = {}
         else:
@@ -459,9 +465,7 @@ class Document(BaseDocument):
             finally:
                 raise empty_spec_error
 
-        # handle queries with inheritance
-        if cls._meta.get('allow_inheritance'):
-            spec['_types'] = cls._class_name
+        spec = cls._update_spec(spec, **kwargs)
 
         with log_slow_event("update", cls._meta['collection'], spec):
             result = cls._pymongo().update(spec,
@@ -474,12 +478,12 @@ class Document(BaseDocument):
 
     @classmethod
     def remove(cls, spec, **kwargs):
+        if not spec:
+            raise ValueError("Cannot do empty specs")
+
         # transform query
         spec = cls._transform_value(spec, cls)
-
-        # handle queries with inheritance
-        if cls._meta.get('allow_inheritance'):
-            spec['_types'] = cls._class_name
+        spec = cls._update_spec(spec, **kwargs)
 
         with log_slow_event("remove", cls._meta['collection'], spec):
             result = cls._pymongo().remove(spec, **kwargs)
@@ -545,6 +549,9 @@ class Document(BaseDocument):
             query_spec.update(spec)
 
         query_spec = self._transform_value(query_spec, type(self))
+
+        query_spec['$comment'] = kwargs['comment'] if 'comment' in kwargs \
+            else MongoComment.get_comment(num_stacks_up=4)
 
         with log_slow_event("update_one", self._meta['collection'], spec):
             result = self._pymongo().update(query_spec,
