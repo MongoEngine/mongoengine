@@ -220,11 +220,11 @@ class Document(BaseDocument):
         return hint_doc
 
     @classmethod
-    def _update_spec(cls, spec, **kwargs):
+    def _update_spec(cls, spec, cursor_comment=True, **kwargs):
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
-        if spec: # comment doesn't with empty spec..
+        if cursor_comment is True and spec: # comment doesn't with empty spec..
             spec['$comment'] = kwargs['comment'] if 'comment' in kwargs \
                 else MongoComment.get_comment(num_stacks_up=4)
         return spec
@@ -410,7 +410,8 @@ class Document(BaseDocument):
 
     @classmethod
     def count(cls, spec, slave_ok=False, **kwargs):
-        cur = cls.find_raw(spec, slave_ok=slave_ok, **kwargs)
+        cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
+            **kwargs)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
