@@ -220,7 +220,7 @@ class Document(BaseDocument):
         return hint_doc
 
     @classmethod
-    def _update_spec(cls, spec, cursor_comment=True, **kwargs):
+    def _update_spec(cls, spec, cursor_comment=False, **kwargs):
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
