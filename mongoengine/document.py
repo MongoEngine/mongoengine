@@ -235,10 +235,7 @@ class Document(BaseDocument):
                  batch_size=10000, **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
-
-        # handle queries with inheritance
-        if cls._meta.get('allow_inheritance'):
-            spec['_types'] = cls._class_name
+        spec = cls._update_spec(spec, **kwargs)
 
         # transform fields to include
         if isinstance(fields, list) or isinstance(fields, tuple):
@@ -413,9 +410,6 @@ class Document(BaseDocument):
 
     @classmethod
     def count(cls, spec, slave_ok=False, **kwargs):
-        if spec:
-            spec['$comment'] = kwargs['comment'] if 'comment' in kwargs \
-                else MongoComment.get_comment(num_stacks_up=4)
         cur = cls.find_raw(spec, slave_ok=slave_ok, **kwargs)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
