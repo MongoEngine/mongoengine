@@ -972,8 +972,6 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEqual(remove_mock.call_count, 0)
 
         # comment passed through find, find_and_modify, remove calls
-        self.Person.find_one({'name': 'New Name'})
-        self.assertTrue('$comment' in _get_mock_spec_keys(find_mock))
         self.Person.find_and_modify({'name':'New Name'},
             {'$inc': {'age':1}})
         self.assertTrue('$comment' in _get_mock_spec_keys(fam_mock))

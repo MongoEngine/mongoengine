@@ -274,6 +274,10 @@ class Document(BaseDocument):
         if hint:
             hint = cls._transform_hint(hint)
 
+        # in case count passed in instead of limit
+        if 'count' in kwargs and limit == 0:
+            limit = kwargs['count']
+
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 with log_slow_event('find', cls._meta['collection'], spec):
@@ -387,7 +391,7 @@ class Document(BaseDocument):
             raise ValueError("Cannot have empty update and no remove flag")
 
         # handle queries with inheritance
-        spec = cls._update_spec(spec, **kwargs)
+        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
         if sort is None:
             sort = {}
         else:
@@ -466,7 +470,7 @@ class Document(BaseDocument):
             finally:
                 raise empty_spec_error
 
-        spec = cls._update_spec(spec, **kwargs)
+        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
 
         with log_slow_event("update", cls._meta['collection'], spec):
             result = cls._pymongo().update(spec,
@@ -484,7 +488,7 @@ class Document(BaseDocument):
 
         # transform query
         spec = cls._transform_value(spec, cls)
-        spec = cls._update_spec(spec, **kwargs)
+        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
 
         with log_slow_event("remove", cls._meta['collection'], spec):
             result = cls._pymongo().remove(spec, **kwargs)
