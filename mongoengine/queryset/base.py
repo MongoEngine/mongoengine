@@ -472,7 +472,8 @@ class BaseQuerySet(object):
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
     def update_one(self, upsert=False, write_concern=None, **update):
-        """Perform an atomic update on first field matched by the query.
+        """Perform an atomic update on the fields of the first document
+        matched by the query.
 
         :param upsert: Any existing document with that "_id" is overwritten.
         :param write_concern: Extra keyword arguments are passed down which
