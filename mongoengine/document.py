@@ -13,7 +13,7 @@ import traceback
 from timer import log_slow_event
 
 from bson import SON, ObjectId, DBRef
-from connection import _get_db, _get_tags
+from connection import _get_db, _get_slave_ok
 
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
@@ -253,18 +253,11 @@ class Document(BaseDocument):
 
             sort = new_sort
 
-        # set read preference
-        read_preference = pymongo.ReadPreference.NEAREST \
-                if slave_ok else pymongo.ReadPreference.PRIMARY
-
-        # if we're reading from secondaries, set the tags based on slave_ok
-        if read_preference != pymongo.ReadPreference.PRIMARY:
-            try:
-                tags = _get_tags(slave_ok)
-            except KeyError:
-                raise ValueError("Invalid slave_ok preference")
-        else:
-            tags = None
+        # grab read preference & tags from slave_ok value
+        try:
+            slave_ok = _get_slave_ok(slave_ok)
+        except KeyError:
+            raise ValueError("Invalid slave_ok preference")
 
         # do field name transformation on hints
         #
@@ -283,8 +276,8 @@ class Document(BaseDocument):
                 with log_slow_event('find', cls._meta['collection'], spec):
                     cur = cls._pymongo(allow_async).find(spec, fields,
                                           skip=skip, limit=limit, sort=sort,
-                                          read_preference=read_preference,
-                                          tag_sets=tags,
+                                          read_preference=slave_ok.read_pref,
+                                          tag_sets=slave_ok.tags,
                                           **kwargs)
 
                     if hint:
