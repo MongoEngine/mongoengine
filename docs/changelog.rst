@@ -12,6 +12,7 @@ Changes in 0.10.1 - DEV
 - StrictDict & SemiStrictDict are shadowed at init time. #1105
 - Remove test dependencies (nose and rednose) from install dependencies list. #1079
 - Recursively build query when using elemMatch operator. #1130
+- Fix instance back references for lists of embedded documents. #1131
 
 Changes in 0.10.0
 =================
