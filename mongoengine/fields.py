@@ -896,6 +896,10 @@ class ReferenceField(BaseField):
           or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
+
+        .. note ::
+            A reference to an abstract document type is always stored as a
+            :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
