@@ -2331,6 +2331,31 @@ class FieldTest(unittest.TestCase):
         Sister.drop_collection()
         Brother.drop_collection()
 
+    def test_abstract_reference_base_type(self):
+        """Ensure that an an abstract reference fails validation when given a
+        Document that does not inherit from the abstract type.
+        """
+        class Sibling(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        class Brother(Sibling):
+            sibling = ReferenceField(Sibling)
+
+        class Mother(Document):
+            name = StringField()
+
+        Brother.drop_collection()
+        Mother.drop_collection()
+
+        mother = Mother(name="Carol")
+        mother.save()
+        brother = Brother(name="Bob", sibling=mother)
+        self.assertRaises(ValidationError, brother.save)
+
+        Brother.drop_collection()
+        Mother.drop_collection()
+
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
         """
