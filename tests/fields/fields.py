@@ -2281,6 +2281,56 @@ class FieldTest(unittest.TestCase):
         Member.drop_collection()
         BlogPost.drop_collection()
 
+    def test_reference_class_with_abstract_parent(self):
+        """Ensure that a class with an abstract parent can be referenced.
+        """
+        class Sibling(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        class Sister(Sibling):
+            pass
+
+        class Brother(Sibling):
+            sibling = ReferenceField(Sibling)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+        sister = Sister(name="Alice")
+        sister.save()
+        brother = Brother(name="Bob", sibling=sister)
+        brother.save()
+
+        self.assertEquals(Brother.objects[0].sibling.name, sister.name)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+    def test_reference_abstract_class(self):
+        """Ensure that an abstract class instance cannot be used in the
+        reference of that abstract class.
+        """
+        class Sibling(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        class Sister(Sibling):
+            pass
+
+        class Brother(Sibling):
+            sibling = ReferenceField(Sibling)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+        sister = Sibling(name="Alice")
+        brother = Brother(name="Bob", sibling=sister)
+        self.assertRaises(ValidationError, brother.save)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
         """

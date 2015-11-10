@@ -928,9 +928,14 @@ class ReferenceField(BaseField):
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
-            value = self.document_type._get_db().dereference(value)
+            if hasattr(value, 'cls'):
+                # Dereference using the class type specified in the reference
+                cls = get_document(value.cls)
+            else:
+                cls = self.document_type
+            value = cls._get_db().dereference(value)
             if value is not None:
-                instance._data[self.name] = self.document_type._from_son(value)
+                instance._data[self.name] = cls._from_son(value)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -940,22 +945,30 @@ class ReferenceField(BaseField):
                 return document.id
             return document
 
-        id_field_name = self.document_type._meta['id_field']
-        id_field = self.document_type._fields[id_field_name]
-
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.pk
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
+
+            # Use the attributes from the document instance, so that they
+            # override the attributes of this field's document type
+            cls = document
         else:
             id_ = document
+            cls = self.document_type
+
+        id_field_name = cls._meta['id_field']
+        id_field = cls._fields[id_field_name]
 
         id_ = id_field.to_mongo(id_)
         if self.dbref:
-            collection = self.document_type._get_collection_name()
+            collection = cls._get_collection_name()
             return DBRef(collection, id_)
+        elif self.document_type._meta.get('abstract'):
+            collection = cls._get_collection_name()
+            return DBRef(collection, id_, cls=cls._class_name)
 
         return id_
 
