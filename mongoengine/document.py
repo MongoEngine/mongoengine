@@ -594,12 +594,17 @@ class Document(BaseDocument):
         for field in obj._data:
             if not fields or field in fields:
                 try:
-                    setattr(self, field, self._reload(field, obj[field]))
-                except KeyError:
-                    # If field is removed from the database while the object
-                    # is in memory, a reload would cause a KeyError
-                    # i.e. obj.update(unset__field=1) followed by obj.reload()
-                    delattr(self, field)
+		    setattr(self, field, self._reload(field, obj[field]))
+                except (KeyError, AttributeError):
+		    try:
+	                # If field is a special field, e.g. items is stored as _reserved_items,
+		        # an KeyError is thrown. So try to retrieve the field from _data
+		        setattr(self, field, self._reload(field, obj._data.get(field)))
+		    except KeyError:
+                        # If field is removed from the database while the object
+                        # is in memory, a reload would cause a KeyError
+                        # i.e. obj.update(unset__field=1) followed by obj.reload()
+                        delattr(self, field)
 
         self._changed_fields = obj._changed_fields
         self._created = False
