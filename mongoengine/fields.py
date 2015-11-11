@@ -967,12 +967,12 @@ class ReferenceField(BaseField):
         id_field = cls._fields[id_field_name]
 
         id_ = id_field.to_mongo(id_)
-        if self.dbref:
-            collection = cls._get_collection_name()
-            return DBRef(collection, id_)
-        elif self.document_type._meta.get('abstract'):
+        if self.document_type._meta.get('abstract'):
             collection = cls._get_collection_name()
             return DBRef(collection, id_, cls=cls._class_name)
+        elif self.dbref:
+            collection = cls._get_collection_name()
+            return DBRef(collection, id_)
 
         return id_
 
