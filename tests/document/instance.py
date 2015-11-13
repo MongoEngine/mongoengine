@@ -2715,6 +2715,32 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(OperationError, change_shard_key)
 
+    def test_shard_key_in_embedded_document(self):
+        class Foo(EmbeddedDocument):
+            foo = StringField()
+
+        class Bar(Document):
+            meta = {
+                'shard_key': ('foo.foo',)
+            }
+            foo = EmbeddedDocumentField(Foo)
+            bar = StringField()
+
+        foo_doc = Foo(foo='hello')
+        bar_doc = Bar(foo=foo_doc, bar='world')
+        bar_doc.save()
+
+        self.assertTrue(bar_doc.id is not None)
+
+        bar_doc.bar = 'baz'
+        bar_doc.save()
+
+        def change_shard_key():
+            bar_doc.foo.foo = 'something'
+            bar_doc.save()
+
+        self.assertRaises(OperationError, change_shard_key)
+
     def test_shard_key_primary(self):
         class LogEntry(Document):
             machine = StringField(primary_key=True)

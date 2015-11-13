@@ -341,8 +341,12 @@ class Document(BaseDocument):
                 select_dict['_id'] = object_id
                 shard_key = self.__class__._meta.get('shard_key', tuple())
                 for k in shard_key:
-                    actual_key = self._db_field_map.get(k, k)
-                    select_dict[actual_key] = doc[actual_key]
+                    path = self._lookup_field(k.split('.'))
+                    actual_key = [p.db_field for p in path]
+                    val = doc
+                    for ak in actual_key:
+                        val = val[ak]
+                    select_dict['.'.join(actual_key)] = val
 
                 def is_new_object(last_error):
                     if last_error is not None:
