@@ -1,11 +1,6 @@
 import os
 import sys
-
-# Avoid configparser issues on PyPy3
-if sys.version_info >= (3, 0):
-    from distutils.core import setup, find_packages
-else:
-    from setuptools import setup, find_packages
+from setuptools import setup, find_packages
 
 # Hack to silence atexit traceback in newer python versions
 try:
