@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in 0.10.1 - DEV
+Changes in 0.10.1
 =======================
 - Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
 - Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047
