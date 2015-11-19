@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.10.2
+=================
+- Allow shard key to point to a field in an embedded document. #551
+
 Changes in 0.10.1
 =======================
 - Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
