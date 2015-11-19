@@ -448,7 +448,12 @@ class Document(BaseDocument):
         select_dict = {'pk': self.pk}
         shard_key = self.__class__._meta.get('shard_key', tuple())
         for k in shard_key:
-            select_dict[k] = getattr(self, k)
+            path = self._lookup_field(k.split('.'))
+            actual_key = [p.db_field for p in path]
+            val = self
+            for ak in actual_key:
+                val = getattr(val, ak)
+            select_dict['__'.join(actual_key)] = val
         return select_dict
 
     def update(self, **kwargs):

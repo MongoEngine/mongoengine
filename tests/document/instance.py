@@ -484,6 +484,20 @@ class InstanceTest(unittest.TestCase):
         doc.reload()
         Animal.drop_collection()
 
+    def test_reload_sharded_nested(self):
+        class SuperPhylum(EmbeddedDocument):
+            name = StringField()
+
+        class Animal(Document):
+            superphylum = EmbeddedDocumentField(SuperPhylum)
+            meta = {'shard_key': ('superphylum.name',)}
+
+        Animal.drop_collection()
+        doc = Animal(superphylum=SuperPhylum(name='Deuterostomia'))
+        doc.save()
+        doc.reload()
+        Animal.drop_collection()
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly
         """
