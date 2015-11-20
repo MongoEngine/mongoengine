@@ -1,3 +1,4 @@
+import copy
 import operator
 import warnings
 import weakref
@@ -42,7 +43,8 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False, sparse=False, custom_data=None):
+                 help_text=None, null=False, sparse=False,
+                 copy_default=True, custom_data=None):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -70,6 +72,8 @@ class BaseField(object):
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
         :param custom_data: (optional) Custom metadata for this field.
+        :param copy_default: (optional) Specify wether a non-callable
+           default value is copied when being used or not. Default to True.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -88,6 +92,7 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
+        self.copy_default = bool(copy_default)
         self.custom_data = custom_data
 
         # Adjust the appropriate creation counter, and save our local copy.
@@ -121,6 +126,8 @@ class BaseField(object):
                 value = self.default
                 if callable(value):
                     value = value()
+                elif self.copy_default:
+                    value = copy.deepcopy(value)
 
         if instance._initialised:
             try:
