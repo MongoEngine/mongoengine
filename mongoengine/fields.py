@@ -577,6 +577,10 @@ class ListField(ComplexBaseField):
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
+        # validate that $set doesn't contain more items than max_length
+        if op == 'set' and self.max_length is not None and len(value) > self.max_length:
+            self.error('ListField max length is exceeded')
+
         if self.field:
             if op in ('set', 'unset') and (not isinstance(value, basestring)
                and not isinstance(value, BaseDocument)

@@ -892,6 +892,9 @@ class FieldTest(unittest.TestCase):
         foo.items.append(i+1)
         self.assertRaises(ValidationError, foo.save)
 
+        # make sure foo.update with $set doesn't let us save too many items
+        self.assertRaises(ValidationError, foo.update, set__items=[1,2,3,4,5,6])
+
 
     @unittest.skip("different behavior")
     def test_list_field_rejects_strings(self):
