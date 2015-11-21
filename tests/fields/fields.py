@@ -876,6 +876,23 @@ class FieldTest(unittest.TestCase):
 
         Simple.drop_collection()
 
+    def test_list_field_max_length(self):
+        """Ensure that ListField's max_length is respected."""
+
+        class Foo(Document):
+            items = ListField(IntField(), max_length=5)
+
+        foo = Foo()
+
+        # make sure foo.save doesn't let us save too many items
+        for i in range(5):
+            foo.items.append(i)
+            foo.save()
+
+        foo.items.append(i+1)
+        self.assertRaises(ValidationError, foo.save)
+
+
     @unittest.skip("different behavior")
     def test_list_field_rejects_strings(self):
         """Strings aren't valid list field data types"""

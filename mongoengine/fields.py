@@ -523,14 +523,23 @@ class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
+    You can add validation to each list item by specifying the `field`
+    argument. For example, ListField(IntField()) will ensure that all the
+    items are integers.
+
+    You can also limit the maximum number of items in the list with
+    `max_length`. However, keep in mind that the validation can be bypassed by
+    using push__list_field_name or set__list_field_name.
+
     If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
     """
 
-    def __init__(self, field=None, **kwargs):
+    def __init__(self, field=None, max_length=None, **kwargs):
         self.field = field
+        self.max_length = max_length
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
 
@@ -560,6 +569,11 @@ class ListField(ComplexBaseField):
         if (not isinstance(value, (list, tuple, QuerySet)) or
            isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
+
+        # Validate that max_length is not exceeded. Note that it's not k
+        if self.max_length is not None and len(value) > self.max_length:
+            self.error('ListField max length is exceeded')
+
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
