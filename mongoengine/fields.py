@@ -570,7 +570,10 @@ class ListField(ComplexBaseField):
            isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
 
-        # Validate that max_length is not exceeded. Note that it's not k
+        # Validate that max_length is not exceeded. Note that it's still
+        # possible to bypass this enforcement by using $push. However, if the
+        # document is reloaded after $push and then re-saved, the validation
+        # error will be raised.
         if self.max_length is not None and len(value) > self.max_length:
             self.error('ListField max length is exceeded')
 
