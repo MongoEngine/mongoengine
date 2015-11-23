@@ -172,11 +172,11 @@ arguments can be set on all fields:
         class Shirt(Document):
             size = StringField(max_length=3, choices=SIZE)
 
-:attr:`help_text` (Default: None)
-    Optional help text to output with the field -- used by form libraries
-
-:attr:`verbose_name` (Default: None)
-    Optional human-readable name for the field -- used by form libraries
+:attr:`**kwargs` (Optional)
+    You can supply additional metadata as arbitrary additional keyword
+    arguments.  You can not override existing attributes, however.  Common
+    choices include `help_text` and `verbose_name`, commonly used by form and
+    widget libraries.
 
 
 List fields
