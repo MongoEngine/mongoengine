@@ -5,6 +5,7 @@ Changelog
 Changes in 0.10.2
 =================
 - Allow shard key to point to a field in an embedded document. #551
+- Allow arbirary metadata in fields. #1129
 
 Changes in 0.10.1
 =======================
