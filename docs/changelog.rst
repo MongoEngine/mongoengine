@@ -6,6 +6,7 @@ Changes in 0.10.2
 =================
 - Allow shard key to point to a field in an embedded document. #551
 - Allow arbirary metadata in fields. #1129
+- ReferenceFields now support abstract document types. #837
 
 Changes in 0.10.1
 =======================
