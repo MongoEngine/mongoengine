@@ -217,7 +217,7 @@ class Document(BaseDocument):
         Returns True if the document has been updated or False if the document
         in the database doesn't match the query.
 
-        .. note:: All unsaved changes that has been made to the document are
+        .. note:: All unsaved changes that have been made to the document are
             rejected if the method returns True.
 
         :param query: the update will be performed only if the document in the
@@ -407,7 +407,7 @@ class Document(BaseDocument):
 
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references /
-           generic references on an objects"""
+           generic references on the document"""
         _refs = kwargs.get('_refs', []) or []
 
         ReferenceField = _import_class('ReferenceField')
