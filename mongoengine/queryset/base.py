@@ -473,8 +473,7 @@ class BaseQuerySet(object):
 
 
     def upsert_one(self, write_concern=None, **update):
-        """Perform an atomic upsert on the fields of the first document
-        matched by the query.
+        """Overwrite or add the first document matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
@@ -486,16 +485,16 @@ class BaseQuerySet(object):
 
         :returns the new or overwritten document
 
-        .. versionadded:: 10.0.2
+        .. versionadded:: 0.10.2
         """
 
-        update = self.update(multi=False, upsert=True, write_concern=write_concern,
+        atomic_update = self.update(multi=False, upsert=True, write_concern=write_concern,
                              full_result=True,**update)
 
-        if update['updatedExisting']:
+        if atomic_update['updatedExisting']:
             document = self.get()
         else:
-            document = self._document.objects.with_id(update['upserted'])
+            document = self._document.objects.with_id(atomic_update['upserted'])
         return document
 
     def update_one(self, upsert=False, write_concern=None, **update):
