@@ -471,6 +471,33 @@ class BaseQuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
+
+    def upsert_one(self, write_concern=None, **update):
+        """Perform an atomic upsert on the fields of the first document
+        matched by the query.
+
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param update: Django-style update keyword arguments
+
+        :returns the new or overwritten document
+
+        .. versionadded:: 10.0.2
+        """
+
+        update = self.update(multi=False, upsert=True, write_concern=write_concern,
+                             full_result=True,**update)
+
+        if update['updatedExisting']:
+            document = self.get()
+        else:
+            document = self._document.objects.with_id(update['upserted'])
+        return document
+
     def update_one(self, upsert=False, write_concern=None, **update):
         """Perform an atomic update on the fields of the first document
         matched by the query.
