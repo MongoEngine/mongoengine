@@ -529,7 +529,7 @@ class ListField(ComplexBaseField):
 
     You can also limit the maximum number of items in the list with
     `max_length`. However, keep in mind that the validation can be bypassed by
-    using push__list_field_name or set__list_field_name.
+    using push__list_field_name.
 
     If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
 
@@ -585,9 +585,11 @@ class ListField(ComplexBaseField):
             self.error('ListField max length is exceeded')
 
         if self.field:
-            if op in ('set', 'unset') and (not isinstance(value, basestring)
-               and not isinstance(value, BaseDocument)
-               and hasattr(value, '__iter__')):
+            if op in ('set', 'unset') and (
+                not isinstance(value, basestring) and
+                not isinstance(value, BaseDocument) and
+                hasattr(value, '__iter__')
+            ):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)
         else:
