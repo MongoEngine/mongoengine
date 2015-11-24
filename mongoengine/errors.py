@@ -6,7 +6,7 @@ from mongoengine.python_support import txt_type
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
            'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
            'OperationError', 'NotUniqueError', 'FieldDoesNotExist',
-           'ValidationError')
+           'ValidationError', 'SaveConditionError')
 
 
 class NotRegistered(Exception):
