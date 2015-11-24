@@ -7,6 +7,7 @@ Changes in 0.10.2
 - Allow shard key to point to a field in an embedded document. #551
 - Allow arbirary metadata in fields. #1129
 - ReferenceFields now support abstract document types. #837
+- Fix `read_preference` (it had chaining issues with PyMongo 2.x and it didn't work at all with PyMongo 3.x) #1042
 
 Changes in 0.10.1
 =======================
