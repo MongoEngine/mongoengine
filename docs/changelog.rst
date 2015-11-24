@@ -5,6 +5,7 @@ Changelog
 Changes in 0.10.4 - DEV
 =======================
 - SaveConditionError is now importable from the top level package. #1165
+- upsert_one method added. #1157
 
 Changes in 0.10.3
 =================
