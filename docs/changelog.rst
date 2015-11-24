@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.10.4 - DEV
+=======================
+- SaveConditionError is now importable from the top level package. #1165
+
 Changes in 0.10.3
 =================
 - Fix `read_preference` (it had chaining issues with PyMongo 2.x and it didn't work at all with PyMongo 3.x) #1042
