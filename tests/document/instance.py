@@ -557,6 +557,28 @@ class InstanceTest(unittest.TestCase):
         except Exception:
             self.assertFalse("Threw wrong exception")
 
+    def test_reload_of_non_strict_with_special_field_name(self):
+        """Ensures reloading works for documents with meta strict == False
+        """
+        class Post(Document):
+            meta = {
+                'strict': False
+            }
+            title = StringField()
+            items = ListField()
+
+        Post.drop_collection()
+
+        Post._get_collection().insert_one({
+            "title": "Items eclipse",
+            "items": ["more lorem", "even more ipsum"]
+        })
+
+        post = Post.objects.first()
+        post.reload()
+        self.assertEqual(post.title, "Items eclipse")
+        self.assertEqual(post.items, ["more lorem", "even more ipsum"])
+
     def test_dictionary_access(self):
         """Ensure that dictionary-style field access works properly.
         """
