@@ -484,6 +484,20 @@ class InstanceTest(unittest.TestCase):
         doc.reload()
         Animal.drop_collection()
 
+    def test_reload_sharded_nested(self):
+        class SuperPhylum(EmbeddedDocument):
+            name = StringField()
+
+        class Animal(Document):
+            superphylum = EmbeddedDocumentField(SuperPhylum)
+            meta = {'shard_key': ('superphylum.name',)}
+
+        Animal.drop_collection()
+        doc = Animal(superphylum=SuperPhylum(name='Deuterostomia'))
+        doc.save()
+        doc.reload()
+        Animal.drop_collection()
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly
         """
@@ -2734,6 +2748,32 @@ class InstanceTest(unittest.TestCase):
 
         def change_shard_key():
             log.machine = "127.0.0.1"
+
+        self.assertRaises(OperationError, change_shard_key)
+
+    def test_shard_key_in_embedded_document(self):
+        class Foo(EmbeddedDocument):
+            foo = StringField()
+
+        class Bar(Document):
+            meta = {
+                'shard_key': ('foo.foo',)
+            }
+            foo = EmbeddedDocumentField(Foo)
+            bar = StringField()
+
+        foo_doc = Foo(foo='hello')
+        bar_doc = Bar(foo=foo_doc, bar='world')
+        bar_doc.save()
+
+        self.assertTrue(bar_doc.id is not None)
+
+        bar_doc.bar = 'baz'
+        bar_doc.save()
+
+        def change_shard_key():
+            bar_doc.foo.foo = 'something'
+            bar_doc.save()
 
         self.assertRaises(OperationError, change_shard_key)
 

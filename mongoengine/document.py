@@ -217,7 +217,7 @@ class Document(BaseDocument):
         Returns True if the document has been updated or False if the document
         in the database doesn't match the query.
 
-        .. note:: All unsaved changes that has been made to the document are
+        .. note:: All unsaved changes that have been made to the document are
             rejected if the method returns True.
 
         :param query: the update will be performed only if the document in the
@@ -341,8 +341,12 @@ class Document(BaseDocument):
                 select_dict['_id'] = object_id
                 shard_key = self.__class__._meta.get('shard_key', tuple())
                 for k in shard_key:
-                    actual_key = self._db_field_map.get(k, k)
-                    select_dict[actual_key] = doc[actual_key]
+                    path = self._lookup_field(k.split('.'))
+                    actual_key = [p.db_field for p in path]
+                    val = doc
+                    for ak in actual_key:
+                        val = val[ak]
+                    select_dict['.'.join(actual_key)] = val
 
                 def is_new_object(last_error):
                     if last_error is not None:
@@ -403,7 +407,7 @@ class Document(BaseDocument):
 
     def cascade_save(self, *args, **kwargs):
         """Recursively saves any references /
-           generic references on an objects"""
+           generic references on the document"""
         _refs = kwargs.get('_refs', []) or []
 
         ReferenceField = _import_class('ReferenceField')
@@ -444,7 +448,12 @@ class Document(BaseDocument):
         select_dict = {'pk': self.pk}
         shard_key = self.__class__._meta.get('shard_key', tuple())
         for k in shard_key:
-            select_dict[k] = getattr(self, k)
+            path = self._lookup_field(k.split('.'))
+            actual_key = [p.db_field for p in path]
+            val = self
+            for ak in actual_key:
+                val = getattr(val, ak)
+            select_dict['__'.join(actual_key)] = val
         return select_dict
 
     def update(self, **kwargs):

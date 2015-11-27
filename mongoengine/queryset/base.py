@@ -930,6 +930,7 @@ class BaseQuerySet(object):
         validate_read_preference('read_preference', read_preference)
         queryset = self.clone()
         queryset._read_preference = read_preference
+        queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_preference
         return queryset
 
     def scalar(self, *fields):
@@ -1443,8 +1444,16 @@ class BaseQuerySet(object):
     def _cursor(self):
         if self._cursor_obj is None:
 
-            self._cursor_obj = self._collection.find(self._query,
-                                                     **self._cursor_args)
+            # In PyMongo 3+, we define the read preference on a collection
+            # level, not a cursor level. Thus, we need to get a cloned
+            # collection object using `with_options` first.
+            if IS_PYMONGO_3 and self._read_preference is not None:
+                self._cursor_obj = self._collection\
+                    .with_options(read_preference=self._read_preference)\
+                    .find(self._query, **self._cursor_args)
+            else:
+                self._cursor_obj = self._collection.find(self._query,
+                                                         **self._cursor_args)
             # Apply where clauses to cursor
             if self._where_clause:
                 where_clause = self._sub_js_fields(self._where_clause)

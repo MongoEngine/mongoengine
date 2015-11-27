@@ -2,7 +2,21 @@
 Changelog
 =========
 
-Changes in 0.10.1 - DEV
+Changes in 0.10.4 - DEV
+=======================
+- SaveConditionError is now importable from the top level package. #1165
+
+Changes in 0.10.3
+=================
+- Fix `read_preference` (it had chaining issues with PyMongo 2.x and it didn't work at all with PyMongo 3.x) #1042
+
+Changes in 0.10.2
+=================
+- Allow shard key to point to a field in an embedded document. #551
+- Allow arbirary metadata in fields. #1129
+- ReferenceFields now support abstract document types. #837
+
+Changes in 0.10.1
 =======================
 - Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
 - Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047

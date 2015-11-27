@@ -863,12 +863,11 @@ class ReferenceField(BaseField):
 
     The options are:
 
-      * DO_NOTHING  - don't do anything (default).
-      * NULLIFY     - Updates the reference to null.
-      * CASCADE     - Deletes the documents associated with the reference.
-      * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.fields.ListField`
-                      of references
+      * DO_NOTHING (0)  - don't do anything (default).
+      * NULLIFY    (1)  - Updates the reference to null.
+      * CASCADE    (2)  - Deletes the documents associated with the reference.
+      * DENY       (3)  - Prevent the deletion of the reference object.
+      * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
 
     Alternative syntax for registering delete rules (useful when implementing
     bi-directional delete rules)
@@ -896,6 +895,10 @@ class ReferenceField(BaseField):
           or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
+
+        .. note ::
+            A reference to an abstract document type is always stored as a
+            :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
@@ -928,9 +931,14 @@ class ReferenceField(BaseField):
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
-            value = self.document_type._get_db().dereference(value)
+            if hasattr(value, 'cls'):
+                # Dereference using the class type specified in the reference
+                cls = get_document(value.cls)
+            else:
+                cls = self.document_type
+            value = cls._get_db().dereference(value)
             if value is not None:
-                instance._data[self.name] = self.document_type._from_son(value)
+                instance._data[self.name] = cls._from_son(value)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -940,21 +948,29 @@ class ReferenceField(BaseField):
                 return document.id
             return document
 
-        id_field_name = self.document_type._meta['id_field']
-        id_field = self.document_type._fields[id_field_name]
-
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.pk
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
+
+            # Use the attributes from the document instance, so that they
+            # override the attributes of this field's document type
+            cls = document
         else:
             id_ = document
+            cls = self.document_type
+
+        id_field_name = cls._meta['id_field']
+        id_field = cls._fields[id_field_name]
 
         id_ = id_field.to_mongo(id_)
-        if self.dbref:
-            collection = self.document_type._get_collection_name()
+        if self.document_type._meta.get('abstract'):
+            collection = cls._get_collection_name()
+            return DBRef(collection, id_, cls=cls._class_name)
+        elif self.dbref:
+            collection = cls._get_collection_name()
             return DBRef(collection, id_)
 
         return id_
@@ -982,6 +998,14 @@ class ReferenceField(BaseField):
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
                        'saved to the database')
+
+        if self.document_type._meta.get('abstract') and \
+                not isinstance(value, self.document_type):
+            self.error('%s is not an instance of abstract reference'
+                    ' type %s' % (value._class_name,
+                        self.document_type._class_name)
+                    )
+
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
