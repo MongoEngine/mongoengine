@@ -406,9 +406,10 @@ class Document(BaseDocument):
             return None
 
     @classmethod
-    def count(cls, spec, slave_ok=False, **kwargs):
+    def count(cls, spec, slave_ok=False, comment=None, **kwargs):
         cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
-            **kwargs)
+            comment=comment if comment else MongoComment.get_comment(
+                num_stacks_up=3), **kwargs)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
