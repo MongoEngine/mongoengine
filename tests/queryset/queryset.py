@@ -680,11 +680,20 @@ class QuerySetTest(unittest.TestCase):
     def test_upsert_one(self):
         self.Person.drop_collection()
 
-        self.Person.objects(name="Bob", age=30).update_one(upsert=True)
+        bob = self.Person.objects(name="Bob", age=30).upsert_one()
 
-        bob = self.Person.objects.first()
         self.assertEqual("Bob", bob.name)
         self.assertEqual(30, bob.age)
+
+        bob.name = "Bobby"
+        bob.save()
+
+        bobby = self.Person.objects(name="Bobby", age=30).upsert_one()
+
+        self.assertEqual("Bobby", bobby.name)
+        self.assertEqual(30, bobby.age)
+        self.assertEqual(bob.id, bobby.id)
+
 
     def test_set_on_insert(self):
         self.Person.drop_collection()
