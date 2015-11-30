@@ -2,8 +2,12 @@
 Changelog
 =========
 
-Changes in 0.10.4 - DEV
-=======================
+Changes in 0.10.5
+=================
+- Fix for reloading of strict with special fields. #1156
+
+Changes in 0.10.4
+=================
 - SaveConditionError is now importable from the top level package. #1165
 - upsert_one method added. #1157
 
@@ -18,7 +22,7 @@ Changes in 0.10.2
 - ReferenceFields now support abstract document types. #837
 
 Changes in 0.10.1
-=======================
+=================
 - Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
 - Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047
 - Fix ignored chained options #842
