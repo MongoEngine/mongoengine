@@ -676,16 +676,35 @@ class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
+    You can add validation to each list item by specifying the `field`
+    argument. For example, ListField(IntField()) will ensure that all the
+    items are integers.
+
+    You can also limit the maximum number of items in the list with
+    `max_length`. However, keep in mind that the validation can be bypassed by
+    using push__list_field_name.
+
     If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
     """
 
-    def __init__(self, field=None, **kwargs):
+    def __init__(self, field=None, max_length=None, **kwargs):
         self.field = field
+        self.max_length = max_length
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
+
+    def _validate_max_length(self, value):
+        """
+        Validate that max_length is not exceeded. Note that it's still
+        possible to bypass this enforcement by using $push. However, if the
+        document is reloaded after $push and then re-saved, the validation
+        error will be raised.
+        """
+        if self.max_length is not None and len(value) > self.max_length:
+            self.error('list field exceeded max length')
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
@@ -693,9 +712,15 @@ class ListField(ComplexBaseField):
         if (not isinstance(value, (list, tuple, QuerySet)) or
                 isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
+
+        self._validate_max_length(value)
+
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
+        if op == 'set':
+            self._validate_max_length(value)
+
         if self.field:
             if op in ('set', 'unset') and (
                     not isinstance(value, basestring) and
@@ -1014,7 +1039,7 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
     """
     A referencefield with cache fields to purpose pseudo-joins
-    
+
     .. versionadded:: 0.9
     """
 
@@ -1707,17 +1732,17 @@ class SequenceField(BaseField):
     :param collection_name:  Name of the counter collection (default 'mongoengine.counters')
     :param sequence_name: Name of the sequence in the collection (default 'ClassName.counter')
     :param value_decorator: Any callable to use as a counter (default int)
-        
+
     Use any callable as `value_decorator` to transform calculated counter into
     any value suitable for your needs, e.g. string or hexadecimal
     representation of the default integer counter value.
-    
+
     .. note::
-    
-        In case the counter is defined in the abstract document, it will be 
-        common to all inherited documents and the default sequence name will 
+
+        In case the counter is defined in the abstract document, it will be
+        common to all inherited documents and the default sequence name will
         be the class name of the abstract document.
-    
+
     .. versionadded:: 0.5
     .. versionchanged:: 0.8 added `value_decorator`
     """
