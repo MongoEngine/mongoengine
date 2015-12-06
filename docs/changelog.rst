@@ -2,10 +2,13 @@
 Changelog
 =========
 
+Changes in 0.10.6 - Dev
+=======================
+- Add support for mocking MongoEngine based on mongomock. #1151
+
 Changes in 0.10.5
 =================
 - Fix for reloading of strict with special fields. #1156
-- Add support for mocking MongoEngine based on mongomock. #1151
 
 Changes in 0.10.4
 =================
