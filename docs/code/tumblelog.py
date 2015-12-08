@@ -17,6 +17,10 @@ class Post(Document):
     tags = ListField(StringField(max_length=30))
     comments = ListField(EmbeddedDocumentField(Comment))
 
+    # bugfix
+    meta = {'allow_inheritance': True}
+
+
 class TextPost(Post):
     content = StringField()
 
@@ -45,7 +49,8 @@ print 'ALL POSTS'
 print
 for post in Post.objects:
     print post.title
-    print '=' * post.title.count()
+    #print '=' * post.title.count()
+    print "=" * 20
 
     if isinstance(post, TextPost):
         print post.content
