@@ -55,6 +55,9 @@ class TransformTest(unittest.TestCase):
         update = transform.update(DicDoc, pull__dictField__test=doc)
         self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
 
+        # Update reserved word field (e.g. type) with 2 underscores after field name
+        update = transform.update(set__embedded__type__=2)
+        self.assertEqual({'$set': {'embedded.type': 2}}, update)
 
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.

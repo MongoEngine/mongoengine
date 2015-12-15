@@ -212,6 +212,10 @@ def update(_doc_cls=None, **update):
         if parts[-1] in COMPARISON_OPERATORS:
             match = parts.pop()
 
+        # if last part is field with reserved word name (e.g. type, update == set__embedded__type__=2)
+        if not parts[-1] and parts[-2] in MATCH_OPERATORS:
+            parts.pop()  # remove empty string
+
         if _doc_cls:
             # Switch field names to proper names [set in Field(name='foo')]
             try:
