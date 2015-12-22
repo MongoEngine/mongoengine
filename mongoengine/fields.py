@@ -992,7 +992,7 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
 
-        if not isinstance(value, (self.document_type, DBRef)):
+        if not isinstance(value, (self.document_type, DBRef, ObjectId)):
             self.error("A ReferenceField only accepts DBRef or documents")
 
         if isinstance(value, Document) and value.id is None:
