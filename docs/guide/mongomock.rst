@@ -18,4 +18,4 @@ or with an alias:
 .. code-block:: python
 
     connect('mongoenginetest', host='mongomock://localhost', alias='testdb')
-    conn = get_connection('testdb)
+    conn = get_connection('testdb')
