@@ -118,6 +118,35 @@ class SignalTests(unittest.TestCase):
         self.ExplicitId = ExplicitId
         ExplicitId.drop_collection()
 
+        class Post(Document):
+            title = StringField()
+            content = StringField()
+            active = BooleanField(default=False)
+
+            def __unicode__(self):
+                return self.title
+
+            @classmethod
+            def pre_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append('pre_bulk_insert signal, %s' %
+                                     [(doc, {'active': documents[n].active})
+                                      for n, doc in enumerate(documents)])
+
+                # make changes here, this is just an example -
+                # it could be anything that needs pre-validation or looks-ups before bulk bulk inserting
+                for document in documents:
+                    if not document.active:
+                        document.active = True
+
+            @classmethod
+            def post_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append('post_bulk_insert signal, %s' %
+                                     [(doc, {'active': documents[n].active})
+                                      for n, doc in enumerate(documents)])
+
+        self.Post = Post
+        Post.drop_collection()
+
         # Save up the number of connected signals so that we can check at the
         # end that all the signals we register get properly unregistered
         self.pre_signals = (
@@ -147,6 +176,9 @@ class SignalTests(unittest.TestCase):
 
         signals.post_save.connect(ExplicitId.post_save, sender=ExplicitId)
 
+        signals.pre_bulk_insert.connect(Post.pre_bulk_insert, sender=Post)
+        signals.post_bulk_insert.connect(Post.post_bulk_insert, sender=Post)
+
     def tearDown(self):
         signals.pre_init.disconnect(self.Author.pre_init)
         signals.post_init.disconnect(self.Author.post_init)
@@ -162,6 +194,9 @@ class SignalTests(unittest.TestCase):
         signals.pre_delete.disconnect(self.Another.pre_delete)
 
         signals.post_save.disconnect(self.ExplicitId.post_save)
+
+        signals.pre_bulk_insert.disconnect(self.Post.pre_bulk_insert)
+        signals.post_bulk_insert.disconnect(self.Post.post_bulk_insert)
 
         # Check that all our signals got disconnected properly.
         post_signals = (
@@ -199,7 +234,7 @@ class SignalTests(unittest.TestCase):
             a.save()
             self.get_signal_output(lambda: None) # eliminate signal output
             a1 = self.Author.objects(name='Bill Shakespeare')[0]
-        
+
         self.assertEqual(self.get_signal_output(create_author), [
             "pre_init signal, Author",
             "{'name': 'Bill Shakespeare'}",
@@ -306,6 +341,20 @@ class SignalTests(unittest.TestCase):
         ei.switch_db("testdb-1", keep_created=False)
         self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
 
+    def test_signals_bulk_insert(self):
+        def bulk_set_active_post():
+            posts = [
+                self.Post(title='Post 1'),
+                self.Post(title='Post 2'),
+                self.Post(title='Post 3')
+            ]
+            self.Post.objects.insert(posts)
+
+        results = self.get_signal_output(bulk_set_active_post)
+        self.assertEqual(results, [
+            "pre_bulk_insert signal, [(<Post: Post 1>, {'active': False}), (<Post: Post 2>, {'active': False}), (<Post: Post 3>, {'active': False})]",
+            "post_bulk_insert signal, [(<Post: Post 1>, {'active': True}), (<Post: Post 2>, {'active': True}), (<Post: Post 3>, {'active': True})]"
+        ])
 
 if __name__ == '__main__':
     unittest.main()
