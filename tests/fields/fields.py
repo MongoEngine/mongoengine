@@ -1625,8 +1625,32 @@ class FieldTest(unittest.TestCase):
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
 
+        # Ensure ObjectID's are accepted as references
+        user_object_id = user.pk
+        post3 = BlogPost(content="Chips and curry sauce taste good.")
+        post3.author = user_object_id
+        post3.save()
+
         User.drop_collection()
         BlogPost.drop_collection()
+
+    def test_dbref_reference_fields(self):
+
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self', dbref=True)
+
+        Person.drop_collection()
+
+        p1 = Person(name="John").save()
+        Person(name="Ross", parent=p1).save()
+
+        col = Person._get_collection()
+        data = col.find_one({'name': 'Ross'})
+        self.assertEqual(data['parent'], DBRef('person', p1.pk))
+
+        p = Person.objects.get(name="Ross")
+        self.assertEqual(p.parent, p1)
 
     def test_dbref_reference_fields(self):
 
