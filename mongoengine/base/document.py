@@ -65,7 +65,7 @@ class BaseDocument(object):
         # 399: set default values only to fields loaded from DB
         __only_fields = set(values.pop("__only_fields", values))
 
-        _created = values.pop("_created", True)
+        _created = values.pop("_created", False)
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
