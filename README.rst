@@ -48,7 +48,9 @@ Optional Dependencies
 
 Examples
 ========
-Some simple examples of what MongoEngine code looks like::
+Some simple examples of what MongoEngine code looks like:
+
+.. code :: python
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
