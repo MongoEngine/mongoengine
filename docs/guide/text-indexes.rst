@@ -21,6 +21,17 @@ Use the *$* prefix to set a text index, Look the declaration::
           }
       ]}
 
+.. note:: 
+
+  If inheritance is allowed, _cls is added by default to the start of the 
+  index. Thus, to perform a text search, the query predicate must include 
+  equality match conditions on the _cls key (see `Compound Index 
+  <https://docs.mongodb.org/manual/core/index-text/#compound-index>`_), 
+  and MongoEngine can't text search on a class and its subclasses.
+
+  Unless absolutely sure every text search will be performed on a (sub)class
+  with no child class, _cls needs to be removed explicitly from the index 
+  (see :class:`~mongoengine.Document`).
 
 
 Querying
