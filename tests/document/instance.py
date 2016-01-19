@@ -583,7 +583,7 @@ class InstanceTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        Post._get_collection().insert_one({
+        Post._get_collection().insert({
             "title": "Items eclipse",
             "items": ["more lorem", "even more ipsum"]
         })
