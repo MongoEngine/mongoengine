@@ -64,8 +64,28 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection()
         self.assertTrue(isinstance(conn, mongomock.MongoClient))
 
-        connect('mongoenginetest2', host='mongomock://localhost', alias='testdb')
-        conn = get_connection('testdb')
+        connect('mongoenginetest2', host='mongomock://localhost', alias='testdb2')
+        conn = get_connection('testdb2')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect('mongoenginetest3', host='mongodb://localhost', is_mock=True, alias='testdb3')
+        conn = get_connection('testdb3')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect('mongoenginetest4', is_mock=True, alias='testdb4')
+        conn = get_connection('testdb4')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host='mongodb://localhost:27017/mongoenginetest5', is_mock=True, alias='testdb5')
+        conn = get_connection('testdb5')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host='mongomock://localhost:27017/mongoenginetest6', alias='testdb6')
+        conn = get_connection('testdb6')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host='mongomock://localhost:27017/mongoenginetest7', is_mock=True, alias='testdb7')
+        conn = get_connection('testdb7')
         self.assertTrue(isinstance(conn, mongomock.MongoClient))
 
     def test_disconnect(self):

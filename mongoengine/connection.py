@@ -38,8 +38,11 @@ def register_connection(alias, name=None, host=None, port=None,
     :param username: username to authenticate with
     :param password: password to authenticate with
     :param authentication_source: database to authenticate against
+    :param is_mock: explicitly use mongomock for this connection
+        (can also be done by using `mongomock://` as db host prefix)
     :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
 
+    .. versionchanged:: 0.10.6 - added mongomock support
     """
     global _connection_settings
 
@@ -57,6 +60,8 @@ def register_connection(alias, name=None, host=None, port=None,
     conn_host = conn_settings['host']
     if conn_host.startswith('mongomock://'):
         conn_settings['is_mock'] = True
+        # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
+        conn_settings['host'] = conn_host.replace('mongomock://', 'mongodb://', 1)
     elif '://' in conn_host:
         uri_dict = uri_parser.parse_uri(conn_host)
         conn_settings.update({
