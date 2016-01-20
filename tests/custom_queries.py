@@ -11,6 +11,8 @@ from bson import ObjectId, DBRef, SON
 import mock
 
 mongoengine.connection.set_default_db("test")
+mongoengine.base.set_unloaded_field_handler(
+    mongoengine.base.UnloadedFieldExceptionHandler())
 
 class CustomQueryTest(unittest.TestCase):
 
@@ -330,22 +332,24 @@ class CustomQueryTest(unittest.TestCase):
 
         p1 = self.Person.find_one({'age': 10}, fields=['age'])
         self.assertEquals(p1.age, 10)
-        self.assertEquals(p1.name, None)
 
         p1 = self.Person.find_one({'age': 10}, fields=['age', 'name'])
         self.assertEquals(p1, p)
 
         p1 = self.Person.find_one({'age': 10}, fields={'age': 0})
-        self.assertEquals(p1.age, None)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p1, 'age')
         self.assertEquals(p1.name, 'Adam')
 
         p1 = self.Person.find_one({'age': 10}, fields={'name': 0})
         self.assertEquals(p1.age, 10)
-        self.assertEquals(p1.name, None)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p1, 'name')
 
         p1 = self.Person.find_one({'age': 10}, fields={'age': 1})
         self.assertEquals(p1.age, 10)
-        self.assertEquals(p1.name, None)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p1, 'name')
 
     def testQueryIn(self):
         query = {'_id': {'$in': [ObjectId(), ObjectId(), ObjectId()] } }
@@ -373,24 +377,28 @@ class CustomQueryTest(unittest.TestCase):
         p.save()
 
         p1 = self.Person.find_one({'name': 'Adam'}, fields=['id'])
-        self.assertEquals(p1.name, None)
         self.assertEquals(p1.id, p.id)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p1, 'name')
 
         p2 = self.Person.find_one({'name': 'Adam'}, fields=['_id'])
-        self.assertEquals(p2.name, None)
         self.assertEquals(p2.id, p.id)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p2, 'name')
 
         # test where ID is defined explicitly
         u = self.User(name="Adam", id=ObjectId())
         u.save()
 
         u2 = self.User.find_one({'name': 'Adam'}, fields=['_id'])
-        self.assertEquals(u2.name, None)
         self.assertEquals(u2.id, u.id)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(u2, 'name')
 
         u2 = self.User.find_one({'name': 'Adam'}, fields=['id'])
-        self.assertEquals(u2.name, None)
         self.assertEquals(u2.id, u.id)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(u2, 'name')
 
     def testInheritanceBaseClass(self):
         v = self.Vehicle(name="Honda")

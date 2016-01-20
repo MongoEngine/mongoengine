@@ -1,4 +1,5 @@
-from base import BaseField, ObjectIdField, ValidationError, get_document
+from base import BaseField, ObjectIdField, \
+    ValidationError, get_document, FieldStatus
 from document import Document, EmbeddedDocument
 from connection import _get_db
 from operator import itemgetter
@@ -13,7 +14,6 @@ import bson.binary
 import bson.objectid
 import datetime
 import decimal
-import gridfs
 import warnings
 import types
 
@@ -21,7 +21,7 @@ import types
 __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'DateTimeField', 'EmbeddedDocumentField', 'ListField', 'DictField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
-           'DecimalField', 'URLField', 'GenericReferenceField', 'FileField',
+           'DecimalField', 'URLField', 'GenericReferenceField',
            'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField',
            'ArbitraryField']
 
@@ -262,7 +262,9 @@ class EmbeddedDocumentField(BaseField):
 
     def to_python(self, value):
         if not isinstance(value, self.document_type):
-            return self.document_type._from_son(value)
+            doc = self.document_type._from_son(value)
+            doc._default_load_status = FieldStatus.LOADED
+            return doc
         return value
 
     def to_mongo(self, value):
@@ -310,7 +312,7 @@ class ListField(BaseField):
 
         if isinstance(self.field, ReferenceField):
             # Get value from document instance if available
-            value_list = instance._data.get(self.name)
+            value_list = instance._raw_data.get(self.name)
             if value_list:
                 deref_list = []
                 for value in value_list:
@@ -320,10 +322,10 @@ class ListField(BaseField):
                         deref_list.append(value)
                     else:
                         deref_list.append(value)
-                instance._data[self.name] = deref_list
+                instance._raw_data[self.name] = deref_list
 
         if isinstance(self.field, GenericReferenceField):
-            value_list = instance._data.get(self.name)
+            value_list = instance._raw_data.get(self.name)
             if value_list:
                 deref_list = []
                 for value in value_list:
@@ -332,7 +334,7 @@ class ListField(BaseField):
                         deref_list.append(self.field.dereference(value))
                     else:
                         deref_list.append(value)
-                instance._data[self.name] = deref_list
+                instance._raw_data[self.name] = deref_list
 
         return super(ListField, self).__get__(instance, owner)
 
@@ -465,17 +467,20 @@ class ReferenceField(BaseField):
             return self
 
         # Get value from document instance if available
-        value = instance._data.get(self.name)
+        value = instance._raw_data.get(self.name)
         # Dereference DBRefs
         if isinstance(value, (bson.dbref.DBRef)):
             value = self.dereference(value)
             if value is not None:
-                instance._data[self.name] = value
+                instance._raw_data[self.name] = value
             else:
-                raise DoesNotExist("DBRef for collection %s ID %s cannot be dereferenced" %
-                   (instance._data[self.name].collection,
-                    str(instance._data[self.name].id)))
-
+                raise DoesNotExist(
+                    "DBRef for collection %s ID %s cannot be dereferenced" %
+                    (
+                        instance._raw_data[self.name].collection,
+                        str(instance._raw_data[self.name].id)
+                    )
+                )
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -517,6 +522,7 @@ class ReferenceField(BaseField):
             doc = _get_db(doc_cls._meta['db_name']).dereference(dbref)
             if doc is not None:
                 doc = doc_cls._from_son(doc)
+                doc._default_load_status = FieldStatus.LOADED
 
         return doc
 
@@ -532,9 +538,9 @@ class GenericReferenceField(BaseField):
         if instance is None:
             return self
 
-        value = instance._data.get(self.name)
+        value = instance._raw_data.get(self.name)
         if isinstance(value, (dict, bson.son.SON)):
-            instance._data[self.name] = self.dereference(value)
+            instance._raw_data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 
@@ -544,6 +550,7 @@ class GenericReferenceField(BaseField):
         doc = _get_db(doc_cls._meta['db_name']).dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
+            doc._default_load_status = FieldStatus.LOADED
         return doc
 
     def to_mongo(self, document):
@@ -588,139 +595,6 @@ class BinaryField(BaseField):
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             raise ValidationError('Binary value is too long')
-
-
-class GridFSError(Exception):
-    pass
-
-
-class GridFSProxy(object):
-    """Proxy object to handle writing and reading of files to and from GridFS
-
-    .. versionadded:: 0.4
-    """
-
-    def __init__(self, grid_id=None):
-        self.fs = gridfs.GridFS(_get_db())  # Filesystem instance
-        self.newfile = None                 # Used for partial writes
-        self.grid_id = grid_id              # Store GridFS id for file
-
-    def __getattr__(self, name):
-        obj = self.get()
-        if name in dir(obj):
-            return getattr(obj, name)
-        raise AttributeError
-
-    def __get__(self, instance, value):
-        return self
-
-    def get(self, id=None):
-        if id:
-            self.grid_id = id
-        try:
-            return self.fs.get(id or self.grid_id)
-        except:
-            # File has been deleted
-            return None
-
-    def new_file(self, **kwargs):
-        self.newfile = self.fs.new_file(**kwargs)
-        self.grid_id = self.newfile._id
-
-    def put(self, file, **kwargs):
-        if self.grid_id:
-            raise GridFSError('This document already has a file. Either delete '
-                              'it or call replace to overwrite it')
-        self.grid_id = self.fs.put(file, **kwargs)
-
-    def write(self, string):
-        if self.grid_id:
-            if not self.newfile:
-                raise GridFSError('This document already has a file. Either '
-                                  'delete it or call replace to overwrite it')
-        else:
-            self.new_file()
-        self.newfile.write(string)
-
-    def writelines(self, lines):
-        if not self.newfile:
-            self.new_file()
-            self.grid_id = self.newfile._id
-        self.newfile.writelines(lines)
-
-    def read(self):
-        try:
-            return self.get().read()
-        except:
-            return None
-
-    def delete(self):
-        # Delete file from GridFS, FileField still remains
-        self.fs.delete(self.grid_id)
-        self.grid_id = None
-
-    def replace(self, file, **kwargs):
-        self.delete()
-        self.put(file, **kwargs)
-
-    def close(self):
-        if self.newfile:
-            self.newfile.close()
-
-
-class FileField(BaseField):
-    """A GridFS storage field.
-
-    .. versionadded:: 0.4
-    """
-
-    def __init__(self, **kwargs):
-        super(FileField, self).__init__(**kwargs)
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self
-
-        # Check if a file already exists for this model
-        grid_file = instance._data.get(self.name)
-        self.grid_file = grid_file
-        if self.grid_file:
-            return self.grid_file
-        return GridFSProxy()
-
-    def __set__(self, instance, value):
-        if isinstance(value, file) or isinstance(value, str):
-            # using "FileField() = file/string" notation
-            grid_file = instance._data.get(self.name)
-            # If a file already exists, delete it
-            if grid_file:
-                try:
-                    grid_file.delete()
-                except:
-                    pass
-                # Create a new file with the new data
-                grid_file.put(value)
-            else:
-                # Create a new proxy object as we don't already have one
-                instance._data[self.name] = GridFSProxy()
-                instance._data[self.name].put(value)
-        else:
-            instance._data[self.name] = value
-
-    def to_mongo(self, value):
-        # Store the GridFS file id in MongoDB
-        if isinstance(value, GridFSProxy) and value.grid_id is not None:
-            return value.grid_id
-        return None
-
-    def to_python(self, value):
-        if value is not None:
-            return GridFSProxy(value)
-
-    def validate(self, value):
-        if value.grid_id is not None:
-            assert isinstance(value, GridFSProxy)
-            assert isinstance(value.grid_id, bson.objectid.ObjectId)
 
 
 class GeoPointField(BaseField):

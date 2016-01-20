@@ -1,14 +1,18 @@
 from queryset import QuerySet, QuerySetManager
 from queryset import DoesNotExist, MultipleObjectsReturned
 
+import copy
 import sys
 import pymongo
 import bson.objectid
 import bson.dbref
+import logging
 import socket
 import traceback
+from collections import defaultdict
 
 _document_registry = {}
+
 
 def get_document(name):
     return _document_registry[name]
@@ -16,6 +20,64 @@ def get_document(name):
 
 class ValidationError(Exception):
     pass
+
+
+class FieldNotLoadedError(Exception):
+    def __init__(self, collection_name, field_name):
+        self.collection_name = collection_name
+        self.field_name = field_name
+        super(FieldNotLoadedError, self).__init__(
+            'Field accessed, but not loaded: %s.%s' % (collection_name,
+                                                       field_name))
+
+
+class UnloadedFieldHandler(object):
+    def handle_exception(self, exception):
+        raise NotImplementedError
+
+
+class UnloadedFieldNoopHandler(UnloadedFieldHandler):
+    def handle_exception(self, exception):
+        pass
+
+
+class UnloadedFieldExceptionHandler(UnloadedFieldHandler):
+    # pylint: disable=no-self-use
+    def handle_exception(self, exception):
+        raise exception
+
+
+class UnloadedFieldLogHandler(UnloadedFieldHandler):
+    def __init__(self, log_root):
+        self.logged = defaultdict(dict)
+        self.field_logger = logging.getLogger('%s.field_unloaded' % log_root)
+
+    def handle_exception(self, exception):
+        if exception.field_name not in self.logged[exception.collection_name]:
+            self.logged[exception.collection_name][exception.field_name] = True
+            exc_info = {
+                'model': exception.collection_name,
+                'field': exception.field_name,
+                'stack': ''.join(traceback.format_list(
+                    traceback.extract_stack()[:-2]))
+            }
+            self.field_logger.log(exc_info)
+
+_unloaded_field_handler = UnloadedFieldNoopHandler()
+
+
+def set_unloaded_field_handler(handler):
+    global _unloaded_field_handler
+    assert isinstance(handler, UnloadedFieldHandler)
+    _unloaded_field_handler = handler
+
+
+class FieldStatus(object):
+    """
+        Enum representing field status
+    """
+    NOT_LOADED = 1
+    LOADED = 2
 
 
 class BaseField(object):
@@ -54,8 +116,13 @@ class BaseField(object):
             # Document class being used rather than a document object
             return self
 
+        if not instance._allow_unloaded and \
+           instance._get_field_status(self.db_field) == FieldStatus.NOT_LOADED:
+            _unloaded_field_handler.handle_exception(
+                FieldNotLoadedError(instance.__class__.__name__, self.name))
+
         # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name)
+        value = instance._raw_data.get(self.name)
         if value is None:
             value = self.default
             # Allow callable default values
@@ -66,7 +133,8 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        instance._data[self.name] = value
+        instance._fields_status[self.db_field] = FieldStatus.LOADED
+        instance._raw_data[self.name] = value
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -169,14 +237,14 @@ class Relationship(object):
             return self
 
         # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name)
+        value = instance._raw_data.get(self.name)
         if isinstance(value, Relationship):
             # Not resolved
             raise RuntimeError("Relationship %s not resolved" % self.name)
         return value
 
     def __set__(self, instance, value):
-        instance._data[self.name] = value
+        instance._raw_data[self.name] = value
 
     # Converts the string name to a model object (if necessary)
     # Validates model object
@@ -277,6 +345,7 @@ class DocumentMetaclass(type):
         attrs['_fields'] = doc_fields
         attrs['_relationships'] = doc_relationships
         attrs['_bulk_op'] = None
+        attrs['_allow_unloaded'] = False
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
@@ -298,8 +367,6 @@ class DocumentMetaclass(type):
         if name in _document_registry and _document_registry[name] != new_class:
             raise ValueError("Different class named %s already exists" %
                              new_class._class_name)
-
-        global _document_registry
         _document_registry[name] = new_class
 
         return new_class
@@ -450,30 +517,77 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
 class BaseDocument(object):
 
-    def __init__(self, **values):
-        self._data = {}
+    def __init__(self, from_son=False, **values):
+        self._raw_data = {}
+        self._fields_status = dict()
+        self._default_load_status = FieldStatus.NOT_LOADED
         # Assign default values to instance
-        for attr_name in self._fields.keys():
-            # Use default value if present
-            value = getattr(self, attr_name, None)
-            setattr(self, attr_name, value)
+        if not from_son:
+            self._allow_unloaded = True
+            for attr_name, attr_value in self._fields.iteritems():
+                # Use default value if present
+                value = getattr(self, attr_name, None)
+                setattr(self, attr_name, value)
+            self._allow_unloaded = False
+
         for rel_name, rel in self._relationships.iteritems():
             setattr(self, rel_name, rel)
 
         # Assign initial values to instance
-        for attr_name in values.keys():
+        for attr_name, attr_value in values.iteritems():
             try:
-                setattr(self, attr_name, values.pop(attr_name))
+                setattr(self, attr_name, attr_value)
             except AttributeError:
                 pass
+
+    @property
+    def _data(self):
+        try:
+            self._allow_unloaded = True
+            data_dict = {}
+            for field_name, field in self._fields.iteritems():
+                value = self._raw_data.get(field_name)
+                if value is None:
+                    value = field.default
+                    if callable(value):
+                        value = value()
+                if isinstance(value, (dict, list)):
+                    value = copy.deepcopy(value)
+                data_dict[field_name] = value
+            for rel_name, rel in self._relationships.iteritems():
+                data_dict[rel_name] = self._raw_data.get(rel_name)
+        finally:
+            self._allow_unloaded = False
+        return data_dict
+
+    def _get_raw(self, field_name):
+        field = self._fields[field_name]
+        value = self._raw_data.get(field_name)
+        if value is None:
+            value = field.default
+            if callable(value):
+                value = value()
+        if isinstance(value, (dict, list)):
+            value = copy.deepcopy(value)
+        return value
+
+    def _get_field_status(self, field):
+        return self._fields_status.get(field, self._default_load_status)
+
+    def field_is_loaded(self, field):
+        field_id = self._fields[field].db_field
+        return self._get_field_status(field_id) == FieldStatus.LOADED
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
         are present.
         """
         # Get a list of tuples of field names and their current values
-        fields = [(field, getattr(self, name))
-                  for name, field in self._fields.items()]
+        fields = [
+            (field, getattr(self, name))
+            for name, field in self._fields.items()
+            if self._get_field_status(field.db_field) != FieldStatus.NOT_LOADED
+        ]
 
         # Ensure that each field is matched to a valid value
         for field, value in fields:
@@ -543,7 +657,7 @@ class BaseDocument(object):
             return False
 
     def __len__(self):
-        return len(self._data)
+        return len(self._raw_data)
 
     def __repr__(self):
         try:
@@ -561,23 +675,27 @@ class BaseDocument(object):
         """Return data dictionary ready for use with MongoDB.
         """
         data = {}
-        for field_name, field in self._fields.items():
-            # don't deference ReferenceField if it's not
-            # dereferenced yet
-            if field_name in self._data and \
-               isinstance(self._data[field_name], (bson.dbref.DBRef)):
-                data[field.db_field] = self._data[field_name]
-            else:
-                value = getattr(self, field_name, None)
-                if value is not None:
-                    data[field.db_field] = field.to_mongo(value)
-        # Only add _cls and _types if allow_inheritance is not False
-        if not (hasattr(self, '_meta') and
-                self._meta.get('allow_inheritance', True) == False):
-            data['_cls'] = self._class_name
-            data['_types'] = self._superclasses.keys() + [self._class_name]
-        if data.has_key('_id') and not data['_id']:
-            del data['_id']
+        self._allow_unloaded = True
+        try:
+            for field_name, field in self._fields.items():
+                # don't deference ReferenceField if it's not
+                # dereferenced yet
+                if field_name in self._raw_data and \
+                   isinstance(self._raw_data[field_name], (bson.dbref.DBRef)):
+                    data[field.db_field] = self._raw_data[field_name]
+                else:
+                    value = getattr(self, field_name, None)
+                    if value is not None:
+                        data[field.db_field] = field.to_mongo(value)
+            # Only add _cls and _types if allow_inheritance is not False
+            if not (hasattr(self, '_meta') and
+                    self._meta.get('allow_inheritance', True) is False):
+                data['_cls'] = self._class_name
+                data['_types'] = self._superclasses.keys() + [self._class_name]
+            if '_id' in data and not data['_id']:
+                del data['_id']
+        finally:
+            self._allow_unloaded = False
         return data
 
     @classmethod
@@ -605,17 +723,13 @@ class BaseDocument(object):
                 return None
             cls = subclasses[class_name]
 
-        present_fields = data.keys()
-
         for field_name, field in cls._fields.items():
             if field.db_field in data:
                 value = data[field.db_field]
                 data[field_name] = (value if value is None
                                     else field.to_python(value))
 
-        obj = cls(**data)
-        obj._present_fields = present_fields
-        return obj
+        return cls(from_son=True, **data)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id'):

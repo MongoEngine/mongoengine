@@ -1,5 +1,6 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, MongoComment, get_document)
+                  ValidationError, MongoComment, get_document, FieldStatus,
+                  FieldNotLoadedError)
 from queryset import OperationError
 
 import contextlib
@@ -281,6 +282,55 @@ class Document(BaseDocument):
         cls._bulk_index += 1
 
     @classmethod
+    def _from_augmented_son(cls, d, fields):
+        # load from son, and set field status correctly
+
+        obj = cls._from_son(d)
+        if obj is None:
+            return None
+
+        if fields is None:
+            obj._default_load_status = FieldStatus.LOADED
+            return obj
+
+        fields = cls._transform_fields(fields)
+
+        # excluding _id is a special case in mongo
+        if '_id' in fields:
+            value = fields.pop('_id')
+            if value == 0:
+                obj._fields_status['_id'] = FieldStatus.NOT_LOADED
+            if not fields:
+                obj._default_load_status = FieldStatus.LOADED if value == 0 \
+                    else FieldStatus.NOT_LOADED
+                return obj
+
+        # fields is now a dict of {db_field: VALUE}
+        #   where VALUE is always 1 (include) or always 0 (exclude)
+        #   so it's only necessary to check one value.
+        if fields and next(fields.itervalues()) == 0:
+            # fields are excluded
+            obj._default_load_status = FieldStatus.LOADED
+            for excluded_field in fields.keys():
+                obj._fields_status[excluded_field] = FieldStatus.NOT_LOADED
+            return obj
+        else:
+            # fields are included, or no fields are specified (id only)
+            obj._default_load_status = FieldStatus.NOT_LOADED
+            for included_field in fields.keys():
+                obj._fields_status[included_field] = FieldStatus.LOADED
+            return obj
+
+    @classmethod
+    def _transform_fields(cls, fields):
+        if fields is None:
+            return None
+        if isinstance(fields, list) or isinstance(fields, tuple):
+            return {cls._transform_key(f, cls)[0]: 1 for f in fields}
+        elif isinstance(fields, dict):
+            return {cls._transform_key(f, cls)[0]: fields[f] for f in fields}
+
+    @classmethod
     def pk_field(cls):
         return cls._fields[cls._meta['id_field']]
 
@@ -374,11 +424,7 @@ class Document(BaseDocument):
         spec = cls._update_spec(spec, **kwargs)
 
         # transform fields to include
-        if isinstance(fields, list) or isinstance(fields, tuple):
-            fields = [cls._transform_key(f, cls)[0] for f in fields]
-        elif isinstance(fields, dict):
-            fields = dict([[cls._transform_key(f, cls)[0], fields[f]] for f in
-                           fields])
+        fields = cls._transform_fields(fields)
 
         # transform sort
         if sort:
@@ -448,7 +494,10 @@ class Document(BaseDocument):
         cur = cls.find_raw(spec, fields, skip, limit, sort, slave_ok=slave_ok,
                            **kwargs)
 
-        return [cls._from_son(d) for d in cls._iterate_cursor(cur)]
+        return [
+            cls._from_augmented_son(d, fields)
+            for d in cls._iterate_cursor(cur)
+        ]
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
@@ -458,7 +507,7 @@ class Document(BaseDocument):
                            batch_size=batch_size, **kwargs)
 
         for doc in cls._iterate_cursor(cur):
-            yield cls._from_son(doc)
+            yield cls._from_augmented_son(doc, fields)
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
@@ -506,7 +555,7 @@ class Document(BaseDocument):
                          slave_ok=slave_ok, find_one=True, **kwargs)
 
         if d:
-            return cls._from_son(d)
+            return cls._from_augmented_son(d, fields)
         else:
             return None
 
@@ -537,7 +586,7 @@ class Document(BaseDocument):
                     upsert=upsert, **kwargs)
 
         if result:
-            return cls._from_son(result)
+            return cls._from_augmented_son(result, fields)
         else:
             return None
 
@@ -649,36 +698,50 @@ class Document(BaseDocument):
                         if '.' in field:
                             continue
 
+                        try:
+                            field_loaded = self.field_is_loaded(field)
+                        except KeyError:
+                            raise ValueError('Field does not exist')
+
                         if operator == '$set':
                             ops[field] = new_val
                         elif operator == '$unset':
                             ops[field] = None
                         elif operator == '$inc':
-                            ops[field] = self[field] + new_val
+                            if field_loaded:
+                                ops[field] = self[field] + new_val
                         elif operator == '$push':
-                            ops[field] = self[field][:] + [new_val]
+                            if field_loaded:
+                                ops[field] = self[field][:] + [new_val]
                         elif operator == '$pushAll':
-                            ops[field] = self[field][:] + new_val
+                            if field_loaded:
+                                ops[field] = self[field][:] + new_val
                         elif operator == '$addToSet':
-                            if isinstance(new_val, dict) and '$each' in new_val:
-                                vals_to_add = new_val['$each']
-                            else:
-                                vals_to_add = [new_val]
+                            if field_loaded:
+                                if isinstance(new_val, dict) and '$each' in \
+                                   new_val:
+                                    vals_to_add = new_val['$each']
+                                else:
+                                    vals_to_add = [new_val]
 
-                            for val in vals_to_add:
-                                if new_val not in self[field]:
-                                    ops[field] = self[field][:] + [val]
+                                for val in vals_to_add:
+                                    if new_val not in self[field]:
+                                        ops[field] = self[field][:] + [val]
 
         document = self._transform_value(document, type(self))
         query_spec = self._update_one_key()
 
         # add in extra criteria, if it exists
-        for field in self.INCLUDE_SHARD_KEY:
-            value = getattr(self, field)
-            if value:
-                if criteria is None:
-                    criteria = {}
-                criteria[field] = value
+        self._allow_unloaded = True
+        try:
+            for field in self.INCLUDE_SHARD_KEY:
+                value = getattr(self, field)
+                if value:
+                    if criteria is None:
+                        criteria = {}
+                    criteria[field] = value
+        finally:
+            self._allow_unloaded = False
 
         if criteria:
             query_spec.update(criteria)

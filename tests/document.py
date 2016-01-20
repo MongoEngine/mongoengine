@@ -2,6 +2,7 @@ import pymongo
 import bson
 import unittest
 import mock
+import cPickle
 
 from datetime import datetime
 
@@ -11,6 +12,12 @@ from mongoengine.connection import _get_db, connect
 import mongoengine.connection
 
 mongoengine.connection.set_default_db("test")
+
+
+# has to be top level for pickling
+class Citizen(Document):
+    age = mongoengine.fields.IntField()
+
 
 class DocumentTest(unittest.TestCase):
 
@@ -27,6 +34,8 @@ class DocumentTest(unittest.TestCase):
     def tearDown(self):
         self.Person.drop_collection()
         _document_registry.clear()
+
+        Citizen.drop_collection()
 
     def test_drop_collection(self):
         """Ensure that the collection may be dropped from the database.
@@ -960,6 +969,16 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(IdShardedCollection._by_ids_key([]),
                           {'_id': {'$in': []},
                            'shard_hash': {'$in': []}})
+
+    def test_can_pickle(self):
+        person = Citizen(age=20)
+        person.save()
+
+        pickled = cPickle.dumps(person)
+        restored = cPickle.loads(pickled)
+
+        self.assertEqual(person, restored)
+        self.assertEqual(person.age, restored.age)
 
 
 if __name__ == '__main__':
