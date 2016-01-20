@@ -3380,7 +3380,7 @@ class FieldTest(unittest.TestCase):
             def __init__(self, **kwargs):
                 super(EnumField, self).__init__(**kwargs)
 
-            def to_mongo(self, value):
+            def to_mongo(self, value, **kwargs):
                 return value
 
             def to_python(self, value):

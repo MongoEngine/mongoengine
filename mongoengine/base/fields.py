@@ -158,7 +158,7 @@ class BaseField(object):
         """
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         """Convert a Python type to a MongoDB-compatible type.
         """
         return self.to_python(value)
@@ -325,7 +325,7 @@ class ComplexBaseField(BaseField):
                                          key=operator.itemgetter(0))]
         return value_dict
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         """Convert a Python type to a MongoDB-compatible type.
         """
         Document = _import_class("Document")
@@ -337,9 +337,10 @@ class ComplexBaseField(BaseField):
 
         if hasattr(value, 'to_mongo'):
             if isinstance(value, Document):
-                return GenericReferenceField().to_mongo(value)
+                return GenericReferenceField().to_mongo(
+                    value, **kwargs)
             cls = value.__class__
-            val = value.to_mongo()
+            val = value.to_mongo(**kwargs)
             # If it's a document that is not inherited add _cls
             if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
@@ -354,7 +355,7 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
-            value_dict = dict([(key, self.field.to_mongo(item))
+            value_dict = dict([(key, self.field.to_mongo(item, **kwargs))
                                for key, item in value.iteritems()])
         else:
             value_dict = {}
@@ -373,19 +374,20 @@ class ComplexBaseField(BaseField):
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
                         is True)
                     if not allow_inheritance and not self.field:
-                        value_dict[k] = GenericReferenceField().to_mongo(v)
+                        value_dict[k] = GenericReferenceField().to_mongo(
+                            v, **kwargs)
                     else:
                         collection = v._get_collection_name()
                         value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, 'to_mongo'):
                     cls = v.__class__
-                    val = v.to_mongo()
+                    val = v.to_mongo(**kwargs)
                     # If it's a document that is not inherited add _cls
                     if isinstance(v, (Document, EmbeddedDocument)):
                         val['_cls'] = cls.__name__
                     value_dict[k] = val
                 else:
-                    value_dict[k] = self.to_mongo(v)
+                    value_dict[k] = self.to_mongo(v, **kwargs)
 
         if is_list:  # Convert back to a list
             return [v for _, v in sorted(value_dict.items(),
@@ -443,7 +445,7 @@ class ObjectIdField(BaseField):
             pass
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         if not isinstance(value, ObjectId):
             try:
                 return ObjectId(unicode(value))
@@ -618,7 +620,7 @@ class GeoJsonBaseField(BaseField):
         if errors:
             return "Invalid MultiPolygon:\n%s" % ", ".join(errors)
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         if isinstance(value, dict):
             return value
         return SON([("type", self._type), ("coordinates", value)])
