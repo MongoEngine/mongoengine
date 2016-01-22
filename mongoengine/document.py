@@ -282,18 +282,19 @@ class Document(BaseDocument):
         cls._bulk_index += 1
 
     @classmethod
-    def _from_augmented_son(cls, d, fields):
+    def _from_augmented_son(cls, d, fields, excluded_fields):
         # load from son, and set field status correctly
 
         obj = cls._from_son(d)
         if obj is None:
             return None
 
+        fields = cls._transform_fields(fields, excluded_fields)
+
         if fields is None:
             obj._default_load_status = FieldStatus.LOADED
             return obj
 
-        fields = cls._transform_fields(fields)
 
         # excluding _id is a special case in mongo
         if '_id' in fields:
@@ -322,13 +323,23 @@ class Document(BaseDocument):
             return obj
 
     @classmethod
-    def _transform_fields(cls, fields):
-        if fields is None:
-            return None
-        if isinstance(fields, list) or isinstance(fields, tuple):
-            return {cls._transform_key(f, cls)[0]: 1 for f in fields}
-        elif isinstance(fields, dict):
-            return {cls._transform_key(f, cls)[0]: fields[f] for f in fields}
+    def _transform_fields(cls, fields=None, excluded_fields=None):
+        if fields is not None and excluded_fields is not None:
+            raise ValueError(
+                'Cannot specify both included and excluded fields.'
+            )
+        if isinstance(fields, dict):
+            fields = {cls._transform_key(f, cls)[0]: fields[f] for f in fields}
+        elif isinstance(fields, (list, tuple)):
+            fields = {
+                cls._transform_key(f, cls)[0]: 1 for f in fields
+            }
+        elif isinstance(excluded_fields, (list, tuple)):
+            fields = {
+                cls._transform_key(f, cls)[0]: 0 for f in excluded_fields
+            }
+
+        return fields
 
     @classmethod
     def pk_field(cls):
@@ -418,13 +429,13 @@ class Document(BaseDocument):
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
-                 batch_size=10000, **kwargs):
+                 batch_size=10000, excluded_fields=None, **kwargs):
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
 
         # transform fields to include
-        fields = cls._transform_fields(fields)
+        fields = cls._transform_fields(fields, excluded_fields)
 
         # transform sort
         if sort:
@@ -490,30 +501,35 @@ class Document(BaseDocument):
 
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, **kwargs):
-        cur = cls.find_raw(spec, fields, skip, limit, sort, slave_ok=slave_ok,
+             slave_ok=False, excluded_fields=None, **kwargs):
+        cur = cls.find_raw(spec, fields, skip, limit, sort,
+                           slave_ok=slave_ok, excluded_fields=excluded_fields,
                            **kwargs)
 
         return [
-            cls._from_augmented_son(d, fields)
+            cls._from_augmented_son(d, fields, excluded_fields)
             for d in cls._iterate_cursor(cur)
         ]
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, timeout=True, batch_size=10000, **kwargs):
+                  slave_ok=False, timeout=True, batch_size=10000,
+                  excluded_fields=None, **kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
-                           batch_size=batch_size, **kwargs)
+                           batch_size=batch_size,
+                           excluded_fields=excluded_fields, **kwargs)
 
         for doc in cls._iterate_cursor(cur):
-            yield cls._from_augmented_son(doc, fields)
+            yield cls._from_augmented_son(doc, fields, excluded_fields)
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, timeout=False, **kwargs):
+                 slave_ok=False, timeout=False, excluded_fields=None,
+                 **kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
-                           sort, slave_ok=slave_ok, timeout=timeout, **kwargs)
+                           sort, slave_ok=slave_ok, timeout=timeout,
+                           excluded_fields=excluded_fields, **kwargs)
 
         return cur.distinct(cls._transform_key(key, cls)[0])
 
@@ -549,19 +565,21 @@ class Document(BaseDocument):
             yield doc
 
     @classmethod
-    def find_one(cls, spec, fields=None, skip=0, sort=None,
-                 slave_ok=False, **kwargs):
+    def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=False,
+                 excluded_fields=None, **kwargs):
         d = cls.find_raw(spec, fields, skip=skip, sort=sort,
-                         slave_ok=slave_ok, find_one=True, **kwargs)
+                         slave_ok=slave_ok, find_one=True,
+                         excluded_fields=excluded_fields, **kwargs)
 
         if d:
-            return cls._from_augmented_son(d, fields)
+            return cls._from_augmented_son(d, fields, excluded_fields)
         else:
             return None
 
     @classmethod
     def find_and_modify(cls, spec, update=None, sort=None, remove=False,
-            new=False, fields=None, upsert=False, **kwargs):
+                        new=False, fields=None, upsert=False,
+                        excluded_fields=None, **kwargs):
         spec = cls._transform_value(spec, cls)
         if update is not None:
             update = cls._transform_value(update, cls, op='$set')
@@ -580,13 +598,16 @@ class Document(BaseDocument):
 
             sort = new_sort
 
+        fields = cls._transform_fields(fields, excluded_fields)
+
         with log_slow_event("find_and_modify", cls._meta['collection'], spec):
-            result = cls._pymongo().find_and_modify(spec, sort=sort,
-                    remove=remove, update=update, new=new, fields=fields,
-                    upsert=upsert, **kwargs)
+            result = cls._pymongo().find_and_modify(
+                spec, sort=sort, remove=remove, update=update, new=new,
+                fields=fields, upsert=upsert, **kwargs
+            )
 
         if result:
-            return cls._from_augmented_son(result, fields)
+            return cls._from_augmented_son(result, fields, excluded_fields)
         else:
             return None
 

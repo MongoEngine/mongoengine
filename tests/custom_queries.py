@@ -351,6 +351,42 @@ class CustomQueryTest(unittest.TestCase):
         with self.assertRaises(mongoengine.base.FieldNotLoadedError):
             getattr(p1, 'name')
 
+    def testExcludeFields(self):
+        p = self.Person(age=10, name='Patrick')
+        p.save()
+
+        p1 = self.Person.find_one(
+            {'name': 'Patrick'},
+            excluded_fields=['name']
+        )
+
+        self.assertEqual(p1.id, p.id)
+        self.assertEqual(p1.age, 10)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p1, 'name')
+
+        p2 = self.Person.find_one(
+            {'name': 'Patrick'},
+            excluded_fields=['name', 'age']
+        )
+
+        self.assertEqual(p2.id, p.id)
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p2, 'age')
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p2, 'name')
+
+    def testIncludeAndExcludeFields(self):
+        p = self.Person(age=10, name='Sorey')
+        p.save()
+
+        with self.assertRaises(ValueError):
+            self.Person.find_one(
+                {'name': 'Sorey'},
+                fields=['age'],
+                excluded_fields=['name']
+            )
+
     def testQueryIn(self):
         query = {'_id': {'$in': [ObjectId(), ObjectId(), ObjectId()] } }
         self.assertEquals(self.User._transform_value(query, self.User), query)
