@@ -1379,7 +1379,7 @@ class BaseQuerySet(object):
             Can only do direct simple mappings and cannot map across
             :class:`~mongoengine.fields.ReferenceField` or
             :class:`~mongoengine.fields.GenericReferenceField` for more complex
-            counting a manual map reduce call would is required.
+            counting a manual map reduce call is required.
 
         If the field is a :class:`~mongoengine.fields.ListField`, the items within
         each list will be counted individually.
