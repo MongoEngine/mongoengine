@@ -276,6 +276,7 @@ class DocumentMetaclass(type):
 
         attrs['_fields'] = doc_fields
         attrs['_relationships'] = doc_relationships
+        attrs['_bulk_op'] = None
 
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():

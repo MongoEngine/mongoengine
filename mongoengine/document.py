@@ -2,6 +2,7 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError, MongoComment, get_document)
 from queryset import OperationError
 
+import contextlib
 import pymongo
 import time
 import greenlet
@@ -11,12 +12,14 @@ import socket
 import sys
 import traceback
 from timer import log_slow_event
+import warnings
 
 from bson import SON, ObjectId, DBRef
 from connection import _get_db, _get_slave_ok
 
 
-__all__ = ['Document', 'EmbeddedDocument', 'ValidationError', 'OperationError']
+__all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
+           'OperationError', 'BulkOperationError']
 
 # set the sleep function to be used after an AutoReconnect exception from
 # connection close. default to time.sleep(), but we can replace this with
@@ -25,6 +28,11 @@ _sleep = time.sleep
 OPS_EMAIL = 'ops@wish.com'
 SENTRY_DSN = 'threaded+http://008e8e98273346d782db8bc407917e76:' \
     'dedc6b38b0dd484fa4db1543a19cb0f5@sentry.i.wish.com/2'
+
+
+class BulkOperationError(OperationError):
+    pass
+
 
 class EmbeddedDocument(BaseDocument):
     """A :class:`~mongoengine.Document` that isn't stored in its own
@@ -90,6 +98,9 @@ class Document(BaseDocument):
             updates of existing documents
         :param validate: validates the document; set to ``False`` to skip.
         """
+        if self.__class__._bulk_op is not None:
+            warnings.warn('Non-bulk update inside bulk operation')
+
         if self._meta['hash_field']:
             # if we're hashing the ID and it hasn't been set yet, autogenerate it
             from fields import ObjectIdField
@@ -143,6 +154,131 @@ class Document(BaseDocument):
         obj = self.__class__.find_one(self._by_id_key(self[id_field]))
         for field in self._fields:
             setattr(self, field, obj[field])
+
+    @classmethod
+    @contextlib.contextmanager
+    def bulk(cls, allow_empty=None):
+        if cls._bulk_op is not None:
+            raise RuntimeError('Cannot nest bulk operations')
+        try:
+            cls._bulk_op = cls._pymongo().initialize_ordered_bulk_op()
+            cls._bulk_index = 0
+            cls._bulk_save_objects = dict()
+            yield
+            try:
+                w = cls._meta.get('write_concern', 1)
+                cls._bulk_op.execute(write_concern={'w': w})
+
+                for object_id, props in cls._bulk_save_objects.iteritems():
+                    instance = props['obj']
+                    if instance.id is None:
+                        id_field = cls.pk_field()
+                        id_name = id_field.name or 'id'
+                        instance[id_name] = id_field.to_python(object_id)
+            except pymongo.errors.BulkWriteError as e:
+                wc_errors = e.details.get('writeConcernErrors')
+                # only one write error should occur for an ordered op
+                w_error = e.details['writeErrors'][0] \
+                    if e.details.get('writeErrors') else None
+                if wc_errors:
+                    messages = '\n'.join(_['errmsg'] for _ in wc_errors)
+                    message = 'Write concern errors for bulk op: %s' % messages
+                elif w_error:
+                    for object_id, props in cls._bulk_save_objects.iteritems():
+                        if props['index'] < w_error['index']:
+                            instance = props['obj']
+                            if instance.id is None:
+                                id_field = cls.pk_field()
+                                id_name = id_field.name or 'id'
+                                instance[id_name] = \
+                                    id_field.to_python(object_id)
+                    message = 'Write errors for bulk op: %s' % \
+                        w_error['errmsg']
+
+                bo_error = BulkOperationError(message)
+                bo_error.details = e.details
+                if w_error:
+                    bo_error.op = w_error['op']
+                    bo_error.index = w_error['index']
+                raise bo_error
+            except pymongo.errors.InvalidOperation as e:
+                if 'No operations' in e.message:
+                    if allow_empty is None:
+                        warnings.warn('Empty bulk operation; use allow_empty')
+                    elif allow_empty is False:
+                        raise
+                    else:
+                        pass
+                else:
+                    raise
+        finally:
+            cls._bulk_op = None
+            cls._bulk_save_objects = None
+
+    @classmethod
+    def bulk_update(cls, spec, document, upsert=False, multi=True, **kwargs):
+        if cls._bulk_op is None:
+            raise RuntimeError('Cannot bulk update outside of bulk operation')
+
+        document = cls._transform_value(document, cls, op='$set')
+        spec = cls._transform_value(spec, cls)
+
+        if not document:
+            raise ValueError("Cannot do empty updates")
+
+        if not spec:
+            raise ValueError("Cannot do empty specs")
+
+        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
+
+        # pymongo's bulk operation support is based on chaining
+        if upsert:
+            op = cls._bulk_op.find(spec).upsert()
+        else:
+            op = cls._bulk_op.find(spec)
+
+        if multi:
+            op.update(document)
+        else:
+            op.update_one(document)
+
+        cls._bulk_index += 1
+
+    def bulk_save(self, validate=True):
+        cls = self.__class__
+        if cls._bulk_op is None:
+            raise RuntimeError('Cannot bulk save outside of bulk operation')
+
+        if validate:
+            self.validate()
+        doc = self.to_mongo()
+
+        id_field = cls.pk_field()
+        id_name = id_field.name or 'id'
+
+        if self[id_name] is None:
+            object_id = ObjectId()
+            doc[id_field.db_field] = id_field.to_mongo(object_id)
+        else:
+            object_id = self[id_name]
+
+        if cls._meta['hash_field']:
+            # id is not yet set on object
+            if cls._meta['hash_field'] == cls._meta['id_field']:
+                hash_value = object_id
+            else:
+                hash_value = self[cls._meta['hash_field']]
+
+            self['shard_hash'] = cls._hash(hash_value)
+            hash_field = cls._fields[cls._meta['hash_field']]
+            doc[hash_field.db_field] = hash_field.to_mongo(self['shard_hash'])
+
+        cls._bulk_op.insert(doc)
+        cls._bulk_save_objects[object_id] = {
+            'index': cls._bulk_index,
+            'obj': self
+        }
+        cls._bulk_index += 1
 
     @classmethod
     def pk_field(cls):
@@ -427,6 +563,9 @@ class Document(BaseDocument):
         # not an element inside the list (like in find)
         document = cls._transform_value(document, cls, op='$set')
         spec = cls._transform_value(spec, cls)
+
+        if cls._bulk_op is not None:
+            warnings.warn('Non-bulk update inside bulk operation')
 
         if not document:
             raise ValueError("Cannot do empty updates")

@@ -1,3 +1,4 @@
+import contextlib
 import pymongo
 import unittest
 import warnings
@@ -8,6 +9,8 @@ from mongoengine.connection import _get_db
 
 from bson import ObjectId, DBRef, SON
 import mock
+
+mongoengine.connection.set_default_db("test")
 
 class CustomQueryTest(unittest.TestCase):
 
@@ -978,6 +981,191 @@ class CustomQueryTest(unittest.TestCase):
         self.Person.remove({'name':'New Name'})
         self.assertEqual(remove_mock.call_count, 1)
         self.assertTrue('$comment' in _get_mock_spec_keys(remove_mock))
+
+
+class BulkOperationTest(unittest.TestCase):
+    def setUp(self):
+        warnings.simplefilter('always', category=UserWarning)
+        connect()
+        self.db = _get_db()
+        mongoengine.base._document_registry = {}
+
+        class Person(Document):
+            name = StringField()
+            age = IntField(default=20)
+
+        self.person_cls = Person
+
+    def tearDown(self):
+        warnings.simplefilter('default', category=UserWarning)
+        self.person_cls.drop_collection()
+
+    @contextlib.contextmanager
+    def assertWarns(self, warning_type=UserWarning):
+        with warnings.catch_warnings(record=True) as warning_list:
+
+            yield
+
+            self.assertTrue(
+                any(_.category == warning_type for _ in warning_list),
+                '%s not emitted' % warning_type.__name__
+            )
+
+    @contextlib.contextmanager
+    def assertDoesNotWarn(self):
+        with warnings.catch_warnings(record=True) as warning_list:
+
+            yield
+
+            self.assertFalse(
+                warning_list,
+                'Warnings unexpectedly emitted: %s' % warning_list
+            )
+
+    def test_can_bulk_insert(self):
+        names = ['Michael', 'Joel', 'Austin']
+        with self.person_cls.bulk():
+            for name in names:
+                person = self.person_cls(name=name)
+                person.bulk_save()
+        for name in names:
+            self.assertIsNotNone(self.person_cls.find_one({'name': name}))
+
+    def test_save_in_bulk_issues_warning(self):
+        with self.assertWarns():
+            with self.person_cls.bulk(allow_empty=True):
+                person = self.person_cls(name='Sean')
+                person.save()
+
+    def test_update_in_bulk_issues_warning(self):
+        person = self.person_cls(name='Alex')
+        person.save()
+        with self.assertWarns():
+            with self.person_cls.bulk(allow_empty=True):
+                self.person_cls.update(
+                    {'name': 'Alex'}, {'$set': {'age': 20}}
+                )
+
+    def test_failure_raises(self):
+        p_id = ObjectId()
+        person = self.person_cls(id=p_id, name='Kelly')
+        person.save()
+        with self.assertRaises(BulkOperationError):
+            with self.person_cls.bulk():
+                bad_person = self.person_cls(id=p_id, name='K2')
+                bad_person.bulk_save()
+
+    def test_failure_partially_updates(self):
+        person = self.person_cls(name='Patrick')
+        person.save(validate=False)
+        new_people = [
+            self.person_cls(name='David'),
+            self.person_cls(name='P2')
+        ]
+        # corrupt data
+        person._pymongo().update(
+            {'name': 'Patrick'},
+            {'$set': {'age': None}}
+        )
+        with self.assertRaises(BulkOperationError) as r:
+            with self.person_cls.bulk():
+                new_people[0].bulk_save()
+                self.person_cls.bulk_update(
+                    {'name': 'Patrick'},
+                    {'$inc': {'age': 1}},
+                )
+                new_people[1].bulk_save()
+        e = r.exception
+        self.assertEqual(e.index, 1)
+
+        self.assertIsNotNone(new_people[0].id)
+        self.assertIsNone(new_people[1].id)
+
+        david = self.person_cls.find_one({'name': 'David'})
+        self.assertEqual(david.id, new_people[0].id)
+
+    def test_update_multi(self):
+        person_s = self.person_cls(name='Sorey')
+        person_s.save()
+        person_j = self.person_cls(name='Jenna')
+        person_j.save()
+        with self.person_cls.bulk():
+            self.person_cls.bulk_update(
+                {'name': 'Sorey'}, {'$set': {'age': 20}}
+            )
+            self.person_cls.bulk_update(
+                {'name': 'Jenna'}, {'$set': {'age': 21}}
+            )
+
+        person_s.reload()
+        person_j.reload()
+
+        self.assertEqual(person_s.age, 20)
+        self.assertEqual(person_j.age, 21)
+
+    def test_update_and_insert(self):
+        person = self.person_cls(name='Lyla')
+        person.save()
+
+        with self.person_cls.bulk():
+            self.person_cls.bulk_update(
+                {'name': 'Lyla'}, {'$set': {'age': 30}}
+            )
+            new_person = self.person_cls(name='Kyle')
+            new_person.bulk_save()
+
+        person.reload()
+
+        self.assertEqual(person.age, 30)
+        self.assertIsNotNone(new_person.id)
+
+    def test_cannot_bulk_update_outside_bulk(self):
+        with self.assertRaises(RuntimeError):
+            self.person_cls.bulk_update(
+                {'name': 'Bad'}, {'$set': {'age': 99}}
+            )
+
+        person = self.person_cls(name='Good')
+        with self.person_cls.bulk():
+            person.bulk_save()
+
+        with self.assertRaises(RuntimeError):
+            self.person_cls.bulk_update(
+                {'name': 'Bad'}, {'$set': {'age': 99}}
+            )
+
+    def test_cannot_bulk_insert_outside_bulk(self):
+        person = self.person_cls(name='Bad')
+        with self.assertRaises(RuntimeError):
+            person.bulk_save()
+
+        ok_person = self.person_cls(name='Better')
+        with self.person_cls.bulk():
+            ok_person.bulk_save()
+
+        with self.assertRaises(RuntimeError):
+            person.bulk_save()
+
+    def test_cannot_nest_bulk_insert_blocks(self):
+        with self.person_cls.bulk(allow_empty=True):
+            with self.assertRaises(RuntimeError):
+                with self.person_cls.bulk():
+                    pass
+
+    def test_empty_bulk_op_warns(self):
+        with self.assertWarns():
+            with self.person_cls.bulk():
+                pass
+
+    def test_empty_bulk_op_not_allowed(self):
+        with self.assertRaises(pymongo.errors.InvalidOperation):
+            with self.person_cls.bulk(allow_empty=False):
+                pass
+
+    def test_empty_bulk_op_allowed(self):
+        with self.assertDoesNotWarn():
+            with self.person_cls.bulk(allow_empty=True):
+                pass
 
 if __name__ == '__main__':
     unittest.main()
