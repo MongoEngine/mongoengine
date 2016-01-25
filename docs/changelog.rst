@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Changes in 0.10.6 - Dev
-=======================
+Changes in 0.10.6
+=================
 - Add support for mocking MongoEngine based on mongomock. #1151
 - Fixed not being able to run tests on Windows. #1153
 - Allow creation of sparse compound indexes. #1114
