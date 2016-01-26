@@ -1625,6 +1625,12 @@ class FieldTest(unittest.TestCase):
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
 
+        # Ensure ObjectID's are accepted as references
+        user_object_id = user.pk
+        post3 = BlogPost(content="Chips and curry sauce taste good.")
+        post3.author = user_object_id
+        post3.save()
+
         User.drop_collection()
         BlogPost.drop_collection()
 

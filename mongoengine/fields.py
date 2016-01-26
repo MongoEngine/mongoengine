@@ -992,8 +992,8 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
 
-        if not isinstance(value, (self.document_type, DBRef)):
-            self.error("A ReferenceField only accepts DBRef or documents")
+        if not isinstance(value, (self.document_type, DBRef, ObjectId)):
+            self.error("A ReferenceField only accepts DBRef, ObjectId or documents")
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
@@ -1010,7 +1010,6 @@ class ReferenceField(BaseField):
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
-
 class CachedReferenceField(BaseField):
     """
     A referencefield with cache fields to purpose pseudo-joins
@@ -1024,8 +1023,8 @@ class CachedReferenceField(BaseField):
         :param fields:  A list of fields to be cached in document
         :param auto_sync: if True documents are auto updated.
         """
-        if not isinstance(document_type, basestring) and \
-                not issubclass(document_type, (Document, basestring)):
+        if not isinstance(document_type, str) and \
+                not issubclass(document_type, (Document, str)):
             self.error('Argument to CachedReferenceField constructor must be a'
                        ' document class or a string')
 
@@ -1044,7 +1043,7 @@ class CachedReferenceField(BaseField):
         if not created:
             update_kwargs = dict(
                 ('set__%s__%s' % (self.name, k), v)
-                for k, v in document._delta()[0].items()
+                for k, v in list(document._delta()[0].items())
                 if k in self.fields)
 
             if update_kwargs:
@@ -1065,7 +1064,7 @@ class CachedReferenceField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, basestring):
+        if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
@@ -1089,8 +1088,6 @@ class CachedReferenceField(BaseField):
         return super(CachedReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document):
-        id_field_name = self.document_type._meta['id_field']
-        id_field = self.document_type._fields[id_field_name]
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
@@ -1098,16 +1095,32 @@ class CachedReferenceField(BaseField):
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
+            cls = document
+            
+            id_field_name = cls._meta['id_field']
+            id_field = cls._fields[id_field_name]
+
+            value = SON((
+                ("_id", id_field.to_mongo(id_)),
+            ))
+
+            value.update(dict(document.to_mongo(fields=self.fields)))
+            return value
+        elif isinstance(document, ObjectId):
+            id_ = document
+            cls = self.document_type
+            collection_name = cls._meta['collection']
+            
+            ref_doc = self.document_type_obj.objects(id=document).get()
+
+            value = SON((
+                ("_id", document),
+            ))
+            value.update(dict(ref_doc.to_mongo(fields=self.fields)))
+            return value
         else:
-            self.error('Only accept a document object')
-            # TODO: should raise here or will fail next statement
+            raise NotImplementedError('Cached Reference Field was passed something other than an objectId or document')
 
-        value = SON((
-            ("_id", id_field.to_mongo(id_)),
-        ))
-
-        value.update(dict(document.to_mongo(fields=self.fields)))
-        return value
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -1118,13 +1131,14 @@ class CachedReferenceField(BaseField):
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
             return {'_id': value.pk}
-
-        raise NotImplementedError
+        
+        super(CachedReferenceField, self).prepare_query_value(op, value)
+        return self.to_mongo(value)
 
     def validate(self, value):
 
-        if not isinstance(value, self.document_type):
-            self.error("A CachedReferenceField only accepts documents")
+        if not isinstance(value, (self.document_type, ObjectId)):
+            self.error("A CachedReferenceField only accepts ObjectId or documents")
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
