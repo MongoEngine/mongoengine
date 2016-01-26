@@ -679,6 +679,19 @@ class InstanceTest(unittest.TestCase):
         doc = Doc.objects.get()
         self.assertHasInstance(doc.embedded_field[0], doc)
 
+    def test_embedded_document_complex_instance_no_use_db_field(self):
+        """Ensure that use_db_field is propagated to list of Emb Docs
+        """
+        class Embedded(EmbeddedDocument):
+            string = StringField(db_field='s')
+
+        class Doc(Document):
+            embedded_field = ListField(EmbeddedDocumentField(Embedded))
+
+        d = Doc(embedded_field=[Embedded(string="Hi")]).to_mongo(
+            use_db_field=False).to_dict()
+        self.assertEqual(d['embedded_field'], [{'string': 'Hi'}])
+
     def test_instance_is_set_on_setattr(self):
 
         class Email(EmbeddedDocument):

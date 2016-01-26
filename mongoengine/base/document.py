@@ -325,20 +325,17 @@ class BaseDocument(object):
 
             if value is not None:
 
-                if isinstance(field, EmbeddedDocumentField):
-                    if fields:
-                        key = '%s.' % field_name
-                        embedded_fields = [
-                            i.replace(key, '') for i in fields
-                            if i.startswith(key)]
+                if fields:
+                    key = '%s.' % field_name
+                    embedded_fields = [
+                        i.replace(key, '') for i in fields
+                        if i.startswith(key)]
 
-                    else:
-                        embedded_fields = []
-
-                    value = field.to_mongo(value, use_db_field=use_db_field,
-                                           fields=embedded_fields)
                 else:
-                    value = field.to_mongo(value)
+                    embedded_fields = []
+
+                value = field.to_mongo(value, use_db_field=use_db_field,
+                                        fields=embedded_fields)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
