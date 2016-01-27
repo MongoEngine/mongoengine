@@ -629,7 +629,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
-            for k, m in group_obj.members.iteritems():
+            for m in group_obj.members.itervalues():
                 self.assertTrue(isinstance(m, User))
 
         # Document select_related
@@ -802,7 +802,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
-            for k, m in group_obj.members.iteritems():
+            for m in group_obj.members.itervalues():
                 self.assertTrue(isinstance(m, UserA))
 
         # Document select_related
@@ -890,7 +890,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
-            for k, m in group_obj.members.iteritems():
+            for m in group_obj.members.itervalues():
                 self.assertTrue('User' in m.__class__.__name__)
 
         # Document select_related
