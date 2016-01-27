@@ -4,8 +4,6 @@ sys.path[0:0] = [""]
 import unittest
 import warnings
 
-from datetime import datetime
-
 from tests.fixtures import Base
 
 from mongoengine import Document, EmbeddedDocument, connect

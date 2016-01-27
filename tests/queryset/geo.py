@@ -5,7 +5,6 @@ sys.path[0:0] = [""]
 import unittest
 from datetime import datetime, timedelta
 
-from pymongo.errors import OperationFailure
 from mongoengine import *
 from mongoengine.connection import get_connection
 from nose.plugins.skip import SkipTest
