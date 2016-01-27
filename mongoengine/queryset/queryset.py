@@ -154,10 +154,3 @@ class QuerySetNoCache(BaseQuerySet):
             queryset = self.clone()
         queryset.rewind()
         return queryset
-
-
-class QuerySetNoDeRef(QuerySet):
-    """Special no_dereference QuerySet"""
-
-    def __dereference(items, max_depth=1, instance=None, name=None):
-        return items
