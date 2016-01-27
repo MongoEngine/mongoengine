@@ -232,7 +232,7 @@ class TransformTest(unittest.TestCase):
         box = [(35.0, -125.0), (40.0, -100.0)]
         # I *meant* to execute location__within_box=box
         events = Event.objects(location__within=box)
-        self.assertRaises(InvalidQueryError, lambda: events.count())
+        self.assertRaises(InvalidQueryError, events.count)
 
 if __name__ == '__main__':
     unittest.main()

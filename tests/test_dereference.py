@@ -383,7 +383,7 @@ class FieldTest(unittest.TestCase):
 
         class Person(Document):
             name = StringField()
-            other = EmbeddedDocumentField(Other, default=lambda: Other())
+            other = EmbeddedDocumentField(Other, default=Other)
 
             def __repr__(self):
                 return "<Person: %s>" % self.name
