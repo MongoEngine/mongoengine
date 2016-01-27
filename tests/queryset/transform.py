@@ -42,7 +42,7 @@ class TransformTest(unittest.TestCase):
         Doc.drop_collection()
 
         doc = Doc().save()
-        dic_doc = DicDoc().save()
+        DicDoc().save()
 
         for k, v in (("set", "$set"), ("set_on_insert", "$setOnInsert"), ("push", "$push")):
             update = transform.update(DicDoc, **{"%s__dictField__test" % k: doc})
