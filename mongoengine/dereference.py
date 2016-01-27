@@ -238,5 +238,4 @@ class DeReference(object):
             if is_list:
                 return tuple(data) if as_tuple else list_type(data, instance, name)
             return BaseDict(data, instance, name)
-        depth += 1
         return data
