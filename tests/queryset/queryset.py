@@ -4114,6 +4114,10 @@ class QuerySetTest(unittest.TestCase):
                       Foo(shape="circle", color="purple", thick=False)])
         b2.save()
 
+        b3 = Bar(foo=[Foo(shape="square", thick=True),
+                      Foo(shape="circle", color="purple", thick=False)])
+        b3.save()
+
         ak = list(
             Bar.objects(foo__match={'shape': "square", "color": "purple"}))
         self.assertEqual([b1], ak)
@@ -4133,6 +4137,13 @@ class QuerySetTest(unittest.TestCase):
             Bar.objects(foo__match={'shape': "square", "color__exists": True}))
         self.assertEqual([b1, b2], ak)
 
+        ak = list(
+            Bar.objects(foo__elemMatch={'shape': "square", "color__exists": False}))
+        self.assertEqual([b3], ak)
+
+        ak = list(
+            Bar.objects(foo__match={'shape': "square", "color__exists": False}))
+        self.assertEqual([b3], ak)
 
     def test_upsert_includes_cls(self):
         """Upserts should include _cls information for inheritable classes
