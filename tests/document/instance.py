@@ -1906,6 +1906,62 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
 
+    def test_reverse_delete_rule_with_custom_id_field(self):
+        """Ensure that a referenced document with custom primary key
+        is also deleted upon deletion.
+        """
+        class User(Document):
+            name = StringField(primary_key=True)
+
+        class Book(Document):
+            author = ReferenceField(User, reverse_delete_rule=CASCADE)
+            reviewer = ReferenceField(User, reverse_delete_rule=NULLIFY)
+
+        User.drop_collection()
+        Book.drop_collection()
+
+        user = User(name='Mike').save()
+        reviewer = User(name='John').save()
+        book = Book(author=user, reviewer=reviewer).save()
+
+        reviewer.delete()
+        self.assertEqual(Book.objects.count(), 1)
+        self.assertEqual(Book.objects.get().reviewer, None)
+
+        user.delete()
+        self.assertEqual(Book.objects.count(), 0)
+
+    def test_reverse_delete_rule_with_shared_id_among_collections(self):
+        """Ensure that cascade delete rule doesn't mix id among collections.
+        """
+        class User(Document):
+            id = IntField(primary_key=True)
+
+        class Book(Document):
+            id = IntField(primary_key=True)
+            author = ReferenceField(User, reverse_delete_rule=CASCADE)
+
+        User.drop_collection()
+        Book.drop_collection()
+
+        user_1 = User(id=1).save()
+        user_2 = User(id=2).save()
+        book_1 = Book(id=1, author=user_2).save()
+        book_2 = Book(id=2, author=user_1).save()
+
+        user_2.delete()
+        # Deleting user_2 should also delete book_1 but not book_2
+        self.assertEqual(Book.objects.count(), 1)
+        self.assertEqual(Book.objects.get(), book_2)
+
+        user_3 = User(id=3).save()
+        book_3 = Book(id=3, author=user_3).save()
+
+        user_3.delete()
+        # Deleting user_3 should also delete book_3
+        self.assertEqual(Book.objects.count(), 1)
+        self.assertEqual(Book.objects.get(), book_2)
+
     def test_reverse_delete_rule_with_document_inheritance(self):
         """Ensure that a referenced document is also deleted upon deletion
         of a child document.

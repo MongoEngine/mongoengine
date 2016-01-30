@@ -403,8 +403,10 @@ class BaseQuerySet(object):
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
-                for ref in queryset:
-                    cascade_refs.add(ref.id)
+                # Handle recursive reference
+                if doc._collection == document_cls._collection:
+                    for ref in queryset:
+                        cascade_refs.add(ref.id)
                 ref_q = document_cls.objects(**{field_name + '__in': self, 'id__nin': cascade_refs})
                 ref_q_count = ref_q.count()
                 if ref_q_count > 0:

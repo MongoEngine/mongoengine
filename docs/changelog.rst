@@ -5,6 +5,7 @@ Changelog
 Changes in 0.10.7 - DEV
 =======================
 - Fixed not being able to specify `use_db_field=False` on `ListField(EmbeddedDocumentField)` instances
+- Fixed cascade delete mixing among collections #1224
 
 Changes in 0.10.6
 =================
