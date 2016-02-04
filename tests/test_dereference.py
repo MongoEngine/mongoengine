@@ -1284,5 +1284,48 @@ class FieldTest(unittest.TestCase):
 
             self.assertEqual(q, 2)
 
+    def test_select_related_reuse_fetched(self):
+        class Node(Document):
+            parent = ReferenceField('self')
+
+        Node.drop_collection()
+
+        root = Node.objects.create()
+        Node.objects.create(parent=root)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            [node.parent for node in Node.objects.select_related()]
+            self.assertEqual(q, 1)
+
+    def test_select_related_follows_referencefields(self):
+        class Human(Document):
+            pass
+
+        class Car(Document):
+            owner = ReferenceField(Human)
+
+        class ParkingSlot(Document):
+            owner = ReferenceField(Human)
+            car = ReferenceField(Car)
+
+        Human.drop_collection()
+        Car.drop_collection()
+        ParkingSlot.drop_collection()
+
+        for _ in range(24):
+            owner = Human.objects.create()
+            car = Car.objects.create(owner=owner)
+            ParkingSlot.objects.create(owner=owner, car=car)
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            parking_slots = ParkingSlot.objects.select_related(max_depth=2)
+            self.assertEqual(q, 3)
+            for parking_slot in parking_slots:
+                parking_slot.owner
+                parking_slot.car.owner
+            self.assertEqual(q, 3)
+
 if __name__ == '__main__':
     unittest.main()
