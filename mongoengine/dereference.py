@@ -72,10 +72,20 @@ class DeReference(object):
                             if not isinstance(v, (DBRef, Document)) else (k, v)
                             for k, v in items.iteritems()]
                         )
+        # do not fetch already fetched top-level documents
+        self.object_map = dict(
+            ((item._get_collection_name(), item.id), item)
+            for item in items if isinstance(item, Document)
+        )
 
         self.reference_map = self._find_references(items)
-        self.object_map = self._fetch_objects(doc_type=doc_type)
-        return self._attach_objects(items, 0, instance, name)
+        if not self.reference_map:  # still need to attach objects for DictField(s) and ListField(s)
+            return self._attach_objects(items, 0, instance, name)
+        while self.reference_map:  # keep going until there are some references down to max_depth
+            self.object_map = self._fetch_objects(doc_type=doc_type)
+            items = self._attach_objects(items, 0, instance, name)
+            self.reference_map = self._find_references(items)
+        return items
 
     def _find_references(self, items, depth=0):
         """
@@ -111,6 +121,12 @@ class DeReference(object):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, set()).update(refs)
+                    # `depth + 1` because for some reason there are increments in def select_related
+                    # for both Document and Queryset and I don't want to break backward compatibility for now
+                    elif isinstance(v, Document) and depth + 1 < self.max_depth:
+                        references = self._find_references([v], depth + 1)
+                        for key, refs in references.iteritems():
+                            reference_map.setdefault(key, set()).update(refs)
             elif isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and '_ref' in item:
@@ -125,12 +141,17 @@ class DeReference(object):
     def _fetch_objects(self, doc_type=None):
         """Fetch all references and convert to their document objects
         """
-        object_map = {}
+        # reuse object map
+        object_map = self.object_map
         for collection, dbrefs in self.reference_map.iteritems():
             if hasattr(collection, 'objects'):  # We have a document class for the refs
                 col_name = collection._get_collection_name()
                 refs = [dbref for dbref in dbrefs
                         if (col_name, dbref) not in object_map]
+
+                if not refs:  # there is nothing to fetch
+                    continue
+
                 references = collection.objects.in_bulk(refs)
                 for key, doc in references.iteritems():
                     object_map[(col_name, key)] = doc
@@ -140,6 +161,9 @@ class DeReference(object):
 
                 refs = [dbref for dbref in dbrefs
                         if (collection, dbref) not in object_map]
+
+                if not refs:
+                    continue
 
                 if doc_type:
                     references = doc_type._get_db()[collection].find({'_id': {'$in': refs}})
@@ -228,6 +252,12 @@ class DeReference(object):
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         item_name = "{0}.{1}.{2}".format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)
+                    # `depth + 1` for the same reason as in `_find_references`
+                    elif isinstance(v, Document) and depth + 1 < self.max_depth:
+                        item_name = "{0}_{1}".format(name, field_name)
+                        data[k]._data[field_name] = (
+                            self._attach_objects([v], depth + 1, instance=instance, name=item_name)[0]
+                        )
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name
                 data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
