@@ -266,7 +266,8 @@ class BaseQuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
+    def insert(self, doc_or_docs, load_bulk=True,
+               write_concern=None, signal_kwargs=None):
         """bulk insert documents
 
         :param doc_or_docs: a document or list of documents to be inserted
@@ -279,11 +280,15 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
+        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
 
         .. versionadded:: 0.5
+        .. versionchanged:: 0.10.7
+            Add signal_kwargs argument
         """
         Document = _import_class('Document')
 
@@ -305,7 +310,9 @@ class BaseQuerySet(object):
                 msg = "Some documents have ObjectIds use doc.update() instead"
                 raise OperationError(msg)
 
-        signals.pre_bulk_insert.send(self._document, documents=docs)
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_bulk_insert.send(self._document,
+                                     documents=docs, **signal_kwargs)
 
         raw = [doc.to_mongo() for doc in docs]
         try:
@@ -324,7 +331,7 @@ class BaseQuerySet(object):
 
         if not load_bulk:
             signals.post_bulk_insert.send(
-                self._document, documents=docs, loaded=False)
+                self._document, documents=docs, loaded=False, **signal_kwargs)
             return return_one and ids[0] or ids
 
         documents = self.in_bulk(ids)
@@ -332,7 +339,7 @@ class BaseQuerySet(object):
         for obj_id in ids:
             results.append(documents.get(obj_id))
         signals.post_bulk_insert.send(
-            self._document, documents=results, loaded=True)
+            self._document, documents=results, loaded=True, **signal_kwargs)
         return return_one and results[0] or results
 
     def count(self, with_limit_and_skip=False):

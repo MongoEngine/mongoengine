@@ -250,7 +250,7 @@ class Document(BaseDocument):
 
     def save(self, force_insert=False, validate=True, clean=True,
              write_concern=None, cascade=None, cascade_kwargs=None,
-             _refs=None, save_condition=None, **kwargs):
+             _refs=None, save_condition=None, signal_kwargs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -276,6 +276,8 @@ class Document(BaseDocument):
         :param save_condition: only perform save if matching record in db
             satisfies condition(s) (e.g. version number).
             Raises :class:`OperationError` if the conditions are not satisfied
+        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
 
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
@@ -297,8 +299,11 @@ class Document(BaseDocument):
             :class:`OperationError` exception raised if save_condition fails.
         .. versionchanged:: 0.10.1
             :class: save_condition failure now raises a `SaveConditionError`
+        .. versionchanged:: 0.10.7
+            Add signal_kwargs argument
         """
-        signals.pre_save.send(self.__class__, document=self)
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
         if validate:
             self.validate(clean=clean)
@@ -311,7 +316,7 @@ class Document(BaseDocument):
         created = ('_id' not in doc or self._created or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
-                                              created=created)
+                                              created=created, **signal_kwargs)
 
         try:
             collection = self._get_collection()
@@ -400,7 +405,8 @@ class Document(BaseDocument):
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
-        signals.post_save.send(self.__class__, document=self, created=created)
+        signals.post_save.send(self.__class__, document=self,
+                               created=created, **signal_kwargs)
         self._clear_changed_fields()
         self._created = False
         return self
@@ -476,18 +482,24 @@ class Document(BaseDocument):
         # Need to add shard key to query, or you get an error
         return self._qs.filter(**self._object_key).update_one(**kwargs)
 
-    def delete(self, **write_concern):
+    def delete(self, signal_kwargs=None, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
+        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
             ``getLastError`` command.  For example,
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
+
+        .. versionchanged:: 0.10.7
+            Add signal_kwargs argument
         """
-        signals.pre_delete.send(self.__class__, document=self)
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_delete.send(self.__class__, document=self, **signal_kwargs)
 
         # Delete FileFields separately 
         FileField = _import_class('FileField')
@@ -501,7 +513,7 @@ class Document(BaseDocument):
         except pymongo.errors.OperationFailure, err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
-        signals.post_delete.send(self.__class__, document=self)
+        signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
     def switch_db(self, db_alias, keep_created=True):
         """
