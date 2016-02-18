@@ -4,6 +4,7 @@ import pymongo
 from bson import SON
 
 from mongoengine.base.fields import UPDATE_OPERATORS
+from mongoengine.base import BaseDocument
 from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidQueryError
@@ -98,6 +99,15 @@ def query(_doc_cls=None, **kwargs):
                         value = value['_id']
 
             elif op in ('in', 'nin', 'all', 'near') and not isinstance(value, dict):
+                if isinstance(value, BaseDocument):
+                    # MongoEngine documents are iterable but that isn't what
+                    # these operators are expecting, e.g.
+                    # using      `BlogPost.objects(authors__in=author)`
+                    # instead of `BlogPost.objects(authors__in=[author])`
+                    raise TypeError('When using the `in`, `nin`, `all`, or ' \
+                                    '`near` operators you must use an ' \
+                                    'iterable, please wrap your object in a ' \
+                                    'list (object -> [object]).')
                 # 'in', 'nin' and 'all' require a list of values
                 value = [field.prepare_query_value(op, v) for v in value]
 

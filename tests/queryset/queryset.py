@@ -4899,5 +4899,41 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
 
+    def test_in_operator_on_non_iterable(self):
+        """Ensure that using the `__in` operator on a non-iterable raises an
+        error.
+        """
+        class User(Document):
+            name = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            authors = ListField(ReferenceField(User))
+
+        User.drop_collection()
+        BlogPost.drop_collection()
+
+        author = User(name='Test User')
+        author.save()
+        post = BlogPost(content='Had a good coffee today...', authors=[author])
+        post.save()
+
+        blog_posts = BlogPost.objects(authors__in=[author])
+        self.assertEqual(list(blog_posts), [post])
+
+        with self.assertRaises(TypeError):
+            # Using the `__in`-operator with a non-iterable should raise a
+            # TypeError
+            BlogPost.objects(authors__in=author).count()
+
+        # Check correct usage
+        try:
+            BlogPost.objects(authors__in=[author]).count()
+        except TypeError:
+            self.fail("Using __in-operator raised type error when it shouldn't have")
+
+        User.drop_collection()
+        BlogPost.drop_collection()
+
 if __name__ == '__main__':
     unittest.main()
