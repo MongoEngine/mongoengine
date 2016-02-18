@@ -1551,6 +1551,8 @@ class FieldTest(unittest.TestCase):
             name = StringField()
             preferences = EmbeddedDocumentField(PersonPreferences)
 
+        Person.drop_collection()
+
         person = Person(name='Test User')
         person.preferences = 'My Preferences'
         self.assertRaises(ValidationError, person.validate)
@@ -1582,6 +1584,8 @@ class FieldTest(unittest.TestCase):
         class BlogPost(Document):
             content = StringField()
             author = EmbeddedDocumentField(User)
+
+        BlogPost.drop_collection()
 
         post = BlogPost(content='What I did today...')
         post.author = PowerUser(name='Test User', power=47)
