@@ -1593,6 +1593,31 @@ class FieldTest(unittest.TestCase):
 
         self.assertEqual(47, BlogPost.objects.first().author.power)
 
+    def test_embedded_document_inheritance_with_list(self):
+        """Ensure that nested list of subclassed embedded documents is
+        handled correctly.
+        """
+
+        class Group(EmbeddedDocument):
+            name = StringField()
+            content = ListField(StringField())
+
+        class Basedoc(Document):
+            groups = ListField(EmbeddedDocumentField(Group))
+            meta = {'abstract': True}
+
+        class User(Basedoc):
+            doctype = StringField(require=True, default='userdata')
+
+        User.drop_collection()
+
+        content = ['la', 'le', 'lu']
+        group = Group(name='foo', content=content)
+        foobar = User(groups=[group])
+        foobar.save()
+
+        self.assertEqual(content, User.objects.first().groups[0].content)
+
     def test_reference_validation(self):
         """Ensure that invalid docment objects cannot be assigned to reference
         fields.

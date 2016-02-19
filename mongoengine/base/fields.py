@@ -285,8 +285,6 @@ class ComplexBaseField(BaseField):
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
-        Document = _import_class('Document')
-
         if isinstance(value, basestring):
             return value
 
@@ -306,6 +304,7 @@ class ComplexBaseField(BaseField):
             value_dict = dict([(key, self.field.to_python(item))
                                for key, item in value.items()])
         else:
+            Document = _import_class('Document')
             value_dict = {}
             for k, v in value.items():
                 if isinstance(v, Document):
