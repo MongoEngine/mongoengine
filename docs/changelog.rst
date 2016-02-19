@@ -7,6 +7,7 @@ Changes in 0.10.7 - DEV
 - Fixed not being able to specify `use_db_field=False` on `ListField(EmbeddedDocumentField)` instances
 - Fixed cascade delete mixing among collections #1224
 - Add `signal_kwargs` argument to `Document.save`, `Document.delete` and `BaseQuerySet.insert` to be passed to signals calls #1206
+- Raise `OperationError` when trying to do a `drop_collection` on document with no collection set.
 
 Changes in 0.10.6
 =================

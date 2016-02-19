@@ -2285,6 +2285,16 @@ class FieldTest(unittest.TestCase):
         Member.drop_collection()
         BlogPost.drop_collection()
 
+    def test_drop_abstract_document(self):
+        """Ensure that an abstract document cannot be dropped given it
+        has no underlying collection.
+        """
+        class AbstractDoc(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        self.assertRaises(OperationError, AbstractDoc.drop_collection)
+
     def test_reference_class_with_abstract_parent(self):
         """Ensure that a class with an abstract parent can be referenced.
         """

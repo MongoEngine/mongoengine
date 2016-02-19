@@ -679,10 +679,20 @@ class Document(BaseDocument):
     def drop_collection(cls):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
+
+        Raises :class:`OperationError` if the document has no collection set
+        (i.g. if it is `abstract`)
+
+        .. versionchanged:: 0.10.7
+            :class:`OperationError` exception raised if no collection available
         """
+        col_name = cls._get_collection_name()
+        if not col_name:
+            raise OperationError('Document %s has no collection defined '
+                                 '(is it abstract ?)' % cls)
         cls._collection = None
         db = cls._get_db()
-        db.drop_collection(cls._get_collection_name())
+        db.drop_collection(col_name)
 
     @classmethod
     def create_index(cls, keys, background=False, **kwargs):
