@@ -399,19 +399,35 @@ class FieldTest(unittest.TestCase):
         class Person(Document):
             height = FloatField(min_value=0.1, max_value=3.5)
 
+        class BigPerson(Document):
+            height = FloatField()
+
         person = Person()
         person.height = 1.89
         person.validate()
 
         person.height = '2.0'
         self.assertRaises(ValidationError, person.validate)
+
         person.height = 0.01
         self.assertRaises(ValidationError, person.validate)
+
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
         person_2 = Person(height='something invalid')
         self.assertRaises(ValidationError, person_2.validate)
+
+        big_person = BigPerson()
+
+        big_person.height = 1L
+        big_person.validate()
+
+        big_person.height = 2 ** 500
+        big_person.validate()
+
+        big_person.height = 2 ** 100000  # Too big for a float value
+        self.assertRaises(ValidationError, big_person.validate)
 
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.

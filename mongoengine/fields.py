@@ -260,10 +260,14 @@ class FloatField(BaseField):
         return value
 
     def validate(self, value):
-        if isinstance(value, int):
-            value = float(value)
+        if isinstance(value, (int, long)):
+            try:
+                value = float(value)
+            except OverflowError:
+                self.error('The value is too large to be converted to float')
+
         if not isinstance(value, float):
-            self.error('FloatField only accepts float values')
+            self.error('FloatField only accepts float, int and long values')
 
         if self.min_value is not None and value < self.min_value:
             self.error('Float value is too small')
