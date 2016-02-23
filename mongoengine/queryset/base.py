@@ -1705,7 +1705,7 @@ class BaseQuerySet(object):
             key = key.replace('__', '.')
             try:
                 key = self._document._translate_field_name(key)
-            except:
+            except Exception:
                 pass
             key_list.append((key, direction))
 

@@ -65,7 +65,7 @@ class StringField(BaseField):
             return value
         try:
             value = value.decode('utf-8')
-        except:
+        except Exception:
             pass
         return value
 
@@ -194,7 +194,7 @@ class IntField(BaseField):
     def validate(self, value):
         try:
             value = int(value)
-        except:
+        except Exception:
             self.error('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -228,7 +228,7 @@ class LongField(BaseField):
     def validate(self, value):
         try:
             value = long(value)
-        except:
+        except Exception:
             self.error('%s could not be converted to long' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -508,7 +508,7 @@ class ComplexDateTimeField(StringField):
         original_value = value
         try:
             return self._convert_from_string(value)
-        except:
+        except Exception:
             return original_value
 
     def to_mongo(self, value, **kwargs):
@@ -1370,7 +1370,7 @@ class GridFSProxy(object):
             if self.gridout is None:
                 self.gridout = self.fs.get(self.grid_id)
             return self.gridout
-        except:
+        except Exception:
             # File has been deleted
             return None
 
@@ -1408,7 +1408,7 @@ class GridFSProxy(object):
         else:
             try:
                 return gridout.read(size)
-            except:
+            except Exception:
                 return ""
 
     def delete(self):
@@ -1473,7 +1473,7 @@ class FileField(BaseField):
             if grid_file:
                 try:
                     grid_file.delete()
-                except:
+                except Exception:
                     pass
 
             # Create a new proxy object as we don't already have one
@@ -1841,7 +1841,7 @@ class UUIDField(BaseField):
                 if not isinstance(value, basestring):
                     value = unicode(value)
                 return uuid.UUID(value)
-            except:
+            except Exception:
                 return original_value
         return value
 

@@ -133,7 +133,7 @@ class BaseField(object):
                 if (self.name not in instance._data or
                         instance._data[self.name] != value):
                     instance._mark_as_changed(self.name)
-            except:
+            except Exception:
                 # Values cant be compared eg: naive and tz datetimes
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
@@ -440,7 +440,7 @@ class ObjectIdField(BaseField):
         try:
             if not isinstance(value, ObjectId):
                 value = ObjectId(value)
-        except:
+        except Exception:
             pass
         return value
 
@@ -459,7 +459,7 @@ class ObjectIdField(BaseField):
     def validate(self, value):
         try:
             ObjectId(unicode(value))
-        except:
+        except Exception:
             self.error('Invalid Object ID')
 
 
@@ -511,7 +511,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid Polygon must contain at least one valid linestring"
 
         errors = []
@@ -535,7 +535,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid LineString must contain at least one valid point"
 
         errors = []
@@ -566,7 +566,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid MultiPoint must contain at least one valid point"
 
         errors = []
@@ -585,7 +585,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid MultiLineString must contain at least one valid linestring"
 
         errors = []
@@ -607,7 +607,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0][0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid MultiPolygon must contain at least one valid Polygon"
 
         errors = []
