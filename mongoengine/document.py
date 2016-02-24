@@ -981,7 +981,7 @@ class MapReduceDocument(object):
         if not isinstance(self.key, id_field_type):
             try:
                 self.key = id_field_type(self.key)
-            except:
+            except Exception:
                 raise Exception("Could not cast key as %s" %
                                 id_field_type.__name__)
 
