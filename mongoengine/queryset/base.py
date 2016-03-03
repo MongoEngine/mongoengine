@@ -414,7 +414,7 @@ class BaseQuerySet(object):
                 if doc._collection == document_cls._collection:
                     for ref in queryset:
                         cascade_refs.add(ref.id)
-                ref_q = document_cls.objects(**{field_name + '__in': self, 'id__nin': cascade_refs})
+                ref_q = document_cls.objects(**{field_name + '__in': self, 'pk__nin': cascade_refs})
                 ref_q_count = ref_q.count()
                 if ref_q_count > 0:
                     ref_q.delete(write_concern=write_concern, cascade_refs=cascade_refs)
