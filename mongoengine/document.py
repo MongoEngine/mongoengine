@@ -297,7 +297,8 @@ class Document(BaseDocument):
             return obj
 
 
-        # excluding _id is a special case in mongo
+        # _id is always loaded unless it is specifically excluded
+        obj._fields_status['_id'] = FieldStatus.LOADED
         if '_id' in fields:
             value = fields.pop('_id')
             if value == 0:

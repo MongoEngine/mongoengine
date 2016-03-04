@@ -313,8 +313,8 @@ class ListField(BaseField):
 
         if isinstance(self.field, ReferenceField):
             # Get value from document instance if available
-            value_list = instance._raw_data.get(self.name)
-            if value_list:
+            if self.db_field in instance._lazy_data:
+                value_list = instance._lazy_data.pop(self.db_field)
                 deref_list = []
                 for value in value_list:
                     # Dereference DBRefs
@@ -326,8 +326,8 @@ class ListField(BaseField):
                 instance._raw_data[self.name] = deref_list
 
         if isinstance(self.field, GenericReferenceField):
-            value_list = instance._raw_data.get(self.name)
-            if value_list:
+            if self.db_field in instance._lazy_data:
+                value_list = instance._lazy_data.pop(self.db_field)
                 deref_list = []
                 for value in value_list:
                     # Dereference DBRefs
@@ -338,6 +338,18 @@ class ListField(BaseField):
                 instance._raw_data[self.name] = deref_list
 
         return super(ListField, self).__get__(instance, owner)
+
+    def __set__(self, instance, value):
+        super(ListField, self).__set__(instance, value)
+        # store a list of dbrefs as lazy
+        # only check one value - assuming nobody would set a mix of
+        #                        documents and dbrefs...
+        if value\
+           and isinstance(self.field, (ReferenceField, GenericReferenceField))\
+           and isinstance(value[0], (bson.son.SON, bson.dbref.DBRef)):
+            del instance._raw_data[self.name]
+            instance._lazy_data[self.db_field] = value
+
 
     def to_python(self, value):
         return [self.field.to_python(item) for item in value]
@@ -467,11 +479,13 @@ class ReferenceField(BaseField):
             # Document class being used rather than a document object
             return self
 
-        # Get value from document instance if available
-        value = instance._raw_data.get(self.name)
-        # Dereference DBRefs
-        if isinstance(value, (bson.dbref.DBRef)):
-            value = self.dereference(value)
+        # assertion: for this field, a DBRef will not be in _raw_data;
+        #            similarly, a Document will not be in _lazy_data
+
+        if self.db_field in instance._lazy_data:
+            value = instance._lazy_data.pop(self.db_field)
+            if isinstance(value, bson.dbref.DBRef):
+                value = self.dereference(value)
             if value is not None:
                 instance._raw_data[self.name] = value
             else:
@@ -484,6 +498,13 @@ class ReferenceField(BaseField):
                 )
 
         return super(ReferenceField, self).__get__(instance, owner)
+
+    def __set__(self, instance, value):
+        super(ReferenceField, self).__set__(instance, value)
+        if isinstance(value, bson.dbref.DBRef):
+            # DBRefs cannot be in _raw_data
+            del instance._raw_data[self.name]
+            instance._lazy_data[self.db_field] = value
 
     def to_mongo(self, document):
         id_field_name = self.document_type._meta['id_field']
@@ -540,11 +561,19 @@ class GenericReferenceField(BaseField):
         if instance is None:
             return self
 
-        value = instance._raw_data.get(self.name)
-        if isinstance(value, (dict, bson.son.SON)):
-            instance._raw_data[self.name] = self.dereference(value)
+        if self.name in instance._lazy_data:
+            value = instance._lazy_data.pop(self.name)
+            if isinstance(value, (dict, bson.son.SON)):
+                value = self.dereference(value)
+            instance._raw_data[self.name] = value
 
         return super(GenericReferenceField, self).__get__(instance, owner)
+
+    def __set__(self, instance, value):
+        super(GenericReferenceField, self).__set__(instance, value)
+        if isinstance(value, (dict, bson.son.SON)):
+            del instance._raw_data[self.name]
+            instance._lazy_data[self.db_field] = value
 
     def dereference(self, value):
         doc_cls = get_document(value['_cls'])

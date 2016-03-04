@@ -72,12 +72,43 @@ def set_unloaded_field_handler(handler):
     _unloaded_field_handler = handler
 
 
+# a primer on load statuses and _data members (patrick, March 2016):
+#
+# There are two states a field can be in. these states are enumerated
+# in FieldStatus.
+# NOT_LOADED: This field was excluded from the query to mongo. It is generally
+#             unsafe to access a field in this state. Doing so through normal
+#             channels will cause a FieldNotLoadedError to be generated and
+#             handled with the configured UnloadedFieldHandler.
+
+# LOADED: This field has been requested from the database.
+#
+#
+# There are three members of a BaseDocument that describe the data contained
+# within: _raw_data, _lazy_data, and _data.  _lazy_data is a data member that
+# returns a dictionary mapping the **mongo** field name to some form of data.
+# _raw_data and _data map the **python** field name to the processed data.
+#
+# _raw_data: This is data that has been processed into python form. It maps
+#            raw field name to python data. If data has been loaded but not yet
+#            accessed, it will not be in this dictionary.
+#
+# _lazy_data: This is data that has not yet been processed into python form. It
+#             was loaded from mongoengine. When it is processed, it is removed
+#             and placed in _raw_data.
+#
+# _data: For historical reasons, this is a property that returns a dictionary
+#        with a processed entry for each field in the document. The priority
+#        for retrieving a value is _raw_data > to_python(_lazy_data) > default
+#        value for field. This is generally an unsafe way to access data and
+#        should not be used in new code.
+
 class FieldStatus(object):
     """
         Enum representing field status
     """
-    NOT_LOADED = 1
-    LOADED = 2
+    NOT_LOADED  = 1
+    LOADED      = 2
 
 
 class BaseField(object):
@@ -122,13 +153,18 @@ class BaseField(object):
             _unloaded_field_handler.handle_exception(
                 FieldNotLoadedError(instance.__class__.__name__, self.name))
 
-        # Get value from document instance if available, if not use default
-        value = instance._raw_data.get(self.name)
-        if value is None:
-            value = self.default
-            # Allow callable default values
-            if callable(value):
-                value = value()
+        if self.db_field in instance._lazy_data:
+            # process the data, move it from _lazy to _raw
+            value = self.to_python(instance._lazy_data.pop(self.db_field))
+            instance._raw_data[self.name] = value
+        else:
+            # Get value from document instance if available, if not use default
+            value = instance._raw_data.get(self.name)
+            if value is None:
+                value = self.default
+                # Allow callable default values
+                if callable(value):
+                    value = value()
         return value
 
     def __set__(self, instance, value):
@@ -136,6 +172,8 @@ class BaseField(object):
         """
         instance._fields_status[self.db_field] = FieldStatus.LOADED
         instance._raw_data[self.name] = value
+        if self.db_field in instance._lazy_data:
+            del instance._lazy_data[self.db_field]
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
@@ -493,6 +531,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if not new_class._meta['id_field']:
             new_class._meta['id_field'] = 'id'
             id_field = ObjectIdField(db_field='_id')
+            id_field.name = 'id'
             id_field.primary_key = True
             id_field.required = False
             new_class._fields['id'] = id_field
@@ -507,8 +546,10 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
             from fields import IntField
 
-            new_class._fields['shard_hash'] = IntField(
-                db_field=meta['hash_db_field'], required=True)
+            field = IntField(db_field=meta['hash_db_field'], required=True)
+            new_class._fields['shard_hash'] = field
+            field.owner_document = new_class
+            new_class.shard_hash = field
 
         return new_class
 
@@ -521,55 +562,67 @@ class BaseDocument(object):
     def __init__(self, from_son=False, **values):
         self._all_loaded = False
         self._raw_data = {}
+        self._lazy_data = dict()
         self._fields_status = dict()
         self._default_load_status = FieldStatus.NOT_LOADED
-        # Assign default values to instance
-        if not from_son:
+        if from_son:
+            self._lazy_data = values
+        else:
             self._all_loaded = True
             self._allow_unloaded = True
-            for attr_name, attr_value in self._fields.iteritems():
-                # Use default value if present
-                value = getattr(self, attr_name, None)
-                setattr(self, attr_name, value)
-            self._allow_unloaded = False
+            try:
+                for attr_name, attr_value in self._fields.iteritems():
+                    # Use default value if present
+                    value = getattr(self, attr_name, None)
+                    setattr(self, attr_name, value)
+            finally:
+                self._allow_unloaded = False
+
+            # Assign initial values to instance
+            for attr_name, attr_value in values.iteritems():
+                try:
+                    setattr(self, attr_name, attr_value)
+                except AttributeError:
+                    pass
 
         for rel_name, rel in self._relationships.iteritems():
             setattr(self, rel_name, rel)
 
-        # Assign initial values to instance
-        for attr_name, attr_value in values.iteritems():
-            try:
-                setattr(self, attr_name, attr_value)
-            except AttributeError:
-                pass
-
     @property
     def _data(self):
-        try:
-            self._allow_unloaded = True
-            data_dict = {}
-            for field_name, field in self._fields.iteritems():
-                value = self._raw_data.get(field_name)
-                if value is None:
-                    value = field.default
-                    if callable(value):
-                        value = value()
-                if isinstance(value, (dict, list)):
-                    value = copy.deepcopy(value)
-                data_dict[field_name] = value
-            for rel_name, rel in self._relationships.iteritems():
-                data_dict[rel_name] = self._raw_data.get(rel_name)
-        finally:
-            self._allow_unloaded = False
+        data_dict = {}
+        for field_name in self._fields.iterkeys():
+            value = self._get_raw(field_name)
+            if isinstance(value, (dict, list)):
+                value = copy.deepcopy(value)
+            data_dict[field_name] = value
+        for rel_name in self._relationships.iterkeys():
+            data_dict[rel_name] = self._raw_data.get(rel_name)
         return data_dict
 
     def _get_raw(self, field_name):
-        field = self._fields[field_name]
-        value = self._raw_data.get(field_name)
-        if value is None:
-            value = field.default
-            if callable(value):
-                value = value()
+        self._allow_unloaded = True
+        try:
+            field = self._fields[field_name]
+            if field.db_field in self._lazy_data:
+                value = self._lazy_data[field.db_field]
+                value = field.to_python(value)
+                # set actual value since we've done the conversion anyway,
+                # but not for (generic)reference/list fields since those have
+                # extra processing on __get__
+                # (we can't import these here so just check name)
+                if field.__class__.__name__ not in ['GenericReferenceField',
+                                                    'ReferenceField',
+                                                    'ListField']:
+                    setattr(self, field_name, value)
+            elif field_name in self._raw_data:
+                value = self._raw_data[field_name]
+            else:
+                value = field.default
+                if callable(value):
+                    value = value()
+        finally:
+            self._allow_unloaded = False
         if isinstance(value, (dict, list)):
             value = copy.deepcopy(value)
         return value
@@ -579,18 +632,22 @@ class BaseDocument(object):
 
     def field_is_loaded(self, field):
         field_id = self._fields[field].db_field
-        return self._get_field_status(field_id) == FieldStatus.LOADED
+        return self._get_field_status(field_id) != FieldStatus.NOT_LOADED
 
     def validate(self):
         """Ensure that all fields' values are valid and that required fields
         are present.
         """
         # Get a list of tuples of field names and their current values
-        fields = [
-            (field, getattr(self, name))
-            for name, field in self._fields.items()
-            if self._get_field_status(field.db_field) != FieldStatus.NOT_LOADED
-        ]
+        fields = list()
+        for name, field in self._fields.items():
+            db_field = field.db_field
+            if self._get_field_status(db_field) == FieldStatus.NOT_LOADED:
+                continue
+            if db_field in self._lazy_data:
+                # don't bother checking data the user hasn't touched
+                continue
+            fields.append((field, getattr(self, name)))
 
         # Ensure that each field is matched to a valid value
         for field, value in fields:
@@ -660,7 +717,7 @@ class BaseDocument(object):
             return False
 
     def __len__(self):
-        return len(self._raw_data)
+        return len(self._raw_data) + len(self._lazy_data)
 
     def __repr__(self):
         try:
@@ -683,7 +740,9 @@ class BaseDocument(object):
             for field_name, field in self._fields.items():
                 # don't deference ReferenceField if it's not
                 # dereferenced yet
-                if field_name in self._raw_data and \
+                if field.db_field in self._lazy_data:
+                    data[field.db_field] = self._lazy_data[field.db_field]
+                elif field_name in self._raw_data and \
                    isinstance(self._raw_data[field_name], (bson.dbref.DBRef)):
                     data[field.db_field] = self._raw_data[field_name]
                 else:
@@ -707,15 +766,12 @@ class BaseDocument(object):
         """
         # get the class name from the document, falling back to the given
         # class if unavailable
-        class_name = son.get(u'_cls', cls._class_name)
+        class_name = son.pop(u'_cls', cls._class_name)
 
         data = dict((str(key), value) for key, value in son.items())
 
         if '_types' in data:
             del data['_types']
-
-        if '_cls' in data:
-            del data['_cls']
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
@@ -726,11 +782,6 @@ class BaseDocument(object):
                 return None
             cls = subclasses[class_name]
 
-        for field_name, field in cls._fields.items():
-            if field.db_field in data:
-                value = data[field.db_field]
-                data[field_name] = (value if value is None
-                                    else field.to_python(value))
 
         return cls(from_son=True, **data)
 

@@ -940,15 +940,15 @@ class CustomQueryTest(unittest.TestCase):
         # re-query
         person = self.Person.find_one({'id' : person.id})
         # test the the DBRef is not yet dereferenced
-        self.assertEqual(person._data['user'], DBRef('user', user.id))
+        self.assertEqual(person._lazy_data['user'], DBRef('user', user.id))
 
         person.to_mongo()
         # test the DBRef is still not dereferenced
-        self.assertEqual(person._data['user'], DBRef('user', user.id))
+        self.assertEqual(person._lazy_data['user'], DBRef('user', user.id))
 
         person.user
         # test the DBRef is now dereferenced
-        self.assertNotEqual(person._data['user'], DBRef('user', user.id))
+        self.assertNotEqual(person._raw_data['user'], DBRef('user', user.id))
 
     def testTransformHint(self):
         self.assertEqual(
@@ -1025,6 +1025,55 @@ class CustomQueryTest(unittest.TestCase):
         self.Person.remove({'name':'New Name'})
         self.assertEqual(remove_mock.call_count, 1)
         self.assertTrue('$comment' in _get_mock_spec_keys(remove_mock))
+
+    def test_field_still_lazy_after_saving(self):
+        person = self.Person(name='Cthulhu', age=99999,
+                             gender='?')
+        person.save()
+
+        person_loaded = self.Person.find_one({'name': 'Cthulhu'})
+        self.assertIn('name', person_loaded._lazy_data)
+        self.assertIn('a', person_loaded._lazy_data)
+        self.assertIn('g', person_loaded._lazy_data)
+
+        person_loaded.save()
+        self.assertIn('name', person_loaded._lazy_data)
+        self.assertIn('a', person_loaded._lazy_data)
+        self.assertIn('g', person_loaded._lazy_data)
+
+    def test_can_set_reference_field_with_dbref(self):
+        user_id = ObjectId()
+        user = self.User(id=user_id)
+        user.save()
+
+        person = self.Person(name='Hydra', user=DBRef(u'user', user_id))
+
+        # accessing user should dereference
+        self.assertEqual(person.user, user)
+
+        person.save()
+
+        person_loaded = self.Person.find_one({'name': 'Hydra'})
+        self.assertEqual(person_loaded.user, user)
+
+    def test_can_set_reference_field_list_with_dbrefs(self):
+        friend_1 = self.Person()
+        friend_2 = self.Person()
+        friend_1.save()
+        friend_2.save()
+
+        person = self.Person(name='Dagon',
+                             friends=[DBRef(u'person', friend_1.id),
+                                      DBRef(u'person', friend_2.id)])
+
+        self.assertIn(friend_1, person.friends)
+        self.assertIn(friend_2, person.friends)
+
+        person.save()
+
+        person_loaded = self.Person.find_one({'name': 'Dagon'})
+        self.assertIn(friend_1, person_loaded.friends)
+        self.assertIn(friend_2, person_loaded.friends)
 
 
 class BulkOperationTest(unittest.TestCase):
