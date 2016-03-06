@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
+
+import six
 from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
@@ -420,8 +422,9 @@ class FieldTest(unittest.TestCase):
 
         big_person = BigPerson()
 
-        big_person.height = 1L
-        big_person.validate()
+        for value, value_type in enumerate(six.integer_types):
+            big_person.height = value_type(value)
+            big_person.validate()
 
         big_person.height = 2 ** 500
         big_person.validate()
