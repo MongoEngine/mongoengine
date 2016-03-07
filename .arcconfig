@@ -1,4 +1,10 @@
 {   
   "project_id" : "MongoEngine", 
-  "conduit_uri" : "https://phab.wish.com/"
+  "conduit_uri" : "https://phab.wish.com/",
+
+  "phutil_libraries" : {
+    "clarcanist" : "scripts/arcanist"
+  },
+
+  "unit_engine" : "MongoEngineUnitTestEngine"
 }
