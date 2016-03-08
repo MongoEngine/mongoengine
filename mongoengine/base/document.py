@@ -686,7 +686,12 @@ class BaseDocument(object):
         # get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
-        data = dict(("%s" % key, value) for key, value in son.iteritems())
+        if PY3:
+            son_gen = son.items()
+        else:
+            son_gen = son.iteritems()
+
+        data = dict(("%s" % cls._db_field_map.get(key,key), value) for key, value in son_gen)
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
