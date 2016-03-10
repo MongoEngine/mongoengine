@@ -696,7 +696,7 @@ class ListField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         if self.field:
-            if op in ('set', 'unset') and (
+            if op in ('set', 'unset', None) and (
                     not isinstance(value, basestring) and
                     not isinstance(value, BaseDocument) and
                     hasattr(value, '__iter__')):

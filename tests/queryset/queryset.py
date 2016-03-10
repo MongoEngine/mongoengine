@@ -3613,6 +3613,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(MyDoc.objects.count(), 10)
         self.assertEqual(MyDoc.objects.none().count(), 0)
 
+    def test_count_list_embedded(self):
+        class B(EmbeddedDocument):
+            c = StringField()
+
+        class A(Document):
+            b = ListField(EmbeddedDocumentField(B))
+
+        self.assertEqual(A.objects(b=[{'c': 'c'}]).count(), 0)
+
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """
@@ -4898,6 +4907,7 @@ class QuerySetTest(unittest.TestCase):
         doc.save()
 
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
+
 
 if __name__ == '__main__':
     unittest.main()
