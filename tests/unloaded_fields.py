@@ -480,5 +480,28 @@ class UnloadedFieldsTest(unittest.TestCase):
 
         self.assertEqual(person_loaded.age, 23)
 
+    def test_queryset_loads_all_fields(self):
+        person = self.person_cls(name='CLark')
+        person.save()
+
+        person_loaded = self.person_cls.objects(name='CLark').first()
+        self.assertEqual(person_loaded.name, 'CLark')
+        self.assertEqual(person_loaded.age, 30)
+
+        # should not raise exception
+        getattr(person_loaded, 'userid')
+
+    def test_queryset_limits_fields(self):
+        person = self.person_cls(name='CLaire')
+        person.save()
+
+        person_loaded = self.person_cls.objects(name='CLaire').only(
+            'name').first()
+
+        self.assertEqual(person_loaded.name, 'CLaire')
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(person_loaded, 'age')
+
+
 if __name__ == '__main__':
     unittest.main()

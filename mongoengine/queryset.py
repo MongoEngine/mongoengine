@@ -285,6 +285,7 @@ class QuerySet(object):
         self._initial_query = {}
         self._where_clause = None
         self._loaded_fields = []
+        self._query_fields = None
         self._ordering = []
         self._snapshot = False
         self._timeout = True
@@ -623,7 +624,8 @@ class QuerySet(object):
             result = self._collection.find_one({'_id': object_id})
 
         if result is not None:
-            result = self._document._from_son(result)
+            result = self._document._from_augmented_son(result,
+                                                        self._query_fields)
         return result
 
     def in_bulk(self, object_ids):
@@ -645,7 +647,8 @@ class QuerySet(object):
             docs = self._collection.find({'_id': {'$in': object_ids}})
 
         for doc in docs:
-            doc_map[doc['_id']] = self._document._from_son(doc)
+            doc_map[doc['_id']] = self._document._from_augmented_son(
+                doc, self._query_fields)
 
         return doc_map
 
@@ -656,11 +659,13 @@ class QuerySet(object):
             if self._limit == 0:
                 raise StopIteration
             try:
-                return self._document._from_son(self._cursor.next())
+                return self._document._from_augmented_son(self._cursor.next(),
+                                                          self._query_fields)
             except pymongo.errors.AutoReconnect:
                 # if the primary changes, sleep for 100ms and try again
                 time.sleep(0.1)
-                return self._document._from_son(self._cursor.next())
+                return self._document._from_augmented_son(self._cursor.next(),
+                                                          self._query_fields)
         except StopIteration, e:
             self.rewind()
             raise e
@@ -759,11 +764,13 @@ class QuerySet(object):
         # Integer index provided
         elif isinstance(key, int):
             try:
-                return self._document._from_son(self._cursor[key])
+                return self._document._from_augmented_son(self._cursor[key],
+                                                          self._query_fields)
             except pymongo.errors.AutoReconnect:
                 # if the primary changes, sleep for 100ms and try again
                 time.sleep(0.1)
-                return self._document._from_son(self._cursor[key])
+                return self._document._from_augmented_son(self._cursor[key],
+                                                          self._query_fields)
 
         raise AttributeError
 
@@ -790,6 +797,7 @@ class QuerySet(object):
 
         .. versionadded:: 0.3
         """
+        self._query_fields = fields
         self._loaded_fields = []
         for field in fields:
             if '.' in field:

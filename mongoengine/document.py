@@ -282,7 +282,7 @@ class Document(BaseDocument):
         cls._bulk_index += 1
 
     @classmethod
-    def _from_augmented_son(cls, d, fields, excluded_fields):
+    def _from_augmented_son(cls, d, fields, excluded_fields=None):
         # load from son, and set field status correctly
 
         obj = cls._from_son(d)
