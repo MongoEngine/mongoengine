@@ -61,7 +61,7 @@ class UnloadedFieldLogHandler(UnloadedFieldHandler):
                 'stack': ''.join(traceback.format_list(
                     traceback.extract_stack()[:-2]))
             }
-            self.field_logger.log(exc_info)
+            self.field_logger.info(exc_info)
 
 _unloaded_field_handler = UnloadedFieldNoopHandler()
 
