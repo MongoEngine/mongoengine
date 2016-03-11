@@ -6,7 +6,7 @@ from django.db import models
 try:
     from django.utils.importlib import import_module
 except ImportError:
-    importlib import import_module
+    from importlib import import_module
 from django.utils.translation import ugettext_lazy as _
 
 
