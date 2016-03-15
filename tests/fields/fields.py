@@ -21,7 +21,10 @@ except ImportError:
 from decimal import Decimal
 
 from bson import Binary, DBRef, ObjectId
-from bson.int64 import Int64
+try:
+    from bson.int64 import Int64
+except ImportError:
+    Int64 = long
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -3606,6 +3609,19 @@ class FieldTest(unittest.TestCase):
 
         self.assertRaises(FieldDoesNotExist, test)
 
+    def test_long_field_is_considered_as_int64(self):
+        """
+        Tests that long fields are stored as long in mongo, even if long value
+        is small enough to be an int.
+        """
+        class TestLongFieldConsideredAsInt64(Document):
+            some_long = LongField()
+
+        doc = TestLongFieldConsideredAsInt64(some_long=42).save()
+        db = get_db()
+        self.assertTrue(isinstance(db.test_long_field_considered_as_int64.find()[0]['some_long'], Int64))
+        self.assertTrue(isinstance(doc.some_long, (int, long,)))
+
 
 class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
@@ -4114,19 +4130,6 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.assertFalse(hasattr(a1.c_field, 'custom_data'))
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
-
-    def test_long_field_is_stored_as_long(self):
-        """
-        Tests that long fields are stored as long in mongo, even if long value
-        is small enough to be an int.
-        """
-        class TestDocument(Document):
-            some_long = LongField()
-
-        doc = TestDocument(some_long=42).save()
-        db = get_db()
-        self.assertTrue(isinstance(db.test_document.find()[0]['some_long'], Int64))
-        self.assertTrue(isinstance(doc.some_long, (int, long,)))
 
 
 if __name__ == '__main__':
