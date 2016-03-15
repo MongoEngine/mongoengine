@@ -11,6 +11,7 @@ from datetime import datetime
 
 from mongoengine import *
 from mongoengine.connection import get_db, get_connection
+from mongoengine.context_managers import switch_db
 
 __all__ = ("IndexesTest", )
 
@@ -822,33 +823,29 @@ class IndexesTest(unittest.TestCase):
             name = StringField(required=True)
             term = StringField(required=True)
 
-        class Report(Document):
+        class ReportEmbedded(Document):
             key = EmbeddedDocumentField(CompoundKey, primary_key=True)
             text = StringField()
 
-        Report.drop_collection()
-
         my_key = CompoundKey(name="n", term="ok")
-        report = Report(text="OK", key=my_key).save()
+        report = ReportEmbedded(text="OK", key=my_key).save()
 
         self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
                          report.to_mongo())
-        self.assertEqual(report, Report.objects.get(pk=my_key))
+        self.assertEqual(report, ReportEmbedded.objects.get(pk=my_key))
 
     def test_compound_key_dictfield(self):
 
-        class Report(Document):
+        class ReportDictField(Document):
             key = DictField(primary_key=True)
             text = StringField()
 
-        Report.drop_collection()
-
         my_key = {"name": "n", "term": "ok"}
-        report = Report(text="OK", key=my_key).save()
+        report = ReportDictField(text="OK", key=my_key).save()
 
         self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
                          report.to_mongo())
-        self.assertEqual(report, Report.objects.get(pk=my_key))
+        self.assertEqual(report, ReportDictField.objects.get(pk=my_key))
 
     def test_string_indexes(self):
 
@@ -909,26 +906,38 @@ class IndexesTest(unittest.TestCase):
 
         Issue #812
         """
+        # Use a new connection and database since dropping the database could
+        # cause concurrent tests to fail.
+        connection = connect(db='tempdatabase',
+                             alias='test_indexes_after_database_drop')
+
         class BlogPost(Document):
             title = StringField()
             slug = StringField(unique=True)
 
-        BlogPost.drop_collection()
+            meta = {'db_alias': 'test_indexes_after_database_drop'}
 
-        # Create Post #1
-        post1 = BlogPost(title='test1', slug='test')
-        post1.save()
+        try:
+            BlogPost.drop_collection()
 
-        # Drop the Database
-        self.connection.drop_database(BlogPost._get_db().name)
+            # Create Post #1
+            post1 = BlogPost(title='test1', slug='test')
+            post1.save()
 
-        # Re-create Post #1
-        post1 = BlogPost(title='test1', slug='test')
-        post1.save()
+            # Drop the Database
+            connection.drop_database('tempdatabase')
 
-        # Create Post #2
-        post2 = BlogPost(title='test2', slug='test')
-        self.assertRaises(NotUniqueError, post2.save)
+            # Re-create Post #1
+            post1 = BlogPost(title='test1', slug='test')
+            post1.save()
+
+            # Create Post #2
+            post2 = BlogPost(title='test2', slug='test')
+            self.assertRaises(NotUniqueError, post2.save)
+        finally:
+            # Drop the temporary database at the end
+            connection.drop_database('tempdatabase')
+
 
     def test_index_dont_send_cls_option(self):
         """
