@@ -9,6 +9,7 @@ Changes in 0.10.7 - DEV
 - Add `signal_kwargs` argument to `Document.save`, `Document.delete` and `BaseQuerySet.insert` to be passed to signals calls #1206
 - Raise `OperationError` when trying to do a `drop_collection` on document with no collection set.
 - count on ListField of EmbeddedDocumentField fails. #1187
+- Fixed long fields stored as int32 in Python 3. #1253
 
 Changes in 0.10.6
 =================
