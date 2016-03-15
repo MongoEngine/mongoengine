@@ -4106,7 +4106,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
         doc = TestDocument(some_long=42).save()
         db = get_db()
-        self.assertTrue(isinstance(get_db().test_document.find()[0]['some_long'], Int64))
+        self.assertTrue(isinstance(db.test_document.find()[0]['some_long'], Int64))
         self.assertTrue(isinstance(doc.some_long, (int, long,)))
 
 
