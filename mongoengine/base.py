@@ -116,7 +116,8 @@ class BaseField(object):
             # Document class being used rather than a document object
             return self
 
-        if not instance._allow_unloaded and \
+        if not instance._all_loaded and \
+           not instance._allow_unloaded and \
            instance._get_field_status(self.db_field) == FieldStatus.NOT_LOADED:
             _unloaded_field_handler.handle_exception(
                 FieldNotLoadedError(instance.__class__.__name__, self.name))
@@ -518,11 +519,13 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 class BaseDocument(object):
 
     def __init__(self, from_son=False, **values):
+        self._all_loaded = False
         self._raw_data = {}
         self._fields_status = dict()
         self._default_load_status = FieldStatus.NOT_LOADED
         # Assign default values to instance
         if not from_son:
+            self._all_loaded = True
             self._allow_unloaded = True
             for attr_name, attr_value in self._fields.iteritems():
                 # Use default value if present

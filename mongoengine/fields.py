@@ -263,6 +263,7 @@ class EmbeddedDocumentField(BaseField):
     def to_python(self, value):
         if not isinstance(value, self.document_type):
             doc = self.document_type._from_son(value)
+            doc._all_loaded = True
             doc._default_load_status = FieldStatus.LOADED
             return doc
         return value
@@ -522,6 +523,7 @@ class ReferenceField(BaseField):
             doc = _get_db(doc_cls._meta['db_name']).dereference(dbref)
             if doc is not None:
                 doc = doc_cls._from_son(doc)
+                doc._all_loaded = True
                 doc._default_load_status = FieldStatus.LOADED
 
         return doc

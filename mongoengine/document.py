@@ -292,6 +292,7 @@ class Document(BaseDocument):
         fields = cls._transform_fields(fields, excluded_fields)
 
         if fields is None:
+            obj._all_loaded = True
             obj._default_load_status = FieldStatus.LOADED
             return obj
 
