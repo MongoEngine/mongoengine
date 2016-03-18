@@ -20,7 +20,6 @@ else:
 import pymongo
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
-
 try:
     from bson.int64 import Int64
 except ImportError:

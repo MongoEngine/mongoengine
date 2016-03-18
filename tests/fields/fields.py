@@ -12,6 +12,7 @@ import uuid
 import math
 import itertools
 import re
+import six
 
 try:
     import dateutil
@@ -3620,7 +3621,7 @@ class FieldTest(unittest.TestCase):
         doc = TestLongFieldConsideredAsInt64(some_long=42).save()
         db = get_db()
         self.assertTrue(isinstance(db.test_long_field_considered_as_int64.find()[0]['some_long'], Int64))
-        self.assertTrue(isinstance(doc.some_long, (int, long,)))
+        self.assertTrue(isinstance(doc.some_long, six.integer_types))
 
 
 class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
