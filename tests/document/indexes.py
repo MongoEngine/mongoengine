@@ -5,21 +5,23 @@ import sys
 sys.path[0:0] = [""]
 
 import pymongo
+from random import randint
 
 from nose.plugins.skip import SkipTest
 from datetime import datetime
 
 from mongoengine import *
 from mongoengine.connection import get_db, get_connection
-from mongoengine.context_managers import switch_db
 
 __all__ = ("IndexesTest", )
 
 
 class IndexesTest(unittest.TestCase):
+    _MAX_RAND = 10 ** 10
 
     def setUp(self):
-        self.connection = connect(db='mongoenginetest')
+        self.db_name = 'mongoenginetest_IndexesTest_' + str(randint(0, self._MAX_RAND))
+        self.connection = connect(db=self.db_name)
         self.db = get_db()
 
         class Person(Document):
@@ -33,10 +35,7 @@ class IndexesTest(unittest.TestCase):
         self.Person = Person
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
-            self.db.drop_collection(collection)
+        self.connection.drop_database(self.db)
 
     def test_indexes_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
