@@ -13,7 +13,11 @@ class BaseDict(dict):
     _name = None
 
     def __init__(self, dict_items, instance, name):
-        self._instance = weakref.proxy(instance)
+        Document = _import_class('Document')
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+
+        if isinstance(instance, (Document, EmbeddedDocument)):
+            self._instance = weakref.proxy(instance)
         self._name = name
         return super(BaseDict, self).__init__(dict_items)
 
@@ -80,7 +84,11 @@ class BaseList(list):
     _name = None
 
     def __init__(self, list_items, instance, name):
-        self._instance = weakref.proxy(instance)
+        Document = _import_class('Document')
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+
+        if isinstance(instance, (Document, EmbeddedDocument)):
+            self._instance = weakref.proxy(instance)
         self._name = name
         return super(BaseList, self).__init__(list_items)
 
@@ -99,6 +107,14 @@ class BaseList(list):
     def __delitem__(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseList, self).__delitem__(*args, **kwargs)
+
+    def __setslice__(self, *args, **kwargs):
+        self._mark_as_changed()
+        return super(BaseList, self).__setslice__(*args, **kwargs)
+
+    def __delslice__(self, *args, **kwargs):
+        self._mark_as_changed()
+        return super(BaseList, self).__delslice__(*args, **kwargs)
 
     def __getstate__(self):
         self.instance = None

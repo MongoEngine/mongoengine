@@ -20,7 +20,7 @@ post to the `user group <http://groups.google.com/group/mongoengine-users>`
 Supported Interpreters
 ----------------------
 
-PyMongo supports CPython 2.5 and newer. Language
+MongoEngine supports CPython 2.6 and newer. Language
 features not supported by all interpreters can not be used.
 Please also ensure that your code is properly converted by
 `2to3 <http://docs.python.org/library/2to3.html>`_ for Python 3 support.
@@ -46,7 +46,7 @@ General Guidelines
 - Write tests and make sure they pass (make sure you have a mongod
   running on the default port, then execute ``python setup.py test``
   from the cmd line to run the test suite).
-- Add yourself to AUTHORS.rst :)
+- Add yourself to AUTHORS :)
 
 Documentation
 -------------

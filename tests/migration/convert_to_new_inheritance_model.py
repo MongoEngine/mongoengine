@@ -38,7 +38,7 @@ class ConvertToNewInheritanceModel(unittest.TestCase):
 
         # 3. Confirm extra data is removed
         count = collection.find({'_types': {"$exists": True}}).count()
-        assert count == 0
+        self.assertEqual(0, count)
 
         # 4. Remove indexes
         info = collection.index_information()

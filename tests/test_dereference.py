@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 import unittest
@@ -1122,37 +1121,32 @@ class FieldTest(unittest.TestCase):
 
             self.assertEqual(q, 2)
 
-    def test_tuples_as_tuples(self):
-        """
-        Ensure that tuples remain tuples when they are
-        inside a ComplexBaseField
-        """
-        from mongoengine.base import BaseField
+    def test_objectid_reference_across_databases(self):
+        # mongoenginetest - Is default connection alias from setUp()
+        # Register Aliases
+        register_connection('testdb-1', 'mongoenginetest2')
 
-        class EnumField(BaseField):
+        class User(Document):
+            name = StringField()
+            meta = {"db_alias": "testdb-1"}
 
-            def __init__(self, **kwargs):
-                super(EnumField, self).__init__(**kwargs)
+        class Book(Document):
+            name = StringField()
+            author = ReferenceField(User)
 
-            def to_mongo(self, value):
-                return value
+        # Drops
+        User.drop_collection()
+        Book.drop_collection()
 
-            def to_python(self, value):
-                return tuple(value)
+        user = User(name="Ross").save()
+        Book(name="MongoEngine for pros", author=user).save()
 
-        class TestDoc(Document):
-            items = ListField(EnumField())
+        # Can't use query_counter across databases - so test the _data object
+        book = Book.objects.first()
+        self.assertFalse(isinstance(book._data['author'], User))
 
-        TestDoc.drop_collection()
-        tuples = [(100, 'Testing')]
-        doc = TestDoc()
-        doc.items = tuples
-        doc.save()
-        x = TestDoc.objects().get()
-        self.assertTrue(x is not None)
-        self.assertTrue(len(x.items) == 1)
-        self.assertTrue(tuple(x.items[0]) in tuples)
-        self.assertTrue(x.items[0] in tuples)
+        book.select_related()
+        self.assertTrue(isinstance(book._data['author'], User))
 
     def test_non_ascii_pk(self):
         """
@@ -1176,6 +1170,30 @@ class FieldTest(unittest.TestCase):
         brand_groups = BrandGroup.objects().all()
 
         self.assertEqual(2, len([brand for bg in brand_groups for brand in bg.brands]))
+
+    def test_dereferencing_embedded_listfield_referencefield(self):
+        class Tag(Document):
+            meta = {'collection': 'tags'}
+            name = StringField()
+
+        class Post(EmbeddedDocument):
+            body = StringField()
+            tags = ListField(ReferenceField("Tag", dbref=True))
+
+        class Page(Document):
+            meta = {'collection': 'pages'}
+            tags = ListField(ReferenceField("Tag", dbref=True))
+            posts = ListField(EmbeddedDocumentField(Post))
+
+        Tag.drop_collection()
+        Page.drop_collection()
+
+        tag = Tag(name='test').save()
+        post = Post(body='test body', tags=[tag])
+        Page(tags=[tag], posts=[post]).save()
+
+        page = Page.objects.first()
+        self.assertEqual(page.tags[0], page.posts[0].tags[0])
 
 if __name__ == '__main__':
     unittest.main()

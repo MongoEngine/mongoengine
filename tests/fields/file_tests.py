@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
@@ -15,7 +14,14 @@ from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.python_support import PY3, b, StringIO
 
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
+TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
 
 
 class FileTest(unittest.TestCase):
@@ -47,11 +53,12 @@ class FileTest(unittest.TestCase):
         content_type = 'text/plain'
 
         putfile = PutFile()
-        putfile.the_file.put(text, content_type=content_type)
+        putfile.the_file.put(text, content_type=content_type, filename="hello")
         putfile.save()
 
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
+        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello>")
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()  # Remove file from GridFS
@@ -217,6 +224,19 @@ class FileTest(unittest.TestCase):
         self.assertEqual(marmot.photo.content_type, 'image/jpeg')
         self.assertEqual(marmot.photo.foo, 'bar')
 
+    def test_file_reassigning(self):
+        class TestFile(Document):
+            the_file = FileField()
+        TestFile.drop_collection()
+
+        test_file = TestFile(the_file=open(TEST_IMAGE_PATH, 'rb')).save()
+        self.assertEqual(test_file.the_file.get().length, 8313)
+
+        test_file = TestFile.objects.first()
+        test_file.the_file = open(TEST_IMAGE2_PATH, 'rb')
+        test_file.save()
+        self.assertEqual(test_file.the_file.get().length, 4971)
+
     def test_file_boolean(self):
         """Ensure that a boolean test of a FileField indicates its presence
         """
@@ -242,13 +262,24 @@ class FileTest(unittest.TestCase):
         self.assertFalse(test_file.the_file in [{"test": 1}])
 
     def test_image_field(self):
-        if PY3:
-            raise SkipTest('PIL does not have Python 3 support')
+        if not HAS_PIL:
+            raise SkipTest('PIL not installed')
 
         class TestImage(Document):
             image = ImageField()
 
         TestImage.drop_collection()
+
+        with tempfile.TemporaryFile() as f:
+            f.write(b("Hello World!"))
+            f.flush()
+
+            t = TestImage()
+            try:
+                t.image.put(f)
+                self.fail("Should have raised an invalidation error")
+            except ValidationError, e:
+                self.assertEqual("%s" % e, "Invalid image: cannot identify image file")
 
         t = TestImage()
         t.image.put(open(TEST_IMAGE_PATH, 'rb'))
@@ -264,9 +295,25 @@ class FileTest(unittest.TestCase):
 
         t.image.delete()
 
+    def test_image_field_reassigning(self):
+        if not HAS_PIL:
+            raise SkipTest('PIL not installed')
+
+        class TestFile(Document):
+            the_file = ImageField()
+        TestFile.drop_collection()
+
+        test_file = TestFile(the_file=open(TEST_IMAGE_PATH, 'rb')).save()
+        self.assertEqual(test_file.the_file.size, (371, 76))
+
+        test_file = TestFile.objects.first()
+        test_file.the_file = open(TEST_IMAGE2_PATH, 'rb')
+        test_file.save()
+        self.assertEqual(test_file.the_file.size, (45, 101))
+
     def test_image_field_resize(self):
-        if PY3:
-            raise SkipTest('PIL does not have Python 3 support')
+        if not HAS_PIL:
+            raise SkipTest('PIL not installed')
 
         class TestImage(Document):
             image = ImageField(size=(185, 37))
@@ -288,8 +335,8 @@ class FileTest(unittest.TestCase):
         t.image.delete()
 
     def test_image_field_resize_force(self):
-        if PY3:
-            raise SkipTest('PIL does not have Python 3 support')
+        if not HAS_PIL:
+            raise SkipTest('PIL not installed')
 
         class TestImage(Document):
             image = ImageField(size=(185, 37, True))
@@ -311,8 +358,8 @@ class FileTest(unittest.TestCase):
         t.image.delete()
 
     def test_image_field_thumbnail(self):
-        if PY3:
-            raise SkipTest('PIL does not have Python 3 support')
+        if not HAS_PIL:
+            raise SkipTest('PIL not installed')
 
         class TestImage(Document):
             image = ImageField(thumbnail_size=(92, 18))
@@ -359,6 +406,14 @@ class FileTest(unittest.TestCase):
         self.assertEqual(test_file.the_file.read(),
                           b('Hello, World!'))
 
+        test_file = TestFile.objects.first()
+        test_file.the_file = b('HELLO, WORLD!')
+        test_file.save()
+
+        test_file = TestFile.objects.first()
+        self.assertEqual(test_file.the_file.read(),
+                          b('HELLO, WORLD!'))
+
     def test_copyable(self):
         class PutFile(Document):
             the_file = FileField()
@@ -378,6 +433,54 @@ class FileTest(unittest.TestCase):
         self.assertEqual(putfile, copy.copy(putfile))
         self.assertEqual(putfile, copy.deepcopy(putfile))
 
+    def test_get_image_by_grid_id(self):
+
+        if not HAS_PIL:
+            raise SkipTest('PIL not installed')
+
+        class TestImage(Document):
+
+            image1 = ImageField()
+            image2 = ImageField()
+
+        TestImage.drop_collection()
+
+        t = TestImage()
+        t.image1.put(open(TEST_IMAGE_PATH, 'rb'))
+        t.image2.put(open(TEST_IMAGE2_PATH, 'rb'))
+        t.save()
+
+        test = TestImage.objects.first()
+        grid_id = test.image1.grid_id
+
+        self.assertEqual(1, TestImage.objects(Q(image1=grid_id)
+                                              or Q(image2=grid_id)).count())
+
+    def test_complex_field_filefield(self):
+        """Ensure you can add meta data to file"""
+
+        class Animal(Document):
+            genus = StringField()
+            family = StringField()
+            photos = ListField(FileField())
+
+        Animal.drop_collection()
+        marmot = Animal(genus='Marmota', family='Sciuridae')
+
+        marmot_photo = open(TEST_IMAGE_PATH, 'rb')  # Retrieve a photo from disk
+
+        photos_field = marmot._fields['photos'].field
+        new_proxy = photos_field.get_proxy_obj('photos', marmot)
+        new_proxy.put(marmot_photo, content_type='image/jpeg', foo='bar')
+        marmot_photo.close()
+
+        marmot.photos.append(new_proxy)
+        marmot.save()
+
+        marmot = Animal.objects.get()
+        self.assertEqual(marmot.photos[0].content_type, 'image/jpeg')
+        self.assertEqual(marmot.photos[0].foo, 'bar')
+        self.assertEqual(marmot.photos[0].get().length, 8313)
 
 if __name__ == '__main__':
     unittest.main()

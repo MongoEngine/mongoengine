@@ -3,7 +3,9 @@ from collections import defaultdict
 from mongoengine.python_support import txt_type
 
 
-__all__ = ('NotRegistered', 'InvalidDocumentError', 'ValidationError')
+__all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
+           'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
+           'OperationError', 'NotUniqueError', 'ValidationError')
 
 
 class NotRegistered(Exception):

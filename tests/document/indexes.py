@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -157,6 +156,25 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual([{'fields': [('_cls', 1), ('title', 1)]}],
                          A._meta['index_specs'])
 
+    def test_index_no_cls(self):
+        """Ensure index specs are inhertited correctly"""
+
+        class A(Document):
+            title = StringField()
+            meta = {
+                'indexes': [
+                        {'fields': ('title',), 'cls': False},
+                ],
+                'allow_inheritance': True,
+                'index_cls': False
+                }
+
+        self.assertEqual([('title', 1)], A._meta['index_specs'][0]['fields'])
+        A._get_collection().drop_indexes()
+        A.ensure_indexes()
+        info = A._get_collection().index_information()
+        self.assertEqual(len(info.keys()), 2)
+
     def test_build_index_spec_is_not_destructive(self):
 
         class MyDoc(Document):
@@ -217,7 +235,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('location.point', '2d')]}],
-                        Place._meta['index_specs'])
+                         Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
@@ -231,8 +249,7 @@ class IndexesTest(unittest.TestCase):
             location = DictField()
 
         class Place(Document):
-            current = DictField(
-                    field=EmbeddedDocumentField('EmbeddedLocation'))
+            current = DictField(field=EmbeddedDocumentField('EmbeddedLocation'))
             meta = {
                 'allow_inheritance': True,
                 'indexes': [
@@ -241,7 +258,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('current.location.point', '2d')]}],
-                        Place._meta['index_specs'])
+                         Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
@@ -264,7 +281,7 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual([{'fields': [('addDate', -1)], 'unique': True,
                           'sparse': True}],
-                        BlogPost._meta['index_specs'])
+                         BlogPost._meta['index_specs'])
 
         BlogPost.drop_collection()
 
@@ -314,19 +331,27 @@ class IndexesTest(unittest.TestCase):
         """
         class User(Document):
             meta = {
+                'allow_inheritance': True,
                 'indexes': ['user_guid'],
                 'auto_create_index': False
             }
             user_guid = StringField(required=True)
 
+        class MongoUser(User):
+            pass
+
         User.drop_collection()
 
-        u = User(user_guid='123')
-        u.save()
+        User(user_guid='123').save()
+        MongoUser(user_guid='123').save()
 
-        self.assertEqual(1, User.objects.count())
+        self.assertEqual(2, User.objects.count())
         info = User.objects._collection.index_information()
         self.assertEqual(info.keys(), ['_id_'])
+
+        User.ensure_indexes()
+        info = User.objects._collection.index_information()
+        self.assertEqual(sorted(info.keys()), ['_cls_1_user_guid_1', '_id_'])
         User.drop_collection()
 
     def test_embedded_document_index(self):
@@ -374,8 +399,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(sorted(info.keys()), ['_id_', 'tags.tag_1'])
 
         post1 = BlogPost(title="Embedded Indexes tests in place",
-                        tags=[Tag(name="about"), Tag(name="time")]
-                )
+                         tags=[Tag(name="about"), Tag(name="time")])
         post1.save()
         BlogPost.drop_collection()
 
@@ -392,29 +416,6 @@ class IndexesTest(unittest.TestCase):
         info = RecursiveDocument._get_collection().index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1', '_id_'])
 
-    def test_geo_indexes_recursion(self):
-
-        class Location(Document):
-            name = StringField()
-            location = GeoPointField()
-
-        class Parent(Document):
-            name = StringField()
-            location = ReferenceField(Location, dbref=False)
-
-        Location.drop_collection()
-        Parent.drop_collection()
-
-        list(Parent.objects)
-
-        collection = Parent._get_collection()
-        info = collection.index_information()
-
-        self.assertFalse('location_2d' in info)
-
-        self.assertEqual(len(Parent._geo_indices()), 0)
-        self.assertEqual(len(Location._geo_indices()), 1)
-
     def test_covered_index(self):
         """Ensure that covered indexes can be used
         """
@@ -425,7 +426,7 @@ class IndexesTest(unittest.TestCase):
             meta = {
                 'indexes': ['a'],
                 'allow_inheritance': False
-                }
+            }
 
         Test.drop_collection()
 
@@ -490,7 +491,7 @@ class IndexesTest(unittest.TestCase):
 
         def invalid_index_2():
             return BlogPost.objects.hint(('tags', 1))
-        self.assertRaises(TypeError, invalid_index_2)
+        self.assertRaises(Exception, invalid_index_2)
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
@@ -625,7 +626,7 @@ class IndexesTest(unittest.TestCase):
         list(Log.objects)
         info = Log.objects._collection.index_information()
         self.assertEqual(3600,
-                info['created_1']['expireAfterSeconds'])
+                         info['created_1']['expireAfterSeconds'])
 
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by

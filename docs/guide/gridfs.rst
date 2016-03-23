@@ -7,7 +7,7 @@ GridFS
 Writing
 -------
 
-GridFS support comes in the form of the :class:`~mongoengine.FileField` field
+GridFS support comes in the form of the :class:`~mongoengine.fields.FileField` field
 object. This field acts as a file-like object and provides a couple of
 different ways of inserting and retrieving data. Arbitrary metadata such as
 content type can also be stored alongside the files. In the following example,
@@ -20,14 +20,14 @@ a document is created to store details about animals, including a photo::
 
     marmot = Animal(genus='Marmota', family='Sciuridae')
 
-    marmot_photo = open('marmot.jpg', 'r')
+    marmot_photo = open('marmot.jpg', 'rb')
     marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
     marmot.save()
 
 Retrieval
 ---------
 
-So using the :class:`~mongoengine.FileField` is just like using any other
+So using the :class:`~mongoengine.fields.FileField` is just like using any other
 field. The file can also be retrieved just as easily::
 
     marmot = Animal.objects(genus='Marmota').first()
@@ -37,7 +37,7 @@ field. The file can also be retrieved just as easily::
 Streaming
 ---------
 
-Streaming data into a :class:`~mongoengine.FileField` is achieved in a
+Streaming data into a :class:`~mongoengine.fields.FileField` is achieved in a
 slightly different manner.  First, a new file must be created by calling the
 :func:`new_file` method. Data can then be written using :func:`write`::
 
@@ -70,5 +70,5 @@ Replacing files
 Files can be replaced with the :func:`replace` method. This works just like
 the :func:`put` method so even metadata can (and should) be replaced::
 
-    another_marmot = open('another_marmot.png', 'r')
+    another_marmot = open('another_marmot.png', 'rb')
     marmot.photo.replace(another_marmot, content_type='image/png')

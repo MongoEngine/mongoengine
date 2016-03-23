@@ -1,13 +1,16 @@
 from mongoengine import *
 
 from django.utils.encoding import smart_str
-from django.contrib.auth.models import _user_get_all_permissions
-from django.contrib.auth.models import _user_has_perm
+from django.contrib.auth.models import _user_has_perm, _user_get_all_permissions, _user_has_module_perms
 from django.db import models
 from django.contrib.contenttypes.models import ContentTypeManager
 from django.contrib import auth
 from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import ugettext_lazy as _
+
+from .utils import datetime_now
+
+REDIRECT_FIELD_NAME = 'next'
 
 try:
     from django.contrib.auth.hashers import check_password, make_password
@@ -34,15 +37,12 @@ except ImportError:
         hash = get_hexdigest(algo, salt, raw_password)
         return '%s$%s$%s' % (algo, salt, hash)
 
-from .utils import datetime_now
-
-REDIRECT_FIELD_NAME = 'next'
 
 class ContentType(Document):
     name = StringField(max_length=100)
     app_label = StringField(max_length=100)
     model = StringField(max_length=100, verbose_name=_('python model class name'),
-        unique_with='app_label')
+                        unique_with='app_label')
     objects = ContentTypeManager()
 
     class Meta:
@@ -72,8 +72,10 @@ class ContentType(Document):
     def natural_key(self):
         return (self.app_label, self.model)
 
+
 class SiteProfileNotAvailable(Exception):
     pass
+
 
 class PermissionManager(models.Manager):
     def get_by_natural_key(self, codename, app_label, model):
@@ -82,18 +84,28 @@ class PermissionManager(models.Manager):
             content_type=ContentType.objects.get_by_natural_key(app_label, model)
         )
 
+
 class Permission(Document):
-    """The permissions system provides a way to assign permissions to specific users and groups of users.
+    """The permissions system provides a way to assign permissions to specific
+    users and groups of users.
 
-    The permission system is used by the Django admin site, but may also be useful in your own code. The Django admin site uses permissions as follows:
+    The permission system is used by the Django admin site, but may also be
+    useful in your own code. The Django admin site uses permissions as follows:
 
-        - The "add" permission limits the user's ability to view the "add" form and add an object.
-        - The "change" permission limits a user's ability to view the change list, view the "change" form and change an object.
+        - The "add" permission limits the user's ability to view the "add"
+          form and add an object.
+        - The "change" permission limits a user's ability to view the change
+          list, view the "change" form and change an object.
         - The "delete" permission limits the ability to delete an object.
 
-    Permissions are set globally per type of object, not per specific object instance. It is possible to say "Mary may change news stories," but it's not currently possible to say "Mary may change news stories, but only the ones she created herself" or "Mary may only change news stories that have a certain status or publication date."
+    Permissions are set globally per type of object, not per specific object
+    instance. It is possible to say "Mary may change news stories," but it's
+    not currently possible to say "Mary may change news stories, but only the
+    ones she created herself" or "Mary may only change news stories that have
+    a certain status or publication date."
 
-    Three basic permissions -- add, change and delete -- are automatically created for each Django model.
+    Three basic permissions -- add, change and delete -- are automatically
+    created for each Django model.
     """
     name = StringField(max_length=50, verbose_name=_('username'))
     content_type = ReferenceField(ContentType)
@@ -119,15 +131,24 @@ class Permission(Document):
         return (self.codename,) + self.content_type.natural_key()
     natural_key.dependencies = ['contenttypes.contenttype']
 
+
 class Group(Document):
-    """Groups are a generic way of categorizing users to apply permissions, or some other label, to those users. A user can belong to any number of groups.
+    """Groups are a generic way of categorizing users to apply permissions,
+    or some other label, to those users. A user can belong to any number of
+    groups.
 
-    A user in a group automatically has all the permissions granted to that group. For example, if the group Site editors has the permission can_edit_home_page, any user in that group will have that permission.
+    A user in a group automatically has all the permissions granted to that
+    group. For example, if the group Site editors has the permission
+    can_edit_home_page, any user in that group will have that permission.
 
-    Beyond permissions, groups are a convenient way to categorize users to apply some label, or extended functionality, to them. For example, you could create a group 'Special users', and you could write code that would do special things to those users -- such as giving them access to a members-only portion of your site, or sending them members-only e-mail messages.
+    Beyond permissions, groups are a convenient way to categorize users to
+    apply some label, or extended functionality, to them. For example, you
+    could create a group 'Special users', and you could write code that would
+    do special things to those users -- such as giving them access to a
+    members-only portion of your site, or sending them members-only
+    e-mail messages.
     """
     name = StringField(max_length=80, unique=True, verbose_name=_('name'))
-    # permissions = models.ManyToManyField(Permission, verbose_name=_('permissions'), blank=True)
     permissions = ListField(ReferenceField(Permission, verbose_name=_('permissions'), required=False))
 
     class Meta:
@@ -136,6 +157,7 @@ class Group(Document):
 
     def __unicode__(self):
         return self.name
+
 
 class UserManager(models.Manager):
     def create_user(self, username, email, password=None):
@@ -154,8 +176,8 @@ class UserManager(models.Manager):
             email = '@'.join([email_name, domain_part.lower()])
 
         user = self.model(username=username, email=email, is_staff=False,
-                         is_active=True, is_superuser=False, last_login=now,
-                         date_joined=now)
+                          is_active=True, is_superuser=False, last_login=now,
+                          date_joined=now)
 
         user.set_password(password)
         user.save(using=self._db)
@@ -175,7 +197,6 @@ class UserManager(models.Manager):
         # that look like it -- just to avoid confusion.
         from random import choice
         return ''.join([choice(allowed_chars) for i in range(length)])
-
 
 
 class User(Document):
@@ -208,6 +229,12 @@ class User(Document):
                                verbose_name=_('last login'))
     date_joined = DateTimeField(default=datetime_now,
                                 verbose_name=_('date joined'))
+
+    user_permissions = ListField(ReferenceField(Permission), verbose_name=_('user permissions'),
+                                                help_text=_('Permissions for the user.'))
+
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
 
     meta = {
         'allow_inheritance': True,
@@ -248,25 +275,6 @@ class User(Document):
         """
         return check_password(raw_password, self.password)
 
-    def get_all_permissions(self, obj=None):
-        return _user_get_all_permissions(self, obj)
-
-    def has_perm(self, perm, obj=None):
-        """
-        Returns True if the user has the specified permission. This method
-        queries all available auth backends, but returns immediately if any
-        backend returns True. Thus, a user who has permission from a single
-        auth backend is assumed to have permission in general. If an object is
-        provided, permissions for this specific object are checked.
-        """
-
-        # Active superusers have all permissions.
-        if self.is_active and self.is_superuser:
-            return True
-
-        # Otherwise we need to check the backends.
-        return _user_has_perm(self, perm, obj)
-
     @classmethod
     def create_user(cls, username, password, email=None):
         """Create (and save) a new user with the given username, password and
@@ -289,68 +297,47 @@ class User(Document):
         user.save()
         return user
 
-    def get_all_permissions(self, obj=None):
+    def get_group_permissions(self, obj=None):
+        """
+        Returns a list of permission strings that this user has through his/her
+        groups. This method queries all available auth backends. If an object
+        is passed in, only permissions matching this object are returned.
+        """
         permissions = set()
-        anon = self.is_anonymous()
         for backend in auth.get_backends():
-            if not anon or backend.supports_anonymous_user:
-                if hasattr(backend, "get_all_permissions"):
-                    if obj is not None:
-                        if backend.supports_object_permissions:
-                            permissions.update(
-                                backend.get_all_permissions(user, obj)
-                            )
-                    else:
-                        permissions.update(backend.get_all_permissions(self))
+            if hasattr(backend, "get_group_permissions"):
+                permissions.update(backend.get_group_permissions(self, obj))
         return permissions
 
-    def get_and_delete_messages(self):
-        return []
+    def get_all_permissions(self, obj=None):
+        return _user_get_all_permissions(self, obj)
 
     def has_perm(self, perm, obj=None):
-        anon = self.is_anonymous()
-        active = self.is_active
-        for backend in auth.get_backends():
-            if (not active and not anon and backend.supports_inactive_user) or \
-                        (not anon or backend.supports_anonymous_user):
-                if hasattr(backend, "has_perm"):
-                    if obj is not None:
-                        if (backend.supports_object_permissions and
-                            backend.has_perm(self, perm, obj)):
-                                return True
-                    else:
-                        if backend.has_perm(self, perm):
-                            return True
-        return False
+        """
+        Returns True if the user has the specified permission. This method
+        queries all available auth backends, but returns immediately if any
+        backend returns True. Thus, a user who has permission from a single
+        auth backend is assumed to have permission in general. If an object is
+        provided, permissions for this specific object are checked.
+        """
 
-    def has_perms(self, perm_list, obj=None):
-        """
-        Returns True if the user has each of the specified permissions.
-        If object is passed, it checks if the user has all required perms
-        for this object.
-        """
-        for perm in perm_list:
-            if not self.has_perm(perm, obj):
-                return False
-        return True
+        # Active superusers have all permissions.
+        if self.is_active and self.is_superuser:
+            return True
+
+        # Otherwise we need to check the backends.
+        return _user_has_perm(self, perm, obj)
 
     def has_module_perms(self, app_label):
-        anon = self.is_anonymous()
-        active = self.is_active
-        for backend in auth.get_backends():
-            if (not active and not anon and backend.supports_inactive_user) or \
-                        (not anon or backend.supports_anonymous_user):
-                if hasattr(backend, "has_module_perms"):
-                    if backend.has_module_perms(self, app_label):
-                        return True
-        return False
+        """
+        Returns True if the user has any permissions in the given app label.
+        Uses pretty much the same logic as has_perm, above.
+        """
+        # Active superusers have all permissions.
+        if self.is_active and self.is_superuser:
+            return True
 
-    def get_and_delete_messages(self):
-        messages = []
-        for m in self.message_set.all():
-            messages.append(m.message)
-            m.delete()
-        return messages
+        return _user_has_module_perms(self, app_label)
 
     def email_user(self, subject, message, from_email=None):
         "Sends an e-mail to this User."
@@ -386,14 +373,6 @@ class User(Document):
                 raise SiteProfileNotAvailable
         return self._profile_cache
 
-    def _get_message_set(self):
-        import warnings
-        warnings.warn('The user messaging API is deprecated. Please update'
-                      ' your code to use the new messages framework.',
-                      category=DeprecationWarning)
-        return self._message_set
-    message_set = property(_get_message_set)
-
 
 class MongoEngineBackend(object):
     """Authenticate using MongoEngine and mongoengine.django.auth.User.
@@ -402,9 +381,10 @@ class MongoEngineBackend(object):
     supports_object_permissions = False
     supports_anonymous_user = False
     supports_inactive_user = False
+    _user_doc = False
 
     def authenticate(self, username=None, password=None):
-        user = User.objects(username=username).first()
+        user = self.user_document.objects(username=username).first()
         if user:
             if password and user.check_password(password):
                 backend = auth.get_backends()[0]
@@ -413,8 +393,14 @@ class MongoEngineBackend(object):
         return None
 
     def get_user(self, user_id):
-        return User.objects.with_id(user_id)
+        return self.user_document.objects.with_id(user_id)
 
+    @property
+    def user_document(self):
+        if self._user_doc is False:
+            from .mongo_auth.models import get_user_document
+            self._user_doc = get_user_document()
+        return self._user_doc
 
 def get_user(userid):
     """Returns a User object from an id (User.id). Django's equivalent takes

@@ -1,7 +1,11 @@
+from bson import json_util
 from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase, CreateError
 from django.core.exceptions import SuspiciousOperation
-from django.utils.encoding import force_unicode
+try:
+    from django.utils.encoding import force_unicode
+except ImportError:
+    from django.utils.encoding import force_text as force_unicode
 
 from mongoengine.document import Document
 from mongoengine import fields
@@ -39,7 +43,7 @@ class MongoSession(Document):
         'indexes': [
             {
                 'fields': ['expire_date'],
-                'expireAfterSeconds': settings.SESSION_COOKIE_AGE
+                'expireAfterSeconds': 0
             }
         ]
     }
@@ -51,6 +55,12 @@ class MongoSession(Document):
 class SessionStore(SessionBase):
     """A MongoEngine-based session store for Django.
     """
+
+    def _get_session(self, *args, **kwargs):
+        sess = super(SessionStore, self)._get_session(*args, **kwargs)
+        if sess.get('_auth_user_id', None):
+            sess['_auth_user_id'] = str(sess.get('_auth_user_id'))
+        return sess
 
     def load(self):
         try:
@@ -88,7 +98,7 @@ class SessionStore(SessionBase):
             s.session_data = self._get_session(no_load=must_create)
         s.expire_date = self.get_expiry_date()
         try:
-            s.save(force_insert=must_create, safe=True)
+            s.save(force_insert=must_create)
         except OperationError:
             if must_create:
                 raise CreateError
@@ -100,3 +110,15 @@ class SessionStore(SessionBase):
                 return
             session_key = self.session_key
         MongoSession.objects(session_key=session_key).delete()
+
+
+class BSONSerializer(object):
+    """
+    Serializer that can handle BSON types (eg ObjectId).
+    """
+    def dumps(self, obj):
+        return json_util.dumps(obj, separators=(',', ':')).encode('ascii')
+
+    def loads(self, data):
+        return json_util.loads(data.decode('ascii'))
+

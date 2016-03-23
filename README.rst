@@ -26,7 +26,7 @@ setup.py install``.
 
 Dependencies
 ============
-- pymongo 2.1.1+
+- pymongo 2.5+
 - sphinx (optional - for documentation generation)
 
 Examples
@@ -92,4 +92,4 @@ Community
 
 Contributing
 ============
-We welcome contributions! see  the`Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
+We welcome contributions! see  the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_

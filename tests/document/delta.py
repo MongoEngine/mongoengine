@@ -3,6 +3,7 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 
+from bson import SON
 from mongoengine import *
 from mongoengine.connection import get_db
 
@@ -129,14 +130,14 @@ class DeltaTest(unittest.TestCase):
         }
         self.assertEqual(doc.embedded_field._delta(), (embedded_delta, {}))
         self.assertEqual(doc._delta(),
-            ({'embedded_field': embedded_delta}, {}))
+                         ({'embedded_field': embedded_delta}, {}))
 
         doc.save()
         doc = doc.reload(10)
 
         doc.embedded_field.dict_field = {}
         self.assertEqual(doc._get_changed_fields(),
-                        ['embedded_field.dict_field'])
+                         ['embedded_field.dict_field'])
         self.assertEqual(doc.embedded_field._delta(), ({}, {'dict_field': 1}))
         self.assertEqual(doc._delta(), ({}, {'embedded_field.dict_field': 1}))
         doc.save()
@@ -145,7 +146,7 @@ class DeltaTest(unittest.TestCase):
 
         doc.embedded_field.list_field = []
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field'])
+                         ['embedded_field.list_field'])
         self.assertEqual(doc.embedded_field._delta(), ({}, {'list_field': 1}))
         self.assertEqual(doc._delta(), ({}, {'embedded_field.list_field': 1}))
         doc.save()
@@ -160,7 +161,7 @@ class DeltaTest(unittest.TestCase):
 
         doc.embedded_field.list_field = ['1', 2, embedded_2]
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field'])
+                         ['embedded_field.list_field'])
 
         self.assertEqual(doc.embedded_field._delta(), ({
             'list_field': ['1', 2, {
@@ -192,11 +193,11 @@ class DeltaTest(unittest.TestCase):
 
         doc.embedded_field.list_field[2].string_field = 'world'
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field.2.string_field'])
+                         ['embedded_field.list_field.2.string_field'])
         self.assertEqual(doc.embedded_field._delta(),
-            ({'list_field.2.string_field': 'world'}, {}))
+                         ({'list_field.2.string_field': 'world'}, {}))
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.string_field': 'world'}, {}))
+                         ({'embedded_field.list_field.2.string_field': 'world'}, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
@@ -206,7 +207,7 @@ class DeltaTest(unittest.TestCase):
         doc.embedded_field.list_field[2].string_field = 'hello world'
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
         self.assertEqual(doc._get_changed_fields(),
-            ['embedded_field.list_field'])
+                         ['embedded_field.list_field'])
         self.assertEqual(doc.embedded_field._delta(), ({
             'list_field': ['1', 2, {
             '_cls': 'Embedded',
@@ -225,40 +226,40 @@ class DeltaTest(unittest.TestCase):
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].string_field,
-                        'hello world')
+                         'hello world')
 
         # Test list native methods
         doc.embedded_field.list_field[2].list_field.pop(0)
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.list_field':
-                [2, {'hello': 'world'}]}, {}))
+                         ({'embedded_field.list_field.2.list_field':
+                          [2, {'hello': 'world'}]}, {}))
         doc.save()
         doc = doc.reload(10)
 
         doc.embedded_field.list_field[2].list_field.append(1)
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.list_field':
-                [2, {'hello': 'world'}, 1]}, {}))
+                         ({'embedded_field.list_field.2.list_field':
+                          [2, {'hello': 'world'}, 1]}, {}))
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
-            [2, {'hello': 'world'}, 1])
+                         [2, {'hello': 'world'}, 1])
 
         doc.embedded_field.list_field[2].list_field.sort(key=str)
         doc.save()
         doc = doc.reload(10)
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
-            [1, 2, {'hello': 'world'}])
+                         [1, 2, {'hello': 'world'}])
 
         del(doc.embedded_field.list_field[2].list_field[2]['hello'])
         self.assertEqual(doc._delta(),
-            ({'embedded_field.list_field.2.list_field': [1, 2, {}]}, {}))
+                         ({'embedded_field.list_field.2.list_field': [1, 2, {}]}, {}))
         doc.save()
         doc = doc.reload(10)
 
         del(doc.embedded_field.list_field[2].list_field)
         self.assertEqual(doc._delta(),
-            ({}, {'embedded_field.list_field.2.list_field': 1}))
+                         ({}, {'embedded_field.list_field.2.list_field': 1}))
 
         doc.save()
         doc = doc.reload(10)
@@ -269,9 +270,9 @@ class DeltaTest(unittest.TestCase):
 
         doc.dict_field['Embedded'].string_field = 'Hello World'
         self.assertEqual(doc._get_changed_fields(),
-            ['dict_field.Embedded.string_field'])
+                         ['dict_field.Embedded.string_field'])
         self.assertEqual(doc._delta(),
-            ({'dict_field.Embedded.string_field': 'Hello World'}, {}))
+                         ({'dict_field.Embedded.string_field': 'Hello World'}, {}))
 
     def test_circular_reference_deltas(self):
         self.circular_reference_deltas(Document, Document)
@@ -289,10 +290,11 @@ class DeltaTest(unittest.TestCase):
             name = StringField()
             owner = ReferenceField('Person')
 
-        person = Person(name="owner")
-        person.save()
-        organization = Organization(name="company")
-        organization.save()
+        Person.drop_collection()
+        Organization.drop_collection()
+
+        person = Person(name="owner").save()
+        organization = Organization(name="company").save()
 
         person.owns.append(organization)
         organization.owner = person
@@ -311,29 +313,24 @@ class DeltaTest(unittest.TestCase):
         self.circular_reference_deltas_2(DynamicDocument, Document)
         self.circular_reference_deltas_2(DynamicDocument, DynamicDocument)
 
-    def circular_reference_deltas_2(self, DocClass1, DocClass2):
+    def circular_reference_deltas_2(self, DocClass1, DocClass2, dbref=True):
 
         class Person(DocClass1):
             name = StringField()
-            owns = ListField(ReferenceField('Organization'))
-            employer = ReferenceField('Organization')
+            owns = ListField(ReferenceField('Organization', dbref=dbref))
+            employer = ReferenceField('Organization', dbref=dbref)
 
         class Organization(DocClass2):
             name = StringField()
-            owner = ReferenceField('Person')
-            employees = ListField(ReferenceField('Person'))
+            owner = ReferenceField('Person', dbref=dbref)
+            employees = ListField(ReferenceField('Person', dbref=dbref))
 
         Person.drop_collection()
         Organization.drop_collection()
 
-        person = Person(name="owner")
-        person.save()
-
-        employee = Person(name="employee")
-        employee.save()
-
-        organization = Organization(name="company")
-        organization.save()
+        person = Person(name="owner").save()
+        employee = Person(name="employee").save()
+        organization = Organization(name="company").save()
 
         person.owns.append(organization)
         organization.owner = person
@@ -352,6 +349,8 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(p.owns[0], o)
         self.assertEqual(o.owner, p)
         self.assertEqual(e.employer, o)
+
+        return person, organization, employee
 
     def test_delta_db_field(self):
         self.delta_db_field(Document)
@@ -612,13 +611,13 @@ class DeltaTest(unittest.TestCase):
         Person.drop_collection()
 
         p = Person(name="James", age=34)
-        self.assertEqual(p._delta(), ({'age': 34, 'name': 'James',
-                                       '_cls': 'Person'}, {}))
+        self.assertEqual(p._delta(), (
+            SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
         p.doc = 123
         del(p.doc)
-        self.assertEqual(p._delta(), ({'age': 34, 'name': 'James',
-                                       '_cls': 'Person'}, {'doc': 1}))
+        self.assertEqual(p._delta(), (
+            SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
         p = Person()
         p.name = "Dean"
@@ -630,14 +629,14 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(p._get_changed_fields(), ['age'])
         self.assertEqual(p._delta(), ({'age': 24}, {}))
 
-        p = self.Person.objects(age=22).get()
+        p = Person.objects(age=22).get()
         p.age = 24
         self.assertEqual(p.age, 24)
         self.assertEqual(p._get_changed_fields(), ['age'])
         self.assertEqual(p._delta(), ({'age': 24}, {}))
 
         p.save()
-        self.assertEqual(1, self.Person.objects(age=24).count())
+        self.assertEqual(1, Person.objects(age=24).count())
 
     def test_dynamic_delta(self):
 
@@ -684,6 +683,57 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._get_changed_fields(), ['list_field'])
         self.assertEqual(doc._delta(), ({}, {'list_field': 1}))
 
+    def test_delta_with_dbref_true(self):
+        person, organization, employee = self.circular_reference_deltas_2(Document, Document, True)
+        employee.name = 'test'
+
+        self.assertEqual(organization._get_changed_fields(), [])
+
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertEqual({}, updates)
+
+        organization.employees.append(person)
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertTrue('employees' in updates)
+
+    def test_delta_with_dbref_false(self):
+        person, organization, employee = self.circular_reference_deltas_2(Document, Document, False)
+        employee.name = 'test'
+
+        self.assertEqual(organization._get_changed_fields(), [])
+
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertEqual({}, updates)
+
+        organization.employees.append(person)
+        updates, removals = organization._delta()
+        self.assertEqual({}, removals)
+        self.assertTrue('employees' in updates)
+
+    def test_nested_nested_fields_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(MapField(EmbeddedDocumentField(EmbeddedDoc)))
+            name = StringField()
+
+        MyDoc.drop_collection()
+
+        mydoc = MyDoc(name='testcase1', subs={'a': {'b': EmbeddedDoc(name='foo')}}).save()
+
+        mydoc = MyDoc.objects.first()
+        subdoc = mydoc.subs['a']['b']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a.b.name"], mydoc._get_changed_fields())
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
 
 if __name__ == '__main__':
     unittest.main()
