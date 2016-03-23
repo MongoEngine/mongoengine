@@ -5,7 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 try: 
     from django.utils.importlib import import_module
-except Exception:
+except ImportError:
     from importlib import import_module
 from django.utils.translation import ugettext_lazy as _
 
