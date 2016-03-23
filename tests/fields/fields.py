@@ -12,6 +12,7 @@ import uuid
 import math
 import itertools
 import re
+import six
 
 try:
     import dateutil
@@ -21,6 +22,10 @@ except ImportError:
 from decimal import Decimal
 
 from bson import Binary, DBRef, ObjectId
+try:
+    from bson.int64 import Int64
+except ImportError:
+    Int64 = long
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -3604,6 +3609,19 @@ class FieldTest(unittest.TestCase):
             Doc(bar='test')
 
         self.assertRaises(FieldDoesNotExist, test)
+
+    def test_long_field_is_considered_as_int64(self):
+        """
+        Tests that long fields are stored as long in mongo, even if long value
+        is small enough to be an int.
+        """
+        class TestLongFieldConsideredAsInt64(Document):
+            some_long = LongField()
+
+        doc = TestLongFieldConsideredAsInt64(some_long=42).save()
+        db = get_db()
+        self.assertTrue(isinstance(db.test_long_field_considered_as_int64.find()[0]['some_long'], Int64))
+        self.assertTrue(isinstance(doc.some_long, six.integer_types))
 
 
 class EmbeddedDocumentListFieldTestCase(unittest.TestCase):

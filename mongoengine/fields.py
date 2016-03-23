@@ -20,6 +20,10 @@ else:
 import pymongo
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
+try:
+    from bson.int64 import Int64
+except ImportError:
+    Int64 = long
 
 from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
@@ -226,6 +230,9 @@ class LongField(BaseField):
         except ValueError:
             pass
         return value
+
+    def to_mongo(self, value, **kwargs):
+        return Int64(value)
 
     def validate(self, value):
         try:
