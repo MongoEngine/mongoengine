@@ -342,7 +342,7 @@ class DecimalField(BaseField):
         if value is None:
             return value
         if self.force_string:
-            return unicode(value)
+            return unicode(self.to_python(value))
         return float(self.to_python(value))
 
     def validate(self, value):
