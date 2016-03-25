@@ -1,3 +1,4 @@
 nose
 pymongo>=2.7.1
 six==1.10.0
+ipaddr==2.1.11
