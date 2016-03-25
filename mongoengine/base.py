@@ -567,6 +567,8 @@ class BaseDocument(object):
         self._default_load_status = FieldStatus.NOT_LOADED
         if from_son:
             self._lazy_data = values
+            # set _id by default
+            setattr(self, '_id', values.get('_id'))
         else:
             self._all_loaded = True
             self._allow_unloaded = True
