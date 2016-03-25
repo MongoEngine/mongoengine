@@ -1515,6 +1515,29 @@ class FieldTest(unittest.TestCase):
             actions__friends__operation='drink',
             actions__friends__object='beer').count())
 
+    def test_map_field_unicode(self):
+
+        class Info(EmbeddedDocument):
+            description = StringField()
+            value_list = ListField(field=StringField())
+
+        class BlogPost(Document):
+            info_dict = MapField(field=EmbeddedDocumentField(Info))
+
+        BlogPost.drop_collection()
+
+        tree = BlogPost(info_dict={
+            u"éééé": {
+                'description': u"VALUE: éééé"
+            }
+        })
+
+        tree.save()
+
+        self.assertEqual(BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description, u"VALUE: éééé")
+
+        BlogPost.drop_collection()
+
     def test_embedded_db_field(self):
 
         class Embedded(EmbeddedDocument):
