@@ -10,6 +10,7 @@ Changes in 0.10.7 - DEV
 - Raise `OperationError` when trying to do a `drop_collection` on document with no collection set.
 - count on ListField of EmbeddedDocumentField fails. #1187
 - Fixed long fields stored as int32 in Python 3. #1253
+- MapField now handles unicodes keys correctly. #1267
 
 Changes in 0.10.6
 =================
