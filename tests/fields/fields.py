@@ -1160,6 +1160,19 @@ class FieldTest(unittest.TestCase):
         simple = simple.reload()
         self.assertEqual(simple.widgets, [4])
 
+    def test_list_field_with_negative_indices(self):
+        
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        simple.widgets[-1] = 5
+        self.assertEqual(['widgets.3'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [1, 2, 3, 5])
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 

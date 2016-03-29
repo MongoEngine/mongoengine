@@ -11,6 +11,7 @@ Changes in 0.10.7 - DEV
 - count on ListField of EmbeddedDocumentField fails. #1187
 - Fixed long fields stored as int32 in Python 3. #1253
 - MapField now handles unicodes keys correctly. #1267
+- ListField now handles negative indicies correctly. #1270
 
 Changes in 0.10.6
 =================
