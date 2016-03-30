@@ -200,7 +200,7 @@ class BaseList(list):
         if hasattr(self._instance, '_mark_as_changed'):
             if key:
                 self._instance._mark_as_changed('%s.%s' % (self._name, 
-                    len(self)+key if key < 0 else key))
+                    key % len(self)))
             else:
                 self._instance._mark_as_changed(self._name)
 
