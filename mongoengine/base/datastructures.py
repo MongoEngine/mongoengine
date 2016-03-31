@@ -210,7 +210,7 @@ class EmbeddedDocumentList(BaseList):
     def __match_all(cls, i, kwargs):
         items = kwargs.items()
         return all([
-            getattr(i, k) == v or str(getattr(i, k)) == v for k, v in items
+            getattr(i, k) == v or unicode(getattr(i, k)) == v for k, v in items
         ])
 
     @classmethod

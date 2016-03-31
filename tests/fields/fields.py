@@ -4033,6 +4033,17 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         # modified
         self.assertEqual(number, 2)
 
+    def test_unicode(self):
+        """
+        Tests that unicode strings handled correctly
+        """
+        post = self.BlogPost(comments=[
+            self.Comments(author='user1', message=u'сообщение'),
+            self.Comments(author='user2', message=u'хабарлама')
+        ]).save()
+        self.assertEqual(post.comments.get(message=u'сообщение').author,
+                         'user1')
+
     def test_save(self):
         """
         Tests the save method of a List of Embedded Documents.
