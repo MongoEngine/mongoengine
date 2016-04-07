@@ -12,6 +12,7 @@ Changes in 0.10.7 - DEV
 - Fixed long fields stored as int32 in Python 3. #1253
 - MapField now handles unicodes keys correctly. #1267
 - ListField now handles negative indicies correctly. #1270
+- Fixed AttributeError when initializing EmbeddedDocument with positional args. #681
 
 Changes in 0.10.6
 =================
