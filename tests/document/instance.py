@@ -2928,6 +2928,20 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
 
+    def test_positional_creation_embedded(self):
+        """Ensure that embedded document may be created using positional arguments.
+        """
+        job = self.Job("Test Job", 4)
+        self.assertEqual(job.name, "Test Job")
+        self.assertEqual(job.years, 4)
+
+    def test_mixed_creation_embedded(self):
+        """Ensure that embedded document may be created using mixed arguments.
+        """
+        job = self.Job("Test Job", years=4)
+        self.assertEqual(job.name, "Test Job")
+        self.assertEqual(job.years, 4)
+
     def test_mixed_creation_dynamic(self):
         """Ensure that document may be created using mixed arguments.
         """

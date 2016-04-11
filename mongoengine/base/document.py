@@ -51,7 +51,7 @@ class BaseDocument(object):
             # We only want named arguments.
             field = iter(self._fields_ordered)
             # If its an automatic id field then skip to the first defined field
-            if self._auto_id_field:
+            if getattr(self, '_auto_id_field', False):
                 next(field)
             for value in args:
                 name = next(field)
