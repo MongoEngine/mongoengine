@@ -1,12 +1,14 @@
+import atexit
 import functools
 import socket
 import warnings
+import weakref
 import time
 
 # So that 'setup.py doc' can import this module without Tornado or greenlet
 requirements_satisfied = True
 try:
-    from tornado import ioloop, iostream
+    from tornado import ioloop, iostream, locks
 except ImportError:
     requirements_satisfied = False
     warnings.warn("Tornado not installed", ImportWarning)
@@ -386,6 +388,191 @@ class GreenletBoundedSemaphore(GreenletSemaphore):
             raise ValueError("Semaphore released too many times")
         return GreenletSemaphore.release(self)
 
+
+class GreenletPeriodicExecutor(object):
+    _executors = set()
+
+    def __init__(self, interval, dummy, target, io_loop):
+        # dummy is in the place of min_interval which has no semantic
+        # equivalent in this implementation
+        self._interval = interval
+        self._target = target
+        self._io_loop = io_loop
+
+        self._stopped = True
+        self._next_timeout = None
+        # make sure multiple calls to wake() only schedules once
+        self._scheduled = False
+
+    # i'm about 90% sure these three methods are pymongo's safeguard against
+    # forgetting to close these things themselves
+    @classmethod
+    def _register_executor(cls, executor):
+        ref = weakref.ref(executor, cls._on_executor_deleted)
+        cls._executors.add(ref)
+
+    @classmethod
+    def _on_executor_deleted(cls, ref):
+        cls._executors.remove(ref)
+
+    @classmethod
+    def _shutdown_executors(cls):
+        executors = list(cls._executors)
+        for ref in executors:
+            executor = ref()
+            if executor:
+                executor.close()
+
+    def open(self):
+        if self._stopped:
+            if not self._next_timeout and not self._scheduled:
+                self._io_loop.add_callback(self._execute)
+                self._scheduled = True
+            self._stopped = False
+
+    def wake(self):
+        if not self._stopped:
+            # schedule immediately
+            self._cancel_next_run()
+            if not self._scheduled:
+                self._io_loop.add_callback(self._execute)
+                self._scheduled = True
+
+    def close(self, dummy=None):
+        self._stopped = True
+        self._cancel_next_run()
+
+    def join(self, timeout=None):
+        pass
+
+    def _cancel_next_run(self):
+        if self._next_timeout:
+            self._io_loop.remove_timeout(self._next_timeout)
+
+    def _execute(self):
+        self._next_timeout = None
+        self._scheduled = False
+        # cover the case where close is called after wake
+        if self._stopped:
+            return
+
+        try:
+            if not self._target():
+                self._stopped = True
+                return
+        except Exception:
+            self._stopped = True
+            # NOTE: this is an implementation difference from the real
+            # PeriodicExecutor. the real one ends up killing the thread, while
+            # this one propogates to the IOLoop handler.
+            raise
+        iotimeout = time.time() + self._interval
+        self._next_timeout = self._io_loop.add_timeout(iotimeout,
+                                                       self._execute)
+
+atexit.register(GreenletPeriodicExecutor._shutdown_executors)
+
+
+class GreenletLock(object):
+    # we need to replace the internal lock do avoid the following scenario:
+    # greenlet 1:
+    # with lock:
+    #     # do some io-blocking action, context switch to greenlet 2
+    #
+    # greenlet 2:
+    # with lock: # deadlock
+    #
+    # we can't just replace it with an RLock:
+    # greenlet 1:
+    # with lock:
+    #     # do some action only one thread of control is expected
+    #     # do some io-blocking action, context switch to greenlet 2
+    # greenlet 2:
+    # with lock:
+    #     # lock is granted, potentially corrupting state for greenlet 1
+
+    # don't need to be too fancy or thread-safe because it's only coroutines
+    def __init__(self, io_loop):
+        # not an rlock, so we don't need to keep track of the holder,
+        # but might as well for sanity-checking
+        self.holder = None
+        self.waiters = []
+        self.io_loop = io_loop
+
+    def acquire(self, blocking=True):
+        current = greenlet.getcurrent()
+        parent = current.parent
+        assert parent, "Must be called on child greenlet"
+
+        while self.holder:
+            if blocking:
+                self.waiters.append(current)
+                parent.switch()
+            else:
+                return False
+
+        self.holder = current
+
+    def release(self):
+        current = greenlet.getcurrent()
+        assert self.holder is current, 'must be held'
+        self.holder = None
+        if self.waiters:
+            waiter = self.waiters.pop(0)
+            self.io_loop.add_callback(waiter.switch)
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, *args):
+        self.release()
+
+
+class GreenletCondition(object):
+    # replacement class for threading.Condition
+    # only implements the methods used by pymongo.
+
+    def __init__(self, io_loop, lock):
+        self.lock = lock
+        self.waiters = []
+        self.waiter_timeouts = {}
+        self.io_loop = io_loop
+
+    def _handle_timeout(self, timeout_gr):
+        self.waiters.remove(timeout_gr)
+        self.waiter_timeouts.pop(timeout_gr)
+        timeout_gr.switch()
+
+    def wait(self, timeout=None):
+        current = greenlet.getcurrent()
+        parent = current.parent
+        assert parent, "Must be called on child greenlet"
+        assert self.lock.holder is current, 'must hold lock'
+
+        # yield back to the IOLoop
+        self.waiters.append(current)
+        if timeout:
+            callback = functools.partial(self._handle_timeout, current)
+            iotimeout = timeout + time.time()
+            self.waiter_timeouts[current] = self.io_loop.add_timeout(iotimeout,
+                                                                     callback)
+        self.lock.release()
+        # we'll be returned to by the timeout or by notify_all
+        parent.switch()
+
+        self.lock.acquire()
+
+    def notify_all(self):
+        current = greenlet.getcurrent()
+        assert self.lock.holder is current, 'must hold lock'
+        waiters, self.waiters = self.waiters, []
+
+        for waiter in waiters:
+            self.io_loop.add_callback(waiter.switch)
+
+            if waiter in self.waiter_timeouts:
+                timeout = self.waiter_timeouts.pop(waiter)
+                self.io_loop.remove_timeout(timeout)
 
 
 class GreenletClient(object):
