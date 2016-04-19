@@ -291,7 +291,7 @@ class BaseDocument(object):
 
         return self._data['_text_score']
 
-    def to_mongo(self, use_db_field=True, fields=None):
+    def to_mongo(self, use_db_field=True, fields=None, populate=False):
         """
         Return as SON data ready for use with MongoDB.
         """
@@ -302,10 +302,20 @@ class BaseDocument(object):
         data['_id'] = None
         data['_cls'] = self._class_name
 
+        Document = _import_class("Document")
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        ReferenceField = _import_class("ReferenceField")
+        ListField = _import_class("ListField")
+
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
         root_fields = set([f.split('.')[0] for f in fields])
 
+        if populate:
+            populate_list = [ _field.split('.') for _field in populate.split(',')]
+            populate_domain = dict((_field[0],_field[1:]) for _field in populate_list)
+
         for field_name in self:
+
             if root_fields and field_name not in root_fields:
                 continue
 
@@ -331,6 +341,32 @@ class BaseDocument(object):
 
                 value = field.to_mongo(value, **ex_vars)
 
+                if populate and field_name in populate_domain.keys():
+                    if isinstance(field, ListField):
+                        _obj = []
+                        for ref in value:
+                            if isinstance(ref, DBRef):
+                                _ref_model = field.field.document_type
+
+                                if isinstance(ref.id, ObjectId):
+                                    ref_id = ref.id
+                                    _obj.append(_ref_model.objects.get(id=ref_id).to_mongo(populate='.'.join(populate_domain[field_name])))
+                            elif isinstance(ref, Document):
+                                _obj.append(ref.to_mongo(populate='.'.join(populate_domain[field_name])))
+                            else:
+                                _obj.append(ref)
+
+                        value = _obj
+
+                    if isinstance(field, ReferenceField):
+                        _ref_model = field.document_type
+                        try:
+                            _obj = _ref_model.objects.get(id=value.id).to_mongo(populate='.'.join(populate_domain[field_name]))
+                        except:
+                            _obj = None
+
+                        value = _obj
+
             # Handle self generating fields
             if value is None and field._auto_gen:
                 value = field.generate()
@@ -346,7 +382,8 @@ class BaseDocument(object):
         if not self._meta.get('allow_inheritance'):
             data.pop('_cls')
 
-        return data
+        return data    
+
 
     def validate(self, clean=True):
         """Ensure that all fields' values are valid and that required fields
@@ -399,9 +436,11 @@ class BaseDocument(object):
         :param use_db_field: Serialize field names as they appear in
             MongoDB (as opposed to attribute names on this document).
             Defaults to True.
+        :param populate:
         """
+        populate = kwargs.pop('populate', False)
         use_db_field = kwargs.pop('use_db_field', True)
-        return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
+        return json_util.dumps(self.to_mongo(use_db_field, populate=populate), *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data, created=False):

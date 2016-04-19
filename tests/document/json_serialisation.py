@@ -60,6 +60,29 @@ class TestJson(unittest.TestCase):
 
         self.assertEqual(doc, Doc.from_json(doc.to_json()))
 
+    def test_populate(self):
+        class VerySimple(Document):
+            num = StringField(default='2')
+
+        class Simple(Document):
+            val = StringField(default='1')
+            inner = ReferenceField(VerySimple)
+
+        class Doc(Document):
+            simple_ref = ReferenceField(Simple)
+            list_ref = ListField(ReferenceField(Simple))
+
+        docum = Doc(simple_ref=Simple(inner=VerySimple().save()).save())
+        docum.list_ref=[Simple(inner=VerySimple().save()).save(), Simple().save()]
+        docum.save()
+        _json = docum.to_json( populate='simple_ref,list_ref.inner')
+        
+        import json
+        _json = json.loads(_json)
+        print(_json)
+        self.assertEqual(_json['simple_ref']['val'],'1')
+        self.assertEqual(_json['list_ref'][0]['inner']['num'],'2')
+
     def test_json_complex(self):
 
         if pymongo.version_tuple[0] <= 2 and pymongo.version_tuple[1] <= 3:
