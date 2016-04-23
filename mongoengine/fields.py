@@ -47,12 +47,10 @@ __all__ = [
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
     'MultiPolygonField', 'GeoJsonBaseField']
 
-
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
 
 class StringField(BaseField):
-
     """A unicode string field.
     """
 
@@ -108,33 +106,41 @@ class StringField(BaseField):
             # escape unsafe characters which could lead to a re.error
             value = re.escape(value)
             value = re.compile(regex % value, flags)
-        return value
+        return super(StringField, self).prepare_query_value(op, value)
 
 
 class URLField(StringField):
-
     """A field that validates input as an URL.
 
     .. versionadded:: 0.3
     """
 
     _URL_REGEX = re.compile(
-        r'^(?:http|ftp)s?://'  # http:// or https://
-        # domain...
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
+        r'^(?:[a-z0-9\.\-]*)://'  # scheme is validated separately
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}(?<!-)\.?)|'  # domain...
         r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # ...or ipv4
+        r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # ...or ipv6
         r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    _URL_SCHEMES = ['http', 'https', 'ftp', 'ftps']
 
-    def __init__(self, verify_exists=False, url_regex=None, **kwargs):
+    def __init__(self, verify_exists=False, url_regex=None, schemes=None, **kwargs):
         self.verify_exists = verify_exists
         self.url_regex = url_regex or self._URL_REGEX
+        self.schemes = schemes or self._URL_SCHEMES
         super(URLField, self).__init__(**kwargs)
 
     def validate(self, value):
+        # Check first if the scheme is valid
+        scheme = value.split('://')[0].lower()
+        if scheme not in self.schemes:
+            self.error('Invalid scheme {} in URL: {}'.format(scheme, value))
+            return
+
+        # Then check full URL
         if not self.url_regex.match(value):
-            self.error('Invalid URL: %s' % value)
+            self.error('Invalid URL: {}'.format(value))
             return
 
         if self.verify_exists:
@@ -150,7 +156,6 @@ class URLField(StringField):
 
 
 class EmailField(StringField):
-
     """A field that validates input as an E-Mail-Address.
 
     .. versionadded:: 0.4
@@ -162,7 +167,7 @@ class EmailField(StringField):
         # quoted-string
         r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'
         # domain (max length of an ICAAN TLD is 22 characters)
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,253}[A-Z0-9])?\.)+[A-Z]{2,22}$', re.IGNORECASE
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}|[A-Z0-9-]{2,}(?<!-))$', re.IGNORECASE
     )
 
     def validate(self, value):
@@ -172,7 +177,6 @@ class EmailField(StringField):
 
 
 class IntField(BaseField):
-
     """An 32-bit integer field.
     """
 
@@ -203,11 +207,10 @@ class IntField(BaseField):
         if value is None:
             return value
 
-        return int(value)
+        return super(IntField, self).prepare_query_value(op, int(value))
 
 
 class LongField(BaseField):
-
     """An 64-bit integer field.
     """
 
@@ -238,11 +241,10 @@ class LongField(BaseField):
         if value is None:
             return value
 
-        return long(value)
+        return super(LongField, self).prepare_query_value(op, long(value))
 
 
 class FloatField(BaseField):
-
     """An floating point number field.
     """
 
@@ -273,11 +275,10 @@ class FloatField(BaseField):
         if value is None:
             return value
 
-        return float(value)
+        return super(FloatField, self).prepare_query_value(op, float(value))
 
 
 class DecimalField(BaseField):
-
     """A fixed-point decimal number field.
 
     .. versionchanged:: 0.8
@@ -347,11 +348,10 @@ class DecimalField(BaseField):
             self.error('Decimal value is too large')
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)
+        return super(DecimalField, self).prepare_query_value(op, self.to_mongo(value))
 
 
 class BooleanField(BaseField):
-
     """A boolean field type.
 
     .. versionadded:: 0.1.2
@@ -370,7 +370,6 @@ class BooleanField(BaseField):
 
 
 class DateTimeField(BaseField):
-
     """A datetime field.
 
     Uses the python-dateutil library if available alternatively use time.strptime
@@ -434,11 +433,10 @@ class DateTimeField(BaseField):
                     return None
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)
+        return super(DateTimeField, self).prepare_query_value(op, self.to_mongo(value))
 
 
 class ComplexDateTimeField(StringField):
-
     """
     ComplexDateTimeField handles microseconds exactly instead of rounding
     like DateTimeField does.
@@ -458,22 +456,10 @@ class ComplexDateTimeField(StringField):
     """
 
     def __init__(self, separator=',', **kwargs):
-        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second',
-                      'microsecond']
-        self.separtor = separator
+        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second', 'microsecond']
+        self.separator = separator
+        self.format = separator.join(['%Y', '%m', '%d', '%H', '%M', '%S', '%f'])
         super(ComplexDateTimeField, self).__init__(**kwargs)
-
-    def _leading_zero(self, number):
-        """
-        Converts the given number to a string.
-
-        If it has only one digit, a leading zero so as it has always at least
-        two digits.
-        """
-        if int(number) < 10:
-            return "0%s" % number
-        else:
-            return str(number)
 
     def _convert_from_datetime(self, val):
         """
@@ -481,14 +467,11 @@ class ComplexDateTimeField(StringField):
         stored in MongoDB). This is the reverse function of
         `_convert_from_string`.
 
-        >>> a = datetime(2011, 6, 8, 20, 26, 24, 192284)
-        >>> RealDateTimeField()._convert_from_datetime(a)
-        '2011,06,08,20,26,24,192284'
+        >>> a = datetime(2011, 6, 8, 20, 26, 24, 92284)
+        >>> ComplexDateTimeField()._convert_from_datetime(a)
+        '2011,06,08,20,26,24,092284'
         """
-        data = []
-        for name in self.names:
-            data.append(self._leading_zero(getattr(val, name)))
-        return ','.join(data)
+        return val.strftime(self.format)
 
     def _convert_from_string(self, data):
         """
@@ -496,16 +479,12 @@ class ComplexDateTimeField(StringField):
         will manipulate). This is the reverse function of
         `_convert_from_datetime`.
 
-        >>> a = '2011,06,08,20,26,24,192284'
+        >>> a = '2011,06,08,20,26,24,092284'
         >>> ComplexDateTimeField()._convert_from_string(a)
-        datetime.datetime(2011, 6, 8, 20, 26, 24, 192284)
+        datetime.datetime(2011, 6, 8, 20, 26, 24, 92284)
         """
-        data = data.split(',')
-        data = map(int, data)
-        values = {}
-        for i in range(7):
-            values[self.names[i]] = data[i]
-        return datetime.datetime(**values)
+        values = map(int, data.split(self.separator))
+        return datetime.datetime(*values)
 
     def __get__(self, instance, owner):
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
@@ -537,11 +516,10 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
-        return self._convert_from_datetime(value)
+        return super(ComplexDateTimeField, self).prepare_query_value(op, self._convert_from_datetime(value))
 
 
 class EmbeddedDocumentField(BaseField):
-
     """An embedded document field - with a declared document_type.
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
     """
@@ -565,7 +543,7 @@ class EmbeddedDocumentField(BaseField):
 
     def to_python(self, value):
         if not isinstance(value, self.document_type):
-            return self.document_type._from_son(value)
+            return self.document_type._from_son(value, _auto_dereference=self._auto_dereference)
         return value
 
     def to_mongo(self, value, use_db_field=True, fields=[]):
@@ -588,11 +566,13 @@ class EmbeddedDocumentField(BaseField):
         return self.document_type._fields.get(member_name)
 
     def prepare_query_value(self, op, value):
+        if not isinstance(value, self.document_type):
+            value = self.document_type._from_son(value)
+        super(EmbeddedDocumentField, self).prepare_query_value(op, value)
         return self.to_mongo(value)
 
 
 class GenericEmbeddedDocumentField(BaseField):
-
     """A generic embedded document field - allows any
     :class:`~mongoengine.EmbeddedDocument` to be stored.
 
@@ -604,7 +584,7 @@ class GenericEmbeddedDocumentField(BaseField):
     """
 
     def prepare_query_value(self, op, value):
-        return self.to_mongo(value)
+        return super(GenericEmbeddedDocumentField, self).prepare_query_value(op, self.to_mongo(value))
 
     def to_python(self, value):
         if isinstance(value, dict):
@@ -625,13 +605,12 @@ class GenericEmbeddedDocumentField(BaseField):
             return None
 
         data = document.to_mongo(use_db_field)
-        if not '_cls' in data:
+        if '_cls' not in data:
             data['_cls'] = document._class_name
         return data
 
 
 class DynamicField(BaseField):
-
     """A truly dynamic field type capable of handling different and varying
     types of data.
 
@@ -648,9 +627,9 @@ class DynamicField(BaseField):
             cls = value.__class__
             val = value.to_mongo()
             # If we its a document thats not inherited add _cls
-            if (isinstance(value,   Document)):
+            if isinstance(value, Document):
                 val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
-            if (isinstance(value, EmbeddedDocument)):
+            if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
             return val
 
@@ -685,9 +664,8 @@ class DynamicField(BaseField):
 
     def prepare_query_value(self, op, value):
         if isinstance(value, basestring):
-            from mongoengine.fields import StringField
             return StringField().prepare_query_value(op, value)
-        return self.to_mongo(value)
+        return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
 
     def validate(self, value, clean=True):
         if hasattr(value, "validate"):
@@ -695,7 +673,6 @@ class DynamicField(BaseField):
 
 
 class ListField(ComplexBaseField):
-
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
@@ -720,9 +697,10 @@ class ListField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         if self.field:
-            if op in ('set', 'unset') and (not isinstance(value, basestring)
-                                           and not isinstance(value, BaseDocument)
-                                           and hasattr(value, '__iter__')):
+            if op in ('set', 'unset') and (
+                    not isinstance(value, basestring) and
+                    not isinstance(value, BaseDocument) and
+                    hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
             return self.field.prepare_query_value(op, value)
         return super(ListField, self).prepare_query_value(op, value)
@@ -740,12 +718,10 @@ class EmbeddedDocumentListField(ListField):
 
     """
 
-    def __init__(self, document_type, *args, **kwargs):
+    def __init__(self, document_type, **kwargs):
         """
         :param document_type: The type of
          :class:`~mongoengine.EmbeddedDocument` the list will hold.
-        :param args: Arguments passed directly into the parent
-         :class:`~mongoengine.ListField`.
         :param kwargs: Keyword arguments passed directly into the parent
          :class:`~mongoengine.ListField`.
         """
@@ -755,7 +731,6 @@ class EmbeddedDocumentListField(ListField):
 
 
 class SortedListField(ListField):
-
     """A ListField that sorts the contents of its list before writing to
     the database in order to ensure that a sorted list is always
     retrieved.
@@ -807,7 +782,6 @@ def key_has_dot_or_dollar(d):
 
 
 class DictField(ComplexBaseField):
-
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 
@@ -863,7 +837,6 @@ class DictField(ComplexBaseField):
 
 
 class MapField(DictField):
-
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
@@ -879,7 +852,6 @@ class MapField(DictField):
 
 
 class ReferenceField(BaseField):
-
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
 
@@ -998,6 +970,7 @@ class ReferenceField(BaseField):
     def prepare_query_value(self, op, value):
         if value is None:
             return None
+        super(ReferenceField, self).prepare_query_value(op, value)
         return self.to_mongo(value)
 
     def validate(self, value):
@@ -1014,9 +987,9 @@ class ReferenceField(BaseField):
 
 
 class CachedReferenceField(BaseField):
-
     """
-    A referencefield with cache fields to porpuse pseudo-joins
+    A referencefield with cache fields to purpose pseudo-joins
+    
     .. versionadded:: 0.9
     """
 
@@ -1028,7 +1001,6 @@ class CachedReferenceField(BaseField):
         """
         if not isinstance(document_type, basestring) and \
                 not issubclass(document_type, (Document, basestring)):
-
             self.error('Argument to CachedReferenceField constructor must be a'
                        ' document class or a string')
 
@@ -1039,6 +1011,7 @@ class CachedReferenceField(BaseField):
 
     def start_listener(self):
         from mongoengine import signals
+
         signals.post_save.connect(self.on_document_pre_save,
                                   sender=self.document_type)
 
@@ -1061,6 +1034,7 @@ class CachedReferenceField(BaseField):
             collection = self.document_type._get_collection_name()
             value = DBRef(
                 collection, self.document_type.id.to_python(value['_id']))
+            return self.document_type._from_son(self.document_type._get_db().dereference(value))
 
         return value
 
@@ -1092,7 +1066,6 @@ class CachedReferenceField(BaseField):
     def to_mongo(self, document):
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
-        doc_tipe = self.document_type
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
@@ -1102,6 +1075,7 @@ class CachedReferenceField(BaseField):
                            ' been saved to the database')
         else:
             self.error('Only accept a document object')
+            # TODO: should raise here or will fail next statement
 
         value = SON((
             ("_id", id_field.to_mongo(id_)),
@@ -1124,7 +1098,7 @@ class CachedReferenceField(BaseField):
 
     def validate(self, value):
 
-        if not isinstance(value, (self.document_type)):
+        if not isinstance(value, self.document_type):
             self.error("A CachedReferenceField only accepts documents")
 
         if isinstance(value, Document) and value.id is None:
@@ -1153,7 +1127,6 @@ class CachedReferenceField(BaseField):
 
 
 class GenericReferenceField(BaseField):
-
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
@@ -1166,6 +1139,30 @@ class GenericReferenceField(BaseField):
 
     .. versionadded:: 0.3
     """
+
+    def __init__(self, *args, **kwargs):
+        choices = kwargs.pop('choices', None)
+        super(GenericReferenceField, self).__init__(*args, **kwargs)
+        self.choices = []
+        # Keep the choices as a list of allowed Document class names
+        if choices:
+            for choice in choices:
+                if isinstance(choice, basestring):
+                    self.choices.append(choice)
+                elif isinstance(choice, type) and issubclass(choice, Document):
+                    self.choices.append(choice._class_name)
+                else:
+                    self.error('Invalid choices provided: must be a list of'
+                               'Document subclasses and/or basestrings')
+
+    def _validate_choices(self, value):
+        if isinstance(value, dict):
+            # If the field has not been dereferenced, it is still a dict
+            # of class and DBRef
+            value = value.get('_cls')
+        elif isinstance(value, Document):
+            value = value._class_name
+        super(GenericReferenceField, self)._validate_choices(value)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -1235,7 +1232,6 @@ class GenericReferenceField(BaseField):
 
 
 class BinaryField(BaseField):
-
     """A binary data field.
     """
 
@@ -1267,7 +1263,6 @@ class GridFSError(Exception):
 
 
 class GridFSProxy(object):
-
     """Proxy object to handle writing and reading of files to and from GridFS
 
     .. versionadded:: 0.4
@@ -1281,12 +1276,12 @@ class GridFSProxy(object):
                  instance=None,
                  db_alias=DEFAULT_CONNECTION_NAME,
                  collection_name='fs'):
-        self.grid_id = grid_id                  # Store GridFS id for file
+        self.grid_id = grid_id  # Store GridFS id for file
         self.key = key
         self.instance = instance
         self.db_alias = db_alias
         self.collection_name = collection_name
-        self.newfile = None                     # Used for partial writes
+        self.newfile = None  # Used for partial writes
         self.gridout = None
 
     def __getattr__(self, name):
@@ -1413,7 +1408,6 @@ class GridFSProxy(object):
 
 
 class FileField(BaseField):
-
     """A GridFS storage field.
 
     .. versionadded:: 0.4
@@ -1447,7 +1441,7 @@ class FileField(BaseField):
     def __set__(self, instance, value):
         key = self.name
         if ((hasattr(value, 'read') and not
-             isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
+                isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
@@ -1497,7 +1491,6 @@ class FileField(BaseField):
 
 
 class ImageGridFsProxy(GridFSProxy):
-
     """
     Proxy for ImageField
 
@@ -1521,6 +1514,7 @@ class ImageGridFsProxy(GridFSProxy):
             raise ValidationError('Invalid image: %s' % e)
 
         # Progressive JPEG
+        # TODO: fixme, at least unused, at worst bad implementation
         progressive = img.info.get('progressive') or False
 
         if (kwargs.get('progressive') and
@@ -1581,7 +1575,7 @@ class ImageGridFsProxy(GridFSProxy):
         if out and out.thumbnail_id:
             self.fs.delete(out.thumbnail_id)
 
-        return super(ImageGridFsProxy, self).delete(*args, **kwargs)
+        return super(ImageGridFsProxy, self).delete()
 
     def _put_thumbnail(self, thumbnail, format, progressive, **kwargs):
         w, h = thumbnail.size
@@ -1636,7 +1630,6 @@ class ImproperlyConfigured(Exception):
 
 
 class ImageField(FileField):
-
     """
     A Image File storage field.
 
@@ -1675,7 +1668,6 @@ class ImageField(FileField):
 
 
 class SequenceField(BaseField):
-
     """Provides a sequential counter see:
      http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
 
@@ -1687,12 +1679,21 @@ class SequenceField(BaseField):
              cluster of machines, it is easier to create an object ID than have
              global, uniformly increasing sequence numbers.
 
+    :param collection_name:  Name of the counter collection (default 'mongoengine.counters')
+    :param sequence_name: Name of the sequence in the collection (default 'ClassName.counter')
+    :param value_decorator: Any callable to use as a counter (default int)
+        
     Use any callable as `value_decorator` to transform calculated counter into
     any value suitable for your needs, e.g. string or hexadecimal
     representation of the default integer counter value.
-
+    
+    .. note::
+    
+        In case the counter is defined in the abstract document, it will be 
+        common to all inherited documents and the default sequence name will 
+        be the class name of the abstract document.
+    
     .. versionadded:: 0.5
-
     .. versionchanged:: 0.8 added `value_decorator`
     """
 
@@ -1707,7 +1708,7 @@ class SequenceField(BaseField):
         self.sequence_name = sequence_name
         self.value_decorator = (callable(value_decorator) and
                                 value_decorator or self.VALUE_DECORATOR)
-        return super(SequenceField, self).__init__(*args, **kwargs)
+        super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate(self):
         """
@@ -1753,7 +1754,7 @@ class SequenceField(BaseField):
         if self.sequence_name:
             return self.sequence_name
         owner = self.owner_document
-        if issubclass(owner, Document):
+        if issubclass(owner, Document) and not owner._meta.get('abstract'):
             return owner._get_collection_name()
         else:
             return ''.join('_%s' % c if c.isupper() else c
@@ -1790,7 +1791,6 @@ class SequenceField(BaseField):
 
 
 class UUIDField(BaseField):
-
     """A UUID field.
 
     .. versionadded:: 0.6
@@ -1837,13 +1837,12 @@ class UUIDField(BaseField):
             if not isinstance(value, basestring):
                 value = str(value)
             try:
-                value = uuid.UUID(value)
+                uuid.UUID(value)
             except Exception, exc:
                 self.error('Could not convert to UUID: %s' % exc)
 
 
 class GeoPointField(BaseField):
-
     """A list storing a longitude and latitude coordinate.
 
     .. note:: this represents a generic point in a 2D plane and a legacy way of
@@ -1873,7 +1872,6 @@ class GeoPointField(BaseField):
 
 
 class PointField(GeoJsonBaseField):
-
     """A GeoJSON field storing a longitude and latitude coordinate.
 
     The data is represented as:
@@ -1894,7 +1892,6 @@ class PointField(GeoJsonBaseField):
 
 
 class LineStringField(GeoJsonBaseField):
-
     """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is represented as:
@@ -1914,7 +1911,6 @@ class LineStringField(GeoJsonBaseField):
 
 
 class PolygonField(GeoJsonBaseField):
-
     """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is represented as:
@@ -1937,7 +1933,6 @@ class PolygonField(GeoJsonBaseField):
 
 
 class MultiPointField(GeoJsonBaseField):
-
     """A GeoJSON field storing a list of Points.
 
     The data is represented as:
@@ -1958,7 +1953,6 @@ class MultiPointField(GeoJsonBaseField):
 
 
 class MultiLineStringField(GeoJsonBaseField):
-
     """A GeoJSON field storing a list of LineStrings.
 
     The data is represented as:
@@ -1979,7 +1973,6 @@ class MultiLineStringField(GeoJsonBaseField):
 
 
 class MultiPolygonField(GeoJsonBaseField):
-
     """A GeoJSON field storing  list of Polygons.
 
     The data is represented as:

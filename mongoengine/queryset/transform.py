@@ -3,18 +3,19 @@ from collections import defaultdict
 import pymongo
 from bson import SON
 
+from mongoengine.base.fields import UPDATE_OPERATORS
 from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidQueryError, LookUpError
+from mongoengine.errors import InvalidQueryError
+from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ('query', 'update')
-
 
 COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                         'all', 'size', 'exists', 'not', 'elemMatch', 'type')
 GEO_OPERATORS = ('within_distance', 'within_spherical_distance',
                  'within_box', 'within_polygon', 'near', 'near_sphere',
-                 'max_distance', 'geo_within', 'geo_within_box',
+                 'max_distance', 'min_distance', 'geo_within', 'geo_within_box',
                  'geo_within_polygon', 'geo_within_center',
                  'geo_within_sphere', 'geo_intersects')
 STRING_OPERATORS = ('contains', 'icontains', 'startswith',
@@ -24,12 +25,8 @@ CUSTOM_OPERATORS = ('match',)
 MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
 
-UPDATE_OPERATORS = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
-                    'push_all', 'pull', 'pull_all', 'add_to_set',
-                    'set_on_insert', 'min', 'max')
 
-
-def query(_doc_cls=None, _field_operation=False, **query):
+def query(_doc_cls=None, **query):
     """Transform a query from Django-style format to Mongo format.
     """
     mongo_query = {}
@@ -46,6 +43,10 @@ def query(_doc_cls=None, _field_operation=False, **query):
         op = None
         if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
+
+        # Allw to escape operator-like field name by __
+        if len(parts) > 1 and parts[-1] == "":
+            parts.pop()
 
         negate = False
         if len(parts) > 1 and parts[-1] == 'not':
@@ -125,29 +126,34 @@ def query(_doc_cls=None, _field_operation=False, **query):
         elif key in mongo_query:
             if key in mongo_query and isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
-                # $maxDistance needs to come last - convert to SON
+                # $max/minDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
-                if ('$maxDistance' in value_dict and '$near' in value_dict):
+                if ('$maxDistance' in value_dict or '$minDistance' in value_dict) and \
+                        ('$near' in value_dict or '$nearSphere' in value_dict):
                     value_son = SON()
-                    if isinstance(value_dict['$near'], dict):
-                        for k, v in value_dict.iteritems():
-                            if k == '$maxDistance':
-                                continue
-                            value_son[k] = v
-                        if (get_connection().max_wire_version <= 1):
-                            value_son['$maxDistance'] = value_dict[
-                                '$maxDistance']
-                        else:
-                            value_son['$near'] = SON(value_son['$near'])
-                            value_son['$near'][
-                                '$maxDistance'] = value_dict['$maxDistance']
-                    else:
-                        for k, v in value_dict.iteritems():
-                            if k == '$maxDistance':
-                                continue
-                            value_son[k] = v
-                        value_son['$maxDistance'] = value_dict['$maxDistance']
-
+                    for k, v in value_dict.iteritems():
+                        if k == '$maxDistance' or k == '$minDistance':
+                            continue
+                        value_son[k] = v
+                    # Required for MongoDB >= 2.6, may fail when combining
+                    # PyMongo 3+ and MongoDB < 2.6
+                    near_embedded = False
+                    for near_op in ('$near', '$nearSphere'):
+                        if isinstance(value_dict.get(near_op), dict) and (
+                                IS_PYMONGO_3 or get_connection().max_wire_version > 1):
+                            value_son[near_op] = SON(value_son[near_op])
+                            if '$maxDistance' in value_dict:
+                                value_son[near_op][
+                                    '$maxDistance'] = value_dict['$maxDistance']
+                            if '$minDistance' in value_dict:
+                                value_son[near_op][
+                                    '$minDistance'] = value_dict['$minDistance']
+                            near_embedded = True
+                    if not near_embedded:
+                        if '$maxDistance' in value_dict:
+                            value_son['$maxDistance'] = value_dict['$maxDistance']
+                        if '$minDistance' in value_dict:
+                            value_son['$minDistance'] = value_dict['$minDistance']
                     mongo_query[key] = value_son
             else:
                 # Store for manually merging later
@@ -301,7 +307,11 @@ def update(_doc_cls=None, **update):
 
 def _geo_operator(field, op, value):
     """Helper to return the query for a given geo query"""
-    if field._geo_index == pymongo.GEO2D:
+    if op == "max_distance":
+        value = {'$maxDistance': value}
+    elif op == "min_distance":
+        value = {'$minDistance': value}
+    elif field._geo_index == pymongo.GEO2D:
         if op == "within_distance":
             value = {'$within': {'$center': value}}
         elif op == "within_spherical_distance":
@@ -314,8 +324,6 @@ def _geo_operator(field, op, value):
             value = {'$nearSphere': value}
         elif op == 'within_box':
             value = {'$within': {'$box': value}}
-        elif op == "max_distance":
-            value = {'$maxDistance': value}
         else:
             raise NotImplementedError("Geo method '%s' has not "
                                       "been implemented for a GeoPointField" % op)
@@ -334,8 +342,6 @@ def _geo_operator(field, op, value):
             value = {"$geoIntersects": _infer_geometry(value)}
         elif op == "near":
             value = {'$near': _infer_geometry(value)}
-        elif op == "max_distance":
-            value = {'$maxDistance': value}
         else:
             raise NotImplementedError("Geo method '%s' has not "
                                       "been implemented for a %s " % (op, field._name))
@@ -352,6 +358,7 @@ def _infer_geometry(value):
         raise InvalidQueryError("Invalid $geometry dictionary should have "
                                 "type and coordinates keys")
     elif isinstance(value, (list, set)):
+        # TODO: shouldn't we test value[0][0][0][0] to see if it is MultiPolygon?
         try:
             value[0][0][0]
             return {"$geometry": {"type": "Polygon", "coordinates": value}}

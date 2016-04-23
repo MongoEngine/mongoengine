@@ -1,18 +1,26 @@
 """Helper functions and types to aid with Python 2.5 - 3 support."""
 
 import sys
+import pymongo
+
+
+if pymongo.version_tuple[0] < 3:
+    IS_PYMONGO_3 = False
+else:
+    IS_PYMONGO_3 = True
 
 PY3 = sys.version_info[0] == 3
 
 if PY3:
     import codecs
     from io import BytesIO as StringIO
+
     # return s converted to binary.  b('test') should be equivalent to b'test'
     def b(s):
         return codecs.latin_1_encode(s)[0]
 
     bin_type = bytes
-    txt_type   = str
+    txt_type = str
 else:
     try:
         from cStringIO import StringIO

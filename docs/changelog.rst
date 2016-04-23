@@ -2,9 +2,44 @@
 Changelog
 =========
 
+Changes in 0.10.1 - DEV
+=======================
+- Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
+- Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047
+- Fix ignored chained options #842
 
-Changes in 0.9.X - DEV
-======================
+Changes in 0.10.0
+=================
+- Django support was removed and will be available as a separate extension. #958
+- Allow to load undeclared field with meta attribute 'strict': False #957
+- Support for PyMongo 3+ #946
+- Removed get_or_create() deprecated since 0.8.0. #300
+- Improve Document._created status when switch collection and db #1020
+- Queryset update doesn't go through field validation #453
+- Added support for specifying authentication source as option `authSource` in URI. #967
+- Fixed mark_as_changed to handle higher/lower level fields changed. #927
+- ListField of embedded docs doesn't set the _instance attribute when iterating over it #914
+- Support += and *= for ListField #595
+- Use sets for populating dbrefs to dereference
+- Fixed unpickled documents replacing the global field's list. #888
+- Fixed storage of microseconds in ComplexDateTimeField and unused separator option. #910
+- Don't send a "cls" option to ensureIndex (related to https://jira.mongodb.org/browse/SERVER-769)
+- Fix for updating sorting in SortedListField. #978
+- Added __ support to escape field name in fields lookup keywords that match operators names #949
+- Fix for issue where FileField deletion did not free space in GridFS.
+- No_dereference() not respected on embedded docs containing reference. #517
+- Document save raise an exception if save_condition fails #1005
+- Fixes some internal _id handling issue. #961
+- Updated URL and Email Field regex validators, added schemes argument to URLField validation. #652
+- Capped collection multiple of 256. #1011
+- Added `BaseQuerySet.aggregate_sum` and `BaseQuerySet.aggregate_average` methods.
+- Fix for delete with write_concern {'w': 0}. #1008
+- Allow dynamic lookup for more than two parts. #882
+- Added support for min_distance on geo queries. #831
+- Allow to add custom metadata to fields #705
+
+Changes in 0.9.0
+================
 - Update FileField when creating a new file #714
 - Added `EmbeddedDocumentListField` for Lists of Embedded Documents. #826
 - ComplexDateTimeField should fall back to None when null=True #864
@@ -78,6 +113,7 @@ Changes in 0.9.X - DEV
 - Fixed a few instances where reverse_delete_rule was written as reverse_delete_rules. #791
 - Make `in_bulk()` respect `no_dereference()` #775
 - Handle None from model __str__; Fixes #753 #754
+- _get_changed_fields fix for embedded documents with id field. #925
 
 Changes in 0.8.7
 ================

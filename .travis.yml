@@ -8,26 +8,11 @@ python:
 - pypy
 - pypy3
 env:
-- PYMONGO=2.7.2 DJANGO=dev
-- PYMONGO=2.7.2 DJANGO=1.7.1
-- PYMONGO=2.7.2 DJANGO=1.6.8
-- PYMONGO=2.7.2 DJANGO=1.5.11
-- PYMONGO=2.8 DJANGO=dev
-- PYMONGO=2.8 DJANGO=1.7.1
-- PYMONGO=2.8 DJANGO=1.6.8
-- PYMONGO=2.8 DJANGO=1.5.11
+- PYMONGO=2.7
+- PYMONGO=2.8
+- PYMONGO=3.0
+- PYMONGO=dev
 matrix:
-  exclude:
-  - python: '2.6'
-    env: PYMONGO=2.7.2 DJANGO=dev
-  - python: '2.6'
-    env: PYMONGO=2.8 DJANGO=dev
-  - python: '2.6'
-    env: PYMONGO=2.7.2 DJANGO=1.7.1
-  - python: '2.6'
-    env: PYMONGO=2.8 DJANGO=1.7.1
-  allow_failures:
-  - python: pypy3
   fast_finish: true
 before_install:
 - travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
@@ -39,22 +24,10 @@ install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
   python-tk
-- if [[ $PYMONGO == 'dev' ]]; then travis_retry pip install https://github.com/mongodb/mongo-python-driver/tarball/master;
-  true; fi
-- if [[ $PYMONGO != 'dev' ]]; then travis_retry pip install pymongo==$PYMONGO; true;
-  fi
-- if [[ $DJANGO == 'dev' ]]; then travis_retry pip install git+https://github.com/django/django.git;
-  fi
-- if [[ $DJANGO != 'dev' ]]; then travis_retry pip install Django==$DJANGO; fi
-- travis_retry pip install https://pypi.python.org/packages/source/p/python-dateutil/python-dateutil-2.1.tar.gz#md5=1534bb15cf311f07afaa3aacba1c028b
-- travis_retry pip install coveralls
-- travis_retry python setup.py install
+- travis_retry pip install tox>=1.9 coveralls
+- travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 script:
-- travis_retry python setup.py test
-- if [[ $TRAVIS_PYTHON_VERSION == '3.'* ]]; then 2to3 . -w; fi;
-- coverage run --source=mongoengine setup.py test
-- coverage report -m
-- python benchmark.py
+- tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
 after_script: coveralls --verbose
 notifications:
   irc: irc.freenode.org#mongoengine

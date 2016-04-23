@@ -93,6 +93,7 @@ class DeltaTest(unittest.TestCase):
     def delta_recursive(self, DocClass, EmbeddedClass):
 
         class Embedded(EmbeddedClass):
+            id = StringField()
             string_field = StringField()
             int_field = IntField()
             dict_field = DictField()
@@ -114,6 +115,7 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._delta(), ({}, {}))
 
         embedded_1 = Embedded()
+        embedded_1.id = "010101"
         embedded_1.string_field = 'hello'
         embedded_1.int_field = 1
         embedded_1.dict_field = {'hello': 'world'}
@@ -123,6 +125,7 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc._get_changed_fields(), ['embedded_field'])
 
         embedded_delta = {
+            'id': "010101",
             'string_field': 'hello',
             'int_field': 1,
             'dict_field': {'hello': 'world'},
@@ -250,13 +253,13 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
                          [1, 2, {'hello': 'world'}])
 
-        del(doc.embedded_field.list_field[2].list_field[2]['hello'])
+        del doc.embedded_field.list_field[2].list_field[2]['hello']
         self.assertEqual(doc._delta(),
                          ({}, {'embedded_field.list_field.2.list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
-        del(doc.embedded_field.list_field[2].list_field)
+        del doc.embedded_field.list_field[2].list_field
         self.assertEqual(doc._delta(),
                          ({}, {'embedded_field.list_field.2.list_field': 1}))
 
@@ -590,13 +593,13 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(doc.embedded_field.list_field[2].list_field,
             [1, 2, {'hello': 'world'}])
 
-        del(doc.embedded_field.list_field[2].list_field[2]['hello'])
+        del doc.embedded_field.list_field[2].list_field[2]['hello']
         self.assertEqual(doc._delta(),
             ({}, {'db_embedded_field.db_list_field.2.db_list_field.2.hello': 1}))
         doc.save()
         doc = doc.reload(10)
 
-        del(doc.embedded_field.list_field[2].list_field)
+        del doc.embedded_field.list_field[2].list_field
         self.assertEqual(doc._delta(), ({},
             {'db_embedded_field.db_list_field.2.db_list_field': 1}))
 
@@ -612,7 +615,7 @@ class DeltaTest(unittest.TestCase):
             SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
         p.doc = 123
-        del(p.doc)
+        del p.doc
         self.assertEqual(p._delta(), (
             SON([('_cls', 'Person'), ('name', 'James'), ('age', 34)]), {}))
 
@@ -732,6 +735,56 @@ class DeltaTest(unittest.TestCase):
         mydoc._clear_changed_fields()
         self.assertEqual([], mydoc._get_changed_fields())
 
+    def test_lower_level_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(EmbeddedDocumentField(EmbeddedDoc))
+
+        MyDoc.drop_collection()
+
+        MyDoc().save()
+
+        mydoc = MyDoc.objects.first()
+        mydoc.subs['a'] = EmbeddedDoc()
+        self.assertEqual(["subs.a"], mydoc._get_changed_fields())
+
+        subdoc = mydoc.subs['a']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a"], mydoc._get_changed_fields())
+        mydoc.save()
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
+
+    def test_upper_level_mark_as_changed(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField()
+
+        class MyDoc(Document):
+            subs = MapField(EmbeddedDocumentField(EmbeddedDoc))
+
+        MyDoc.drop_collection()
+
+        MyDoc(subs={'a': EmbeddedDoc(name='foo')}).save()
+
+        mydoc = MyDoc.objects.first()
+        subdoc = mydoc.subs['a']
+        subdoc.name = 'bar'
+
+        self.assertEqual(["name"], subdoc._get_changed_fields())
+        self.assertEqual(["subs.a.name"], mydoc._get_changed_fields())
+
+        mydoc.subs['a'] = EmbeddedDoc()
+        self.assertEqual(["subs.a"], mydoc._get_changed_fields())
+        mydoc.save()
+
+        mydoc._clear_changed_fields()
+        self.assertEqual([], mydoc._get_changed_fields())
+
     def test_referenced_object_changed_attributes(self):
         """Ensures that when you save a new reference to a field, the referenced object isn't altered"""
 
@@ -773,6 +826,44 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual(org2.name, 'New Org 2')
         org2.reload()
         self.assertEqual(org2.name, 'New Org 2')
+
+    def test_delta_for_nested_map_fields(self):
+        class UInfoDocument(Document):
+            phone = StringField()
+
+        class EmbeddedRole(EmbeddedDocument):
+            type = StringField()
+
+        class EmbeddedUser(EmbeddedDocument):
+            name = StringField()
+            roles = MapField(field=EmbeddedDocumentField(EmbeddedRole))
+            rolist = ListField(field=EmbeddedDocumentField(EmbeddedRole))
+            info = ReferenceField(UInfoDocument)
+
+        class Doc(Document):
+            users = MapField(field=EmbeddedDocumentField(EmbeddedUser))
+            num = IntField(default=-1)
+
+        Doc.drop_collection()
+
+        doc = Doc(num=1)
+        doc.users["007"] = EmbeddedUser(name="Agent007")
+        doc.save()
+
+        uinfo = UInfoDocument(phone="79089269066")
+        uinfo.save()
+
+        d = Doc.objects(num=1).first()
+        d.users["007"]["roles"]["666"] = EmbeddedRole(type="superadmin")
+        d.users["007"]["rolist"].append(EmbeddedRole(type="oops"))
+        d.users["007"]["info"] = uinfo
+        delta = d._delta()
+        self.assertEqual(True, "users.007.roles.666" in delta[0])
+        self.assertEqual(True, "users.007.rolist" in delta[0])
+        self.assertEqual(True, "users.007.info" in delta[0])
+        self.assertEqual('superadmin', delta[0]["users.007.roles.666"]["type"])
+        self.assertEqual('oops', delta[0]["users.007.rolist"][0]["type"])
+        self.assertEqual(uinfo.id, delta[0]["users.007.info"])
 
 if __name__ == '__main__':
     unittest.main()

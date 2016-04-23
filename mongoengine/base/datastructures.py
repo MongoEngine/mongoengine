@@ -1,6 +1,6 @@
 import weakref
-import functools
 import itertools
+
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
@@ -21,7 +21,7 @@ class BaseDict(dict):
         if isinstance(instance, (Document, EmbeddedDocument)):
             self._instance = weakref.proxy(instance)
         self._name = name
-        return super(BaseDict, self).__init__(dict_items)
+        super(BaseDict, self).__init__(dict_items)
 
     def __getitem__(self, key, *args, **kwargs):
         value = super(BaseDict, self).__getitem__(key)
@@ -66,7 +66,7 @@ class BaseDict(dict):
 
     def clear(self, *args, **kwargs):
         self._mark_as_changed()
-        return super(BaseDict, self).clear(*args, **kwargs)
+        return super(BaseDict, self).clear()
 
     def pop(self, *args, **kwargs):
         self._mark_as_changed()
@@ -74,7 +74,7 @@ class BaseDict(dict):
 
     def popitem(self, *args, **kwargs):
         self._mark_as_changed()
-        return super(BaseDict, self).popitem(*args, **kwargs)
+        return super(BaseDict, self).popitem()
 
     def setdefault(self, *args, **kwargs):
         self._mark_as_changed()
@@ -125,6 +125,10 @@ class BaseList(list):
             value._instance = self._instance
         return value
 
+    def __iter__(self):
+        for i in xrange(self.__len__()):
+            yield self[i]
+
     def __setitem__(self, key, value, *args, **kwargs):
         if isinstance(key, slice):
             self._mark_as_changed()
@@ -156,6 +160,14 @@ class BaseList(list):
         self = state
         return self
 
+    def __iadd__(self, other):
+        self._mark_as_changed()
+        return super(BaseList, self).__iadd__(other)
+
+    def __imul__(self, other):
+        self._mark_as_changed()
+        return super(BaseList, self).__imul__(other)
+
     def append(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseList, self).append(*args, **kwargs)
@@ -178,7 +190,7 @@ class BaseList(list):
 
     def reverse(self, *args, **kwargs):
         self._mark_as_changed()
-        return super(BaseList, self).reverse(*args, **kwargs)
+        return super(BaseList, self).reverse()
 
     def sort(self, *args, **kwargs):
         self._mark_as_changed()
@@ -357,25 +369,31 @@ class StrictDict(object):
     __slots__ = ()
     _special_fields = set(['get', 'pop', 'iteritems', 'items', 'keys', 'create'])
     _classes = {}
+
     def __init__(self, **kwargs):
-        for k,v in kwargs.iteritems():
+        for k, v in kwargs.iteritems():
             setattr(self, k, v)
+
     def __getitem__(self, key):
         key = '_reserved_' + key if key in self._special_fields else key
         try:
             return getattr(self, key)
         except AttributeError:
             raise KeyError(key)
+
     def __setitem__(self, key, value):
         key = '_reserved_' + key if key in self._special_fields else key
         return setattr(self, key, value)
+
     def __contains__(self, key):
         return hasattr(self, key)
+
     def get(self, key, default=None):
         try:
             return self[key]
         except KeyError:
             return default
+
     def pop(self, key, default=None):
         v = self.get(key, default)
         try:
@@ -383,19 +401,29 @@ class StrictDict(object):
         except AttributeError:
             pass
         return v
+
     def iteritems(self):
         for key in self:
             yield key, self[key]
+
     def items(self):
         return [(k, self[k]) for k in iter(self)]
+
+    def iterkeys(self):
+        return iter(self)
+
     def keys(self):
         return list(iter(self))
+
     def __iter__(self):
         return (key for key in self.__slots__ if hasattr(self, key))
+
     def __len__(self):
         return len(list(self.iteritems()))
+
     def __eq__(self, other):
         return self.items() == other.items()
+
     def __neq__(self, other):
         return self.items() != other.items()
 
@@ -406,15 +434,18 @@ class StrictDict(object):
         if allowed_keys not in cls._classes:
             class SpecificStrictDict(cls):
                 __slots__ = allowed_keys_tuple
+
                 def __repr__(self):
-                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k,v) for (k,v) in self.iteritems())
+                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k) for k in self.iterkeys())
+
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]
 
 
 class SemiStrictDict(StrictDict):
-    __slots__ = ('_extras')
+    __slots__ = ('_extras', )
     _classes = {}
+
     def __getattr__(self, attr):
         try:
             super(SemiStrictDict, self).__getattr__(attr)
@@ -423,6 +454,7 @@ class SemiStrictDict(StrictDict):
                 return self.__getattribute__('_extras')[attr]
             except KeyError as e:
                 raise AttributeError(e)
+
     def __setattr__(self, attr, value):
         try:
             super(SemiStrictDict, self).__setattr__(attr, value)

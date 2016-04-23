@@ -42,7 +42,14 @@ class NotUniqueError(OperationError):
 
 
 class FieldDoesNotExist(Exception):
-    pass
+    """Raised when trying to set a field
+    not declared in a :class:`~mongoengine.Document`
+    or an :class:`~mongoengine.EmbeddedDocument`.
+
+    To avoid this behavior on data loading,
+    you should the :attr:`strict` to ``False``
+    in the :attr:`meta` dictionnary.
+    """
 
 
 class ValidationError(AssertionError):
@@ -108,6 +115,7 @@ class ValidationError(AssertionError):
             else:
                 return unicode(source)
             return errors_dict
+
         if not self.errors:
             return {}
         return build_dict(self.errors)
@@ -118,9 +126,9 @@ class ValidationError(AssertionError):
         def generate_key(value, prefix=''):
             if isinstance(value, list):
                 value = ' '.join([generate_key(k) for k in value])
-            if isinstance(value, dict):
+            elif isinstance(value, dict):
                 value = ' '.join(
-                        [generate_key(v, k) for k, v in value.iteritems()])
+                    [generate_key(v, k) for k, v in value.iteritems()])
 
             results = "%s.%s" % (prefix, value) if prefix else value
             return results

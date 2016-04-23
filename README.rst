@@ -8,10 +8,10 @@ MongoEngine
 
 .. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
   :target: http://travis-ci.org/MongoEngine/mongoengine
-  
-.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master 
+
+.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master
   :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
-  
+
 .. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.png
    :target: https://landscape.io/github/MongoEngine/mongoengine/master
    :alt: Code Health
@@ -26,7 +26,9 @@ a `tutorial <http://readthedocs.org/docs/mongoengine-odm/en/latest/tutorial.html
 
 Installation
 ============
-If you have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
+We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
+`pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
+You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_ and thus
 you can use ``easy_install -U mongoengine``. Otherwise, you can download the
 source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and run ``python
 setup.py install``.
@@ -38,12 +40,11 @@ Dependencies
 
 Optional Dependencies
 ---------------------
-- **Django Integration:** Django>=1.4.0 for Python 2.x or PyPy and Django>=1.5.0 for Python 3.x
-- **Image Fields**: Pillow>=2.0.0 or PIL (not recommended since MongoEngine is tested with Pillow)
+- **Image Fields**: Pillow>=2.0.0
 - dateutil>=2.1.0
 
 .. note
-   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: Django 1.6.5
+   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: PyMongo 3.0.1
 
 Examples
 ========
@@ -82,7 +83,7 @@ Some simple examples of what MongoEngine code looks like::
 
     >>> len(BlogPost.objects)
     2
-    >>> len(HtmlPost.objects)
+    >>> len(TextPost.objects)
     1
     >>> len(LinkPost.objects)
     1
@@ -96,7 +97,26 @@ Some simple examples of what MongoEngine code looks like::
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port, and run: ``python setup.py test``.
+the standard port, and run: ``python setup.py nosetests``.
+
+To run the test suite on every supported Python version and every supported PyMongo version,
+you can use ``tox``.
+tox and each supported Python version should be installed in your environment:
+
+.. code-block:: shell
+
+    # Install tox
+    $ pip install tox
+    # Run the test suites
+    $ tox
+
+If you wish to run one single or selected tests, use the nosetest convention. It will find the folder,
+eventually the file, go to the TestClass specified after the colon and eventually right to the single test.
+Also use the -s argument if you want to print out whatever or access pdb while testing.
+
+.. code-block:: shell
+
+    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest.test_cls_field -s
 
 Community
 =========

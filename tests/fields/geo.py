@@ -115,7 +115,7 @@ class GeoFieldTest(unittest.TestCase):
             expected = "Invalid LineString:\nBoth values (%s) in point must be float or int" % repr(coord[0])
             self._test_for_expected_error(Location, coord, expected)
 
-        Location(loc=[[1, 2], [3, 4], [5, 6], [1,2]]).validate()
+        Location(loc=[[1, 2], [3, 4], [5, 6], [1, 2]]).validate()
 
     def test_polygon_validation(self):
         class Location(Document):
@@ -226,7 +226,7 @@ class GeoFieldTest(unittest.TestCase):
             expected = "Invalid MultiLineString:\nBoth values (%s) in point must be float or int" % repr(coord[0][0])
             self._test_for_expected_error(Location, coord, expected)
 
-        Location(loc=[[[1, 2], [3, 4], [5, 6], [1,2]]]).validate()
+        Location(loc=[[[1, 2], [3, 4], [5, 6], [1, 2]]]).validate()
 
     def test_multipolygon_validation(self):
         class Location(Document):
@@ -336,12 +336,11 @@ class GeoFieldTest(unittest.TestCase):
         Location.drop_collection()
         Parent.drop_collection()
 
-        list(Parent.objects)
-
-        collection = Parent._get_collection()
-        info = collection.index_information()
-
+        Parent(name='Berlin').save()
+        info = Parent._get_collection().index_information()
         self.assertFalse('location_2d' in info)
+        info = Location._get_collection().index_information()
+        self.assertTrue('location_2d' in info)
 
         self.assertEqual(len(Parent._geo_indices()), 0)
         self.assertEqual(len(Location._geo_indices()), 1)

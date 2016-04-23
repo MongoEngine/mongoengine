@@ -7,7 +7,6 @@ import pymongo
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
-
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList
@@ -17,8 +16,12 @@ __all__ = ("BaseField", "ComplexBaseField",
            "ObjectIdField", "GeoJsonBaseField")
 
 
-class BaseField(object):
+UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
+                        'push_all', 'pull', 'pull_all', 'add_to_set',
+                        'set_on_insert', 'min', 'max'])
 
+
+class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
 
@@ -39,7 +42,7 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False, sparse=False):
+                 help_text=None, null=False, sparse=False, custom_data=None):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -66,6 +69,7 @@ class BaseField(object):
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
+        :param custom_data: (optional) Custom metadata for this field.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -83,6 +87,8 @@ class BaseField(object):
         self.help_text = help_text
         self.null = null
         self.sparse = sparse
+        self._owner_document = None
+        self.custom_data = custom_data
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
@@ -106,7 +112,7 @@ class BaseField(object):
         """Descriptor for assigning a value to a field in a document.
         """
 
-        # If setting to None and theres a default
+        # If setting to None and there is a default
         # Then set the value to the default value
         if value is None:
             if self.null:
@@ -150,6 +156,8 @@ class BaseField(object):
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo.
         """
+        if op in UPDATE_OPERATORS:
+            self.validate(value)
         return value
 
     def validate(self, value, clean=True):
@@ -157,26 +165,29 @@ class BaseField(object):
         """
         pass
 
-    def _validate(self, value, **kwargs):
+    def _validate_choices(self, value):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
+        choice_list = self.choices
+        if isinstance(choice_list[0], (list, tuple)):
+            choice_list = [k for k, _ in choice_list]
+
+        # Choices which are other types of Documents
+        if isinstance(value, (Document, EmbeddedDocument)):
+            if not any(isinstance(value, c) for c in choice_list):
+                self.error(
+                    'Value must be instance of %s' % unicode(choice_list)
+                )
+        # Choices which are types other than Documents
+        elif value not in choice_list:
+            self.error('Value must be one of %s' % unicode(choice_list))
+
+
+    def _validate(self, value, **kwargs):
         # Check the Choices Constraint
         if self.choices:
-
-            choice_list = self.choices
-            if isinstance(self.choices[0], (list, tuple)):
-                choice_list = [k for k, v in self.choices]
-
-            # Choices which are other types of Documents
-            if isinstance(value, (Document, EmbeddedDocument)):
-                if not any(isinstance(value, c) for c in choice_list):
-                    self.error(
-                        'Value must be instance of %s' % unicode(choice_list)
-                    )
-            # Choices which are types other than Documents
-            elif value not in choice_list:
-                self.error('Value must be one of %s' % unicode(choice_list))
+            self._validate_choices(value)
 
         # check validation argument
         if self.validation is not None:
@@ -189,9 +200,19 @@ class BaseField(object):
 
         self.validate(value, **kwargs)
 
+    @property
+    def owner_document(self):
+        return self._owner_document
+
+    def _set_owner_document(self, owner_document):
+        self._owner_document = owner_document
+
+    @owner_document.setter
+    def owner_document(self, owner_document):
+        self._set_owner_document(owner_document)
+
 
 class ComplexBaseField(BaseField):
-
     """Handles complex fields, such as lists / dictionaries.
 
     Allows for nesting of embedded documents inside complex types.
@@ -241,8 +262,8 @@ class ComplexBaseField(BaseField):
             instance._data[self.name] = value
 
         if (self._auto_dereference and instance._initialised and
-                isinstance(value, (BaseList, BaseDict))
-                and not value._dereferenced):
+                isinstance(value, (BaseList, BaseDict)) and
+                not value._dereferenced):
             value = _dereference(
                 value, max_depth=1, instance=instance, name=self.name
             )
@@ -271,6 +292,7 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
+            self.field._auto_dereference = self._auto_dereference
             value_dict = dict([(key, self.field.to_python(item))
                                for key, item in value.items()])
         else:
@@ -289,7 +311,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for _, v in sorted(value_dict.items(),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -308,8 +330,8 @@ class ComplexBaseField(BaseField):
                 return GenericReferenceField().to_mongo(value)
             cls = value.__class__
             val = value.to_mongo()
-            # If we its a document thats not inherited add _cls
-            if (isinstance(value, EmbeddedDocument)):
+            # If it's a document that is not inherited add _cls
+            if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
             return val
 
@@ -348,15 +370,15 @@ class ComplexBaseField(BaseField):
                 elif hasattr(v, 'to_mongo'):
                     cls = v.__class__
                     val = v.to_mongo()
-                    # If we its a document thats not inherited add _cls
-                    if (isinstance(v, (Document, EmbeddedDocument))):
+                    # If it's a document that is not inherited add _cls
+                    if isinstance(v, (Document, EmbeddedDocument)):
                         val['_cls'] = cls.__name__
                     value_dict[k] = val
                 else:
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for _, v in sorted(value_dict.items(),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -398,20 +420,17 @@ class ComplexBaseField(BaseField):
             self.field.owner_document = owner_document
         self._owner_document = owner_document
 
-    def _get_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
-    owner_document = property(_get_owner_document, _set_owner_document)
-
 
 class ObjectIdField(BaseField):
-
     """A field wrapper around MongoDB's ObjectIds.
     """
 
     def to_python(self, value):
-        if not isinstance(value, ObjectId):
-            value = ObjectId(value)
+        try:
+            if not isinstance(value, ObjectId):
+                value = ObjectId(value)
+        except:
+            pass
         return value
 
     def to_mongo(self, value):
@@ -434,7 +453,6 @@ class ObjectIdField(BaseField):
 
 
 class GeoJsonBaseField(BaseField):
-
     """A geo json field storing a geojson style object.
 
     .. versionadded:: 0.8

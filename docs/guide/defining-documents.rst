@@ -114,7 +114,7 @@ arguments can be set on all fields:
 :attr:`default` (Default: None)
     A value to use when no value is set for this field.
 
-    The definion of default parameters follow `the general rules on Python
+    The definition of default parameters follow `the general rules on Python
     <http://docs.python.org/reference/compound_stmts.html#function-definitions>`__,
     which means that some care should be taken when dealing with default mutable objects
     (like in :class:`~mongoengine.fields.ListField` or :class:`~mongoengine.fields.DictField`)::
@@ -145,6 +145,8 @@ arguments can be set on all fields:
 :attr:`primary_key` (Default: False)
     When True, use this field as a primary key for the collection.  `DictField`
     and `EmbeddedDocuments` both support being the primary key for a document.
+
+    .. note:: If set, this field is also accessible through the `pk` field.
 
 :attr:`choices` (Default: None)
     An iterable (e.g. a list or tuple) of choices to which the value of this
@@ -313,12 +315,12 @@ reference with a delete rule specification.  A delete rule is specified by
 supplying the :attr:`reverse_delete_rule` attributes on the
 :class:`ReferenceField` definition, like this::
 
-    class Employee(Document):
+    class ProfilePage(Document):
         ...
-        profile_page = ReferenceField('ProfilePage', reverse_delete_rule=mongoengine.NULLIFY)
+        employee = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
-removed, the :class:`ProfilePage` that belongs to that employee is removed as
+removed, the :class:`ProfilePage` that references that employee is removed as
 well.  If a whole batch of employees is removed, all profile pages that are
 linked are removed as well.
 
@@ -401,7 +403,7 @@ MongoEngine allows you to specify that a field should be unique across a
 collection by providing ``unique=True`` to a :class:`~mongoengine.fields.Field`\ 's
 constructor. If you try to save a document that has the same value for a unique
 field as a document that is already in the database, a
-:class:`~mongoengine.OperationError` will be raised. You may also specify
+:class:`~mongoengine.NotUniqueError` will be raised. You may also specify
 multi-field uniqueness constraints by using :attr:`unique_with`, which may be
 either a single field name, or a list or tuple of field names::
 
@@ -445,8 +447,10 @@ A :class:`~mongoengine.Document` may use a **Capped Collection** by specifying
 :attr:`max_documents` and :attr:`max_size` in the :attr:`meta` dictionary.
 :attr:`max_documents` is the maximum number of documents that is allowed to be
 stored in the collection, and :attr:`max_size` is the maximum size of the
-collection in bytes. If :attr:`max_size` is not specified and
-:attr:`max_documents` is, :attr:`max_size` defaults to 10000000 bytes (10MB).
+collection in bytes. :attr:`max_size` is rounded up to the next multiple of 256
+by MongoDB internally and mongoengine before. Use also a multiple of 256 to
+avoid confusions. If :attr:`max_size` is not specified and
+:attr:`max_documents` is, :attr:`max_size` defaults to 10485760 bytes (10MB).
 The following example shows a :class:`Log` document that will be limited to
 1000 entries and 2MB of disk space::
 
@@ -463,19 +467,26 @@ You can specify indexes on collections to make querying faster. This is done
 by creating a list of index specifications called :attr:`indexes` in the
 :attr:`~mongoengine.Document.meta` dictionary, where an index specification may
 either be a single field name, a tuple containing multiple field names, or a
-dictionary containing a full index definition. A direction may be specified on
-fields by prefixing the field name with a **+** (for ascending) or a **-** sign
-(for descending). Note that direction only matters on multi-field indexes.
-Text indexes may be specified by prefixing the field name with a **$**. ::
+dictionary containing a full index definition.
+
+A direction may be specified on fields by prefixing the field name with a
+**+** (for ascending) or a **-** sign (for descending). Note that direction
+only matters on multi-field indexes. Text indexes may be specified by prefixing
+the field name with a **$**. Hashed indexes may be specified by prefixing
+the field name with a **#**::
 
     class Page(Document):
+        category = IntField()
         title = StringField()
         rating = StringField()
         created = DateTimeField()
         meta = {
             'indexes': [
                 'title',
+                '$title',  # text index
+                '#title',  # hashed index
                 ('title', '-rating'),
+                ('category', '_cls'),
                 {
                     'fields': ['created'],
                     'expireAfterSeconds': 3600
@@ -530,11 +541,14 @@ There are a few top level defaults for all indexes that can be set::
 :attr:`index_background` (Optional)
     Set the default value for if an index should be indexed in the background
 
+:attr:`index_cls` (Optional)
+    A way to turn off a specific index for _cls.
+
 :attr:`index_drop_dups` (Optional)
     Set the default value for if an index should drop duplicates
 
-:attr:`index_cls` (Optional)
-    A way to turn off a specific index for _cls.
+.. note:: Since MongoDB 3.0 drop_dups is not supported anymore. Raises a Warning
+    and has no effect
 
 
 Compound Indexes and Indexing sub documents

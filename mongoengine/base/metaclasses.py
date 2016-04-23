@@ -1,13 +1,11 @@
 import warnings
 
-import pymongo
-
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
 from mongoengine.python_support import PY3
 from mongoengine.queryset import (DO_NOTHING, DoesNotExist,
                                   MultipleObjectsReturned,
-                                  QuerySet, QuerySetManager)
+                                  QuerySetManager)
 
 from mongoengine.base.common import _document_registry, ALLOW_INHERITANCE
 from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
@@ -16,7 +14,6 @@ __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
 
 
 class DocumentMetaclass(type):
-
     """Metaclass for all documents.
     """
 
@@ -113,7 +110,7 @@ class DocumentMetaclass(type):
         for base in flattened_bases:
             if (not getattr(base, '_is_base_cls', True) and
                     not getattr(base, '_meta', {}).get('abstract', True)):
-                # Collate heirarchy for _cls and _subclasses
+                # Collate hierarchy for _cls and _subclasses
                 class_name.append(base.__name__)
 
             if hasattr(base, '_meta'):
@@ -146,7 +143,7 @@ class DocumentMetaclass(type):
         for base in document_bases:
             if _cls not in base._subclasses:
                 base._subclasses += (_cls,)
-            base._types = base._subclasses   # TODO depreciate _types
+            base._types = base._subclasses  # TODO depreciate _types
 
         (Document, EmbeddedDocument, DictField,
          CachedReferenceField) = cls._import_classes()
@@ -176,7 +173,8 @@ class DocumentMetaclass(type):
         # Handle delete rules
         for field in new_class._fields.itervalues():
             f = field
-            f.owner_document = new_class
+            if f.owner_document is None:
+                f.owner_document = new_class
             delete_rule = getattr(f, 'reverse_delete_rule', DO_NOTHING)
             if isinstance(f, CachedReferenceField):
 
@@ -185,7 +183,7 @@ class DocumentMetaclass(type):
                         "CachedReferenceFields is not allowed in EmbeddedDocuments")
                 if not f.document_type:
                     raise InvalidDocumentError(
-                        "Document is not avaiable to sync")
+                        "Document is not available to sync")
 
                 if f.auto_sync:
                     f.start_listener()
@@ -247,11 +245,10 @@ class DocumentMetaclass(type):
         EmbeddedDocument = _import_class('EmbeddedDocument')
         DictField = _import_class('DictField')
         CachedReferenceField = _import_class('CachedReferenceField')
-        return (Document, EmbeddedDocument, DictField, CachedReferenceField)
+        return Document, EmbeddedDocument, DictField, CachedReferenceField
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
-
     """Metaclass for top-level documents (i.e. documents that have their own
     collection in the database.
     """
@@ -261,7 +258,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         super_new = super(TopLevelDocumentMetaclass, cls).__new__
 
         # Set default _meta data if base class, otherwise get user defined meta
-        if (attrs.get('my_metaclass') == TopLevelDocumentMetaclass):
+        if attrs.get('my_metaclass') == TopLevelDocumentMetaclass:
             # defaults
             attrs['_meta'] = {
                 'abstract': True,
@@ -280,7 +277,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             attrs['_meta'].update(attrs.get('meta', {}))
         else:
             attrs['_meta'] = attrs.get('meta', {})
-            # Explictly set abstract to false unless set
+            # Explicitly set abstract to false unless set
             attrs['_meta']['abstract'] = attrs['_meta'].get('abstract', False)
             attrs['_is_base_cls'] = False
 
@@ -295,7 +292,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Clean up top level meta
         if 'meta' in attrs:
-            del(attrs['meta'])
+            del attrs['meta']
 
         # Find the parent document class
         parent_doc_cls = [b for b in flattened_bases
@@ -304,11 +301,11 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Prevent classes setting collection different to their parents
         # If parent wasn't an abstract class
-        if (parent_doc_cls and 'collection' in attrs.get('_meta', {})
-                and not parent_doc_cls._meta.get('abstract', True)):
+        if (parent_doc_cls and 'collection' in attrs.get('_meta', {}) and
+                not parent_doc_cls._meta.get('abstract', True)):
             msg = "Trying to set a collection on a subclass (%s)" % name
             warnings.warn(msg, SyntaxWarning)
-            del(attrs['_meta']['collection'])
+            del attrs['_meta']['collection']
 
         # Ensure abstract documents have abstract bases
         if attrs.get('_is_base_cls') or attrs['_meta'].get('abstract'):
@@ -386,15 +383,17 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         new_class._auto_id_field = getattr(parent_doc_cls,
                                            '_auto_id_field', False)
         if not new_class._meta.get('id_field'):
+            # After 0.10, find not existing names, instead of overwriting
+            id_name, id_db_name = cls.get_auto_id_names(new_class)
             new_class._auto_id_field = True
-            new_class._meta['id_field'] = 'id'
-            new_class._fields['id'] = ObjectIdField(db_field='_id')
-            new_class._fields['id'].name = 'id'
-            new_class.id = new_class._fields['id']
-
-        # Prepend id field to _fields_ordered
-        if 'id' in new_class._fields and 'id' not in new_class._fields_ordered:
-            new_class._fields_ordered = ('id', ) + new_class._fields_ordered
+            new_class._meta['id_field'] = id_name
+            new_class._fields[id_name] = ObjectIdField(db_field=id_db_name)
+            new_class._fields[id_name].name = id_name
+            new_class.id = new_class._fields[id_name]
+            new_class._db_field_map[id_name] = id_db_name
+            new_class._reverse_db_field_map[id_db_name] = id_name
+            # Prepend id field to _fields_ordered
+            new_class._fields_ordered = (id_name, ) + new_class._fields_ordered
 
         # Merge in exceptions with parent hierarchy
         exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
@@ -409,9 +408,22 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         return new_class
 
+    @classmethod
+    def get_auto_id_names(cls, new_class):
+        id_name, id_db_name = ('id', '_id')
+        if id_name not in new_class._fields and \
+                id_db_name not in (v.db_field for v in new_class._fields.values()):
+            return id_name, id_db_name
+        id_basename, id_db_basename, i = 'auto_id', '_auto_id', 0
+        while id_name in new_class._fields or \
+                id_db_name in (v.db_field for v in new_class._fields.values()):
+            id_name = '{0}_{1}'.format(id_basename, i)
+            id_db_name = '{0}_{1}'.format(id_db_basename, i)
+            i += 1
+        return id_name, id_db_name
+
 
 class MetaDict(dict):
-
     """Custom dictionary for meta classes.
     Handles the merging of set indexes
     """
@@ -426,6 +438,5 @@ class MetaDict(dict):
 
 
 class BasesTuple(tuple):
-
     """Special class to handle introspection of bases tuple in __new__"""
     pass

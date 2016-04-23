@@ -1,11 +1,8 @@
 import warnings
-
-import hashlib
 import pymongo
 import re
 
 from pymongo.read_preferences import ReadPreference
-from bson import ObjectId
 from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.common import _import_class
@@ -19,7 +16,8 @@ from mongoengine.base import (
     ALLOW_INHERITANCE,
     get_document
 )
-from mongoengine.errors import ValidationError, InvalidQueryError, InvalidDocumentError
+from mongoengine.errors import InvalidQueryError, InvalidDocumentError
+from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
@@ -48,7 +46,6 @@ class InvalidCollectionError(Exception):
 
 
 class EmbeddedDocument(BaseDocument):
-
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -63,7 +60,7 @@ class EmbeddedDocument(BaseDocument):
     dictionary.
     """
 
-    __slots__ = ('_instance')
+    __slots__ = ('_instance', )
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
@@ -91,7 +88,6 @@ class EmbeddedDocument(BaseDocument):
 
 
 class Document(BaseDocument):
-
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -116,9 +112,11 @@ class Document(BaseDocument):
     specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
     dictionary. :attr:`max_documents` is the maximum number of documents that
     is allowed to be stored in the collection, and :attr:`max_size` is the
-    maximum size of the collection in bytes. If :attr:`max_size` is not
+    maximum size of the collection in bytes. :attr:`max_size` is rounded up
+    to the next multiple of 256 by MongoDB internally and mongoengine before.
+    Use also a multiple of 256 to avoid confusions.  If :attr:`max_size` is not
     specified and :attr:`max_documents` is, :attr:`max_size` defaults to
-    10000000 bytes (10MB).
+    10485760 bytes (10MB).
 
     Indexes may be created by specifying :attr:`indexes` in the :attr:`meta`
     dictionary. The value should be a list of field names or tuples of field
@@ -135,6 +133,11 @@ class Document(BaseDocument):
     doesn't contain a list) if allow_inheritance is True. This can be
     disabled by either setting cls to False on the specific index or
     by setting index_cls to False on the meta dictionary for the document.
+
+    By default, any extra attribute existing in stored data but not declared
+    in your model will raise a :class:`~mongoengine.FieldDoesNotExist` error.
+    This can be disabled by setting :attr:`strict` to ``False``
+    in the :attr:`meta` dictionary.
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
@@ -142,18 +145,22 @@ class Document(BaseDocument):
     my_metaclass = TopLevelDocumentMetaclass
     __metaclass__ = TopLevelDocumentMetaclass
 
-    __slots__ = ('__objects')
+    __slots__ = ('__objects',)
 
     def pk():
         """Primary key alias
         """
 
         def fget(self):
+            if 'id_field' not in self._meta:
+                return None
             return getattr(self, self._meta['id_field'])
 
         def fset(self, value):
             return setattr(self, self._meta['id_field'], value)
+
         return property(fget, fset)
+
     pk = pk()
 
     @classmethod
@@ -164,14 +171,18 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Returns the collection for the document."""
+        # TODO: use new get_collection() with PyMongo3 ?
         if not hasattr(cls, '_collection') or cls._collection is None:
             db = cls._get_db()
             collection_name = cls._get_collection_name()
             # Create collection as a capped collection if specified
-            if cls._meta['max_size'] or cls._meta['max_documents']:
+            if cls._meta.get('max_size') or cls._meta.get('max_documents'):
                 # Get max document limit and max byte size from meta
-                max_size = cls._meta['max_size'] or 10000000  # 10MB default
-                max_documents = cls._meta['max_documents']
+                max_size = cls._meta.get('max_size') or 10 * 2 ** 20  # 10MB default
+                max_documents = cls._meta.get('max_documents')
+                # Round up to next 256 bytes as MongoDB would do it to avoid exception
+                if max_size % 256:
+                    max_size = (max_size // 256 + 1) * 256
 
                 if collection_name in db.collection_names():
                     cls._collection = db[collection_name]
@@ -179,7 +190,7 @@ class Document(BaseDocument):
                     # options match the specified capped options
                     options = cls._collection.options()
                     if options.get('max') != max_documents or \
-                       options.get('size') != max_size:
+                            options.get('size') != max_size:
                         msg = (('Cannot create collection "%s" as a capped '
                                 'collection as it already exists')
                                % cls._collection)
@@ -237,7 +248,7 @@ class Document(BaseDocument):
         return True
 
     def save(self, force_insert=False, validate=True, clean=True,
-             write_concern=None,  cascade=None, cascade_kwargs=None,
+             write_concern=None, cascade=None, cascade_kwargs=None,
              _refs=None, save_condition=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -262,7 +273,8 @@ class Document(BaseDocument):
             to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
         :param save_condition: only perform save if matching record in db
-            satisfies condition(s) (e.g., version number)
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`OperationError` if the conditions are not satisfied
 
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
@@ -280,6 +292,8 @@ class Document(BaseDocument):
         .. versionchanged:: 0.8.5
             Optional save_condition that only overwrites existing documents
             if the condition is satisfied in the current db record.
+        .. versionchanged:: 0.10
+            :class:`OperationError` exception raised if save_condition fails.
         """
         signals.pre_save.send(self.__class__, document=self)
 
@@ -305,6 +319,13 @@ class Document(BaseDocument):
                     object_id = collection.insert(doc, **write_concern)
                 else:
                     object_id = collection.save(doc, **write_concern)
+                    # In PyMongo 3.0, the save() call calls internally the _update() call
+                    # but they forget to return the _id value passed back, therefore getting it back here
+                    # Correct behaviour in 2.X and in 3.0.1+ versions
+                    if not object_id and pymongo.version_tuple == (3, 0):
+                        pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
+                        object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
+                                    self._qs.filter(pk=pk_as_mongo_obj).first().pk
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
@@ -337,6 +358,9 @@ class Document(BaseDocument):
                     upsert = save_condition is None
                     last_error = collection.update(select_dict, update_query,
                                                    upsert=upsert, **write_concern)
+                    if not upsert and last_error['nModified'] == 0:
+                        raise OperationError('Race condition preventing'
+                                             ' document update detected')
                     created = is_new_object(last_error)
 
             if cascade is None:
@@ -431,7 +455,7 @@ class Document(BaseDocument):
             if kwargs.get('upsert', False):
                 query = self.to_mongo()
                 if "_cls" in query:
-                    del(query["_cls"])
+                    del query["_cls"]
                 return self._qs.filter(**query).update_one(**kwargs)
             else:
                 raise OperationError(
@@ -453,6 +477,12 @@ class Document(BaseDocument):
         """
         signals.pre_delete.send(self.__class__, document=self)
 
+        # Delete FileFields separately 
+        FileField = _import_class('FileField')
+        for name, field in self._fields.iteritems():
+            if isinstance(field, FileField): 
+                getattr(self, name).delete()
+
         try:
             self._qs.filter(
                 **self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
@@ -461,7 +491,7 @@ class Document(BaseDocument):
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self)
 
-    def switch_db(self, db_alias):
+    def switch_db(self, db_alias, keep_created=True):
         """
         Temporarily switch the database for a document instance.
 
@@ -473,6 +503,9 @@ class Document(BaseDocument):
 
         :param str db_alias: The database alias to use for saving the document
 
+        :param bool keep_created: keep self._created value after switching db, else is reset to True
+
+
         .. seealso::
             Use :class:`~mongoengine.context_managers.switch_collection`
             if you need to read from another collection
@@ -483,12 +516,12 @@ class Document(BaseDocument):
         self._get_collection = lambda: collection
         self._get_db = lambda: db
         self._collection = collection
-        self._created = True
+        self._created = True if not keep_created else self._created
         self.__objects = self._qs
         self.__objects._collection_obj = collection
         return self
 
-    def switch_collection(self, collection_name):
+    def switch_collection(self, collection_name, keep_created=True):
         """
         Temporarily switch the collection for a document instance.
 
@@ -501,6 +534,9 @@ class Document(BaseDocument):
         :param str collection_name: The database alias to use for saving the
             document
 
+        :param bool keep_created: keep self._created value after switching collection, else is reset to True
+
+
         .. seealso::
             Use :class:`~mongoengine.context_managers.switch_db`
             if you need to read from another database
@@ -509,7 +545,7 @@ class Document(BaseDocument):
             collection = cls._get_collection()
         self._get_collection = lambda: collection
         self._collection = collection
-        self._created = True
+        self._created = True if not keep_created else self._created
         self.__objects = self._qs
         self.__objects._collection_obj = collection
         return self
@@ -544,8 +580,8 @@ class Document(BaseDocument):
         if not self.pk:
             raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-            **self._object_key).only(*fields).limit(1
-                                                    ).select_related(max_depth=max_depth)
+            **self._object_key).only(*fields).limit(
+            1).select_related(max_depth=max_depth)
 
         if obj:
             obj = obj[0]
@@ -604,11 +640,11 @@ class Document(BaseDocument):
                      for class_name in document_cls._subclasses
                      if class_name != document_cls.__name__] + [document_cls]
 
-        for cls in classes:
+        for klass in classes:
             for document_cls in documents:
-                delete_rules = cls._meta.get('delete_rules') or {}
+                delete_rules = klass._meta.get('delete_rules') or {}
                 delete_rules[(document_cls, field_name)] = rule
-                cls._meta['delete_rules'] = delete_rules
+                klass._meta['delete_rules'] = delete_rules
 
     @classmethod
     def drop_collection(cls):
@@ -620,22 +656,50 @@ class Document(BaseDocument):
         db.drop_collection(cls._get_collection_name())
 
     @classmethod
+    def create_index(cls, keys, background=False, **kwargs):
+        """Creates the given indexes if required.
+
+        :param keys: a single index key or a list of index keys (to
+            construct a multi-field index); keys may be prefixed with a **+**
+            or a **-** to determine the index ordering
+        :param background: Allows index creation in the background
+        """
+        index_spec = cls._build_index_spec(keys)
+        index_spec = index_spec.copy()
+        fields = index_spec.pop('fields')
+        drop_dups = kwargs.get('drop_dups', False)
+        if IS_PYMONGO_3 and drop_dups:
+            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            warnings.warn(msg, DeprecationWarning)
+        elif not IS_PYMONGO_3:
+            index_spec['drop_dups'] = drop_dups
+        index_spec['background'] = background
+        index_spec.update(kwargs)
+
+        if IS_PYMONGO_3:
+            return cls._get_collection().create_index(fields, **index_spec)
+        else:
+            return cls._get_collection().ensure_index(fields, **index_spec)
+
+    @classmethod
     def ensure_index(cls, key_or_list, drop_dups=False, background=False,
                      **kwargs):
-        """Ensure that the given indexes are in place.
+        """Ensure that the given indexes are in place. Deprecated in favour
+        of create_index.
 
         :param key_or_list: a single index key or a list of index keys (to
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
+        :param background: Allows index creation in the background
+        :param drop_dups: Was removed/ignored with MongoDB >2.7.5. The value
+            will be removed if PyMongo3+ is used
         """
-        index_spec = cls._build_index_spec(key_or_list)
-        index_spec = index_spec.copy()
-        fields = index_spec.pop('fields')
-        index_spec['drop_dups'] = drop_dups
-        index_spec['background'] = background
-        index_spec.update(kwargs)
-
-        return cls._get_collection().ensure_index(fields, **index_spec)
+        if IS_PYMONGO_3 and drop_dups:
+            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            warnings.warn(msg, DeprecationWarning)
+        elif not IS_PYMONGO_3:
+            kwargs.update({'drop_dups': drop_dups})
+        return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
     def ensure_indexes(cls):
@@ -650,6 +714,9 @@ class Document(BaseDocument):
         drop_dups = cls._meta.get('index_drop_dups', False)
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
+        if IS_PYMONGO_3 and drop_dups:
+            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            warnings.warn(msg, DeprecationWarning)
 
         collection = cls._get_collection()
         # 746: when connection is via mongos, the read preference is not necessarily an indication that
@@ -672,18 +739,37 @@ class Document(BaseDocument):
                 cls_indexed = cls_indexed or includes_cls(fields)
                 opts = index_opts.copy()
                 opts.update(spec)
-                collection.ensure_index(fields, background=background,
-                                        drop_dups=drop_dups, **opts)
+
+                # we shouldn't pass 'cls' to the collection.ensureIndex options
+                # because of https://jira.mongodb.org/browse/SERVER-769
+                if 'cls' in opts:
+                    del opts['cls']
+
+                if IS_PYMONGO_3:
+                    collection.create_index(fields, background=background, **opts)
+                else:
+                    collection.ensure_index(fields, background=background,
+                                            drop_dups=drop_dups, **opts)
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
         if (index_cls and not cls_indexed and
                 cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-            collection.ensure_index('_cls', background=background,
-                                    **index_opts)
+
+            # we shouldn't pass 'cls' to the collection.ensureIndex options
+            # because of https://jira.mongodb.org/browse/SERVER-769
+            if 'cls' in index_opts:
+                del index_opts['cls']
+
+            if IS_PYMONGO_3:
+                collection.create_index('_cls', background=background,
+                                        **index_opts)
+            else:
+                collection.ensure_index('_cls', background=background,
+                                        **index_opts)
 
     @classmethod
-    def list_indexes(cls, go_up=True, go_down=True):
+    def list_indexes(cls):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
@@ -730,8 +816,8 @@ class Document(BaseDocument):
             return indexes
 
         indexes = []
-        for cls in classes:
-            for index in get_indexes_spec(cls):
+        for klass in classes:
+            for index in get_indexes_spec(klass):
                 if index not in indexes:
                     indexes.append(index)
 
@@ -770,7 +856,6 @@ class Document(BaseDocument):
 
 
 class DynamicDocument(Document):
-
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expando style properties.  Any data
@@ -802,7 +887,6 @@ class DynamicDocument(Document):
 
 
 class DynamicEmbeddedDocument(EmbeddedDocument):
-
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -829,7 +913,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
 
 
 class MapReduceDocument(object):
-
     """A document returned from a map/reduce query.
 
     :param collection: An instance of :class:`~pymongo.Collection`

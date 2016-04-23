@@ -279,5 +279,33 @@ class SignalTests(unittest.TestCase):
         # second time, it must be an update
         self.assertEqual(self.get_signal_output(ei.save), ['Is updated'])
 
+    def test_signals_with_switch_collection(self):
+        ei = self.ExplicitId(id=123)
+        ei.switch_collection("explicit__1")
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+        ei.switch_collection("explicit__1")
+        self.assertEqual(self.get_signal_output(ei.save), ['Is updated'])
+
+        ei.switch_collection("explicit__1", keep_created=False)
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+        ei.switch_collection("explicit__1", keep_created=False)
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+
+    def test_signals_with_switch_db(self):
+        connect('mongoenginetest')
+        register_connection('testdb-1', 'mongoenginetest2')
+
+        ei = self.ExplicitId(id=123)
+        ei.switch_db("testdb-1")
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+        ei.switch_db("testdb-1")
+        self.assertEqual(self.get_signal_output(ei.save), ['Is updated'])
+
+        ei.switch_db("testdb-1", keep_created=False)
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+        ei.switch_db("testdb-1", keep_created=False)
+        self.assertEqual(self.get_signal_output(ei.save), ['Is created'])
+
+
 if __name__ == '__main__':
     unittest.main()

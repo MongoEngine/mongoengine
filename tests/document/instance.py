@@ -10,12 +10,14 @@ import uuid
 
 from datetime import datetime
 from bson import DBRef, ObjectId
+from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDyanmicEmbedded, PickleDynamicTest)
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError, NotUniqueError)
+                                InvalidQueryError, NotUniqueError,
+                                FieldDoesNotExist)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
@@ -86,7 +88,7 @@ class InstanceTest(unittest.TestCase):
         options = Log.objects._collection.options()
         self.assertEqual(options['capped'], True)
         self.assertEqual(options['max'], 10)
-        self.assertTrue(options['size'] >= 4096)
+        self.assertEqual(options['size'], 4096)
 
         # Check that the document cannot be redefined with different options
         def recreate_log_document():
@@ -99,6 +101,69 @@ class InstanceTest(unittest.TestCase):
             Log.objects
         self.assertRaises(InvalidCollectionError, recreate_log_document)
 
+        Log.drop_collection()
+
+    def test_capped_collection_default(self):
+        """Ensure that capped collections defaults work properly.
+        """
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_documents': 10,
+            }
+
+        Log.drop_collection()
+
+        # Create a doc to create the collection
+        Log().save()
+
+        options = Log.objects._collection.options()
+        self.assertEqual(options['capped'], True)
+        self.assertEqual(options['max'], 10)
+        self.assertEqual(options['size'], 10 * 2**20)
+
+        # Check that the document with default value can be recreated
+        def recreate_log_document():
+            class Log(Document):
+                date = DateTimeField(default=datetime.now)
+                meta = {
+                    'max_documents': 10,
+                }
+            # Create the collection by accessing Document.objects
+            Log.objects
+        recreate_log_document()
+        Log.drop_collection()
+
+    def test_capped_collection_no_max_size_problems(self):
+        """Ensure that capped collections with odd max_size work properly.
+        MongoDB rounds up max_size to next multiple of 256, recreating a doc
+        with the same spec failed in mongoengine <0.10
+        """
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_size': 10000,
+            }
+
+        Log.drop_collection()
+
+        # Create a doc to create the collection
+        Log().save()
+
+        options = Log.objects._collection.options()
+        self.assertEqual(options['capped'], True)
+        self.assertTrue(options['size'] >= 10000)
+
+        # Check that the document with odd max_size value can be recreated
+        def recreate_log_document():
+            class Log(Document):
+                date = DateTimeField(default=datetime.now)
+                meta = {
+                    'max_size': 10000,
+                }
+            # Create the collection by accessing Document.objects
+            Log.objects
+        recreate_log_document()
         Log.drop_collection()
 
     def test_repr(self):
@@ -952,11 +1017,12 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(w1.save_id, UUID(1))
         self.assertEqual(w1.count, 0)
 
-        # mismatch in save_condition prevents save
+        # mismatch in save_condition prevents save and raise exception
         flip(w1)
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 1)
-        w1.save(save_condition={'save_id': UUID(42)})
+        self.assertRaises(OperationError,
+            w1.save, save_condition={'save_id': UUID(42)})
         w1.reload()
         self.assertFalse(w1.toggle)
         self.assertEqual(w1.count, 0)
@@ -984,7 +1050,8 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(w1.count, 2)
         flip(w2)
         flip(w2)
-        w2.save(save_condition={'save_id': old_id})
+        self.assertRaises(OperationError,
+            w2.save, save_condition={'save_id': old_id})
         w2.reload()
         self.assertFalse(w2.toggle)
         self.assertEqual(w2.count, 2)
@@ -996,7 +1063,8 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
         flip(w1)
-        w1.save(save_condition={'count__gte': w1.count})
+        self.assertRaises(OperationError,
+            w1.save, save_condition={'count__gte': w1.count})
         w1.reload()
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
@@ -1829,11 +1897,11 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects.count(), 0)
 
     def test_reverse_delete_rule_cascade_triggers_pre_delete_signal(self):
-        ''' ensure the pre_delete signal is triggered upon a cascading deletion
+        """ ensure the pre_delete signal is triggered upon a cascading deletion
         setup a blog post with content, an author and editor
         delete the author which triggers deletion of blogpost via cascade
         blog post's pre_delete signal alters an editor attribute
-        '''
+        """
         class Editor(self.Person):
             review_queue = IntField(default=0)
 
@@ -2084,6 +2152,29 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(resurrected, pickle_doc)
         self.assertEqual(pickle_doc.string, "Two")
         self.assertEqual(pickle_doc.lists, ["1", "2", "3"])
+
+    def test_regular_document_pickle(self):
+
+        pickle_doc = PickleTest(number=1, string="One", lists=['1', '2'])
+        pickled_doc = pickle.dumps(pickle_doc)  # make sure pickling works even before the doc is saved
+        pickle_doc.save()
+
+        pickled_doc = pickle.dumps(pickle_doc)
+
+        # Test that when a document's definition changes the new
+        # definition is used
+        fixtures.PickleTest = fixtures.NewDocumentPickleTest
+
+        resurrected = pickle.loads(pickled_doc)
+        self.assertEqual(resurrected.__class__,
+                         fixtures.NewDocumentPickleTest)
+        self.assertEqual(resurrected._fields_ordered,
+                         fixtures.NewDocumentPickleTest._fields_ordered)
+        self.assertNotEqual(resurrected._fields_ordered,
+                            pickle_doc._fields_ordered)
+
+        # The local PickleTest is still a ref to the original
+        fixtures.PickleTest = PickleTest
 
     def test_dynamic_document_pickle(self):
 
@@ -2443,6 +2534,114 @@ class InstanceTest(unittest.TestCase):
         group = Group.objects.first()
         self.assertEqual("hello - default", group.name)
 
+    def test_load_undefined_fields(self):
+        class User(Document):
+            name = StringField()
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'foo': 'Bar',
+            'data': [1, 2, 3]
+        })
+
+        self.assertRaises(FieldDoesNotExist, User.objects.first)
+
+    def test_load_undefined_fields_with_strict_false(self):
+        class User(Document):
+            name = StringField()
+
+            meta = {'strict': False}
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'foo': 'Bar',
+            'data': [1, 2, 3]
+        })
+
+        user = User.objects.first()
+        self.assertEqual(user.name, 'John')
+        self.assertFalse(hasattr(user, 'foo'))
+        self.assertEqual(user._data['foo'], 'Bar')
+        self.assertFalse(hasattr(user, 'data'))
+        self.assertEqual(user._data['data'], [1, 2, 3])
+
+    def test_load_undefined_fields_on_embedded_document(self):
+        class Thing(EmbeddedDocument):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            thing = EmbeddedDocumentField(Thing)
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'thing': {
+                'name': 'My thing',
+                'foo': 'Bar',
+                'data': [1, 2, 3]
+            }
+        })
+
+        self.assertRaises(FieldDoesNotExist, User.objects.first)
+
+    def test_load_undefined_fields_on_embedded_document_with_strict_false_on_doc(self):
+        class Thing(EmbeddedDocument):
+            name = StringField()
+
+        class User(Document):
+            name = StringField()
+            thing = EmbeddedDocumentField(Thing)
+
+            meta = {'strict': False}
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'thing': {
+                'name': 'My thing',
+                'foo': 'Bar',
+                'data': [1, 2, 3]
+            }
+        })
+
+        self.assertRaises(FieldDoesNotExist, User.objects.first)
+
+    def test_load_undefined_fields_on_embedded_document_with_strict_false(self):
+        class Thing(EmbeddedDocument):
+            name = StringField()
+
+            meta = {'strict': False}
+
+        class User(Document):
+            name = StringField()
+            thing = EmbeddedDocumentField(Thing)
+
+        User.drop_collection()
+
+        User._get_collection().save({
+            'name': 'John',
+            'thing': {
+                'name': 'My thing',
+                'foo': 'Bar',
+                'data': [1, 2, 3]
+            }
+        })
+
+        user = User.objects.first()
+        self.assertEqual(user.name, 'John')
+        self.assertEqual(user.thing.name, 'My thing')
+        self.assertFalse(hasattr(user.thing, 'foo'))
+        self.assertEqual(user.thing._data['foo'], 'Bar')
+        self.assertFalse(hasattr(user.thing, 'data'))
+        self.assertEqual(user.thing._data['data'], [1, 2, 3])
+
     def test_spaces_in_keys(self):
 
         class Embedded(DynamicEmbeddedDocument):
@@ -2798,6 +2997,22 @@ class InstanceTest(unittest.TestCase):
         p1 = Person()
         self.assertNotEqual(p, p1)
         self.assertEqual(p, p)
+
+    def test_list_iter(self):
+        # 914
+        class B(EmbeddedDocument):
+            v = StringField()
+
+        class A(Document):
+            l = ListField(EmbeddedDocumentField(B))
+
+        A.objects.delete()
+        A(l=[B(v='1'), B(v='2'), B(v='3')]).save()
+        a = A.objects.get()
+        self.assertEqual(a.l._instance, a)
+        for idx, b in enumerate(a.l):
+            self.assertEqual(b._instance, a)
+        self.assertEqual(idx, 2)
 
 if __name__ == '__main__':
     unittest.main()
