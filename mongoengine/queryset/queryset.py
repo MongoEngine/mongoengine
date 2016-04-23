@@ -76,7 +76,8 @@ class QuerySet(BaseQuerySet):
                 yield self._result_cache[pos]
                 pos = pos + 1
             if not self._has_more:
-                raise StopIteration
+                if pos == len(self):
+                    raise StopIteration
             if len(self._result_cache) <= pos:
                 self._populate_cache()
 
