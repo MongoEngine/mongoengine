@@ -156,6 +156,8 @@ class QuerySetNoCache(BaseQuerySet):
         queryset.rewind()
         return queryset
 
+    def __len__(self):
+        return len([1 for i in self])
 
 class QuerySetNoDeRef(QuerySet):
     """Special no_dereference QuerySet"""
