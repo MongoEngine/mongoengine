@@ -1410,6 +1410,11 @@ class BaseQuerySet(object):
         doc = self._document._from_son(raw_doc,
                                        _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
 
+        # calling from_son ignores the excluded fields if they aren't None (ie,
+        # if they have a default value set). This makes sure to trim it again so
+        # that only the wanted fields are returned
+        doc = {i:j for i,j in doc.to_mongo().to_dict().items() if i in raw_doc}
+
         if self._scalar:
             return self._get_scalar(doc)
 
