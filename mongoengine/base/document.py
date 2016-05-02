@@ -974,7 +974,7 @@ class BaseDocument(object):
                 if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
                 elif cls._dynamic and (isinstance(field, DynamicField) or
-                                       getattr(getattr(field, 'document_type'), '_dynamic')):
+                                       getattr(getattr(field, 'document_type', None), '_dynamic', None)):
                     new_field = DynamicField(db_field=field_name)
                 else:
                     # Look up subfield on the previous field or raise
