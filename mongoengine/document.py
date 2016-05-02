@@ -12,6 +12,7 @@ import smtplib
 import socket
 import sys
 import traceback
+import logging
 from timer import log_slow_event
 import warnings
 
@@ -29,6 +30,8 @@ _sleep = time.sleep
 OPS_EMAIL = 'ops@wish.com'
 SENTRY_DSN = 'threaded+http://008e8e98273346d782db8bc407917e76:' \
     'dedc6b38b0dd484fa4db1543a19cb0f5@sentry.i.wish.com/2'
+
+high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
 
 
 class BulkOperationError(OperationError):
@@ -432,6 +435,16 @@ class Document(BaseDocument):
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, **kwargs):
+        # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
+        #      queries tend to cause significant load on mongo
+        if sort and skip > 100000:
+            trace = "".join(traceback.format_stack())
+            high_offset_logger.info({
+                'limit': limit,
+                'skip': skip,
+                'trace': trace
+            })
+
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
