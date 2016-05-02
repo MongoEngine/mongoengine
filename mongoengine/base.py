@@ -721,6 +721,9 @@ class BaseDocument(object):
     def __len__(self):
         return len(self._raw_data) + len(self._lazy_data)
 
+    def __nonzero__(self):
+        return True
+
     def __repr__(self):
         try:
             u = unicode(self)

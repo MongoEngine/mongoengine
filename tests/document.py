@@ -37,6 +37,16 @@ class DocumentTest(unittest.TestCase):
 
         Citizen.drop_collection()
 
+    def test_bool(self):
+        class EmptyDoc(EmbeddedDocument):
+            pass
+
+        empty_doc = EmptyDoc()
+        self.assertTrue(bool(empty_doc))
+
+        nonempty_doc = self.Person(name='Adam')
+        self.assertTrue(bool(nonempty_doc))
+
     def test_drop_collection(self):
         """Ensure that the collection may be dropped from the database.
         """
