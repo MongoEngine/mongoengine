@@ -86,6 +86,7 @@ class Document(BaseDocument):
     MAX_AUTO_RECONNECT_TRIES = 6
     AUTO_RECONNECT_SLEEP = 5
     INCLUDE_SHARD_KEY = []
+    MAX_TIME_MS = 5000
 
     __metaclass__ = TopLevelDocumentMetaclass
 
@@ -434,7 +435,10 @@ class Document(BaseDocument):
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
-                 batch_size=10000, excluded_fields=None, **kwargs):
+                 batch_size=10000, excluded_fields=None, max_time_ms=None,
+                 **kwargs):
+        # disabled for now
+        max_time_ms = 0
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
         if sort and skip > 100000:
@@ -488,6 +492,13 @@ class Document(BaseDocument):
                                           tag_sets=slave_ok.tags,
                                           **kwargs)
 
+                    # max_time_ms <= 0 means its disabled, None means
+                    # use default value, otherwise use the value specified
+                    if max_time_ms is None:
+                        cur.max_time_ms(cls.MAX_TIME_MS)
+                    elif max_time_ms > 0:
+                        cur.max_time_ms(max_time_ms)
+
                     if hint:
                         cur.hint(hint)
 
@@ -516,10 +527,11 @@ class Document(BaseDocument):
 
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, excluded_fields=None, **kwargs):
+             slave_ok=False, excluded_fields=None, max_time_ms=None,
+             **kwargs):
         cur = cls.find_raw(spec, fields, skip, limit, sort,
                            slave_ok=slave_ok, excluded_fields=excluded_fields,
-                           **kwargs)
+                           max_time_ms=max_time_ms,**kwargs)
 
         return [
             cls._from_augmented_son(d, fields, excluded_fields)
@@ -529,11 +541,13 @@ class Document(BaseDocument):
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
                   slave_ok=False, timeout=True, batch_size=10000,
-                  excluded_fields=None, **kwargs):
+                  excluded_fields=None, max_time_ms=None,**kwargs):
+
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
                            batch_size=batch_size,
-                           excluded_fields=excluded_fields, **kwargs)
+                           excluded_fields=excluded_fields,
+                           max_time_ms=max_time_ms,**kwargs)
 
         for doc in cls._iterate_cursor(cur):
             yield cls._from_augmented_son(doc, fields, excluded_fields)
@@ -541,10 +555,11 @@ class Document(BaseDocument):
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, timeout=False, excluded_fields=None,
-                 **kwargs):
+                 max_time_ms=None,**kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
-                           excluded_fields=excluded_fields, **kwargs)
+                           excluded_fields=excluded_fields,
+                           max_time_ms=max_time_ms,**kwargs)
 
         return cur.distinct(cls._transform_key(key, cls)[0])
 
@@ -581,10 +596,11 @@ class Document(BaseDocument):
 
     @classmethod
     def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=False,
-                 excluded_fields=None, **kwargs):
+                 excluded_fields=None, max_time_ms=None, **kwargs):
         d = cls.find_raw(spec, fields, skip=skip, sort=sort,
                          slave_ok=slave_ok, find_one=True,
-                         excluded_fields=excluded_fields, **kwargs)
+                         excluded_fields=excluded_fields,
+                         max_time_ms=max_time_ms,**kwargs)
 
         if d:
             return cls._from_augmented_son(d, fields, excluded_fields)
@@ -627,10 +643,11 @@ class Document(BaseDocument):
             return None
 
     @classmethod
-    def count(cls, spec, slave_ok=False, comment=None, **kwargs):
+    def count(cls, spec, slave_ok=False, comment=None, max_time_ms=None,
+        **kwargs):
         cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
             comment=comment if comment else MongoComment.get_comment(
-                num_stacks_up=3), **kwargs)
+                num_stacks_up=3), max_time_ms=max_time_ms,**kwargs)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:

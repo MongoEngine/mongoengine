@@ -10,6 +10,7 @@ from mongoengine import *
 from mongoengine.base import _document_registry
 from mongoengine.connection import _get_db, connect
 import mongoengine.connection
+from mock import MagicMock, Mock, call
 
 mongoengine.connection.set_default_db("test")
 
@@ -990,6 +991,105 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person, restored)
         self.assertEqual(person.age, restored.age)
 
+    def test_find_raw_max_time_ms(self):
+        cur = Citizen.find_raw({}, max_time_ms=None, limit=1)
+        self.assertEquals(cur._Cursor__max_time_ms, Citizen.MAX_TIME_MS)
+        cur = Citizen.find_raw({}, max_time_ms=0, limit=1)
+        self.assertIsNone(cur._Cursor__max_time_ms)
+        cur = Citizen.find_raw({}, max_time_ms=-1, limit=1)
+        self.assertIsNone(cur._Cursor__max_time_ms)
+        cur = Citizen.find_raw({}, max_time_ms=1000, limit=1)
+        self.assertEquals(cur._Cursor__max_time_ms, 1000)
+
+    def test_max_time_ms_find(self):
+        col_mock = Mock()
+        col_mock.name = 'asdf'
+        doc_mock = MagicMock()
+        doc_mock.__iter__.return_value = ['a','b']
+        cur_mock = Mock()
+        cur_mock.collection = col_mock
+        cur_mock.next = MagicMock(side_effect=[doc_mock])
+        find_raw = MagicMock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        Citizen.find({}, max_time_ms=None)
+        Citizen.find({}, max_time_ms=0)
+        Citizen.find({}, max_time_ms=-1)
+        Citizen.find({}, max_time_ms=1000)
+
+        a,b,c,d = find_raw.call_args_list
+        self.assertEquals(a[1]['max_time_ms'],None)
+        self.assertEquals(b[1]['max_time_ms'],0)
+        self.assertEquals(c[1]['max_time_ms'],-1)
+        self.assertEquals(d[1]['max_time_ms'],1000)
+
+    def test_max_time_ms_find_iter(self):
+        cur_mock = MagicMock()
+        cur_mock._iterate_cursor = MagicMock(side_effect=['a'])
+        find_raw = MagicMock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+        Citizen._from_augmented_son = MagicMock(return_value=None)
+
+        Citizen.find_iter({}, max_time_ms=None).next()
+        Citizen.find_iter({}, max_time_ms=0).next()
+        Citizen.find_iter({}, max_time_ms=-1).next()
+        Citizen.find_iter({}, max_time_ms=1000).next()
+
+        a,b,c,d = find_raw.call_args_list
+
+        self.assertEquals(a[1]['max_time_ms'],None)
+        self.assertEquals(b[1]['max_time_ms'],0)
+        self.assertEquals(c[1]['max_time_ms'],-1)
+        self.assertEquals(d[1]['max_time_ms'],1000)
+
+    def test_max_time_ms_find_one(self):
+        find_raw = MagicMock(return_value=None)
+        Citizen.find_raw = find_raw
+
+        Citizen.find_one({}, max_time_ms=None)
+        Citizen.find_one({}, max_time_ms=0)
+        Citizen.find_one({}, max_time_ms=-1)
+        Citizen.find_one({}, max_time_ms=1000)
+
+        a,b,c,d = find_raw.call_args_list
+        self.assertEquals(a[1]['max_time_ms'],None)
+        self.assertEquals(b[1]['max_time_ms'],0)
+        self.assertEquals(c[1]['max_time_ms'],-1)
+        self.assertEquals(d[1]['max_time_ms'],1000)
+
+    def test_max_time_ms_count(self):
+        cur_mock = Mock()
+        cur_mock.count = MagicMock(return_value=1)
+        find_raw = Mock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        Citizen.count({}, max_time_ms=None)
+        Citizen.count({}, max_time_ms=0)
+        Citizen.count({}, max_time_ms=-1)
+        Citizen.count({}, max_time_ms=1000)
+
+        a,b,c,d = find_raw.call_args_list
+        self.assertEquals(a[1]['max_time_ms'],None)
+        self.assertEquals(b[1]['max_time_ms'],0)
+        self.assertEquals(c[1]['max_time_ms'],-1)
+        self.assertEquals(d[1]['max_time_ms'],1000)
+
+    def test_max_time_ms_distinct(self):
+        cur_mock = Mock()
+        cur_mock.count = MagicMock(return_value=1)
+        find_raw = Mock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        Citizen.distinct({}, '_id', max_time_ms=None)
+        Citizen.distinct({}, '_id', max_time_ms=0)
+        Citizen.distinct({}, '_id', max_time_ms=-1)
+        Citizen.distinct({}, '_id', max_time_ms=1000)
+
+        a,b,c,d = find_raw.call_args_list
+        self.assertEquals(a[1]['max_time_ms'],None)
+        self.assertEquals(b[1]['max_time_ms'],0)
+        self.assertEquals(c[1]['max_time_ms'],-1)
+        self.assertEquals(d[1]['max_time_ms'],1000)
 
 if __name__ == '__main__':
     unittest.main()
