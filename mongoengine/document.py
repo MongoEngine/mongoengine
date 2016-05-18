@@ -554,7 +554,7 @@ class Document(BaseDocument):
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
-                 slave_ok=False, timeout=False, excluded_fields=None,
+                 slave_ok=False, timeout=True, excluded_fields=None,
                  max_time_ms=None,**kwargs):
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
