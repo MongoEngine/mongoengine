@@ -288,7 +288,6 @@ class Document(BaseDocument):
     @classmethod
     def _from_augmented_son(cls, d, fields, excluded_fields=None):
         # load from son, and set field status correctly
-
         obj = cls._from_son(d)
         if obj is None:
             return None
@@ -312,21 +311,33 @@ class Document(BaseDocument):
                     else FieldStatus.NOT_LOADED
                 return obj
 
-        # fields is now a dict of {db_field: VALUE}
+        # fields is now a dict of {db_field: (VALUE|<projection operator>)}
         #   where VALUE is always 1 (include) or always 0 (exclude)
-        #   so it's only necessary to check one value.
-        if fields and next(fields.itervalues()) == 0:
-            # fields are excluded
-            obj._default_load_status = FieldStatus.LOADED
-            for excluded_field in fields.keys():
-                obj._fields_status[excluded_field] = FieldStatus.NOT_LOADED
-            return obj
+        #   semantics are as follows:
+        #       dict contains a 0/1 (exclude/include mode respectively)
+        #       dict contains a $elemMatch (forces include mode)
+        #       dict contains a $slice (forces exclude mode)
+        #       otherwise include mode
+
+        if 0 in fields.itervalues():
+            dflt_load_status = FieldStatus.LOADED
+        elif 1 in fields.itervalues():
+            dflt_load_status = FieldStatus.NOT_LOADED
+        elif len(fields) > 0:
+            # true if there are any '$elemMatch's
+            dflt_load_status = FieldStatus.NOT_LOADED if \
+                    any(isinstance(v, dict) and '$elemMatch' in v \
+                        for v in fields.itervalues()) \
+                    else FieldStatus.LOADED
         else:
-            # fields are included, or no fields are specified (id only)
-            obj._default_load_status = FieldStatus.NOT_LOADED
-            for included_field in fields.keys():
-                obj._fields_status[included_field] = FieldStatus.LOADED
-            return obj
+            dflt_load_status = FieldStatus.NOT_LOADED
+
+        obj._default_load_status = dflt_load_status
+        for (field, val) in fields.iteritems():
+            obj._fields_status[field] = FieldStatus.NOT_LOADED if val == 0 \
+                    else FieldStatus.LOADED
+
+        return obj
 
     @classmethod
     def _transform_fields(cls, fields=None, excluded_fields=None):
@@ -335,7 +346,20 @@ class Document(BaseDocument):
                 'Cannot specify both included and excluded fields.'
             )
         if isinstance(fields, dict):
-            fields = {cls._transform_key(f, cls)[0]: fields[f] for f in fields}
+            new_fields = {}
+            for key, val in fields.iteritems():
+                db_key, field = cls._transform_key(key, cls, is_find=True)
+                if isinstance(val, dict):
+                    if val.keys() not in (['$elemMatch'], ['$slice']):
+                        raise ValueError('Invalid field value')
+                    new_fields[db_key] = cls._transform_value(val, field,
+                            fields=True)
+                else:
+                    if val not in [0, 1]:
+                        raise ValueError('Invalid field value')
+
+                    new_fields[db_key] = val
+            fields = new_fields
         elif isinstance(fields, (list, tuple)):
             fields = {
                 cls._transform_key(f, cls)[0]: 1 for f in fields
@@ -849,7 +873,7 @@ class Document(BaseDocument):
         return cls._transform_value(query, cls, validate=validate)
 
     @staticmethod
-    def _transform_value(value, context, op=None, validate=True):
+    def _transform_value(value, context, op=None, validate=True, fields=False):
         from fields import DictField, EmbeddedDocumentField, ListField, \
                            ArbitraryField
 
@@ -882,7 +906,7 @@ class Document(BaseDocument):
 
                         transformed_value[new_key] = \
                             Document._transform_value(subvalue, value_context,
-                                                      op, validate)
+                                                      op, validate, fields)
 
                         transformed_list.append(transformed_value)
                 else:
@@ -902,7 +926,7 @@ class Document(BaseDocument):
 
                 transformed_value[new_key] = \
                     Document._transform_value(subvalue, value_context,
-                                              op, validate)
+                                              op, validate, fields)
 
             return transformed_value
         # else, validate & return
@@ -955,7 +979,13 @@ class Document(BaseDocument):
 
             # handle $slice by enforcing negative int
             if op == '$slice':
-                if not isinstance(value, int) or value > 0:
+                if fields:
+                    if not ((isinstance(value, list) or \
+                            isinstance(value, tuple)) and len(value) == 2) \
+                            and not isinstance(value, int):
+                        raise ValidationError("Projection slices must be "\
+                                "2-lists or ints")
+                elif not isinstance(value, int) or value > 0:
                     raise ValidationError("Slices must be negative ints")
 
             # handle EmbeddedDocuments

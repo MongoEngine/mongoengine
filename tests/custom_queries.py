@@ -387,6 +387,69 @@ class CustomQueryTest(unittest.TestCase):
                 excluded_fields=['name']
             )
 
+    def testSlice(self):
+        p = self.Person(age=10, name='Sean', number_list=[1, 5, 3, 19, 15, -1])
+        p.save()
+
+        p1 = self.Person.find_one(
+                {'name': 'Sean'},
+                fields={'number_list': {'$slice': [3, 2]}})
+
+        self.assertEqual(p1.id, p.id)
+        self.assertEqual(p1.number_list, [19, 15])
+        self.assertEqual(p1.name, p.name)
+
+        p2 = self.Person.find_one(
+                {'name': 'Sean'},
+                fields={'number_list': {'$slice': -2}, 'name': 0})
+        self.assertEqual(p2.id, p.id)
+        self.assertEqual(p2.number_list, [15, -1])
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p2, 'name')
+
+        p3 = self.Person.find_one(
+                {'name': 'Sean'},
+                fields={'number_list': {'$slice': (3, 2)}})
+        self.assertEqual(p3.id, p1.id)
+        self.assertEqual(p3.number_list, p1.number_list)
+
+    def testElemmatch(self):
+        p = self.Person(age=10, name='Sean', number_list=[1, 5, 3, 19, 15, -1])
+        p.save()
+
+        p1 = self.Person.find_one(
+                {'name': 'Sean'},
+                fields={'number_list': {'$elemMatch': {'$gte': 10, '$lt': 18}}})
+
+        self.assertEqual(p1.id, p.id)
+        self.assertEqual(p1.number_list, [15])
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(p1, 'name')
+
+        p2 = self.Person.find_one(
+                {'name': 'Sean'},
+                fields={'number_list': {'$elemMatch': {'$gte': 2, '$lt': 6}},
+                    'name': 1})
+        self.assertEqual(p2.id, p.id)
+        self.assertEqual(p2.number_list, [5])
+        self.assertEqual(p2.name, p.name)
+
+        blue1 = self.Colour(name='blue')
+        blue2 = self.Colour(name='blue')
+        red = self.Colour(name='red')
+        q = self.Person(age=13, name='Sean', other_colours=[blue1, red, blue2])
+        q.save()
+
+        q1 = self.Person.find_one(
+                {'other_colours': {'$elemMatch': {'name': 'blue'}}})
+        self.assertEqual(q1.id, q.id)
+
+        q2 = self.Person.find_one(
+                {'age': 13},
+                fields={'other_colours': {'$elemMatch': {'name': 'blue'}}})
+        self.assertEqual(q2.id, q.id)
+        self.assertEqual(q2.other_colours, [blue1])
+
     def testQueryIn(self):
         query = {'_id': {'$in': [ObjectId(), ObjectId(), ObjectId()] } }
         self.assertEquals(self.User._transform_value(query, self.User), query)
