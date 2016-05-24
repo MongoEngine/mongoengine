@@ -1024,6 +1024,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(c[1]['max_time_ms'],-1)
         self.assertEquals(d[1]['max_time_ms'],1000)
 
+    @unittest.skip("disabled the feature for now")
     def test_max_time_ms_find_iter(self):
         cur_mock = MagicMock()
         cur_mock._iterate_cursor = MagicMock(side_effect=['a'])

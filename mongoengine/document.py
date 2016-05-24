@@ -32,7 +32,7 @@ SENTRY_DSN = 'threaded+http://008e8e98273346d782db8bc407917e76:' \
     'dedc6b38b0dd484fa4db1543a19cb0f5@sentry.i.wish.com/2'
 
 high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
-
+execution_timeout_logger = logging.getLogger('sweeper.prod.mongodb_execution_timeout')
 
 class BulkOperationError(OperationError):
     pass
@@ -461,8 +461,6 @@ class Document(BaseDocument):
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
                  **kwargs):
-        # disabled for now
-        max_time_ms = 0
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
         if sort and skip > 100000:
@@ -548,7 +546,6 @@ class Document(BaseDocument):
                 else:
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
 
-
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=False, excluded_fields=None, max_time_ms=None,
@@ -557,16 +554,36 @@ class Document(BaseDocument):
                            slave_ok=slave_ok, excluded_fields=excluded_fields,
                            max_time_ms=max_time_ms,**kwargs)
 
-        return [
-            cls._from_augmented_son(d, fields, excluded_fields)
-            for d in cls._iterate_cursor(cur)
-        ]
+        try:
+            return [
+                cls._from_augmented_son(d, fields, excluded_fields)
+                for d in cls._iterate_cursor(cur)
+            ]
+        except pymongo.errors.ExecutionTimeout:
+            # disable timeout if it timed out, log that it timed out
+            # and continue execution
+            # Note: in rare cases during site issues, we can not
+            # complete the query if we're on our last try and we
+            # get an ExecutionTimeout.
+            execution_timeout_logger.info({
+                '_comment' : str(cur._Cursor__comment),
+                '_max_time_ms' : cur._Cursor__max_time_ms, 
+            })
+            cur = cls.find_raw(spec, fields, skip, limit, sort,
+                           slave_ok=slave_ok, excluded_fields=excluded_fields,
+                           max_time_ms=0,**kwargs)
+            return [
+                cls._from_augmented_son(d, fields, excluded_fields)
+                for d in cls._iterate_cursor(cur)
+            ]
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
                   slave_ok=False, timeout=True, batch_size=10000,
                   excluded_fields=None, max_time_ms=None,**kwargs):
-
+        # disable for find_iter temporarily
+        max_time_ms = 0
+        last_doc = None
         cur = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
                            batch_size=batch_size,
@@ -574,7 +591,8 @@ class Document(BaseDocument):
                            max_time_ms=max_time_ms,**kwargs)
 
         for doc in cls._iterate_cursor(cur):
-            yield cls._from_augmented_son(doc, fields, excluded_fields)
+            last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
+            yield last_doc
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
@@ -584,8 +602,23 @@ class Document(BaseDocument):
                            sort, slave_ok=slave_ok, timeout=timeout,
                            excluded_fields=excluded_fields,
                            max_time_ms=max_time_ms,**kwargs)
-
-        return cur.distinct(cls._transform_key(key, cls)[0])
+        try:
+            return cur.distinct(cls._transform_key(key, cls)[0])
+        except pymongo.errors.ExecutionTimeout:
+            # disable timeout if it timed out, log that it timed out
+            # and continue execution
+            # Note: in rare cases during site issues, we can not
+            # complete the query if we're on our last try and we
+            # get an ExecutionTimeout.
+            execution_timeout_logger.info({
+                '_comment' : str(cur._Cursor__comment),
+                '_max_time_ms' : cur._Cursor__max_time_ms, 
+            })
+            cur = cls.find_raw(spec, fields, skip, limit,
+                               sort, slave_ok=slave_ok, timeout=timeout,
+                               excluded_fields=excluded_fields,
+                               max_time_ms=0,**kwargs)
+            return cur.distinct(cls._transform_key(key, cls)[0])
 
     @classmethod
     def _iterate_cursor(cls, cur):
@@ -615,7 +648,6 @@ class Document(BaseDocument):
                         raise
                     else:
                         _sleep(cls.AUTO_RECONNECT_SLEEP)
-
             yield doc
 
     @classmethod
@@ -626,10 +658,29 @@ class Document(BaseDocument):
                          excluded_fields=excluded_fields,
                          max_time_ms=max_time_ms,**kwargs)
 
-        if d:
-            return cls._from_augmented_son(d, fields, excluded_fields)
-        else:
-            return None
+        try:
+            if d:
+                return cls._from_augmented_son(d, fields, excluded_fields)
+            else:
+                return None
+        except pymongo.errors.ExecutionTimeout:
+            # disable timeout if it timed out, log that it timed out
+            # and continue execution
+            # Note: in rare cases during site issues, we can not
+            # complete the query if we're on our last try and we
+            # get an ExecutionTimeout.
+            execution_timeout_logger.info({
+                '_comment' : str(cur._Cursor__comment),
+                '_max_time_ms' : cur._Cursor__max_time_ms, 
+            })
+            d = cls.find_raw(spec, fields, skip=skip, sort=sort,
+                             slave_ok=slave_ok, find_one=True,
+                             excluded_fields=excluded_fields,
+                             max_time_ms=0,**kwargs)
+            if d:
+                return cls._from_augmented_son(d, fields, excluded_fields)
+            else:
+                return None
 
     @classmethod
     def find_and_modify(cls, spec, update=None, sort=None, remove=False,
@@ -681,6 +732,20 @@ class Document(BaseDocument):
                     raise
                 else:
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
+            except pymongo.errors.ExecutionTimeout:
+                # disable timeout if it timed out, log that it timed out
+                # and continue execution
+                # Note: in rare cases during site issues, we can not
+                # complete the query if we're on our last try and we
+                # get an ExecutionTimeout.
+                execution_timeout_logger.info({
+                    '_comment' : str(cur._Cursor__comment),
+                    '_max_time_ms' : cur._Cursor__max_time_ms, 
+                })
+                cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
+                    comment=comment if comment else MongoComment.get_comment(
+                        num_stacks_up=3), max_time_ms=0,**kwargs)
+                return cur.count()
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True, **kwargs):
