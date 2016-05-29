@@ -1462,7 +1462,7 @@ class BaseQuerySet(object):
                 msg = "The snapshot option is not anymore available with PyMongo 3+"
                 warnings.warn(msg, DeprecationWarning)
             cursor_args = {
-                'no_cursor_timeout': self._timeout
+                'no_cursor_timeout': not self._timeout
             }
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
