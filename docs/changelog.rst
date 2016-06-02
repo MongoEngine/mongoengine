@@ -13,6 +13,7 @@ Changes in 0.10.7 - DEV
 - MapField now handles unicodes keys correctly. #1267
 - ListField now handles negative indicies correctly. #1270
 - Fixed AttributeError when initializing EmbeddedDocument with positional args. #681
+- Fixed no_cursor_timeout error with pymongo 3.0+ #1304
 
 Changes in 0.10.6
 =================
