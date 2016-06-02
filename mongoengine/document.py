@@ -439,12 +439,13 @@ class Document(BaseDocument):
 
     @classmethod
     def _transform_hint(cls, hint_doc):
+        new_hint_doc = []
         for i, index_field in enumerate(hint_doc):
             field, direction = hint_doc[i]
             db_field, context = cls._transform_key(field, cls)
-            hint_doc[i] = (db_field, direction)
+            new_hint_doc.append((db_field, direction))
 
-        return hint_doc
+        return new_hint_doc
 
     @classmethod
     def _update_spec(cls, spec, cursor_comment=False, **kwargs):

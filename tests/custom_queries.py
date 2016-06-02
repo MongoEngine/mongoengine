@@ -1037,6 +1037,14 @@ class CustomQueryTest(unittest.TestCase):
             self.Person._transform_hint([("age", 1), ("favourite_colour.name", 1)]),
             [("a", 1), ("c.n", 1)])
 
+    def testOHintNotChanged(self):
+        hint = [("age", 1), ("favourite_colour.name", 1)]
+        self.assertEqual(
+            self.Person._transform_hint(hint),
+            [("a", 1), ("c.n", 1)])
+
+        self.assertEqual(hint, [("age", 1), ("favourite_colour.name", 1)])
+
     @mock.patch('pymongo.collection.Collection.update')
     def testUpdateOneShardCriteria(self, updater_mock):
         # normal update_one
