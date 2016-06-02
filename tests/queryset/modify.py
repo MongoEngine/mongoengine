@@ -119,6 +119,19 @@ class FindAndModifyTest(unittest.TestCase):
         doc.save()
         self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 2}])
 
+    def test_first_with_exclude_then_save(self):
+        DocTwo(id=0, value1=1, value2=1).save()
+
+        doc = DocTwo.objects(id=0).exclude("value1").first()
+
+        # value1 is -1 (the default) on the object, but still 1 in the database
+        self.assertEqual(doc.value1, -1)
+        self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 1}])
+
+        # calling save() on the object incorrectly writes the default value of value1 to the database
+        doc.save()
+        self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 1}])
+
 
 if __name__ == '__main__':
     unittest.main()
