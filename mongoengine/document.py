@@ -518,7 +518,10 @@ class Document(BaseDocument):
                     # max_time_ms <= 0 means its disabled, None means
                     # use default value, otherwise use the value specified
                     if max_time_ms is None:
-                        cur.max_time_ms(cls.MAX_TIME_MS)
+                        # if the default value is set to 0, then this feature is
+                        # disabled by default
+                        if cls.MAX_TIME_MS > 0:
+                            cur.max_time_ms(cls.MAX_TIME_MS)
                     elif max_time_ms > 0:
                         cur.max_time_ms(max_time_ms)
 
