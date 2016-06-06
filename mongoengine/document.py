@@ -332,12 +332,39 @@ class Document(BaseDocument):
         else:
             dflt_load_status = FieldStatus.NOT_LOADED
 
-        obj._default_load_status = dflt_load_status
         for (field, val) in fields.iteritems():
-            obj._fields_status[field] = FieldStatus.NOT_LOADED if val == 0 \
+            status = FieldStatus.NOT_LOADED if val == 0 \
                     else FieldStatus.LOADED
+            cls._set_field_status(field, obj, status, dflt_load_status)
 
         return obj
+
+    @staticmethod
+    def _set_field_status(field_name, context, status, dflt_status):
+        if isinstance(context, BaseDocument):
+            parts = field_name.split('.')
+            first_part = parts[0]
+            rest = parts[1] if len(parts) > 1 else None
+
+            context._default_load_status = dflt_status
+            context._all_loaded = False
+
+            if rest:
+                # if the field is recursive the parent field must be loaded
+                context._fields_status[first_part] = FieldStatus.LOADED
+                name = [n for (n, f) in context._fields.iteritems()
+                        if f.db_field == first_part][0]
+
+                Document._set_field_status(rest, getattr(context, name),
+                        status, dflt_status)
+            else:
+                context._fields_status[first_part] = status
+        elif isinstance(context, list):
+            for el in context:
+                Document._set_field_status(field_name, el, status, dflt_status)
+        else:
+            raise ValueError("Invalid field name %s in context %s" %
+                    (field_name, context))
 
     @classmethod
     def _transform_fields(cls, fields=None, excluded_fields=None):
@@ -362,11 +389,12 @@ class Document(BaseDocument):
             fields = new_fields
         elif isinstance(fields, (list, tuple)):
             fields = {
-                cls._transform_key(f, cls)[0]: 1 for f in fields
+                cls._transform_key(f, cls, is_find=True)[0]: 1 for f in fields
             }
         elif isinstance(excluded_fields, (list, tuple)):
             fields = {
-                cls._transform_key(f, cls)[0]: 0 for f in excluded_fields
+                cls._transform_key(f, cls, is_find=True)[0]: 0
+                    for f in excluded_fields
             }
 
         return fields

@@ -29,6 +29,7 @@ class UnloadedFieldsTest(unittest.TestCase):
             best_friend = f.ReferenceField('Person')
             best_blob = f.GenericReferenceField()
             thought = f.EmbeddedDocumentField('Thought')
+            other_thoughts = f.ListField(f.EmbeddedDocumentField('Thought'))
             other_attrs = f.DictField()
         mongoengine.connection.connect()
         self.db = mongoengine.connection._get_db()
@@ -479,6 +480,45 @@ class UnloadedFieldsTest(unittest.TestCase):
         person_loaded.update_one({'$inc': {'age': 1}})
 
         self.assertEqual(person_loaded.age, 23)
+
+    def test_subdoc_fields(self):
+        thought = self.thought_cls(name='cat', contents='I\'m in a hat')
+        person = self.person_cls(age=21, thought=thought)
+        person.save()
+
+        person_loaded = self.person_cls.find_one(
+            {'_id': person.id},
+            fields=['thought.contents']
+        )
+
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(person_loaded, 'age')
+
+        getattr(person_loaded, 'thought')
+
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(person_loaded.thought, 'name')
+        self.assertEqual(person_loaded.thought.contents, 'I\'m in a hat')
+
+    def test_list_subdoc_fields(self):
+        person = self.person_cls(age=21, other_thoughts=[
+            self.thought_cls(name='thing1', contents='one'),
+            self.thought_cls(name='thing2', contents='two')])
+        person.save()
+
+        person_loaded = self.person_cls.find_one(
+            {'_id': person.id},
+            fields=['other_thoughts.contents']
+        )
+
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(person_loaded, 'age')
+
+        getattr(person_loaded, 'other_thoughts')
+
+        with self.assertRaises(mongoengine.base.FieldNotLoadedError):
+            getattr(person_loaded.other_thoughts[0], 'name')
+        self.assertEqual(person_loaded.other_thoughts[1].contents, 'two')
 
     def test_queryset_loads_all_fields(self):
         person = self.person_cls(name='CLark')
