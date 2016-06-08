@@ -599,7 +599,7 @@ class Document(BaseDocument):
             # get an ExecutionTimeout.
             execution_timeout_logger.info({
                 '_comment' : str(cur._Cursor__comment),
-                '_max_time_ms' : cur._Cursor__max_time_ms, 
+                '_max_time_ms' : cur._Cursor__max_time_ms,
             })
             cur = cls.find_raw(spec, fields, skip, limit, sort,
                            slave_ok=slave_ok, excluded_fields=excluded_fields,
@@ -644,7 +644,7 @@ class Document(BaseDocument):
             # get an ExecutionTimeout.
             execution_timeout_logger.info({
                 '_comment' : str(cur._Cursor__comment),
-                '_max_time_ms' : cur._Cursor__max_time_ms, 
+                '_max_time_ms' : cur._Cursor__max_time_ms,
             })
             cur = cls.find_raw(spec, fields, skip, limit,
                                sort, slave_ok=slave_ok, timeout=timeout,
@@ -703,7 +703,7 @@ class Document(BaseDocument):
             # get an ExecutionTimeout.
             execution_timeout_logger.info({
                 '_comment' : str(cur._Cursor__comment),
-                '_max_time_ms' : cur._Cursor__max_time_ms, 
+                '_max_time_ms' : cur._Cursor__max_time_ms,
             })
             d = cls.find_raw(spec, fields, skip=skip, sort=sort,
                              slave_ok=slave_ok, find_one=True,
@@ -772,7 +772,7 @@ class Document(BaseDocument):
                 # get an ExecutionTimeout.
                 execution_timeout_logger.info({
                     '_comment' : str(cur._Cursor__comment),
-                    '_max_time_ms' : cur._Cursor__max_time_ms, 
+                    '_max_time_ms' : cur._Cursor__max_time_ms,
                 })
                 cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
                     comment=comment if comment else MongoComment.get_comment(
@@ -1291,7 +1291,12 @@ class Document(BaseDocument):
             db_field = field.db_field
 
         if prefix:
-            result = "%s.%s" % (prefix, db_field)
+            if db_field is not None:
+                result = "%s.%s" % (prefix, db_field)
+            else:
+                result = prefix
+                rest = key
+
         else:
             result = db_field
 
