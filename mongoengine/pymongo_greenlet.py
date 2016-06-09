@@ -291,7 +291,6 @@ class GreenletSemaphore(object):
     def __init__(self, value=1, io_loop=None):
         if value < 0:
             raise ValueError("semaphore initial value must be >= 0")
-        print "starting at value %d" % value
         self._value = value
         self._waiters = []
         self._waiter_timeouts = {}
@@ -299,10 +298,13 @@ class GreenletSemaphore(object):
         self._ioloop = io_loop if io_loop else ioloop.IOLoop.instance()
 
     def _handle_timeout(self, timeout_gr):
-        print "handling timeout"
+        # should always be there, but add some safety just in case
+        if timeout_gr in self._waiters:
+            self._waiters.remove(timeout_gr)
 
-        self._waiters.remove(timeout_gr)
-        self._waiter_timeouts.pop(timeout_gr)
+        if timeout_gr in self._waiter_timeouts:
+            self._waiter_timeouts.pop(timeout_gr)
+
         timeout_gr.switch()
 
     def acquire(self, blocking=True, timeout=None):
@@ -346,7 +348,6 @@ class GreenletSemaphore(object):
 
                 # if we timed out, just return False instead of retrying
                 if timeout and (time.time() - start_time) >= timeout:
-                    print "timed out"
                     return False
 
             # non-blocking mode, just return False
