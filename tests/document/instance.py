@@ -14,7 +14,7 @@ from tests.fixtures import PickleEmbedded, PickleTest, PickleSignalsTest
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError)
+                                InvalidQueryError, DoesNotExist)
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.connection import get_db
 from mongoengine.base import get_document
@@ -355,6 +355,18 @@ class InstanceTest(unittest.TestCase):
         person.reload()
         self.assertEqual(person.name, "Mr Test User")
         self.assertEqual(person.age, 21)
+
+    def test_reload_after_deleted(self):
+        """Ensure reloading a deleted object raises the right exception.
+        """
+        person = self.Person(name="Test User", age=20)
+        person.save()
+
+        self.assertTrue(person.pk)
+        person.delete()
+
+        self.assertRaises(DoesNotExist, person.reload)
+        self.assertRaises(self.Person.DoesNotExist, person.reload)
 
     def test_reload_sharded(self):
         class Animal(Document):
