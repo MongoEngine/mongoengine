@@ -819,5 +819,65 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
+    def test_int_to_python_default(self):
+        class Person(Document):
+            age = IntField(default=1)
+
+        person = Person()
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertEquals(person.age,1)
+
+        person.age = 10
+        person.save()
+        person.reload()
+        self.assertEquals(person.age,10)
+
+        person = Person()
+        self.assertEquals(person.age,1)
+
+    def test_int_to_python_no_default(self):
+        class Person(Document):
+            age = IntField()
+
+        person = Person()
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertRaises(TypeError,person.age)
+
+    def test_float_to_python_default(self):
+        class Person(Document):
+            age = FloatField(default=1.0)
+
+        person = Person()
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertEquals(person.age,1.0)
+
+        person.age = 10.0
+        person.save()
+        person.reload()
+        self.assertEquals(person.age,10.0)
+
+        person = Person()
+        self.assertEquals(person.age,1.0)
+
+    def test_float_to_python_no_default(self):
+        class Person(Document):
+            age = FloatField()
+
+        person = Person()
+        person.age = None
+        person.save()
+
+        person.reload()
+        self.assertRaises(TypeError,person.age)
+
 if __name__ == '__main__':
     unittest.main()

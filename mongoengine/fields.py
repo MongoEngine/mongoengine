@@ -146,6 +146,9 @@ class IntField(BaseField):
         super(IntField, self).__init__(**kwargs)
 
     def to_python(self, value):
+        if value is None and self.default is not None:
+            return int(self.default)
+
         return int(value)
 
     def validate(self, value):
@@ -170,6 +173,9 @@ class FloatField(BaseField):
         super(FloatField, self).__init__(**kwargs)
 
     def to_python(self, value):
+        if value is None and self.default is not None:
+            return float(self.default)
+
         return float(value)
 
     def validate(self, value):
