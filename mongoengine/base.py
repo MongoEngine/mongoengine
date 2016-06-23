@@ -9,6 +9,7 @@ import bson.dbref
 import logging
 import socket
 import traceback
+import greenlet
 from collections import defaultdict
 
 _document_registry = {}
@@ -816,18 +817,56 @@ else:
         return type(name, parents, {'__module__': module})
 
 class MongoComment(object):
-    _ip_address = None
+    _ip = None
+    AUTO_FRAME_LIMIT = 10
+    AUTO_BLACKLIST = (
+        'mongoengine/base.py',
+        'mongoengine/document.py',
+        'cl/utils/mongo.py',
+        'cl/utils/pipeline.py',
+        'cl/utils/iter.py'
+    )
+
     @classmethod
-    def get_comment(cls, num_stacks_up=3):
-        # num_stacks_up to be # of stacks up to figure out file/line numbers
+    def blacklisted(cls, filename):
+        return any(filename.endswith(bl) for bl in cls.AUTO_BLACKLIST)
+
+    @classmethod
+    def context(cls, filename):
+        if not filename.startswith('/'):
+            return filename
+        return '/'.join(filename.split('/')[4:])
+
+    @classmethod
+    def get_query_comment(cls):
+        """
+        Retrieves comment from greenlet if called in one, else examine stack
+        """
+        current_greenlet = greenlet.getcurrent()
+        if hasattr(current_greenlet, '__mongoengine_comment__'):
+            return current_greenlet.__mongoengine_comment__
+        return cls.get_comment()
+
+    @classmethod
+    def get_comment(cls):
         try:
-            if cls._ip_address == None:
+            if cls._ip == None:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.connect(('8.8.8.8',80))
-                cls._ip_address = sock.getsockname()[0]
-            caller_file, line_num, call_fn, fn_line = \
-                    traceback.extract_stack(limit=4)[-1*num_stacks_up]
-            return '%s-%s:%s' % (cls._ip_address,
-                    '/'.join(caller_file.split('/')[4:]), line_num)
+                cls._ip = sock.getsockname()[0]
+                sock.close()
+
+            last_stacks = traceback.extract_stack(limit=cls.AUTO_FRAME_LIMIT)
+            for i in xrange(-3, -len(last_stacks) - 1, -1):
+                filename, line, functionname, text = last_stacks[i]
+
+                if cls.blacklisted(filename):
+                    continue
+
+                msg = '[%s]%s @ %s:%s' % (
+                    cls._ip, functionname, cls.context(filename), line
+                )
+                return msg
+            return 'ERROR: Could not retrieve external stack frame'
         except:
-            pass
+            return 'ERROR: Failed to get comment'

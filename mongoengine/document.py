@@ -476,20 +476,21 @@ class Document(BaseDocument):
         return new_hint_doc
 
     @classmethod
-    def _update_spec(cls, spec, cursor_comment=False, **kwargs):
+    def _update_spec(cls, spec, cursor_comment=False, comment=None, **kwargs):
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
         if cursor_comment is True and spec: # comment doesn't with empty spec..
-            spec['$comment'] = kwargs['comment'] if 'comment' in kwargs \
-                else MongoComment.get_comment(num_stacks_up=4)
+            if not comment:
+                comment = MongoComment.get_query_comment()
+            spec['$comment'] = comment
         return spec
 
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
-                 **kwargs):
+                 comment=None, **kwargs):
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
         if sort and skip > 100000:
@@ -556,11 +557,9 @@ class Document(BaseDocument):
                     if hint:
                         cur.hint(hint)
 
-                    # if comment not passed through, one extra stack in trace
-                    comment = kwargs['comment'] if 'comment' in kwargs \
-                        else MongoComment.get_comment(num_stacks_up=4)
-                    if comment:
-                        cur.comment(comment)
+                    if not comment:
+                        comment = MongoComment.get_query_comment()
+                    cur.comment(comment)
 
                     if find_one:
                         for result in cur.limit(-1):
@@ -752,9 +751,10 @@ class Document(BaseDocument):
     @classmethod
     def count(cls, spec, slave_ok=False, comment=None, max_time_ms=None,
         **kwargs):
+        kwargs['comment'] = comment
+
         cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
-            comment=comment if comment else MongoComment.get_comment(
-                num_stacks_up=3), max_time_ms=max_time_ms,**kwargs)
+            max_time_ms=max_time_ms, **kwargs)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
@@ -775,8 +775,7 @@ class Document(BaseDocument):
                     '_max_time_ms' : cur._Cursor__max_time_ms,
                 })
                 cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
-                    comment=comment if comment else MongoComment.get_comment(
-                        num_stacks_up=3), max_time_ms=0,**kwargs)
+                    max_time_ms=0, **kwargs)
                 return cur.count()
 
     @classmethod
@@ -851,7 +850,7 @@ class Document(BaseDocument):
         return result
 
     def update_one(self, document, spec=None, upsert=False,
-                   criteria=None, **kwargs):
+                   criteria=None, comment=None, **kwargs):
         ops = {}
 
         if not document:
@@ -925,8 +924,9 @@ class Document(BaseDocument):
 
         query_spec = self._transform_value(query_spec, type(self))
 
-        query_spec['$comment'] = kwargs['comment'] if 'comment' in kwargs \
-            else MongoComment.get_comment(num_stacks_up=4)
+        if not comment:
+            comment = MongoComment.get_query_comment()
+        query_spec['$comment'] = comment
 
         with log_slow_event("update_one", self._meta['collection'], spec):
             result = self._pymongo().update(query_spec,
