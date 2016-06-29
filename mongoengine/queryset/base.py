@@ -434,7 +434,7 @@ class BaseQuerySet(object):
                full_result=False, **update):
         """Perform an atomic update on the fields matched by the query.
 
-        :param upsert: Any existing document with that "_id" is overwritten.
+        :param upsert: insert if document doesn't exist (default ``False``)
         :param multi: Update multiple documents.
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
@@ -480,7 +480,6 @@ class BaseQuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
 
@@ -498,7 +497,7 @@ class BaseQuerySet(object):
         """
 
         atomic_update = self.update(multi=False, upsert=True, write_concern=write_concern,
-                             full_result=True,**update)
+                             full_result=True, **update)
 
         if atomic_update['updatedExisting']:
             document = self.get()
@@ -510,7 +509,7 @@ class BaseQuerySet(object):
         """Perform an atomic update on the fields of the first document
         matched by the query.
 
-        :param upsert: Any existing document with that "_id" is overwritten.
+        :param upsert: insert if document doesn't exist (default ``False``)
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
             ``getLastError`` command.  For example,
