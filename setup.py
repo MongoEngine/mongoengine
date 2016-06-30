@@ -8,8 +8,8 @@ try:
 except ImportError:
     pass
 
-DESCRIPTION = 'MongoEngine is a Python Object-Document ' + \
-'Mapper for working with MongoDB.'
+DESCRIPTION = ('MongoEngine is a Python Object-Document '
+               'Mapper for working with MongoDB.')
 
 try:
     with open('README.rst') as fin:
@@ -80,5 +80,4 @@ setup(name='mongoengine',
       classifiers=CLASSIFIERS,
       install_requires=['pymongo>=2.7.1', 'six'],
       test_suite='nose.collector',
-      **extra_opts
-)
+      **extra_opts)

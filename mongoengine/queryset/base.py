@@ -5,6 +5,7 @@ import itertools
 import operator
 import pprint
 import re
+import six
 import warnings
 
 from bson import SON
@@ -246,8 +247,8 @@ class BaseQuerySet(object):
             return result
 
         queryset.rewind()
-        message = u'%d items returned, instead of 1' % queryset.count()
-        raise queryset._document.MultipleObjectsReturned(message)
+        message = '%d items returned, instead of 1' % queryset.count()
+        raise queryset._document.MultipleObjectsReturned(six.text_type(message))
 
     def create(self, **kwargs):
         """Create new object. Returns the saved object instance.
@@ -319,15 +320,15 @@ class BaseQuerySet(object):
             ids = self._collection.insert(raw, **write_concern)
         except pymongo.errors.DuplicateKeyError, err:
             message = 'Could not save document (%s)'
-            raise NotUniqueError(message % unicode(err))
+            raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', unicode(err)):
+            if re.match('^E1100[01] duplicate key', six.text_type(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
-                message = u'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % unicode(err))
-            raise OperationError(message % unicode(err))
+                message = 'Tried to save duplicate unique keys (%s)'
+                raise NotUniqueError(message % six.text_type(err))
+            raise OperationError(message % six.text_type(err))
 
         if not load_bulk:
             signals.post_bulk_insert.send(
@@ -473,12 +474,12 @@ class BaseQuerySet(object):
             elif result:
                 return result['n']
         except pymongo.errors.DuplicateKeyError, err:
-            raise NotUniqueError(u'Update failed (%s)' % unicode(err))
+            raise NotUniqueError('Update failed (%s)' % six.text_type(err))
         except pymongo.errors.OperationFailure, err:
-            if unicode(err) == u'multi not coded yet':
-                message = u'update() method requires MongoDB 1.1.3+'
+            if six.text_type(err) == six.text_type('multi not coded yet'):
+                message = six.text_type('update() method requires MongoDB 1.1.3+')
                 raise OperationError(message)
-            raise OperationError(u'Update failed (%s)' % unicode(err))
+            raise OperationError('Update failed (%s)' % six.text_type(err))
 
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
@@ -582,9 +583,9 @@ class BaseQuerySet(object):
                     query, update, upsert=upsert, sort=sort, remove=remove, new=new,
                     full_response=full_response, **self._cursor_args)
         except pymongo.errors.DuplicateKeyError, err:
-            raise NotUniqueError(u"Update failed (%s)" % err)
+            raise NotUniqueError("Update failed (%s)" % six.text_type(err))
         except pymongo.errors.OperationFailure, err:
-            raise OperationError(u"Update failed (%s)" % err)
+            raise OperationError("Update failed (%s)" % six.text_type(err))
 
         if full_response:
             if result["value"] is not None:
@@ -1100,13 +1101,13 @@ class BaseQuerySet(object):
         map_f_scope = {}
         if isinstance(map_f, Code):
             map_f_scope = map_f.scope
-            map_f = unicode(map_f)
+            map_f = six.text_type(map_f)
         map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
 
         reduce_f_scope = {}
         if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
-            reduce_f = unicode(reduce_f)
+            reduce_f = six.text_type(reduce_f)
         reduce_f_code = queryset._sub_js_fields(reduce_f)
         reduce_f = Code(reduce_f_code, reduce_f_scope)
 
@@ -1116,7 +1117,7 @@ class BaseQuerySet(object):
             finalize_f_scope = {}
             if isinstance(finalize_f, Code):
                 finalize_f_scope = finalize_f.scope
-                finalize_f = unicode(finalize_f)
+                finalize_f = six.text_type(finalize_f)
             finalize_f_code = queryset._sub_js_fields(finalize_f)
             finalize_f = Code(finalize_f_code, finalize_f_scope)
             mr_args['finalize'] = finalize_f
@@ -1792,7 +1793,7 @@ class BaseQuerySet(object):
             field_name = match.group(1).split('.')
             fields = self._document._lookup_field(field_name)
             # Substitute the correct name for the field into the javascript
-            return u'["%s"]' % fields[-1].db_field
+            return '["%s"]' % fields[-1].db_field
 
         def field_path_sub(match):
             # Extract just the field name, and look up the field objects
@@ -1801,8 +1802,8 @@ class BaseQuerySet(object):
             # Substitute the correct name for the field into the javascript
             return ".".join([f.db_field for f in fields])
 
-        code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
-        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
+        code = re.sub('\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+        code = re.sub('\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
                       code)
         return code
 
