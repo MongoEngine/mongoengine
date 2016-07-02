@@ -13,7 +13,7 @@ from datetime import datetime
 from bson import DBRef, ObjectId
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
-                            PickleDyanmicEmbedded, PickleDynamicTest)
+                            PickleDynamicEmbedded, PickleDynamicTest)
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
@@ -2317,7 +2317,7 @@ class InstanceTest(unittest.TestCase):
 
         pickle_doc = PickleDynamicTest(
             name="test", number=1, string="One", lists=['1', '2'])
-        pickle_doc.embedded = PickleDyanmicEmbedded(foo="Bar")
+        pickle_doc.embedded = PickleDynamicEmbedded(foo="Bar")
         pickled_doc = pickle.dumps(pickle_doc)  # make sure pickling works even before the doc is saved
 
         pickle_doc.save()

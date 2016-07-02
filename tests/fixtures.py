@@ -26,7 +26,7 @@ class NewDocumentPickleTest(Document):
     new_field = StringField()
 
 
-class PickleDyanmicEmbedded(DynamicEmbeddedDocument):
+class PickleDynamicEmbedded(DynamicEmbeddedDocument):
     date = DateTimeField(default=datetime.now)
 
 
