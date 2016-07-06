@@ -176,7 +176,7 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings = _connection_settings[alias]
         db = conn[conn_settings['name']]
         # Authenticate if necessary
-        if conn_settings['username'] and conn_settings['password']:
+        if conn_settings['username']:
             db.authenticate(conn_settings['username'],
                             conn_settings['password'],
                             source=conn_settings['authentication_source'],
