@@ -25,7 +25,7 @@ try:
 except ImportError:
     Int64 = long
 
-from mongoengine.errors import ValidationError
+from mongoengine.errors import ValidationError, DoesNotExist
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
 from base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
@@ -948,9 +948,11 @@ class ReferenceField(BaseField):
                 cls = get_document(value.cls)
             else:
                 cls = self.document_type
-            value = cls._get_db().dereference(value)
-            if value is not None:
-                instance._data[self.name] = cls._from_son(value)
+            dereferenced = cls._get_db().dereference(value)
+            if dereferenced is None:
+                raise DoesNotExist('Trying to dereference unknown document %s' % value)
+            else:
+                instance._data[self.name] = cls._from_son(dereferenced)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -1094,9 +1096,11 @@ class CachedReferenceField(BaseField):
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
-            value = self.document_type._get_db().dereference(value)
-            if value is not None:
-                instance._data[self.name] = self.document_type._from_son(value)
+            dereferenced = self.document_type._get_db().dereference(value)
+            if dereferenced is None:
+                raise DoesNotExist('Trying to dereference unknown document %s' % value)
+            else:
+                instance._data[self.name] = self.document_type._from_son(dereferenced)
 
         return super(CachedReferenceField, self).__get__(instance, owner)
 
@@ -1214,7 +1218,11 @@ class GenericReferenceField(BaseField):
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         if self._auto_dereference and isinstance(value, (dict, SON)):
-            instance._data[self.name] = self.dereference(value)
+            dereferenced = self.dereference(value)
+            if dereferenced is None:
+                raise DoesNotExist('Trying to dereference unknown document %s' % value)
+            else:
+                instance._data[self.name] = dereferenced
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 
