@@ -528,6 +528,19 @@ class DocumentTest(unittest.TestCase):
         self.assertRaises(pymongo.errors.OperationFailure, unset_primary_key)
         self.assertRaises(pymongo.errors.OperationFailure, update_no_value_raises)
 
+    def test_non_existant_inc(self):
+        person = self.Person(name='dcrosta',
+                id=bson.ObjectId(), uid=bson.ObjectId())
+        person.save()
+
+        person.inc(age=5)
+        person.reload()
+        self.assertEquals(person.age, 5)
+
+        person.inc(age=5)
+        person.reload()
+        self.assertEquals(person.age, 10)
+
     def test_embedded_update(self):
         """
         Test update on `EmbeddedDocumentField` fields

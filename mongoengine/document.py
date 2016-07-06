@@ -882,7 +882,10 @@ class Document(BaseDocument):
                             ops[field] = None
                         elif operator == '$inc':
                             if field_loaded:
-                                ops[field] = self[field] + new_val
+                                if self[field] is None:
+                                    ops[field] = new_val
+                                else:
+                                    ops[field] = self[field] + new_val
                         elif operator == '$push':
                             if field_loaded:
                                 ops[field] = self[field][:] + [new_val]
