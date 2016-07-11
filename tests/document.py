@@ -1004,7 +1004,6 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person, restored)
         self.assertEqual(person.age, restored.age)
 
-    @unittest.skip("disabled the feature for now")
     def test_find_raw_max_time_ms(self):
         cur = Citizen.find_raw({}, max_time_ms=None, limit=1)
         self.assertEquals(cur._Cursor__max_time_ms, Citizen.MAX_TIME_MS)
