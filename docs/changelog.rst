@@ -15,6 +15,7 @@ Changes in 0.10.7 - DEV
 - ListField now handles negative indicies correctly. #1270
 - Fixed AttributeError when initializing EmbeddedDocument with positional args. #681
 - Fixed no_cursor_timeout error with pymongo 3.0+ #1304
+- Replaced map-reduce based QuerySet.sum/average with aggregation-based implementations #1336
 
 Changes in 0.10.6
 =================
