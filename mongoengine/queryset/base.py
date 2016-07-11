@@ -1255,7 +1255,7 @@ class BaseQuerySet(object):
 
         result = self._document._get_collection().aggregate(pipeline)
         if IS_PYMONGO_3:
-            result = list(result)
+            result = tuple(result)
         else:
             result = result.get('result')
 
@@ -1285,7 +1285,7 @@ class BaseQuerySet(object):
 
         result = self._document._get_collection().aggregate(pipeline)
         if IS_PYMONGO_3:
-            result = list(result)
+            result = tuple(result)
         else:
             result = result.get('result')
         if result:
