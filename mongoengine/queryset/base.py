@@ -1237,66 +1237,28 @@ class BaseQuerySet(object):
     def sum(self, field):
         """Sum over the values of the specified field.
 
-        :param field: the field to sum over; use dot-notation to refer to
+        :param field: the field to sum over; use dot notation to refer to
             embedded document fields
-
-        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
-            with sharding.
         """
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.'),
-                field = this;
-
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(1, item||0);
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(1, field||0);
-                }
-            }
-        """ % dict(field=field)
-
-        reduce_func = Code("""
-            function(key, values) {
-                var sum = 0;
-                for (var i in values) {
-                    sum += values[i];
-                }
-                return sum;
-            }
-        """)
-
-        for result in self.map_reduce(map_func, reduce_func, output='inline'):
-            return result.value
-        else:
-            return 0
-
-    def aggregate_sum(self, field):
-        """Sum over the values of the specified field.
-
-        :param field: the field to sum over; use dot-notation to refer to
-            embedded document fields
-
-        This method is more performant than the regular `sum`, because it uses
-        the aggregation framework instead of map-reduce.
-        """
-        result = self._document._get_collection().aggregate([
+        pipeline = [
             {'$match': self._query},
             {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
-        ])
+        ]
+
+        # if we're performing a sum over a list field, we sum up all the
+        # elements in the list, hence we need to $unwind the arrays first
+        ListField = _import_class('ListField')
+        field_parts = field.split('.')
+        field_instances = self._document._lookup_field(field_parts)
+        if isinstance(field_instances[-1], ListField):
+            pipeline.insert(1, {'$unwind': '$' + field})
+
+        result = self._document._get_collection().aggregate(pipeline)
         if IS_PYMONGO_3:
-            result = list(result)
+            result = tuple(result)
         else:
             result = result.get('result')
+
         if result:
             return result[0]['total']
         return 0
@@ -1304,73 +1266,26 @@ class BaseQuerySet(object):
     def average(self, field):
         """Average over the values of the specified field.
 
-        :param field: the field to average over; use dot-notation to refer to
+        :param field: the field to average over; use dot notation to refer to
             embedded document fields
-
-        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
-            with sharding.
         """
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.'),
-                field = this;
-
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(1, {t: item||0, c: 1});
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(1, {t: field||0, c: 1});
-                }
-            }
-        """ % dict(field=field)
-
-        reduce_func = Code("""
-            function(key, values) {
-                var out = {t: 0, c: 0};
-                for (var i in values) {
-                    var value = values[i];
-                    out.t += value.t;
-                    out.c += value.c;
-                }
-                return out;
-            }
-        """)
-
-        finalize_func = Code("""
-            function(key, value) {
-                return value.t / value.c;
-            }
-        """)
-
-        for result in self.map_reduce(map_func, reduce_func,
-                                      finalize_f=finalize_func, output='inline'):
-            return result.value
-        else:
-            return 0
-
-    def aggregate_average(self, field):
-        """Average over the values of the specified field.
-
-        :param field: the field to average over; use dot-notation to refer to
-            embedded document fields
-
-        This method is more performant than the regular `average`, because it
-        uses the aggregation framework instead of map-reduce.
-        """
-        result = self._document._get_collection().aggregate([
+        pipeline = [
             {'$match': self._query},
             {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
-        ])
+        ]
+
+        # if we're performing an average over a list field, we average out
+        # all the elements in the list, hence we need to $unwind the arrays
+        # first
+        ListField = _import_class('ListField')
+        field_parts = field.split('.')
+        field_instances = self._document._lookup_field(field_parts)
+        if isinstance(field_instances[-1], ListField):
+            pipeline.insert(1, {'$unwind': '$' + field})
+
+        result = self._document._get_collection().aggregate(pipeline)
         if IS_PYMONGO_3:
-            result = list(result)
+            result = tuple(result)
         else:
             result = result.get('result')
         if result:

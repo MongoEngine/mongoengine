@@ -2766,25 +2766,15 @@ class QuerySetTest(unittest.TestCase):
 
         avg = float(sum(ages)) / (len(ages) + 1)  # take into account the 0
         self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
-        self.assertAlmostEqual(
-            int(self.Person.objects.aggregate_average('age')), avg
-        )
 
         self.Person(name='ageless person').save()
         self.assertEqual(int(self.Person.objects.average('age')), avg)
-        self.assertEqual(
-            int(self.Person.objects.aggregate_average('age')), avg
-        )
 
         # dot notation
         self.Person(
             name='person meta', person_meta=self.PersonMeta(weight=0)).save()
         self.assertAlmostEqual(
             int(self.Person.objects.average('person_meta.weight')), 0)
-        self.assertAlmostEqual(
-            int(self.Person.objects.aggregate_average('person_meta.weight')),
-            0
-        )
 
         for i, weight in enumerate(ages):
             self.Person(
@@ -2793,18 +2783,10 @@ class QuerySetTest(unittest.TestCase):
         self.assertAlmostEqual(
             int(self.Person.objects.average('person_meta.weight')), avg
         )
-        self.assertAlmostEqual(
-            int(self.Person.objects.aggregate_average('person_meta.weight')),
-            avg
-        )
 
         self.Person(name='test meta none').save()
         self.assertEqual(
             int(self.Person.objects.average('person_meta.weight')), avg
-        )
-        self.assertEqual(
-            int(self.Person.objects.aggregate_average('person_meta.weight')),
-            avg
         )
 
         # test summing over a filtered queryset
@@ -2812,10 +2794,6 @@ class QuerySetTest(unittest.TestCase):
         avg = float(sum(over_50)) / len(over_50)
         self.assertEqual(
             self.Person.objects.filter(age__gte=50).average('age'),
-            avg
-        )
-        self.assertEqual(
-            self.Person.objects.filter(age__gte=50).aggregate_average('age'),
             avg
         )
 
@@ -2827,15 +2805,9 @@ class QuerySetTest(unittest.TestCase):
             self.Person(name='test%s' % i, age=age).save()
 
         self.assertEqual(self.Person.objects.sum('age'), sum(ages))
-        self.assertEqual(
-            self.Person.objects.aggregate_sum('age'), sum(ages)
-        )
 
         self.Person(name='ageless person').save()
         self.assertEqual(self.Person.objects.sum('age'), sum(ages))
-        self.assertEqual(
-            self.Person.objects.aggregate_sum('age'), sum(ages)
-        )
 
         for i, age in enumerate(ages):
             self.Person(name='test meta%s' %
@@ -2844,24 +2816,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(
             self.Person.objects.sum('person_meta.weight'), sum(ages)
         )
-        self.assertEqual(
-            self.Person.objects.aggregate_sum('person_meta.weight'),
-            sum(ages)
-        )
 
         self.Person(name='weightless person').save()
         self.assertEqual(self.Person.objects.sum('age'), sum(ages))
-        self.assertEqual(
-            self.Person.objects.aggregate_sum('age'), sum(ages)
-        )
 
         # test summing over a filtered queryset
         self.assertEqual(
             self.Person.objects.filter(age__gte=50).sum('age'),
-            sum([a for a in ages if a >= 50])
-        )
-        self.assertEqual(
-            self.Person.objects.filter(age__gte=50).aggregate_sum('age'),
             sum([a for a in ages if a >= 50])
         )
 
@@ -2876,21 +2837,12 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        Doc(name=u"Wilson Junior",
-            pay=Pay(value=150)).save()
+        Doc(name='Wilson Junior', pay=Pay(value=150)).save()
+        Doc(name='Isabella Luanna', pay=Pay(value=530)).save()
+        Doc(name='Tayza mariana', pay=Pay(value=165)).save()
+        Doc(name='Eliana Costa', pay=Pay(value=115)).save()
 
-        Doc(name=u"Isabella Luanna",
-            pay=Pay(value=530)).save()
-
-        Doc(name=u"Tayza mariana",
-            pay=Pay(value=165)).save()
-
-        Doc(name=u"Eliana Costa",
-            pay=Pay(value=115)).save()
-
-        self.assertEqual(
-            Doc.objects.average('pay.value'),
-            240)
+        self.assertEqual(Doc.objects.average('pay.value'), 240)
 
     def test_embedded_array_average(self):
         class Pay(EmbeddedDocument):
@@ -2898,26 +2850,16 @@ class QuerySetTest(unittest.TestCase):
 
         class Doc(Document):
             name = StringField()
-            pay = EmbeddedDocumentField(
-                Pay)
+            pay = EmbeddedDocumentField(Pay)
 
         Doc.drop_collection()
 
-        Doc(name=u"Wilson Junior",
-            pay=Pay(values=[150, 100])).save()
+        Doc(name='Wilson Junior', pay=Pay(values=[150, 100])).save()
+        Doc(name='Isabella Luanna', pay=Pay(values=[530, 100])).save()
+        Doc(name='Tayza mariana', pay=Pay(values=[165, 100])).save()
+        Doc(name='Eliana Costa', pay=Pay(values=[115, 100])).save()
 
-        Doc(name=u"Isabella Luanna",
-            pay=Pay(values=[530, 100])).save()
-
-        Doc(name=u"Tayza mariana",
-            pay=Pay(values=[165, 100])).save()
-
-        Doc(name=u"Eliana Costa",
-            pay=Pay(values=[115, 100])).save()
-
-        self.assertEqual(
-            Doc.objects.average('pay.values'),
-            170)
+        self.assertEqual(Doc.objects.average('pay.values'), 170)
 
     def test_array_average(self):
         class Doc(Document):
@@ -2930,9 +2872,7 @@ class QuerySetTest(unittest.TestCase):
         Doc(values=[165, 100]).save()
         Doc(values=[115, 100]).save()
 
-        self.assertEqual(
-            Doc.objects.average('values'),
-            170)
+        self.assertEqual(Doc.objects.average('values'), 170)
 
     def test_embedded_sum(self):
         class Pay(EmbeddedDocument):
@@ -2940,26 +2880,16 @@ class QuerySetTest(unittest.TestCase):
 
         class Doc(Document):
             name = StringField()
-            pay = EmbeddedDocumentField(
-                Pay)
+            pay = EmbeddedDocumentField(Pay)
 
         Doc.drop_collection()
 
-        Doc(name=u"Wilson Junior",
-            pay=Pay(value=150)).save()
+        Doc(name='Wilson Junior', pay=Pay(value=150)).save()
+        Doc(name='Isabella Luanna', pay=Pay(value=530)).save()
+        Doc(name='Tayza mariana', pay=Pay(value=165)).save()
+        Doc(name='Eliana Costa', pay=Pay(value=115)).save()
 
-        Doc(name=u"Isabella Luanna",
-            pay=Pay(value=530)).save()
-
-        Doc(name=u"Tayza mariana",
-            pay=Pay(value=165)).save()
-
-        Doc(name=u"Eliana Costa",
-            pay=Pay(value=115)).save()
-
-        self.assertEqual(
-            Doc.objects.sum('pay.value'),
-            960)
+        self.assertEqual(Doc.objects.sum('pay.value'), 960)
 
     def test_embedded_array_sum(self):
         class Pay(EmbeddedDocument):
@@ -2967,26 +2897,16 @@ class QuerySetTest(unittest.TestCase):
 
         class Doc(Document):
             name = StringField()
-            pay = EmbeddedDocumentField(
-                Pay)
+            pay = EmbeddedDocumentField(Pay)
 
         Doc.drop_collection()
 
-        Doc(name=u"Wilson Junior",
-            pay=Pay(values=[150, 100])).save()
+        Doc(name='Wilson Junior', pay=Pay(values=[150, 100])).save()
+        Doc(name='Isabella Luanna', pay=Pay(values=[530, 100])).save()
+        Doc(name='Tayza mariana', pay=Pay(values=[165, 100])).save()
+        Doc(name='Eliana Costa', pay=Pay(values=[115, 100])).save()
 
-        Doc(name=u"Isabella Luanna",
-            pay=Pay(values=[530, 100])).save()
-
-        Doc(name=u"Tayza mariana",
-            pay=Pay(values=[165, 100])).save()
-
-        Doc(name=u"Eliana Costa",
-            pay=Pay(values=[115, 100])).save()
-
-        self.assertEqual(
-            Doc.objects.sum('pay.values'),
-            1360)
+        self.assertEqual(Doc.objects.sum('pay.values'), 1360)
 
     def test_array_sum(self):
         class Doc(Document):
@@ -2999,9 +2919,7 @@ class QuerySetTest(unittest.TestCase):
         Doc(values=[165, 100]).save()
         Doc(values=[115, 100]).save()
 
-        self.assertEqual(
-            Doc.objects.sum('values'),
-            1360)
+        self.assertEqual(Doc.objects.sum('values'), 1360)
 
     def test_distinct(self):
         """Ensure that the QuerySet.distinct method works.
