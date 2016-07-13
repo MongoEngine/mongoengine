@@ -12,6 +12,7 @@ from mongoengine.connection import _get_db, connect
 import mongoengine.connection
 from mock import MagicMock, Mock, call
 
+import pymongo
 mongoengine.connection.set_default_db("test")
 
 
@@ -1036,7 +1037,6 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(c[1]['max_time_ms'],-1)
         self.assertEquals(d[1]['max_time_ms'],1000)
 
-    @unittest.skip("disabled the feature for now")
     def test_max_time_ms_find_iter(self):
         cur_mock = MagicMock()
         cur_mock._iterate_cursor = MagicMock(side_effect=['a'])
@@ -1090,7 +1090,7 @@ class DocumentTest(unittest.TestCase):
 
     def test_max_time_ms_distinct(self):
         cur_mock = Mock()
-        cur_mock.count = MagicMock(return_value=1)
+        cur_mock.distinct = MagicMock(return_value=1)
         find_raw = Mock(return_value=cur_mock)
         Citizen.find_raw = find_raw
 
@@ -1104,6 +1104,68 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(b[1]['max_time_ms'],0)
         self.assertEquals(c[1]['max_time_ms'],-1)
         self.assertEquals(d[1]['max_time_ms'],1000)
+
+
+    def test_timeout_value_find(self):
+        col_mock = Mock()
+        col_mock.name = 'asdf'
+        doc_mock = MagicMock()
+        doc_mock.__iter__.return_value = ['a','b']
+        cur_mock = Mock()
+        cur_mock.collection = col_mock
+        cur_mock.next = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        find_raw = MagicMock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        self.assertEquals([],Citizen.find({}, timeout_value=[]))
+        self.assertEquals({},Citizen.find({}, timeout_value={}))
+        self.assertEquals(1,Citizen.find({}, timeout_value=1))
+        self.assertEquals('asdf',Citizen.find({}, timeout_value='asdf'))
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find({})
+
+    def test_timeout_value_find_one(self):
+        find_raw = MagicMock(return_value=MagicMock())
+        from_augmented_son = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        Citizen._from_augmented_son = from_augmented_son
+        Citizen.find_raw = find_raw
+
+        self.assertEquals([],Citizen.find_one({}, timeout_value=[]))
+        self.assertEquals({},Citizen.find_one({}, timeout_value={}))
+        self.assertEquals(1,Citizen.find_one({}, timeout_value=1))
+        self.assertEquals('asdf',Citizen.find_one({}, timeout_value='asdf'))
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find_one({})
+
+    def test_timeout_value_count(self):
+        cur_mock = Mock()
+        cur_mock.count = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        find_raw = Mock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        self.assertEquals([],Citizen.count({}, timeout_value=[]))
+        self.assertEquals({},Citizen.count({}, timeout_value={}))
+        self.assertEquals(1,Citizen.count({}, timeout_value=1))
+        self.assertEquals('asdf',Citizen.count({}, timeout_value='asdf'))
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.count({})
+
+    def test_timeout_value_distinct(self):
+        cur_mock = Mock()
+        cur_mock.distinct = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        find_raw = Mock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        self.assertEquals([],Citizen.distinct({}, '_id', timeout_value=[]))
+        self.assertEquals({},Citizen.distinct({}, '_id', timeout_value={}))
+        self.assertEquals(1,Citizen.distinct({}, '_id', timeout_value=1))
+        self.assertEquals('asdf',Citizen.distinct({}, '_id', timeout_value='asdf'))
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.distinct({}, '_id')
 
 if __name__ == '__main__':
     unittest.main()
