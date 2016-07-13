@@ -1167,5 +1167,106 @@ class DocumentTest(unittest.TestCase):
         with self.assertRaises(pymongo.errors.ExecutionTimeout):
             Citizen.distinct({}, '_id')
 
+    def test_timeout_retry_find(self):
+        col_mock = Mock()
+        col_mock.name = 'asdf'
+        doc_mock = MagicMock()
+        doc_mock.__iter__.return_value = ['a','b']
+        cur_mock = Mock()
+        cur_mock.collection = col_mock
+        cur_mock.next = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        find_raw = MagicMock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find({}, max_time_ms=None)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find({}, max_time_ms=Citizen.MAX_TIME_MS - 1)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find({}, max_time_ms=Citizen.MAX_TIME_MS)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find({}, max_time_ms=Citizen.MAX_TIME_MS + 1)
+
+        # should retry on the first two, should not retry on the last two
+        self.assertEquals(len(find_raw.call_args_list), 6)
+
+        _, a, _, b, c, d = find_raw.call_args_list
+
+        self.assertEquals(a[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+        self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+
+    def test_timeout_retry_find_one(self):
+        find_raw = MagicMock(return_value=MagicMock())
+        from_augmented_son = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        Citizen._from_augmented_son = from_augmented_son
+        Citizen.find_raw = find_raw
+
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find_one({}, max_time_ms=None)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find_one({}, max_time_ms=Citizen.MAX_TIME_MS - 1)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find_one({}, max_time_ms=Citizen.MAX_TIME_MS)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.find_one({}, max_time_ms=Citizen.MAX_TIME_MS + 1)
+
+        # should retry on the first two, should not retry on the last two
+        self.assertEquals(len(find_raw.call_args_list), 6)
+
+        _, a, _, b, c, d = find_raw.call_args_list
+
+        self.assertEquals(a[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+        self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+
+    def test_timeout_retry_count(self):
+        cur_mock = Mock()
+        cur_mock.count = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        find_raw = Mock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.count({}, max_time_ms=None)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.count({}, max_time_ms=Citizen.MAX_TIME_MS - 1)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.count({}, max_time_ms=Citizen.MAX_TIME_MS)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.count({}, max_time_ms=Citizen.MAX_TIME_MS + 1)
+
+        # should retry on the first two, should not retry on the last two
+        self.assertEquals(len(find_raw.call_args_list), 6)
+
+        _, a, _, b, c, d = find_raw.call_args_list
+
+        self.assertEquals(a[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+        self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+
+    def test_timeout_retry_distinct(self):
+        cur_mock = Mock()
+        cur_mock.distinct = MagicMock(
+            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
+        find_raw = Mock(return_value=cur_mock)
+        Citizen.find_raw = find_raw
+
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.distinct({}, '_id', max_time_ms=None)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.distinct({}, '_id', max_time_ms=Citizen.MAX_TIME_MS - 1)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.distinct({}, '_id', max_time_ms=Citizen.MAX_TIME_MS)
+        with self.assertRaises(pymongo.errors.ExecutionTimeout):
+            Citizen.distinct({},'_id',  max_time_ms=Citizen.MAX_TIME_MS + 1)
+
+        # should retry on the first two, should not retry on the last two
+        self.assertEquals(len(find_raw.call_args_list), 6)
+
+        _, a, _, b, c, d = find_raw.call_args_list
+
+        self.assertEquals(a[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+        self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
+
 if __name__ == '__main__':
     unittest.main()

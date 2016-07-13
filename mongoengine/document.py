@@ -86,7 +86,9 @@ class Document(BaseDocument):
     MAX_AUTO_RECONNECT_TRIES = 6
     AUTO_RECONNECT_SLEEP = 5
     INCLUDE_SHARD_KEY = []
-    MAX_TIME_MS = 5000
+    RETRY_MAX_TIME_MS = 5000
+    MAX_TIME_MS = 2500
+    ALLOW_TIMEOUT_RETRY = True
     NO_TIMEOUT_DEFAULT = object()
 
     __metaclass__ = TopLevelDocumentMetaclass
@@ -596,6 +598,17 @@ class Document(BaseDocument):
                 '_comment' : str(cur._Cursor__comment),
                 '_max_time_ms' : cur._Cursor__max_time_ms,
             })
+            if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
+                max_time_ms < cls.MAX_TIME_MS):
+                return cls.find(
+                    spec, fields=fields,
+                    skip=skip, limit=limit,
+                    sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields,
+                    max_time_ms=cls.RETRY_MAX_TIME_MS,
+                    timeout_value=timeout_value,
+                    **kwargs
+                )
             if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                 return timeout_value
             raise
@@ -638,6 +651,18 @@ class Document(BaseDocument):
                 '_comment' : str(cur._Cursor__comment),
                 '_max_time_ms' : cur._Cursor__max_time_ms,
             })
+            if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
+                max_time_ms < cls.MAX_TIME_MS):
+                return cls.distinct(
+                    spec, key, fields=fields,
+                    skip=skip, limit=limit,
+                    sort=sort, slave_ok=slave_ok,
+                    timeout=timeout,
+                    excluded_fields=excluded_fields,
+                    max_time_ms=cls.RETRY_MAX_TIME_MS,
+                    timeout_value=timeout_value,
+                    **kwargs
+                )
             if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                 return timeout_value
             raise
@@ -691,6 +716,17 @@ class Document(BaseDocument):
                 '_comment' : str(cur._Cursor__comment),
                 '_max_time_ms' : cur._Cursor__max_time_ms,
             })
+            if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
+                max_time_ms < cls.MAX_TIME_MS):
+                return cls.find_one(
+                    spec, fields=fields,
+                    skip=skip,
+                    sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields,
+                    max_time_ms=cls.RETRY_MAX_TIME_MS,
+                    timeout_value=timeout_value,
+                    **kwargs
+                )
             if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                 return timeout_value
             raise
@@ -751,6 +787,16 @@ class Document(BaseDocument):
                     '_comment' : str(cur._Cursor__comment),
                     '_max_time_ms' : cur._Cursor__max_time_ms,
                 })
+                if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
+                max_time_ms < cls.MAX_TIME_MS):
+                    kwargs.pop('comment', None)
+                    return cls.count(
+                        spec, slave_ok=slave_ok,
+                        comment=comment,
+                        max_time_ms=cls.RETRY_MAX_TIME_MS,
+                        timeout_value=timeout_value,
+                        **kwargs
+                    )
                 if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                     return timeout_value
                 raise
