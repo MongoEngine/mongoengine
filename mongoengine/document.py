@@ -7,7 +7,6 @@ import contextlib
 import pymongo
 import time
 import greenlet
-import raven
 import smtplib
 import socket
 import sys
@@ -28,8 +27,6 @@ __all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
 # async sleep in Tornado-based apps (i.e. FEs)
 _sleep = time.sleep
 OPS_EMAIL = 'ops@wish.com'
-SENTRY_DSN = 'threaded+http://008e8e98273346d782db8bc407917e76:' \
-    'dedc6b38b0dd484fa4db1543a19cb0f5@sentry.i.wish.com/2'
 
 high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
 execution_timeout_logger = logging.getLogger('sweeper.prod.mongodb_execution_timeout')
@@ -835,18 +832,7 @@ class Document(BaseDocument):
             except:
                 pass
 
-            # log to sentry
-            sentry_client = None
-            empty_spec_error = ValueError("Cannot do empty specs")
-            try:
-                sentry_client = raven.Client(dsn=SENTRY_DSN)
-                raise empty_spec_error
-            except:
-                if sentry_client is not None:
-                    trace_info = sys.exc_info()
-                    sentry_client.captureException(trace_info)
-            finally:
-                raise empty_spec_error
+            raise ValueError("Cannot do empty specs")
 
         spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
 
