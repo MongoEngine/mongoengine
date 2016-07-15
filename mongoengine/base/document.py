@@ -44,6 +44,7 @@ class BaseDocument(object):
         :param __auto_convert: Try and will cast python objects to Object types
         :param values: A dictionary of values for the document
         """
+        super(BaseDocument, self).__init__()
         self._initialised = False
         self._created = True
         if args:
@@ -96,7 +97,7 @@ class BaseDocument(object):
 
         if "_cls" not in values:
             self._cls = self._class_name
-
+        
         # Set passed values after initialisation
         if self._dynamic:
             dynamic_data = {}
