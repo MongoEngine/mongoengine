@@ -8,9 +8,11 @@ __all__ = ['ConnectionError', 'connect', 'register_connection',
 DEFAULT_CONNECTION_NAME = 'default'
 if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
+    AUTHENTICATION_MECHANISM = 'SCRAM-SHA-1'
 else:
     from pymongo import MongoReplicaSetClient
     READ_PREFERENCE = False
+    AUTHENTICATION_MECHANISM = 'MONGODB-CR'
 
 
 class ConnectionError(Exception):
@@ -25,7 +27,7 @@ _dbs = {}
 def register_connection(alias, name=None, host=None, port=None,
                         read_preference=READ_PREFERENCE,
                         username=None, password=None, authentication_source=None,
-                        authentication_mechanism=None,
+                        authentication_mechanism=AUTHENTICATION_MECHANISM,
                         **kwargs):
     """Add a connection.
 
