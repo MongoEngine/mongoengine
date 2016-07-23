@@ -298,6 +298,10 @@ class GreenletSemaphore(object):
         self._ioloop = io_loop if io_loop else ioloop.IOLoop.instance()
 
     def _handle_timeout(self, timeout_gr):
+        if len(self._waiters) > 1000:
+            import os
+            logging.error('waiters size: %s on pid: %s', len(self._waiters),
+                    os.getpid())
         # should always be there, but add some safety just in case
         if timeout_gr in self._waiters:
             self._waiters.remove(timeout_gr)
