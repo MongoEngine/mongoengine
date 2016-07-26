@@ -1012,12 +1012,11 @@ class ReferenceField(BaseField):
                        'saved to the database')
 
         if self.document_type._meta.get('abstract') and \
+                not isinstance(value, DBRef) and \
                 not isinstance(value, self.document_type):
             self.error('%s is not an instance of abstract reference'
                     ' type %s' % (value._class_name,
-                        self.document_type._class_name)
-                    )
-
+                        self.document_type._class_name))
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
