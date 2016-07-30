@@ -1,17 +1,20 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.python_support import IS_PYMONGO_3, IS_PYMONGO_27
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
+AUTHENTICATION_MECHANISM = 'DEFAULT'
+
 if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
-    AUTHENTICATION_MECHANISM = 'SCRAM-SHA-1'
 else:
     from pymongo import MongoReplicaSetClient
     READ_PREFERENCE = False
+
+if IS_PYMONGO_27:
     AUTHENTICATION_MECHANISM = 'MONGODB-CR'
 
 
@@ -182,7 +185,8 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             db.authenticate(conn_settings['username'],
                             conn_settings['password'],
                             source=conn_settings['authentication_source'],
-                            mechanism=conn_settings['authentication_mechanism'])
+                            mechanism=conn_settings['authentication_mechanism']
+                            )
         _dbs[alias] = db
     return _dbs[alias]
 

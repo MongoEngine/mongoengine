@@ -6,6 +6,10 @@ import pymongo
 
 if pymongo.version_tuple[0] < 3:
     IS_PYMONGO_3 = False
+    if pymongo.version_tuple[1] < 8:
+        IS_PYMONGO_27 = True
+    else:
+        IS_PYMONGO_27 = False
 else:
     IS_PYMONGO_3 = True
 
