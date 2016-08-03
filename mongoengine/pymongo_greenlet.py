@@ -55,7 +55,7 @@ def green_sock_method(method):
             #       its greenlet terminated
             # - IOLoop runs this function
             if not gr.dead:
-                gr.throw(socket.error("error"))
+                gr.throw(socket.error("Close called, killing mongo operation"))
 
         # send the error to this greenlet if something goes wrong during the
         # query
