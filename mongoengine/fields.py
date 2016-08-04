@@ -25,6 +25,8 @@ try:
 except ImportError:
     Int64 = long
 
+from ipaddr import IPv4Address, IPv6Address, AddressValueError
+
 from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
                                         str_types, StringIO)
@@ -33,7 +35,6 @@ from base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
 from queryset import DO_NOTHING, QuerySet
 from document import Document, EmbeddedDocument
 from connection import get_db, DEFAULT_CONNECTION_NAME
-
 try:
     from PIL import Image, ImageOps
 except ImportError:
@@ -51,7 +52,7 @@ __all__ = [
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
-    'MultiPolygonField', 'GeoJsonBaseField']
+    'MultiPolygonField', 'GeoJsonBaseField', 'IPAddressField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -113,6 +114,35 @@ class StringField(BaseField):
             value = re.escape(value)
             value = re.compile(regex % value, flags)
         return super(StringField, self).prepare_query_value(op, value)
+
+class IPAddressField(BaseField):    
+    """ A field that validates input as an IP address.
+    """
+    def __init__(self, protocol='ipv4', **kwargs):
+        if protocol not in ("ipv4", "ipv6"):
+           raise ValueError("protocol must be either `ipv4` or `ipv6`")
+        self.protocol = protocol
+        super(IPAddressField, self).__init__(**kwargs)
+                
+    def validate(self, value):
+        if self.protocol == "ipv4":
+            try:
+                IPv4Address(value)
+            except AddressValueError:
+                self.error('the value must be IPv4 Address')
+        elif self.protocol == "ipv6":
+            try:
+                IPv6Address(value)
+            except AddressValueError:
+                self.error('the value must be IPv4 Address')
+
+    def to_python(self, value):
+        return value
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        return super(IPAddressField, self).prepare_query_value(op, value)
 
 
 class URLField(StringField):
