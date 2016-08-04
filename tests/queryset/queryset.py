@@ -3540,6 +3540,18 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(A.objects(b=[{'c': 'c'}]).count(), 0)
 
+    def test_pluck(self):
+        class Post(Document):
+            title = StringField()
+
+        Post.drop_collection()
+
+        for i in xrange(10):
+            Post(title="Post %s" % i).save()
+
+        result = ["Post %s" % i for i in xrange(10)]
+        self.assertEqual(Post.objects.pluck('title'), result)
+
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """

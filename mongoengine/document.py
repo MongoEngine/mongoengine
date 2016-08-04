@@ -1,6 +1,7 @@
 import warnings
 import pymongo
 import re
+import datetime
 
 from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
@@ -893,7 +894,6 @@ class Document(BaseDocument):
 
         return {'missing': missing, 'extra': extra}
 
-
 class DynamicDocument(Document):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
@@ -989,3 +989,4 @@ class MapReduceDocument(object):
             self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
         return self._key_object
+

@@ -108,6 +108,10 @@ class QuerySet(BaseQuerySet):
 
         return self._len
 
+    def pluck(self, field):
+        """Combine the selected elements field value in the query"""
+        return [getattr(o, field) for o in super(QuerySet, self).only(field)]
+
     def no_cache(self):
         """Convert to a non_caching queryset
 
