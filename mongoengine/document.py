@@ -581,41 +581,34 @@ class Document(BaseDocument):
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=False, excluded_fields=None, max_time_ms=None,
              timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
-        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
-            cur = cls.find_raw(spec, fields, skip, limit, sort,
-                               slave_ok=slave_ok,
-                               excluded_fields=excluded_fields,
-                               max_time_ms=max_time_ms,**kwargs)
+        cur = cls.find_raw(spec, fields, skip, limit, sort,
+                           slave_ok=slave_ok, excluded_fields=excluded_fields,
+                           max_time_ms=max_time_ms,**kwargs)
 
-            try:
-                return [
-                    cls._from_augmented_son(d, fields, excluded_fields)
-                    for d in cls._iterate_cursor(cur)
-                ]
-            except pymongo.errors.ExecutionTimeout:
-                execution_timeout_logger.info({
-                    '_comment' : str(cur._Cursor__comment),
-                    '_max_time_ms' : cur._Cursor__max_time_ms,
-                })
-                if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
-                    max_time_ms < cls.MAX_TIME_MS):
-                    return cls.find(
-                        spec, fields=fields,
-                        skip=skip, limit=limit,
-                        sort=sort, slave_ok=slave_ok,
-                        excluded_fields=excluded_fields,
-                        max_time_ms=cls.RETRY_MAX_TIME_MS,
-                        timeout_value=timeout_value,
-                        **kwargs
-                    )
-                if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
-                    return timeout_value
-                raise
-            except pymongo.errors.AutoReconnect:
-                if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
-                    raise
-                else:
-                    _sleep(cls.AUTO_RECONNECT_SLEEP)
+        try:
+            return [
+                cls._from_augmented_son(d, fields, excluded_fields)
+                for d in cls._iterate_cursor(cur)
+            ]
+        except pymongo.errors.ExecutionTimeout:
+            execution_timeout_logger.info({
+                '_comment' : str(cur._Cursor__comment),
+                '_max_time_ms' : cur._Cursor__max_time_ms,
+            })
+            if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
+                max_time_ms < cls.MAX_TIME_MS):
+                return cls.find(
+                    spec, fields=fields,
+                    skip=skip, limit=limit,
+                    sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields,
+                    max_time_ms=cls.RETRY_MAX_TIME_MS,
+                    timeout_value=timeout_value,
+                    **kwargs
+                )
+            if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
+                return timeout_value
+            raise
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
@@ -677,20 +670,28 @@ class Document(BaseDocument):
             Iterates over a cursor, gracefully handling AutoReconnect exceptions
         """
         while True:
-            with log_slow_event('getmore', cur.collection.name, None):
-                # the StopIteration from .next() will bubble up and kill
-                # this while loop
-                doc = cur.next()
+            for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+                try:
+                    with log_slow_event('getmore', cur.collection.name, None):
+                        # the StopIteration from .next() will bubble up and kill
+                        # this while loop
+                        doc = cur.next()
 
-                # handle pymongo letting an error document slip through
-                # (T18431 / CS-22167). convert it into an exception
-                if '$err' in doc:
-                    err_code = None
-                    if 'code' in doc:
-                        err_code = doc['code']
+                        # handle pymongo letting an error document slip through
+                        # (T18431 / CS-22167). convert it into an exception
+                        if '$err' in doc:
+                            err_code = None
+                            if 'code' in doc:
+                                err_code = doc['code']
 
-                    raise pymongo.errors.OperationFailure(doc['$err'],
-                                                          err_code)
+                            raise pymongo.errors.OperationFailure(doc['$err'],
+                                                                  err_code)
+                    break
+                except pymongo.errors.AutoReconnect:
+                    if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
+                        raise
+                    else:
+                        _sleep(cls.AUTO_RECONNECT_SLEEP)
             yield doc
 
     @classmethod
