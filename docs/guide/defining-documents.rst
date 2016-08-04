@@ -29,7 +29,7 @@ documents are serialized based on their field order.
 
 Dynamic document schemas
 ========================
-One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
+One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
 should be planned and organised (after all explicit is better than implicit!)
 there are scenarios where having dynamic / expando style documents is desirable.
 
