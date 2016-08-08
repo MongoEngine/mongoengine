@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-
 import copy
 import itertools
 import operator
@@ -19,12 +18,18 @@ from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
 from mongoengine.context_managers import switch_db
-from mongoengine.errors import (InvalidQueryError, LookUpError,
-                                NotUniqueError, OperationError)
+from mongoengine.errors import (
+    InvalidQueryError,
+    LookUpError,
+    NotUniqueError,
+    OperationError,
+)
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
+from mongoengine.queryset.utils import retry_upon_connection_failure
 from mongoengine.queryset.visitor import Q, QNode
+
 
 if IS_PYMONGO_3:
     from pymongo.collection import ReturnDocument
@@ -214,15 +219,18 @@ class BaseQuerySet(object):
 
     # Core functions
 
+    @retry_upon_connection_failure
     def all(self):
         """Returns all documents."""
         return self.__call__()
 
+    @retry_upon_connection_failure
     def filter(self, *q_objs, **query):
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
         """
         return self.__call__(*q_objs, **query)
 
+    @retry_upon_connection_failure
     def search_text(self, text, language=None):
         """
         Start a text search, using text indexes.
@@ -250,6 +258,7 @@ class BaseQuerySet(object):
 
         return queryset
 
+    @retry_upon_connection_failure
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
@@ -280,6 +289,7 @@ class BaseQuerySet(object):
         message = u'%d items returned, instead of 1' % queryset.count()
         raise queryset._document.MultipleObjectsReturned(message)
 
+    @retry_upon_connection_failure
     def create(self, **kwargs):
         """Create new object. Returns the saved object instance.
 
@@ -287,6 +297,7 @@ class BaseQuerySet(object):
         """
         return self._document(**kwargs).save()
 
+    @retry_upon_connection_failure
     def first(self):
         """Retrieve the first object matching the query."""
         queryset = self.clone()
@@ -296,6 +307,7 @@ class BaseQuerySet(object):
             result = None
         return result
 
+    @retry_upon_connection_failure
     def insert(self, doc_or_docs, load_bulk=True,
                write_concern=None, signal_kwargs=None):
         """bulk insert documents
@@ -372,6 +384,7 @@ class BaseQuerySet(object):
             self._document, documents=results, loaded=True, **signal_kwargs)
         return return_one and results[0] or results
 
+    @retry_upon_connection_failure
     def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
 
@@ -383,6 +396,7 @@ class BaseQuerySet(object):
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
+    @retry_upon_connection_failure
     def delete(self, write_concern=None, _from_doc_delete=False,
                cascade_refs=None):
         """Delete the documents matched by the query.
@@ -469,6 +483,7 @@ class BaseQuerySet(object):
         if result:
             return result.get('n')
 
+    @retry_upon_connection_failure
     def update(self, upsert=False, multi=True, write_concern=None,
                full_result=False, **update):
         """Perform an atomic update on the fields matched by the query.
@@ -519,6 +534,7 @@ class BaseQuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % six.text_type(err))
 
+    @retry_upon_connection_failure
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
 
@@ -545,6 +561,7 @@ class BaseQuerySet(object):
             document = self._document.objects.with_id(atomic_update['upserted'])
         return document
 
+    @retry_upon_connection_failure
     def update_one(self, upsert=False, write_concern=None, **update):
         """Perform an atomic update on the fields of the first document
         matched by the query.
@@ -563,6 +580,7 @@ class BaseQuerySet(object):
         return self.update(
             upsert=upsert, multi=False, write_concern=write_concern, **update)
 
+    @retry_upon_connection_failure
     def modify(self, upsert=False, full_response=False, remove=False, new=False, **update):
         """Update and return the updated document.
 
@@ -635,6 +653,7 @@ class BaseQuerySet(object):
 
         return result
 
+    @retry_upon_connection_failure
     def with_id(self, object_id):
         """Retrieve the object matching the id provided.  Uses `object_id` only
         and raises InvalidQueryError if a filter has been applied. Returns
@@ -650,6 +669,7 @@ class BaseQuerySet(object):
             raise InvalidQueryError(msg)
         return queryset.filter(pk=object_id).first()
 
+    @retry_upon_connection_failure
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
 
@@ -803,6 +823,7 @@ class BaseQuerySet(object):
         queryset._batch_size = size
         return queryset
 
+    @retry_upon_connection_failure
     def distinct(self, field):
         """Return a list of distinct values for a given field.
 
@@ -857,6 +878,7 @@ class BaseQuerySet(object):
 
         return distinct
 
+    @retry_upon_connection_failure
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
 
@@ -879,6 +901,7 @@ class BaseQuerySet(object):
         self.only_fields = fields.keys()
         return self.fields(True, **fields)
 
+    @retry_upon_connection_failure
     def exclude(self, *fields):
         """Opposite to .only(), exclude some document's fields. ::
 
@@ -969,6 +992,7 @@ class BaseQuerySet(object):
             always_include=queryset._loaded_fields.always_include)
         return queryset
 
+    @retry_upon_connection_failure
     def order_by(self, *keys):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
         order may be specified by prepending each of the keys by a + or a -.
@@ -981,6 +1005,7 @@ class BaseQuerySet(object):
         queryset._ordering = queryset._get_order_by(keys)
         return queryset
 
+    @retry_upon_connection_failure
     def comment(self, text):
         """Add a comment to the query.
 
@@ -989,6 +1014,7 @@ class BaseQuerySet(object):
         """
         return self._chainable_method('comment', text)
 
+    @retry_upon_connection_failure
     def explain(self, format=False):
         """Return an explain plan record for the
         :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
@@ -1118,6 +1144,7 @@ class BaseQuerySet(object):
         son_data = json_util.loads(json_data)
         return [self._document._from_son(data, only_fields=self.only_fields) for data in son_data]
 
+    @retry_upon_connection_failure
     def aggregate(self, *pipeline, **kwargs):
         """
         Perform a aggregate function based in your queryset params
@@ -1145,6 +1172,7 @@ class BaseQuerySet(object):
         return self._collection.aggregate(pipeline, cursor={}, **kwargs)
 
     # JS functionality
+    @retry_upon_connection_failure
     def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
                    scope=None):
         """Perform a map/reduce query using the current query spec
@@ -1268,6 +1296,7 @@ class BaseQuerySet(object):
             yield MapReduceDocument(queryset._document, queryset._collection,
                                     doc['_id'], doc['value'])
 
+    @retry_upon_connection_failure
     def exec_js(self, code, *fields, **options):
         """Execute a Javascript function on the server. A list of fields may be
         provided, which will be translated to their correct names and supplied
@@ -1312,6 +1341,7 @@ class BaseQuerySet(object):
         db = queryset._document._get_db()
         return db.eval(code, *fields)
 
+    @retry_upon_connection_failure
     def where(self, where_clause):
         """Filter ``QuerySet`` results with a ``$where`` clause (a Javascript
         expression). Performs automatic field name substitution like
@@ -1328,6 +1358,7 @@ class BaseQuerySet(object):
         queryset._where_clause = where_clause
         return queryset
 
+    @retry_upon_connection_failure
     def sum(self, field):
         """Sum over the values of the specified field.
 
@@ -1358,6 +1389,7 @@ class BaseQuerySet(object):
             return result[0]['total']
         return 0
 
+    @retry_upon_connection_failure
     def average(self, field):
         """Average over the values of the specified field.
 
@@ -1388,6 +1420,7 @@ class BaseQuerySet(object):
             return result[0]['total']
         return 0
 
+    @retry_upon_connection_failure
     def item_frequencies(self, field, normalize=False, map_reduce=True):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
