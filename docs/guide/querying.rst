@@ -237,7 +237,7 @@ is preferred for achieving this::
     # All except for the first 5 people
     users = User.objects[5:]
 
-    # 5 users, starting from the 10th user found
+    # 5 users, starting from the 11th user found
     users = User.objects[10:15]
 
 You may also index the query to retrieve a single result. If an item at that
