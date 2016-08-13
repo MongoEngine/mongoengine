@@ -33,6 +33,17 @@ class MongoIOStream(iostream.IOStream):
     def can_read_sync(self, num_bytes):
         return self._read_buffer_size >= num_bytes
 
+def _check_deadline(cleanup_cb=None):
+    gr = greenlet.getcurrent()
+    if hasattr(gr, 'is_deadlined') and \
+            gr.is_deadlined():
+        if cleanup_cb:
+            cleanup_cb()
+        try:
+            gr.do_deadline()
+        except AttributeError:
+            logging.exception(
+                'Greenlet %s has \'is_deadlined\' but not \'do_deadline\'')
 
 def green_sock_method(method):
     """Wrap a GreenletSocket method to pause the current greenlet and arrange
@@ -78,6 +89,19 @@ def green_sock_method(method):
             # number of bytes written for sendall) to us.
             socket_result = main.switch()
 
+            return socket_result
+        except socket.error:
+            raise
+        except IOError, e:
+            # If IOStream raises generic IOError (e.g., if operation
+            # attempted on closed IOStream), then substitute socket.error,
+            # since socket.error is what PyMongo's built to handle. For
+            # example, PyMongo will catch socket.error, close the socket,
+            # and raise AutoReconnect.
+            raise socket.error(str(e))
+        finally:
+            # do this here in case main.switch throws
+
             # Remove timeout handle if set, since we've completed call
             if self.timeout_handle:
                 self.io_loop.remove_timeout(self.timeout_handle)
@@ -89,16 +113,15 @@ def green_sock_method(method):
             # AutoReconnect, which gets handled properly)
             self.stream.set_close_callback(None)
 
-            return socket_result
-        except socket.error:
-            raise
-        except IOError, e:
-            # If IOStream raises generic IOError (e.g., if operation
-            # attempted on closed IOStream), then substitute socket.error,
-            # since socket.error is what PyMongo's built to handle. For
-            # example, PyMongo will catch socket.error, close the socket,
-            # and raise AutoReconnect.
-            raise socket.error(str(e))
+            def cleanup_cb():
+                self.stream.close()
+                try:
+                    self.pool_ref._socket_semaphore.release()
+                except weakref.ReferenceError:
+                    # pool was gc'ed
+                    pass
+
+            _check_deadline(cleanup_cb)
 
     return _green_sock_method
 
@@ -110,11 +133,12 @@ class GreenletSocket(object):
 
     We only implement those socket methods actually used by pymongo.
     """
-    def __init__(self, sock, io_loop, use_ssl=False):
+    def __init__(self, sock, io_loop, use_ssl=False, pool_ref=None):
         self.use_ssl = use_ssl
         self.io_loop = io_loop
         self.timeout = None
         self.timeout_handle = None
+        self.pool_ref = pool_ref
         if self.use_ssl:
             raise Exception("SSL isn't supported")
         else:
@@ -225,7 +249,8 @@ class GreenletPool(pymongo.pool.Pool):
                 sock = socket.socket(af, socktype, proto)
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 green_sock = GreenletSocket(
-                    sock, self.io_loop, use_ssl=self.use_ssl)
+                    sock, self.io_loop, use_ssl=self.use_ssl,
+                    pool_ref=weakref.proxy(self))
 
                 # GreenletSocket will pause the current greenlet and resume it
                 # when connection has completed
@@ -279,7 +304,11 @@ class GreenletEvent(object):
         # yield back to the IOLoop if we have to wait
         if not self._flag:
             self._waiters.append(current)
-            parent.switch()
+            try:
+                parent.switch()
+            finally:
+                # don't need callback because we haven't taken any resources
+                _check_deadline()
 
         return self._flag
 
@@ -322,40 +351,50 @@ class GreenletSemaphore(object):
         start_time = time.time()
 
         # if the semaphore has a postive value, subtract 1 and return True
+        if self._value > 0:
+            self._value -= 1
+            return True
+        elif not blocking:
+            # non-blocking mode, just return False
+            return False
+        # otherwise, we don't get the semaphore...
         while True:
+            self._waiters.append(current)
+            if timeout:
+                callback = functools.partial(self._handle_timeout, current)
+                self._waiter_timeouts[current] = \
+                        self._ioloop.add_timeout(time.time() + timeout,
+                                                 callback)
+
+            # yield back to the parent, returning when someone releases the
+            # semaphore
+            #
+            # because of the async nature of the way we yield back, we're
+            # not guaranteed to actually *get* the semaphore after returning
+            # here (someone else could acquire() between the release() and
+            # this greenlet getting rescheduled). so we go back to the loop
+            # and try again.
+            #
+            # this design is not strictly fair and it's possible for
+            # greenlets to starve, but it strikes me as unlikely in
+            # practice.
+            try:
+                parent.switch()
+            finally:
+                # need to wake someone else up if we were the one
+                # given the semaphore
+                def _cleanup_cb():
+                    if self._value > 0:
+                        self._value -= 1
+                        self.release()
+                _check_deadline(_cleanup_cb)
+
             if self._value > 0:
                 self._value -= 1
                 return True
 
-            # otherwise, we don't get the semaphore...
-            if blocking:
-                self._waiters.append(current)
-                if timeout:
-                    callback = functools.partial(self._handle_timeout, current)
-                    self._waiter_timeouts[current] = \
-                            self._ioloop.add_timeout(time.time() + timeout,
-                                                     callback)
-
-                # yield back to the parent, returning when someone releases the
-                # semaphore
-                #
-                # because of the async nature of the way we yield back, we're
-                # not guaranteed to actually *get* the semaphore after returning
-                # here (someone else could acquire() between the release() and
-                # this greenlet getting rescheduled). so we go back to the loop
-                # and try again.
-                #
-                # this design is not strictly fair and it's possible for
-                # greenlets to starve, but it strikes me as unlikely in
-                # practice.
-                parent.switch()
-
-                # if we timed out, just return False instead of retrying
-                if timeout and (time.time() - start_time) >= timeout:
-                    return False
-
-            # non-blocking mode, just return False
-            else:
+            # if we timed out, just return False instead of retrying
+            if timeout and (time.time() - start_time) >= timeout:
                 return False
 
     __enter__ = acquire
