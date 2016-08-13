@@ -29,7 +29,7 @@ class QuerySetManager(object):
         Document.objects is accessed.
         """
         if instance is not None:
-            # Document class being used rather than a document object
+            # Document object being used rather than a document class
             return self
 
         # owner is the document that contains the QuerySetManager
