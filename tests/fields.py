@@ -111,6 +111,10 @@ class FieldTest(unittest.TestCase):
         person = Person()
         person.age = 50
         person.validate()
+        person.age = 50L
+        person.validate()
+        person.age = 50.6
+        person.validate()
 
         person.age = -1
         self.assertRaises(ValidationError, person.validate)
@@ -127,6 +131,11 @@ class FieldTest(unittest.TestCase):
 
         person = Person()
         person.height = 1.89
+        person.validate()
+
+        person.height = 2
+        person.validate()
+        person.height = 2L
         person.validate()
 
         person.height = '2.0'

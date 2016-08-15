@@ -179,7 +179,7 @@ class FloatField(BaseField):
         return float(value)
 
     def validate(self, value):
-        if isinstance(value, int):
+        if isinstance(value, (int, long)):
             value = float(value)
         assert isinstance(value, float)
 
