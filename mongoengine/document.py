@@ -194,12 +194,13 @@ class Document(BaseDocument):
         id_field = self._meta["id_field"]
         query = query.copy() if isinstance(query, dict) else query.to_query(self)
 
-        if id_field not in query:
-            query[id_field] = self.pk
-        elif query[id_field] != self.pk:
+        if id_field in query and query[id_field] != self.pk:
             raise InvalidQueryError("Invalid document modify query: it must modify only this document.")
 
-        updated = self._qs(**query).modify(new=True, **update)
+        qs = self._qs(__raw__=self._db_object_key)
+        if query:
+            qs = qs.filter(**query)
+        updated = qs.modify(new=True, **update)
         if updated is None:
             return False
 
