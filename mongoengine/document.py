@@ -1037,6 +1037,21 @@ class Document(BaseDocument):
                                               op, validate, fields)
 
             return transformed_value
+        # if we're in a dict field and there's operations on it, recurse
+        elif isinstance(value, dict) and value and value.keys()[0][0] == '$':
+            transformed_value = SON()
+
+            for key, subvalue in value.iteritems():
+                op = key
+
+                new_key, value_context = Document._transform_key(key, context,
+                                             is_find=(op is None))
+
+                transformed_value[new_key] = \
+                    Document._transform_value(subvalue, value_context,
+                                              op, validate, fields)
+
+            return transformed_value
         # else, validate & return
         else:
             op_type = None

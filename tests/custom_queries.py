@@ -31,6 +31,7 @@ class CustomQueryTest(unittest.TestCase):
             other_colours = ListField(EmbeddedDocumentField("Colour"), db_field="o")
             number_list = ListField(IntField())
             arbitrary_dict = DictField()
+            dbfield_dict = DictField(db_field='d')
             some_id = ObjectIdField()
             id_list = ListField(ObjectIdField())
             user = ReferenceField("User")
@@ -250,6 +251,13 @@ class CustomQueryTest(unittest.TestCase):
         result = self.Person._transform_value(query, self.Person)
 
         self.assertEqual(result, {'$set': {'o.1.n': 'Red'}})
+
+    def testTransformQueryDictOp(self):
+        query = {'dbfield_dict': {'$gt': {}}}
+
+        result = self.Person._transform_value(query, self.Person)
+
+        self.assertEqual(result, {'d': {'$gt': {}}})
 
     def testValidateQuery(self):
         p = self.Person(name="Adam", age=12)
