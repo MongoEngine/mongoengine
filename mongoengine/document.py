@@ -909,8 +909,10 @@ class Document(BaseDocument):
                                     vals_to_add = [new_val]
 
                                 for val in vals_to_add:
-                                    if new_val not in self[field]:
+                                    if self[field] is not None and new_val not in self[field]:
                                         ops[field] = self[field][:] + [val]
+                                    elif self[field] is None:
+                                        ops[field] = [val]
 
         document = self._transform_value(document, type(self))
         query_spec = self._update_one_key()

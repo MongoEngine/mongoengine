@@ -31,6 +31,7 @@ class DocumentTest(unittest.TestCase):
             name = StringField()
             age = IntField()
             uid = ObjectIdField()
+            friends = ListField(StringField())
         self.Person = Person
 
     def tearDown(self):
@@ -363,7 +364,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(person['name'], 'Another User')
 
         # Length = length(assigned fields + id)
-        self.assertEquals(len(person), 4)
+        self.assertEquals(len(person), 5)
 
         self.assertTrue('age' in person)
         person.age = None
@@ -528,6 +529,21 @@ class DocumentTest(unittest.TestCase):
 
         self.assertRaises(pymongo.errors.OperationFailure, unset_primary_key)
         self.assertRaises(pymongo.errors.OperationFailure, update_no_value_raises)
+
+    def test_addtoset_on_null_list(self):
+        person = self.Person(
+            name = 'Bruce Banner',
+            id   = bson.ObjectId(), 
+            uid  = bson.ObjectId(),
+            friends = None
+        )
+        person.save()
+
+        person.update_one({'$addToSet' : {'friends' : {'$each' : ['Bob','Fan']}}})
+        person.reload()
+        self.assertTrue(len(person.friends) == 2)
+        self.assertTrue('Bob' in person.friends)
+        self.assertTrue('Fan' in person.friends)
 
     def test_non_existant_inc(self):
         person = self.Person(name='dcrosta',
