@@ -44,7 +44,7 @@ def query(_doc_cls=None, **kwargs):
         if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
-        # Allw to escape operator-like field name by __
+        # Allow to escape operator-like field name by __
         if len(parts) > 1 and parts[-1] == "":
             parts.pop()
 
@@ -211,6 +211,10 @@ def update(_doc_cls=None, **update):
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
             match = parts.pop()
+
+        # Allow to escape operator-like field name by __
+        if len(parts) > 1 and parts[-1] == "":
+            parts.pop()
 
         if _doc_cls:
             # Switch field names to proper names [set in Field(name='foo')]
