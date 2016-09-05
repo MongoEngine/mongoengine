@@ -26,12 +26,12 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
 
 
-def query(_doc_cls=None, **query):
+def query(_doc_cls=None, **kwargs):
     """Transform a query from Django-style format to Mongo format.
     """
     mongo_query = {}
     merge_query = defaultdict(list)
-    for key, value in sorted(query.items()):
+    for key, value in sorted(kwargs.items()):
         if key == "__raw__":
             mongo_query.update(value)
             continue
@@ -44,7 +44,7 @@ def query(_doc_cls=None, **query):
         if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
-        # Allw to escape operator-like field name by __
+        # Allow to escape operator-like field name by __
         if len(parts) > 1 and parts[-1] == "":
             parts.pop()
 
@@ -105,13 +105,18 @@ def query(_doc_cls=None, **query):
         if op:
             if op in GEO_OPERATORS:
                 value = _geo_operator(field, op, value)
-            elif op in CUSTOM_OPERATORS:
-                if op in ('elem_match', 'match'):
-                    value = field.prepare_query_value(op, value)
-                    value = {"$elemMatch": value}
+            elif op in ('match', 'elemMatch'):
+                ListField = _import_class('ListField')
+                EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
+                if (isinstance(value, dict) and isinstance(field, ListField) and
+                    isinstance(field.field, EmbeddedDocumentField)):
+                    value = query(field.field.document_type, **value)
                 else:
-                    NotImplementedError("Custom method '%s' has not "
-                                        "been implemented" % op)
+                    value = field.prepare_query_value(op, value)
+                value = {"$elemMatch": value}
+            elif op in CUSTOM_OPERATORS:
+                NotImplementedError("Custom method '%s' has not "
+                                    "been implemented" % op)
             elif op not in STRING_OPERATORS:
                 value = {'$' + op: value}
 
@@ -206,6 +211,10 @@ def update(_doc_cls=None, **update):
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
             match = parts.pop()
+
+        # Allow to escape operator-like field name by __
+        if len(parts) > 1 and parts[-1] == "":
+            parts.pop()
 
         if _doc_cls:
             # Switch field names to proper names [set in Field(name='foo')]
@@ -359,20 +368,24 @@ def _infer_geometry(value):
                                 "type and coordinates keys")
     elif isinstance(value, (list, set)):
         # TODO: shouldn't we test value[0][0][0][0] to see if it is MultiPolygon?
+        # TODO: should both TypeError and IndexError be alike interpreted?
+
         try:
             value[0][0][0]
             return {"$geometry": {"type": "Polygon", "coordinates": value}}
-        except:
+        except (TypeError, IndexError):
             pass
+
         try:
             value[0][0]
             return {"$geometry": {"type": "LineString", "coordinates": value}}
-        except:
+        except (TypeError, IndexError):
             pass
+
         try:
             value[0]
             return {"$geometry": {"type": "Point", "coordinates": value}}
-        except:
+        except (TypeError, IndexError):
             pass
 
     raise InvalidQueryError("Invalid $geometry data. Can be either a dictionary "

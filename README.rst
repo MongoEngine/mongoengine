@@ -19,10 +19,10 @@ MongoEngine
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
-Documentation available at http://mongoengine-odm.rtfd.org - there is currently
-a `tutorial <http://readthedocs.org/docs/mongoengine-odm/en/latest/tutorial.html>`_, a `user guide
-<https://mongoengine-odm.readthedocs.org/en/latest/guide/index.html>`_ and an `API reference
-<http://readthedocs.org/docs/mongoengine-odm/en/latest/apireference.html>`_.
+Documentation available at https://mongoengine-odm.readthedocs.io - there is currently
+a `tutorial <https://mongoengine-odm.readthedocs.io/tutorial.html>`_, a `user guide
+<https://mongoengine-odm.readthedocs.io/guide/index.html>`_ and an `API reference
+<https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Installation
 ============
@@ -48,7 +48,9 @@ Optional Dependencies
 
 Examples
 ========
-Some simple examples of what MongoEngine code looks like::
+Some simple examples of what MongoEngine code looks like:
+
+.. code :: python
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
@@ -97,7 +99,7 @@ Some simple examples of what MongoEngine code looks like::
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port, and run: ``python setup.py nosetests``.
+the standard port and have installed ``nose`` and ``rednose``, and run: ``python setup.py nosetests``.
 
 To run the test suite on every supported Python version and every supported PyMongo version,
 you can use ``tox``.

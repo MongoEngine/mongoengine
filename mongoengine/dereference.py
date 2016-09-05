@@ -1,5 +1,7 @@
 from bson import DBRef, SON
 
+from mongoengine.python_support import txt_type
+
 from base import (
     BaseDict, BaseList, EmbeddedDocumentList,
     TopLevelDocumentMetaclass, get_document
@@ -226,7 +228,7 @@ class DeReference(object):
                         data[k]._data[field_name] = self.object_map.get(
                             (v['_ref'].collection, v['_ref'].id), v)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                        item_name = "{0}.{1}.{2}".format(name, k, field_name)
+                        item_name = txt_type("{0}.{1}.{2}").format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name

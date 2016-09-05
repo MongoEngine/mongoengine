@@ -266,7 +266,8 @@ class BaseQuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
+    def insert(self, doc_or_docs, load_bulk=True,
+               write_concern=None, signal_kwargs=None):
         """bulk insert documents
 
         :param doc_or_docs: a document or list of documents to be inserted
@@ -279,11 +280,15 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
+        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
 
         .. versionadded:: 0.5
+        .. versionchanged:: 0.10.7
+            Add signal_kwargs argument
         """
         Document = _import_class('Document')
 
@@ -296,7 +301,6 @@ class BaseQuerySet(object):
             return_one = True
             docs = [docs]
 
-        raw = []
         for doc in docs:
             if not isinstance(doc, self._document):
                 msg = ("Some documents inserted aren't instances of %s"
@@ -305,9 +309,12 @@ class BaseQuerySet(object):
             if doc.pk and not doc._created:
                 msg = "Some documents have ObjectIds use doc.update() instead"
                 raise OperationError(msg)
-            raw.append(doc.to_mongo())
 
-        signals.pre_bulk_insert.send(self._document, documents=docs)
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_bulk_insert.send(self._document,
+                                     documents=docs, **signal_kwargs)
+
+        raw = [doc.to_mongo() for doc in docs]
         try:
             ids = self._collection.insert(raw, **write_concern)
         except pymongo.errors.DuplicateKeyError, err:
@@ -324,7 +331,7 @@ class BaseQuerySet(object):
 
         if not load_bulk:
             signals.post_bulk_insert.send(
-                self._document, documents=docs, loaded=False)
+                self._document, documents=docs, loaded=False, **signal_kwargs)
             return return_one and ids[0] or ids
 
         documents = self.in_bulk(ids)
@@ -332,7 +339,7 @@ class BaseQuerySet(object):
         for obj_id in ids:
             results.append(documents.get(obj_id))
         signals.post_bulk_insert.send(
-            self._document, documents=results, loaded=True)
+            self._document, documents=results, loaded=True, **signal_kwargs)
         return return_one and results[0] or results
 
     def count(self, with_limit_and_skip=False):
@@ -403,8 +410,10 @@ class BaseQuerySet(object):
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
-                for ref in queryset:
-                    cascade_refs.add(ref.id)
+                # Handle recursive reference
+                if doc._collection == document_cls._collection:
+                    for ref in queryset:
+                        cascade_refs.add(ref.id)
                 ref_q = document_cls.objects(**{field_name + '__in': self, 'id__nin': cascade_refs})
                 ref_q_count = ref_q.count()
                 if ref_q_count > 0:
@@ -425,7 +434,7 @@ class BaseQuerySet(object):
                full_result=False, **update):
         """Perform an atomic update on the fields matched by the query.
 
-        :param upsert: Any existing document with that "_id" is overwritten.
+        :param upsert: insert if document doesn't exist (default ``False``)
         :param multi: Update multiple documents.
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
@@ -471,10 +480,36 @@ class BaseQuerySet(object):
                 raise OperationError(message)
             raise OperationError(u'Update failed (%s)' % unicode(err))
 
-    def update_one(self, upsert=False, write_concern=None, **update):
-        """Perform an atomic update on first field matched by the query.
+    def upsert_one(self, write_concern=None, **update):
+        """Overwrite or add the first document matched by the query.
 
-        :param upsert: Any existing document with that "_id" is overwritten.
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param update: Django-style update keyword arguments
+
+        :returns the new or overwritten document
+
+        .. versionadded:: 0.10.2
+        """
+
+        atomic_update = self.update(multi=False, upsert=True, write_concern=write_concern,
+                             full_result=True, **update)
+
+        if atomic_update['updatedExisting']:
+            document = self.get()
+        else:
+            document = self._document.objects.with_id(atomic_update['upserted'])
+        return document
+
+    def update_one(self, upsert=False, write_concern=None, **update):
+        """Perform an atomic update on the fields of the first document
+        matched by the query.
+
+        :param upsert: insert if document doesn't exist (default ``False``)
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
             ``getLastError`` command.  For example,
@@ -929,6 +964,7 @@ class BaseQuerySet(object):
         validate_read_preference('read_preference', read_preference)
         queryset = self.clone()
         queryset._read_preference = read_preference
+        queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_preference
         return queryset
 
     def scalar(self, *fields):
@@ -1201,66 +1237,28 @@ class BaseQuerySet(object):
     def sum(self, field):
         """Sum over the values of the specified field.
 
-        :param field: the field to sum over; use dot-notation to refer to
+        :param field: the field to sum over; use dot notation to refer to
             embedded document fields
-
-        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
-            with sharding.
         """
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.'),
-                field = this;
-
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(1, item||0);
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(1, field||0);
-                }
-            }
-        """ % dict(field=field)
-
-        reduce_func = Code("""
-            function(key, values) {
-                var sum = 0;
-                for (var i in values) {
-                    sum += values[i];
-                }
-                return sum;
-            }
-        """)
-
-        for result in self.map_reduce(map_func, reduce_func, output='inline'):
-            return result.value
-        else:
-            return 0
-
-    def aggregate_sum(self, field):
-        """Sum over the values of the specified field.
-
-        :param field: the field to sum over; use dot-notation to refer to
-            embedded document fields
-
-        This method is more performant than the regular `sum`, because it uses
-        the aggregation framework instead of map-reduce.
-        """
-        result = self._document._get_collection().aggregate([
+        pipeline = [
             {'$match': self._query},
             {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
-        ])
+        ]
+
+        # if we're performing a sum over a list field, we sum up all the
+        # elements in the list, hence we need to $unwind the arrays first
+        ListField = _import_class('ListField')
+        field_parts = field.split('.')
+        field_instances = self._document._lookup_field(field_parts)
+        if isinstance(field_instances[-1], ListField):
+            pipeline.insert(1, {'$unwind': '$' + field})
+
+        result = self._document._get_collection().aggregate(pipeline)
         if IS_PYMONGO_3:
-            result = list(result)
+            result = tuple(result)
         else:
             result = result.get('result')
+
         if result:
             return result[0]['total']
         return 0
@@ -1268,73 +1266,26 @@ class BaseQuerySet(object):
     def average(self, field):
         """Average over the values of the specified field.
 
-        :param field: the field to average over; use dot-notation to refer to
+        :param field: the field to average over; use dot notation to refer to
             embedded document fields
-
-        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
-            with sharding.
         """
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.'),
-                field = this;
-
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(1, {t: item||0, c: 1});
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(1, {t: field||0, c: 1});
-                }
-            }
-        """ % dict(field=field)
-
-        reduce_func = Code("""
-            function(key, values) {
-                var out = {t: 0, c: 0};
-                for (var i in values) {
-                    var value = values[i];
-                    out.t += value.t;
-                    out.c += value.c;
-                }
-                return out;
-            }
-        """)
-
-        finalize_func = Code("""
-            function(key, value) {
-                return value.t / value.c;
-            }
-        """)
-
-        for result in self.map_reduce(map_func, reduce_func,
-                                      finalize_f=finalize_func, output='inline'):
-            return result.value
-        else:
-            return 0
-
-    def aggregate_average(self, field):
-        """Average over the values of the specified field.
-
-        :param field: the field to average over; use dot-notation to refer to
-            embedded document fields
-
-        This method is more performant than the regular `average`, because it
-        uses the aggregation framework instead of map-reduce.
-        """
-        result = self._document._get_collection().aggregate([
+        pipeline = [
             {'$match': self._query},
             {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
-        ])
+        ]
+
+        # if we're performing an average over a list field, we average out
+        # all the elements in the list, hence we need to $unwind the arrays
+        # first
+        ListField = _import_class('ListField')
+        field_parts = field.split('.')
+        field_instances = self._document._lookup_field(field_parts)
+        if isinstance(field_instances[-1], ListField):
+            pipeline.insert(1, {'$unwind': '$' + field})
+
+        result = self._document._get_collection().aggregate(pipeline)
         if IS_PYMONGO_3:
-            result = list(result)
+            result = tuple(result)
         else:
             result = result.get('result')
         if result:
@@ -1351,7 +1302,7 @@ class BaseQuerySet(object):
             Can only do direct simple mappings and cannot map across
             :class:`~mongoengine.fields.ReferenceField` or
             :class:`~mongoengine.fields.GenericReferenceField` for more complex
-            counting a manual map reduce call would is required.
+            counting a manual map reduce call is required.
 
         If the field is a :class:`~mongoengine.fields.ListField`, the items within
         each list will be counted individually.
@@ -1425,7 +1376,7 @@ class BaseQuerySet(object):
                 msg = "The snapshot option is not anymore available with PyMongo 3+"
                 warnings.warn(msg, DeprecationWarning)
             cursor_args = {
-                'no_cursor_timeout': self._timeout
+                'no_cursor_timeout': not self._timeout
             }
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
@@ -1442,8 +1393,16 @@ class BaseQuerySet(object):
     def _cursor(self):
         if self._cursor_obj is None:
 
-            self._cursor_obj = self._collection.find(self._query,
-                                                     **self._cursor_args)
+            # In PyMongo 3+, we define the read preference on a collection
+            # level, not a cursor level. Thus, we need to get a cloned
+            # collection object using `with_options` first.
+            if IS_PYMONGO_3 and self._read_preference is not None:
+                self._cursor_obj = self._collection\
+                    .with_options(read_preference=self._read_preference)\
+                    .find(self._query, **self._cursor_args)
+            else:
+                self._cursor_obj = self._collection.find(self._query,
+                                                         **self._cursor_args)
             # Apply where clauses to cursor
             if self._where_clause:
                 where_clause = self._sub_js_fields(self._where_clause)
@@ -1660,7 +1619,7 @@ class BaseQuerySet(object):
             key = key.replace('__', '.')
             try:
                 key = self._document._translate_field_name(key)
-            except:
+            except Exception:
                 pass
             key_list.append((key, direction))
 

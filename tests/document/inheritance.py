@@ -411,7 +411,7 @@ class InheritanceTest(unittest.TestCase):
         try:
             class MyDocument(DateCreatedDocument, DateUpdatedDocument):
                 pass
-        except:
+        except Exception:
             self.assertTrue(False, "Couldn't create MyDocument class")
 
     def test_abstract_documents(self):

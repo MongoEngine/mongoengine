@@ -224,6 +224,10 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
         self.assertEqual(1, Doc.objects(item__name__="Heroic axe").count())
 
+        Doc.objects(id=doc.id).update(set__item__type__='sword')
+        self.assertEqual(1, Doc.objects(item__type__="sword").count())
+        self.assertEqual(0, Doc.objects(item__type__="axe").count())
+
     def test_understandable_error_raised(self):
         class Event(Document):
             title = StringField()

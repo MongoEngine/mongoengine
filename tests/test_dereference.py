@@ -12,9 +12,13 @@ from mongoengine.context_managers import query_counter
 
 class FieldTest(unittest.TestCase):
 
-    def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+    @classmethod
+    def setUpClass(cls):
+        cls.db = connect(db='mongoenginetest')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.db.drop_database('mongoenginetest')
 
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
@@ -304,6 +308,7 @@ class FieldTest(unittest.TestCase):
 
         User.drop_collection()
         Post.drop_collection()
+        SimpleList.drop_collection()
 
         u1 = User.objects.create(name='u1')
         u2 = User.objects.create(name='u2')

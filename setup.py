@@ -10,11 +10,12 @@ except ImportError:
 
 DESCRIPTION = 'MongoEngine is a Python Object-Document ' + \
 'Mapper for working with MongoDB.'
-LONG_DESCRIPTION = None
+
 try:
-    LONG_DESCRIPTION = open('README.rst').read()
-except:
-    pass
+    with open('README.rst') as fin:
+        LONG_DESCRIPTION = fin.read()
+except Exception:
+    LONG_DESCRIPTION = None
 
 
 def get_version(version_tuple):
@@ -77,7 +78,7 @@ setup(name='mongoengine',
       long_description=LONG_DESCRIPTION,
       platforms=['any'],
       classifiers=CLASSIFIERS,
-      install_requires=['pymongo>=2.7.1'],
+      install_requires=['pymongo>=2.7.1', 'six'],
       test_suite='nose.collector',
       **extra_opts
 )

@@ -199,7 +199,8 @@ class BaseList(list):
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
             if key:
-                self._instance._mark_as_changed('%s.%s' % (self._name, key))
+                self._instance._mark_as_changed('%s.%s' % (self._name, 
+                    key % len(self)))
             else:
                 self._instance._mark_as_changed(self._name)
 
@@ -210,7 +211,7 @@ class EmbeddedDocumentList(BaseList):
     def __match_all(cls, i, kwargs):
         items = kwargs.items()
         return all([
-            getattr(i, k) == v or str(getattr(i, k)) == v for k, v in items
+            getattr(i, k) == v or unicode(getattr(i, k)) == v for k, v in items
         ])
 
     @classmethod

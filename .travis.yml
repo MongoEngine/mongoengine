@@ -5,6 +5,7 @@ python:
 - '3.2'
 - '3.3'
 - '3.4'
+- '3.5'
 - pypy
 - pypy3
 env:
@@ -24,7 +25,8 @@ install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
   python-tk
-- travis_retry pip install tox>=1.9 coveralls
+# virtualenv>=14.0.0 has dropped Python 3.2 support
+- travis_retry pip install "virtualenv<14.0.0" "tox>=1.9" coveralls
 - travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 script:
 - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage

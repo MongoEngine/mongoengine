@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
+
+import six
 from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
@@ -10,6 +12,7 @@ import uuid
 import math
 import itertools
 import re
+import six
 
 try:
     import dateutil
@@ -19,6 +22,10 @@ except ImportError:
 from decimal import Decimal
 
 from bson import Binary, DBRef, ObjectId
+try:
+    from bson.int64 import Int64
+except ImportError:
+    Int64 = long
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -399,19 +406,36 @@ class FieldTest(unittest.TestCase):
         class Person(Document):
             height = FloatField(min_value=0.1, max_value=3.5)
 
+        class BigPerson(Document):
+            height = FloatField()
+
         person = Person()
         person.height = 1.89
         person.validate()
 
         person.height = '2.0'
         self.assertRaises(ValidationError, person.validate)
+
         person.height = 0.01
         self.assertRaises(ValidationError, person.validate)
+
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
         person_2 = Person(height='something invalid')
         self.assertRaises(ValidationError, person_2.validate)
+
+        big_person = BigPerson()
+
+        for value, value_type in enumerate(six.integer_types):
+            big_person.height = value_type(value)
+            big_person.validate()
+
+        big_person.height = 2 ** 500
+        big_person.validate()
+
+        big_person.height = 2 ** 100000  # Too big for a float value
+        self.assertRaises(ValidationError, big_person.validate)
 
     def test_decimal_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields.
@@ -1184,6 +1208,19 @@ class FieldTest(unittest.TestCase):
         simple = simple.reload()
         self.assertEqual(simple.widgets, [4])
 
+    def test_list_field_with_negative_indices(self):
+        
+        class Simple(Document):
+            widgets = ListField()
+
+        simple = Simple(widgets=[1, 2, 3, 4]).save()
+        simple.widgets[-1] = 5
+        self.assertEqual(['widgets.3'], simple._changed_fields)
+        simple.save()
+
+        simple = simple.reload()
+        self.assertEqual(simple.widgets, [1, 2, 3, 5])
+
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
 
@@ -1563,6 +1600,29 @@ class FieldTest(unittest.TestCase):
             actions__friends__operation='drink',
             actions__friends__object='beer').count())
 
+    def test_map_field_unicode(self):
+
+        class Info(EmbeddedDocument):
+            description = StringField()
+            value_list = ListField(field=StringField())
+
+        class BlogPost(Document):
+            info_dict = MapField(field=EmbeddedDocumentField(Info))
+
+        BlogPost.drop_collection()
+
+        tree = BlogPost(info_dict={
+            u"éééé": {
+                'description': u"VALUE: éééé"
+            }
+        })
+
+        tree.save()
+
+        self.assertEqual(BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description, u"VALUE: éééé")
+
+        BlogPost.drop_collection()
+
     def test_embedded_db_field(self):
 
         class Embedded(EmbeddedDocument):
@@ -1599,6 +1659,8 @@ class FieldTest(unittest.TestCase):
             name = StringField()
             preferences = EmbeddedDocumentField(PersonPreferences)
 
+        Person.drop_collection()
+
         person = Person(name='Test User')
         person.preferences = 'My Preferences'
         self.assertRaises(ValidationError, person.validate)
@@ -1631,11 +1693,38 @@ class FieldTest(unittest.TestCase):
             content = StringField()
             author = EmbeddedDocumentField(User)
 
+        BlogPost.drop_collection()
+
         post = BlogPost(content='What I did today...')
         post.author = PowerUser(name='Test User', power=47)
         post.save()
 
         self.assertEqual(47, BlogPost.objects.first().author.power)
+
+    def test_embedded_document_inheritance_with_list(self):
+        """Ensure that nested list of subclassed embedded documents is
+        handled correctly.
+        """
+
+        class Group(EmbeddedDocument):
+            name = StringField()
+            content = ListField(StringField())
+
+        class Basedoc(Document):
+            groups = ListField(EmbeddedDocumentField(Group))
+            meta = {'abstract': True}
+
+        class User(Basedoc):
+            doctype = StringField(require=True, default='userdata')
+
+        User.drop_collection()
+
+        content = ['la', 'le', 'lu']
+        group = Group(name='foo', content=content)
+        foobar = User(groups=[group])
+        foobar.save()
+
+        self.assertEqual(content, User.objects.first().groups[0].content)
 
     def test_reference_validation(self):
         """Ensure that invalid docment objects cannot be assigned to reference
@@ -2328,6 +2417,91 @@ class FieldTest(unittest.TestCase):
 
         Member.drop_collection()
         BlogPost.drop_collection()
+
+    def test_drop_abstract_document(self):
+        """Ensure that an abstract document cannot be dropped given it
+        has no underlying collection.
+        """
+        class AbstractDoc(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        self.assertRaises(OperationError, AbstractDoc.drop_collection)
+
+    def test_reference_class_with_abstract_parent(self):
+        """Ensure that a class with an abstract parent can be referenced.
+        """
+        class Sibling(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        class Sister(Sibling):
+            pass
+
+        class Brother(Sibling):
+            sibling = ReferenceField(Sibling)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+        sister = Sister(name="Alice")
+        sister.save()
+        brother = Brother(name="Bob", sibling=sister)
+        brother.save()
+
+        self.assertEquals(Brother.objects[0].sibling.name, sister.name)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+    def test_reference_abstract_class(self):
+        """Ensure that an abstract class instance cannot be used in the
+        reference of that abstract class.
+        """
+        class Sibling(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        class Sister(Sibling):
+            pass
+
+        class Brother(Sibling):
+            sibling = ReferenceField(Sibling)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+        sister = Sibling(name="Alice")
+        brother = Brother(name="Bob", sibling=sister)
+        self.assertRaises(ValidationError, brother.save)
+
+        Sister.drop_collection()
+        Brother.drop_collection()
+
+    def test_abstract_reference_base_type(self):
+        """Ensure that an an abstract reference fails validation when given a
+        Document that does not inherit from the abstract type.
+        """
+        class Sibling(Document):
+            name = StringField()
+            meta = {"abstract": True}
+
+        class Brother(Sibling):
+            sibling = ReferenceField(Sibling)
+
+        class Mother(Document):
+            name = StringField()
+
+        Brother.drop_collection()
+        Mother.drop_collection()
+
+        mother = Mother(name="Carol")
+        mother.save()
+        brother = Brother(name="Bob", sibling=mother)
+        self.assertRaises(ValidationError, brother.save)
+
+        Brother.drop_collection()
+        Mother.drop_collection()
 
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
@@ -3353,7 +3527,7 @@ class FieldTest(unittest.TestCase):
             def __init__(self, **kwargs):
                 super(EnumField, self).__init__(**kwargs)
 
-            def to_mongo(self, value):
+            def to_mongo(self, value, **kwargs):
                 return value
 
             def to_python(self, value):
@@ -3519,6 +3693,19 @@ class FieldTest(unittest.TestCase):
             Doc(bar='test')
 
         self.assertRaises(FieldDoesNotExist, test)
+
+    def test_long_field_is_considered_as_int64(self):
+        """
+        Tests that long fields are stored as long in mongo, even if long value
+        is small enough to be an int.
+        """
+        class TestLongFieldConsideredAsInt64(Document):
+            some_long = LongField()
+
+        doc = TestLongFieldConsideredAsInt64(some_long=42).save()
+        db = get_db()
+        self.assertTrue(isinstance(db.test_long_field_considered_as_int64.find()[0]['some_long'], Int64))
+        self.assertTrue(isinstance(doc.some_long, six.integer_types))
 
 
 class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
@@ -3906,6 +4093,17 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         # Ensure the method returned 2 as the number of entries
         # modified
         self.assertEqual(number, 2)
+
+    def test_unicode(self):
+        """
+        Tests that unicode strings handled correctly
+        """
+        post = self.BlogPost(comments=[
+            self.Comments(author='user1', message=u'сообщение'),
+            self.Comments(author='user2', message=u'хабарлама')
+        ]).save()
+        self.assertEqual(post.comments.get(message=u'сообщение').author,
+                         'user1')
 
     def test_save(self):
         """

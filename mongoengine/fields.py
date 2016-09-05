@@ -8,6 +8,8 @@ import uuid
 import warnings
 from operator import itemgetter
 
+import six
+
 try:
     import dateutil
 except ImportError:
@@ -18,6 +20,10 @@ else:
 import pymongo
 import gridfs
 from bson import Binary, DBRef, SON, ObjectId
+try:
+    from bson.int64 import Int64
+except ImportError:
+    Int64 = long
 
 from mongoengine.errors import ValidationError
 from mongoengine.python_support import (PY3, bin_type, txt_type,
@@ -65,7 +71,7 @@ class StringField(BaseField):
             return value
         try:
             value = value.decode('utf-8')
-        except:
+        except Exception:
             pass
         return value
 
@@ -194,7 +200,7 @@ class IntField(BaseField):
     def validate(self, value):
         try:
             value = int(value)
-        except:
+        except Exception:
             self.error('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -225,10 +231,13 @@ class LongField(BaseField):
             pass
         return value
 
+    def to_mongo(self, value, **kwargs):
+        return Int64(value)
+
     def validate(self, value):
         try:
             value = long(value)
-        except:
+        except Exception:
             self.error('%s could not be converted to long' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -260,10 +269,14 @@ class FloatField(BaseField):
         return value
 
     def validate(self, value):
-        if isinstance(value, int):
-            value = float(value)
+        if isinstance(value, six.integer_types):
+            try:
+                value = float(value)
+            except OverflowError:
+                self.error('The value is too large to be converted to float')
+
         if not isinstance(value, float):
-            self.error('FloatField only accepts float values')
+            self.error('FloatField only accepts float and integer values')
 
         if self.min_value is not None and value < self.min_value:
             self.error('Float value is too small')
@@ -325,7 +338,7 @@ class DecimalField(BaseField):
             return value
         return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
 
-    def to_mongo(self, value, use_db_field=True):
+    def to_mongo(self, value, **kwargs):
         if value is None:
             return value
         if self.force_string:
@@ -388,7 +401,7 @@ class DateTimeField(BaseField):
         if not isinstance(new_value, (datetime.datetime, datetime.date)):
             self.error(u'cannot parse date "%s"' % value)
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
@@ -508,10 +521,10 @@ class ComplexDateTimeField(StringField):
         original_value = value
         try:
             return self._convert_from_string(value)
-        except:
+        except Exception:
             return original_value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         value = self.to_python(value)
         return self._convert_from_datetime(value)
 
@@ -546,11 +559,10 @@ class EmbeddedDocumentField(BaseField):
             return self.document_type._from_son(value, _auto_dereference=self._auto_dereference)
         return value
 
-    def to_mongo(self, value, use_db_field=True, fields=[]):
+    def to_mongo(self, value, **kwargs):
         if not isinstance(value, self.document_type):
             return value
-        return self.document_type.to_mongo(value, use_db_field,
-                                           fields=fields)
+        return self.document_type.to_mongo(value, **kwargs)
 
     def validate(self, value, clean=True):
         """Make sure that the document instance is an instance of the
@@ -600,11 +612,11 @@ class GenericEmbeddedDocumentField(BaseField):
 
         value.validate(clean=clean)
 
-    def to_mongo(self, document, use_db_field=True):
+    def to_mongo(self, document, **kwargs):
         if document is None:
             return None
 
-        data = document.to_mongo(use_db_field)
+        data = document.to_mongo(**kwargs)
         if '_cls' not in data:
             data['_cls'] = document._class_name
         return data
@@ -616,7 +628,7 @@ class DynamicField(BaseField):
 
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         """Convert a Python type to a MongoDB compatible type.
         """
 
@@ -625,7 +637,7 @@ class DynamicField(BaseField):
 
         if hasattr(value, 'to_mongo'):
             cls = value.__class__
-            val = value.to_mongo()
+            val = value.to_mongo(**kwargs)
             # If we its a document thats not inherited add _cls
             if isinstance(value, Document):
                 val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
@@ -643,7 +655,7 @@ class DynamicField(BaseField):
 
         data = {}
         for k, v in value.iteritems():
-            data[k] = self.to_mongo(v)
+            data[k] = self.to_mongo(v, **kwargs)
 
         value = data
         if is_list:  # Convert back to a list
@@ -697,7 +709,7 @@ class ListField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         if self.field:
-            if op in ('set', 'unset') and (
+            if op in ('set', 'unset', None) and (
                     not isinstance(value, basestring) and
                     not isinstance(value, BaseDocument) and
                     hasattr(value, '__iter__')):
@@ -755,8 +767,8 @@ class SortedListField(ListField):
             self._order_reverse = kwargs.pop('reverse')
         super(SortedListField, self).__init__(field, **kwargs)
 
-    def to_mongo(self, value):
-        value = super(SortedListField, self).to_mongo(value)
+    def to_mongo(self, value, **kwargs):
+        value = super(SortedListField, self).to_mongo(value, **kwargs)
         if self._ordering is not None:
             return sorted(value, key=itemgetter(self._ordering),
                           reverse=self._order_reverse)
@@ -863,12 +875,11 @@ class ReferenceField(BaseField):
 
     The options are:
 
-      * DO_NOTHING  - don't do anything (default).
-      * NULLIFY     - Updates the reference to null.
-      * CASCADE     - Deletes the documents associated with the reference.
-      * DENY        - Prevent the deletion of the reference object.
-      * PULL        - Pull the reference from a :class:`~mongoengine.fields.ListField`
-                      of references
+      * DO_NOTHING (0)  - don't do anything (default).
+      * NULLIFY    (1)  - Updates the reference to null.
+      * CASCADE    (2)  - Deletes the documents associated with the reference.
+      * DENY       (3)  - Prevent the deletion of the reference object.
+      * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
 
     Alternative syntax for registering delete rules (useful when implementing
     bi-directional delete rules)
@@ -879,7 +890,7 @@ class ReferenceField(BaseField):
             content = StringField()
             foo = ReferenceField('Foo')
 
-        Bar.register_delete_rule(Foo, 'bar', NULLIFY)
+        Foo.register_delete_rule(Bar, 'foo', NULLIFY)
 
     .. note ::
         `reverse_delete_rule` does not trigger pre / post delete signals to be
@@ -896,6 +907,10 @@ class ReferenceField(BaseField):
           or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
+
+        .. note ::
+            A reference to an abstract document type is always stored as a
+            :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
         if not isinstance(document_type, basestring):
             if not issubclass(document_type, (Document, basestring)):
@@ -928,20 +943,22 @@ class ReferenceField(BaseField):
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
-            value = self.document_type._get_db().dereference(value)
+            if hasattr(value, 'cls'):
+                # Dereference using the class type specified in the reference
+                cls = get_document(value.cls)
+            else:
+                cls = self.document_type
+            value = cls._get_db().dereference(value)
             if value is not None:
-                instance._data[self.name] = self.document_type._from_son(value)
+                instance._data[self.name] = cls._from_son(value)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
-    def to_mongo(self, document):
+    def to_mongo(self, document, **kwargs):
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id
             return document
-
-        id_field_name = self.document_type._meta['id_field']
-        id_field = self.document_type._fields[id_field_name]
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
@@ -949,12 +966,23 @@ class ReferenceField(BaseField):
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
+
+            # Use the attributes from the document instance, so that they
+            # override the attributes of this field's document type
+            cls = document
         else:
             id_ = document
+            cls = self.document_type
 
-        id_ = id_field.to_mongo(id_)
-        if self.dbref:
-            collection = self.document_type._get_collection_name()
+        id_field_name = cls._meta['id_field']
+        id_field = cls._fields[id_field_name]
+
+        id_ = id_field.to_mongo(id_, **kwargs)
+        if self.document_type._meta.get('abstract'):
+            collection = cls._get_collection_name()
+            return DBRef(collection, id_, cls=cls._class_name)
+        elif self.dbref:
+            collection = cls._get_collection_name()
             return DBRef(collection, id_)
 
         return id_
@@ -983,6 +1011,14 @@ class ReferenceField(BaseField):
             self.error('You can only reference documents once they have been '
                        'saved to the database')
 
+        if self.document_type._meta.get('abstract') and \
+                not isinstance(value, self.document_type):
+            self.error('%s is not an instance of abstract reference'
+                    ' type %s' % (value._class_name,
+                        self.document_type._class_name)
+                    )
+
+
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
@@ -990,7 +1026,7 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
     """
     A referencefield with cache fields to purpose pseudo-joins
-    
+
     .. versionadded:: 0.9
     """
 
@@ -1064,7 +1100,7 @@ class CachedReferenceField(BaseField):
 
         return super(CachedReferenceField, self).__get__(instance, owner)
 
-    def to_mongo(self, document):
+    def to_mongo(self, document, **kwargs):
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
 
@@ -1079,10 +1115,11 @@ class CachedReferenceField(BaseField):
             # TODO: should raise here or will fail next statement
 
         value = SON((
-            ("_id", id_field.to_mongo(id_)),
+            ("_id", id_field.to_mongo(id_, **kwargs)),
         ))
 
-        value.update(dict(document.to_mongo(fields=self.fields)))
+        kwargs['fields'] = self.fields
+        value.update(dict(document.to_mongo(**kwargs)))
         return value
 
     def prepare_query_value(self, op, value):
@@ -1198,7 +1235,7 @@ class GenericReferenceField(BaseField):
             doc = doc_cls._from_son(doc)
         return doc
 
-    def to_mongo(self, document, use_db_field=True):
+    def to_mongo(self, document, **kwargs):
         if document is None:
             return None
 
@@ -1217,7 +1254,7 @@ class GenericReferenceField(BaseField):
         else:
             id_ = document
 
-        id_ = id_field.to_mongo(id_)
+        id_ = id_field.to_mongo(id_, **kwargs)
         collection = document._get_collection_name()
         ref = DBRef(collection, id_)
         return SON((
@@ -1246,7 +1283,7 @@ class BinaryField(BaseField):
             value = bin_type(value)
         return super(BinaryField, self).__set__(instance, value)
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         return Binary(value)
 
     def validate(self, value):
@@ -1346,7 +1383,7 @@ class GridFSProxy(object):
             if self.gridout is None:
                 self.gridout = self.fs.get(self.grid_id)
             return self.gridout
-        except:
+        except Exception:
             # File has been deleted
             return None
 
@@ -1384,7 +1421,7 @@ class GridFSProxy(object):
         else:
             try:
                 return gridout.read(size)
-            except:
+            except Exception:
                 return ""
 
     def delete(self):
@@ -1449,7 +1486,7 @@ class FileField(BaseField):
             if grid_file:
                 try:
                     grid_file.delete()
-                except:
+                except Exception:
                     pass
 
             # Create a new proxy object as we don't already have one
@@ -1471,7 +1508,7 @@ class FileField(BaseField):
                                 db_alias=db_alias,
                                 collection_name=collection_name)
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         # Store the GridFS file id in MongoDB
         if isinstance(value, self.proxy_class) and value.grid_id is not None:
             return value.grid_id
@@ -1683,17 +1720,17 @@ class SequenceField(BaseField):
     :param collection_name:  Name of the counter collection (default 'mongoengine.counters')
     :param sequence_name: Name of the sequence in the collection (default 'ClassName.counter')
     :param value_decorator: Any callable to use as a counter (default int)
-        
+
     Use any callable as `value_decorator` to transform calculated counter into
     any value suitable for your needs, e.g. string or hexadecimal
     representation of the default integer counter value.
-    
+
     .. note::
-    
-        In case the counter is defined in the abstract document, it will be 
-        common to all inherited documents and the default sequence name will 
+
+        In case the counter is defined in the abstract document, it will be
+        common to all inherited documents and the default sequence name will
         be the class name of the abstract document.
-    
+
     .. versionadded:: 0.5
     .. versionchanged:: 0.8 added `value_decorator`
     """
@@ -1817,11 +1854,11 @@ class UUIDField(BaseField):
                 if not isinstance(value, basestring):
                     value = unicode(value)
                 return uuid.UUID(value)
-            except:
+            except Exception:
                 return original_value
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         if not self._binary:
             return unicode(value)
         elif isinstance(value, basestring):

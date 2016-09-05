@@ -41,8 +41,8 @@ class BaseField(object):
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
-                 validation=None, choices=None, verbose_name=None,
-                 help_text=None, null=False, sparse=False, custom_data=None):
+                 validation=None, choices=None, null=False, sparse=False,
+                 **kwargs):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
@@ -60,16 +60,15 @@ class BaseField(object):
             field.  Generally this is deprecated in favour of the
             `FIELD.validate` method
         :param choices: (optional) The valid choices
-        :param verbose_name: (optional)  The verbose name for the field.
-            Designed to be human readable and is often used when generating
-            model forms from the document model.
-        :param help_text: (optional) The help text for this field and is often
-            used when generating model forms from the document model.
         :param null: (optional) Is the field value can be null. If no and there is a default value
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
-        :param custom_data: (optional) Custom metadata for this field.
+        :param **kwargs: (optional) Arbitrary indirection-free metadata for
+            this field can be supplied as additional keyword arguments and
+            accessed as attributes of the field. Must not conflict with any
+            existing attributes. Common metadata includes `verbose_name` and
+            `help_text`.
         """
         self.db_field = (db_field or name) if not primary_key else '_id'
 
@@ -83,12 +82,19 @@ class BaseField(object):
         self.primary_key = primary_key
         self.validation = validation
         self.choices = choices
-        self.verbose_name = verbose_name
-        self.help_text = help_text
         self.null = null
         self.sparse = sparse
         self._owner_document = None
-        self.custom_data = custom_data
+        
+        # Detect and report conflicts between metadata and base properties.
+        conflicts = set(dir(self)) & set(kwargs)
+        if conflicts:
+            raise TypeError("%s already has attribute(s): %s" % (
+                self.__class__.__name__, ', '.join(conflicts) ))
+        
+        # Assign metadata to the instance
+        # This efficient method is available because no __slots__ are defined.
+        self.__dict__.update(kwargs)
 
         # Adjust the appropriate creation counter, and save our local copy.
         if self.db_field == '_id':
@@ -127,7 +133,7 @@ class BaseField(object):
                 if (self.name not in instance._data or
                         instance._data[self.name] != value):
                     instance._mark_as_changed(self.name)
-            except:
+            except Exception:
                 # Values cant be compared eg: naive and tz datetimes
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
@@ -135,6 +141,10 @@ class BaseField(object):
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument):
             value._instance = weakref.proxy(instance)
+        elif isinstance(value, (list, tuple)):
+            for v in value:
+                if isinstance(v, EmbeddedDocument):
+                    v._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
@@ -148,7 +158,7 @@ class BaseField(object):
         """
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         """Convert a Python type to a MongoDB-compatible type.
         """
         return self.to_python(value)
@@ -275,8 +285,6 @@ class ComplexBaseField(BaseField):
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
-        Document = _import_class('Document')
-
         if isinstance(value, basestring):
             return value
 
@@ -296,6 +304,7 @@ class ComplexBaseField(BaseField):
             value_dict = dict([(key, self.field.to_python(item))
                                for key, item in value.items()])
         else:
+            Document = _import_class('Document')
             value_dict = {}
             for k, v in value.items():
                 if isinstance(v, Document):
@@ -315,7 +324,7 @@ class ComplexBaseField(BaseField):
                                          key=operator.itemgetter(0))]
         return value_dict
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         """Convert a Python type to a MongoDB-compatible type.
         """
         Document = _import_class("Document")
@@ -327,9 +336,10 @@ class ComplexBaseField(BaseField):
 
         if hasattr(value, 'to_mongo'):
             if isinstance(value, Document):
-                return GenericReferenceField().to_mongo(value)
+                return GenericReferenceField().to_mongo(
+                    value, **kwargs)
             cls = value.__class__
-            val = value.to_mongo()
+            val = value.to_mongo(**kwargs)
             # If it's a document that is not inherited add _cls
             if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
@@ -344,7 +354,7 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
-            value_dict = dict([(key, self.field.to_mongo(item))
+            value_dict = dict([(key, self.field.to_mongo(item, **kwargs))
                                for key, item in value.iteritems()])
         else:
             value_dict = {}
@@ -363,19 +373,20 @@ class ComplexBaseField(BaseField):
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
                         is True)
                     if not allow_inheritance and not self.field:
-                        value_dict[k] = GenericReferenceField().to_mongo(v)
+                        value_dict[k] = GenericReferenceField().to_mongo(
+                            v, **kwargs)
                     else:
                         collection = v._get_collection_name()
                         value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, 'to_mongo'):
                     cls = v.__class__
-                    val = v.to_mongo()
+                    val = v.to_mongo(**kwargs)
                     # If it's a document that is not inherited add _cls
                     if isinstance(v, (Document, EmbeddedDocument)):
                         val['_cls'] = cls.__name__
                     value_dict[k] = val
                 else:
-                    value_dict[k] = self.to_mongo(v)
+                    value_dict[k] = self.to_mongo(v, **kwargs)
 
         if is_list:  # Convert back to a list
             return [v for _, v in sorted(value_dict.items(),
@@ -429,11 +440,11 @@ class ObjectIdField(BaseField):
         try:
             if not isinstance(value, ObjectId):
                 value = ObjectId(value)
-        except:
+        except Exception:
             pass
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         if not isinstance(value, ObjectId):
             try:
                 return ObjectId(unicode(value))
@@ -448,7 +459,7 @@ class ObjectIdField(BaseField):
     def validate(self, value):
         try:
             ObjectId(unicode(value))
-        except:
+        except Exception:
             self.error('Invalid Object ID')
 
 
@@ -500,7 +511,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid Polygon must contain at least one valid linestring"
 
         errors = []
@@ -524,7 +535,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid LineString must contain at least one valid point"
 
         errors = []
@@ -555,7 +566,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid MultiPoint must contain at least one valid point"
 
         errors = []
@@ -574,7 +585,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid MultiLineString must contain at least one valid linestring"
 
         errors = []
@@ -596,7 +607,7 @@ class GeoJsonBaseField(BaseField):
         # Quick and dirty validator
         try:
             value[0][0][0][0]
-        except:
+        except (TypeError, IndexError):
             return "Invalid MultiPolygon must contain at least one valid Polygon"
 
         errors = []
@@ -608,7 +619,7 @@ class GeoJsonBaseField(BaseField):
         if errors:
             return "Invalid MultiPolygon:\n%s" % ", ".join(errors)
 
-    def to_mongo(self, value):
+    def to_mongo(self, value, **kwargs):
         if isinstance(value, dict):
             return value
         return SON([("type", self._type), ("coordinates", value)])

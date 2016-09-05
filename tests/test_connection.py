@@ -8,6 +8,7 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+from nose.plugins.skip import SkipTest
 
 import pymongo
 from bson.tz_util import utc
@@ -50,6 +51,42 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest2', alias='testdb')
         conn = get_connection('testdb')
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
+    def test_connect_in_mocking(self):
+        """Ensure that the connect() method works properly in mocking.
+        """
+        try:
+            import mongomock
+        except ImportError:
+            raise SkipTest('you need mongomock installed to run this testcase')
+
+        connect('mongoenginetest', host='mongomock://localhost')
+        conn = get_connection()
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect('mongoenginetest2', host='mongomock://localhost', alias='testdb2')
+        conn = get_connection('testdb2')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect('mongoenginetest3', host='mongodb://localhost', is_mock=True, alias='testdb3')
+        conn = get_connection('testdb3')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect('mongoenginetest4', is_mock=True, alias='testdb4')
+        conn = get_connection('testdb4')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host='mongodb://localhost:27017/mongoenginetest5', is_mock=True, alias='testdb5')
+        conn = get_connection('testdb5')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host='mongomock://localhost:27017/mongoenginetest6', alias='testdb6')
+        conn = get_connection('testdb6')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host='mongomock://localhost:27017/mongoenginetest7', is_mock=True, alias='testdb7')
+        conn = get_connection('testdb7')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
 
     def test_disconnect(self):
         """Ensure that the disconnect() method works properly
@@ -151,7 +188,7 @@ class ConnectionTest(unittest.TestCase):
             self.assertRaises(ConnectionError, get_db, 'test1')
 
         # Authentication succeeds with "authSource"
-        test_conn2 = connect(
+        connect(
             'mongoenginetest', alias='test2',
             host=('mongodb://username2:password@localhost/'
                   'mongoenginetest?authSource=admin')

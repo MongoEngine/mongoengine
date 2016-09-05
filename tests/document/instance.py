@@ -7,12 +7,13 @@ import os
 import pickle
 import unittest
 import uuid
+import weakref
 
 from datetime import datetime
 from bson import DBRef, ObjectId
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
-                            PickleDyanmicEmbedded, PickleDynamicTest)
+                            PickleDynamicEmbedded, PickleDynamicTest)
 
 from mongoengine import *
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
@@ -28,6 +29,8 @@ TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
 
 __all__ = ("InstanceTest",)
+
+
 
 
 class InstanceTest(unittest.TestCase):
@@ -62,6 +65,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(
             list(self.Person._get_collection().find().sort("id")),
             sorted(docs, key=lambda doc: doc["_id"]))
+
+    def assertHasInstance(self, field, instance):
+        self.assertTrue(hasattr(field, "_instance"))
+        self.assertTrue(field._instance is not None)
+        if isinstance(field._instance, weakref.ProxyType):
+            self.assertTrue(field._instance.__eq__(instance))
+        else:
+            self.assertEqual(field._instance, instance)
 
     def test_capped_collection(self):
         """Ensure that capped collections work properly.
@@ -473,6 +484,20 @@ class InstanceTest(unittest.TestCase):
         doc.reload()
         Animal.drop_collection()
 
+    def test_reload_sharded_nested(self):
+        class SuperPhylum(EmbeddedDocument):
+            name = StringField()
+
+        class Animal(Document):
+            superphylum = EmbeddedDocumentField(SuperPhylum)
+            meta = {'shard_key': ('superphylum.name',)}
+
+        Animal.drop_collection()
+        doc = Animal(superphylum=SuperPhylum(name='Deuterostomia'))
+        doc.save()
+        doc.reload()
+        Animal.drop_collection()
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly
         """
@@ -546,6 +571,28 @@ class InstanceTest(unittest.TestCase):
         except Exception:
             self.assertFalse("Threw wrong exception")
 
+    def test_reload_of_non_strict_with_special_field_name(self):
+        """Ensures reloading works for documents with meta strict == False
+        """
+        class Post(Document):
+            meta = {
+                'strict': False
+            }
+            title = StringField()
+            items = ListField()
+
+        Post.drop_collection()
+
+        Post._get_collection().insert({
+            "title": "Items eclipse",
+            "items": ["more lorem", "even more ipsum"]
+        })
+
+        post = Post.objects.first()
+        post.reload()
+        self.assertEqual(post.title, "Items eclipse")
+        self.assertEqual(post.items, ["more lorem", "even more ipsum"])
+
     def test_dictionary_access(self):
         """Ensure that dictionary-style field access works properly.
         """
@@ -608,10 +655,12 @@ class InstanceTest(unittest.TestCase):
             embedded_field = EmbeddedDocumentField(Embedded)
 
         Doc.drop_collection()
-        Doc(embedded_field=Embedded(string="Hi")).save()
+        doc = Doc(embedded_field=Embedded(string="Hi"))
+        self.assertHasInstance(doc.embedded_field, doc)
 
+        doc.save()
         doc = Doc.objects.get()
-        self.assertEqual(doc, doc.embedded_field._instance)
+        self.assertHasInstance(doc.embedded_field, doc)
 
     def test_embedded_document_complex_instance(self):
         """Ensure that embedded documents in complex fields can reference
@@ -623,10 +672,25 @@ class InstanceTest(unittest.TestCase):
             embedded_field = ListField(EmbeddedDocumentField(Embedded))
 
         Doc.drop_collection()
-        Doc(embedded_field=[Embedded(string="Hi")]).save()
+        doc = Doc(embedded_field=[Embedded(string="Hi")])
+        self.assertHasInstance(doc.embedded_field[0], doc)
 
+        doc.save()
         doc = Doc.objects.get()
-        self.assertEqual(doc, doc.embedded_field[0]._instance)
+        self.assertHasInstance(doc.embedded_field[0], doc)
+
+    def test_embedded_document_complex_instance_no_use_db_field(self):
+        """Ensure that use_db_field is propagated to list of Emb Docs
+        """
+        class Embedded(EmbeddedDocument):
+            string = StringField(db_field='s')
+
+        class Doc(Document):
+            embedded_field = ListField(EmbeddedDocumentField(Embedded))
+
+        d = Doc(embedded_field=[Embedded(string="Hi")]).to_mongo(
+            use_db_field=False).to_dict()
+        self.assertEqual(d['embedded_field'], [{'string': 'Hi'}])
 
     def test_instance_is_set_on_setattr(self):
 
@@ -639,11 +703,28 @@ class InstanceTest(unittest.TestCase):
         Account.drop_collection()
         acc = Account()
         acc.email = Email(email='test@example.com')
-        self.assertTrue(hasattr(acc._data["email"], "_instance"))
+        self.assertHasInstance(acc._data["email"], acc)
         acc.save()
 
         acc1 = Account.objects.first()
-        self.assertTrue(hasattr(acc1._data["email"], "_instance"))
+        self.assertHasInstance(acc1._data["email"], acc1)
+
+    def test_instance_is_set_on_setattr_on_embedded_document_list(self):
+
+        class Email(EmbeddedDocument):
+            email = EmailField()
+
+        class Account(Document):
+            emails = EmbeddedDocumentListField(Email)
+
+        Account.drop_collection()
+        acc = Account()
+        acc.emails = [Email(email='test@example.com')]
+        self.assertHasInstance(acc._data["emails"][0], acc)
+        acc.save()
+
+        acc1 = Account.objects.first()
+        self.assertHasInstance(acc1._data["emails"][0], acc1)
 
     def test_document_clean(self):
         class TestDocument(Document):
@@ -1825,6 +1906,62 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
 
+    def test_reverse_delete_rule_with_custom_id_field(self):
+        """Ensure that a referenced document with custom primary key
+        is also deleted upon deletion.
+        """
+        class User(Document):
+            name = StringField(primary_key=True)
+
+        class Book(Document):
+            author = ReferenceField(User, reverse_delete_rule=CASCADE)
+            reviewer = ReferenceField(User, reverse_delete_rule=NULLIFY)
+
+        User.drop_collection()
+        Book.drop_collection()
+
+        user = User(name='Mike').save()
+        reviewer = User(name='John').save()
+        book = Book(author=user, reviewer=reviewer).save()
+
+        reviewer.delete()
+        self.assertEqual(Book.objects.count(), 1)
+        self.assertEqual(Book.objects.get().reviewer, None)
+
+        user.delete()
+        self.assertEqual(Book.objects.count(), 0)
+
+    def test_reverse_delete_rule_with_shared_id_among_collections(self):
+        """Ensure that cascade delete rule doesn't mix id among collections.
+        """
+        class User(Document):
+            id = IntField(primary_key=True)
+
+        class Book(Document):
+            id = IntField(primary_key=True)
+            author = ReferenceField(User, reverse_delete_rule=CASCADE)
+
+        User.drop_collection()
+        Book.drop_collection()
+
+        user_1 = User(id=1).save()
+        user_2 = User(id=2).save()
+        book_1 = Book(id=1, author=user_2).save()
+        book_2 = Book(id=2, author=user_1).save()
+
+        user_2.delete()
+        # Deleting user_2 should also delete book_1 but not book_2
+        self.assertEqual(Book.objects.count(), 1)
+        self.assertEqual(Book.objects.get(), book_2)
+
+        user_3 = User(id=3).save()
+        book_3 = Book(id=3, author=user_3).save()
+
+        user_3.delete()
+        # Deleting user_3 should also delete book_3
+        self.assertEqual(Book.objects.count(), 1)
+        self.assertEqual(Book.objects.get(), book_2)
+
     def test_reverse_delete_rule_with_document_inheritance(self):
         """Ensure that a referenced document is also deleted upon deletion
         of a child document.
@@ -2180,7 +2317,7 @@ class InstanceTest(unittest.TestCase):
 
         pickle_doc = PickleDynamicTest(
             name="test", number=1, string="One", lists=['1', '2'])
-        pickle_doc.embedded = PickleDyanmicEmbedded(foo="Bar")
+        pickle_doc.embedded = PickleDynamicEmbedded(foo="Bar")
         pickled_doc = pickle.dumps(pickle_doc)  # make sure pickling works even before the doc is saved
 
         pickle_doc.save()
@@ -2683,6 +2820,32 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(OperationError, change_shard_key)
 
+    def test_shard_key_in_embedded_document(self):
+        class Foo(EmbeddedDocument):
+            foo = StringField()
+
+        class Bar(Document):
+            meta = {
+                'shard_key': ('foo.foo',)
+            }
+            foo = EmbeddedDocumentField(Foo)
+            bar = StringField()
+
+        foo_doc = Foo(foo='hello')
+        bar_doc = Bar(foo=foo_doc, bar='world')
+        bar_doc.save()
+
+        self.assertTrue(bar_doc.id is not None)
+
+        bar_doc.bar = 'baz'
+        bar_doc.save()
+
+        def change_shard_key():
+            bar_doc.foo.foo = 'something'
+            bar_doc.save()
+
+        self.assertRaises(OperationError, change_shard_key)
+
     def test_shard_key_primary(self):
         class LogEntry(Document):
             machine = StringField(primary_key=True)
@@ -2764,6 +2927,20 @@ class InstanceTest(unittest.TestCase):
         person = self.Person("Test User", age=42)
         self.assertEqual(person.name, "Test User")
         self.assertEqual(person.age, 42)
+
+    def test_positional_creation_embedded(self):
+        """Ensure that embedded document may be created using positional arguments.
+        """
+        job = self.Job("Test Job", 4)
+        self.assertEqual(job.name, "Test Job")
+        self.assertEqual(job.years, 4)
+
+    def test_mixed_creation_embedded(self):
+        """Ensure that embedded document may be created using mixed arguments.
+        """
+        job = self.Job("Test Job", years=4)
+        self.assertEqual(job.name, "Test Job")
+        self.assertEqual(job.years, 4)
 
     def test_mixed_creation_dynamic(self):
         """Ensure that document may be created using mixed arguments.

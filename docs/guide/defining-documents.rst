@@ -29,7 +29,7 @@ documents are serialized based on their field order.
 
 Dynamic document schemas
 ========================
-One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
+One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
 should be planned and organised (after all explicit is better than implicit!)
 there are scenarios where having dynamic / expando style documents is desirable.
 
@@ -75,6 +75,7 @@ are as follows:
 * :class:`~mongoengine.fields.DynamicField`
 * :class:`~mongoengine.fields.EmailField`
 * :class:`~mongoengine.fields.EmbeddedDocumentField`
+* :class:`~mongoengine.fields.EmbeddedDocumentListField`
 * :class:`~mongoengine.fields.FileField`
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
@@ -172,11 +173,11 @@ arguments can be set on all fields:
         class Shirt(Document):
             size = StringField(max_length=3, choices=SIZE)
 
-:attr:`help_text` (Default: None)
-    Optional help text to output with the field -- used by form libraries
-
-:attr:`verbose_name` (Default: None)
-    Optional human-readable name for the field -- used by form libraries
+:attr:`**kwargs` (Optional)
+    You can supply additional metadata as arbitrary additional keyword
+    arguments.  You can not override existing attributes, however.  Common
+    choices include `help_text` and `verbose_name`, commonly used by form and
+    widget libraries.
 
 
 List fields

@@ -38,8 +38,11 @@ def register_connection(alias, name=None, host=None, port=None,
     :param username: username to authenticate with
     :param password: password to authenticate with
     :param authentication_source: database to authenticate against
+    :param is_mock: explicitly use mongomock for this connection
+        (can also be done by using `mongomock://` as db host prefix)
     :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
 
+    .. versionchanged:: 0.10.6 - added mongomock support
     """
     global _connection_settings
 
@@ -54,8 +57,13 @@ def register_connection(alias, name=None, host=None, port=None,
     }
 
     # Handle uri style connections
-    if "://" in conn_settings['host']:
-        uri_dict = uri_parser.parse_uri(conn_settings['host'])
+    conn_host = conn_settings['host']
+    if conn_host.startswith('mongomock://'):
+        conn_settings['is_mock'] = True
+        # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
+        conn_settings['host'] = conn_host.replace('mongomock://', 'mongodb://', 1)
+    elif '://' in conn_host:
+        uri_dict = uri_parser.parse_uri(conn_host)
         conn_settings.update({
             'name': uri_dict.get('database') or name,
             'username': uri_dict.get('username'),
@@ -106,7 +114,19 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings.pop('password', None)
         conn_settings.pop('authentication_source', None)
 
-        connection_class = MongoClient
+        is_mock = conn_settings.pop('is_mock', None)
+        if is_mock:
+            # Use MongoClient from mongomock
+            try:
+                import mongomock
+            except ImportError:
+                raise RuntimeError('You need mongomock installed '
+                                   'to mock MongoEngine.')
+            connection_class = mongomock.MongoClient
+        else:
+            # Use MongoClient from pymongo
+            connection_class = MongoClient
+
         if 'replicaSet' in conn_settings:
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
@@ -126,6 +146,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 connection_settings.pop('name', None)
                 connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
+                connection_settings.pop('authentication_source', None)
                 if conn_settings == connection_settings and _connections.get(db_alias, None):
                     connection = _connections[db_alias]
                     break
