@@ -72,12 +72,13 @@ class BaseDocument(object):
         # Check if there are undefined fields supplied to the constructor,
         # if so raise an Exception.
         if not self._dynamic and (self._meta.get('strict', True) or _created):
-            for var in values.keys():
-                if var not in self._fields.keys() + ['id', 'pk', '_cls', '_text_score']:
-                    msg = (
-                        "The field '{0}' does not exist on the document '{1}'"
-                    ).format(var, self._class_name)
-                    raise FieldDoesNotExist(msg)
+            _undefined_fields = set(values.keys()) - set(
+              self._fields.keys() + ['id', 'pk', '_cls', '_text_score'])
+            if _undefined_fields:
+                msg = (
+                    "The fields '{0}' do not exist on the document '{1}'"
+                ).format(_undefined_fields, self._class_name)
+                raise FieldDoesNotExist(msg)
 
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
