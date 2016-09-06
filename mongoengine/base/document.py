@@ -309,7 +309,7 @@ class BaseDocument(object):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
-        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
         root_fields = set([f.split('.')[0] for f in fields])
 
@@ -324,18 +324,20 @@ class BaseDocument(object):
                 field = self._dynamic_fields.get(field_name)
 
             if value is not None:
-
-                if fields:
+                f_inputs = field.to_mongo.__code__.co_varnames
+                ex_vars = {}
+                if fields and 'fields' in f_inputs:
                     key = '%s.' % field_name
                     embedded_fields = [
                         i.replace(key, '') for i in fields
                         if i.startswith(key)]
 
-                else:
-                    embedded_fields = []
+                    ex_vars['fields'] = embedded_fields 
 
-                value = field.to_mongo(value, use_db_field=use_db_field,
-                                        fields=embedded_fields)
+                if 'use_db_field' in f_inputs:
+                    ex_vars['use_db_field'] = use_db_field
+                     
+                value = field.to_mongo(value, **ex_vars)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
