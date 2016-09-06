@@ -578,6 +578,13 @@ class EmbeddedDocumentField(BaseField):
         return self.document_type._fields.get(member_name)
 
     def prepare_query_value(self, op, value):
+
+        if value is None:
+            return value
+
+        if isinstance(value, list) and len(value) == 0:
+            return value
+
         if not isinstance(value, self.document_type):
             value = self.document_type._from_son(value)
         super(EmbeddedDocumentField, self).prepare_query_value(op, value)
