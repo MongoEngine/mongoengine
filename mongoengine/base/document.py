@@ -310,7 +310,7 @@ class BaseDocument(object):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
-        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
         root_fields = set([f.split('.')[0] for f in fields])
 
@@ -325,18 +325,20 @@ class BaseDocument(object):
                 field = self._dynamic_fields.get(field_name)
 
             if value is not None:
-
-                if fields:
+                f_inputs = field.to_mongo.__code__.co_varnames
+                ex_vars = {}
+                if fields and 'fields' in f_inputs:
                     key = '%s.' % field_name
                     embedded_fields = [
                         i.replace(key, '') for i in fields
                         if i.startswith(key)]
 
-                else:
-                    embedded_fields = []
+                    ex_vars['fields'] = embedded_fields 
 
-                value = field.to_mongo(value, use_db_field=use_db_field,
-                                        fields=embedded_fields)
+                if 'use_db_field' in f_inputs:
+                    ex_vars['use_db_field'] = use_db_field
+                     
+                value = field.to_mongo(value, **ex_vars)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
@@ -489,7 +491,7 @@ class BaseDocument(object):
                 # remove lower level changed fields
                 level = '.'.join(levels[:idx]) + '.'
                 remove = self._changed_fields.remove
-                for field in self._changed_fields:
+                for field in self._changed_fields[:]:
                     if field.startswith(level):
                         remove(field)
 
@@ -604,7 +606,9 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
                         break
-                    elif isinstance(d, list) and p.isdigit():
+                    elif isinstance(d, list) and p.lstrip('-').isdigit():
+                        if p[0] == '-':
+                            p = str(len(d)+int(p))
                         try:
                             d = d[int(p)]
                         except IndexError:
@@ -638,7 +642,9 @@ class BaseDocument(object):
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if isinstance(d, list) and p.isdigit():
+                    if isinstance(d, list) and p.lstrip('-').isdigit():
+                        if p[0] == '-':
+                            p = str(len(d)+int(p))
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
@@ -706,14 +712,6 @@ class BaseDocument(object):
                         del data[field.db_field]
                 except (AttributeError, ValueError), e:
                     errors_dict[field_name] = e
-            elif field.default:
-                default = field.default
-                if callable(default):
-                    default = default()
-                if isinstance(default, BaseDocument):
-                    changed_fields.append(field_name)
-                elif not only_fields or field_name in only_fields:
-                    changed_fields.append(field_name)
 
         if errors_dict:
             errors = "\n".join(["%s - %s" % (k, v)
