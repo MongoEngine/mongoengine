@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 
@@ -53,17 +52,18 @@ class TransformTest(unittest.TestCase):
                         BlogPost.objects(title=data['title'])._query)
         self.assertFalse('title' in
                          BlogPost.objects(title=data['title'])._query)
-        self.assertEqual(len(BlogPost.objects(title=data['title'])), 1)
+        self.assertEqual(BlogPost.objects(title=data['title']).count(), 1)
 
         self.assertTrue('_id' in BlogPost.objects(pk=post.id)._query)
-        self.assertEqual(len(BlogPost.objects(pk=post.id)), 1)
+        self.assertEqual(BlogPost.objects(pk=post.id).count(), 1)
 
         self.assertTrue('postComments.commentContent' in
                         BlogPost.objects(comments__content='test')._query)
-        self.assertEqual(len(BlogPost.objects(comments__content='test')), 1)
+        self.assertEqual(BlogPost.objects(comments__content='test').count(), 1)
 
         BlogPost.drop_collection()
 
+    @unittest.skip("unsupported")
     def test_query_pk_field_name(self):
         """Ensure that the correct "primary key" field name is used when
         querying
@@ -79,7 +79,7 @@ class TransformTest(unittest.TestCase):
 
         self.assertTrue('_id' in BlogPost.objects(pk=data['title'])._query)
         self.assertTrue('_id' in BlogPost.objects(title=data['title'])._query)
-        self.assertEqual(len(BlogPost.objects(pk=data['title'])), 1)
+        self.assertEqual(BlogPost.objects(pk=data['title']).count(), 1)
 
         BlogPost.drop_collection()
 

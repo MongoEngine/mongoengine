@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 import unittest
 
 from mongoengine import *
 
-from mongoengine.queryset import NULLIFY
+from mongoengine.queryset import NULLIFY, PULL
 from mongoengine.connection import get_db
 
 __all__ = ("ClassMethodsTest", )
@@ -41,7 +40,7 @@ class ClassMethodsTest(unittest.TestCase):
                          sorted(self.Person._fields.keys()))
         self.assertEqual(["IntField", "ObjectIdField", "StringField"],
                         sorted([x.__class__.__name__ for x in
-                                self.Person._fields.values()]))
+                                list(self.Person._fields.values())]))
 
     def test_get_db(self):
         """Ensure that get_db returns the expected db.
@@ -85,6 +84,70 @@ class ClassMethodsTest(unittest.TestCase):
         self.Person.register_delete_rule(Job, 'employee', NULLIFY)
         self.assertEqual(self.Person._meta['delete_rules'],
                          {(Job, 'employee'): NULLIFY})
+
+    def test_list_indexes_inheritance(self):
+        """ ensure that all of the indexes are listed regardless of the super-
+        or sub-class that we call it from
+        """
+
+        class BlogPost(Document):
+            author = StringField()
+            title = StringField()
+            description = StringField()
+
+            meta = {
+                'allow_inheritance': True
+            }
+
+        class BlogPostWithTags(BlogPost):
+            tags = StringField()
+
+            meta = {
+                'indexes': [('author', 'tags')]
+            }
+
+        class BlogPostWithTagsAndExtraText(BlogPostWithTags):
+            extra_text = StringField()
+
+            meta = {
+                'indexes': [('author', 'tags', 'extra_text')]
+            }
+
+        BlogPost.drop_collection()
+
+        BlogPost.ensure_indexes()
+        BlogPostWithTags.ensure_indexes()
+        BlogPostWithTagsAndExtraText.ensure_indexes()
+
+        self.assertEqual(BlogPost.list_indexes(),
+                         BlogPostWithTags.list_indexes())
+        self.assertEqual(BlogPost.list_indexes(),
+                         BlogPostWithTagsAndExtraText.list_indexes())
+        self.assertEqual(BlogPost.list_indexes(), [
+            { 'key': [('_cls', 1), ('author', 1), ('tags', 1)] },
+            { 'key': [('_cls', 1), ('author', 1), ('tags', 1), ('extra_text', 1)] },
+            { 'key': [('_id', 1)] },
+            { 'key': [('_cls', 1)] },
+        ])
+
+    def test_register_delete_rule_inherited(self):
+
+        class Vaccine(Document):
+            name = StringField(required=True)
+
+            meta = {"indexes": ["name"]}
+
+        class Animal(Document):
+            family = StringField(required=True)
+            vaccine_made = ListField(ReferenceField("Vaccine", reverse_delete_rule=PULL))
+
+            meta = {"allow_inheritance": True, "indexes": ["family"]}
+
+        class Cat(Animal):
+            name = StringField(required=True)
+
+        self.assertEqual(Vaccine._meta['delete_rules'][(Animal, 'vaccine_made')], PULL)
+        self.assertEqual(Vaccine._meta['delete_rules'][(Cat, 'vaccine_made')], PULL)
 
     def test_collection_naming(self):
         """Ensure that a collection with a specified name may be used.

@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 sys.path[0:0] = [""]
 import unittest
@@ -6,7 +5,8 @@ import unittest
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (switch_db, switch_collection,
-                                          no_dereference, query_counter)
+                                          no_sub_classes, no_dereference,
+                                          query_counter)
 
 
 class ContextManagersTest(unittest.TestCase):
@@ -79,7 +79,7 @@ class ContextManagersTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             User(name='user %s' % i).save()
 
         user = User.objects.first()
@@ -117,7 +117,7 @@ class ContextManagersTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             User(name='user %s' % i).save()
 
         user = User.objects.first()
@@ -139,6 +139,54 @@ class ContextManagersTest(unittest.TestCase):
         self.assertTrue(isinstance(group.ref, User))
         self.assertTrue(isinstance(group.generic, User))
 
+    def test_no_sub_classes(self):
+        class A(Document):
+            x = IntField()
+            y = IntField()
+
+            meta = {'allow_inheritance': True}
+
+        class B(A):
+            z = IntField()
+
+        class C(B):
+            zz = IntField()
+
+        A.drop_collection()
+
+        A(x=10, y=20).save()
+        A(x=15, y=30).save()
+        B(x=20, y=40).save()
+        B(x=30, y=50).save()
+        C(x=40, y=60).save()
+
+        self.assertEqual(A.objects.count(), 5)
+        self.assertEqual(B.objects.count(), 3)
+        self.assertEqual(C.objects.count(), 1)
+
+        with no_sub_classes(A) as A:
+            self.assertEqual(A.objects.count(), 2)
+
+            for obj in A.objects:
+                self.assertEqual(obj.__class__, A)
+
+        with no_sub_classes(B) as B:
+            self.assertEqual(B.objects.count(), 2)
+
+            for obj in B.objects:
+                self.assertEqual(obj.__class__, B)
+
+        with no_sub_classes(C) as C:
+            self.assertEqual(C.objects.count(), 1)
+
+            for obj in C.objects:
+                self.assertEqual(obj.__class__, C)
+
+        # Confirm context manager exit correctly
+        self.assertEqual(A.objects.count(), 5)
+        self.assertEqual(B.objects.count(), 3)
+        self.assertEqual(C.objects.count(), 1)
+
     def test_query_counter(self):
         connect('mongoenginetest')
         db = get_db()
@@ -147,7 +195,7 @@ class ContextManagersTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(0, q)
 
-            for i in xrange(1, 51):
+            for i in range(1, 51):
                 db.test.find({}).count()
 
             self.assertEqual(50, q)

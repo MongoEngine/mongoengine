@@ -23,7 +23,7 @@ class ConnectionTest(unittest.TestCase):
 
         try:
             conn = connect(db='mongoenginetest', host="mongodb://localhost/mongoenginetest?replicaSet=rs", read_preference=ReadPreference.SECONDARY_ONLY)
-        except ConnectionError, e:
+        except ConnectionError as e:
             return
 
         if not isinstance(conn, ReplicaSetConnection):

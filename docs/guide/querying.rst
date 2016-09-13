@@ -15,11 +15,8 @@ fetch documents from the database::
 
 .. note::
 
-   Once the iteration finishes (when :class:`StopIteration` is raised),
-   :meth:`~mongoengine.queryset.QuerySet.rewind` will be called so that the
-   :class:`~mongoengine.queryset.QuerySet` may be iterated over again. The
-   results of the first iteration are *not* cached, so the database will be hit
-   each time the :class:`~mongoengine.queryset.QuerySet` is iterated over.
+    As of MongoEngine 0.8 the querysets utilise a local cache.  So iterating
+    it multiple times will only cause a single query.
 
 Filtering queries
 =================
@@ -65,6 +62,9 @@ Available operators are as follows:
 * ``size`` -- the size of the array is
 * ``exists`` -- value for field exists
 
+String queries
+--------------
+
 The following operators are available as shortcuts to querying with regular
 expressions:
 
@@ -78,8 +78,71 @@ expressions:
 * ``iendswith`` -- string field ends with value (case insensitive)
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
-There are a few special operators for performing geographical queries, that
-may used with :class:`~mongoengine.GeoPointField`\ s:
+
+Geo queries
+-----------
+
+There are a few special operators for performing geographical queries. The following
+were added in 0.8 for:  :class:`~mongoengine.fields.PointField`,
+:class:`~mongoengine.fields.LineStringField` and
+:class:`~mongoengine.fields.PolygonField`:
+
+* ``geo_within`` -- Check if a geometry is within a polygon.  For ease of use
+    it accepts either a geojson geometry or just the polygon coordinates eg::
+
+        loc.objects(point__geo_with=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
+        loc.objects(point__geo_with={"type": "Polygon",
+                                 "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
+
+* ``geo_within_box`` - simplified geo_within searching with a box eg::
+
+        loc.objects(point__geo_within_box=[(-125.0, 35.0), (-100.0, 40.0)])
+        loc.objects(point__geo_within_box=[<bottom left coordinates>, <upper right coordinates>])
+
+* ``geo_within_polygon`` -- simplified geo_within searching within a simple polygon eg::
+
+        loc.objects(point__geo_within_polygon=[[40, 5], [40, 6], [41, 6], [40, 5]])
+        loc.objects(point__geo_within_polygon=[ [ <x1> , <y1> ] ,
+                                                [ <x2> , <y2> ] ,
+                                                [ <x3> , <y3> ] ])
+
+* ``geo_within_center`` -- simplified geo_within the flat circle radius of a point eg::
+
+        loc.objects(point__geo_within_center=[(-125.0, 35.0), 1])
+        loc.objects(point__geo_within_center=[ [ <x>, <y> ] , <radius> ])
+
+* ``geo_within_sphere`` -- simplified geo_within the spherical circle radius of a point eg::
+
+        loc.objects(point__geo_within_sphere=[(-125.0, 35.0), 1])
+        loc.objects(point__geo_within_sphere=[ [ <x>, <y> ] , <radius> ])
+
+* ``geo_intersects`` -- selects all locations that intersect with a geometry eg::
+
+        # Inferred from provided points lists:
+        loc.objects(poly__geo_intersects=[40, 6])
+        loc.objects(poly__geo_intersects=[[40, 5], [40, 6]])
+        loc.objects(poly__geo_intersects=[[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]])
+
+        # With geoJson style objects
+        loc.objects(poly__geo_intersects={"type": "Point", "coordinates": [40, 6]})
+        loc.objects(poly__geo_intersects={"type": "LineString",
+                                          "coordinates": [[40, 5], [40, 6]]})
+        loc.objects(poly__geo_intersects={"type": "Polygon",
+                                          "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]})
+
+* ``near`` -- Find all the locations near a given point::
+
+        loc.objects(point__near=[40, 5])
+        loc.objects(point__near={"type": "Point", "coordinates": [40, 5]})
+
+
+    You can also set the maximum distance in meters as well::
+
+        loc.objects(point__near=[40, 5], point__max_distance=1000)
+
+
+The older 2D indexes are still supported with the
+:class:`~mongoengine.fields.GeoPointField`:
 
 * ``within_distance`` -- provide a list containing a point and a maximum
   distance (e.g. [(41.342, -87.653), 5])
@@ -91,7 +154,9 @@ may used with :class:`~mongoengine.GeoPointField`\ s:
   [(35.0, -125.0), (40.0, -100.0)])
 * ``within_polygon`` -- filter documents to those within a given polygon (e.g.
   [(41.91,-87.69), (41.92,-87.68), (41.91,-87.65), (41.89,-87.65)]).
+
   .. note:: Requires Mongo Server 2.0
+
 * ``max_distance`` -- can be added to your location queries to set a maximum
   distance.
 
@@ -100,7 +165,7 @@ Querying lists
 --------------
 On most fields, this syntax will look up documents where the field specified
 matches the given value exactly, but when the field refers to a
-:class:`~mongoengine.ListField`, a single item may be provided, in which case
+:class:`~mongoengine.fields.ListField`, a single item may be provided, in which case
 lists that contain that item will be matched::
 
     class Page(Document):
@@ -319,7 +384,7 @@ Retrieving a subset of fields
 Sometimes a subset of fields on a :class:`~mongoengine.Document` is required,
 and for efficiency only these should be retrieved from the database. This issue
 is especially important for MongoDB, as fields may often be extremely large
-(e.g. a :class:`~mongoengine.ListField` of
+(e.g. a :class:`~mongoengine.fields.ListField` of
 :class:`~mongoengine.EmbeddedDocument`\ s, which represent the comments on a
 blog post. To select only a subset of fields, use
 :meth:`~mongoengine.queryset.QuerySet.only`, specifying the fields you want to
@@ -351,14 +416,14 @@ If you later need the missing fields, just call
 Getting related data
 --------------------
 
-When iterating the results of :class:`~mongoengine.ListField` or
-:class:`~mongoengine.DictField` we automatically dereference any
+When iterating the results of :class:`~mongoengine.fields.ListField` or
+:class:`~mongoengine.fields.DictField` we automatically dereference any
 :class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
 number the queries to mongo.
 
 There are times when that efficiency is not enough, documents that have
-:class:`~mongoengine.ReferenceField` objects or
-:class:`~mongoengine.GenericReferenceField` objects at the top level are
+:class:`~mongoengine.fields.ReferenceField` objects or
+:class:`~mongoengine.fields.GenericReferenceField` objects at the top level are
 expensive as the number of queries to MongoDB can quickly rise.
 
 To limit the number of queries use
@@ -392,6 +457,7 @@ You can also turn off all dereferencing for a fixed period by using the
 
 Advanced queries
 ================
+
 Sometimes calling a :class:`~mongoengine.queryset.QuerySet` object with keyword
 arguments can't fully express the query you want to use -- for example if you
 need to combine a number of constraints using *and* and *or*. This is made
@@ -409,6 +475,11 @@ calling it with keyword arguments::
 
     # Get top posts
     Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
+
+.. warning:: You have to use bitwise operators.  You cannot use ``or``, ``and``
+    to combine queries as ``Q(a=a) or Q(b=b)`` is not the same as
+    ``Q(a=a) | Q(b=b)``. As ``Q(a=a)`` equates to true ``Q(a=a) or Q(b=b)`` is
+    the same as ``Q(a=a)``.
 
 .. _guide-atomic-updates:
 
@@ -450,7 +521,7 @@ modifier comes before the field, not after it::
     >>> post.tags
     ['database', 'nosql']
 
-.. note ::
+.. note::
 
     In version 0.5 the :meth:`~mongoengine.Document.save` runs atomic updates
     on changed documents by tracking changes to that document.
@@ -466,7 +537,7 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     >>> post.tags
     ['database', 'mongodb']
 
-.. note ::
+.. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
     operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.
@@ -535,7 +606,7 @@ Javascript code. When accessing a field on a collection object, use
 square-bracket notation, and prefix the MongoEngine field name with a tilde.
 The field name that follows the tilde will be translated to the name used in
 the database. Note that when referring to fields on embedded documents,
-the name of the :class:`~mongoengine.EmbeddedDocumentField`, followed by a dot,
+the name of the :class:`~mongoengine.fields.EmbeddedDocumentField`, followed by a dot,
 should be used before the name of the field on the embedded document. The
 following example shows how the substitutions are made::
 

@@ -2,15 +2,17 @@ import operator
 import warnings
 import weakref
 
-from bson import DBRef, ObjectId
+from bson import DBRef, ObjectId, SON
+import pymongo
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
 
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
+import collections
 
-__all__ = ("BaseField", "ComplexBaseField", "ObjectIdField")
+__all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
 
 class BaseField(object):
@@ -35,15 +37,40 @@ class BaseField(object):
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, verbose_name=None,
                  help_text=None):
-        self.db_field = (db_field or name) if not primary_key else '_id'
-        if name:
-            msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
-            warnings.warn(msg, DeprecationWarning)
+        """
+        :param db_field: The database field to store this field in
+            (defaults to the name of the field)
+        :param name: Depreciated - use db_field
+        :param required: If the field is required. Whether it has to have a
+            value or not. Defaults to False.
+        :param default: (optional) The default value for this field if no value
+            has been set (or if the value has been unset).  It Can be a
+            callable.
+        :param unique: Is the field value unique or not.  Defaults to False.
+        :param unique_with: (optional) The other field this field should be
+            unique with.
+        :param primary_key: Mark this field as the primary key. Defaults to False.
+        :param validation: (optional) A callable to validate the value of the
+            field.  Generally this is deprecated in favour of the
+            `FIELD.validate` method
+        :param choices: (optional) The valid choices
+        :param verbose_name: (optional)  The verbose name for the field.
+            Designed to be human readable and is often used when generating
+            model forms from the document model.
+        :param help_text: (optional) The help text for this field and is often
+            used when generating model forms from the document model.
+        """
+        self.name = None # filled in by document
+        self.db_field = db_field
         self.required = required or primary_key
         self.default = default
         self.unique = bool(unique or unique_with)
         self.unique_with = unique_with
         self.primary_key = primary_key
+        if self.primary_key:
+            if self.db_field:
+                raise ValueError("Can't use primary_key in conjunction with db_field.")
+            self.db_field = '_id'
         self.validation = validation
         self.choices = choices
         self.verbose_name = verbose_name
@@ -58,36 +85,54 @@ class BaseField(object):
             BaseField.creation_counter += 1
 
     def __get__(self, instance, owner):
-        """Descriptor for retrieving a value from a field in a document. Do
-        any necessary conversion between Python and MongoDB types.
-        """
         if instance is None:
             # Document class being used rather than a document object
             return self
-        # Get value from document instance if available, if not use default
-        value = instance._data.get(self.name)
+        else:
+            name = self.name
+            data = instance._internal_data
+            if not name in data:
+                if instance._lazy and name != instance._meta['id_field']:
+                    # We need to fetch the doc from the database.
+                    instance.reload()
+                    # Reloading changes our internal data pointer.
+                    data = instance._internal_data
+                db_field = instance._db_field_map.get(name, name)
+                try:
+                    db_value = instance._db_data[db_field]
+                except (TypeError, KeyError):
+                    value = self.default() if isinstance(self.default, collections.Callable) else self.default
+                else:
+                    value = self.to_python(db_value)
 
-        if value is None:
-            value = self.default
-            # Allow callable default values
-            if callable(value):
-                value = value()
+                if hasattr(self, 'value_for_instance'):
+                    value = self.value_for_instance(value, instance)
+                data[name] = value
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument) and value._instance is None:
-            value._instance = weakref.proxy(instance)
-        return value
+            return data[name]
 
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        changed = False
-        if (self.name not in instance._data or
-           instance._data[self.name] != value):
-            changed = True
-            instance._data[self.name] = value
-        if changed and instance._initialised:
-            instance._mark_as_changed(self.name)
+
+        if instance._lazy:
+            # Fetch the from the database before we assign to a lazy object.
+            instance.reload()
+
+        name = self.name
+
+        value = self.from_python(value)
+        if hasattr(self, 'value_for_instance'):
+            value = self.value_for_instance(value, instance)
+        try:
+            has_changed = name not in instance._internal_data or instance._internal_data[name] != value
+        except: # Values can't be compared eg: naive and tz datetimes
+            has_changed = True
+
+        if has_changed:
+            instance._mark_as_changed(name)
+
+        instance._internal_data[name] = value
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
@@ -103,7 +148,15 @@ class BaseField(object):
     def to_mongo(self, value):
         """Convert a Python type to a MongoDB-compatible type.
         """
-        return self.to_python(value)
+        return value
+
+    def from_python(self, value):
+        """Convert a raw Python value (in an assignment) to the internal
+        Python representation.
+        """
+        if value == None:
+            return self.default() if isinstance(self.default, collections.Callable) else self.default
+        return value
 
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo.
@@ -127,16 +180,16 @@ class BaseField(object):
                 option_keys = [k for k, v in self.choices]
                 if value_to_check not in option_keys:
                     msg = ('Value must be %s of %s' %
-                           (err_msg, unicode(option_keys)))
+                           (err_msg, str(option_keys)))
                     self.error(msg)
             elif value_to_check not in self.choices:
                 msg = ('Value must be %s of %s' %
-                       (err_msg, unicode(self.choices)))
+                       (err_msg, str(self.choices)))
                 self.error(msg)
 
         # check validation argument
         if self.validation is not None:
-            if callable(self.validation):
+            if isinstance(self.validation, collections.Callable):
                 if not self.validation(value):
                     self.error('Value does not match custom validation method')
             else:
@@ -157,62 +210,13 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
-    __dereference = False
-
-    def __get__(self, instance, owner):
-        """Descriptor to automatically dereference references.
-        """
-        if instance is None:
-            # Document class being used rather than a document object
-            return self
-
-        ReferenceField = _import_class('ReferenceField')
-        GenericReferenceField = _import_class('GenericReferenceField')
-        dereference = (self._auto_dereference and
-                       (self.field is None or isinstance(self.field,
-                        (GenericReferenceField, ReferenceField))))
-
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
-        if not self.__dereference and instance._initialised and dereference:
-            instance._data[self.name] = self._dereference(
-                instance._data.get(self.name), max_depth=1, instance=instance,
-                name=self.name
-            )
-
-        value = super(ComplexBaseField, self).__get__(instance, owner)
-
-        # Convert lists / values so we can watch for any changes on them
-        if (isinstance(value, (list, tuple)) and
-            not isinstance(value, BaseList)):
-            value = BaseList(value, instance, self.name)
-            instance._data[self.name] = value
-        elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, instance, self.name)
-            instance._data[self.name] = value
-
-        if (self._auto_dereference and instance._initialised and
-            isinstance(value, (BaseList, BaseDict))
-            and not value._dereferenced):
-            value = self._dereference(
-                value, max_depth=1, instance=instance, name=self.name
-            )
-            value._dereferenced = True
-            instance._data[self.name] = value
-
-        return value
-
-    def __set__(self, instance, value):
-        """Descriptor for assigning a value to a field in a document.
-        """
-        instance._data[self.name] = value
-        instance._mark_as_changed(self.name)
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
         Document = _import_class('Document')
 
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, 'to_python'):
@@ -228,10 +232,10 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_python(item))
-                                for key, item in value.items()])
+                               for key, item in list(value.items())])
         else:
             value_dict = {}
-            for k, v in value.items():
+            for k, v in list(value.items()):
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -245,7 +249,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for k, v in sorted(list(value_dict.items()),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -256,7 +260,7 @@ class ComplexBaseField(BaseField):
         EmbeddedDocument = _import_class("EmbeddedDocument")
         GenericReferenceField = _import_class("GenericReferenceField")
 
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, 'to_mongo'):
@@ -279,10 +283,10 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_mongo(item))
-                                for key, item in value.iteritems()])
+                               for key, item in value.items()])
         else:
             value_dict = {}
-            for k, v in value.iteritems():
+            for k, v in value.items():
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -295,7 +299,7 @@ class ComplexBaseField(BaseField):
                     meta = getattr(v, '_meta', {})
                     allow_inheritance = (
                         meta.get('allow_inheritance', ALLOW_INHERITANCE)
-                        == True)
+                        is True)
                     if not allow_inheritance and not self.field:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
@@ -312,7 +316,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for k, v in sorted(list(value_dict.items()),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -322,15 +326,15 @@ class ComplexBaseField(BaseField):
         errors = {}
         if self.field:
             if hasattr(value, 'iteritems') or hasattr(value, 'items'):
-                sequence = value.iteritems()
+                sequence = iter(value.items())
             else:
                 sequence = enumerate(value)
             for k, v in sequence:
                 try:
                     self.field._validate(v)
-                except ValidationError, error:
+                except ValidationError as error:
                     errors[k] = error.errors or error
-                except (ValueError, AssertionError), error:
+                except (ValueError, AssertionError) as error:
                     errors[k] = error
 
             if errors:
@@ -359,30 +363,21 @@ class ComplexBaseField(BaseField):
 
     owner_document = property(_get_owner_document, _set_owner_document)
 
-    @property
-    def _dereference(self,):
-        if not self.__dereference:
-            DeReference = _import_class("DeReference")
-            self.__dereference = DeReference()  # Cached
-        return self.__dereference
-
 
 class ObjectIdField(BaseField):
     """A field wrapper around MongoDB's ObjectIds.
     """
 
     def to_python(self, value):
-        if not isinstance(value, ObjectId):
-            value = ObjectId(value)
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, ObjectId):
+        if value and not isinstance(value, ObjectId):
             try:
-                return ObjectId(unicode(value))
-            except Exception, e:
+                return ObjectId(str(value))
+            except Exception as e:
                 # e.message attribute has been deprecated since Python 2.6
-                self.error(unicode(e))
+                self.error(str(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -390,6 +385,103 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            ObjectId(unicode(value))
+            ObjectId(str(value))
         except:
             self.error('Invalid Object ID')
+
+
+class GeoJsonBaseField(BaseField):
+    """A geo json field storing a geojson style object.
+    .. versionadded:: 0.8
+    """
+
+    _geo_index = pymongo.GEOSPHERE
+    _type = "GeoBase"
+
+    def __init__(self, auto_index=True, *args, **kwargs):
+        """
+        :param auto_index: Automatically create a "2dsphere" index. Defaults
+            to `True`.
+        """
+        self._name = "%sField" % self._type
+        if not auto_index:
+            self._geo_index = False
+        super(GeoJsonBaseField, self).__init__(*args, **kwargs)
+
+    def validate(self, value):
+        """Validate the GeoJson object based on its type
+        """
+        if isinstance(value, dict):
+            if set(value.keys()) == set(['type', 'coordinates']):
+                if value['type'] != self._type:
+                    self.error('%s type must be "%s"' % (self._name, self._type))
+                return self.validate(value['coordinates'])
+            else:
+                self.error('%s can only accept a valid GeoJson dictionary'
+                           ' or lists of (x, y)' % self._name)
+                return
+        elif not isinstance(value, (list, tuple)):
+            self.error('%s can only accept lists of [x, y]' % self._name)
+            return
+
+        validate = getattr(self, "_validate_%s" % self._type.lower())
+        error = validate(value)
+        if error:
+            self.error(error)
+
+    def _validate_polygon(self, value):
+        if not isinstance(value, (list, tuple)):
+            return 'Polygons must contain list of linestrings'
+
+        # Quick and dirty validator
+        try:
+            value[0][0][0]
+        except:
+            return "Invalid Polygon must contain at least one valid linestring"
+
+        errors = []
+        for val in value:
+            error = self._validate_linestring(val, False)
+            if not error and val[0] != val[-1]:
+                error = 'LineStrings must start and end at the same point'
+            if error and error not in errors:
+                errors.append(error)
+        if errors:
+            return "Invalid Polygon:\n%s" % ", ".join(errors)
+
+    def _validate_linestring(self, value, top_level=True):
+        """Validates a linestring"""
+        if not isinstance(value, (list, tuple)):
+            return 'LineStrings must contain list of coordinate pairs'
+
+        # Quick and dirty validator
+        try:
+            value[0][0]
+        except:
+            return "Invalid LineString must contain at least one valid point"
+
+        errors = []
+        for val in value:
+            error = self._validate_point(val)
+            if error and error not in errors:
+                errors.append(error)
+        if errors:
+            if top_level:
+                return "Invalid LineString:\n%s" % ", ".join(errors)
+            else:
+                return "%s" % ", ".join(errors)
+
+    def _validate_point(self, value):
+        """Validate each set of coords"""
+        if not isinstance(value, (list, tuple)):
+            return 'Points must be a list of coordinate pairs'
+        elif not len(value) == 2:
+            return "Value (%s) must be a two-dimensional point" % repr(value)
+        elif (not isinstance(value[0], (float, int)) or
+              not isinstance(value[1], (float, int))):
+            return "Both values (%s) in point must be float or int" % repr(value)
+
+    def to_mongo(self, value):
+        if isinstance(value, dict):
+            return value
+        return SON([("type", self._type), ("coordinates", value)])

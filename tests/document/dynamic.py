@@ -8,6 +8,7 @@ from mongoengine.connection import get_db
 __all__ = ("DynamicTest", )
 
 
+@unittest.skip("DynamicDocument not implemented")
 class DynamicTest(unittest.TestCase):
 
     def setUp(self):
@@ -31,8 +32,9 @@ class DynamicTest(unittest.TestCase):
 
         self.assertEqual(p.to_mongo(), {"_cls": "Person", "name": "James",
                                         "age": 34})
-
+        self.assertEqual(list(p.to_mongo().keys()), ["_cls", "name", "age"])
         p.save()
+        self.assertEqual(list(p.to_mongo().keys()), ["_id", "_cls", "name", "age"])
 
         self.assertEqual(self.Person.objects.first().age, 34)
 

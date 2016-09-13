@@ -143,7 +143,7 @@ class InheritanceTest(unittest.TestCase):
 
         self.assertEqual(Animal._superclasses, ())
         self.assertEqual(Animal._subclasses, ('Animal', 'Animal.Fish',
-                                         'Animal.Fish.Pike'))
+                                              'Animal.Fish.Pike'))
 
         self.assertEqual(Fish._superclasses, ('Animal', ))
         self.assertEqual(Fish._subclasses, ('Animal.Fish', 'Animal.Fish.Pike'))
@@ -168,6 +168,61 @@ class InheritanceTest(unittest.TestCase):
         self.assertEqual(Employee._get_collection_name(),
                          Person._get_collection_name())
 
+    def test_inheritance_to_mongo_keys(self):
+        """Ensure that document may inherit fields from a superclass document.
+        """
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+            meta = {'allow_inheritance': True}
+
+        class Employee(Person):
+            salary = IntField()
+
+        self.assertEqual(['age', 'id', 'name', 'salary'],
+                         sorted(Employee._fields.keys()))
+        self.assertEqual(set(Person(name="Bob", age=35).to_mongo().keys()),
+                         set(['_cls', 'name', 'age']))
+        self.assertEqual(set(Employee(name="Bob", age=35, salary=0).to_mongo().keys()),
+                         set(['_cls', 'name', 'age', 'salary']))
+        self.assertEqual(Employee._get_collection_name(),
+                         Person._get_collection_name())
+
+    def test_indexes_and_multiple_inheritance(self):
+        """ Ensure that all of the indexes are created for a document with
+        multiple inheritance.
+        """
+
+        class A(Document):
+            a = StringField()
+
+            meta = {
+                'allow_inheritance': True,
+                'indexes': ['a']
+            }
+
+        class B(Document):
+            b = StringField()
+
+            meta = {
+                'allow_inheritance': True,
+                'indexes': ['b']
+            }
+
+        class C(A, B):
+            pass
+
+        A.drop_collection()
+        B.drop_collection()
+        C.drop_collection()
+
+        C.ensure_indexes()
+
+        self.assertEqual(
+            sorted([idx['key'] for idx in list(C._get_collection().index_information().values())]),
+            sorted([[('_cls', 1), ('b', 1)], [('_id', 1)], [('_cls', 1), ('a', 1)]])
+        )
 
     def test_polymorphic_queries(self):
         """Ensure that the correct subclasses are returned from a query
@@ -197,7 +252,6 @@ class InheritanceTest(unittest.TestCase):
         classes = [obj.__class__ for obj in Human.objects]
         self.assertEqual(classes, [Human])
 
-
     def test_allow_inheritance(self):
         """Ensure that inheritance may be disabled on simple classes and that
         _cls and _subclasses will not be used.
@@ -213,8 +267,8 @@ class InheritanceTest(unittest.TestCase):
         self.assertRaises(ValueError, create_dog_class)
 
         # Check that _cls etc aren't present on simple documents
-        dog = Animal(name='dog')
-        dog.save()
+        dog = Animal(name='dog').save()
+        self.assertEqual(list(dog.to_mongo().keys()), ['_id', 'name'])
 
         collection = self.db[Animal._get_collection_name()]
         obj = collection.find_one()
@@ -323,7 +377,7 @@ class InheritanceTest(unittest.TestCase):
             meta = {'abstract': True}
         class Human(Mammal): pass
 
-        for k, v in defaults.iteritems():
+        for k, v in defaults.items():
             for cls in [Animal, Fish, Guppy]:
                 self.assertEqual(cls._meta[k], v)
 

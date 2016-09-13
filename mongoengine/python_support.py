@@ -17,22 +17,22 @@ if PY3:
     txt_type   = str
 else:
     try:
-        from cStringIO import StringIO
+        from io import StringIO
     except ImportError:
-        from StringIO import StringIO
+        from io import StringIO
 
     # Conversion to binary only necessary in Python 3
     def b(s):
         return s
 
     bin_type = str
-    txt_type = unicode
+    txt_type = str
 
 str_types = (bin_type, txt_type)
 
 if PY25:
     def product(*args, **kwds):
-        pools = map(tuple, args) * kwds.get('repeat', 1)
+        pools = list(map(tuple, args)) * kwds.get('repeat', 1)
         result = [[]]
         for pool in pools:
             result = [x + [y] for x in result for y in pool]
@@ -52,10 +52,10 @@ def to_str_keys_recursive(d):
             if isinstance(val, (dict, list)):
                 to_str_keys_recursive(val)
     elif isinstance(d, dict):
-        for key, val in d.items():
+        for key, val in list(d.items()):
             if isinstance(val, (dict, list)):
                 to_str_keys_recursive(val)
-            if isinstance(key, unicode):
+            if isinstance(key, str):
                 d[str(key)] = d.pop(key)
     else:
         raise ValueError("non list/dict parameter not allowed")

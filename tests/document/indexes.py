@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import with_statement
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -73,7 +72,7 @@ class IndexesTest(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         self.assertEqual(len(info), 4)
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
@@ -105,7 +104,7 @@ class IndexesTest(unittest.TestCase):
         # the indices on -date and tags will both contain
         # _cls as first element in the key
         self.assertEqual(len(info), 4)
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
@@ -120,7 +119,7 @@ class IndexesTest(unittest.TestCase):
 
         ExtendedBlogPost.ensure_indexes()
         info = ExtendedBlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
@@ -198,10 +197,9 @@ class IndexesTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        # Indexes are lazy so use list() to perform query
-        list(Person.objects)
+        Person.ensure_indexes()
         info = Person.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         self.assertTrue([('rank.title', 1)] in info)
 
     def test_explicit_geo2d_index(self):
@@ -217,11 +215,11 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('location.point', '2d')]}],
-                        Place._meta['index_specs'])
+                         Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         self.assertTrue([('location.point', '2d')] in info)
 
     def test_explicit_geo2d_index_embedded(self):
@@ -231,8 +229,7 @@ class IndexesTest(unittest.TestCase):
             location = DictField()
 
         class Place(Document):
-            current = DictField(
-                    field=EmbeddedDocumentField('EmbeddedLocation'))
+            current = DictField(field=EmbeddedDocumentField('EmbeddedLocation'))
             meta = {
                 'allow_inheritance': True,
                 'indexes': [
@@ -241,11 +238,11 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('current.location.point', '2d')]}],
-                        Place._meta['index_specs'])
+                         Place._meta['index_specs'])
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         self.assertTrue([('current.location.point', '2d')] in info)
 
     def test_dictionary_indexes(self):
@@ -264,10 +261,11 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual([{'fields': [('addDate', -1)], 'unique': True,
                           'sparse': True}],
-                        BlogPost._meta['index_specs'])
+                         BlogPost._meta['index_specs'])
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         # _id, '-date'
         self.assertEqual(len(info), 2)
@@ -278,7 +276,7 @@ class IndexesTest(unittest.TestCase):
         info = [(value['key'],
                  value.get('unique', False),
                  value.get('sparse', False))
-                for key, value in info.iteritems()]
+                for key, value in info.items()]
         self.assertTrue(([('addDate', -1)], True, True) in info)
 
         BlogPost.drop_collection()
@@ -301,6 +299,8 @@ class IndexesTest(unittest.TestCase):
             }
         Person.drop_collection()
 
+        Person.ensure_indexes()
+
         Person(name="test", user_guid='123').save()
 
         self.assertEqual(1, Person.objects.count())
@@ -314,19 +314,27 @@ class IndexesTest(unittest.TestCase):
         """
         class User(Document):
             meta = {
+                'allow_inheritance': True,
                 'indexes': ['user_guid'],
                 'auto_create_index': False
             }
             user_guid = StringField(required=True)
 
+        class MongoUser(User):
+            pass
+
         User.drop_collection()
 
-        u = User(user_guid='123')
-        u.save()
+        User(user_guid='123').save()
+        MongoUser(user_guid='123').save()
 
-        self.assertEqual(1, User.objects.count())
+        self.assertEqual(2, User.objects.count())
         info = User.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_id_'])
+        self.assertEqual(list(info.keys()), ['_id_'])
+
+        User.ensure_indexes()
+        info = User.objects._collection.index_information()
+        self.assertEqual(sorted(info.keys()), ['_cls_1_user_guid_1', '_id_'])
         User.drop_collection()
 
     def test_embedded_document_index(self):
@@ -347,6 +355,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         self.assertEqual(sorted(info.keys()), ['_id_', 'date.yr_-1'])
         BlogPost.drop_collection()
@@ -369,13 +378,13 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
         # we don't use _cls in with list fields by default
         self.assertEqual(sorted(info.keys()), ['_id_', 'tags.tag_1'])
 
         post1 = BlogPost(title="Embedded Indexes tests in place",
-                        tags=[Tag(name="about"), Tag(name="time")]
-                )
+                         tags=[Tag(name="about"), Tag(name="time")])
         post1.save()
         BlogPost.drop_collection()
 
@@ -392,57 +401,6 @@ class IndexesTest(unittest.TestCase):
         info = RecursiveDocument._get_collection().index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1', '_id_'])
 
-    def test_geo_indexes_recursion(self):
-
-        class Location(Document):
-            name = StringField()
-            location = GeoPointField()
-
-        class Parent(Document):
-            name = StringField()
-            location = ReferenceField(Location, dbref=False)
-
-        Location.drop_collection()
-        Parent.drop_collection()
-
-        list(Parent.objects)
-
-        collection = Parent._get_collection()
-        info = collection.index_information()
-
-        self.assertFalse('location_2d' in info)
-
-        self.assertEqual(len(Parent._geo_indices()), 0)
-        self.assertEqual(len(Location._geo_indices()), 1)
-
-    def test_covered_index(self):
-        """Ensure that covered indexes can be used
-        """
-
-        class Test(Document):
-            a = IntField()
-
-            meta = {
-                'indexes': ['a'],
-                'allow_inheritance': False
-                }
-
-        Test.drop_collection()
-
-        obj = Test(a=1)
-        obj.save()
-
-        # Need to be explicit about covered indexes as mongoDB doesn't know if
-        # the documents returned might have more keys in that here.
-        query_plan = Test.objects(id=obj.id).exclude('a').explain()
-        self.assertFalse(query_plan['indexOnly'])
-
-        query_plan = Test.objects(id=obj.id).only('id').explain()
-        self.assertTrue(query_plan['indexOnly'])
-
-        query_plan = Test.objects(a=1).only('a').exclude('id').explain()
-        self.assertTrue(query_plan['indexOnly'])
-
     def test_index_on_id(self):
 
         class BlogPost(Document):
@@ -458,6 +416,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         indexes = BlogPost.objects._collection.index_information()
         self.assertEqual(indexes['categories_1__id_1']['key'],
                                  [('categories', 1), ('_id', 1)])
@@ -474,8 +433,8 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        for i in xrange(0, 10):
-            tags = [("tag %i" % n) for n in xrange(0, i % 2)]
+        for i in range(0, 10):
+            tags = [("tag %i" % n) for n in range(0, i % 2)]
             BlogPost(tags=tags).save()
 
         self.assertEqual(BlogPost.objects.count(), 10)
@@ -484,13 +443,16 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
 
-        def invalid_index():
-            BlogPost.objects.hint('tags')
-        self.assertRaises(TypeError, invalid_index)
+        if pymongo.version >= '2.8':
+            self.assertEqual(BlogPost.objects.hint('tags').count(), 10)
+        else:
+            def invalid_index():
+                BlogPost.objects.hint('tags')
+            self.assertRaises(TypeError, invalid_index)
 
         def invalid_index_2():
             return BlogPost.objects.hint(('tags', 1))
-        self.assertRaises(TypeError, invalid_index_2)
+        self.assertRaises(Exception, invalid_index_2)
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
@@ -500,6 +462,7 @@ class IndexesTest(unittest.TestCase):
             slug = StringField(unique=True)
 
         BlogPost.drop_collection()
+        BlogPost.ensure_indexes()
 
         post1 = BlogPost(title='test1', slug='test')
         post1.save()
@@ -523,6 +486,7 @@ class IndexesTest(unittest.TestCase):
             slug = StringField(unique_with='date.year')
 
         BlogPost.drop_collection()
+        BlogPost.ensure_indexes()
 
         post1 = BlogPost(title='test1', date=Date(year=2009), slug='test')
         post1.save()
@@ -550,6 +514,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        BlogPost.ensure_indexes()
         post1 = BlogPost(title='test1',
                          sub=SubDocument(year=2009, slug="test"))
         post1.save()
@@ -579,6 +544,7 @@ class IndexesTest(unittest.TestCase):
             sub = EmbeddedDocumentField(SubDocument)
 
         BlogPost.drop_collection()
+        BlogPost.ensure_indexes()
 
         post1 = BlogPost(title='test1',
                          sub=SubDocument(year=2009, slug="test"))
@@ -621,11 +587,10 @@ class IndexesTest(unittest.TestCase):
         if version_array[0] < 2 and version_array[1] < 2:
             raise SkipTest('MongoDB needs to be 2.2 or higher for this test')
 
-        # Indexes are lazy so use list() to perform query
-        list(Log.objects)
+        Log.ensure_indexes()
         info = Log.objects._collection.index_information()
         self.assertEqual(3600,
-                info['created_1']['expireAfterSeconds'])
+                         info['created_1']['expireAfterSeconds'])
 
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
@@ -639,6 +604,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         Customer.drop_collection()
+        Customer.ensure_indexes()
         cust = Customer(cust_id=1)
         cust.save()
 
@@ -650,6 +616,7 @@ class IndexesTest(unittest.TestCase):
             pass
         Customer.drop_collection()
 
+    @unittest.skip("behavior differs")
     def test_unique_and_primary(self):
         """If you set a field as primary, then unexpected behaviour can occur.
         You won't create a duplicate but you will update an existing document.
@@ -687,8 +654,9 @@ class IndexesTest(unittest.TestCase):
         except UnboundLocalError:
             self.fail('Unbound local error at index + pk definition')
 
+        BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         index_item = [('_id', 1), ('comments.comment_id', 1)]
         self.assertTrue(index_item in info)
 
@@ -725,6 +693,61 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
                          report.to_mongo())
         self.assertEqual(report, Report.objects.get(pk=my_key))
+
+    def test_index_dont_send_cls_option(self):
+        """
+        Ensure that 'cls' option is not sent through ensureIndex. We shouldn't
+        send internal MongoEngine arguments that are not a part of the index
+        spec.
+
+        This is directly related to the fact that MongoDB doesn't validate the
+        options that are passed to ensureIndex. For more details, see:
+        https://jira.mongodb.org/browse/SERVER-769
+        """
+        class TestDoc(Document):
+            txt = StringField()
+
+            meta = {
+                'allow_inheritance': True,
+                'indexes': [
+                    { 'fields': ('txt',), 'cls': False }
+                ]
+            }
+
+        class TestChildDoc(TestDoc):
+            txt2 = StringField()
+
+            meta = {
+                'indexes': [
+                    { 'fields': ('txt2',), 'cls': False }
+                ]
+            }
+
+        TestDoc.drop_collection()
+        TestDoc.ensure_indexes()
+        TestChildDoc.ensure_indexes()
+
+        index_info = TestDoc._get_collection().index_information()
+        for key in index_info:
+            if 'ns' in index_info[key]:
+                del index_info[key]['ns']  # drop the namespace - we don't care about that here
+            del index_info[key]['v']  # drop the index version - we don't care about that here
+
+        self.assertEqual(index_info, {
+            'txt_1': {
+                'key': [('txt', 1)],
+            },
+            '_id_': {
+                'key': [('_id', 1)],
+            },
+            'txt2_1': {
+                'key': [('txt2', 1)],
+            },
+            '_cls_1': {
+                'key': [('_cls', 1)],
+            }
+        })
+
 
 if __name__ == '__main__':
     unittest.main()

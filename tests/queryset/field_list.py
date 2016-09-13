@@ -20,47 +20,47 @@ class QueryFieldListTest(unittest.TestCase):
 
     def test_include_include(self):
         q = QueryFieldList()
-        q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'a': True, 'b': True})
+        q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.ONLY, _only_called=True)
+        self.assertEqual(q.as_dict(), {'a': 1, 'b': 1})
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'b': True})
+        self.assertEqual(q.as_dict(), {'a': 1, 'b': 1, 'c': 1})
 
     def test_include_exclude(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'a': True, 'b': True})
+        self.assertEqual(q.as_dict(), {'a': 1, 'b': 1})
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {'a': True})
+        self.assertEqual(q.as_dict(), {'a': 1})
 
     def test_exclude_exclude(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {'a': False, 'b': False})
+        self.assertEqual(q.as_dict(), {'a': 0, 'b': 0})
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {'a': False, 'b': False, 'c': False})
+        self.assertEqual(q.as_dict(), {'a': 0, 'b': 0, 'c': 0})
 
     def test_exclude_include(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=['a', 'b'], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {'a': False, 'b': False})
+        self.assertEqual(q.as_dict(), {'a': 0, 'b': 0})
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'c': True})
+        self.assertEqual(q.as_dict(), {'c': 1})
 
     def test_always_include(self):
         q = QueryFieldList(always_include=['x', 'y'])
         q += QueryFieldList(fields=['a', 'b', 'x'], value=QueryFieldList.EXCLUDE)
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'c': True})
+        self.assertEqual(q.as_dict(), {'x': 1, 'y': 1, 'c': 1})
 
     def test_reset(self):
         q = QueryFieldList(always_include=['x', 'y'])
         q += QueryFieldList(fields=['a', 'b', 'x'], value=QueryFieldList.EXCLUDE)
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'c': True})
+        self.assertEqual(q.as_dict(), {'x': 1, 'y': 1, 'c': 1})
         q.reset()
         self.assertFalse(q)
         q += QueryFieldList(fields=['b', 'c'], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {'x': True, 'y': True, 'b': True, 'c': True})
+        self.assertEqual(q.as_dict(), {'x': 1, 'y': 1, 'b': 1, 'c': 1})
 
     def test_using_a_slice(self):
         q = QueryFieldList()
@@ -97,7 +97,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
 
         qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
         self.assertEqual(qs._loaded_fields.as_dict(),
-            {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1})
+                         {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1})
         qs = qs.only(*only)
         self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
         qs = qs.exclude(*exclude)
@@ -134,15 +134,15 @@ class OnlyExcludeAllTest(unittest.TestCase):
         qs = qs.only(*only)
         qs = qs.fields(slice__b=5)
         self.assertEqual(qs._loaded_fields.as_dict(),
-            {'b': {'$slice': 5}, 'c': 1})
+                         {'b': {'$slice': 5}, 'c': 1})
 
         qs = qs.fields(slice__c=[5, 1])
         self.assertEqual(qs._loaded_fields.as_dict(),
-            {'b': {'$slice': 5}, 'c': {'$slice': [5, 1]}})
+                         {'b': {'$slice': 5}, 'c': {'$slice': [5, 1]}})
 
         qs = qs.exclude('c')
         self.assertEqual(qs._loaded_fields.as_dict(),
-            {'b': {'$slice': 5}})
+                         {'b': {'$slice': 5}})
 
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
@@ -328,7 +328,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
 
         Numbers.drop_collection()
 
-        numbers = Numbers(n=[0,1,2,3,4,5,-5,-4,-3,-2,-1])
+        numbers = Numbers(n=[0, 1, 2, 3, 4, 5, -5, -4, -3, -2, -1])
         numbers.save()
 
         # first three
@@ -368,7 +368,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
         Numbers.drop_collection()
 
         numbers = Numbers()
-        numbers.embedded = EmbeddedNumber(n=[0,1,2,3,4,5,-5,-4,-3,-2,-1])
+        numbers.embedded = EmbeddedNumber(n=[0, 1, 2, 3, 4, 5, -5, -4, -3, -2, -1])
         numbers.save()
 
         # first three

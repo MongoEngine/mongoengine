@@ -5,7 +5,7 @@
 %define srcname mongoengine
 
 Name:           python-%{srcname}
-Version:        0.7.9
+Version:        0.8.2
 Release:        1%{?dist}
 Summary:        A Python Document-Object Mapper for working with MongoDB
 
@@ -51,4 +51,4 @@ rm -rf $RPM_BUILD_ROOT
 # %{python_sitearch}/*
 
 %changelog
-* See: http://readthedocs.org/docs/mongoengine-odm/en/latest/changelog.html
+* See: http://docs.mongoengine.org/en/latest/changelog.html

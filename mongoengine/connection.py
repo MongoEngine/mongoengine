@@ -1,5 +1,5 @@
 import pymongo
-from pymongo import Connection, ReplicaSetConnection, uri_parser
+from pymongo import MongoClient, MongoReplicaSetClient, uri_parser
 
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
@@ -112,19 +112,19 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings['slaves'] = slaves
                 conn_settings.pop('read_preference', None)
 
-        connection_class = Connection
+        connection_class = MongoClient
         if 'replicaSet' in conn_settings:
             conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
-            # Discard port since it can't be used on ReplicaSetConnection
+            # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
             # Discard replicaSet if not base string
-            if not isinstance(conn_settings['replicaSet'], basestring):
+            if not isinstance(conn_settings['replicaSet'], str):
                 conn_settings.pop('replicaSet', None)
-            connection_class = ReplicaSetConnection
+            connection_class = MongoReplicaSetClient
 
         try:
             _connections[alias] = connection_class(**conn_settings)
-        except Exception, e:
+        except Exception as e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]
 
@@ -137,11 +137,12 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     if alias not in _dbs:
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
-        _dbs[alias] = conn[conn_settings['name']]
+        db = conn[conn_settings['name']]
         # Authenticate if necessary
         if conn_settings['username'] and conn_settings['password']:
-            _dbs[alias].authenticate(conn_settings['username'],
-                                     conn_settings['password'])
+            db.authenticate(conn_settings['username'],
+                            conn_settings['password'])
+        _dbs[alias] = db
     return _dbs[alias]
 
 

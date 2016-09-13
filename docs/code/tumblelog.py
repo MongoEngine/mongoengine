@@ -45,7 +45,7 @@ print 'ALL POSTS'
 print
 for post in Post.objects:
     print post.title
-    print '=' * len(post.title)
+    print '=' * post.title.count()
 
     if isinstance(post, TextPost):
         print post.content

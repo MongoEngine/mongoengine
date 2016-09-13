@@ -132,7 +132,11 @@ html_theme_path = ['_themes']
 html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-#html_sidebars = {}
+html_sidebars = {
+    'index': ['globaltoc.html', 'searchbox.html'],
+    '**': ['localtoc.html', 'relations.html', 'searchbox.html']
+}
+
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -173,8 +177,8 @@ latex_paper_size = 'a4'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'MongoEngine.tex', u'MongoEngine Documentation',
-   u'Harry Marr', 'manual'),
+  ('index', 'MongoEngine.tex', 'MongoEngine Documentation',
+   'Ross Lawley', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -193,3 +197,6 @@ latex_documents = [
 
 # If false, no module index is generated.
 #latex_use_modindex = True
+
+autoclass_content = 'both'
+
