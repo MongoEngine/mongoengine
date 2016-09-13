@@ -13,6 +13,7 @@ from mongoengine.base.proxy import DocumentProxy
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
 from mongoengine.base.fields import ComplexBaseField
+import collections
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -39,14 +40,14 @@ class BaseDocument(object):
         _set(self, '_changed_fields', set())
         if values:
             pk = values.pop('pk', None)
-            for field in set(self._fields.keys()).intersection(values.keys()):
+            for field in set(self._fields.keys()).intersection(list(values.keys())):
                 setattr(self, field, values[field])
             if pk != None:
                 self.pk = pk
 
     def __delattr__(self, name):
         default = self._fields[name].default
-        value = default() if callable(default) else default
+        value = default() if isinstance(default, collections.Callable) else default
         setattr(self, name, value)
 
     @property
@@ -85,7 +86,7 @@ class BaseDocument(object):
             return False
 
     def __unicode__(self):
-        return u'%s object' % self.__class__.__name__
+        return '%s object' % self.__class__.__name__
 
     def __repr__(self):
         try:
@@ -100,7 +101,7 @@ class BaseDocument(object):
             if PY3:
                 return self.__unicode__()
             else:
-                return unicode(self).encode('utf-8')
+                return str(self).encode('utf-8')
         return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
@@ -155,12 +156,12 @@ class BaseDocument(object):
         if clean:
             try:
                 self.clean()
-            except ValidationError, error:
+            except ValidationError as error:
                 errors[NON_FIELD_ERRORS] = error
 
         # Get a list of tuples of field names and their current values
         fields = [(field, getattr(self, name))
-                  for name, field in self._fields.items()]
+                  for name, field in list(self._fields.items())]
         #if self._dynamic:
         #    fields += [(field, self._data.get(name))
         #               for name, field in self._dynamic_fields.items()]
@@ -176,9 +177,9 @@ class BaseDocument(object):
                         field._validate(value, clean=clean)
                     else:
                         field._validate(value)
-                except ValidationError, error:
+                except ValidationError as error:
                     errors[field.name] = error.errors or error
-                except (ValueError, AttributeError, AssertionError), error:
+                except (ValueError, AttributeError, AssertionError) as error:
                     errors[field.name] = error
             elif field.required and not getattr(field, '_auto_gen', False):
                 errors[field.name] = ValidationError('Field is required',
@@ -217,12 +218,12 @@ class BaseDocument(object):
             return cls(**value)
 
         data = {}
-        for k, v in value.items():
+        for k, v in list(value.items()):
             key = name if is_list else k
             data[k] = self.__expand_dynamic_values(key, v)
 
         if is_list:  # Convert back to a list
-            data_items = sorted(data.items(), key=operator.itemgetter(0))
+            data_items = sorted(list(data.items()), key=operator.itemgetter(0))
             value = [v for k, v in data_items]
         else:
             value = data
@@ -248,14 +249,14 @@ class BaseDocument(object):
         """
         changed_fields = set(self._changed_fields)
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
-        for field_name, field in self._fields.iteritems():
+        for field_name, field in self._fields.items():
             if field_name not in changed_fields:
                 if (isinstance(field, ComplexBaseField) and
                    isinstance(field.field, EmbeddedDocumentField)):
                     field_value = getattr(self, field_name, None)
                     if field_value:
                         for idx in (field_value if isinstance(field_value, dict)
-                                    else xrange(len(field_value))):
+                                    else range(len(field_value))):
                             changed_subfields = field_value[idx]._get_changed_fields()
                             if changed_subfields:
                                 changed_fields |= set(['.'.join([field_name, str(idx), subfield_name])
@@ -272,13 +273,13 @@ class BaseDocument(object):
     def _clear_changed_fields(self):
         _set(self, '_changed_fields', set())
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
-        for field_name, field in self._fields.iteritems():
+        for field_name, field in self._fields.items():
             if (isinstance(field, ComplexBaseField) and
                isinstance(field.field, EmbeddedDocumentField)):
                 field_value = getattr(self, field_name, None)
                 if field_value:
                     for idx in (field_value if isinstance(field_value, dict)
-                                else xrange(len(field_value))):
+                                else range(len(field_value))):
                         field_value[idx]._clear_changed_fields()
             elif isinstance(field, EmbeddedDocumentField):
                 field_value = getattr(self, field_name, None)
@@ -292,12 +293,12 @@ class BaseDocument(object):
 
         def get_db_value(field, value):
             if value is None:
-                value = field.default() if callable(field.default) else field.default
+                value = field.default() if isinstance(field.default, collections.Callable) else field.default
             return field.to_mongo(value)
 
 
         if full or not self._created:
-            fields = self._fields.iteritems()
+            fields = iter(self._fields.items())
             db_data = ((self._db_field_map.get(field_name, field_name),
                     get_db_value(field, getattr(self, field_name)))
                     for field_name, field in fields)
@@ -387,7 +388,7 @@ class BaseDocument(object):
     def _build_index_spec(cls, spec):
         """Build a PyMongo index spec from a MongoEngine index spec.
         """
-        if isinstance(spec, basestring):
+        if isinstance(spec, str):
             spec = {'fields': [spec]}
         elif isinstance(spec, (list, tuple)):
             spec = {'fields': list(spec)}
@@ -450,7 +451,7 @@ class BaseDocument(object):
         Find and set unique indexes
         """
         unique_indexes = []
-        for field_name, field in cls._fields.items():
+        for field_name, field in list(cls._fields.items()):
             sparse = False
             # Generate a list of indexes needed by uniqueness constraints
             if field.unique:
@@ -459,7 +460,7 @@ class BaseDocument(object):
 
                 # Add any unique_with fields to the back of the index spec
                 if field.unique_with:
-                    if isinstance(field.unique_with, basestring):
+                    if isinstance(field.unique_with, str):
                         field.unique_with = [field.unique_with]
 
                     # Convert unique_with field names to real field names
@@ -502,7 +503,7 @@ class BaseDocument(object):
 
         geo_field_types = tuple([_import_class(field) for field in geo_field_type_names])
 
-        for field in cls._fields.values():
+        for field in list(cls._fields.values()):
             if not isinstance(field, geo_field_types):
                 continue
             if hasattr(field, 'document_type'):
@@ -580,7 +581,7 @@ class BaseDocument(object):
 
     def __set_field_display(self):
         """Dynamically set the display value for a field with choices"""
-        for attr_name, field in self._fields.items():
+        for attr_name, field in list(self._fields.items()):
             if field.choices:
                 setattr(self,
                         'get_%s_display' % attr_name,

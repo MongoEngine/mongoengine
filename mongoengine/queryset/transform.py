@@ -55,14 +55,14 @@ def query(_doc_cls=None, _field_operation=False, **query):
             # Switch field names to proper names [set in Field(name='foo')]
             try:
                 fields = _doc_cls._lookup_field(parts)
-            except Exception, e:
+            except Exception as e:
                 raise InvalidQueryError(e)
             parts = []
 
             cleaned_fields = []
             for field in fields:
                 append_field = True
-                if isinstance(field, basestring):
+                if isinstance(field, str):
                     parts.append(field)
                     append_field = False
                 else:
@@ -76,9 +76,9 @@ def query(_doc_cls=None, _field_operation=False, **query):
             singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte', 'not']
             singular_ops += STRING_OPERATORS
             if op in singular_ops:
-                if isinstance(field, basestring):
+                if isinstance(field, str):
                     if (op in STRING_OPERATORS and
-                       isinstance(value, basestring)):
+                       isinstance(value, str)):
                         StringField = _import_class('StringField')
                         value = StringField.prepare_query_value(op, value)
                     else:
@@ -117,7 +117,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 if '$maxDistance' in mongo_query[key]:
                     value_dict = mongo_query[key]
                     value_son = SON()
-                    for k, v in value_dict.iteritems():
+                    for k, v in value_dict.items():
                         if k == '$maxDistance':
                             continue
                         value_son[k] = v
@@ -128,12 +128,12 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 merge_query[key].append(value)
 
     # The queryset has been filter in such a way we must manually merge
-    for k, v in merge_query.items():
+    for k, v in list(merge_query.items()):
         merge_query[k].append(mongo_query[k])
         del mongo_query[k]
         if isinstance(v, list):
             value = [{k: val} for val in v]
-            if '$and' in mongo_query.keys():
+            if '$and' in list(mongo_query.keys()):
                 mongo_query['$and'].append(value)
             else:
                 mongo_query['$and'] = value
@@ -145,7 +145,7 @@ def update(_doc_cls=None, **update):
     """Transform an update spec from Django-style format to Mongo format.
     """
     mongo_update = {}
-    for key, value in update.items():
+    for key, value in list(update.items()):
         if key == "__raw__":
             mongo_update.update(value)
             continue
@@ -176,14 +176,14 @@ def update(_doc_cls=None, **update):
             # Switch field names to proper names [set in Field(name='foo')]
             try:
                 fields = _doc_cls._lookup_field(parts)
-            except Exception, e:
+            except Exception as e:
                 raise InvalidQueryError(e)
             parts = []
 
             cleaned_fields = []
             for field in fields:
                 append_field = True
-                if isinstance(field, basestring):
+                if isinstance(field, str):
                     # Convert the S operator to $
                     if field == 'S':
                         field = '$'

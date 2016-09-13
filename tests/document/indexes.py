@@ -72,7 +72,7 @@ class IndexesTest(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         self.assertEqual(len(info), 4)
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
@@ -104,7 +104,7 @@ class IndexesTest(unittest.TestCase):
         # the indices on -date and tags will both contain
         # _cls as first element in the key
         self.assertEqual(len(info), 4)
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
@@ -119,7 +119,7 @@ class IndexesTest(unittest.TestCase):
 
         ExtendedBlogPost.ensure_indexes()
         info = ExtendedBlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         for expected in expected_specs:
             self.assertTrue(expected['fields'] in info)
 
@@ -199,7 +199,7 @@ class IndexesTest(unittest.TestCase):
 
         Person.ensure_indexes()
         info = Person.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         self.assertTrue([('rank.title', 1)] in info)
 
     def test_explicit_geo2d_index(self):
@@ -219,7 +219,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         self.assertTrue([('location.point', '2d')] in info)
 
     def test_explicit_geo2d_index_embedded(self):
@@ -242,7 +242,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         self.assertTrue([('current.location.point', '2d')] in info)
 
     def test_dictionary_indexes(self):
@@ -276,7 +276,7 @@ class IndexesTest(unittest.TestCase):
         info = [(value['key'],
                  value.get('unique', False),
                  value.get('sparse', False))
-                for key, value in info.iteritems()]
+                for key, value in info.items()]
         self.assertTrue(([('addDate', -1)], True, True) in info)
 
         BlogPost.drop_collection()
@@ -330,7 +330,7 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(2, User.objects.count())
         info = User.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_id_'])
+        self.assertEqual(list(info.keys()), ['_id_'])
 
         User.ensure_indexes()
         info = User.objects._collection.index_information()
@@ -433,8 +433,8 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        for i in xrange(0, 10):
-            tags = [("tag %i" % n) for n in xrange(0, i % 2)]
+        for i in range(0, 10):
+            tags = [("tag %i" % n) for n in range(0, i % 2)]
             BlogPost(tags=tags).save()
 
         self.assertEqual(BlogPost.objects.count(), 10)
@@ -656,7 +656,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.ensure_indexes()
         info = BlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in info.items()]
         index_item = [('_id', 1), ('comments.comment_id', 1)]
         self.assertTrue(index_item in info)
 

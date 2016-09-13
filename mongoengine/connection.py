@@ -118,13 +118,13 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
             # Discard replicaSet if not base string
-            if not isinstance(conn_settings['replicaSet'], basestring):
+            if not isinstance(conn_settings['replicaSet'], str):
                 conn_settings.pop('replicaSet', None)
             connection_class = MongoReplicaSetClient
 
         try:
             _connections[alias] = connection_class(**conn_settings)
-        except Exception, e:
+        except Exception as e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]
 

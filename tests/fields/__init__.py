@@ -1,3 +1,3 @@
-from fields import *
-from file_tests import *
-from geo import *
+from .fields import *
+from .file_tests import *
+from .geo import *

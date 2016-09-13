@@ -41,7 +41,7 @@ class LocalProxy(object):
             return '<%s unbound>' % self.__class__.__name__
         return repr(obj)
 
-    def __nonzero__(self):
+    def __bool__(self):
         try:
             return bool(self._get_current_object())
         except RuntimeError:
@@ -49,7 +49,7 @@ class LocalProxy(object):
 
     def __unicode__(self):
         try:
-            return unicode(self._get_current_object())
+            return str(self._get_current_object())
         except RuntimeError:
             return repr(self)
 
@@ -113,7 +113,7 @@ class LocalProxy(object):
     __invert__ = lambda x: ~(x._get_current_object())
     __complex__ = lambda x: complex(x._get_current_object())
     __int__ = lambda x: int(x._get_current_object())
-    __long__ = lambda x: long(x._get_current_object())
+    __long__ = lambda x: int(x._get_current_object())
     __float__ = lambda x: float(x._get_current_object())
     __oct__ = lambda x: oct(x._get_current_object())
     __hex__ = lambda x: hex(x._get_current_object())
@@ -147,7 +147,7 @@ class DocumentProxy(LocalProxy):
 
     # copy normally updates __dict__ which would result in errors
     def __setstate__(self, state):
-        for k, v in state[1].iteritems():
+        for k, v in state[1].items():
             object.__setattr__(self, k, v)
 
     def _get_collection_name(self):
@@ -188,5 +188,5 @@ class DocumentProxy(LocalProxy):
             object.__setattr__(self, '_DocumentProxy__document', document)
         return self.__document
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True

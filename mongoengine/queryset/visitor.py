@@ -73,7 +73,7 @@ class QueryCompilerVisitor(QNodeVisitor):
     def visit_combination(self, combination):
         operator = "$and"
         if combination.operation == combination.OR:
-            keys = set([key for q in combination.children for key in q.keys()])
+            keys = set([key for q in combination.children for key in list(q.keys())])
             if len(keys) == 1:
                 field = keys.pop()
                 if not field.startswith('$') and not any([isinstance(q[field], dict) for q in combination.children]):
@@ -162,7 +162,7 @@ class Q(QNode):
 
     def __init__(self, **query):
         # Support for werkzeug.local.LocalProxy
-        for key, value in query.items():
+        for key, value in list(query.items()):
             if hasattr(value, '_get_current_object'):
                 query[key] = value._get_current_object()
 

@@ -114,7 +114,7 @@ class no_dereference(object):
         GenericReferenceField = _import_class('GenericReferenceField')
         ComplexBaseField = _import_class('ComplexBaseField')
 
-        self.deref_fields = [k for k, v in self.cls._fields.iteritems()
+        self.deref_fields = [k for k, v in self.cls._fields.items()
                              if isinstance(v, (ReferenceField,
                                                GenericReferenceField,
                                                ComplexBaseField))]
@@ -218,7 +218,7 @@ class query_counter(object):
 
     def __repr__(self):
         """ repr query_counter as the number of queries. """
-        return u"%s" % self._get_count()
+        return "%s" % self._get_count()
 
     def _get_count(self):
         """ Get the number of queries. """

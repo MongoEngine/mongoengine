@@ -98,7 +98,7 @@ class InstanceTest(unittest.TestCase):
             def __unicode__(self):
                 return self.title
 
-        doc = Article(title=u'привет мир')
+        doc = Article(title='привет мир')
 
         self.assertEqual('<Article: привет мир>', repr(doc))
 
@@ -177,7 +177,7 @@ class InstanceTest(unittest.TestCase):
 
         list_stats = []
 
-        for i in xrange(10):
+        for i in range(10):
             s = Stats()
             s.save()
             list_stats.append(s)
@@ -306,7 +306,7 @@ class InstanceTest(unittest.TestCase):
         del(_document_registry['Place.NicePlace'])
 
         def query_without_importing_nice_place():
-            print Place.objects.all()
+            print(Place.objects.all())
         self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
     def test_document_registry_regressions(self):
@@ -545,7 +545,7 @@ class InstanceTest(unittest.TestCase):
 
         try:
             t.save()
-        except ValidationError, e:
+        except ValidationError as e:
             expect_msg = "Draft entries may not have a publication date."
             self.assertTrue(expect_msg in e.message)
             self.assertEqual(e.to_dict(), {'__all__': expect_msg})
@@ -584,7 +584,7 @@ class InstanceTest(unittest.TestCase):
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
         try:
             t.save()
-        except ValidationError, e:
+        except ValidationError as e:
             expect_msg = "Value of z != x + y"
             self.assertTrue(expect_msg in e.message)
             self.assertEqual(e.to_dict(), {'doc': {'__all__': expect_msg}})
@@ -2146,7 +2146,7 @@ class InstanceTest(unittest.TestCase):
                                    ]), "1")
 
         # $Where
-        self.assertEqual(u",".join([str(b) for b in Book.objects.filter(
+        self.assertEqual(",".join([str(b) for b in Book.objects.filter(
                                     __raw__={
                                         "$where": """
                                             function(){
@@ -2366,7 +2366,7 @@ class InstanceTest(unittest.TestCase):
         Person(name="Harry Potter").save()
 
         person = Person.objects.first()
-        self.assertTrue('id' in person.to_dict().keys())
+        self.assertTrue('id' in list(person.to_dict().keys()))
         self.assertEqual(person.to_dict().get('id'), person.id)
 
     def test_complex_nesting_document_and_embedded_document(self):
@@ -2385,7 +2385,7 @@ class InstanceTest(unittest.TestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in self.parameters.iteritems():
+                for parameter_name, parameter in self.parameters.items():
                     parameter.expand()
 
         class System(Document):
@@ -2393,7 +2393,7 @@ class InstanceTest(unittest.TestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in self.nodes.iteritems():
+                for node_name, node in self.nodes.items():
                     node.expand()
                     node.save(*args, **kwargs)
                 super(System, self).save(*args, **kwargs)

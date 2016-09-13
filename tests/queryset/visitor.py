@@ -188,7 +188,7 @@ class QTest(unittest.TestCase):
             x = IntField()
 
         TestDoc.drop_collection()
-        for i in xrange(1, 101):
+        for i in range(1, 101):
             t = TestDoc(x=i)
             t.save()
 

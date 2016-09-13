@@ -21,7 +21,7 @@ class GeoFieldTest(unittest.TestCase):
         try:
             Cls(loc=loc).validate()
             self.fail()
-        except ValidationError, e:
+        except ValidationError as e:
             self.assertEqual(expected, e.to_dict()['loc'])
 
     def test_geopoint_validation(self):

@@ -40,7 +40,7 @@ class ClassMethodsTest(unittest.TestCase):
                          sorted(self.Person._fields.keys()))
         self.assertEqual(["IntField", "ObjectIdField", "StringField"],
                         sorted([x.__class__.__name__ for x in
-                                self.Person._fields.values()]))
+                                list(self.Person._fields.values())]))
 
     def test_get_db(self):
         """Ensure that get_db returns the expected db.
@@ -126,7 +126,7 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(BlogPost.list_indexes(), [
             { 'key': [('_cls', 1), ('author', 1), ('tags', 1)] },
             { 'key': [('_cls', 1), ('author', 1), ('tags', 1), ('extra_text', 1)] },
-            { 'key': [(u'_id', 1)] },
+            { 'key': [('_id', 1)] },
             { 'key': [('_cls', 1)] },
         ])
 

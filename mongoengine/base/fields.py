@@ -10,6 +10,7 @@ from mongoengine.errors import ValidationError
 
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import BaseDict, BaseList
+import collections
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
@@ -100,7 +101,7 @@ class BaseField(object):
                 try:
                     db_value = instance._db_data[db_field]
                 except (TypeError, KeyError):
-                    value = self.default() if callable(self.default) else self.default
+                    value = self.default() if isinstance(self.default, collections.Callable) else self.default
                 else:
                     value = self.to_python(db_value)
 
@@ -154,7 +155,7 @@ class BaseField(object):
         Python representation.
         """
         if value == None:
-            return self.default() if callable(self.default) else self.default
+            return self.default() if isinstance(self.default, collections.Callable) else self.default
         return value
 
     def prepare_query_value(self, op, value):
@@ -179,16 +180,16 @@ class BaseField(object):
                 option_keys = [k for k, v in self.choices]
                 if value_to_check not in option_keys:
                     msg = ('Value must be %s of %s' %
-                           (err_msg, unicode(option_keys)))
+                           (err_msg, str(option_keys)))
                     self.error(msg)
             elif value_to_check not in self.choices:
                 msg = ('Value must be %s of %s' %
-                       (err_msg, unicode(self.choices)))
+                       (err_msg, str(self.choices)))
                 self.error(msg)
 
         # check validation argument
         if self.validation is not None:
-            if callable(self.validation):
+            if isinstance(self.validation, collections.Callable):
                 if not self.validation(value):
                     self.error('Value does not match custom validation method')
             else:
@@ -215,7 +216,7 @@ class ComplexBaseField(BaseField):
         """
         Document = _import_class('Document')
 
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, 'to_python'):
@@ -231,10 +232,10 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_python(item))
-                               for key, item in value.items()])
+                               for key, item in list(value.items())])
         else:
             value_dict = {}
-            for k, v in value.items():
+            for k, v in list(value.items()):
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -248,7 +249,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_python(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for k, v in sorted(list(value_dict.items()),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -259,7 +260,7 @@ class ComplexBaseField(BaseField):
         EmbeddedDocument = _import_class("EmbeddedDocument")
         GenericReferenceField = _import_class("GenericReferenceField")
 
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, 'to_mongo'):
@@ -282,10 +283,10 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = dict([(key, self.field.to_mongo(item))
-                               for key, item in value.iteritems()])
+                               for key, item in value.items()])
         else:
             value_dict = {}
-            for k, v in value.iteritems():
+            for k, v in value.items():
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -315,7 +316,7 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = self.to_mongo(v)
 
         if is_list:  # Convert back to a list
-            return [v for k, v in sorted(value_dict.items(),
+            return [v for k, v in sorted(list(value_dict.items()),
                                          key=operator.itemgetter(0))]
         return value_dict
 
@@ -325,15 +326,15 @@ class ComplexBaseField(BaseField):
         errors = {}
         if self.field:
             if hasattr(value, 'iteritems') or hasattr(value, 'items'):
-                sequence = value.iteritems()
+                sequence = iter(value.items())
             else:
                 sequence = enumerate(value)
             for k, v in sequence:
                 try:
                     self.field._validate(v)
-                except ValidationError, error:
+                except ValidationError as error:
                     errors[k] = error.errors or error
-                except (ValueError, AssertionError), error:
+                except (ValueError, AssertionError) as error:
                     errors[k] = error
 
             if errors:
@@ -373,10 +374,10 @@ class ObjectIdField(BaseField):
     def to_mongo(self, value):
         if value and not isinstance(value, ObjectId):
             try:
-                return ObjectId(unicode(value))
-            except Exception, e:
+                return ObjectId(str(value))
+            except Exception as e:
                 # e.message attribute has been deprecated since Python 2.6
-                self.error(unicode(e))
+                self.error(str(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -384,7 +385,7 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            ObjectId(unicode(value))
+            ObjectId(str(value))
         except:
             self.error('Invalid Object ID')
 
