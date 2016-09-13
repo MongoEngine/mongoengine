@@ -234,7 +234,7 @@ class Document(BaseDocument):
         if not spec:
             raise ValueError("Cannot do empty specs")
 
-        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
+        spec = cls._update_spec(spec, **kwargs)
 
         # pymongo's bulk operation support is based on chaining
         if upsert:
@@ -476,7 +476,7 @@ class Document(BaseDocument):
         return new_hint_doc
 
     @classmethod
-    def _update_spec(cls, spec, cursor_comment=False, comment=None, **kwargs):
+    def _update_spec(cls, spec, cursor_comment=True, comment=None, **kwargs):
         # handle queries with inheritance
         if cls._meta.get('allow_inheritance'):
             spec['_types'] = cls._class_name
@@ -738,7 +738,7 @@ class Document(BaseDocument):
             raise ValueError("Cannot have empty update and no remove flag")
 
         # handle queries with inheritance
-        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
+        spec = cls._update_spec(spec, **kwargs)
         if sort is None:
             sort = {}
         else:
@@ -767,8 +767,8 @@ class Document(BaseDocument):
         timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         kwargs['comment'] = comment
 
-        cur = cls.find_raw(spec, slave_ok=slave_ok, cursor_comment=True,
-            max_time_ms=max_time_ms, **kwargs)
+        cur = cls.find_raw(spec, slave_ok=slave_ok, max_time_ms=max_time_ms,
+            **kwargs)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
@@ -833,7 +833,7 @@ class Document(BaseDocument):
 
             raise ValueError("Cannot do empty specs")
 
-        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
+        spec = cls._update_spec(spec, **kwargs)
 
         with log_slow_event("update", cls._meta['collection'], spec):
             result = cls._pymongo().update(spec,
@@ -851,7 +851,7 @@ class Document(BaseDocument):
 
         # transform query
         spec = cls._transform_value(spec, cls)
-        spec = cls._update_spec(spec, cursor_comment=True, **kwargs)
+        spec = cls._update_spec(spec, **kwargs)
 
         with log_slow_event("remove", cls._meta['collection'], spec):
             result = cls._pymongo().remove(spec, **kwargs)
