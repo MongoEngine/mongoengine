@@ -1130,6 +1130,9 @@ class CachedReferenceField(BaseField):
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
             return {'_id': value.pk}
+        
+        if ObjectId.is_valid(value):
+            return {'_id': ObjectId(value)}
 
         raise NotImplementedError
 
