@@ -2,7 +2,7 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError, MongoComment, get_document, FieldStatus,
                   FieldNotLoadedError)
 from queryset import OperationError
-
+from cl.utils.greenletutil import CLGreenlet
 import contextlib
 import pymongo
 import time
@@ -493,6 +493,8 @@ class Document(BaseDocument):
                  comment=None, **kwargs):
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
+        set_comment = False
+
         if sort and skip > 100000:
             trace = "".join(traceback.format_stack())
             high_offset_logger.info({
@@ -537,6 +539,8 @@ class Document(BaseDocument):
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
+                set_comment = False
+
                 with log_slow_event('find', cls._meta['collection'], spec):
                     cur = cls._pymongo(allow_async).find(spec, fields,
                                           skip=skip, limit=limit, sort=sort,
@@ -559,16 +563,28 @@ class Document(BaseDocument):
 
                     if not comment:
                         comment = MongoComment.get_query_comment()
+
+                    current_greenlet = greenlet.getcurrent()
+                    if isinstance(current_greenlet, CLGreenlet) and \
+                        not hasattr(
+                            current_greenlet, '__mongoengine_comment__'):
+                        trace_comment = '%f:%s' % (time.time(), comment)
+                        current_greenlet.add_mongo_start(
+                            trace_comment, time.time())
+                        setattr(current_greenlet,
+                            '__mongoengine_comment__', trace_comment)
+                        set_comment = True
+
                     cur.comment(comment)
 
                     if find_one:
                         for result in cur.limit(-1):
-                            return result
-                        return None
+                            return result, set_comment
+                        return None, set_comment
                     else:
                         cur.batch_size(batch_size)
 
-                    return cur
+                    return cur, set_comment
                 break
             # delay & retry once on AutoReconnect error
             except pymongo.errors.AutoReconnect:
@@ -582,7 +598,7 @@ class Document(BaseDocument):
              slave_ok=False, excluded_fields=None, max_time_ms=None,
              timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
-            cur = cls.find_raw(spec, fields, skip, limit, sort,
+            cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
                                slave_ok=slave_ok,
                                excluded_fields=excluded_fields,
                                max_time_ms=max_time_ms,**kwargs)
@@ -616,35 +632,47 @@ class Document(BaseDocument):
                     raise
                 else:
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
+            finally:
+                current_greenlet = greenlet.getcurrent()
+                if set_comment and hasattr(
+                    current_greenlet,'__mongoengine_comment__'):
+                    delattr(current_greenlet,
+                        '__mongoengine_comment__')
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
                   slave_ok=False, timeout=True, batch_size=10000,
                   excluded_fields=None, max_time_ms=0, **kwargs):
         last_doc = None
-        cur = cls.find_raw(spec, fields, skip, limit,
+        cur, set_comment = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
                            batch_size=batch_size,
                            excluded_fields=excluded_fields,
                            max_time_ms=max_time_ms,**kwargs)
-
-        for doc in cls._iterate_cursor(cur):
-            try:
-                last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
-                yield last_doc
-            except pymongo.errors.ExecutionTimeout:
-                execution_timeout_logger.info({
-                    '_comment' : str(cur._Cursor__comment),
-                    '_max_time_ms' : cur._Cursor__max_time_ms,
-                 })
-                raise
+        try:
+            for doc in cls._iterate_cursor(cur):
+                try:
+                    last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
+                    yield last_doc
+                except pymongo.errors.ExecutionTimeout:
+                    execution_timeout_logger.info({
+                        '_comment' : str(cur._Cursor__comment),
+                        '_max_time_ms' : cur._Cursor__max_time_ms,
+                     })
+                    raise
+        finally:
+            current_greenlet = greenlet.getcurrent()
+            if set_comment and hasattr(
+                current_greenlet,'__mongoengine_comment__'):
+                delattr(current_greenlet,
+                    '__mongoengine_comment__')
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, timeout=True, excluded_fields=None,
                  max_time_ms=None, timeout_value=NO_TIMEOUT_DEFAULT,
                  **kwargs):
-        cur = cls.find_raw(spec, fields, skip, limit,
+        cur, set_comment = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
                            excluded_fields=excluded_fields,
                            max_time_ms=max_time_ms,**kwargs)
@@ -670,6 +698,12 @@ class Document(BaseDocument):
             if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                 return timeout_value
             raise
+        finally:
+            current_greenlet = greenlet.getcurrent()
+            if set_comment and hasattr(
+                current_greenlet,'__mongoengine_comment__'):
+                delattr(current_greenlet,
+                    '__mongoengine_comment__')
 
     @classmethod
     def _iterate_cursor(cls, cur):
@@ -697,7 +731,7 @@ class Document(BaseDocument):
     def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=False,
                  excluded_fields=None, max_time_ms=None,
                  timeout_value=NO_TIMEOUT_DEFAULT, **kwargs):
-        cur = cls.find_raw(spec, fields, skip=skip, sort=sort,
+        cur, set_comment = cls.find_raw(spec, fields, skip=skip, sort=sort,
                          slave_ok=slave_ok, find_one=True,
                          excluded_fields=excluded_fields,
                          max_time_ms=max_time_ms,**kwargs)
@@ -726,6 +760,12 @@ class Document(BaseDocument):
             if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                 return timeout_value
             raise
+        finally:
+            current_greenlet = greenlet.getcurrent()
+            if set_comment and hasattr(
+                current_greenlet,'__mongoengine_comment__'):
+                delattr(current_greenlet,
+                    '__mongoengine_comment__')
 
     @classmethod
     def find_and_modify(cls, spec, update=None, sort=None, remove=False,
@@ -767,35 +807,41 @@ class Document(BaseDocument):
         timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         kwargs['comment'] = comment
 
-        cur = cls.find_raw(spec, slave_ok=slave_ok, max_time_ms=max_time_ms,
-            **kwargs)
-
-        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
-            try:
-                return cur.count()
-            except pymongo.errors.AutoReconnect:
-                if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
+        cur, set_comment = cls.find_raw(spec, slave_ok=slave_ok,
+            max_time_ms=max_time_ms, **kwargs)
+        try:
+            for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+                try:
+                    return cur.count()
+                except pymongo.errors.AutoReconnect:
+                    if i == (cls.MAX_AUTO_RECONNECT_TRIES - 1):
+                        raise
+                    else:
+                        _sleep(cls.AUTO_RECONNECT_SLEEP)
+                except pymongo.errors.ExecutionTimeout:
+                    execution_timeout_logger.info({
+                        '_comment' : str(cur._Cursor__comment),
+                        '_max_time_ms' : cur._Cursor__max_time_ms,
+                    })
+                    if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
+                    max_time_ms < cls.MAX_TIME_MS):
+                        kwargs.pop('comment', None)
+                        return cls.count(
+                            spec, slave_ok=slave_ok,
+                            comment=comment,
+                            max_time_ms=cls.RETRY_MAX_TIME_MS,
+                            timeout_value=timeout_value,
+                            **kwargs
+                        )
+                    if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
+                        return timeout_value
                     raise
-                else:
-                    _sleep(cls.AUTO_RECONNECT_SLEEP)
-            except pymongo.errors.ExecutionTimeout:
-                execution_timeout_logger.info({
-                    '_comment' : str(cur._Cursor__comment),
-                    '_max_time_ms' : cur._Cursor__max_time_ms,
-                })
-                if cls.ALLOW_TIMEOUT_RETRY and (max_time_ms is None or \
-                max_time_ms < cls.MAX_TIME_MS):
-                    kwargs.pop('comment', None)
-                    return cls.count(
-                        spec, slave_ok=slave_ok,
-                        comment=comment,
-                        max_time_ms=cls.RETRY_MAX_TIME_MS,
-                        timeout_value=timeout_value,
-                        **kwargs
-                    )
-                if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
-                    return timeout_value
-                raise
+        finally:
+            current_greenlet = greenlet.getcurrent()
+            if set_comment and hasattr(
+                current_greenlet,'__mongoengine_comment__'):
+                delattr(current_greenlet,
+                    '__mongoengine_comment__')
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True, **kwargs):

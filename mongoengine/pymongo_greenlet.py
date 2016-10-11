@@ -391,6 +391,9 @@ class GreenletSemaphore(object):
 
             if self._value > 0:
                 self._value -= 1
+                if hasattr(current, '__mongoengine_comment__'):
+                    current.add_mongo_start(
+                        current.__mongoengine_comment__, time.time())
                 return True
 
             # if we timed out, just return False instead of retrying
@@ -400,6 +403,11 @@ class GreenletSemaphore(object):
     __enter__ = acquire
 
     def release(self):
+        current = greenlet.getcurrent()
+        if hasattr(current, '__mongoengine_comment__'):
+            current.add_mongo_end(
+                current.__mongoengine_comment__, time.time())
+
         self._value += 1
 
         if self._waiters:
