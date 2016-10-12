@@ -162,7 +162,7 @@ class URLField(StringField):
 
 
 class EmailField(StringField):
-    """A field that validates input as an E-Mail-Address.
+    """A field that validates input as an email address.
 
     .. versionadded:: 0.4
     """
@@ -178,7 +178,7 @@ class EmailField(StringField):
 
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
-            self.error('Invalid Mail-address: %s' % value)
+            self.error('Invalid email address: %s' % value)
         super(EmailField, self).validate(value)
 
 
