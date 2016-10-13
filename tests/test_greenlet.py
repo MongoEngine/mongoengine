@@ -495,7 +495,7 @@ class GreenletPeriodicExecutorTestCase(GreenletTestCase):
             self.ioloop.start()
 
         self.assertState(2)
-    
+
     @time_limited
     def test_executor_does_not_execute_if_immediately_closed(self):
         def target():

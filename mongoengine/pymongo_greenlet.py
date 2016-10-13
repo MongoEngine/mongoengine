@@ -633,10 +633,6 @@ class GreenletClient(object):
         assert not greenlet.getcurrent().parent, "must be run on root greenlet"
 
         def _inner_connect(io_loop, *args, **kwargs):
-            # add another callback to the IOLoop to stop it (executed
-            # after client connect finishes)
-            #ioloop.PeriodicCallback(_try_stop, 100, io_loop=io_loop).start()
-
             # asynchronously create a MongoClient using our IOLoop
             try:
                 kwargs['use_greenlets'] = False
@@ -648,6 +644,9 @@ class GreenletClient(object):
                 logging.exception("Failed to connect to MongoDB")
             finally:
                 io_loop.stop()
+
+        # clear cls.client so we can't return an old one
+        cls.client = None
 
         # do the connection
         io_loop = ioloop.IOLoop.instance()
