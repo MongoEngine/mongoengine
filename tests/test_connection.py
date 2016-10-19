@@ -88,6 +88,40 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection('testdb7')
         self.assertTrue(isinstance(conn, mongomock.MongoClient))
 
+    def test_connect_with_host_list(self):
+        """Ensure that the connect() method works when host is a list
+
+        Uses mongomock to test w/o needing multiple mongod/mongos processes
+        """
+        try:
+            import mongomock
+        except ImportError:
+            raise SkipTest('you need mongomock installed to run this testcase')
+
+        connect(host=['mongomock://localhost'])
+        conn = get_connection()
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host=['mongodb://localhost'], is_mock=True,  alias='testdb2')
+        conn = get_connection('testdb2')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host=['localhost'], is_mock=True,  alias='testdb3')
+        conn = get_connection('testdb3')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host=['mongomock://localhost:27017', 'mongomock://localhost:27018'], alias='testdb4')
+        conn = get_connection('testdb4')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host=['mongodb://localhost:27017', 'mongodb://localhost:27018'], is_mock=True,  alias='testdb5')
+        conn = get_connection('testdb5')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
+        connect(host=['localhost:27017', 'localhost:27018'], is_mock=True,  alias='testdb6')
+        conn = get_connection('testdb6')
+        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+
     def test_disconnect(self):
         """Ensure that the disconnect() method works properly
         """
