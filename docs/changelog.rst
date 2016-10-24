@@ -4,6 +4,7 @@ Changelog
 
 Changes in 0.10.7 - DEV
 =======================
+- Dropped Python 3.2 support #1390
 - Fixed the bug where dynamic doc has index inside a dict field #1278
 - Fixed not being able to specify `use_db_field=False` on `ListField(EmbeddedDocumentField)` instances
 - Fixed cascade delete mixing among collections #1224
