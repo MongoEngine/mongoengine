@@ -491,6 +491,22 @@ class Document(BaseDocument):
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
                  comment=None, **kwargs):
+        is_scatter_gather = False
+        try:
+            shard_keys = cls.__dict__['meta']['shard_key'].split(',')
+            shard_keys = [s.split(':')[0] for s in shard_keys]
+            spec_keys = set(spec.keys())
+            for sk in shard_keys:
+                if sk == 'id' or sk == '_id':
+                    if 'id' not in spec_keys and '_id' not in spec_keys:
+                        is_scatter_gather = True
+                        break;
+                else:
+                    if sk not in spec_keys:
+                        is_scatter_gather = True
+                        break;
+        except Exception:
+            pass
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
         set_comment = False
@@ -565,15 +581,18 @@ class Document(BaseDocument):
                         comment = MongoComment.get_query_comment()
 
                     current_greenlet = greenlet.getcurrent()
-                    if isinstance(current_greenlet, CLGreenlet) and \
-                        not hasattr(
-                            current_greenlet, '__mongoengine_comment__'):
-                        trace_comment = '%f:%s' % (time.time(), comment)
-                        current_greenlet.add_mongo_start(
-                            trace_comment, time.time())
+                    if isinstance(current_greenlet, CLGreenlet):
+                        if not hasattr(current_greenlet,
+                            '__mongoengine_comment__'):
+                            trace_comment = '%f:%s' % (time.time(), comment)
+                            current_greenlet.add_mongo_start(
+                                trace_comment, time.time())
+                            setattr(current_greenlet,
+                                '__mongoengine_comment__', trace_comment)
+                            set_comment = True
+
                         setattr(current_greenlet,
-                            '__mongoengine_comment__', trace_comment)
-                        set_comment = True
+                            '__scatter_gather__', is_scatter_gather)
 
                     cur.comment(comment)
 

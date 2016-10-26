@@ -405,8 +405,12 @@ class GreenletSemaphore(object):
     def release(self):
         current = greenlet.getcurrent()
         if hasattr(current, '__mongoengine_comment__'):
+            is_scatter_gather = False
+            if hasattr(current, '__scatter_gather__'):
+                is_scatter_gather = current.__scatter_gather__
             current.add_mongo_end(
-                current.__mongoengine_comment__, time.time())
+                current.__mongoengine_comment__, time.time(),
+                is_scatter_gather)
 
         self._value += 1
 
