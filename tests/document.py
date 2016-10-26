@@ -1022,13 +1022,13 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(person.age, restored.age)
 
     def test_find_raw_max_time_ms(self):
-        cur = Citizen.find_raw({}, max_time_ms=None, limit=1)
+        cur, _ = Citizen.find_raw({}, max_time_ms=None, limit=1)
         self.assertEquals(cur._Cursor__max_time_ms, Citizen.MAX_TIME_MS)
-        cur = Citizen.find_raw({}, max_time_ms=0, limit=1)
+        cur, _ = Citizen.find_raw({}, max_time_ms=0, limit=1)
         self.assertIsNone(cur._Cursor__max_time_ms)
-        cur = Citizen.find_raw({}, max_time_ms=-1, limit=1)
+        cur, _ = Citizen.find_raw({}, max_time_ms=-1, limit=1)
         self.assertIsNone(cur._Cursor__max_time_ms)
-        cur = Citizen.find_raw({}, max_time_ms=1000, limit=1)
+        cur, _ = Citizen.find_raw({}, max_time_ms=1000, limit=1)
         self.assertEquals(cur._Cursor__max_time_ms, 1000)
 
     def test_max_time_ms_find(self):
@@ -1039,7 +1039,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock = Mock()
         cur_mock.collection = col_mock
         cur_mock.next = MagicMock(side_effect=[doc_mock])
-        find_raw = MagicMock(return_value=cur_mock)
+        find_raw = MagicMock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         Citizen.find({}, max_time_ms=None)
@@ -1056,7 +1056,7 @@ class DocumentTest(unittest.TestCase):
     def test_max_time_ms_find_iter(self):
         cur_mock = MagicMock()
         cur_mock._iterate_cursor = MagicMock(side_effect=['a'])
-        find_raw = MagicMock(return_value=cur_mock)
+        find_raw = MagicMock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
         Citizen._from_augmented_son = MagicMock(return_value=None)
 
@@ -1073,7 +1073,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(d[1]['max_time_ms'],1000)
 
     def test_max_time_ms_find_one(self):
-        find_raw = MagicMock(return_value=None)
+        find_raw = MagicMock(return_value=(None, None))
         Citizen.find_raw = find_raw
 
         Citizen.find_one({}, max_time_ms=None)
@@ -1090,7 +1090,7 @@ class DocumentTest(unittest.TestCase):
     def test_max_time_ms_count(self):
         cur_mock = Mock()
         cur_mock.count = MagicMock(return_value=1)
-        find_raw = Mock(return_value=cur_mock)
+        find_raw = Mock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         Citizen.count({}, max_time_ms=None)
@@ -1107,7 +1107,7 @@ class DocumentTest(unittest.TestCase):
     def test_max_time_ms_distinct(self):
         cur_mock = Mock()
         cur_mock.distinct = MagicMock(return_value=1)
-        find_raw = Mock(return_value=cur_mock)
+        find_raw = Mock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         Citizen.distinct({}, '_id', max_time_ms=None)
@@ -1131,7 +1131,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock.collection = col_mock
         cur_mock.next = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = MagicMock(return_value=cur_mock)
+        find_raw = MagicMock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         self.assertEquals([],Citizen.find({}, timeout_value=[]))
@@ -1142,7 +1142,7 @@ class DocumentTest(unittest.TestCase):
             Citizen.find({})
 
     def test_timeout_value_find_one(self):
-        find_raw = MagicMock(return_value=MagicMock())
+        find_raw = MagicMock(return_value=(MagicMock(),Mock()))
         from_augmented_son = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
         Citizen._from_augmented_son = from_augmented_son
@@ -1159,7 +1159,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock = Mock()
         cur_mock.count = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=cur_mock)
+        find_raw = Mock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         self.assertEquals([],Citizen.count({}, timeout_value=[]))
@@ -1173,7 +1173,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock = Mock()
         cur_mock.distinct = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=cur_mock)
+        find_raw = Mock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         self.assertEquals([],Citizen.distinct({}, '_id', timeout_value=[]))
@@ -1192,7 +1192,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock.collection = col_mock
         cur_mock.next = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = MagicMock(return_value=cur_mock)
+        find_raw = MagicMock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         with self.assertRaises(pymongo.errors.ExecutionTimeout):
@@ -1213,7 +1213,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
 
     def test_timeout_retry_find_one(self):
-        find_raw = MagicMock(return_value=MagicMock())
+        find_raw = MagicMock(return_value=(MagicMock(),Mock()))
         from_augmented_son = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
         Citizen._from_augmented_son = from_augmented_son
@@ -1240,7 +1240,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock = Mock()
         cur_mock.count = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=cur_mock)
+        find_raw = Mock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         with self.assertRaises(pymongo.errors.ExecutionTimeout):
@@ -1264,7 +1264,7 @@ class DocumentTest(unittest.TestCase):
         cur_mock = Mock()
         cur_mock.distinct = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=cur_mock)
+        find_raw = Mock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
 
         with self.assertRaises(pymongo.errors.ExecutionTimeout):
