@@ -487,10 +487,12 @@ class Document(BaseDocument):
         return spec
 
     @classmethod
-    def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
-                 slave_ok=False, find_one=False, allow_async=True, hint=None,
-                 batch_size=10000, excluded_fields=None, max_time_ms=None,
-                 comment=None, **kwargs):
+    def is_scatter_gather(cls, spec):
+        '''
+            Determine if the query is a scatter gather. Allow the caller
+            to override this logic with is_scatter_gather since this method
+            isn't fullproof
+        '''
         is_scatter_gather = False
         try:
             shard_keys = cls.__dict__['meta']['shard_key'].split(',')
@@ -507,6 +509,51 @@ class Document(BaseDocument):
                         break;
         except Exception:
             pass
+
+        return is_scatter_gather
+
+    @classmethod
+    def attach_trace(cls, comment, is_scatter_gather):
+        set_comment = False
+        current_greenlet = greenlet.getcurrent()
+        if isinstance(current_greenlet, CLGreenlet):
+            if not hasattr(current_greenlet,
+                '__mongoengine_comment__'):
+                trace_comment = comment#'%f:%s' % (time.time(), comment)
+                current_greenlet.add_mongo_start(
+                    trace_comment, time.time())
+                setattr(current_greenlet,
+                    '__mongoengine_comment__', trace_comment)
+                set_comment = True
+
+            setattr(current_greenlet,
+                '__scatter_gather__', is_scatter_gather)
+
+        return set_comment
+
+    @classmethod
+    def cleanup_trace(cls, set_comment):
+        current = greenlet.getcurrent()
+        if hasattr(current, '__mongoengine_comment__'):
+            is_scatter_gather = False
+            if hasattr(current, '__scatter_gather__'):
+                is_scatter_gather = current.__scatter_gather__
+            current.add_mongo_end(
+                current.__mongoengine_comment__, time.time(),
+                is_scatter_gather)
+
+        if set_comment and hasattr(
+            current,'__mongoengine_comment__'):
+            delattr(current,
+                '__mongoengine_comment__')
+
+    @classmethod
+    def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
+                 slave_ok=False, find_one=False, allow_async=True, hint=None,
+                 batch_size=10000, excluded_fields=None, max_time_ms=None,
+                 comment=None, **kwargs):
+        is_scatter_gather = cls.is_scatter_gather(spec)
+
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
         set_comment = False
@@ -580,19 +627,7 @@ class Document(BaseDocument):
                     if not comment:
                         comment = MongoComment.get_query_comment()
 
-                    current_greenlet = greenlet.getcurrent()
-                    if isinstance(current_greenlet, CLGreenlet):
-                        if not hasattr(current_greenlet,
-                            '__mongoengine_comment__'):
-                            trace_comment = '%f:%s' % (time.time(), comment)
-                            current_greenlet.add_mongo_start(
-                                trace_comment, time.time())
-                            setattr(current_greenlet,
-                                '__mongoengine_comment__', trace_comment)
-                            set_comment = True
-
-                        setattr(current_greenlet,
-                            '__scatter_gather__', is_scatter_gather)
+                    set_comment = cls.attach_trace(comment, is_scatter_gather)
 
                     cur.comment(comment)
 
@@ -652,11 +687,7 @@ class Document(BaseDocument):
                 else:
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
             finally:
-                current_greenlet = greenlet.getcurrent()
-                if set_comment and hasattr(
-                    current_greenlet,'__mongoengine_comment__'):
-                    delattr(current_greenlet,
-                        '__mongoengine_comment__')
+                cls.cleanup_trace(set_comment)
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
@@ -680,11 +711,7 @@ class Document(BaseDocument):
                      })
                     raise
         finally:
-            current_greenlet = greenlet.getcurrent()
-            if set_comment and hasattr(
-                current_greenlet,'__mongoengine_comment__'):
-                delattr(current_greenlet,
-                    '__mongoengine_comment__')
+            cls.cleanup_trace(set_comment)
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
@@ -718,11 +745,7 @@ class Document(BaseDocument):
                 return timeout_value
             raise
         finally:
-            current_greenlet = greenlet.getcurrent()
-            if set_comment and hasattr(
-                current_greenlet,'__mongoengine_comment__'):
-                delattr(current_greenlet,
-                    '__mongoengine_comment__')
+            cls.cleanup_trace(set_comment)
 
     @classmethod
     def _iterate_cursor(cls, cur):
@@ -780,11 +803,7 @@ class Document(BaseDocument):
                 return timeout_value
             raise
         finally:
-            current_greenlet = greenlet.getcurrent()
-            if set_comment and hasattr(
-                current_greenlet,'__mongoengine_comment__'):
-                delattr(current_greenlet,
-                    '__mongoengine_comment__')
+            cls.cleanup_trace(set_comment)
 
     @classmethod
     def find_and_modify(cls, spec, update=None, sort=None, remove=False,
@@ -810,16 +829,24 @@ class Document(BaseDocument):
 
         fields = cls._transform_fields(fields, excluded_fields)
 
-        with log_slow_event("find_and_modify", cls._meta['collection'], spec):
-            result = cls._pymongo().find_and_modify(
-                spec, sort=sort, remove=remove, update=update, new=new,
-                fields=fields, upsert=upsert, **kwargs
-            )
+        is_scatter_gather = cls.is_scatter_gather(spec)
 
-        if result:
-            return cls._from_augmented_son(result, fields, excluded_fields)
-        else:
-            return None
+        set_comment = cls.attach_trace(
+            MongoComment.get_query_comment(), is_scatter_gather)
+
+        try:
+            with log_slow_event("find_and_modify", cls._meta['collection'], spec):
+                result = cls._pymongo().find_and_modify(
+                    spec, sort=sort, remove=remove, update=update, new=new,
+                    fields=fields, upsert=upsert, **kwargs
+                )
+
+            if result:
+                return cls._from_augmented_son(result, fields, excluded_fields)
+            else:
+                return None
+        finally:
+            cls.cleanup_trace(set_comment)
 
     @classmethod
     def count(cls, spec, slave_ok=False, comment=None, max_time_ms=None,
@@ -856,14 +883,11 @@ class Document(BaseDocument):
                         return timeout_value
                     raise
         finally:
-            current_greenlet = greenlet.getcurrent()
-            if set_comment and hasattr(
-                current_greenlet,'__mongoengine_comment__'):
-                delattr(current_greenlet,
-                    '__mongoengine_comment__')
+            cls.cleanup_trace(set_comment)
 
     @classmethod
-    def update(cls, spec, document, upsert=False, multi=True, **kwargs):
+    def update(cls, spec, document, upsert=False, multi=True,
+                **kwargs):
         # updates behave like set instead of find (None)... this is relevant for
         # setting list values since you're setting the value of the whole list,
         # not an element inside the list (like in find)
@@ -900,14 +924,21 @@ class Document(BaseDocument):
 
         spec = cls._update_spec(spec, **kwargs)
 
-        with log_slow_event("update", cls._meta['collection'], spec):
-            result = cls._pymongo().update(spec,
-                                           document,
-                                           upsert=upsert,
-                                           multi=multi,
-                                           w=cls._meta['write_concern'],
-                                           **kwargs)
-        return result
+        is_scatter_gather = cls.is_scatter_gather(spec)
+        set_comment = cls.attach_trace(
+            MongoComment.get_query_comment(), is_scatter_gather)
+
+        try:
+            with log_slow_event("update", cls._meta['collection'], spec):
+                result = cls._pymongo().update(spec,
+                                               document,
+                                               upsert=upsert,
+                                               multi=multi,
+                                               w=cls._meta['write_concern'],
+                                               **kwargs)
+            return result
+        finally:
+            cls.cleanup_trace(set_comment)
 
     @classmethod
     def remove(cls, spec, **kwargs):
@@ -917,13 +948,21 @@ class Document(BaseDocument):
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
+        
+        is_scatter_gather = cls.is_scatter_gather(spec)
+        set_comment = cls.attach_trace(
+            MongoComment.get_query_comment(), is_scatter_gather)
 
-        with log_slow_event("remove", cls._meta['collection'], spec):
-            result = cls._pymongo().remove(spec, **kwargs)
-        return result
+        try:
+            with log_slow_event("remove", cls._meta['collection'], spec):
+                result = cls._pymongo().remove(spec, **kwargs)
+            return result
+        finally:
+            cls.cleanup_trace(set_comment)
 
     def update_one(self, document, spec=None, upsert=False,
-                   criteria=None, comment=None, **kwargs):
+                   criteria=None, comment=None,
+                   **kwargs):
         ops = {}
 
         if not document:
@@ -1006,20 +1045,26 @@ class Document(BaseDocument):
             comment = MongoComment.get_query_comment()
         query_spec['$comment'] = comment
 
-        with log_slow_event("update_one", self._meta['collection'], spec):
-            result = self._pymongo().update(query_spec,
-                                            document,
-                                            upsert=upsert,
-                                            multi=False,
-                                            w=self._meta['write_concern'],
-                                            **kwargs)
+        is_scatter_gather = self.is_scatter_gather(
+            query_spec)
+        set_comment = self.attach_trace(comment, is_scatter_gather)
+        try:
+            with log_slow_event("update_one", self._meta['collection'], spec):
+                result = self._pymongo().update(query_spec,
+                                                document,
+                                                upsert=upsert,
+                                                multi=False,
+                                                w=self._meta['write_concern'],
+                                                **kwargs)
 
-        # do in-memory updates on the object if the query succeeded
-        if result['n'] == 1:
-            for field, new_val in ops.iteritems():
-                self[field] = new_val
+            # do in-memory updates on the object if the query succeeded
+            if result['n'] == 1:
+                for field, new_val in ops.iteritems():
+                    self[field] = new_val
 
-        return result
+            return result
+        finally:
+            self.cleanup_trace(set_comment)
 
     def set(self, **kwargs):
         return self.update_one({'$set': kwargs})
