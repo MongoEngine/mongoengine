@@ -1039,15 +1039,16 @@ class Document(BaseDocument):
         if spec:
             query_spec.update(spec)
 
-        query_spec = self._transform_value(query_spec, type(self))
-
         if not comment:
             comment = MongoComment.get_query_comment()
-        query_spec['$comment'] = comment
 
         is_scatter_gather = self.is_scatter_gather(
             query_spec)
         set_comment = self.attach_trace(comment, is_scatter_gather)
+
+        query_spec['$comment'] = comment
+        query_spec = self._transform_value(query_spec, type(self))
+
         try:
             with log_slow_event("update_one", self._meta['collection'], spec):
                 result = self._pymongo().update(query_spec,
