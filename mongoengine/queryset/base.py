@@ -153,7 +153,7 @@ class BaseQuerySet(object):
         self.__dict__.update(obj_dict)
 
         # forse load cursor
-        self._cursor
+        # self._cursor
 
 
     def __getitem__(self, key):

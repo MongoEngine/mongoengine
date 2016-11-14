@@ -70,7 +70,7 @@ class TestQuerysetPickable(unittest.TestCase):
 
         self.assertEqual(loaded.count(), 2)
         self.assertEqual(loaded.filter(name="Bob").first().age, 23)
-
+    
 
 
 
