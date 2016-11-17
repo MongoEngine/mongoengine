@@ -824,7 +824,9 @@ class MongoComment(object):
         'mongoengine/document.py',
         'cl/utils/mongo.py',
         'cl/utils/pipeline.py',
-        'cl/utils/iter.py'
+        'cl/utils/iter.py',
+        'cl/utils/deco.py',
+        'cl/utils/memcache.py'
     )
 
     @classmethod
