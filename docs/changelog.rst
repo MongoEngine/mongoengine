@@ -18,6 +18,7 @@ Changes in 0.10.7 - DEV
 - Fixed no_cursor_timeout error with pymongo 3.0+ #1304
 - Replaced map-reduce based QuerySet.sum/average with aggregation-based implementations #1336
 - Fixed support for `__` to escape field names that match operators names in `update` #1351
+- Add support for pickling QuerySet instances. #1397
 
 Changes in 0.10.6
 =================
