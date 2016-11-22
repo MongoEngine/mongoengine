@@ -826,7 +826,9 @@ class MongoComment(object):
         'cl/utils/pipeline.py',
         'cl/utils/iter.py',
         'cl/utils/deco.py',
-        'cl/utils/memcache.py'
+        'cl/utils/memcache.py',
+        'cl/utils/localmemcache.py',
+        'cl/utils/lfu_cache.py',
     )
 
     @classmethod
