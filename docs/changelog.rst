@@ -19,6 +19,7 @@ Changes in 0.10.7 - DEV
 - Replaced map-reduce based QuerySet.sum/average with aggregation-based implementations #1336
 - Fixed support for `__` to escape field names that match operators names in `update` #1351
 - Add support for pickling QuerySet instances. #1397
+- Fixed connecting to a list of hosts #1389
 
 Changes in 0.10.6
 =================
