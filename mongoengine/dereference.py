@@ -11,6 +11,8 @@ from connection import get_db
 from queryset import QuerySet
 from document import Document, EmbeddedDocument
 
+from .python_support import txt_type
+
 
 class DeReference(object):
     def __call__(self, items, max_depth=1, instance=None, name=None):
