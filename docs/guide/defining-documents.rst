@@ -214,9 +214,9 @@ document class as the first argument::
 
 Dictionary Fields
 -----------------
-Often, an embedded document may be used instead of a dictionary -- generally
-this is recommended as dictionaries don't support validation or custom field
-types. However, sometimes you will not know the structure of what you want to
+Often, an embedded document may be used instead of a dictionary – generally 
+embedded documents are recommended as dictionaries don’t support validation 
+or custom field types. However, sometimes you will not know the structure of what you want to
 store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate::
 
     class SurveyResponse(Document):
