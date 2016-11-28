@@ -250,7 +250,7 @@ class SignalTests(unittest.TestCase):
             a  = self.Author(name='Bill Shakespeare')
             a.save()
             self.get_signal_output(lambda: None) # eliminate signal output
-            a1 = self.Author.objects(name='Bill Shakespeare')[0]
+            self.Author.objects(name='Bill Shakespeare')[0]
 
         self.assertEqual(self.get_signal_output(create_author), [
             "pre_init signal, Author",

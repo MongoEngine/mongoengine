@@ -195,7 +195,7 @@ class ContextManagersTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(0, q)
 
-            for i in xrange(1, 51):
+            for _ in xrange(1, 51):
                 db.test.find({}).count()
 
             self.assertEqual(50, q)

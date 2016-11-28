@@ -80,8 +80,7 @@ class TestJson(unittest.TestCase):
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
             datetime_field = DateTimeField(default=datetime.now)
-            embedded_document_field = EmbeddedDocumentField(EmbeddedDoc,
-                                        default=lambda: EmbeddedDoc())
+            embedded_document_field = EmbeddedDocumentField(EmbeddedDoc, default=EmbeddedDoc)
             list_field = ListField(default=lambda: [1, 2, 3])
             dict_field = DictField(default=lambda: {"hello": "world"})
             objectid_field = ObjectIdField(default=ObjectId)
@@ -100,8 +99,7 @@ class TestJson(unittest.TestCase):
             geo_point_field = GeoPointField(default=lambda: [1, 2])
             sequence_field = SequenceField()
             uuid_field = UUIDField(default=uuid.uuid4)
-            generic_embedded_document_field = GenericEmbeddedDocumentField(
-                                        default=lambda: EmbeddedDoc())
+            generic_embedded_document_field = GenericEmbeddedDocumentField(default=EmbeddedDoc)
 
             def __eq__(self, other):
                 import json

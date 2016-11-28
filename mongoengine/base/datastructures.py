@@ -64,7 +64,7 @@ class BaseDict(dict):
         self = state
         return self
 
-    def clear(self, *args, **kwargs):
+    def clear(self):
         self._mark_as_changed()
         return super(BaseDict, self).clear()
 
@@ -72,7 +72,7 @@ class BaseDict(dict):
         self._mark_as_changed()
         return super(BaseDict, self).pop(*args, **kwargs)
 
-    def popitem(self, *args, **kwargs):
+    def popitem(self):
         self._mark_as_changed()
         return super(BaseDict, self).popitem()
 
@@ -188,7 +188,7 @@ class BaseList(list):
         self._mark_as_changed()
         return super(BaseList, self).remove(*args, **kwargs)
 
-    def reverse(self, *args, **kwargs):
+    def reverse(self):
         self._mark_as_changed()
         return super(BaseList, self).reverse()
 

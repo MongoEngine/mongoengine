@@ -90,15 +90,15 @@ class DeReference(object):
         if not items or depth >= self.max_depth:
             return reference_map
 
-        # Determine the iterator to use
-        if not hasattr(items, 'items'):
-            iterator = enumerate(items)
+        # Determine the iterable to use
+        if hasattr(items, 'values'):
+            iterable = items.itervalues()
         else:
-            iterator = items.iteritems()
+            iterable = items
 
         # Recursively find dbreferences
         depth += 1
-        for k, item in iterator:
+        for item in iterable:
             if isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
@@ -219,7 +219,7 @@ class DeReference(object):
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
             elif isinstance(v, (Document, EmbeddedDocument)):
-                for field_name, field in v._fields.iteritems():
+                for field_name in v._fields.iterkeys():
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, DBRef):
                         data[k]._data[field_name] = self.object_map.get(
@@ -240,5 +240,4 @@ class DeReference(object):
             if is_list:
                 return tuple(data) if as_tuple else list_type(data, instance, name)
             return BaseDict(data, instance, name)
-        depth += 1
         return data
