@@ -1,28 +1,29 @@
-import warnings
-import pymongo
 import re
+import warnings
 
-from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
+import pymongo
+from pymongo.read_preferences import ReadPreference
+
 from mongoengine import signals
-from mongoengine.common import _import_class
 from mongoengine.base import (
-    DocumentMetaclass,
-    TopLevelDocumentMetaclass,
-    BaseDocument,
-    BaseDict,
-    BaseList,
-    EmbeddedDocumentList,
     ALLOW_INHERITANCE,
+    BaseDict,
+    BaseDocument,
+    BaseList,
+    DocumentMetaclass,
+    EmbeddedDocumentList,
+    TopLevelDocumentMetaclass,
     get_document
 )
-from mongoengine.errors import (InvalidQueryError, InvalidDocumentError,
+from mongoengine.common import _import_class
+from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.context_managers import switch_collection, switch_db
+from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
-from mongoengine.queryset import (OperationError, NotUniqueError,
+from mongoengine.queryset import (NotUniqueError, OperationError,
                                   QuerySet, transform)
-from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
-from mongoengine.context_managers import switch_db, switch_collection
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
@@ -332,8 +333,10 @@ class Document(BaseDocument):
                     # Correct behaviour in 2.X and in 3.0.1+ versions
                     if not object_id and pymongo.version_tuple == (3, 0):
                         pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
-                        object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
-                                    self._qs.filter(pk=pk_as_mongo_obj).first().pk
+                        object_id = (
+                            self._qs.filter(pk=pk_as_mongo_obj).first() and
+                            self._qs.filter(pk=pk_as_mongo_obj).first().pk
+                        )  # TODO doesn't this make 2 queries?
             else:
                 object_id = doc['_id']
                 updates, removals = self._delta()
@@ -501,10 +504,10 @@ class Document(BaseDocument):
         signal_kwargs = signal_kwargs or {}
         signals.pre_delete.send(self.__class__, document=self, **signal_kwargs)
 
-        # Delete FileFields separately 
+        # Delete FileFields separately
         FileField = _import_class('FileField')
         for name, field in self._fields.iteritems():
-            if isinstance(field, FileField): 
+            if isinstance(field, FileField):
                 getattr(self, name).delete()
 
         try:
