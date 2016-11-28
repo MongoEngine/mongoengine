@@ -211,7 +211,7 @@ class query_counter(object):
 
     def __repr__(self):
         """ repr query_counter as the number of queries. """
-        return u"%s" % self._get_count()
+        return "%s" % self._get_count()
 
     def _get_count(self):
         """ Get the number of queries. """

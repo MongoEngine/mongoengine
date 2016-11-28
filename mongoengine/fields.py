@@ -347,8 +347,7 @@ class DecimalField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
-            if not isinstance(value, basestring):
-                value = unicode(value)
+            value = six.text_type(value)
             try:
                 value = decimal.Decimal(value)
             except Exception, exc:
@@ -399,7 +398,7 @@ class DateTimeField(BaseField):
     def validate(self, value):
         new_value = self.to_mongo(value)
         if not isinstance(new_value, (datetime.datetime, datetime.date)):
-            self.error(u'cannot parse date "%s"' % value)
+            self.error('cannot parse date "%s"' % value)
 
     def to_mongo(self, value):
         if value is None:
@@ -1863,8 +1862,7 @@ class UUIDField(BaseField):
         if not self._binary:
             original_value = value
             try:
-                if not isinstance(value, basestring):
-                    value = unicode(value)
+                value = six.text_type(value)
                 return uuid.UUID(value)
             except Exception:
                 return original_value
@@ -1884,8 +1882,7 @@ class UUIDField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, uuid.UUID):
-            if not isinstance(value, basestring):
-                value = str(value)
+            value = six.text_type(value)
             try:
                 uuid.UUID(value)
             except Exception, exc:

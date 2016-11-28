@@ -1,6 +1,7 @@
 import warnings
 import pymongo
 import re
+import six
 
 from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
@@ -391,16 +392,16 @@ class Document(BaseDocument):
                 kwargs['_refs'] = _refs
                 self.cascade_save(**kwargs)
         except pymongo.errors.DuplicateKeyError, err:
-            message = u'Tried to save duplicate unique keys (%s)'
-            raise NotUniqueError(message % unicode(err))
+            message = 'Tried to save duplicate unique keys (%s)'
+            raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', unicode(err)):
+            if re.match('^E1100[01] duplicate key', six.text_type(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
-                message = u'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % unicode(err))
-            raise OperationError(message % unicode(err))
+                message = 'Tried to save duplicate unique keys (%s)'
+                raise NotUniqueError(message % six.text_type(err))
+            raise OperationError(message % six.text_type(err))
         id_field = self._meta['id_field']
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
@@ -511,7 +512,7 @@ class Document(BaseDocument):
             self._qs.filter(
                 **self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
         except pymongo.errors.OperationFailure, err:
-            message = u'Could not delete document (%s)' % err.message
+            message = 'Could not delete document (%s)' % six.text_type(err.message)
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
@@ -861,11 +862,11 @@ class Document(BaseDocument):
                     indexes.append(index)
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
-        if [(u'_id', 1)] not in indexes:
-            indexes.append([(u'_id', 1)])
+        if [('_id', 1)] not in indexes:
+            indexes.append([('_id', 1)])
         if (cls._meta.get('index_cls', True) and
                 cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-            indexes.append([(u'_cls', 1)])
+            indexes.append([('_cls', 1)])
 
         return indexes
 
@@ -882,14 +883,14 @@ class Document(BaseDocument):
         extra = [index for index in existing if index not in required]
 
         # if { _cls: 1 } is missing, make sure it's *really* necessary
-        if [(u'_cls', 1)] in missing:
+        if [('_cls', 1)] in missing:
             cls_obsolete = False
             for index in existing:
                 if includes_cls(index) and index not in extra:
                     cls_obsolete = True
                     break
             if cls_obsolete:
-                missing.remove([(u'_cls', 1)])
+                missing.remove([('_cls', 1)])
 
         return {'missing': missing, 'extra': extra}
 
