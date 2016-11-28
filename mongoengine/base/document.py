@@ -1,4 +1,5 @@
 import copy
+from locale import locale_alias
 import operator
 import numbers
 from collections import Hashable
@@ -27,6 +28,13 @@ from mongoengine.base.fields import ComplexBaseField
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
+
+
+SUPPORTED_LANGUAGES = sorted(set([
+    locale_string.split("_")[0].lower()
+    for locale_string in locale_alias.values()
+    if locale_string != "C"
+]))
 
 
 class BaseDocument(object):
@@ -419,6 +427,16 @@ class BaseDocument(object):
         """
         use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
+
+    @property
+    def current_lang(self):
+        if not hasattr(self, '_current_lang'):
+            self._current_lang = 'en'
+        return self._current_lang
+
+    def set_lang(self, lang):
+        assert lang in SUPPORTED_LANGUAGES, 'Language %s is not supported' % lang
+        self._current_lang = lang
 
     @classmethod
     def from_json(cls, json_data, created=False):

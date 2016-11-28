@@ -3739,6 +3739,56 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(doc.some_long, six.integer_types))
 
 
+    def test_multilingual_field_simple_usecase(self):
+        class Person(Document):
+            name = MultiLingualField()
+
+        p = Person()
+        chinese_name = 'yaoyao'
+        english_name = 'almog'
+        p.name = english_name
+        assert p.name == english_name
+        assert p._data['name'] == {'en': english_name}
+
+        p.set_lang('zh')
+        p.name = chinese_name
+        assert p.name == chinese_name
+        assert 'zh' in p._data['name'] and p._data['name']['zh'] == chinese_name
+        assert 'en' in p._data['name'] and p._data['name']['en'] == english_name
+
+    def test_multilingual_set_lang(self):
+        class Person(Document):
+            name = MultiLingualField()
+
+        p = Person()
+        # assert that the default lang is en
+        self.assertEqual(p.current_lang, 'en')
+
+        # normal language change
+        p.set_lang('zh')
+        self.assertEqual(p.current_lang, 'zh')
+
+        # unsupported language assertion
+        self.assertRaises(Exception, p.set_lang, ('blang',))
+
+    def test_multilingual_to_mongo(self):
+        class Person(Document):
+            name = MultiLingualField()
+
+        p = Person()
+        names = {'en': 'almog', 'zh': 'yaoyao'}
+        needed_to_mongo_value = sorted([{'language': lang, 'value': val} for lang, val in names.items()])
+        assert sorted(Person.name.to_mongo(names)) == needed_to_mongo_value
+
+    def test_multilingual_to_python(self):
+        class Person(Document):
+            name = MultiLingualField()
+
+        p = Person()
+        names = [{'language': 'en', 'value': 'almog'}, {'language': 'zh', 'value': 'yaoyao'}]
+        self.assertEqual(Person.name.to_python(names), {'en': 'almog', 'zh': 'yaoyao'})
+
+
 class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
     @classmethod
