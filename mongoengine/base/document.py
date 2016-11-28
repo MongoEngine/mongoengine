@@ -1,28 +1,28 @@
 import copy
-import operator
 import numbers
+import operator
 from collections import Hashable
 from functools import partial
 
-import pymongo
-from bson import json_util, ObjectId
+from bson import ObjectId, json_util
 from bson.dbref import DBRef
 from bson.son import SON
+import pymongo
 
 from mongoengine import signals
-from mongoengine.common import _import_class
-from mongoengine.errors import (ValidationError, InvalidDocumentError,
-                                LookUpError, FieldDoesNotExist)
-from mongoengine.python_support import PY3, txt_type
-from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.base.common import ALLOW_INHERITANCE, get_document
 from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
     EmbeddedDocumentList,
-    StrictDict,
-    SemiStrictDict
+    SemiStrictDict,
+    StrictDict
 )
 from mongoengine.base.fields import ComplexBaseField
+from mongoengine.common import _import_class
+from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
+                                LookUpError, ValidationError)
+from mongoengine.python_support import PY3, txt_type
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -73,7 +73,7 @@ class BaseDocument(object):
         # if so raise an Exception.
         if not self._dynamic and (self._meta.get('strict', True) or _created):
             _undefined_fields = set(values.keys()) - set(
-              self._fields.keys() + ['id', 'pk', '_cls', '_text_score'])
+                self._fields.keys() + ['id', 'pk', '_cls', '_text_score'])
             if _undefined_fields:
                 msg = (
                     "The fields '{0}' do not exist on the document '{1}'"
@@ -310,7 +310,7 @@ class BaseDocument(object):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
-        
+
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
         root_fields = set([f.split('.')[0] for f in fields])
 
@@ -333,11 +333,11 @@ class BaseDocument(object):
                         i.replace(key, '') for i in fields
                         if i.startswith(key)]
 
-                    ex_vars['fields'] = embedded_fields 
+                    ex_vars['fields'] = embedded_fields
 
                 if 'use_db_field' in f_inputs:
                     ex_vars['use_db_field'] = use_db_field
-                     
+
                 value = field.to_mongo(value, **ex_vars)
 
             # Handle self generating fields
@@ -566,8 +566,10 @@ class BaseDocument(object):
                     continue
             if isinstance(field, ReferenceField):
                 continue
-            elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
-                  and db_field_name not in changed_fields):
+            elif (
+                isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)) and
+                db_field_name not in changed_fields
+            ):
                 # Find all embedded fields that have been changed
                 changed = data._get_changed_fields(inspected)
                 changed_fields += ["%s%s" % (key, k) for k in changed if k]
@@ -608,7 +610,7 @@ class BaseDocument(object):
                         break
                     elif isinstance(d, list) and p.lstrip('-').isdigit():
                         if p[0] == '-':
-                            p = str(len(d)+int(p))
+                            p = str(len(d) + int(p))
                         try:
                             d = d[int(p)]
                         except IndexError:
@@ -644,7 +646,7 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, list) and p.lstrip('-').isdigit():
                         if p[0] == '-':
-                            p = str(len(d)+int(p))
+                            p = str(len(d) + int(p))
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
@@ -775,8 +777,12 @@ class BaseDocument(object):
         # Check to see if we need to include _cls
         allow_inheritance = cls._meta.get('allow_inheritance',
                                           ALLOW_INHERITANCE)
-        include_cls = (allow_inheritance and not spec.get('sparse', False) and
-                       spec.get('cls',  True) and '_cls' not in spec['fields'])
+        include_cls = (
+            allow_inheritance and
+            not spec.get('sparse', False) and
+            spec.get('cls', True) and
+            '_cls' not in spec['fields']
+        )
 
         # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
         include_cls = include_cls and (spec.get('cls', False) or cls._meta.get('index_cls', True))

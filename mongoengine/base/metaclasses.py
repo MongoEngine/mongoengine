@@ -1,5 +1,7 @@
 import warnings
 
+from mongoengine.base.common import ALLOW_INHERITANCE, _document_registry
+from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
 from mongoengine.python_support import PY3
@@ -7,8 +9,6 @@ from mongoengine.queryset import (DO_NOTHING, DoesNotExist,
                                   MultipleObjectsReturned,
                                   QuerySetManager)
 
-from mongoengine.base.common import _document_registry, ALLOW_INHERITANCE
-from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 
 __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
 
@@ -17,6 +17,7 @@ class DocumentMetaclass(type):
     """Metaclass for all documents.
     """
 
+    # TODO lower complexity of this method
     def __new__(cls, name, bases, attrs):
         flattened_bases = cls._get_bases(bases)
         super_new = super(DocumentMetaclass, cls).__new__

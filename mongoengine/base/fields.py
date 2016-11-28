@@ -5,12 +5,12 @@ import weakref
 from bson import DBRef, ObjectId, SON
 import pymongo
 
-from mongoengine.common import _import_class
-from mongoengine.errors import ValidationError
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList
 )
+from mongoengine.common import _import_class
+from mongoengine.errors import ValidationError
 
 __all__ = ("BaseField", "ComplexBaseField",
            "ObjectIdField", "GeoJsonBaseField")
@@ -85,13 +85,13 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
-        
+
         # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)) & set(kwargs)
         if conflicts:
             raise TypeError("%s already has attribute(s): %s" % (
-                self.__class__.__name__, ', '.join(conflicts) ))
-        
+                self.__class__.__name__, ', '.join(conflicts)))
+
         # Assign metadata to the instance
         # This efficient method is available because no __slots__ are defined.
         self.__dict__.update(kwargs)
@@ -169,11 +169,11 @@ class BaseField(object):
         f_inputs = self.to_mongo.__code__.co_varnames
         ex_vars = {}
         if 'fields' in f_inputs:
-            ex_vars['fields'] = fields 
+            ex_vars['fields'] = fields
 
         if 'use_db_field' in f_inputs:
             ex_vars['use_db_field'] = use_db_field
-             
+
         return self.to_mongo(value, **ex_vars)
 
     def prepare_query_value(self, op, value):
@@ -205,7 +205,6 @@ class BaseField(object):
         # Choices which are types other than Documents
         elif value not in choice_list:
             self.error('Value must be one of %s' % unicode(choice_list))
-
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
