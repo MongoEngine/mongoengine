@@ -6,15 +6,15 @@ MongoEngine
 :Author: Harry Marr (http://github.com/hmarr)
 :Maintainer: Ross Lawley (http://github.com/rozza)
 
-.. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
-  :target: http://travis-ci.org/MongoEngine/mongoengine
+.. image:: https://travis-ci.org/MongoEngine/mongoengine.svg?branch=master
+  :target: https://travis-ci.org/MongoEngine/mongoengine
 
-.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master
-  :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
+.. image:: https://coveralls.io/repos/github/MongoEngine/mongoengine/badge.svg?branch=master
+  :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
 
-.. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.png
-   :target: https://landscape.io/github/MongoEngine/mongoengine/master
-   :alt: Code Health
+.. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.svg?style=flat
+  :target: https://landscape.io/github/MongoEngine/mongoengine/master
+  :alt: Code Health
 
 About
 =====
