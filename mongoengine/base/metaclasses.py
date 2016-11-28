@@ -1,3 +1,4 @@
+from abc import ABCMeta
 import warnings
 
 from mongoengine.common import _import_class
@@ -13,7 +14,7 @@ from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
 
 
-class DocumentMetaclass(type):
+class DocumentMetaclass(ABCMeta):
     """Metaclass for all documents.
     """
 
