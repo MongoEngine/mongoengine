@@ -14,8 +14,7 @@ __all__ = ('DocumentMetaclass', 'TopLevelDocumentMetaclass')
 
 
 class DocumentMetaclass(type):
-    """Metaclass for all documents.
-    """
+    """Metaclass for all documents."""
 
     # TODO lower complexity of this method
     def __new__(cls, name, bases, attrs):
@@ -163,7 +162,7 @@ class DocumentMetaclass(type):
         # copies __func__ into im_func and __self__ into im_self for
         # classmethod objects in Document derived classes.
         if PY3:
-            for key, val in new_class.__dict__.items():
+            for val in new_class.__dict__.values():
                 if isinstance(val, classmethod):
                     f = val.__get__(new_class)
                     if hasattr(f, '__func__') and not hasattr(f, 'im_func'):
