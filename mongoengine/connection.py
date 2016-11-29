@@ -1,5 +1,5 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
-from mongoengine.python_support import (IS_PYMONGO_3, IS_PYMONGO_27, str_types)
+from mongoengine.python_support import (IS_PYMONGO_27, IS_PYMONGO_3, str_types)
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
