@@ -161,6 +161,9 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                     connection = _connections[db_alias]
                     break
 
+                if is_mock:
+                    conn_settings['host'] = conn_settings['host'].replace('mongomock', 'mongodb')
+
             _connections[alias] = connection if connection else connection_class(**conn_settings)
         except Exception, e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
