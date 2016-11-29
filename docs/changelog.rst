@@ -11,7 +11,6 @@ Changes in 0.10.7
 - Dropped Python 3.2 support #1390
 - Fixed the bug where dynamic doc has index inside a dict field #1278
 - Fixed: ListField minus index assignment does not work #1128
-- Fixed not being able to specify `use_db_field=False` on `ListField(EmbeddedDocumentField)` instances
 - Fixed cascade delete mixing among collections #1224
 - Add `signal_kwargs` argument to `Document.save`, `Document.delete` and `BaseQuerySet.insert` to be passed to signals calls #1206
 - Raise `OperationError` when trying to do a `drop_collection` on document with no collection set.
@@ -28,7 +27,7 @@ Changes in 0.10.7
 - Fixed connecting to a list of hosts #1389
 - Fixed a bug where accessing broken references wouldn't raise a DoesNotExist error #1334
 - Fixed not being able to specify use_db_field=False on ListField(EmbeddedDocumentField) instances #1218
-- Improvements to the dictionary fields docs # 1383
+- Improvements to the dictionary fields docs #1383
 
 Changes in 0.10.6
 =================
