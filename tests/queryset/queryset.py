@@ -1,28 +1,23 @@
 # -*- coding: utf-8 -*-
 
-import sys
-sys.path[0:0] = [""]
-
+import datetime
 import unittest
 import uuid
+
+from bson import DBRef, ObjectId
 from nose.plugins.skip import SkipTest
-
-from datetime import datetime, timedelta
-
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
 
-from bson import ObjectId, DBRef
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
-from mongoengine.python_support import PY3, IS_PYMONGO_3
 from mongoengine.context_managers import query_counter, switch_db
-from mongoengine.queryset import (QuerySet, QuerySetManager,
-                                  MultipleObjectsReturned, DoesNotExist,
-                                  queryset_manager)
 from mongoengine.errors import InvalidQueryError
+from mongoengine.python_support import IS_PYMONGO_3, PY3
+from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
+                                  QuerySet, QuerySetManager, queryset_manager)
 
 __all__ = ("QuerySetTest",)
 
@@ -184,12 +179,14 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(self.Person.objects.count(), 55)
         self.assertEqual("Person object", "%s" % self.Person.objects[0])
-        self.assertEqual(
-            "[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[1:3])
-        self.assertEqual(
-            "[<Person: Person object>, <Person: Person object>]",  "%s" % self.Person.objects[51:53])
+        self.assertEqual("[<Person: Person object>, <Person: Person object>]",
+                         "%s" % self.Person.objects[1:3])
+        self.assertEqual("[<Person: Person object>, <Person: Person object>]",
+                         "%s" % self.Person.objects[51:53])
+
         # Test only after limit
         self.assertEqual(self.Person.objects().limit(2).only('name')[0].age, None)
+
         # Test only after skip
         self.assertEqual(self.Person.objects().skip(2).only('name')[0].age, None)
 
@@ -286,6 +283,9 @@ class QuerySetTest(unittest.TestCase):
 
         blog = Blog.objects(posts__0__comments__0__name='testa').get()
         self.assertEqual(blog, blog1)
+
+        blog = Blog.objects(posts__0__comments__0__name='testb').get()
+        self.assertEqual(blog, blog2)
 
         query = Blog.objects(posts__1__comments__1__name='testb')
         self.assertEqual(query.count(), 2)
@@ -633,39 +633,39 @@ class QuerySetTest(unittest.TestCase):
         self.assertRaises(ValidationError, Doc.objects().update, dt_f="datetime", upsert=True)
         self.assertRaises(ValidationError, Doc.objects().update, ed_f__str_f=1, upsert=True)
 
-    def test_update_related_models( self ):
-            class TestPerson( Document ):
+    def test_update_related_models(self):
+            class TestPerson(Document):
                 name = StringField()
 
-            class TestOrganization( Document ):
+            class TestOrganization(Document):
                 name = StringField()
-                owner = ReferenceField( TestPerson )
+                owner = ReferenceField(TestPerson)
 
             TestPerson.drop_collection()
             TestOrganization.drop_collection()
 
-            p = TestPerson( name='p1' )
+            p = TestPerson(name='p1')
             p.save()
-            o = TestOrganization( name='o1' )
+            o = TestOrganization(name='o1')
             o.save()
 
             o.owner = p
             p.name = 'p2'
 
-            self.assertEqual( o._get_changed_fields(), [ 'owner' ] )
-            self.assertEqual( p._get_changed_fields(), [ 'name' ] )
+            self.assertEqual(o._get_changed_fields(), ['owner'])
+            self.assertEqual(p._get_changed_fields(), ['name'])
 
             o.save()
 
-            self.assertEqual( o._get_changed_fields(), [] )
-            self.assertEqual( p._get_changed_fields(), [ 'name' ] ) # Fails; it's empty
+            self.assertEqual(o._get_changed_fields(), [])
+            self.assertEqual(p._get_changed_fields(), ['name'])  # Fails; it's empty
 
             # This will do NOTHING at all, even though we changed the name
             p.save()
 
             p.reload()
 
-            self.assertEqual( p.name, 'p2' ) # Fails; it's still `p1`
+            self.assertEqual(p.name, 'p2')  # Fails; it's still `p1`
 
     def test_upsert(self):
         self.Person.drop_collection()
@@ -693,7 +693,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual("Bobby", bobby.name)
         self.assertEqual(30, bobby.age)
         self.assertEqual(bob.id, bobby.id)
-
 
     def test_set_on_insert(self):
         self.Person.drop_collection()
@@ -1113,24 +1112,29 @@ class QuerySetTest(unittest.TestCase):
         blog_2.save()
         blog_3.save()
 
-        blog_post_1 = BlogPost(blog=blog_1, title="Blog Post #1",
-                               is_published=True,
-                               published_date=datetime(2010, 1, 5, 0, 0, 0))
-        blog_post_2 = BlogPost(blog=blog_2, title="Blog Post #2",
-                               is_published=True,
-                               published_date=datetime(2010, 1, 6, 0, 0, 0))
-        blog_post_3 = BlogPost(blog=blog_3, title="Blog Post #3",
-                               is_published=True,
-                               published_date=datetime(2010, 1, 7, 0, 0, 0))
-
-        blog_post_1.save()
-        blog_post_2.save()
-        blog_post_3.save()
+        BlogPost.objects.create(
+            blog=blog_1,
+            title="Blog Post #1",
+            is_published=True,
+            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
+        )
+        BlogPost.objects.create(
+            blog=blog_2,
+            title="Blog Post #2",
+            is_published=True,
+            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+        )
+        BlogPost.objects.create(
+            blog=blog_3,
+            title="Blog Post #3",
+            is_published=True,
+            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+        )
 
         # find all published blog posts before 2010-01-07
         published_posts = BlogPost.published()
         published_posts = published_posts.filter(
-            published_date__lt=datetime(2010, 1, 7, 0, 0, 0))
+            published_date__lt=datetime.datetime(2010, 1, 7, 0, 0, 0))
         self.assertEqual(published_posts.count(), 2)
 
         blog_posts = BlogPost.objects
@@ -1161,16 +1165,18 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        blog_post_1 = BlogPost(title="Blog Post #1",
-                               published_date=datetime(2010, 1, 5, 0, 0, 0))
-        blog_post_2 = BlogPost(title="Blog Post #2",
-                               published_date=datetime(2010, 1, 6, 0, 0, 0))
-        blog_post_3 = BlogPost(title="Blog Post #3",
-                               published_date=datetime(2010, 1, 7, 0, 0, 0))
-
-        blog_post_1.save()
-        blog_post_2.save()
-        blog_post_3.save()
+        blog_post_1 = BlogPost.objects.create(
+            title="Blog Post #1",
+            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
+        )
+        blog_post_2 = BlogPost.objects.create(
+            title="Blog Post #2",
+            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+        )
+        blog_post_3 = BlogPost.objects.create(
+            title="Blog Post #3",
+            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+        )
 
         # get the "first" BlogPost using default ordering
         # from BlogPost.meta.ordering
@@ -1219,7 +1225,7 @@ class QuerySetTest(unittest.TestCase):
             }
 
         BlogPost.objects.create(
-            title='whatever', published_date=datetime.utcnow())
+            title='whatever', published_date=datetime.datetime.utcnow())
 
         with db_ops_tracker() as q:
             BlogPost.objects.get(title='whatever')
@@ -2082,18 +2088,22 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        blog_post_3 = BlogPost(title="Blog Post #3",
-                               published_date=datetime(2010, 1, 6, 0, 0, 0))
-        blog_post_2 = BlogPost(title="Blog Post #2",
-                               published_date=datetime(2010, 1, 5, 0, 0, 0))
-        blog_post_4 = BlogPost(title="Blog Post #4",
-                               published_date=datetime(2010, 1, 7, 0, 0, 0))
-        blog_post_1 = BlogPost(title="Blog Post #1", published_date=None)
-
-        blog_post_3.save()
-        blog_post_1.save()
-        blog_post_4.save()
-        blog_post_2.save()
+        blog_post_3 = BlogPost.objects.create(
+            title="Blog Post #3",
+            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+        )
+        blog_post_2 = BlogPost.objects.create(
+            title="Blog Post #2",
+            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
+        )
+        blog_post_4 = BlogPost.objects.create(
+            title="Blog Post #4",
+            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+        )
+        blog_post_1 = BlogPost.objects.create(
+            title="Blog Post #1",
+            published_date=None
+        )
 
         expected = [blog_post_1, blog_post_2, blog_post_3, blog_post_4]
         self.assertSequence(BlogPost.objects.order_by('published_date'),
@@ -2112,16 +2122,18 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        blog_post_1 = BlogPost(title="A",
-                               published_date=datetime(2010, 1, 6, 0, 0, 0))
-        blog_post_2 = BlogPost(title="B",
-                               published_date=datetime(2010, 1, 6, 0, 0, 0))
-        blog_post_3 = BlogPost(title="C",
-                               published_date=datetime(2010, 1, 7, 0, 0, 0))
-
-        blog_post_2.save()
-        blog_post_3.save()
-        blog_post_1.save()
+        blog_post_1 = BlogPost.objects.create(
+            title="A",
+            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+        )
+        blog_post_2 = BlogPost.objects.create(
+            title="B",
+            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+        )
+        blog_post_3 = BlogPost.objects.create(
+            title="C",
+            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+        )
 
         qs = BlogPost.objects.order_by('published_date', 'title')
         expected = [blog_post_1, blog_post_2, blog_post_3]
@@ -2425,7 +2437,7 @@ class QuerySetTest(unittest.TestCase):
 
         Link.drop_collection()
 
-        now = datetime.utcnow()
+        now = datetime.datetime.utcnow()
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
@@ -2434,27 +2446,27 @@ class QuerySetTest(unittest.TestCase):
         Link(title="Google Buzz auto-followed a woman's abusive ex ...",
              up_votes=1079,
              down_votes=553,
-             submitted=now - timedelta(hours=4)).save()
+             submitted=now - datetime.timedelta(hours=4)).save()
         Link(title="We did it! Barbie is a computer engineer.",
              up_votes=481,
              down_votes=124,
-             submitted=now - timedelta(hours=2)).save()
+             submitted=now - datetime.timedelta(hours=2)).save()
         Link(title="This Is A Mosquito Getting Killed By A Laser",
              up_votes=1446,
              down_votes=530,
-             submitted=now - timedelta(hours=13)).save()
+             submitted=now - datetime.timedelta(hours=13)).save()
         Link(title="Arabic flashcards land physics student in jail.",
              up_votes=215,
              down_votes=105,
-             submitted=now - timedelta(hours=6)).save()
+             submitted=now - datetime.timedelta(hours=6)).save()
         Link(title="The Burger Lab: Presenting, the Flood Burger",
              up_votes=48,
              down_votes=17,
-             submitted=now - timedelta(hours=5)).save()
+             submitted=now - datetime.timedelta(hours=5)).save()
         Link(title="How to see polarization with the naked eye",
              up_votes=74,
              down_votes=13,
-             submitted=now - timedelta(hours=10)).save()
+             submitted=now - datetime.timedelta(hours=10)).save()
 
         map_f = """
             function() {
@@ -2504,7 +2516,7 @@ class QuerySetTest(unittest.TestCase):
 
         # provide the reddit epoch (used for ranking) as a variable available
         # to all phases of the map/reduce operation: map, reduce, and finalize.
-        reddit_epoch = mktime(datetime(2005, 12, 8, 7, 46, 43).timetuple())
+        reddit_epoch = mktime(datetime.datetime(2005, 12, 8, 7, 46, 43).timetuple())
         scope = {'reddit_epoch': reddit_epoch}
 
         # run a map/reduce operation across all links. ordering is set
@@ -3096,13 +3108,11 @@ class QuerySetTest(unittest.TestCase):
         mark_twain = Author(name="Mark Twain")
         john_tolkien = Author(name="John Ronald Reuel Tolkien")
 
-        book = Book(title="Tom Sawyer", authors=[mark_twain]).save()
-        book = Book(
-            title="The Lord of the Rings", authors=[john_tolkien]).save()
-        book = Book(
-            title="The Stories", authors=[mark_twain, john_tolkien]).save()
-        authors = Book.objects.distinct("authors")
+        Book.objects.create(title="Tom Sawyer", authors=[mark_twain])
+        Book.objects.create(title="The Lord of the Rings", authors=[john_tolkien])
+        Book.objects.create(title="The Stories", authors=[mark_twain, john_tolkien])
 
+        authors = Book.objects.distinct("authors")
         self.assertEqual(authors, [mark_twain, john_tolkien])
 
     def test_distinct_ListField_EmbeddedDocumentField_EmbeddedDocumentField(self):
@@ -3132,17 +3142,14 @@ class QuerySetTest(unittest.TestCase):
         mark_twain = Author(name="Mark Twain", country=scotland)
         john_tolkien = Author(name="John Ronald Reuel Tolkien", country=tibet)
 
-        book = Book(title="Tom Sawyer", authors=[mark_twain]).save()
-        book = Book(
-            title="The Lord of the Rings", authors=[john_tolkien]).save()
-        book = Book(
-            title="The Stories", authors=[mark_twain, john_tolkien]).save()
-        country_list = Book.objects.distinct("authors.country")
+        Book.objects.create(title="Tom Sawyer", authors=[mark_twain])
+        Book.objects.create(title="The Lord of the Rings", authors=[john_tolkien])
+        Book.objects.create(title="The Stories", authors=[mark_twain, john_tolkien])
 
+        country_list = Book.objects.distinct("authors.country")
         self.assertEqual(country_list, [scotland, tibet])
 
         continent_list = Book.objects.distinct("authors.country.continent")
-
         self.assertEqual(continent_list, [europe, asia])
 
     def test_distinct_ListField_ReferenceField(self):
@@ -3174,7 +3181,7 @@ class QuerySetTest(unittest.TestCase):
         class BlogPost(Document):
             tags = ListField(StringField())
             deleted = BooleanField(default=False)
-            date = DateTimeField(default=datetime.now)
+            date = DateTimeField(default=datetime.datetime.now)
 
             @queryset_manager
             def objects(cls, qryset):
@@ -3997,14 +4004,14 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(
             "A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
         if PY3:
-            self.assertEqual(
-                "['A1', 'A2']",  "%s" % self.Person.objects.order_by('age').scalar('name')[1:3])
-            self.assertEqual("['A51', 'A52']",  "%s" % self.Person.objects.order_by(
+            self.assertEqual("['A1', 'A2']", "%s" % self.Person.objects.order_by(
+                'age').scalar('name')[1:3])
+            self.assertEqual("['A51', 'A52']", "%s" % self.Person.objects.order_by(
                 'age').scalar('name')[51:53])
         else:
-            self.assertEqual("[u'A1', u'A2']",  "%s" % self.Person.objects.order_by(
+            self.assertEqual("[u'A1', u'A2']", "%s" % self.Person.objects.order_by(
                 'age').scalar('name')[1:3])
-            self.assertEqual("[u'A51', u'A52']",  "%s" % self.Person.objects.order_by(
+            self.assertEqual("[u'A51', u'A52']", "%s" % self.Person.objects.order_by(
                 'age').scalar('name')[51:53])
 
         # with_id and in_bulk
@@ -4013,12 +4020,12 @@ class QuerySetTest(unittest.TestCase):
                          self.Person.objects.scalar('name').with_id(person.id))
 
         pks = self.Person.objects.order_by('age').scalar('pk')[1:3]
+        names = self.Person.objects.scalar('name').in_bulk(list(pks)).values()
         if PY3:
-            self.assertEqual("['A1', 'A2']",  "%s" % sorted(
-                self.Person.objects.scalar('name').in_bulk(list(pks)).values()))
+            expected = "['A1', 'A2']"
         else:
-            self.assertEqual("[u'A1', u'A2']",  "%s" % sorted(
-                self.Person.objects.scalar('name').in_bulk(list(pks)).values()))
+            expected = "[u'A1', u'A2']"
+        self.assertEqual(expected, "%s" % sorted(names))
 
     def test_elem_match(self):
         class Foo(EmbeddedDocument):
@@ -4115,7 +4122,7 @@ class QuerySetTest(unittest.TestCase):
             txt = StringField()
 
             meta = {
-                'indexes': [ 'txt' ]
+                'indexes': ['txt']
             }
 
         Bar.drop_collection()
@@ -4130,49 +4137,49 @@ class QuerySetTest(unittest.TestCase):
 
         # read_preference as a kwarg
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._cursor._Cursor__read_preference,
-            ReadPreference.SECONDARY_PREFERRED)
+                         ReadPreference.SECONDARY_PREFERRED)
 
         # read_preference as a query set method
         bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._cursor._Cursor__read_preference,
-            ReadPreference.SECONDARY_PREFERRED)
+                         ReadPreference.SECONDARY_PREFERRED)
 
         # read_preference after skip
         bars = Bar.objects.skip(1) \
             .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._cursor._Cursor__read_preference,
-            ReadPreference.SECONDARY_PREFERRED)
+                         ReadPreference.SECONDARY_PREFERRED)
 
         # read_preference after limit
         bars = Bar.objects.limit(1) \
             .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._cursor._Cursor__read_preference,
-            ReadPreference.SECONDARY_PREFERRED)
+                         ReadPreference.SECONDARY_PREFERRED)
 
         # read_preference after order_by
         bars = Bar.objects.order_by('txt') \
             .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._cursor._Cursor__read_preference,
-            ReadPreference.SECONDARY_PREFERRED)
+                         ReadPreference.SECONDARY_PREFERRED)
 
         # read_preference after hint
         bars = Bar.objects.hint([('txt', 1)]) \
             .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._cursor._Cursor__read_preference,
-            ReadPreference.SECONDARY_PREFERRED)
+                         ReadPreference.SECONDARY_PREFERRED)
 
     def test_json_simple(self):
 
@@ -4208,7 +4215,7 @@ class QuerySetTest(unittest.TestCase):
             int_field = IntField(default=1)
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
-            datetime_field = DateTimeField(default=datetime.now)
+            datetime_field = DateTimeField(default=datetime.datetime.now)
             embedded_document_field = EmbeddedDocumentField(
                 EmbeddedDoc, default=lambda: EmbeddedDoc())
             list_field = ListField(default=lambda: [1, 2, 3])
@@ -4218,7 +4225,7 @@ class QuerySetTest(unittest.TestCase):
                 Simple, default=lambda: Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
-            complex_datetime_field = ComplexDateTimeField(default=datetime.now)
+            complex_datetime_field = ComplexDateTimeField(default=datetime.datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(
@@ -4565,8 +4572,7 @@ class QuerySetTest(unittest.TestCase):
         B.drop_collection()
 
         a = A.objects.create(id='custom_id')
-
-        b = B.objects.create(a=a)
+        B.objects.create(a=a)
 
         self.assertEqual(B.objects.count(), 1)
         self.assertEqual(B.objects.get(a=a).a, a)

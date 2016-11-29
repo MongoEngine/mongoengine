@@ -7,20 +7,19 @@ import pprint
 import re
 import warnings
 
-from bson import SON
+from bson import SON, json_util
 from bson.code import Code
-from bson import json_util
 import pymongo
 import pymongo.errors
 from pymongo.common import validate_read_preference
 
 from mongoengine import signals
+from mongoengine.base.common import get_document
+from mongoengine.common import _import_class
 from mongoengine.connection import get_db
 from mongoengine.context_managers import switch_db
-from mongoengine.common import _import_class
-from mongoengine.base.common import get_document
-from mongoengine.errors import (OperationError, NotUniqueError,
-                                InvalidQueryError, LookUpError)
+from mongoengine.errors import (InvalidQueryError, LookUpError,
+                                NotUniqueError, OperationError)
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
@@ -155,10 +154,8 @@ class BaseQuerySet(object):
         # forse load cursor
         # self._cursor
 
-
     def __getitem__(self, key):
-        """Support skip and limit using getitem and slicing syntax.
-        """
+        """Support skip and limit using getitem and slicing syntax."""
         queryset = self.clone()
 
         # Slice provided
@@ -529,8 +526,9 @@ class BaseQuerySet(object):
         .. versionadded:: 0.10.2
         """
 
-        atomic_update = self.update(multi=False, upsert=True, write_concern=write_concern,
-                             full_result=True, **update)
+        atomic_update = self.update(multi=False, upsert=True,
+                                    write_concern=write_concern,
+                                    full_result=True, **update)
 
         if atomic_update['updatedExisting']:
             document = self.get()

@@ -8,6 +8,9 @@ import uuid
 import warnings
 from operator import itemgetter
 
+from bson import Binary, DBRef, ObjectId, SON
+import gridfs
+import pymongo
 import six
 
 try:
@@ -17,22 +20,18 @@ except ImportError:
 else:
     import dateutil.parser
 
-import pymongo
-import gridfs
-from bson import Binary, DBRef, SON, ObjectId
 try:
     from bson.int64 import Int64
 except ImportError:
     Int64 = long
 
-from mongoengine.errors import ValidationError, DoesNotExist
-from mongoengine.python_support import (PY3, bin_type, txt_type,
-                                        str_types, StringIO)
-from base import (BaseField, ComplexBaseField, ObjectIdField, GeoJsonBaseField,
-                  get_document, BaseDocument)
-from queryset import DO_NOTHING, QuerySet
-from document import Document, EmbeddedDocument
-from connection import get_db, DEFAULT_CONNECTION_NAME
+from .base import (BaseDocument, BaseField, ComplexBaseField, GeoJsonBaseField,
+                   ObjectIdField, get_document)
+from .connection import DEFAULT_CONNECTION_NAME, get_db
+from .document import Document, EmbeddedDocument
+from .errors import DoesNotExist, ValidationError
+from .python_support import PY3, StringIO, bin_type, str_types, txt_type
+from .queryset import DO_NOTHING, QuerySet
 
 try:
     from PIL import Image, ImageOps
@@ -1015,11 +1014,10 @@ class ReferenceField(BaseField):
 
         if self.document_type._meta.get('abstract') and \
                 not isinstance(value, self.document_type):
-            self.error('%s is not an instance of abstract reference'
-                    ' type %s' % (value._class_name,
-                        self.document_type._class_name)
-                    )
-
+            self.error(
+                '%s is not an instance of abstract reference type %s' % (
+                    self.document_type._class_name)
+            )
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -1126,7 +1124,7 @@ class CachedReferenceField(BaseField):
             new_fields = [f for f in self.fields if f in fields]
         else:
             new_fields = self.fields
-            
+
         value.update(dict(document.to_mongo(use_db_field, fields=new_fields)))
         return value
 

@@ -1,6 +1,6 @@
 from mongoengine.errors import OperationError
-from mongoengine.queryset.base import (BaseQuerySet, DO_NOTHING, NULLIFY,
-                                       CASCADE, DENY, PULL)
+from mongoengine.queryset.base import (BaseQuerySet, CASCADE, DENY, DO_NOTHING,
+                                       NULLIFY, PULL)
 
 __all__ = ('QuerySet', 'QuerySetNoCache', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
            'DENY', 'PULL')
