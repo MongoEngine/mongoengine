@@ -1,6 +1,6 @@
-from mongoengine.errors import (DoesNotExist, MultipleObjectsReturned,
-                                InvalidQueryError, OperationError,
-                                NotUniqueError)
+from mongoengine.errors import (DoesNotExist, InvalidQueryError,
+                                MultipleObjectsReturned, NotUniqueError,
+                                OperationError)
 from mongoengine.queryset.field_list import *
 from mongoengine.queryset.manager import *
 from mongoengine.queryset.queryset import *

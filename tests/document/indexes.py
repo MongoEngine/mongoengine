@@ -844,7 +844,12 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
                          report.to_mongo())
-        self.assertEqual(report, ReportDictField.objects.get(pk=my_key))
+
+        # We can't directly call ReportDictField.objects.get(pk=my_key),
+        # because dicts are unordered, and if the order in MongoDB is
+        # different than the one in `my_key`, this test will fail.
+        self.assertEqual(report, ReportDictField.objects.get(pk__name=my_key['name']))
+        self.assertEqual(report, ReportDictField.objects.get(pk__term=my_key['term']))
 
     def test_string_indexes(self):
 

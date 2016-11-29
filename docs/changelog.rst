@@ -2,9 +2,15 @@
 Changelog
 =========
 
-Changes in 0.10.7 - DEV
-=======================
+Changes in 0.10.8
+=================
+- Fill this in as PRs for v0.10.8 are merged
+
+Changes in 0.10.7
+=================
+- Dropped Python 3.2 support #1390
 - Fixed the bug where dynamic doc has index inside a dict field #1278
+- Fixed: ListField minus index assignment does not work #1128
 - Fixed not being able to specify `use_db_field=False` on `ListField(EmbeddedDocumentField)` instances
 - Fixed cascade delete mixing among collections #1224
 - Add `signal_kwargs` argument to `Document.save`, `Document.delete` and `BaseQuerySet.insert` to be passed to signals calls #1206
@@ -15,6 +21,14 @@ Changes in 0.10.7 - DEV
 - ListField now handles negative indicies correctly. #1270
 - Fixed AttributeError when initializing EmbeddedDocument with positional args. #681
 - Fixed no_cursor_timeout error with pymongo 3.0+ #1304
+- Replaced map-reduce based QuerySet.sum/average with aggregation-based implementations #1336
+- Fixed support for `__` to escape field names that match operators names in `update` #1351
+- Fixed BaseDocument#_mark_as_changed #1369
+- Added support for pickling QuerySet instances. #1397
+- Fixed connecting to a list of hosts #1389
+- Fixed a bug where accessing broken references wouldn't raise a DoesNotExist error #1334
+- Fixed not being able to specify use_db_field=False on ListField(EmbeddedDocumentField) instances #1218
+- Improvements to the dictionary fields docs # 1383
 
 Changes in 0.10.6
 =================
@@ -50,6 +64,8 @@ Changes in 0.10.1
 - Document save's save_condition error raises `SaveConditionError` exception #1070
 - Fix Document.reload for DynamicDocument. #1050
 - StrictDict & SemiStrictDict are shadowed at init time. #1105
+- Fix ListField minus index assignment does not work. #1119
+- Remove code that marks field as changed when the field has default but not existed in database #1126
 - Remove test dependencies (nose and rednose) from install dependencies list. #1079
 - Recursively build query when using elemMatch operator. #1130
 - Fix instance back references for lists of embedded documents. #1131

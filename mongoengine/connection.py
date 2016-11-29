@@ -1,5 +1,5 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
-from mongoengine.python_support import IS_PYMONGO_3, IS_PYMONGO_27
+from mongoengine.python_support import (IS_PYMONGO_3, IS_PYMONGO_27, str_types)
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
@@ -68,25 +68,36 @@ def register_connection(alias, name=None, host=None, port=None,
 
     # Handle uri style connections
     conn_host = conn_settings['host']
-    if conn_host.startswith('mongomock://'):
-        conn_settings['is_mock'] = True
-        # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
-        conn_settings['host'] = conn_host.replace('mongomock://', 'mongodb://', 1)
-    elif '://' in conn_host:
-        uri_dict = uri_parser.parse_uri(conn_host)
-        conn_settings.update({
-            'name': uri_dict.get('database') or name,
-            'username': uri_dict.get('username'),
-            'password': uri_dict.get('password'),
-            'read_preference': read_preference,
-        })
-        uri_options = uri_dict['options']
-        if 'replicaset' in uri_options:
-            conn_settings['replicaSet'] = True
-        if 'authsource' in uri_options:
-            conn_settings['authentication_source'] = uri_options['authsource']
-        if 'authmechanism' in uri_options:
-            conn_settings['authentication_mechanism'] = uri_options['authmechanism']
+    # host can be a list or a string, so if string, force to a list
+    if isinstance(conn_host, str_types):
+        conn_host = [conn_host]
+
+    resolved_hosts = []
+    for entity in conn_host:
+        # Handle uri style connections
+        if entity.startswith('mongomock://'):
+            conn_settings['is_mock'] = True
+            # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
+            resolved_hosts.append(entity.replace('mongomock://', 'mongodb://', 1))
+        elif '://' in entity:
+            uri_dict = uri_parser.parse_uri(entity)
+            resolved_hosts.append(entity)
+            conn_settings.update({
+                'name': uri_dict.get('database') or name,
+                'username': uri_dict.get('username'),
+                'password': uri_dict.get('password'),
+                'read_preference': read_preference,
+            })
+            uri_options = uri_dict['options']
+            if 'replicaset' in uri_options:
+                conn_settings['replicaSet'] = True
+            if 'authsource' in uri_options:
+                conn_settings['authentication_source'] = uri_options['authsource']
+            if 'authmechanism' in uri_options:
+                conn_settings['authentication_mechanism'] = uri_options['authmechanism']
+        else:
+            resolved_hosts.append(entity)
+    conn_settings['host'] = resolved_hosts
 
     # Deprecated parameters that should not be passed on
     kwargs.pop('slaves', None)

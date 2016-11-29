@@ -29,7 +29,7 @@ documents are serialized based on their field order.
 
 Dynamic document schemas
 ========================
-One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
+One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
 should be planned and organised (after all explicit is better than implicit!)
 there are scenarios where having dynamic / expando style documents is desirable.
 
@@ -214,9 +214,9 @@ document class as the first argument::
 
 Dictionary Fields
 -----------------
-Often, an embedded document may be used instead of a dictionary -- generally
-this is recommended as dictionaries don't support validation or custom field
-types. However, sometimes you will not know the structure of what you want to
+Often, an embedded document may be used instead of a dictionary – generally 
+embedded documents are recommended as dictionaries don’t support validation 
+or custom field types. However, sometimes you will not know the structure of what you want to
 store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate::
 
     class SurveyResponse(Document):

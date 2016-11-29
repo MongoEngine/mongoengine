@@ -31,7 +31,7 @@ from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import _document_registry
 from mongoengine.base.datastructures import BaseDict, EmbeddedDocumentList
-from mongoengine.errors import NotRegistered
+from mongoengine.errors import NotRegistered, DoesNotExist
 from mongoengine.python_support import PY3, b, bin_type
 
 __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
@@ -1046,6 +1046,54 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
         BlogPost.drop_collection()
 
+    def test_list_assignment(self):
+        """Ensure that list field element assignment and slicing work 
+        """
+        class BlogPost(Document):
+            info = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.info = ['e1', 'e2', 3, '4', 5]
+        post.save()
+        
+        post.info[0] = 1
+        post.save()
+        post.reload()
+        self.assertEqual(post.info[0], 1)
+        
+        post.info[1:3] = ['n2', 'n3']
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', '4', 5])
+
+        post.info[-1] = 'n5'
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', '4', 'n5'])
+
+        post.info[-2] = 4
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', 4, 'n5'])
+
+        post.info[1:-1] = [2]
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 2, 'n5'])
+
+        post.info[:-1] = [1, 'n2', 'n3', 4]
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 'n2', 'n3', 4, 'n5'])
+
+        post.info[-4:3] = [2, 3]
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, [1, 2, 3, 4, 'n5'])
+
+
     def test_list_field_passed_in_value(self):
         class Foo(Document):
             bars = ListField(ReferenceField("Bar"))
@@ -1677,6 +1725,37 @@ class FieldTest(unittest.TestCase):
         foobar.save()
 
         self.assertEqual(content, User.objects.first().groups[0].content)
+
+    def test_reference_miss(self):
+        """Ensure an exception is raised when dereferencing unknow document
+        """
+
+        class Foo(Document):
+            pass
+
+        class Bar(Document):
+            ref = ReferenceField(Foo)
+            generic_ref = GenericReferenceField()
+
+        Foo.drop_collection()
+        Bar.drop_collection()
+
+        foo = Foo().save()
+        bar = Bar(ref=foo, generic_ref=foo).save()
+
+        # Reference is no longer valid
+        foo.delete()
+        bar = Bar.objects.get()
+        self.assertRaises(DoesNotExist, lambda: getattr(bar, 'ref'))
+        self.assertRaises(DoesNotExist, lambda: getattr(bar, 'generic_ref'))
+
+        # When auto_dereference is disabled, there is no trouble returning DBRef
+        bar = Bar.objects.get()
+        expected = foo.to_dbref()
+        bar._fields['ref']._auto_dereference = False
+        self.assertEqual(bar.ref, expected)
+        bar._fields['generic_ref']._auto_dereference = False
+        self.assertEqual(bar.generic_ref, {'_ref': expected, '_cls': 'Foo'})
 
     def test_reference_validation(self):
         """Ensure that invalid docment objects cannot be assigned to reference
@@ -3479,7 +3558,7 @@ class FieldTest(unittest.TestCase):
             def __init__(self, **kwargs):
                 super(EnumField, self).__init__(**kwargs)
 
-            def to_mongo(self, value, **kwargs):
+            def to_mongo(self, value):
                 return value
 
             def to_python(self, value):

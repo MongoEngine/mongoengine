@@ -1,28 +1,28 @@
 import copy
-import operator
 import numbers
+import operator
 from collections import Hashable
 from functools import partial
 
-import pymongo
-from bson import json_util, ObjectId
+from bson import ObjectId, json_util
 from bson.dbref import DBRef
 from bson.son import SON
+import pymongo
 
 from mongoengine import signals
-from mongoengine.common import _import_class
-from mongoengine.errors import (ValidationError, InvalidDocumentError,
-                                LookUpError, FieldDoesNotExist)
-from mongoengine.python_support import PY3, txt_type
-from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.base.common import ALLOW_INHERITANCE, get_document
 from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
     EmbeddedDocumentList,
-    StrictDict,
-    SemiStrictDict
+    SemiStrictDict,
+    StrictDict
 )
 from mongoengine.base.fields import ComplexBaseField
+from mongoengine.common import _import_class
+from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
+                                LookUpError, ValidationError)
+from mongoengine.python_support import PY3, txt_type
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -72,12 +72,13 @@ class BaseDocument(object):
         # Check if there are undefined fields supplied to the constructor,
         # if so raise an Exception.
         if not self._dynamic and (self._meta.get('strict', True) or _created):
-            for var in values.keys():
-                if var not in self._fields.keys() + ['id', 'pk', '_cls', '_text_score']:
-                    msg = (
-                        "The field '{0}' does not exist on the document '{1}'"
-                    ).format(var, self._class_name)
-                    raise FieldDoesNotExist(msg)
+            _undefined_fields = set(values.keys()) - set(
+                self._fields.keys() + ['id', 'pk', '_cls', '_text_score'])
+            if _undefined_fields:
+                msg = (
+                    "The fields '{0}' do not exist on the document '{1}'"
+                ).format(_undefined_fields, self._class_name)
+                raise FieldDoesNotExist(msg)
 
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
@@ -309,7 +310,7 @@ class BaseDocument(object):
         data = SON()
         data["_id"] = None
         data['_cls'] = self._class_name
-        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
         root_fields = set([f.split('.')[0] for f in fields])
 
@@ -324,18 +325,20 @@ class BaseDocument(object):
                 field = self._dynamic_fields.get(field_name)
 
             if value is not None:
-
-                if fields:
+                f_inputs = field.to_mongo.__code__.co_varnames
+                ex_vars = {}
+                if fields and 'fields' in f_inputs:
                     key = '%s.' % field_name
                     embedded_fields = [
                         i.replace(key, '') for i in fields
                         if i.startswith(key)]
 
-                else:
-                    embedded_fields = []
+                    ex_vars['fields'] = embedded_fields
 
-                value = field.to_mongo(value, use_db_field=use_db_field,
-                                        fields=embedded_fields)
+                if 'use_db_field' in f_inputs:
+                    ex_vars['use_db_field'] = use_db_field
+
+                value = field.to_mongo(value, **ex_vars)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
@@ -488,7 +491,7 @@ class BaseDocument(object):
                 # remove lower level changed fields
                 level = '.'.join(levels[:idx]) + '.'
                 remove = self._changed_fields.remove
-                for field in self._changed_fields:
+                for field in self._changed_fields[:]:
                     if field.startswith(level):
                         remove(field)
 
@@ -563,8 +566,10 @@ class BaseDocument(object):
                     continue
             if isinstance(field, ReferenceField):
                 continue
-            elif (isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument))
-                  and db_field_name not in changed_fields):
+            elif (
+                isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)) and
+                db_field_name not in changed_fields
+            ):
                 # Find all embedded fields that have been changed
                 changed = data._get_changed_fields(inspected)
                 changed_fields += ["%s%s" % (key, k) for k in changed if k]
@@ -603,7 +608,9 @@ class BaseDocument(object):
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
                         break
-                    elif isinstance(d, list) and p.isdigit():
+                    elif isinstance(d, list) and p.lstrip('-').isdigit():
+                        if p[0] == '-':
+                            p = str(len(d) + int(p))
                         try:
                             d = d[int(p)]
                         except IndexError:
@@ -637,7 +644,9 @@ class BaseDocument(object):
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if isinstance(d, list) and p.isdigit():
+                    if isinstance(d, list) and p.lstrip('-').isdigit():
+                        if p[0] == '-':
+                            p = str(len(d) + int(p))
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
@@ -705,14 +714,6 @@ class BaseDocument(object):
                         del data[field.db_field]
                 except (AttributeError, ValueError), e:
                     errors_dict[field_name] = e
-            elif field.default:
-                default = field.default
-                if callable(default):
-                    default = default()
-                if isinstance(default, BaseDocument):
-                    changed_fields.append(field_name)
-                elif not only_fields or field_name in only_fields:
-                    changed_fields.append(field_name)
 
         if errors_dict:
             errors = "\n".join(["%s - %s" % (k, v)
@@ -776,8 +777,12 @@ class BaseDocument(object):
         # Check to see if we need to include _cls
         allow_inheritance = cls._meta.get('allow_inheritance',
                                           ALLOW_INHERITANCE)
-        include_cls = (allow_inheritance and not spec.get('sparse', False) and
-                       spec.get('cls',  True) and '_cls' not in spec['fields'])
+        include_cls = (
+            allow_inheritance and
+            not spec.get('sparse', False) and
+            spec.get('cls', True) and
+            '_cls' not in spec['fields']
+        )
 
         # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
         include_cls = include_cls and (spec.get('cls', False) or cls._meta.get('index_cls', True))

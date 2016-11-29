@@ -1,42 +1,58 @@
 language: python
+
 python:
 - '2.6'
 - '2.7'
-- '3.2'
 - '3.3'
 - '3.4'
 - '3.5'
 - pypy
 - pypy3
+
 env:
 - PYMONGO=2.7
 - PYMONGO=2.8
 - PYMONGO=3.0
 - PYMONGO=dev
+
 matrix:
   fast_finish: true
+
 before_install:
 - travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
 - echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' |
   sudo tee /etc/apt/sources.list.d/mongodb.list
 - travis_retry sudo apt-get update
 - travis_retry sudo apt-get install mongodb-org-server
+
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
   libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
   python-tk
-# virtualenv>=14.0.0 has dropped Python 3.2 support
-- travis_retry pip install "virtualenv<14.0.0" "tox>=1.9" coveralls
+- travis_retry pip install --upgrade pip
+- travis_retry pip install coveralls
+- travis_retry pip install flake8
+- travis_retry pip install tox>=1.9
+- travis_retry pip install "virtualenv<14.0.0"  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
 - travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
+
+# Run flake8 for py27
+before_script:
+- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then tox -e flake8; fi
+
 script:
 - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
+
 after_script: coveralls --verbose
+
 notifications:
   irc: irc.freenode.org#mongoengine
+
 branches:
   only:
   - master
   - /^v.*$/
+
 deploy:
   provider: pypi
   user: the_drow

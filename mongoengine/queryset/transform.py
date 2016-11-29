@@ -1,11 +1,11 @@
 from collections import defaultdict
 
-import pymongo
 from bson import SON
+import pymongo
 
 from mongoengine.base.fields import UPDATE_OPERATORS
-from mongoengine.connection import get_connection
 from mongoengine.common import _import_class
+from mongoengine.connection import get_connection
 from mongoengine.errors import InvalidQueryError
 from mongoengine.python_support import IS_PYMONGO_3
 
@@ -44,7 +44,7 @@ def query(_doc_cls=None, **kwargs):
         if len(parts) > 1 and parts[-1] in MATCH_OPERATORS:
             op = parts.pop()
 
-        # Allw to escape operator-like field name by __
+        # Allow to escape operator-like field name by __
         if len(parts) > 1 and parts[-1] == "":
             parts.pop()
 
@@ -108,8 +108,11 @@ def query(_doc_cls=None, **kwargs):
             elif op in ('match', 'elemMatch'):
                 ListField = _import_class('ListField')
                 EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
-                if (isinstance(value, dict) and isinstance(field, ListField) and
-                    isinstance(field.field, EmbeddedDocumentField)):
+                if (
+                    isinstance(value, dict) and
+                    isinstance(field, ListField) and
+                    isinstance(field.field, EmbeddedDocumentField)
+                ):
                     value = query(field.field.document_type, **value)
                 else:
                     value = field.prepare_query_value(op, value)
@@ -211,6 +214,10 @@ def update(_doc_cls=None, **update):
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
             match = parts.pop()
+
+        # Allow to escape operator-like field name by __
+        if len(parts) > 1 and parts[-1] == "":
+            parts.pop()
 
         if _doc_cls:
             # Switch field names to proper names [set in Field(name='foo')]
