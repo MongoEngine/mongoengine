@@ -27,6 +27,7 @@ Changes in 0.10.7
 - Added support for pickling QuerySet instances. #1397
 - Fixed connecting to a list of hosts #1389
 - Fixed a bug where accessing broken references wouldn't raise a DoesNotExist error #1334
+- Fixed not being able to specify use_db_field=False on ListField(EmbeddedDocumentField) instances #1218
 - Improvements to the dictionary fields docs # 1383
 
 Changes in 0.10.6
