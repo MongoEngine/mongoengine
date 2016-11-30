@@ -542,7 +542,8 @@ class BaseDocument(object):
         changed_fields = sorted(changed_fields, key=len)
         dedup_changed_fields = []
         for field in changed_fields:
-            isPrefixPresent = next((prefix for prefix in dedup_changed_fields if prefix in field), None)
+            # append a dot at the end to protect cases like ssn and ssnExpectedDate
+            isPrefixPresent = next((prefix for prefix in dedup_changed_fields if (prefix + '.') in field), None)
             if not isPrefixPresent:
                 dedup_changed_fields.append(field)
 
