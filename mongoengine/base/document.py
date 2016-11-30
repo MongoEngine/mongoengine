@@ -538,6 +538,17 @@ class BaseDocument(object):
                     changed_fields, list_key, value, inspected)
 
     def _get_changed_fields(self, inspected=None):
+        changed_fields = self.__get_changed_fields(inspected)
+        changed_fields = sorted(changed_fields, key=len)
+        dedup_changed_fields = []
+        for field in changed_fields:
+            isPrefixPresent = next((prefix for prefix in dedup_changed_fields if prefix in field), None)
+            if not isPrefixPresent:
+                dedup_changed_fields.append(field)
+
+        return dedup_changed_fields
+
+    def __get_changed_fields(self, inspected=None):
         """Returns a list of all fields that have explicitly been changed.
         """
         EmbeddedDocument = _import_class("EmbeddedDocument")
