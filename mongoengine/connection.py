@@ -1,21 +1,17 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
-from mongoengine.python_support import (IS_PYMONGO_27, IS_PYMONGO_3, str_types)
+from mongoengine.python_support import (IS_PYMONGO_3, str_types)
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
-AUTHENTICATION_MECHANISM = 'DEFAULT'
 
 if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
 else:
     from pymongo import MongoReplicaSetClient
     READ_PREFERENCE = False
-
-if IS_PYMONGO_27:
-    AUTHENTICATION_MECHANISM = 'MONGODB-CR'
 
 
 class ConnectionError(Exception):
@@ -30,7 +26,7 @@ _dbs = {}
 def register_connection(alias, name=None, host=None, port=None,
                         read_preference=READ_PREFERENCE,
                         username=None, password=None, authentication_source=None,
-                        authentication_mechanism=AUTHENTICATION_MECHANISM,
+                        authentication_mechanism=None,
                         **kwargs):
     """Add a connection.
 
@@ -63,8 +59,9 @@ def register_connection(alias, name=None, host=None, port=None,
         'username': username,
         'password': password,
         'authentication_source': authentication_source,
-        'authentication_mechanism': authentication_mechanism
     }
+    if authentication_mechanism is not None:
+        conn_settings.update(authentication_mechanism=authentication_mechanism)
 
     # Handle uri style connections
     conn_host = conn_settings['host']
@@ -192,12 +189,18 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings = _connection_settings[alias]
         db = conn[conn_settings['name']]
         # Authenticate if necessary
-        if (conn_settings['authentication_mechanism'] == 'MONGODB-X509' and conn_settings['username']) or\
-                (conn_settings['username'] and conn_settings['password']):
-            db.authenticate(conn_settings['username'],
-                            conn_settings['password'],
-                            source=conn_settings['authentication_source'],
-                            mechanism=conn_settings['authentication_mechanism'])
+        if 'authentication_mechanism' in conn_settings:
+            if conn_settings['username'] and (conn_settings['password'] or
+                                              conn_settings['authentication_mechanism'] == 'MONGODB-X509'):
+                db.authenticate(conn_settings['username'],
+                                conn_settings['password'],
+                                source=conn_settings['authentication_source'],
+                                mechanism=conn_settings['authentication_mechanism'])
+        else:
+            if conn_settings['username'] and conn_settings['password']:
+                db.authenticate(conn_settings['username'],
+                                conn_settings['password'],
+                                source=conn_settings['authentication_source'])
         _dbs[alias] = db
     return _dbs[alias]
 
