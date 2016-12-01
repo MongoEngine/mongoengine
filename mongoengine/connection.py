@@ -59,9 +59,8 @@ def register_connection(alias, name=None, host=None, port=None,
         'username': username,
         'password': password,
         'authentication_source': authentication_source,
+        'authentication_mechanism': authentication_mechanism
     }
-    if authentication_mechanism is not None:
-        conn_settings.update(authentication_mechanism=authentication_mechanism)
 
     # Handle uri style connections
     conn_host = conn_settings['host']
@@ -188,19 +187,13 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
         db = conn[conn_settings['name']]
+        auth_kwargs = {'source': conn_settings['authentication_source']}
+        if conn_settings['authentication_mechanism'] is not None:
+            auth_kwargs['mechanism'] = conn_settings['authentication_mechanism']
         # Authenticate if necessary
-        if 'authentication_mechanism' in conn_settings:
-            if conn_settings['username'] and (conn_settings['password'] or
-                                              conn_settings['authentication_mechanism'] == 'MONGODB-X509'):
-                db.authenticate(conn_settings['username'],
-                                conn_settings['password'],
-                                source=conn_settings['authentication_source'],
-                                mechanism=conn_settings['authentication_mechanism'])
-        else:
-            if conn_settings['username'] and conn_settings['password']:
-                db.authenticate(conn_settings['username'],
-                                conn_settings['password'],
-                                source=conn_settings['authentication_source'])
+        if conn_settings['username'] and (conn_settings['password'] or
+                                          conn_settings['authentication_mechanism'] == 'MONGODB-X509'):
+            db.authenticate(conn_settings['username'], conn_settings['password'], **auth_kwargs)
         _dbs[alias] = db
     return _dbs[alias]
 
