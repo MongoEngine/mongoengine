@@ -1271,9 +1271,10 @@ class BaseQuerySet(object):
         :param field: the field to sum over; use dot notation to refer to
             embedded document fields
         """
+        db_field = self._fields_to_dbfields([field]).pop()
         pipeline = [
             {'$match': self._query},
-            {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
+            {'$group': {'_id': 'sum', 'total': {'$sum': '$' + db_field}}}
         ]
 
         # if we're performing a sum over a list field, we sum up all the
@@ -1300,9 +1301,10 @@ class BaseQuerySet(object):
         :param field: the field to average over; use dot notation to refer to
             embedded document fields
         """
+        db_field = self._fields_to_dbfields([field]).pop()
         pipeline = [
             {'$match': self._query},
-            {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
+            {'$group': {'_id': 'avg', 'total': {'$avg': '$' + db_field}}}
         ]
 
         # if we're performing an average over a list field, we average out
