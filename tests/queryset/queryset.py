@@ -2838,6 +2838,34 @@ class QuerySetTest(unittest.TestCase):
             sum([a for a in ages if a >= 50])
         )
 
+    def test_sum_over_db_field(self):
+        """Ensure that a field mapped to a db field with a different name
+        can be summed over correctly.
+        """
+        class UserVisit(Document):
+            num_visits = IntField(db_field='visits')
+
+        UserVisit.drop_collection()
+
+        UserVisit.objects.create(num_visits=10)
+        UserVisit.objects.create(num_visits=5)
+
+        self.assertEqual(UserVisit.objects.sum('num_visits'), 15)
+
+    def test_average_over_db_field(self):
+        """Ensure that a field mapped to a db field with a different name
+        can have its average computed correctly.
+        """
+        class UserVisit(Document):
+            num_visits = IntField(db_field='visits')
+
+        UserVisit.drop_collection()
+
+        UserVisit.objects.create(num_visits=20)
+        UserVisit.objects.create(num_visits=10)
+
+        self.assertEqual(UserVisit.objects.average('num_visits'), 15)
+
     def test_embedded_average(self):
         class Pay(EmbeddedDocument):
             value = DecimalField()
