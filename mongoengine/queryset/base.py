@@ -1043,6 +1043,13 @@ class BaseQuerySet(object):
         :param ms: the number of milliseconds before killing the query on the server
         """
         return self._chainable_method("max_time_ms", ms)
+    
+    def comment(self, text):
+        """Add 'text' comment to query
+
+        :param text: comment
+        """
+        return self._chainable_method("comment", text)
 
     # JSON Helpers
 
