@@ -3202,5 +3202,20 @@ class InstanceTest(unittest.TestCase):
             self.assertEqual(b._instance, a)
         self.assertEqual(idx, 2)
 
+    def test_falsey_pk(self):
+        """Ensure that we can create and update a document with Falsey PK.
+        """
+        class Person(Document):
+            age = IntField(primary_key=True)
+            height = FloatField()
+
+        person = Person()
+        person.age = 0
+        person.height = 1.89
+        person.save()
+
+        person.update(set__height=2.0)
+
+
 if __name__ == '__main__':
     unittest.main()

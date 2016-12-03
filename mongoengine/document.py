@@ -472,7 +472,7 @@ class Document(BaseDocument):
         Raises :class:`OperationError` if called on an object that has not yet
         been saved.
         """
-        if not self.pk:
+        if self.pk is None:
             if kwargs.get('upsert', False):
                 query = self.to_mongo()
                 if "_cls" in query:
@@ -604,7 +604,7 @@ class Document(BaseDocument):
         elif "max_depth" in kwargs:
             max_depth = kwargs["max_depth"]
 
-        if not self.pk:
+        if self.pk is None:
             raise self.DoesNotExist("Document does not exist")
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
             **self._object_key).only(*fields).limit(
@@ -655,7 +655,7 @@ class Document(BaseDocument):
     def to_dbref(self):
         """Returns an instance of :class:`~bson.dbref.DBRef` useful in
         `__raw__` queries."""
-        if not self.pk:
+        if self.pk is None:
             msg = "Only saved documents can have a valid dbref"
             raise OperationError(msg)
         return DBRef(self.__class__._get_collection_name(), self.pk)
