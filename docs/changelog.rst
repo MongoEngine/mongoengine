@@ -4,7 +4,9 @@ Changelog
 
 Changes in 0.10.8
 =================
-- Fill this in as PRs for v0.10.8 are merged
+- Added ability to specify an authentication mechanism (e.g. X.509) #1333
+- Added support for falsey primary keys (e.g. doc.pk = 0) #1354
+- Fixed BaseQuerySet#sum/average for fields w/ explicit db_field #1417
 
 Changes in 0.10.7
 =================
