@@ -3005,22 +3005,27 @@ class FieldTest(unittest.TestCase):
 
         Shirt.drop_collection()
 
-        shirt = Shirt()
+        shirt1 = Shirt()
+        shirt2 = Shirt()
 
-        self.assertEqual(shirt.get_size_display(), None)
-        self.assertEqual(shirt.get_style_display(), 'Small')
+        self.assertEqual(shirt1.get_size_display(), None)
+        self.assertEqual(shirt1.get_style_display(), 'Small')
 
-        shirt.size = "XXL"
-        shirt.style = "B"
-        self.assertEqual(shirt.get_size_display(), 'Extra Extra Large')
-        self.assertEqual(shirt.get_style_display(), 'Baggy')
+        shirt1.size = 'XXL'
+        shirt1.style = 'B'
+        shirt2.size = 'M'
+        shirt2.style = 'W'
+        self.assertEqual(shirt1.get_size_display(), 'Extra Extra Large')
+        self.assertEqual(shirt1.get_style_display(), 'Baggy')
+        self.assertEqual(shirt2.get_size_display(), 'Medium')
+        self.assertEqual(shirt2.get_style_display(), 'wide')
 
         # Set as Z - an invalid choice
-        shirt.size = "Z"
-        shirt.style = "Z"
-        self.assertEqual(shirt.get_size_display(), 'Z')
-        self.assertEqual(shirt.get_style_display(), 'Z')
-        self.assertRaises(ValidationError, shirt.validate)
+        shirt1.size = 'Z'
+        shirt1.style = 'Z'
+        self.assertEqual(shirt1.get_size_display(), 'Z')
+        self.assertEqual(shirt1.get_style_display(), 'Z')
+        self.assertRaises(ValidationError, shirt1.validate)
 
         Shirt.drop_collection()
 
