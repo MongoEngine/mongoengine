@@ -2199,6 +2199,22 @@ class QuerySetTest(unittest.TestCase):
             a.author.name for a in Author.objects.order_by('-author__age')]
         self.assertEqual(names, ['User A', 'User B', 'User C'])
 
+    def test_comment(self):
+        """Make sure adding a comment to the query works."""
+        with db_ops_tracker() as q:
+            adult = (self.Person.objects.filter(age__gte=18)
+                .comment('looking for an adult')
+                .first())
+            ops = q.get_ops()
+            self.assertEqual(len(ops), 1)
+            op = ops[0]
+            self.assertEqual(op['query']['$query'], {
+                '_cls': 'Person',
+                'age': {'$gte': 18}
+            })
+            self.assertEqual(op['query']['$comment'],
+                             'looking for an adult')
+
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
         """
