@@ -2206,6 +2206,8 @@ class QuerySetTest(unittest.TestCase):
                 .comment('looking for an adult')
                 .first())
             ops = q.get_ops()
+            import pprint
+            pprint.pprint(ops)
             self.assertEqual(len(ops), 1)
             op = ops[0]
             self.assertEqual(op['query']['$query'], {
