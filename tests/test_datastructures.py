@@ -18,6 +18,10 @@ class TestStrictDict(unittest.TestCase):
         d = self.dtype(a=1, b=2, c=3)
         self.assertEqual(repr(d), '{"a": 1, "b": 2, "c": 3}')
 
+        # make sure quotes are escaped properly
+        d = self.dtype(a='"', b="'", c="")
+        self.assertEqual(repr(d), '{"a": \'"\', "b": "\'", "c": \'\'}')
+
     def test_init_fails_on_nonexisting_attrs(self):
         self.assertRaises(AttributeError, lambda: self.dtype(a=1, b=2, d=3))
 
