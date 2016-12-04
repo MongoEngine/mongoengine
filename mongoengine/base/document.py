@@ -121,7 +121,7 @@ class BaseDocument(object):
                 else:
                     self._data[key] = value
 
-        # Set any get_fieldname_display methods
+        # Set any get_<field>_display methods
         self.__set_field_display()
 
         if self._dynamic:
@@ -1005,19 +1005,18 @@ class BaseDocument(object):
         return '.'.join(parts)
 
     def __set_field_display(self):
-        """Dynamically set the display value for a field with choices"""
-        for attr_name, field in self._fields.items():
-            if field.choices:
-                if self._dynamic:
-                    obj = self
-                else:
-                    obj = type(self)
-                setattr(obj,
-                        'get_%s_display' % attr_name,
-                        partial(self.__get_field_display, field=field))
+        """For each field that specifies choices, create a
+        get_<field>_display method.
+        """
+        fields_with_choices = [(n, f) for n, f in self._fields.items()
+                               if f.choices]
+        for attr_name, field in fields_with_choices:
+            setattr(self,
+                    'get_%s_display' % attr_name,
+                    partial(self.__get_field_display, field=field))
 
     def __get_field_display(self, field):
-        """Returns the display value for a choice field"""
+        """Return the display value for a choice field"""
         value = getattr(self, field.name)
         if field.choices and isinstance(field.choices[0], (list, tuple)):
             return dict(field.choices).get(value, value)
