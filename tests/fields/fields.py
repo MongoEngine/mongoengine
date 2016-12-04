@@ -2810,6 +2810,52 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+    def test_query_genericreferencefield_by_DBRef( self ):
+            class TestActivity( Document ):
+                name = StringField()
+                owner = GenericReferenceField( required=True )
+
+            class TestPerson( Document ):
+                name = StringField()
+
+            TestActivity.drop_collection()
+            TestPerson.drop_collection()
+
+            person = TestPerson( name="owner" )
+            person.save()
+
+            a1 = TestActivity( name="a1", owner=person )
+            a1.save()
+
+            # Doesn't work; same error as for a DBRef
+            # activities = TestActivity.objects( owner=person.id )
+            activities = TestActivity.objects( owner=DBRef( 'TestPerson', person.pk ) )
+
+            self.assertEquals( activities[0].owner, person )
+
+    def test_query_genericreferencefield_by_ObjectId( self ):
+            class TestActivity( Document ):
+                name = StringField()
+                owner = GenericReferenceField( required=True )
+
+            class TestPerson( Document ):
+                name = StringField()
+
+            TestActivity.drop_collection()
+            TestPerson.drop_collection()
+
+            person = TestPerson( name="owner" )
+            person.save()
+
+            a1 = TestActivity( name="a1", owner=person )
+            a1.save()
+
+            # Doesn't work; same error as for an ObjectId
+            activities = TestActivity.objects( owner=person.id )
+            #activities = TestActivity.objects( owner=DBRef( 'TestPerson', person.pk ) )
+
+            self.assertEquals( activities[0].owner, person )
+
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
