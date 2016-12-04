@@ -933,6 +933,14 @@ class BaseQuerySet(object):
         queryset._ordering = queryset._get_order_by(keys)
         return queryset
 
+    def comment(self, text):
+        """Add a comment to the query.
+
+        See https://docs.mongodb.com/manual/reference/method/cursor.comment/#cursor.comment
+        for details.
+        """
+        return self._chainable_method("comment", text)
+
     def explain(self, format=False):
         """Return an explain plan record for the
         :class:`~mongoengine.queryset.QuerySet`\ 's cursor.

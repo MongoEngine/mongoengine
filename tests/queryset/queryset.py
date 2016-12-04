@@ -339,7 +339,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
-
         self.Person.drop_collection()
 
         write_concern = {"fsync": True}
@@ -2214,6 +2213,21 @@ class QuerySetTest(unittest.TestCase):
         names = [
             a.author.name for a in Author.objects.order_by('-author__age')]
         self.assertEqual(names, ['User A', 'User B', 'User C'])
+
+    def test_comment(self):
+        """Make sure adding a comment to the query works."""
+        class User(Document):
+            age = IntField()
+
+        with db_ops_tracker() as q:
+            adult = (User.objects.filter(age__gte=18)
+                .comment('looking for an adult')
+                .first())
+            ops = q.get_ops()
+            self.assertEqual(len(ops), 1)
+            op = ops[0]
+            self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
+            self.assertEqual(op['query']['$comment'], 'looking for an adult')
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
