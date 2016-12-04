@@ -339,7 +339,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
-
         self.Person.drop_collection()
 
         write_concern = {"fsync": True}
@@ -2201,6 +2200,8 @@ class QuerySetTest(unittest.TestCase):
 
     def test_comment(self):
         """Make sure adding a comment to the query works."""
+        self.Person.drop_collection()
+
         with db_ops_tracker() as q:
             adult = (self.Person.objects.filter(age__gte=18)
                 .comment('looking for an adult')
