@@ -27,6 +27,7 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
 
 
+# TODO make this less complex
 def query(_doc_cls=None, **kwargs):
     """Transform a query from Django-style format to Mongo format.
     """
