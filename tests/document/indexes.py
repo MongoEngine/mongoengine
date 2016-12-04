@@ -2,10 +2,8 @@
 import unittest
 import sys
 
-sys.path[0:0] = [""]
 
 import pymongo
-from random import randint
 
 from nose.plugins.skip import SkipTest
 from datetime import datetime
@@ -17,11 +15,9 @@ __all__ = ("IndexesTest", )
 
 
 class IndexesTest(unittest.TestCase):
-    _MAX_RAND = 10 ** 10
 
     def setUp(self):
-        self.db_name = 'mongoenginetest_IndexesTest_' + str(randint(0, self._MAX_RAND))
-        self.connection = connect(db=self.db_name)
+        self.connection = connect(db='mongoenginetest')
         self.db = get_db()
 
         class Person(Document):
