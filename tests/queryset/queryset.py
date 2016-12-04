@@ -1239,7 +1239,8 @@ class QuerySetTest(unittest.TestCase):
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 
     def test_find_embedded(self):
-        """Ensure that an embedded document is properly returned from a query.
+        """Ensure that an embedded document is properly returned from
+        a query.
         """
         class User(EmbeddedDocument):
             name = StringField()
@@ -1250,15 +1251,30 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post = BlogPost(content='Had a good coffee today...')
-        post.author = User(name='Test User')
-        post.save()
+        BlogPost.objects.create(
+            author=User(name='Test User'),
+            content='Had a good coffee today...'
+        )
 
         result = BlogPost.objects.first()
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
 
+    def test_find_empty_embedded(self):
+        """Ensure that you can save and find an empty embedded document."""
+        class User(EmbeddedDocument):
+            name = StringField()
+
+        class BlogPost(Document):
+            content = StringField()
+            author = EmbeddedDocumentField(User)
+
         BlogPost.drop_collection()
+
+        BlogPost.objects.create(content='Anonymous post...')
+
+        result = BlogPost.objects.get(author=None)
+        self.assertEqual(result.author, None)
 
     def test_find_dict_item(self):
         """Ensure that DictField items may be found.
