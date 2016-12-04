@@ -174,19 +174,9 @@ class ConnectionTest(unittest.TestCase):
         c.mongoenginetest.system.users.remove({})
 
     def test_connect_uri_without_db(self):
-        """Ensure connect() method works properly with uri's without database_name
+        """Ensure connect() method works properly if the URI doesn't
+        include a database name.
         """
-        c = connect(db='mongoenginetest', alias='admin')
-        c.admin.system.users.remove({})
-        c.mongoenginetest.system.users.remove({})
-
-        c.admin.add_user("admin", "password")
-        c.admin.authenticate("admin", "password")
-        c.mongoenginetest.add_user("username", "password")
-
-        if not IS_PYMONGO_3:
-            self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
-
         connect("mongoenginetest", host='mongodb://localhost/')
 
         conn = get_connection()
@@ -196,8 +186,31 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
 
-        c.admin.system.users.remove({})
-        c.mongoenginetest.system.users.remove({})
+    def test_connect_uri_default_db(self):
+        """Ensure connect() defaults to the right database name if
+        the URI and the database_name don't explicitly specify it.
+        """
+        connect(host='mongodb://localhost/')
+
+        conn = get_connection()
+        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+
+        db = get_db()
+        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertEqual(db.name, 'test')
+
+    def test_uri_without_credentials_doesnt_override_conn_settings(self):
+        """Ensure connect() uses the username & password params if the URI
+        doesn't explicitly specify them.
+        """
+        c = connect(host='mongodb://localhost/mongoenginetest',
+                    username='user',
+                    password='pass')
+
+        # OperationFailure means that mongoengine attempted authentication
+        # w/ the provided username/password and failed - that's the desired
+        # behavior. If the MongoDB URI would override the credentials
+        self.assertRaises(OperationFailure, get_db)
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with
