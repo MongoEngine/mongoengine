@@ -44,10 +44,11 @@ class QuerySet(BaseQuerySet):
         if self._len is not None:
             return self._len
 
+        # Populate the result cache with *all* of the docs in the cursor
         if self._has_more:
-            # populate the cache
             list(self._iter_results())
 
+        # Cache the length of the complete result cache and return it
         self._len = len(self._result_cache)
         return self._len
 
