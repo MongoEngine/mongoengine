@@ -27,9 +27,10 @@ class QuerySet(BaseQuerySet):
         in batches of ``ITER_CHUNK_SIZE``.
 
         If ``self._has_more`` the cursor hasn't been exhausted so cache then
-        batch.  Otherwise iterate the result_cache.
+        batch. Otherwise iterate the result_cache.
         """
         self._iter = True
+
         if self._has_more:
             return self._iter_results()
 
@@ -42,6 +43,7 @@ class QuerySet(BaseQuerySet):
         """
         if self._len is not None:
             return self._len
+
         if self._has_more:
             # populate the cache
             list(self._iter_results())
@@ -64,18 +66,33 @@ class QuerySet(BaseQuerySet):
     def _iter_results(self):
         """A generator for iterating over the result cache.
 
-        Also populates the cache if there are more possible results to yield.
-        Raises StopIteration when there are no more results"""
+        Also populates the cache if there are more possible results to
+        yield. Raises StopIteration when there are no more results.
+        """
         if self._result_cache is None:
             self._result_cache = []
+
         pos = 0
         while True:
-            upper = len(self._result_cache)
-            while pos < upper:
+
+            # For all positions lower than the length of the current result
+            # cache, serve the docs straight from the cache w/o hitting the
+            # database.
+            # XXX it's VERY important to compute the len within the `while`
+            # condition because the result cache might expand mid-iteration
+            # (e.g. if we call len(qs) inside a loop that iterates over the
+            # queryset). Fortunately len(list) is O(1) in Python, so this
+            # doesn't cause performance issues.
+            while pos < len(self._result_cache):
                 yield self._result_cache[pos]
                 pos += 1
+
+            # Raise StopIteration if we already established there were no more
+            # docs in the db cursor.
             if not self._has_more:
                 raise StopIteration
+
+            # Otherwise, populate more of the cache and repeat.
             if len(self._result_cache) <= pos:
                 self._populate_cache()
 
@@ -86,12 +103,22 @@ class QuerySet(BaseQuerySet):
         """
         if self._result_cache is None:
             self._result_cache = []
-        if self._has_more:
-            try:
-                for i in xrange(ITER_CHUNK_SIZE):
-                    self._result_cache.append(self.next())
-            except StopIteration:
-                self._has_more = False
+
+        # Skip populating the cache if we already established there are no
+        # more docs to pull from the database.
+        if not self._has_more:
+            return
+
+        # Pull in ITER_CHUNK_SIZE docs from the database and store them in
+        # the result cache.
+        try:
+            for i in xrange(ITER_CHUNK_SIZE):
+                self._result_cache.append(self.next())
+        except StopIteration:
+            # Getting this exception means there are no more docs in the
+            # db cursor. Set _has_more to False so that we can use that
+            # information in other places.
+            self._has_more = False
 
     def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
