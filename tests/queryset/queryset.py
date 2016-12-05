@@ -364,8 +364,6 @@ class QuerySetTest(unittest.TestCase):
         # test invalid batch size
         qs = A.objects.batch_size(-1)
         self.assertRaises(ValueError, lambda: list(qs))
-        qs = A.objects.filter(s='1').batch_size('not a number')
-        self.assertRaises(TypeError, lambda: [doc for doc in qs])
 
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
