@@ -275,6 +275,8 @@ class BaseQuerySet(object):
         except StopIteration:
             return result
 
+        # If we were able to retrieve the 2nd doc, rewind the cursor and
+        # raise the MultipleObjectsReturned exception.
         queryset.rewind()
         message = u'%d items returned, instead of 1' % queryset.count()
         raise queryset._document.MultipleObjectsReturned(message)

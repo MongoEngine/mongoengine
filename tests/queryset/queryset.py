@@ -4890,6 +4890,56 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
 
+    def test_len_during_iteration(self):
+        """Tests that calling len on a queyset during iteration doesn't
+        stop paging.
+        """
+        class Data(Document):
+            pass
+
+        for i in xrange(300):
+            Data().save()
+
+        records = Data.objects.limit(250)
+
+        # This should pull all 250 docs from mongo and populate the result
+        # cache
+        len(records)
+
+        # Assert that iterating over documents in the qs touches every
+        # document even if we call len(qs) midway through the iteration.
+        for i, r in enumerate(records):
+            if i == 58:
+                len(records)
+        self.assertEqual(i, 249)
+
+        # Assert the same behavior is true even if we didn't pre-populate the
+        # result cache.
+        records = Data.objects.limit(250)
+        for i, r in enumerate(records):
+            if i == 58:
+                len(records)
+        self.assertEqual(i, 249)
+
+    def test_iteration_within_iteration(self):
+        """You should be able to reliably iterate over all the documents
+        in a given queryset even if there are multiple iterations of it
+        happening at the same time.
+        """
+        class Data(Document):
+            pass
+
+        for i in xrange(300):
+            Data().save()
+
+        qs = Data.objects.limit(250)
+        for i, doc in enumerate(qs):
+            for j, doc2 in enumerate(qs):
+                pass
+
+        self.assertEqual(i, 249)
+        self.assertEqual(j, 249)
+
 
 if __name__ == '__main__':
     unittest.main()
