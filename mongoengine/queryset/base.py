@@ -786,6 +786,9 @@ class BaseQuerySet(object):
         """Limit the number of documents returned in a single batch (each
         batch requires a round trip to the server).
 
+        See http://api.mongodb.com/python/current/api/pymongo/cursor.html#pymongo.cursor.Cursor.batch_size
+        for details.
+
         :param size: desired size of each batch.
         """
         queryset = self.clone()
