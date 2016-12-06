@@ -25,4 +25,3 @@ if not PY3:
         from cStringIO import StringIO
     except ImportError:
         pass
-

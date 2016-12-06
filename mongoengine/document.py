@@ -8,9 +8,9 @@ import six
 
 from mongoengine import signals
 from mongoengine.base.common import ALLOW_INHERITANCE, get_document
-from mongoengine.base.document import BaseDocument
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList)
+from mongoengine.base.document import BaseDocument
 from mongoengine.base.metaclasses import (DocumentMetaclass,
                                           TopLevelDocumentMetaclass)
 from mongoengine.common import _import_class

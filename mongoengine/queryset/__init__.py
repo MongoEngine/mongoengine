@@ -2,11 +2,9 @@ from mongoengine.errors import (DoesNotExist, InvalidQueryError,
                                 MultipleObjectsReturned, NotUniqueError,
                                 OperationError)
 from mongoengine.queryset.field_list import QueryFieldList
-from mongoengine.queryset.manager import queryset_manager, QuerySetManager
-from mongoengine.queryset.queryset import (QuerySet, QuerySetNoCache,
-                                           DO_NOTHING, NULLIFY, CASCADE,
-                                           DENY, PULL)
-#from mongoengine.queryset.transform import query, update
+from mongoengine.queryset.manager import QuerySetManager, queryset_manager
+from mongoengine.queryset.queryset import (CASCADE, DENY, DO_NOTHING, NULLIFY,
+                                           PULL, QuerySet, QuerySetNoCache)
 from mongoengine.queryset.visitor import Q
 
 
@@ -19,4 +17,3 @@ __all__ = (
     'DoesNotExist', 'InvalidQueryError', 'MultipleObjectsReturned',
     'NotUniqueError', 'OperationError',
 )
-
