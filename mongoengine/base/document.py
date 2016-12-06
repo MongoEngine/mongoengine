@@ -11,13 +11,9 @@ import pymongo
 
 from mongoengine import signals
 from mongoengine.base.common import ALLOW_INHERITANCE, get_document
-from mongoengine.base.datastructures import (
-    BaseDict,
-    BaseList,
-    EmbeddedDocumentList,
-    SemiStrictDict,
-    StrictDict
-)
+from mongoengine.base.datastructures import (BaseDict, BaseList,
+                                             EmbeddedDocumentList,
+                                             SemiStrictDict, StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,

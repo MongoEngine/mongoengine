@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
-import sys
-
 import six
 from nose.plugins.skip import SkipTest
-
-sys.path[0:0] = [""]
 
 import datetime
 import unittest
@@ -29,8 +25,9 @@ except ImportError:
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.base import _document_registry
+from mongoengine.base.common import _document_registry
 from mongoengine.base.datastructures import BaseDict, EmbeddedDocumentList
+from mongoengine.base.fields import BaseField
 from mongoengine.errors import NotRegistered, DoesNotExist
 from mongoengine.python_support import PY3, b, bin_type
 
@@ -3555,8 +3552,6 @@ class FieldTest(unittest.TestCase):
         Ensure that tuples remain tuples when they are
         inside a ComplexBaseField
         """
-        from mongoengine.base import BaseField
-
         class EnumField(BaseField):
 
             def __init__(self, **kwargs):

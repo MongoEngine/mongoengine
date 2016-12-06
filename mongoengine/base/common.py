@@ -1,13 +1,14 @@
 from mongoengine.errors import NotRegistered
 
-__all__ = ('ALLOW_INHERITANCE', 'get_document', '_document_registry')
+__all__ = ('get_document', '_document_registry')
 
-ALLOW_INHERITANCE = False
+ALLOW_INHERITANCE = False  # TODO is this really necessary?
 
 _document_registry = {}
 
 
 def get_document(name):
+    """Get a document class by name."""
     doc = _document_registry.get(name, None)
     if not doc:
         # Possible old style name

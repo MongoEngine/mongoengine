@@ -25,13 +25,16 @@ try:
 except ImportError:
     Int64 = long
 
-from .base import (BaseDocument, BaseField, ComplexBaseField, GeoJsonBaseField,
-                   ObjectIdField, get_document)
-from .connection import DEFAULT_CONNECTION_NAME, get_db
-from .document import Document, EmbeddedDocument
-from .errors import DoesNotExist, ValidationError
-from .python_support import PY3, StringIO, bin_type, str_types, txt_type
-from .queryset import DO_NOTHING, QuerySet
+from mongoengine.base.common import get_document
+from mongoengine.base.document import BaseDocument
+from mongoengine.base.fields import (BaseField, ComplexBaseField,
+                                     GeoJsonBaseField, ObjectIdField)
+from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.document import Document, EmbeddedDocument
+from mongoengine.errors import DoesNotExist, ValidationError
+from mongoengine.python_support import (PY3, StringIO, bin_type, str_types,
+                                        txt_type)
+from mongoengine.queryset import DO_NOTHING, QuerySet
 
 try:
     from PIL import Image, ImageOps
@@ -39,7 +42,7 @@ except ImportError:
     Image = None
     ImageOps = None
 
-__all__ = [
+__all__ = (
     'StringField', 'URLField', 'EmailField', 'IntField', 'LongField',
     'FloatField', 'DecimalField', 'BooleanField', 'DateTimeField',
     'ComplexDateTimeField', 'EmbeddedDocumentField', 'ObjectIdField',
@@ -50,7 +53,8 @@ __all__ = [
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
-    'MultiPolygonField', 'GeoJsonBaseField']
+    'MultiPolygonField', 'GeoJsonBaseField'
+)
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 

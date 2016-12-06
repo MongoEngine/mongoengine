@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
-__all__ = ['pre_init', 'post_init', 'pre_save', 'pre_save_post_validation',
-           'post_save', 'pre_delete', 'post_delete']
+__all__ = ('pre_init', 'post_init', 'pre_save', 'pre_save_post_validation',
+           'post_save', 'pre_delete', 'post_delete')
 
 signals_available = False
 try:
@@ -33,6 +31,7 @@ except ImportError:
         connect = disconnect = has_receivers_for = receivers_for = \
             temporarily_connected_to = _fail
         del _fail
+
 
 # the namespace for code signals.  If you are not mongoengine code, do
 # not put signals in here.  Create your own namespace instead.

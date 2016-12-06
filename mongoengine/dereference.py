@@ -1,14 +1,14 @@
 from bson import DBRef, SON
 
-from .base import (
-    BaseDict, BaseList, EmbeddedDocumentList,
-    TopLevelDocumentMetaclass, get_document
-)
-from .connection import get_db
-from .document import Document, EmbeddedDocument
-from .fields import DictField, ListField, MapField, ReferenceField
-from .python_support import txt_type
-from .queryset import QuerySet
+from mongoengine.base.common import get_document
+from mongoengine.base.datastructures import (BaseDict, BaseList,
+                                             EmbeddedDocumentList)
+from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
+from mongoengine.connection import get_db
+from mongoengine.document import Document, EmbeddedDocument
+from mongoengine.fields import DictField, ListField, MapField, ReferenceField
+from mongoengine.python_support import txt_type
+from mongoengine.queryset import QuerySet
 
 
 class DeReference(object):

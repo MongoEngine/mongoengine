@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path[0:0] = [""]
-
 import bson
 import os
 import pickle
@@ -16,12 +13,12 @@ from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
 
 from mongoengine import *
+from mongoengine.base.common import get_document, _document_registry
+from mongoengine.connection import get_db
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError, NotUniqueError,
                                 FieldDoesNotExist, SaveConditionError)
 from mongoengine.queryset import NULLIFY, Q
-from mongoengine.connection import get_db
-from mongoengine.base import get_document
 from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
 
@@ -411,7 +408,6 @@ class InstanceTest(unittest.TestCase):
 
         # Mimic Place and NicePlace definitions being in a different file
         # and the NicePlace model not being imported in at query time.
-        from mongoengine.base import _document_registry
         del(_document_registry['Place.NicePlace'])
 
         def query_without_importing_nice_place():

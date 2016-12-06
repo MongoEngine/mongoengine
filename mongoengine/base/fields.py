@@ -12,8 +12,8 @@ from mongoengine.base.datastructures import (
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
 
-__all__ = ("BaseField", "ComplexBaseField",
-           "ObjectIdField", "GeoJsonBaseField")
+__all__ = ('BaseField', 'ComplexBaseField', 'ObjectIdField',
+           'GeoJsonBaseField')
 
 
 UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
