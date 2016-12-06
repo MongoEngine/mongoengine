@@ -483,27 +483,41 @@ class FieldTest(unittest.TestCase):
 
     def test_decimal_storage(self):
         class Person(Document):
-            btc = DecimalField(precision=4)
+            float_value = DecimalField(precision=4)
+            string_value = DecimalField(precision=4, force_string=True)
 
         Person.drop_collection()
-        Person(btc=10).save()
-        Person(btc=10.1).save()
-        Person(btc=10.11).save()
-        Person(btc="10.111").save()
-        Person(btc=Decimal("10.1111")).save()
-        Person(btc=Decimal("10.11111")).save()
+        values_to_store = [10, 10.1, 10.11, "10.111", Decimal("10.1111"), Decimal("10.11111")]
+        for store_at_creation in [True, False]:
+            for value in values_to_store:
+                # to_python is called explicitly if values were sent in the kwargs of __init__
+                if store_at_creation:
+                    Person(float_value=value, string_value=value).save()
+                else:
+                    person = Person.objects.create()
+                    person.float_value = value
+                    person.string_value = value
+                    person.save()
 
         # How its stored
-        expected = [{'btc': 10.0}, {'btc': 10.1}, {'btc': 10.11},
-                    {'btc': 10.111}, {'btc': 10.1111}, {'btc': 10.1111}]
+        expected = [
+            {'float_value': 10.0, 'string_value': '10.0000'},
+            {'float_value': 10.1, 'string_value': '10.1000'},
+            {'float_value': 10.11, 'string_value': '10.1100'},
+            {'float_value': 10.111, 'string_value': '10.1110'},
+            {'float_value': 10.1111, 'string_value': '10.1111'},
+            {'float_value': 10.1111, 'string_value': '10.1111'}]
+        expected.extend(expected)
         actual = list(Person.objects.exclude('id').as_pymongo())
         self.assertEqual(expected, actual)
 
         # How it comes out locally
         expected = [Decimal('10.0000'), Decimal('10.1000'), Decimal('10.1100'),
                     Decimal('10.1110'), Decimal('10.1111'), Decimal('10.1111')]
-        actual = list(Person.objects().scalar('btc'))
-        self.assertEqual(expected, actual)
+        expected.extend(expected)
+        for field_name in ['float_value', 'string_value']:
+            actual = list(Person.objects().scalar(field_name))
+            self.assertEqual(expected, actual)
 
     def test_boolean_validation(self):
         """Ensure that invalid values cannot be assigned to boolean fields.
