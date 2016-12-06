@@ -344,13 +344,13 @@ class DecimalField(BaseField):
         if value is None:
             return value
         if self.force_string:
-            return unicode(value)
+            return six.text_type(value)
         return float(self.to_python(value))
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
             if not isinstance(value, basestring):
-                value = unicode(value)
+                value = six.text_type(value)
             try:
                 value = decimal.Decimal(value)
             except Exception as exc:
@@ -1867,7 +1867,7 @@ class UUIDField(BaseField):
             original_value = value
             try:
                 if not isinstance(value, basestring):
-                    value = unicode(value)
+                    value = six.text_type(value)
                 return uuid.UUID(value)
             except Exception:
                 return original_value
@@ -1875,7 +1875,7 @@ class UUIDField(BaseField):
 
     def to_mongo(self, value):
         if not self._binary:
-            return unicode(value)
+            return six.text_type(value)
         elif isinstance(value, basestring):
             return uuid.UUID(value)
         return value
