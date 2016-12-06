@@ -4985,10 +4985,8 @@ class QuerySetTest(unittest.TestCase):
         blog_posts = BlogPost.objects(authors__in=[author])
         self.assertEqual(list(blog_posts), [post])
 
-        with self.assertRaises(TypeError):
-            # Using the `__in`-operator with a non-iterable should raise a
-            # TypeError
-            BlogPost.objects(authors__in=author.id).count()
+        # Using the `__in`-operator with a non-iterable should raise a TypeError
+        self.assertRaises(TypeError, BlogPost.objects(authors__in=author.id).count)
 
     def test_in_operator_on_document(self):
         """Ensure that using the `__in` operator on a `Document` raises an
@@ -5012,10 +5010,8 @@ class QuerySetTest(unittest.TestCase):
         blog_posts = BlogPost.objects(authors__in=[author])
         self.assertEqual(list(blog_posts), [post])
 
-        with self.assertRaises(TypeError):
-            # Using the `__in`-operator with a `Document` should raise a
-            # TypeError
-            BlogPost.objects(authors__in=author).count()
+        # Using the `__in`-operator with a `Document` should raise a TypeError
+        self.assertRaises(TypeError, BlogPost.objects(authors__in=author).count)
 
 
 if __name__ == '__main__':
