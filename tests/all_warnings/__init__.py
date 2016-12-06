@@ -3,8 +3,6 @@ This test has been put into a module.  This is because it tests warnings that
 only get triggered on first hit.  This way we can ensure its imported into the
 top level and called first by the test suite.
 """
-import sys
-sys.path[0:0] = [""]
 import unittest
 import warnings
 

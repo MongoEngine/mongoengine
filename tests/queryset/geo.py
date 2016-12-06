@@ -1,9 +1,5 @@
-import sys
-
-sys.path[0:0] = [""]
-
-import unittest
 from datetime import datetime, timedelta
+import unittest
 
 from pymongo.errors import OperationFailure
 from mongoengine import *

@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path[0:0] = [""]
-
 import copy
 import os
 import unittest

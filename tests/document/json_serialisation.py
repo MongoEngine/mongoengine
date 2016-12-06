@@ -1,6 +1,3 @@
-import sys
-sys.path[0:0] = [""]
-
 import unittest
 import uuid
 

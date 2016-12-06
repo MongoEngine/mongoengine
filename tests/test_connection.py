@@ -1,8 +1,5 @@
-import sys
 import datetime
 from pymongo.errors import OperationFailure
-
-sys.path[0:0] = [""]
 
 try:
     import unittest2 as unittest
