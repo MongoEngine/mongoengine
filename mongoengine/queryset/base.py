@@ -82,6 +82,7 @@ class BaseQuerySet(object):
         self._limit = None
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
+        self._batch_size = None
         self.only_fields = []
         self._max_time_ms = None
 
@@ -783,6 +784,19 @@ class BaseQuerySet(object):
         queryset._hint = index
         return queryset
 
+    def batch_size(self, size):
+        """Limit the number of documents returned in a single batch (each
+        batch requires a round trip to the server).
+
+        See http://api.mongodb.com/python/current/api/pymongo/cursor.html#pymongo.cursor.Cursor.batch_size
+        for details.
+
+        :param size: desired size of each batch.
+        """
+        queryset = self.clone()
+        queryset._batch_size = size
+        return queryset
+
     def distinct(self, field):
         """Return a list of distinct values for a given field.
 
@@ -1468,6 +1482,9 @@ class BaseQuerySet(object):
 
             if self._hint != -1:
                 self._cursor_obj.hint(self._hint)
+
+            if self._batch_size is not None:
+                self._cursor_obj.batch_size(self._batch_size)
 
         return self._cursor_obj
 
