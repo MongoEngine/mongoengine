@@ -7,6 +7,7 @@ Changes in 0.10.8
 - Added ability to specify an authentication mechanism (e.g. X.509) #1333
 - Added support for falsey primary keys (e.g. doc.pk = 0) #1354
 - Fixed BaseQuerySet#sum/average for fields w/ explicit db_field #1417
+- Fixed absent rounding for DecimalField when `force_string` is set. #1103
 
 Changes in 0.10.7
 =================
