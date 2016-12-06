@@ -1,4 +1,5 @@
 from bson import DBRef, SON
+import six
 
 from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
@@ -7,7 +8,6 @@ from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
 from mongoengine.connection import get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.fields import DictField, ListField, MapField, ReferenceField
-from mongoengine.python_support import txt_type
 from mongoengine.queryset import QuerySet
 
 
@@ -227,7 +227,7 @@ class DeReference(object):
                         data[k]._data[field_name] = self.object_map.get(
                             (v['_ref'].collection, v['_ref'].id), v)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                        item_name = txt_type("{0}.{1}.{2}").format(name, k, field_name)
+                        item_name = six.text_type("{0}.{1}.{2}").format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name

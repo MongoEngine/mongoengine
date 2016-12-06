@@ -1,5 +1,7 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
-from mongoengine.python_support import (IS_PYMONGO_3, str_types)
+import six
+
+from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
@@ -66,7 +68,7 @@ def register_connection(alias, name=None, host=None, port=None,
     # Handle uri style connections
     conn_host = conn_settings['host']
     # host can be a list or a string, so if string, force to a list
-    if isinstance(conn_host, str_types):
+    if isinstance(conn_host, six.string_types):
         conn_host = [conn_host]
 
     resolved_hosts = []

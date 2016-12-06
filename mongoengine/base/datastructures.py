@@ -1,6 +1,8 @@
 import itertools
 import weakref
 
+import six
+
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
@@ -212,7 +214,8 @@ class EmbeddedDocumentList(BaseList):
     def __match_all(cls, i, kwargs):
         items = kwargs.items()
         return all([
-            getattr(i, k) == v or unicode(getattr(i, k)) == v for k, v in items
+            getattr(i, k) == v or six.text_type(getattr(i, k)) == v
+            for k, v in items
         ])
 
     @classmethod

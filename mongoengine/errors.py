@@ -1,7 +1,6 @@
 from collections import defaultdict
 
-from mongoengine.python_support import txt_type
-
+import six
 
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
            'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
@@ -77,7 +76,7 @@ class ValidationError(AssertionError):
         self.message = message
 
     def __str__(self):
-        return txt_type(self.message)
+        return six.text_type(self.message)
 
     def __repr__(self):
         return '%s(%s,)' % (self.__class__.__name__, self.message)
@@ -111,17 +110,20 @@ class ValidationError(AssertionError):
             errors_dict = {}
             if not source:
                 return errors_dict
+
             if isinstance(source, dict):
                 for field_name, error in source.iteritems():
                     errors_dict[field_name] = build_dict(error)
             elif isinstance(source, ValidationError) and source.errors:
                 return build_dict(source.errors)
             else:
-                return unicode(source)
+                return six.text_type(source)
+
             return errors_dict
 
         if not self.errors:
             return {}
+
         return build_dict(self.errors)
 
     def _format_errors(self):

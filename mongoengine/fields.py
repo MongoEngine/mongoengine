@@ -32,8 +32,7 @@ from mongoengine.base.fields import (BaseField, ComplexBaseField,
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, ValidationError
-from mongoengine.python_support import (PY3, StringIO, bin_type, str_types,
-                                        txt_type)
+from mongoengine.python_support import PY3, StringIO
 from mongoengine.queryset import DO_NOTHING, QuerySet
 
 try:
@@ -1294,17 +1293,17 @@ class BinaryField(BaseField):
     def __set__(self, instance, value):
         """Handle bytearrays in python 3.1"""
         if PY3 and isinstance(value, bytearray):
-            value = bin_type(value)
+            value = six.binary_type(value)
         return super(BinaryField, self).__set__(instance, value)
 
     def to_mongo(self, value):
         return Binary(value)
 
     def validate(self, value):
-        if not isinstance(value, (bin_type, txt_type, Binary)):
+        if not isinstance(value, (six.binary_type, six.text_type, Binary)):
             self.error("BinaryField only accepts instances of "
                        "(%s, %s, Binary)" % (
-                           bin_type.__name__, txt_type.__name__))
+                           six.binary_type.__name__, six.text_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -1492,8 +1491,10 @@ class FileField(BaseField):
 
     def __set__(self, instance, value):
         key = self.name
-        if ((hasattr(value, 'read') and not
-                isinstance(value, GridFSProxy)) or isinstance(value, str_types)):
+        if (
+            (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or
+            isinstance(value, (six.binary_type, six.string_types))
+        ):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it

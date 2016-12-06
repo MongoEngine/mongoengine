@@ -4,6 +4,7 @@ import weakref
 
 from bson import DBRef, ObjectId, SON
 import pymongo
+import six
 
 from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
@@ -11,6 +12,7 @@ from mongoengine.base.datastructures import (
 )
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
+
 
 __all__ = ('BaseField', 'ComplexBaseField', 'ObjectIdField',
            'GeoJsonBaseField')
@@ -200,11 +202,11 @@ class BaseField(object):
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
                 self.error(
-                    'Value must be instance of %s' % unicode(choice_list)
+                    'Value must be instance of %s' % six.text_type(choice_list)
                 )
         # Choices which are types other than Documents
         elif value not in choice_list:
-            self.error('Value must be one of %s' % unicode(choice_list))
+            self.error('Value must be one of %s' % six.text_type(choice_list))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -457,10 +459,10 @@ class ObjectIdField(BaseField):
     def to_mongo(self, value):
         if not isinstance(value, ObjectId):
             try:
-                return ObjectId(unicode(value))
+                return ObjectId(six.text_type(value))
             except Exception as e:
                 # e.message attribute has been deprecated since Python 2.6
-                self.error(unicode(e))
+                self.error(six.text_type(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -468,7 +470,7 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            ObjectId(unicode(value))
+            ObjectId(six.text_type(value))
         except Exception:
             self.error('Invalid Object ID')
 

@@ -8,6 +8,7 @@ from bson import ObjectId, json_util
 from bson.dbref import DBRef
 from bson.son import SON
 import pymongo
+import six
 
 from mongoengine import signals
 from mongoengine.base.common import ALLOW_INHERITANCE, get_document
@@ -18,7 +19,7 @@ from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, ValidationError)
-from mongoengine.python_support import PY3, txt_type
+from mongoengine.python_support import PY3
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -250,12 +251,13 @@ class BaseDocument(object):
         return repr_type('<%s: %s>' % (self.__class__.__name__, u))
 
     def __str__(self):
+        # TODO this could be simpler?
         if hasattr(self, '__unicode__'):
             if PY3:
                 return self.__unicode__()
             else:
-                return unicode(self).encode('utf-8')
-        return txt_type('%s object' % self.__class__.__name__)
+                return six.text_type(self).encode('utf-8')
+        return six.text_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__) and hasattr(other, 'id') and other.id is not None:

@@ -4,6 +4,7 @@ import warnings
 from bson.dbref import DBRef
 import pymongo
 from pymongo.read_preferences import ReadPreference
+import six
 
 from mongoengine import signals
 from mongoengine.base.common import ALLOW_INHERITANCE, get_document
@@ -391,15 +392,16 @@ class Document(BaseDocument):
                 self.cascade_save(**kwargs)
         except pymongo.errors.DuplicateKeyError as err:
             message = u'Tried to save duplicate unique keys (%s)'
-            raise NotUniqueError(message % unicode(err))
+            raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', unicode(err)):
+            if re.match('^E1100[01] duplicate key', six.text_type(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % unicode(err))
-            raise OperationError(message % unicode(err))
+                raise NotUniqueError(message % six.text_type(err))
+            raise OperationError(message % six.text_type(err))
+
         id_field = self._meta['id_field']
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)

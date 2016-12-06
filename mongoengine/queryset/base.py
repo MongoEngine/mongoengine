@@ -12,6 +12,7 @@ from bson.code import Code
 import pymongo
 import pymongo.errors
 from pymongo.common import validate_read_preference
+import six
 
 from mongoengine import signals
 from mongoengine.base.common import get_document
@@ -352,15 +353,15 @@ class BaseQuerySet(object):
             ids = self._collection.insert(raw, **write_concern)
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
-            raise NotUniqueError(message % unicode(err))
+            raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', unicode(err)):
+            if re.match('^E1100[01] duplicate key', six.text_type(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % unicode(err))
-            raise OperationError(message % unicode(err))
+                raise NotUniqueError(message % six.text_type(err))
+            raise OperationError(message % six.text_type(err))
 
         if not load_bulk:
             signals.post_bulk_insert.send(
@@ -506,12 +507,12 @@ class BaseQuerySet(object):
             elif result:
                 return result['n']
         except pymongo.errors.DuplicateKeyError as err:
-            raise NotUniqueError(u'Update failed (%s)' % unicode(err))
+            raise NotUniqueError(u'Update failed (%s)' % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
-            if unicode(err) == u'multi not coded yet':
+            if six.text_type(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
                 raise OperationError(message)
-            raise OperationError(u'Update failed (%s)' % unicode(err))
+            raise OperationError(u'Update failed (%s)' % six.text_type(err))
 
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
@@ -1155,13 +1156,13 @@ class BaseQuerySet(object):
         map_f_scope = {}
         if isinstance(map_f, Code):
             map_f_scope = map_f.scope
-            map_f = unicode(map_f)
+            map_f = six.text_type(map_f)
         map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
 
         reduce_f_scope = {}
         if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
-            reduce_f = unicode(reduce_f)
+            reduce_f = six.text_type(reduce_f)
         reduce_f_code = queryset._sub_js_fields(reduce_f)
         reduce_f = Code(reduce_f_code, reduce_f_scope)
 
@@ -1171,7 +1172,7 @@ class BaseQuerySet(object):
             finalize_f_scope = {}
             if isinstance(finalize_f, Code):
                 finalize_f_scope = finalize_f.scope
-                finalize_f = unicode(finalize_f)
+                finalize_f = six.text_type(finalize_f)
             finalize_f_code = queryset._sub_js_fields(finalize_f)
             finalize_f = Code(finalize_f_code, finalize_f_scope)
             mr_args['finalize'] = finalize_f
