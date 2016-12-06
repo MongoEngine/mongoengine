@@ -393,10 +393,10 @@ class Document(BaseDocument):
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
                 self.cascade_save(**kwargs)
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             message = u'Tried to save duplicate unique keys (%s)'
             raise NotUniqueError(message % unicode(err))
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
                 # E11000 - duplicate key error index
@@ -513,7 +513,7 @@ class Document(BaseDocument):
         try:
             self._qs.filter(
                 **self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)

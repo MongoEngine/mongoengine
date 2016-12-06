@@ -166,7 +166,7 @@ class BaseQuerySet(object):
                 queryset._skip, queryset._limit = key.start, key.stop
                 if key.start and key.stop:
                     queryset._limit = key.stop - key.start
-            except IndexError, err:
+            except IndexError as err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it.
                 start = key.start or 0
@@ -350,10 +350,10 @@ class BaseQuerySet(object):
         raw = [doc.to_mongo() for doc in docs]
         try:
             ids = self._collection.insert(raw, **write_concern)
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % unicode(err))
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', unicode(err)):
                 # E11000 - duplicate key error index
@@ -505,9 +505,9 @@ class BaseQuerySet(object):
                 return result
             elif result:
                 return result['n']
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u'Update failed (%s)' % unicode(err))
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             if unicode(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
                 raise OperationError(message)
@@ -615,9 +615,9 @@ class BaseQuerySet(object):
                 result = queryset._collection.find_and_modify(
                     query, update, upsert=upsert, sort=sort, remove=remove, new=new,
                     full_response=full_response, **self._cursor_args)
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u"Update failed (%s)" % err)
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             raise OperationError(u"Update failed (%s)" % err)
 
         if full_response:
@@ -1643,7 +1643,7 @@ class BaseQuerySet(object):
                 field = ".".join(f.db_field for f in
                                  document._lookup_field(field.split('.')))
                 ret.append(field)
-            except LookUpError, err:
+            except LookUpError as err:
                 found = False
                 for subdoc in subclasses:
                     try:

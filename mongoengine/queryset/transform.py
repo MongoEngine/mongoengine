@@ -57,7 +57,7 @@ def query(_doc_cls=None, **kwargs):
             # Switch field names to proper names [set in Field(name='foo')]
             try:
                 fields = _doc_cls._lookup_field(parts)
-            except Exception, e:
+            except Exception as e:
                 raise InvalidQueryError(e)
             parts = []
 
@@ -223,7 +223,7 @@ def update(_doc_cls=None, **update):
             # Switch field names to proper names [set in Field(name='foo')]
             try:
                 fields = _doc_cls._lookup_field(parts)
-            except Exception, e:
+            except Exception as e:
                 raise InvalidQueryError(e)
             parts = []
 

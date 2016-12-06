@@ -3106,7 +3106,7 @@ class FieldTest(unittest.TestCase):
 
         try:
             shirt.validate()
-        except ValidationError, error:
+        except ValidationError as error:
             # get the validation rules
             error_dict = error.to_dict()
             self.assertEqual(error_dict['size'], SIZE_MESSAGE)
@@ -3494,7 +3494,7 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(ValidationError, post.validate)
         try:
             post.validate()
-        except ValidationError, error:
+        except ValidationError as error:
             # ValidationError.errors property
             self.assertTrue(hasattr(error, 'errors'))
             self.assertTrue(isinstance(error.errors, dict))

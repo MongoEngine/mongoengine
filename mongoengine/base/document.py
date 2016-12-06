@@ -376,7 +376,7 @@ class BaseDocument(object):
         if clean:
             try:
                 self.clean()
-            except ValidationError, error:
+            except ValidationError as error:
                 errors[NON_FIELD_ERRORS] = error
 
         # Get a list of tuples of field names and their current values
@@ -395,9 +395,9 @@ class BaseDocument(object):
                         field._validate(value, clean=clean)
                     else:
                         field._validate(value)
-                except ValidationError, error:
+                except ValidationError as error:
                     errors[field.name] = error.errors or error
-                except (ValueError, AttributeError, AssertionError), error:
+                except (ValueError, AttributeError, AssertionError) as error:
                     errors[field.name] = error
             elif field.required and not getattr(field, '_auto_gen', False):
                 errors[field.name] = ValidationError('Field is required',
@@ -712,7 +712,7 @@ class BaseDocument(object):
                                         else field.to_python(value))
                     if field_name != field.db_field:
                         del data[field.db_field]
-                except (AttributeError, ValueError), e:
+                except (AttributeError, ValueError) as e:
                     errors_dict[field_name] = e
 
         if errors_dict:

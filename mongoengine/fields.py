@@ -156,7 +156,7 @@ class URLField(StringField):
             try:
                 request = urllib2.Request(value)
                 urllib2.urlopen(request)
-            except Exception, e:
+            except Exception as e:
                 self.error('This URL appears to be a broken link: %s' % e)
 
 
@@ -350,7 +350,7 @@ class DecimalField(BaseField):
                 value = unicode(value)
             try:
                 value = decimal.Decimal(value)
-            except Exception, exc:
+            except Exception as exc:
                 self.error('Could not convert value to decimal: %s' % exc)
 
         if self.min_value is not None and value < self.min_value:
@@ -1558,7 +1558,7 @@ class ImageGridFsProxy(GridFSProxy):
         try:
             img = Image.open(file_obj)
             img_format = img.format
-        except Exception, e:
+        except Exception as e:
             raise ValidationError('Invalid image: %s' % e)
 
         # Progressive JPEG
@@ -1886,7 +1886,7 @@ class UUIDField(BaseField):
                 value = str(value)
             try:
                 uuid.UUID(value)
-            except Exception, exc:
+            except Exception as exc:
                 self.error('Could not convert to UUID: %s' % exc)
 
 

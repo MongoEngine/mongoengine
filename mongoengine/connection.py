@@ -180,7 +180,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                     break
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
-        except Exception, e:
+        except Exception as e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
     return _connections[alias]
 
