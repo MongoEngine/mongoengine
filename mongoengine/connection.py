@@ -25,7 +25,8 @@ _dbs = {}
 
 def register_connection(alias, name=None, host=None, port=None,
                         read_preference=READ_PREFERENCE,
-                        username=None, password=None, authentication_source=None,
+                        username=None, password=None,
+                        authentication_source=None,
                         authentication_mechanism=None,
                         **kwargs):
     """Add a connection.
@@ -70,20 +71,26 @@ def register_connection(alias, name=None, host=None, port=None,
 
     resolved_hosts = []
     for entity in conn_host:
-        # Handle uri style connections
+
+        # Handle Mongomock
         if entity.startswith('mongomock://'):
             conn_settings['is_mock'] = True
             # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
             resolved_hosts.append(entity.replace('mongomock://', 'mongodb://', 1))
+
+        # Handle URI style connections, only updating connection params which
+        # were explicitly specified in the URI.
         elif '://' in entity:
             uri_dict = uri_parser.parse_uri(entity)
             resolved_hosts.append(entity)
-            conn_settings.update({
-                'name': uri_dict.get('database') or name,
-                'username': uri_dict.get('username'),
-                'password': uri_dict.get('password'),
-                'read_preference': read_preference,
-            })
+
+            if uri_dict.get('database'):
+                conn_settings['name'] = uri_dict.get('database')
+
+            for param in ('read_preference', 'username', 'password'):
+                if uri_dict.get(param):
+                    conn_settings[param] = uri_dict[param]
+
             uri_options = uri_dict['options']
             if 'replicaset' in uri_options:
                 conn_settings['replicaSet'] = True
