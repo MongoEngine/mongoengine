@@ -732,9 +732,7 @@ class BaseDocument(object):
 
     @classmethod
     def _build_index_specs(cls, meta_indexes):
-        """Generate and merge the full index specs
-        """
-
+        """Generate and merge the full index specs."""
         geo_indices = cls._geo_indices()
         unique_indices = cls._unique_with_indexes()
         index_specs = [cls._build_index_spec(spec)
@@ -744,14 +742,15 @@ class BaseDocument(object):
             if not indices:
                 return index_specs
 
-            spec_fields = [v['fields']
-                           for k, v in enumerate(index_specs)]
+            spec_fields = [idx['fields'] for idx in index_specs]
+
             # Merge unique_indexes with existing specs
-            for k, v in enumerate(indices):
-                if v['fields'] in spec_fields:
-                    index_specs[spec_fields.index(v['fields'])].update(v)
+            for idx in indices:
+                if idx['fields'] in spec_fields:
+                    index_specs[spec_fields.index(idx['fields'])].update(idx)
                 else:
-                    index_specs.append(v)
+                    index_specs.append(idx)
+
             return index_specs
 
         index_specs = merge_index_specs(index_specs, geo_indices)
@@ -760,8 +759,7 @@ class BaseDocument(object):
 
     @classmethod
     def _build_index_spec(cls, spec):
-        """Build a PyMongo index spec from a MongoEngine index spec.
-        """
+        """Build a PyMongo index spec from a MongoEngine index spec."""
         if isinstance(spec, six.string_types):
             spec = {'fields': [spec]}
         elif isinstance(spec, (list, tuple)):
