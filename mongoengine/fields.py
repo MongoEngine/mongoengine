@@ -78,7 +78,7 @@ class StringField(BaseField):
         return value
 
     def validate(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             self.error('StringField only accepts string values')
 
         if self.max_length is not None and len(value) > self.max_length:
@@ -94,7 +94,7 @@ class StringField(BaseField):
         return None
 
     def prepare_query_value(self, op, value):
-        if not isinstance(op, basestring):
+        if not isinstance(op, six.string_types):
             return value
 
         if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
@@ -349,7 +349,7 @@ class DecimalField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
-            if not isinstance(value, basestring):
+            if not isinstance(value, six.string_types):
                 value = six.text_type(value)
             try:
                 value = decimal.Decimal(value)
@@ -413,7 +413,7 @@ class DateTimeField(BaseField):
         if callable(value):
             return value()
 
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             return None
 
         # Attempt to parse a datetime:
@@ -540,16 +540,19 @@ class EmbeddedDocumentField(BaseField):
     """
 
     def __init__(self, document_type, **kwargs):
-        if not isinstance(document_type, basestring):
-            if not issubclass(document_type, EmbeddedDocument):
-                self.error('Invalid embedded document class provided to an '
-                           'EmbeddedDocumentField')
+        if (
+            not isinstance(document_type, six.string_types) and
+            not issubclass(document_type, EmbeddedDocument)
+        ):
+            self.error('Invalid embedded document class provided to an '
+                       'EmbeddedDocumentField')
+
         self.document_type_obj = document_type
         super(EmbeddedDocumentField, self).__init__(**kwargs)
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, basestring):
+        if isinstance(self.document_type_obj, six.string_types):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
@@ -634,7 +637,7 @@ class DynamicField(BaseField):
         """Convert a Python type to a MongoDB compatible type.
         """
 
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             return value
 
         if hasattr(value, 'to_mongo'):
@@ -677,7 +680,7 @@ class DynamicField(BaseField):
         return member_name
 
     def prepare_query_value(self, op, value):
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             return StringField().prepare_query_value(op, value)
         return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
 
@@ -705,14 +708,14 @@ class ListField(ComplexBaseField):
         """Make sure that a list of valid fields is being used.
         """
         if (not isinstance(value, (list, tuple, QuerySet)) or
-                isinstance(value, basestring)):
+                isinstance(value, six.string_types)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
         if self.field:
             if op in ('set', 'unset', None) and (
-                    not isinstance(value, basestring) and
+                    not isinstance(value, six.string_types) and
                     not isinstance(value, BaseDocument) and
                     hasattr(value, '__iter__')):
                 return [self.field.prepare_query_value(op, v) for v in value]
@@ -782,7 +785,7 @@ def key_not_string(d):
     not a string.
     """
     for k, v in d.items():
-        if not isinstance(k, basestring) or (isinstance(v, dict) and key_not_string(v)):
+        if not isinstance(k, six.string_types) or (isinstance(v, dict) and key_not_string(v)):
             return True
 
 
@@ -838,7 +841,7 @@ class DictField(ComplexBaseField):
                            'istartswith', 'endswith', 'iendswith',
                            'exact', 'iexact']
 
-        if op in match_operators and isinstance(value, basestring):
+        if op in match_operators and isinstance(value, six.string_types):
             return StringField().prepare_query_value(op, value)
 
         if hasattr(self.field, 'field'):
@@ -914,10 +917,12 @@ class ReferenceField(BaseField):
             A reference to an abstract document type is always stored as a
             :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
-        if not isinstance(document_type, basestring):
-            if not issubclass(document_type, (Document, basestring)):
-                self.error('Argument to ReferenceField constructor must be a '
-                           'document class or a string')
+        if (
+            not isinstance(document_type, six.string_types) and
+            not issubclass(document_type, Document)
+        ):
+            self.error('Argument to ReferenceField constructor must be a '
+                       'document class or a string')
 
         self.dbref = dbref
         self.document_type_obj = document_type
@@ -926,7 +931,7 @@ class ReferenceField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, basestring):
+        if isinstance(self.document_type_obj, six.string_types):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
@@ -1039,8 +1044,10 @@ class CachedReferenceField(BaseField):
         :param fields:  A list of fields to be cached in document
         :param auto_sync: if True documents are auto updated.
         """
-        if not isinstance(document_type, basestring) and \
-                not issubclass(document_type, (Document, basestring)):
+        if (
+            not isinstance(document_type, six.string_types) and
+            not issubclass(document_type, Document)
+        ):
             self.error('Argument to CachedReferenceField constructor must be a'
                        ' document class or a string')
 
@@ -1080,7 +1087,7 @@ class CachedReferenceField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, basestring):
+        if isinstance(self.document_type_obj, six.string_types):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
@@ -1194,13 +1201,13 @@ class GenericReferenceField(BaseField):
         # Keep the choices as a list of allowed Document class names
         if choices:
             for choice in choices:
-                if isinstance(choice, basestring):
+                if isinstance(choice, six.string_types):
                     self.choices.append(choice)
                 elif isinstance(choice, type) and issubclass(choice, Document):
                     self.choices.append(choice._class_name)
                 else:
                     self.error('Invalid choices provided: must be a list of'
-                               'Document subclasses and/or basestrings')
+                               'Document subclasses and/or six.string_typess')
 
     def _validate_choices(self, value):
         if isinstance(value, dict):
@@ -1866,7 +1873,7 @@ class UUIDField(BaseField):
         if not self._binary:
             original_value = value
             try:
-                if not isinstance(value, basestring):
+                if not isinstance(value, six.string_types):
                     value = six.text_type(value)
                 return uuid.UUID(value)
             except Exception:
@@ -1876,7 +1883,7 @@ class UUIDField(BaseField):
     def to_mongo(self, value):
         if not self._binary:
             return six.text_type(value)
-        elif isinstance(value, basestring):
+        elif isinstance(value, six.string_types):
             return uuid.UUID(value)
         return value
 
@@ -1887,7 +1894,7 @@ class UUIDField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, uuid.UUID):
-            if not isinstance(value, basestring):
+            if not isinstance(value, six.string_types):
                 value = str(value)
             try:
                 uuid.UUID(value)

@@ -30,8 +30,6 @@ def get_version():
     """Return the VERSION as a string, e.g. for VERSION == (0, 10, 7),
     return '0.10.7'.
     """
-    if isinstance(VERSION[-1], basestring):
-        return '.'.join(map(str, VERSION[:-1])) + VERSION[-1]
     return '.'.join(map(str, VERSION))
 
 

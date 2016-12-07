@@ -299,7 +299,7 @@ class ComplexBaseField(BaseField):
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             return value
 
         if hasattr(value, 'to_python'):
@@ -345,7 +345,7 @@ class ComplexBaseField(BaseField):
         EmbeddedDocument = _import_class("EmbeddedDocument")
         GenericReferenceField = _import_class("GenericReferenceField")
 
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             return value
 
         if hasattr(value, 'to_mongo'):

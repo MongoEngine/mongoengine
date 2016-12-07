@@ -160,7 +160,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
             # Discard replicaSet if not base string
-            if not isinstance(conn_settings['replicaSet'], basestring):
+            if not isinstance(conn_settings['replicaSet'], six.string_types):
                 conn_settings.pop('replicaSet', None)
             if not IS_PYMONGO_3:
                 connection_class = MongoReplicaSetClient

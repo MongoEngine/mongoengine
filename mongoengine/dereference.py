@@ -25,7 +25,7 @@ class DeReference(object):
             :class:`~mongoengine.base.ComplexBaseField`
         :param get: A boolean determining if being called by __get__
         """
-        if items is None or isinstance(items, basestring):
+        if items is None or isinstance(items, six.string_types):
             return items
 
         # cheapest way to convert a queryset to a list

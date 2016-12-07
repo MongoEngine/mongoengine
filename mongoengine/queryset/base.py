@@ -1188,7 +1188,7 @@ class BaseQuerySet(object):
         else:
             map_reduce_function = 'map_reduce'
 
-            if isinstance(output, basestring):
+            if isinstance(output, six.string_types):
                 mr_args['out'] = output
 
             elif isinstance(output, dict):

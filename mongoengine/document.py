@@ -33,7 +33,7 @@ def includes_cls(fields):
 
     first_field = None
     if len(fields):
-        if isinstance(fields[0], basestring):
+        if isinstance(fields[0], six.string_types):
             first_field = fields[0]
         elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
             first_field = fields[0][0]
@@ -146,21 +146,17 @@ class Document(BaseDocument):
 
     __slots__ = ('__objects',)
 
-    def pk():
-        """Primary key alias
-        """
+    @property
+    def pk(self):
+        """Get the primary key."""
+        if 'id_field' not in self._meta:
+            return None
+        return getattr(self, self._meta['id_field'])
 
-        def fget(self):
-            if 'id_field' not in self._meta:
-                return None
-            return getattr(self, self._meta['id_field'])
-
-        def fset(self, value):
-            return setattr(self, self._meta['id_field'], value)
-
-        return property(fget, fset)
-
-    pk = pk()
+    @pk.setter
+    def pk(self, value):
+        """Set the primary key."""
+        return setattr(self, self._meta['id_field'], value)
 
     @classmethod
     def _get_db(cls):
@@ -208,7 +204,7 @@ class Document(BaseDocument):
                 cls.ensure_indexes()
         return cls._collection
 
-    def modify(self, query={}, **update):
+    def modify(self, query=None, **update):
         """Perform an atomic update of the document in the database and reload
         the document object using updated version.
 
@@ -222,6 +218,8 @@ class Document(BaseDocument):
             database matches the query
         :param update: Django-style update keyword arguments
         """
+        if query is None:
+            query = {}
 
         if self.pk is None:
             raise InvalidDocumentError("The document does not have a primary key.")
@@ -412,9 +410,10 @@ class Document(BaseDocument):
         self._created = False
         return self
 
-    def cascade_save(self, *args, **kwargs):
-        """Recursively saves any references /
-           generic references on the document"""
+    def cascade_save(self, **kwargs):
+        """Recursively save any references and generic references on the
+        document.
+        """
         _refs = kwargs.get('_refs', []) or []
 
         ReferenceField = _import_class('ReferenceField')
@@ -441,16 +440,17 @@ class Document(BaseDocument):
 
     @property
     def _qs(self):
-        """
-        Returns the queryset to use for updating / reloading / deletions
-        """
+        """Return the queryset to use for updating / reloading / deletions."""
         if not hasattr(self, '__objects'):
             self.__objects = QuerySet(self, self._get_collection())
         return self.__objects
 
     @property
     def _object_key(self):
-        """Dict to identify object in collection
+        """Get the query dict that can be used to fetch this object from
+        the database. Most of the time it's a simple PK lookup, but in
+        case of a sharded collection with a compound shard key, it can
+        contain a more complex query.
         """
         select_dict = {'pk': self.pk}
         shard_key = self.__class__._meta.get('shard_key', tuple())

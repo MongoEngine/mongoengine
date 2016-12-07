@@ -21,8 +21,9 @@ except Exception:
 
 
 def get_version(version_tuple):
-    if not isinstance(version_tuple[-1], int):
-        return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
+    """Return the version tuple as a string, e.g. for (0, 10, 7),
+    return '0.10.7'.
+    """
     return '.'.join(map(str, version_tuple))
 
 
