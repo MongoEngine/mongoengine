@@ -15,11 +15,10 @@ def cprofile_main():
     class Noddy(Document):
         fields = DictField()
 
-    for i in range(1):
-        noddy = Noddy()
-        for j in range(20):
-            noddy.fields["key" + str(j)] = "value " + str(j)
-        noddy.save()
+    noddy = Noddy()
+    for j in range(20):
+        noddy.fields["key" + str(j)] = "value " + str(j)
+    noddy.save()
 
 
 def main():
