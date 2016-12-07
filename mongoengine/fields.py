@@ -69,7 +69,7 @@ class StringField(BaseField):
         super(StringField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        if isinstance(value, unicode):
+        if isinstance(value, six.text_type):
             return value
         try:
             value = value.decode('utf-8')
@@ -1038,12 +1038,15 @@ class CachedReferenceField(BaseField):
     .. versionadded:: 0.9
     """
 
-    def __init__(self, document_type, fields=[], auto_sync=True, **kwargs):
+    def __init__(self, document_type, fields=None, auto_sync=True, **kwargs):
         """Initialises the Cached Reference Field.
 
         :param fields:  A list of fields to be cached in document
         :param auto_sync: if True documents are auto updated.
         """
+        if fields is None:
+            fields = []
+
         if (
             not isinstance(document_type, six.string_types) and
             not issubclass(document_type, Document)
