@@ -306,7 +306,7 @@ class BaseDocument(object):
             fields = []
 
         data = SON()
-        data["_id"] = None
+        data['_id'] = None
         data['_cls'] = self._class_name
 
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
@@ -349,18 +349,8 @@ class BaseDocument(object):
                 else:
                     data[field.name] = value
 
-        # If "_id" has not been set, then try and set it
-        Document = _import_class("Document")
-        if isinstance(self, Document):
-            if data["_id"] is None:
-                data["_id"] = self._data.get("id", None)
-
-        if data['_id'] is None:
-            data.pop('_id')
-
         # Only add _cls if allow_inheritance is True
-        if (not hasattr(self, '_meta') or
-                not self._meta.get('allow_inheritance', ALLOW_INHERITANCE)):
+        if not self._meta.get('allow_inheritance', ALLOW_INHERITANCE):
             data.pop('_cls')
 
         return data

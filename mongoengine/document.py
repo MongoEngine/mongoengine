@@ -79,6 +79,15 @@ class EmbeddedDocument(BaseDocument):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def to_mongo(self, *args, **kwargs):
+        data = super(EmbeddedDocument, self).to_mongo(*args, **kwargs)
+
+        # remove _id from the SON if it's in it and it's None
+        if '_id' in data and data['_id'] is None:
+            del data['_id']
+
+        return data
+
     def save(self, *args, **kwargs):
         self._instance.save(*args, **kwargs)
 
@@ -203,6 +212,19 @@ class Document(BaseDocument):
             if cls._meta.get('auto_create_index', True):
                 cls.ensure_indexes()
         return cls._collection
+
+    def to_mongo(self, *args, **kwargs):
+        data = super(Document, self).to_mongo(*args, **kwargs)
+
+        # If '_id' is None, try and set it from self._data. If that
+        # doesn't exist either, remote '_id' from the SON completely.
+        if data['_id'] is None:
+            if self._data.get('id') is None:
+                del data['_id']
+            else:
+                data["_id"] = self._data['id']
+
+        return data
 
     def modify(self, query=None, **update):
         """Perform an atomic update of the document in the database and reload
