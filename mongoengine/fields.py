@@ -714,12 +714,19 @@ class ListField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         if self.field:
-            if op in ('set', 'unset', None) and (
-                    not isinstance(value, six.string_types) and
-                    not isinstance(value, BaseDocument) and
-                    hasattr(value, '__iter__')):
+
+            # If the value is iterable and it's not a string nor a
+            # BaseDocument, call prepare_query_value for each of its items.
+            if (
+                op in ('set', 'unset', None) and
+                hasattr(value, '__iter__') and
+                not isinstance(value, six.string_types) and
+                not isinstance(value, BaseDocument)
+            ):
                 return [self.field.prepare_query_value(op, v) for v in value]
+
             return self.field.prepare_query_value(op, value)
+
         return super(ListField, self).prepare_query_value(op, value)
 
 

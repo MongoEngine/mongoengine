@@ -18,7 +18,7 @@ from mongoengine.base.datastructures import (BaseDict, BaseList,
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
-                                LookUpError, ValidationError)
+                                LookUpError, ValidationError, OperationError)
 from mongoengine.python_support import PY3
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
@@ -28,7 +28,8 @@ NON_FIELD_ERRORS = '__all__'
 
 class BaseDocument(object):
     __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
-                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '__weakref__')
+                 '_dynamic_fields', '_auto_id_field', '_db_field_map',
+                 '__weakref__')
 
     _dynamic = False
     _dynamic_lock = True
@@ -166,10 +167,12 @@ class BaseDocument(object):
         except AttributeError:
             self__created = True
 
-        if (self._is_document and not self__created and
-                name in self._meta.get('shard_key', tuple()) and
-                self._data.get(name) != value):
-            OperationError = _import_class('OperationError')
+        if (
+            self._is_document and
+            not self__created and
+            name in self._meta.get('shard_key', tuple()) and
+            self._data.get(name) != value
+        ):
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
 
