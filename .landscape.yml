@@ -1,3 +1,4 @@
 pylint:
     disable:
-        - W0212
+        # We use this a lot (e.g. via document._meta)
+        - protected-access

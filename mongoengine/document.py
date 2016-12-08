@@ -362,7 +362,7 @@ class Document(BaseDocument):
                 else:
                     select_dict = {}
                 select_dict['_id'] = object_id
-                shard_key = self.__class__._meta.get('shard_key', tuple())
+                shard_key = self._meta.get('shard_key', tuple())
                 for k in shard_key:
                     path = self._lookup_field(k.split('.'))
                     actual_key = [p.db_field for p in path]
