@@ -2,7 +2,6 @@
 Helper functions, constants, and types to aid with Python v2.6 - v3.x and
 PyMongo v2.7 - v3.x support.
 """
-import sys
 import pymongo
 import six
 

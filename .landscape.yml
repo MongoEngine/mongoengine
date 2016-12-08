@@ -2,3 +2,6 @@ pylint:
     disable:
         # We use this a lot (e.g. via document._meta)
         - protected-access
+
+ignore-paths:
+    - benchmark.py
