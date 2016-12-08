@@ -882,7 +882,7 @@ class Document(BaseDocument):
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
         if [(u'_id', 1)] not in indexes:
             indexes.append([(u'_id', 1)])
-        if (cls._meta.get('index_cls', True) and cls._meta.get('allow_inheritance')):
+        if cls._meta.get('index_cls', True) and cls._meta.get('allow_inheritance'):
             indexes.append([(u'_cls', 1)])
 
         return indexes
