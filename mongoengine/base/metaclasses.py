@@ -334,12 +334,16 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         meta.merge(attrs.get('_meta', {}))  # Top level meta
 
-        # Only simple classes (direct subclasses of Document)
-        # may set allow_inheritance to False
+        # Only simple classes (i.e. direct subclasses of Document) may set
+        # allow_inheritance to False. If the base Document allows inheritance,
+        # none of its subclasses can override allow_inheritance to False.
         simple_class = all([b._meta.get('abstract')
                             for b in flattened_bases if hasattr(b, '_meta')])
-        if (not simple_class and meta['allow_inheritance'] is False and
-                not meta['abstract']):
+        if (
+            not simple_class and
+            meta['allow_inheritance'] is False and
+            not meta['abstract']
+        ):
             raise ValueError('Only direct subclasses of Document may set '
                              '"allow_inheritance" to False')
 
