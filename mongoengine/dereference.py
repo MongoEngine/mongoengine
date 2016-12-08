@@ -1,10 +1,8 @@
 from bson import DBRef, SON
 import six
 
-from mongoengine.base.common import get_document
-from mongoengine.base.datastructures import (BaseDict, BaseList,
-                                             EmbeddedDocumentList)
-from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
+from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList,
+                              TopLevelDocumentMetaclass, get_document)
 from mongoengine.connection import get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.fields import DictField, ListField, MapField, ReferenceField

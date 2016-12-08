@@ -25,10 +25,8 @@ try:
 except ImportError:
     Int64 = long
 
-from mongoengine.base.common import get_document
-from mongoengine.base.document import BaseDocument
-from mongoengine.base.fields import (BaseField, ComplexBaseField,
-                                     GeoJsonBaseField, ObjectIdField)
+from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
+                              GeoJsonBaseField, ObjectIdField, get_document)
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, ValidationError

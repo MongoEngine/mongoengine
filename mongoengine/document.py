@@ -7,12 +7,10 @@ from pymongo.read_preferences import ReadPreference
 import six
 
 from mongoengine import signals
-from mongoengine.base.common import ALLOW_INHERITANCE, get_document
-from mongoengine.base.datastructures import (BaseDict, BaseList,
-                                             EmbeddedDocumentList)
-from mongoengine.base.document import BaseDocument
-from mongoengine.base.metaclasses import (DocumentMetaclass,
-                                          TopLevelDocumentMetaclass)
+from mongoengine.base import (ALLOW_INHERITANCE, BaseDict, BaseDocument,
+                              BaseList, DocumentMetaclass,
+                              EmbeddedDocumentList, TopLevelDocumentMetaclass,
+                              get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.context_managers import switch_collection, switch_db
