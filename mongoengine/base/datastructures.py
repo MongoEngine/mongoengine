@@ -211,18 +211,22 @@ class BaseList(list):
 class EmbeddedDocumentList(BaseList):
 
     @classmethod
-    def __match_all(cls, i, kwargs):
-        items = kwargs.items()
-        return all([
-            getattr(i, k) == v or six.text_type(getattr(i, k)) == v
-            for k, v in items
-        ])
+    def __match_all(cls, embedded_doc, kwargs):
+        """Return True if a given embedded doc matches all the filter
+        kwargs. If it doesn't return False
+        """
+        for key, expected_value in kwargs.items():
+            doc_val = getattr(embedded_doc, key)
+            if doc_val != expected_value and six.text_type(doc_val) != expected_value:
+                return False
+        return True
 
     @classmethod
-    def __only_matches(cls, obj, kwargs):
+    def __only_matches(cls, embedded_docs, kwargs):
+        """Return embedded docs that match the filter kwargs."""
         if not kwargs:
-            return obj
-        return filter(lambda i: cls.__match_all(i, kwargs), obj)
+            return embedded_docs
+        return [doc for doc in embedded_docs if cls.__match_all(doc, kwargs)]
 
     def __init__(self, list_items, instance, name):
         super(EmbeddedDocumentList, self).__init__(list_items, instance, name)

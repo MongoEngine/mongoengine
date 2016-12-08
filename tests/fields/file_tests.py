@@ -506,8 +506,6 @@ class FileTest(unittest.TestCase):
 
         test_file = TestFile.objects.first()
         test_file.the_file = six.b('HELLO, WORLD!')
-        print('HERE!!!')
-        print(test_file.the_file)
         test_file.save()
 
         test_file = TestFile.objects.first()

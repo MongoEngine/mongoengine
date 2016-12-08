@@ -433,7 +433,7 @@ class Document(BaseDocument):
         """Recursively save any references and generic references on the
         document.
         """
-        _refs = kwargs.get('_refs', []) or []
+        _refs = kwargs.get('_refs') or []
 
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
