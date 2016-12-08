@@ -1,10 +1,6 @@
 from mongoengine.errors import NotRegistered
 
-__all__ = ('ALLOW_INHERITANCE', 'UPDATE_OPERATORS', 'get_document',
-           '_document_registry')
-
-
-ALLOW_INHERITANCE = False  # TODO is this really necessary?
+__all__ = ('UPDATE_OPERATORS', 'get_document', '_document_registry')
 
 
 UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',

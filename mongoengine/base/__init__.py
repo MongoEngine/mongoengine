@@ -12,8 +12,7 @@ from mongoengine.base.metaclasses import *
 
 __all__ = (
     # common
-    'ALLOW_INHERITANCE', 'UPDATE_OPERATORS', '_document_registry',
-    'get_document',
+    'UPDATE_OPERATORS', '_document_registry', 'get_document',
 
     # datastructures
     'BaseDict', 'BaseList', 'EmbeddedDocumentList',

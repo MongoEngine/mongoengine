@@ -6,7 +6,7 @@ from bson import DBRef, ObjectId, SON
 import pymongo
 import six
 
-from mongoengine.base.common import ALLOW_INHERITANCE, UPDATE_OPERATORS
+from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList)
 from mongoengine.common import _import_class
@@ -376,9 +376,7 @@ class ComplexBaseField(BaseField):
                     # any _cls data so make it a generic reference allows
                     # us to dereference
                     meta = getattr(v, '_meta', {})
-                    allow_inheritance = (
-                        meta.get('allow_inheritance', ALLOW_INHERITANCE)
-                        is True)
+                    allow_inheritance = meta.get('allow_inheritance')
                     if not allow_inheritance and not self.field:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:

@@ -1,6 +1,6 @@
 import warnings
 
-from mongoengine.base.common import ALLOW_INHERITANCE, _document_registry
+from mongoengine.base.common import _document_registry
 from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
@@ -45,7 +45,7 @@ class DocumentMetaclass(type):
             attrs['_meta'] = meta
             attrs['_meta']['abstract'] = False  # 789: EmbeddedDocument shouldn't inherit abstract
 
-        if attrs['_meta'].get('allow_inheritance', ALLOW_INHERITANCE):
+        if attrs['_meta'].get('allow_inheritance'):
             StringField = _import_class('StringField')
             attrs['_cls'] = StringField()
 
@@ -116,10 +116,8 @@ class DocumentMetaclass(type):
             if hasattr(base, '_meta'):
                 # Warn if allow_inheritance isn't set and prevent
                 # inheritance of classes where inheritance is set to False
-                allow_inheritance = base._meta.get('allow_inheritance',
-                                                   ALLOW_INHERITANCE)
-                if (allow_inheritance is not True and
-                        not base._meta.get('abstract')):
+                allow_inheritance = base._meta.get('allow_inheritance')
+                if not allow_inheritance and not base._meta.get('abstract'):
                     raise ValueError('Document %s may not be subclassed' %
                                      base.__name__)
 

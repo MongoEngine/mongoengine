@@ -11,7 +11,7 @@ import pymongo
 import six
 
 from mongoengine import signals
-from mongoengine.base.common import ALLOW_INHERITANCE, get_document
+from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList,
                                              SemiStrictDict, StrictDict)
@@ -353,7 +353,7 @@ class BaseDocument(object):
                     data[field.name] = value
 
         # Only add _cls if allow_inheritance is True
-        if not self._meta.get('allow_inheritance', ALLOW_INHERITANCE):
+        if not self._meta.get('allow_inheritance'):
             data.pop('_cls')
 
         return data
@@ -765,8 +765,7 @@ class BaseDocument(object):
         direction = None
 
         # Check to see if we need to include _cls
-        allow_inheritance = cls._meta.get('allow_inheritance',
-                                          ALLOW_INHERITANCE)
+        allow_inheritance = cls._meta.get('allow_inheritance')
         include_cls = (
             allow_inheritance and
             not spec.get('sparse', False) and

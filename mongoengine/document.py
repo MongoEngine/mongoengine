@@ -7,10 +7,9 @@ from pymongo.read_preferences import ReadPreference
 import six
 
 from mongoengine import signals
-from mongoengine.base import (ALLOW_INHERITANCE, BaseDict, BaseDocument,
-                              BaseList, DocumentMetaclass,
-                              EmbeddedDocumentList, TopLevelDocumentMetaclass,
-                              get_document)
+from mongoengine.base import (BaseDict, BaseDocument, BaseList,
+                              DocumentMetaclass, EmbeddedDocumentList,
+                              TopLevelDocumentMetaclass, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.context_managers import switch_collection, switch_db
@@ -813,8 +812,7 @@ class Document(BaseDocument):
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
-        if (index_cls and not cls_indexed and
-                cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+        if index_cls and not cls_indexed and cls._meta.get('allow_inheritance'):
 
             # we shouldn't pass 'cls' to the collection.ensureIndex options
             # because of https://jira.mongodb.org/browse/SERVER-769
@@ -884,8 +882,7 @@ class Document(BaseDocument):
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
         if [(u'_id', 1)] not in indexes:
             indexes.append([(u'_id', 1)])
-        if (cls._meta.get('index_cls', True) and
-                cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+        if (cls._meta.get('index_cls', True) and cls._meta.get('allow_inheritance')):
             indexes.append([(u'_cls', 1)])
 
         return indexes
