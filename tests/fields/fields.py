@@ -28,7 +28,6 @@ from mongoengine.connection import get_db
 from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
                               _document_registry)
 from mongoengine.errors import NotRegistered, DoesNotExist
-from mongoengine.python_support import PY3
 
 __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
@@ -653,7 +652,7 @@ class FieldTest(unittest.TestCase):
         self.assertNotEqual(log.date, d1)
         self.assertEqual(log.date, d2)
 
-        if not PY3:
+        if not six.PY3:
             # Pre UTC dates microseconds below 1000 are dropped
             # This does not seem to be true in PY3
             d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)

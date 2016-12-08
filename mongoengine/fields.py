@@ -30,7 +30,7 @@ from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, ValidationError
-from mongoengine.python_support import PY3, StringIO
+from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING, QuerySet
 
 try:
@@ -1307,7 +1307,7 @@ class BinaryField(BaseField):
 
     def __set__(self, instance, value):
         """Handle bytearrays in python 3.1"""
-        if PY3 and isinstance(value, bytearray):
+        if six.PY3 and isinstance(value, bytearray):
             value = six.binary_type(value)
         return super(BinaryField, self).__set__(instance, value)
 
@@ -1722,7 +1722,7 @@ class ImageField(FileField):
         for att_name, att in extra_args.items():
             value = None
             if isinstance(att, (tuple, list)):
-                if PY3:
+                if six.PY3:
                     value = dict(itertools.zip_longest(params_size, att,
                                                        fillvalue=None))
                 else:

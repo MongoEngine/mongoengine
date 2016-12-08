@@ -13,14 +13,11 @@ else:
     IS_PYMONGO_3 = True
 
 
-PY3 = sys.version_info[0] == 3
-
-
 # six.BytesIO resolves to StringIO.StringIO in Py2 and io.BytesIO in Py3.
 StringIO = six.BytesIO
 
 # Additionally for Py2, try to use the faster cStringIO, if available
-if not PY3:
+if not six.PY3:
     try:
         import cStringIO
     except ImportError:

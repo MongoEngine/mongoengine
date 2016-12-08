@@ -9,13 +9,13 @@ from nose.plugins.skip import SkipTest
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
-
+import six
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.python_support import IS_PYMONGO_3, PY3
+from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
@@ -4089,7 +4089,7 @@ class QuerySetTest(unittest.TestCase):
             "A0", "%s" % self.Person.objects.order_by('name').scalar('name').first())
         self.assertEqual(
             "A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
-        if PY3:
+        if six.PY3:
             self.assertEqual("['A1', 'A2']", "%s" % self.Person.objects.order_by(
                 'age').scalar('name')[1:3])
             self.assertEqual("['A51', 'A52']", "%s" % self.Person.objects.order_by(
@@ -4107,7 +4107,7 @@ class QuerySetTest(unittest.TestCase):
 
         pks = self.Person.objects.order_by('age').scalar('pk')[1:3]
         names = self.Person.objects.scalar('name').in_bulk(list(pks)).values()
-        if PY3:
+        if six.PY3:
             expected = "['A1', 'A2']"
         else:
             expected = "[u'A1', u'A2']"

@@ -19,7 +19,6 @@ from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
-from mongoengine.python_support import PY3
 
 __all__ = ('BaseDocument',)
 
@@ -256,7 +255,7 @@ class BaseDocument(object):
     def __str__(self):
         # TODO this could be simpler?
         if hasattr(self, '__unicode__'):
-            if PY3:
+            if six.PY3:
                 return self.__unicode__()
             else:
                 return six.text_type(self).encode('utf-8')

@@ -1,10 +1,11 @@
 import warnings
 
+import six
+
 from mongoengine.base.common import _document_registry
 from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
-from mongoengine.python_support import PY3
 from mongoengine.queryset import (DO_NOTHING, DoesNotExist,
                                   MultipleObjectsReturned,
                                   QuerySetManager)
@@ -159,7 +160,7 @@ class DocumentMetaclass(type):
         # module continues to use im_func and im_self, so the code below
         # copies __func__ into im_func and __self__ into im_self for
         # classmethod objects in Document derived classes.
-        if PY3:
+        if six.PY3:
             for val in new_class.__dict__.values():
                 if isinstance(val, classmethod):
                     f = val.__get__(new_class)
