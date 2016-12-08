@@ -3,7 +3,7 @@ import six
 
 from mongoengine.python_support import IS_PYMONGO_3
 
-__all__ = ['ConnectionError', 'connect', 'register_connection',
+__all__ = ['MongoEngineConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
 
 
@@ -16,7 +16,7 @@ else:
     READ_PREFERENCE = False
 
 
-class ConnectionError(Exception):
+class MongoEngineConnectionError(Exception):
     """Error raised when the database connection can't be established or
     when a connection with a requested alias can't be retrieved.
     """
@@ -139,12 +139,12 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         return _connections[alias]
 
     # Validate that the requested alias exists in the _connection_settings.
-    # Raise ConnectionError if it doesn't.
+    # Raise MongoEngineConnectionError if it doesn't.
     if alias not in _connection_settings:
         msg = 'Connection with alias "%s" has not been defined' % alias
         if alias == DEFAULT_CONNECTION_NAME:
             msg = 'You have not defined a default connection'
-        raise ConnectionError(msg)
+        raise MongoEngineConnectionError(msg)
 
     def _clean_settings(settings_dict):
         irrelevant_fields = (
@@ -204,11 +204,12 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         _connections[alias] = existing_connection
     else:
         # Otherwise, create the new connection for this alias. Raise
-        # ConnectionError if it can't be established.
+        # MongoEngineConnectionError if it can't be established.
         try:
             _connections[alias] = connection_class(**conn_settings)
         except Exception as e:
-            raise ConnectionError('Cannot connect to database %s :\n%s' % (alias, e))
+            raise MongoEngineConnectionError(
+                'Cannot connect to database %s :\n%s' % (alias, e))
 
     return _connections[alias]
 
