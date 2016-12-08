@@ -913,15 +913,47 @@ class BaseDocument(object):
 
     @classmethod
     def _lookup_field(cls, parts):
-        """Lookup a field based on its attribute and return a list containing
-        the field's parents and the field.
+        """Given the path to a given field, return a list containing
+        the Field object associated with that field and all of its parent
+        Field objects.
+
+        Args:
+            parts (str, list, or tuple) - path to the field. Should be a
+            string for simple fields existing on this document or a list
+            of strings for a field that exists deeper in embedded documents.
+
+        Returns:
+            A list of Field instances for fields that were found or
+            strings for sub-fields that weren't.
+
+        Example:
+            >>> user._lookup_field('name')
+            [<mongoengine.fields.StringField at 0x1119bff50>]
+
+            >>> user._lookup_field('roles')
+            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>]
+
+            >>> user._lookup_field(['roles', 'role'])
+            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
+             <mongoengine.fields.StringField at 0x1119ec050>]
+
+            >>> user._lookup_field('doesnt_exist')
+            raises LookUpError
+
+            >>> user._lookup_field(['roles', 'doesnt_exist'])
+            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
+             'doesnt_exist']
+
         """
+        # TODO this method is WAY too complicated. Simplify it.
+        # TODO don't think returning a string for embedded non-existent fields is desired
 
         ListField = _import_class("ListField")
         DynamicField = _import_class('DynamicField')
 
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
+
         fields = []
         field = None
 
@@ -931,16 +963,17 @@ class BaseDocument(object):
                 fields.append(field_name)
                 continue
 
+            # Look up first field from the document
             if field is None:
-                # Look up first field from the document
                 if field_name == 'pk':
                     # Deal with "primary key" alias
                     field_name = cls._meta['id_field']
+
                 if field_name in cls._fields:
                     field = cls._fields[field_name]
                 elif cls._dynamic:
                     field = DynamicField(db_field=field_name)
-                elif cls._meta.get("allow_inheritance", False) or cls._meta.get("abstract", False):
+                elif cls._meta.get('allow_inheritance') or cls._meta.get('abstract', False):
                     # 744: in case the field is defined in a subclass
                     for subcls in cls.__subclasses__():
                         try:
@@ -953,35 +986,55 @@ class BaseDocument(object):
                     else:
                         raise LookUpError('Cannot resolve field "%s"' % field_name)
                 else:
-                    raise LookUpError('Cannot resolve field "%s"'
-                                      % field_name)
+                    raise LookUpError('Cannot resolve field "%s"' % field_name)
             else:
                 ReferenceField = _import_class('ReferenceField')
                 GenericReferenceField = _import_class('GenericReferenceField')
+
+                # If previous field was a reference, throw an error (we
+                # cannot look up fields that are on references).
                 if isinstance(field, (ReferenceField, GenericReferenceField)):
                     raise LookUpError('Cannot perform join in mongoDB: %s' %
                                       '__'.join(parts))
+
+                # If the parent field has a "field" attribute which has a
+                # lookup_member method, call it to find the field
+                # corresponding to this iteration.
                 if hasattr(getattr(field, 'field', None), 'lookup_member'):
                     new_field = field.field.lookup_member(field_name)
+
+                # If the parent field is a DynamicField or if it's part of
+                # a DynamicDocument, mark current field as a DynamicField
+                # with db_name equal to the field name.
                 elif cls._dynamic and (isinstance(field, DynamicField) or
                                        getattr(getattr(field, 'document_type', None), '_dynamic', None)):
                     new_field = DynamicField(db_field=field_name)
+
+                # Else, try to use the parent field's lookup_member method
+                # to find the subfield.
+                elif hasattr(field, 'lookup_member'):
+                    new_field = field.lookup_member(field_name)
+
+                # Raise a LookUpError if all the other conditions failed.
                 else:
-                    # Look up subfield on the previous field or raise
-                    try:
-                        new_field = field.lookup_member(field_name)
-                    except AttributeError:
-                        raise LookUpError('Cannot resolve subfield or operator {} '
-                                          'on the field {}'.format(
-                                              field_name, field.name))
+                    raise LookUpError(
+                        'Cannot resolve subfield or operator {} '
+                        'on the field {}'.format(field_name, field.name)
+                    )
+
+                # If current field still wasn't found and the parent field
+                # is a ComplexBaseField, add the name current field name and
+                # move on.
                 if not new_field and isinstance(field, ComplexBaseField):
                     fields.append(field_name)
                     continue
                 elif not new_field:
-                    raise LookUpError('Cannot resolve field "%s"'
-                                      % field_name)
+                    raise LookUpError('Cannot resolve field "%s"' % field_name)
+
                 field = new_field  # update field to the new field type
+
             fields.append(field)
+
         return fields
 
     @classmethod
