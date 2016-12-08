@@ -6,7 +6,7 @@ import six
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
-__all__ = ("BaseDict", "BaseList", "EmbeddedDocumentList")
+__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList')
 
 
 class BaseDict(dict):

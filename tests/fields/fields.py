@@ -25,9 +25,8 @@ except ImportError:
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.base.common import _document_registry
-from mongoengine.base.datastructures import BaseDict, EmbeddedDocumentList
-from mongoengine.base.fields import BaseField
+from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
+                              _document_registry)
 from mongoengine.errors import NotRegistered, DoesNotExist
 from mongoengine.python_support import PY3
 

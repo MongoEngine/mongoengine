@@ -21,7 +21,7 @@ from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, ValidationError, OperationError)
 from mongoengine.python_support import PY3
 
-__all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
+__all__ = ('BaseDocument',)
 
 NON_FIELD_ERRORS = '__all__'
 

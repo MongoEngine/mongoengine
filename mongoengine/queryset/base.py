@@ -15,7 +15,7 @@ from pymongo.common import validate_read_preference
 import six
 
 from mongoengine import signals
-from mongoengine.base.common import get_document
+from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
 from mongoengine.context_managers import switch_db

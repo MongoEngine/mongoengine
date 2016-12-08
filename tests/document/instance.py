@@ -13,7 +13,7 @@ from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
 
 from mongoengine import *
-from mongoengine.base.common import get_document, _document_registry
+from mongoengine.base import get_document, _document_registry
 from mongoengine.connection import get_db
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError, NotUniqueError,

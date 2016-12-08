@@ -4,7 +4,7 @@ from bson import SON
 import pymongo
 import six
 
-from mongoengine.base.fields import UPDATE_OPERATORS
+from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class
 from mongoengine.connection import get_connection
 from mongoengine.errors import InvalidQueryError

@@ -6,21 +6,15 @@ from bson import DBRef, ObjectId, SON
 import pymongo
 import six
 
-from mongoengine.base.common import ALLOW_INHERITANCE
-from mongoengine.base.datastructures import (
-    BaseDict, BaseList, EmbeddedDocumentList
-)
+from mongoengine.base.common import ALLOW_INHERITANCE, UPDATE_OPERATORS
+from mongoengine.base.datastructures import (BaseDict, BaseList,
+                                             EmbeddedDocumentList)
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
 
 
 __all__ = ('BaseField', 'ComplexBaseField', 'ObjectIdField',
            'GeoJsonBaseField')
-
-
-UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set',
-                        'set_on_insert', 'min', 'max'])
 
 
 class BaseField(object):
