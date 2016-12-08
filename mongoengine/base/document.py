@@ -537,6 +537,7 @@ class BaseDocument(object):
         DynamicEmbeddedDocument = _import_class("DynamicEmbeddedDocument")
         ReferenceField = _import_class("ReferenceField")
         SortedListField = _import_class("SortedListField")
+
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
 

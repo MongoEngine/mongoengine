@@ -1,10 +1,10 @@
 from mongoengine.errors import (DoesNotExist, InvalidQueryError,
                                 MultipleObjectsReturned, NotUniqueError,
                                 OperationError)
+from mongoengine.queryset.base import CASCADE, DENY, DO_NOTHING, NULLIFY, PULL
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.manager import QuerySetManager, queryset_manager
-from mongoengine.queryset.queryset import (CASCADE, DENY, DO_NOTHING, NULLIFY,
-                                           PULL, QuerySet, QuerySetNoCache)
+from mongoengine.queryset.queryset import QuerySet, QuerySetNoCache
 from mongoengine.queryset.visitor import Q
 
 

@@ -1741,7 +1741,7 @@ class BaseQuerySet(object):
                     # If we need to coerce types, we need to determine the
                     # type of this field and use the corresponding
                     # .to_python(...)
-                    from mongoengine.fields import EmbeddedDocumentField
+                    EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
 
                     obj = self._document
                     for chunk in path.split('.'):
