@@ -1,8 +1,20 @@
-"""Helper functions and types to aid with Python 2.5 - 3 support."""
+"""Helper functions and types to aid with Python 2.6 - 3 support."""
 
 import sys
 import pymongo
+import warnings
 
+
+# Show a deprecation warning for people using Python v2.6
+# TODO remove in mongoengine v0.11.0
+if sys.version_info[0] == 2 and sys.version_info[1] == 6:
+    warnings.warn(
+        'Python v2.6 support is deprecated and is going to be dropped '
+        'entirely in the upcoming v0.11.0 release. Update your Python '
+        'version if you want to have access to the latest features and '
+        'bug fixes in MongoEngine.',
+        DeprecationWarning
+    )
 
 if pymongo.version_tuple[0] < 3:
     IS_PYMONGO_3 = False
