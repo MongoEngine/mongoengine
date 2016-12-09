@@ -70,7 +70,7 @@ class ValidationError(AssertionError):
     field_name = None
     _message = None
 
-    def __init__(self, message="", **kwargs):
+    def __init__(self, message='', **kwargs):
         self.errors = kwargs.get('errors', {})
         self.field_name = kwargs.get('field_name')
         self.message = message
@@ -136,10 +136,10 @@ class ValidationError(AssertionError):
                 value = ' '.join(
                     [generate_key(v, k) for k, v in value.iteritems()])
 
-            results = "%s.%s" % (prefix, value) if prefix else value
+            results = '%s.%s' % (prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
         for k, v in self.to_dict().iteritems():
             error_dict[generate_key(v)].append(k)
-        return ' '.join(["%s: %s" % (k, v) for k, v in error_dict.iteritems()])
+        return ' '.join(['%s: %s' % (k, v) for k, v in error_dict.iteritems()])

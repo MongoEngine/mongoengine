@@ -88,8 +88,8 @@ class DocumentMetaclass(type):
         # Ensure no duplicate db_fields
         duplicate_db_fields = [k for k, v in field_names.items() if v > 1]
         if duplicate_db_fields:
-            msg = ("Multiple db_fields defined for: %s " %
-                   ", ".join(duplicate_db_fields))
+            msg = ('Multiple db_fields defined for: %s ' %
+                   ', '.join(duplicate_db_fields))
             raise InvalidDocumentError(msg)
 
         # Set _fields and db_field maps
@@ -178,11 +178,11 @@ class DocumentMetaclass(type):
             if isinstance(f, CachedReferenceField):
 
                 if issubclass(new_class, EmbeddedDocument):
-                    raise InvalidDocumentError(
-                        "CachedReferenceFields is not allowed in EmbeddedDocuments")
+                    raise InvalidDocumentError('CachedReferenceFields is not '
+                                               'allowed in EmbeddedDocuments')
                 if not f.document_type:
                     raise InvalidDocumentError(
-                        "Document is not available to sync")
+                        'Document is not available to sync')
 
                 if f.auto_sync:
                     f.start_listener()
@@ -194,8 +194,8 @@ class DocumentMetaclass(type):
                                       'reverse_delete_rule',
                                       DO_NOTHING)
                 if isinstance(f, DictField) and delete_rule != DO_NOTHING:
-                    msg = ("Reverse delete rules are not supported "
-                           "for %s (field: %s)" %
+                    msg = ('Reverse delete rules are not supported '
+                           'for %s (field: %s)' %
                            (field.__class__.__name__, field.name))
                     raise InvalidDocumentError(msg)
 
@@ -203,16 +203,16 @@ class DocumentMetaclass(type):
 
             if delete_rule != DO_NOTHING:
                 if issubclass(new_class, EmbeddedDocument):
-                    msg = ("Reverse delete rules are not supported for "
-                           "EmbeddedDocuments (field: %s)" % field.name)
+                    msg = ('Reverse delete rules are not supported for '
+                           'EmbeddedDocuments (field: %s)' % field.name)
                     raise InvalidDocumentError(msg)
                 f.document_type.register_delete_rule(new_class,
                                                      field.name, delete_rule)
 
             if (field.name and hasattr(Document, field.name) and
                     EmbeddedDocument not in new_class.mro()):
-                msg = ("%s is a document method and not a valid "
-                       "field name" % field.name)
+                msg = ('%s is a document method and not a valid '
+                       'field name' % field.name)
                 raise InvalidDocumentError(msg)
 
         return new_class
@@ -302,7 +302,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # If parent wasn't an abstract class
         if (parent_doc_cls and 'collection' in attrs.get('_meta', {}) and
                 not parent_doc_cls._meta.get('abstract', True)):
-            msg = "Trying to set a collection on a subclass (%s)" % name
+            msg = 'Trying to set a collection on a subclass (%s)' % name
             warnings.warn(msg, SyntaxWarning)
             del attrs['_meta']['collection']
 
@@ -310,7 +310,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if attrs.get('_is_base_cls') or attrs['_meta'].get('abstract'):
             if (parent_doc_cls and
                     not parent_doc_cls._meta.get('abstract', False)):
-                msg = "Abstract document cannot have non-abstract base"
+                msg = 'Abstract document cannot have non-abstract base'
                 raise ValueError(msg)
             return super_new(cls, name, bases, attrs)
 

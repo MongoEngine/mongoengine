@@ -57,8 +57,7 @@ RECURSIVE_REFERENCE_CONSTANT = 'self'
 
 
 class StringField(BaseField):
-    """A unicode string field.
-    """
+    """A unicode string field."""
 
     def __init__(self, regex=None, max_length=None, min_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
@@ -151,8 +150,8 @@ class URLField(StringField):
 
         if self.verify_exists:
             warnings.warn(
-                "The URLField verify_exists argument has intractable security "
-                "and performance issues. Accordingly, it has been deprecated.",
+                'The URLField verify_exists argument has intractable security '
+                'and performance issues. Accordingly, it has been deprecated.',
                 DeprecationWarning)
             try:
                 request = urllib2.Request(value)
@@ -183,8 +182,7 @@ class EmailField(StringField):
 
 
 class IntField(BaseField):
-    """An 32-bit integer field.
-    """
+    """32-bit integer field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
@@ -217,8 +215,7 @@ class IntField(BaseField):
 
 
 class LongField(BaseField):
-    """An 64-bit integer field.
-    """
+    """64-bit integer field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
@@ -254,8 +251,7 @@ class LongField(BaseField):
 
 
 class FloatField(BaseField):
-    """An floating point number field.
-    """
+    """Floating point number field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
@@ -292,7 +288,7 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-    """A fixed-point decimal number field.
+    """Fixed-point decimal number field.
 
     .. versionchanged:: 0.8
     .. versionadded:: 0.3
@@ -333,10 +329,10 @@ class DecimalField(BaseField):
 
         # Convert to string for python 2.6 before casting to Decimal
         try:
-            value = decimal.Decimal("%s" % value)
+            value = decimal.Decimal('%s' % value)
         except decimal.InvalidOperation:
             return value
-        return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
+        return value.quantize(decimal.Decimal('.%s' % ('0' * self.precision)), rounding=self.rounding)
 
     def to_mongo(self, value):
         if value is None:
@@ -365,7 +361,7 @@ class DecimalField(BaseField):
 
 
 class BooleanField(BaseField):
-    """A boolean field type.
+    """Boolean field type.
 
     .. versionadded:: 0.1.2
     """
@@ -383,7 +379,7 @@ class BooleanField(BaseField):
 
 
 class DateTimeField(BaseField):
-    """A datetime field.
+    """Datetime field.
 
     Uses the python-dateutil library if available alternatively use time.strptime
     to parse the dates.  Note: python-dateutil's parser is fully featured and when
@@ -643,7 +639,7 @@ class DynamicField(BaseField):
             val = value.to_mongo(use_db_field, fields)
             # If we its a document thats not inherited add _cls
             if isinstance(value, Document):
-                val = {"_ref": value.to_dbref(), "_cls": cls.__name__}
+                val = {'_ref': value.to_dbref(), '_cls': cls.__name__}
             if isinstance(value, EmbeddedDocument):
                 val['_cls'] = cls.__name__
             return val
@@ -683,7 +679,7 @@ class DynamicField(BaseField):
         return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
 
     def validate(self, value, clean=True):
-        if hasattr(value, "validate"):
+        if hasattr(value, 'validate'):
             value.validate(clean=clean)
 
 
@@ -703,8 +699,7 @@ class ListField(ComplexBaseField):
         super(ListField, self).__init__(**kwargs)
 
     def validate(self, value):
-        """Make sure that a list of valid fields is being used.
-        """
+        """Make sure that a list of valid fields is being used."""
         if (not isinstance(value, (list, tuple, QuerySet)) or
                 isinstance(value, six.string_types)):
             self.error('Only lists and tuples may be used in a list field')
@@ -737,7 +732,6 @@ class EmbeddedDocumentListField(ListField):
         :class:`~mongoengine.EmbeddedDocument`.
 
     .. versionadded:: 0.9
-
     """
 
     def __init__(self, document_type, **kwargs):
@@ -786,8 +780,8 @@ class SortedListField(ListField):
 
 
 def key_not_string(d):
-    """ Helper function to recursively determine if any key in a dictionary is
-    not a string.
+    """Helper function to recursively determine if any key in a
+    dictionary is not a string.
     """
     for k, v in d.items():
         if not isinstance(k, six.string_types) or (isinstance(v, dict) and key_not_string(v)):
@@ -795,8 +789,8 @@ def key_not_string(d):
 
 
 def key_has_dot_or_dollar(d):
-    """ Helper function to recursively determine if any key in a dictionary
-    contains a dot or a dollar sign.
+    """Helper function to recursively determine if any key in a
+    dictionary contains a dot or a dollar sign.
     """
     for k, v in d.items():
         if ('.' in k or '$' in k) or (isinstance(v, dict) and key_has_dot_or_dollar(v)):
@@ -824,14 +818,13 @@ class DictField(ComplexBaseField):
         super(DictField, self).__init__(*args, **kwargs)
 
     def validate(self, value):
-        """Make sure that a list of valid fields is being used.
-        """
+        """Make sure that a list of valid fields is being used."""
         if not isinstance(value, dict):
             self.error('Only dictionaries may be used in a DictField')
 
         if key_not_string(value):
-            msg = ("Invalid dictionary key - documents must "
-                   "have only string keys")
+            msg = ('Invalid dictionary key - documents must '
+                   'have only string keys')
             self.error(msg)
         if key_has_dot_or_dollar(value):
             self.error('Invalid dictionary key name - keys may not contain "."'
@@ -944,8 +937,7 @@ class ReferenceField(BaseField):
         return self.document_type_obj
 
     def __get__(self, instance, owner):
-        """Descriptor to allow lazy dereferencing.
-        """
+        """Descriptor to allow lazy dereferencing."""
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -1002,8 +994,7 @@ class ReferenceField(BaseField):
         return id_
 
     def to_python(self, value):
-        """Convert a MongoDB-compatible type to a Python type.
-        """
+        """Convert a MongoDB-compatible type to a Python type."""
         if (not self.dbref and
                 not isinstance(value, (DBRef, Document, EmbeddedDocument))):
             collection = self.document_type._get_collection_name()
@@ -1019,7 +1010,7 @@ class ReferenceField(BaseField):
     def validate(self, value):
 
         if not isinstance(value, (self.document_type, DBRef)):
-            self.error("A ReferenceField only accepts DBRef or documents")
+            self.error('A ReferenceField only accepts DBRef or documents')
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
@@ -1135,7 +1126,7 @@ class CachedReferenceField(BaseField):
             # TODO: should raise here or will fail next statement
 
         value = SON((
-            ("_id", id_field.to_mongo(id_)),
+            ('_id', id_field.to_mongo(id_)),
         ))
 
         if fields:
@@ -1161,7 +1152,7 @@ class CachedReferenceField(BaseField):
     def validate(self, value):
 
         if not isinstance(value, self.document_type):
-            self.error("A CachedReferenceField only accepts documents")
+            self.error('A CachedReferenceField only accepts documents')
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
@@ -1298,8 +1289,7 @@ class GenericReferenceField(BaseField):
 
 
 class BinaryField(BaseField):
-    """A binary data field.
-    """
+    """A binary data field."""
 
     def __init__(self, max_bytes=None, **kwargs):
         self.max_bytes = max_bytes
@@ -1316,8 +1306,8 @@ class BinaryField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, (six.binary_type, six.text_type, Binary)):
-            self.error("BinaryField only accepts instances of "
-                       "(%s, %s, Binary)" % (
+            self.error('BinaryField only accepts instances of '
+                       '(%s, %s, Binary)' % (
                            six.binary_type.__name__, six.text_type.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
@@ -1450,7 +1440,7 @@ class GridFSProxy(object):
             try:
                 return gridout.read(size)
             except Exception:
-                return ""
+                return ''
 
     def delete(self):
         # Delete file from GridFS, FileField still remains
@@ -1482,9 +1472,8 @@ class FileField(BaseField):
     """
     proxy_class = GridFSProxy
 
-    def __init__(self,
-                 db_alias=DEFAULT_CONNECTION_NAME,
-                 collection_name="fs", **kwargs):
+    def __init__(self, db_alias=DEFAULT_CONNECTION_NAME, collection_name='fs',
+                 **kwargs):
         super(FileField, self).__init__(**kwargs)
         self.collection_name = collection_name
         self.db_alias = db_alias
@@ -1687,10 +1676,10 @@ class ImageGridFsProxy(GridFSProxy):
             return self.fs.get(out.thumbnail_id)
 
     def write(self, *args, **kwargs):
-        raise RuntimeError("Please use \"put\" method instead")
+        raise RuntimeError('Please use "put" method instead')
 
     def writelines(self, *args, **kwargs):
-        raise RuntimeError("Please use \"put\" method instead")
+        raise RuntimeError('Please use "put" method instead')
 
 
 class ImproperlyConfigured(Exception):
@@ -1715,7 +1704,7 @@ class ImageField(FileField):
     def __init__(self, size=None, thumbnail_size=None,
                  collection_name='images', **kwargs):
         if not Image:
-            raise ImproperlyConfigured("PIL library was not found")
+            raise ImproperlyConfigured('PIL library was not found')
 
         params_size = ('width', 'height', 'force')
         extra_args = dict(size=size, thumbnail_size=thumbnail_size)
@@ -1783,10 +1772,10 @@ class SequenceField(BaseField):
         Generate and Increment the counter
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "%s.%s" % (sequence_name, self.name)
+        sequence_id = '%s.%s' % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
-        counter = collection.find_and_modify(query={"_id": sequence_id},
-                                             update={"$inc": {"next": 1}},
+        counter = collection.find_and_modify(query={'_id': sequence_id},
+                                             update={'$inc': {'next': 1}},
                                              new=True,
                                              upsert=True)
         return self.value_decorator(counter['next'])
@@ -1809,9 +1798,9 @@ class SequenceField(BaseField):
         as it is only fixed on set.
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "%s.%s" % (sequence_name, self.name)
+        sequence_id = '%s.%s' % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
-        data = collection.find_one({"_id": sequence_id})
+        data = collection.find_one({'_id': sequence_id})
 
         if data:
             return self.value_decorator(data['next'] + 1)
@@ -1924,19 +1913,18 @@ class GeoPointField(BaseField):
     _geo_index = pymongo.GEO2D
 
     def validate(self, value):
-        """Make sure that a geo-value is of type (x, y)
-        """
+        """Make sure that a geo-value is of type (x, y)"""
         if not isinstance(value, (list, tuple)):
             self.error('GeoPointField can only accept tuples or lists '
                        'of (x, y)')
 
         if not len(value) == 2:
-            self.error("Value (%s) must be a two-dimensional point" %
+            self.error('Value (%s) must be a two-dimensional point' %
                        repr(value))
         elif (not isinstance(value[0], (float, int)) or
               not isinstance(value[1], (float, int))):
             self.error(
-                "Both values (%s) in point must be float or int" % repr(value))
+                'Both values (%s) in point must be float or int' % repr(value))
 
 
 class PointField(GeoJsonBaseField):
@@ -1946,8 +1934,8 @@ class PointField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "Point" ,
-          "coordinates" : [x, y]}
+        {'type' : 'Point' ,
+         'coordinates' : [x, y]}
 
     You can either pass a dict with the full information or a list
     to set the value.
@@ -1956,7 +1944,7 @@ class PointField(GeoJsonBaseField):
 
     .. versionadded:: 0.8
     """
-    _type = "Point"
+    _type = 'Point'
 
 
 class LineStringField(GeoJsonBaseField):
@@ -1966,8 +1954,8 @@ class LineStringField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "LineString" ,
-          "coordinates" : [[x1, y1], [x1, y1] ... [xn, yn]]}
+        {'type' : 'LineString' ,
+         'coordinates' : [[x1, y1], [x1, y1] ... [xn, yn]]}
 
     You can either pass a dict with the full information or a list of points.
 
@@ -1975,7 +1963,7 @@ class LineStringField(GeoJsonBaseField):
 
     .. versionadded:: 0.8
     """
-    _type = "LineString"
+    _type = 'LineString'
 
 
 class PolygonField(GeoJsonBaseField):
@@ -1985,9 +1973,9 @@ class PolygonField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "Polygon" ,
-          "coordinates" : [[[x1, y1], [x1, y1] ... [xn, yn]],
-                           [[x1, y1], [x1, y1] ... [xn, yn]]}
+        {'type' : 'Polygon' ,
+         'coordinates' : [[[x1, y1], [x1, y1] ... [xn, yn]],
+                          [[x1, y1], [x1, y1] ... [xn, yn]]}
 
     You can either pass a dict with the full information or a list
     of LineStrings. The first LineString being the outside and the rest being
@@ -1997,7 +1985,7 @@ class PolygonField(GeoJsonBaseField):
 
     .. versionadded:: 0.8
     """
-    _type = "Polygon"
+    _type = 'Polygon'
 
 
 class MultiPointField(GeoJsonBaseField):
@@ -2007,8 +1995,8 @@ class MultiPointField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "MultiPoint" ,
-          "coordinates" : [[x1, y1], [x2, y2]]}
+        {'type' : 'MultiPoint' ,
+         'coordinates' : [[x1, y1], [x2, y2]]}
 
     You can either pass a dict with the full information or a list
     to set the value.
@@ -2017,7 +2005,7 @@ class MultiPointField(GeoJsonBaseField):
 
     .. versionadded:: 0.9
     """
-    _type = "MultiPoint"
+    _type = 'MultiPoint'
 
 
 class MultiLineStringField(GeoJsonBaseField):
@@ -2027,9 +2015,9 @@ class MultiLineStringField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "MultiLineString" ,
-          "coordinates" : [[[x1, y1], [x1, y1] ... [xn, yn]],
-                           [[x1, y1], [x1, y1] ... [xn, yn]]]}
+        {'type' : 'MultiLineString' ,
+         'coordinates' : [[[x1, y1], [x1, y1] ... [xn, yn]],
+                          [[x1, y1], [x1, y1] ... [xn, yn]]]}
 
     You can either pass a dict with the full information or a list of points.
 
@@ -2037,7 +2025,7 @@ class MultiLineStringField(GeoJsonBaseField):
 
     .. versionadded:: 0.9
     """
-    _type = "MultiLineString"
+    _type = 'MultiLineString'
 
 
 class MultiPolygonField(GeoJsonBaseField):
@@ -2047,14 +2035,14 @@ class MultiPolygonField(GeoJsonBaseField):
 
     .. code-block:: js
 
-        { "type" : "MultiPolygon" ,
-          "coordinates" : [[
-                [[x1, y1], [x1, y1] ... [xn, yn]],
-                [[x1, y1], [x1, y1] ... [xn, yn]]
-            ], [
-                [[x1, y1], [x1, y1] ... [xn, yn]],
-                [[x1, y1], [x1, y1] ... [xn, yn]]
-            ]
+        {'type' : 'MultiPolygon' ,
+         'coordinates' : [[
+               [[x1, y1], [x1, y1] ... [xn, yn]],
+               [[x1, y1], [x1, y1] ... [xn, yn]]
+           ], [
+               [[x1, y1], [x1, y1] ... [xn, yn]],
+               [[x1, y1], [x1, y1] ... [xn, yn]]
+           ]
         }
 
     You can either pass a dict with the full information or a list
@@ -2064,4 +2052,4 @@ class MultiPolygonField(GeoJsonBaseField):
 
     .. versionadded:: 0.9
     """
-    _type = "MultiPolygon"
+    _type = 'MultiPolygon'

@@ -25,9 +25,7 @@ __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
 
 
 def includes_cls(fields):
-    """ Helper function used for ensuring and comparing indexes
-    """
-
+    """Helper function used for ensuring and comparing indexes."""
     first_field = None
     if len(fields):
         if isinstance(fields[0], six.string_types):
@@ -167,7 +165,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
+        return get_db(cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME))
 
     @classmethod
     def _get_collection(cls):
@@ -241,15 +239,15 @@ class Document(BaseDocument):
             query = {}
 
         if self.pk is None:
-            raise InvalidDocumentError("The document does not have a primary key.")
+            raise InvalidDocumentError('The document does not have a primary key.')
 
-        id_field = self._meta["id_field"]
+        id_field = self._meta['id_field']
         query = query.copy() if isinstance(query, dict) else query.to_query(self)
 
         if id_field not in query:
             query[id_field] = self.pk
         elif query[id_field] != self.pk:
-            raise InvalidQueryError("Invalid document modify query: it must modify only this document.")
+            raise InvalidQueryError('Invalid document modify query: it must modify only this document.')
 
         updated = self._qs(**query).modify(new=True, **update)
         if updated is None:
@@ -324,7 +322,7 @@ class Document(BaseDocument):
             self.validate(clean=clean)
 
         if write_concern is None:
-            write_concern = {"w": 1}
+            write_concern = {'w': 1}
 
         doc = self.to_mongo()
 
@@ -372,7 +370,7 @@ class Document(BaseDocument):
 
                 def is_new_object(last_error):
                     if last_error is not None:
-                        updated = last_error.get("updatedExisting")
+                        updated = last_error.get('updatedExisting')
                         if updated is not None:
                             return not updated
                     return created
@@ -380,14 +378,14 @@ class Document(BaseDocument):
                 update_query = {}
 
                 if updates:
-                    update_query["$set"] = updates
+                    update_query['$set'] = updates
                 if removals:
-                    update_query["$unset"] = removals
+                    update_query['$unset'] = removals
                 if updates or removals:
                     upsert = save_condition is None
                     last_error = collection.update(select_dict, update_query,
                                                    upsert=upsert, **write_concern)
-                    if not upsert and last_error["n"] == 0:
+                    if not upsert and last_error['n'] == 0:
                         raise SaveConditionError('Race condition preventing'
                                                  ' document update detected')
                     created = is_new_object(last_error)
@@ -398,10 +396,10 @@ class Document(BaseDocument):
 
             if cascade:
                 kwargs = {
-                    "force_insert": force_insert,
-                    "validate": validate,
-                    "write_concern": write_concern,
-                    "cascade": cascade
+                    'force_insert': force_insert,
+                    'validate': validate,
+                    'write_concern': write_concern,
+                    'cascade': cascade
                 }
                 if cascade_kwargs:  # Allow granular control over cascades
                     kwargs.update(cascade_kwargs)
@@ -492,8 +490,8 @@ class Document(BaseDocument):
         if self.pk is None:
             if kwargs.get('upsert', False):
                 query = self.to_mongo()
-                if "_cls" in query:
-                    del query["_cls"]
+                if '_cls' in query:
+                    del query['_cls']
                 return self._qs.filter(**query).update_one(**kwargs)
             else:
                 raise OperationError(
@@ -618,11 +616,12 @@ class Document(BaseDocument):
         if fields and isinstance(fields[0], int):
             max_depth = fields[0]
             fields = fields[1:]
-        elif "max_depth" in kwargs:
-            max_depth = kwargs["max_depth"]
+        elif 'max_depth' in kwargs:
+            max_depth = kwargs['max_depth']
 
         if self.pk is None:
-            raise self.DoesNotExist("Document does not exist")
+            raise self.DoesNotExist('Document does not exist')
+
         obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
             **self._object_key).only(*fields).limit(
             1).select_related(max_depth=max_depth)
@@ -630,7 +629,7 @@ class Document(BaseDocument):
         if obj:
             obj = obj[0]
         else:
-            raise self.DoesNotExist("Document does not exist")
+            raise self.DoesNotExist('Document does not exist')
 
         for field in obj._data:
             if not fields or field in fields:
@@ -673,7 +672,7 @@ class Document(BaseDocument):
         """Returns an instance of :class:`~bson.dbref.DBRef` useful in
         `__raw__` queries."""
         if self.pk is None:
-            msg = "Only saved documents can have a valid dbref"
+            msg = 'Only saved documents can have a valid dbref'
             raise OperationError(msg)
         return DBRef(self.__class__._get_collection_name(), self.pk)
 
@@ -728,7 +727,7 @@ class Document(BaseDocument):
         fields = index_spec.pop('fields')
         drop_dups = kwargs.get('drop_dups', False)
         if IS_PYMONGO_3 and drop_dups:
-            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
         elif not IS_PYMONGO_3:
             index_spec['drop_dups'] = drop_dups
@@ -754,7 +753,7 @@ class Document(BaseDocument):
             will be removed if PyMongo3+ is used
         """
         if IS_PYMONGO_3 and drop_dups:
-            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
         elif not IS_PYMONGO_3:
             kwargs.update({'drop_dups': drop_dups})
@@ -774,7 +773,7 @@ class Document(BaseDocument):
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
         if IS_PYMONGO_3 and drop_dups:
-            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
+            msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
 
         collection = cls._get_collection()
@@ -889,8 +888,8 @@ class Document(BaseDocument):
 
     @classmethod
     def compare_indexes(cls):
-        """ Compares the indexes defined in MongoEngine with the ones existing
-        in the database. Returns any missing/extra indexes.
+        """ Compares the indexes defined in MongoEngine with the ones
+        existing in the database. Returns any missing/extra indexes.
         """
 
         required = cls.list_indexes()
@@ -934,8 +933,9 @@ class DynamicDocument(Document):
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Deletes the attribute by setting to None and allowing _delta to unset
-        it"""
+        """Delete the attribute by setting to None and allowing _delta
+        to unset it.
+        """
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
@@ -957,8 +957,9 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Deletes the attribute by setting to None and allowing _delta to unset
-        it"""
+        """Delete the attribute by setting to None and allowing _delta
+        to unset it.
+        """
         field_name = args[0]
         if field_name in self._fields:
             default = self._fields[field_name].default
@@ -1000,10 +1001,10 @@ class MapReduceDocument(object):
             try:
                 self.key = id_field_type(self.key)
             except Exception:
-                raise Exception("Could not cast key as %s" %
+                raise Exception('Could not cast key as %s' %
                                 id_field_type.__name__)
 
-        if not hasattr(self, "_key_object"):
+        if not hasattr(self, '_key_object'):
             self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
         return self._key_object

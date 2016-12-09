@@ -10,7 +10,7 @@ __all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList')
 
 
 class BaseDict(dict):
-    """A special dict so we can watch any changes"""
+    """A special dict so we can watch any changes."""
 
     _dereferenced = False
     _instance = None
@@ -95,8 +95,7 @@ class BaseDict(dict):
 
 
 class BaseList(list):
-    """A special list so we can watch any changes
-    """
+    """A special list so we can watch any changes."""
 
     _dereferenced = False
     _instance = None
@@ -213,7 +212,7 @@ class EmbeddedDocumentList(BaseList):
     @classmethod
     def __match_all(cls, embedded_doc, kwargs):
         """Return True if a given embedded doc matches all the filter
-        kwargs. If it doesn't return False
+        kwargs. If it doesn't return False.
         """
         for key, expected_value in kwargs.items():
             doc_val = getattr(embedded_doc, key)
@@ -292,18 +291,18 @@ class EmbeddedDocumentList(BaseList):
         values = self.__only_matches(self, kwargs)
         if len(values) == 0:
             raise DoesNotExist(
-                "%s matching query does not exist." % self._name
+                '%s matching query does not exist.' % self._name
             )
         elif len(values) > 1:
             raise MultipleObjectsReturned(
-                "%d items returned, instead of 1" % len(values)
+                '%d items returned, instead of 1' % len(values)
             )
 
         return values[0]
 
     def first(self):
-        """
-        Returns the first embedded document in the list, or ``None`` if empty.
+        """Return the first embedded document in the list, or ``None``
+        if empty.
         """
         if len(self) > 0:
             return self[0]
@@ -445,7 +444,7 @@ class StrictDict(object):
                 __slots__ = allowed_keys_tuple
 
                 def __repr__(self):
-                    return "{%s}" % ', '.join('"{0!s}": {1!r}'.format(k, v) for k, v in self.items())
+                    return '{%s}' % ', '.join('"{0!s}": {1!r}'.format(k, v) for k, v in self.items())
 
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]

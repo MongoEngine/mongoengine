@@ -53,15 +53,14 @@ class QuerySet(BaseQuerySet):
         return self._len
 
     def __repr__(self):
-        """Provides the string representation of the QuerySet
-        """
+        """Provide a string representation of the QuerySet"""
         if self._iter:
             return '.. queryset mid-iteration ..'
 
         self._populate_cache()
         data = self._result_cache[:REPR_OUTPUT_SIZE + 1]
         if len(data) > REPR_OUTPUT_SIZE:
-            data[-1] = "...(remaining elements truncated)..."
+            data[-1] = '...(remaining elements truncated)...'
         return repr(data)
 
     def _iter_results(self):
@@ -142,7 +141,7 @@ class QuerySet(BaseQuerySet):
         .. versionadded:: 0.8.3 Convert to non caching queryset
         """
         if self._result_cache is not None:
-            raise OperationError("QuerySet already cached")
+            raise OperationError('QuerySet already cached')
         return self.clone_into(QuerySetNoCache(self._document, self._collection))
 
 
@@ -171,7 +170,7 @@ class QuerySetNoCache(BaseQuerySet):
             except StopIteration:
                 break
         if len(data) > REPR_OUTPUT_SIZE:
-            data[-1] = "...(remaining elements truncated)..."
+            data[-1] = '...(remaining elements truncated)...'
 
         self.rewind()
         return repr(data)
