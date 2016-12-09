@@ -556,8 +556,8 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        for i in xrange(0, 10):
-            tags = [("tag %i" % n) for n in xrange(0, i % 2)]
+        for i in range(0, 10):
+            tags = [("tag %i" % n) for n in range(0, i % 2)]
             BlogPost(tags=tags).save()
 
         self.assertEqual(BlogPost.objects.count(), 10)

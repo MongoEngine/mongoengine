@@ -88,14 +88,14 @@ class DeReference(object):
             return reference_map
 
         # Determine the iterator to use
-        if not hasattr(items, 'items'):
-            iterator = enumerate(items)
+        if isinstance(items, dict):
+            iterator = items.values()
         else:
-            iterator = items.iteritems()
+            iterator = items
 
         # Recursively find dbreferences
         depth += 1
-        for k, item in iterator:
+        for item in iterator:
             if isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
@@ -216,7 +216,7 @@ class DeReference(object):
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
             elif isinstance(v, (Document, EmbeddedDocument)):
-                for field_name, field in v._fields.iteritems():
+                for field_name in v._fields:
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, DBRef):
                         data[k]._data[field_name] = self.object_map.get(

@@ -174,7 +174,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Test larger slice __repr__
         self.Person.objects.delete()
-        for i in xrange(55):
+        for i in range(55):
             self.Person(name='A%s' % i, age=i).save()
 
         self.assertEqual(self.Person.objects.count(), 55)
@@ -802,7 +802,7 @@ class QuerySetTest(unittest.TestCase):
             post2 = Post(comments=[comment2, comment2])
 
             blogs = []
-            for i in xrange(1, 100):
+            for i in range(1, 100):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
@@ -1022,7 +1022,7 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        for i in xrange(1000):
+        for i in range(1000):
             Doc(number=i).save()
 
         docs = Doc.objects.order_by('number')
@@ -1176,7 +1176,7 @@ class QuerySetTest(unittest.TestCase):
         qs = list(qs)
         expected = list(expected)
         self.assertEqual(len(qs), len(expected))
-        for i in xrange(len(qs)):
+        for i in range(len(qs)):
             self.assertEqual(qs[i], expected[i])
 
     def test_ordering(self):
@@ -1710,7 +1710,7 @@ class QuerySetTest(unittest.TestCase):
 
         Log.drop_collection()
 
-        for i in xrange(10):
+        for i in range(10):
             Log().save()
 
         Log.objects()[3:5].delete()
@@ -2810,10 +2810,10 @@ class QuerySetTest(unittest.TestCase):
 
         Test.drop_collection()
 
-        for i in xrange(50):
+        for i in range(50):
             Test(val=1).save()
 
-        for i in xrange(20):
+        for i in range(20):
             Test(val=2).save()
 
         freqs = Test.objects.item_frequencies(
@@ -3603,7 +3603,7 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        for i in xrange(10):
+        for i in range(10):
             Post(title="Post %s" % i).save()
 
         self.assertEqual(5, Post.objects.limit(5).skip(5).count(with_limit_and_skip=True))
@@ -3618,7 +3618,7 @@ class QuerySetTest(unittest.TestCase):
             pass
 
         MyDoc.drop_collection()
-        for i in xrange(0, 10):
+        for i in range(0, 10):
             MyDoc().save()
 
         self.assertEqual(MyDoc.objects.count(), 10)
@@ -3674,7 +3674,7 @@ class QuerySetTest(unittest.TestCase):
 
         Number.drop_collection()
 
-        for i in xrange(1, 101):
+        for i in range(1, 101):
             t = Number(n=i)
             t.save()
 
@@ -4081,7 +4081,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Test larger slice __repr__
         self.Person.objects.delete()
-        for i in xrange(55):
+        for i in range(55):
             self.Person(name='A%s' % i, age=i).save()
 
         self.assertEqual(self.Person.objects.scalar('name').count(), 55)
@@ -4463,7 +4463,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4494,7 +4494,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4538,7 +4538,7 @@ class QuerySetTest(unittest.TestCase):
             fields = DictField()
 
         Noddy.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             noddy = Noddy()
             for j in range(20):
                 noddy.fields["key" + str(j)] = "value " + str(j)
@@ -4739,7 +4739,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4863,10 +4863,10 @@ class QuerySetTest(unittest.TestCase):
         ])
 
     def test_delete_count(self):
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
         self.assertEqual(self.Person.objects().delete(), 3)  # test ordinary QuerySey delete count
 
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
 
         self.assertEqual(self.Person.objects().skip(1).delete(), 2)  # test Document delete with existing documents
 
@@ -4925,7 +4925,7 @@ class QuerySetTest(unittest.TestCase):
         class Data(Document):
             pass
 
-        for i in xrange(300):
+        for i in range(300):
             Data().save()
 
         records = Data.objects.limit(250)
@@ -4957,7 +4957,7 @@ class QuerySetTest(unittest.TestCase):
         class Data(Document):
             pass
 
-        for i in xrange(300):
+        for i in range(300):
             Data().save()
 
         qs = Data.objects.limit(250)

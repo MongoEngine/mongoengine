@@ -112,7 +112,7 @@ class QuerySet(BaseQuerySet):
         # Pull in ITER_CHUNK_SIZE docs from the database and store them in
         # the result cache.
         try:
-            for i in xrange(ITER_CHUNK_SIZE):
+            for _ in range(ITER_CHUNK_SIZE):
                 self._result_cache.append(self.next())
         except StopIteration:
             # Getting this exception means there are no more docs in the
@@ -164,11 +164,12 @@ class QuerySetNoCache(BaseQuerySet):
             return '.. queryset mid-iteration ..'
 
         data = []
-        for i in xrange(REPR_OUTPUT_SIZE + 1):
+        for _ in range(REPR_OUTPUT_SIZE + 1):
             try:
                 data.append(self.next())
             except StopIteration:
                 break
+
         if len(data) > REPR_OUTPUT_SIZE:
             data[-1] = '...(remaining elements truncated)...'
 
