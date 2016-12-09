@@ -55,8 +55,6 @@ def register_connection(alias, name=None, host=None, port=None,
 
     .. versionchanged:: 0.10.6 - added mongomock support
     """
-    global _connection_settings
-
     conn_settings = {
         'name': name or 'test',
         'host': host or 'localhost',
@@ -116,9 +114,7 @@ def register_connection(alias, name=None, host=None, port=None,
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
-    global _connections
-    global _dbs
-
+    """Close the connection with a given alias."""
     if alias in _connections:
         get_connection(alias=alias).close()
         del _connections[alias]
@@ -127,7 +123,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
 
 
 def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
-    global _connections
+    """Return a connection with a given alias."""
 
     # Connect to the database if not already connected
     if reconnect:
@@ -221,7 +217,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
 
 def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
-    global _dbs
     if reconnect:
         disconnect(alias)
 
@@ -252,7 +247,6 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
     .. versionchanged:: 0.6 - added multiple database support.
     """
-    global _connections
     if alias not in _connections:
         register_connection(alias, db, **kwargs)
 
