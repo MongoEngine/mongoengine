@@ -46,6 +46,7 @@ class DocumentMetaclass(type):
             attrs['_meta'] = meta
             attrs['_meta']['abstract'] = False  # 789: EmbeddedDocument shouldn't inherit abstract
 
+        # If allow_inheritance is True, add a "_cls" string field to the attrs
         if attrs['_meta'].get('allow_inheritance'):
             StringField = _import_class('StringField')
             attrs['_cls'] = StringField()
@@ -270,6 +271,11 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 'index_drop_dups': False,
                 'index_opts': None,
                 'delete_rules': None,
+
+                # allow_inheritance can be True, False, and None. True means
+                # "allow inheritance", False means "don't allow inheritance",
+                # None means "do whatever your parent does, or don't allow
+                # inheritance if you're a top-level class".
                 'allow_inheritance': None,
             }
             attrs['_is_base_cls'] = True

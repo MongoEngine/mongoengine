@@ -49,9 +49,8 @@ class EmbeddedDocument(BaseDocument):
     to create a specialised version of the embedded document that will be
     stored in the same collection. To facilitate this behaviour a `_cls`
     field is added to documents (hidden though the MongoEngine interface).
-    To disable this behaviour and remove the dependence on the presence of
-    `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
-    dictionary.
+    To enable this behaviour set :attr:`allow_inheritance` to ``True`` in the
+    :attr:`meta` dictionary.
     """
 
     __slots__ = ('_instance', )
@@ -107,9 +106,8 @@ class Document(BaseDocument):
     create a specialised version of the document that will be stored in the
     same collection. To facilitate this behaviour a `_cls`
     field is added to documents (hidden though the MongoEngine interface).
-    To disable this behaviour and remove the dependence on the presence of
-    `_cls` set :attr:`allow_inheritance` to ``False`` in the :attr:`meta`
-    dictionary.
+    To enable this behaviourset :attr:`allow_inheritance` to ``True`` in the
+    :attr:`meta` dictionary.
 
     A :class:`~mongoengine.Document` may use a **Capped Collection** by
     specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
