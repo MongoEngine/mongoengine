@@ -728,9 +728,9 @@ class BaseDocument(object):
         """Generate and merge the full index specs."""
         geo_indices = cls._geo_indices()
         unique_indices = cls._unique_with_indexes()
-        index_specs = [cls._build_index_spec(spec)
-                       for spec in meta_indexes]
+        index_specs = [cls._build_index_spec(spec) for spec in meta_indexes]
 
+        # Merge geo indexes and unique_with indexes into the meta index specs
         def merge_index_specs(index_specs, indices):
             if not indices:
                 return index_specs
@@ -834,12 +834,11 @@ class BaseDocument(object):
 
     @classmethod
     def _unique_with_indexes(cls, namespace=""):
-        """
-        Find and set unique indexes
-        """
+        """Find unique indexes in the document schema and return them."""
         unique_indexes = []
         for field_name, field in cls._fields.items():
             sparse = field.sparse
+
             # Generate a list of indexes needed by uniqueness constraints
             if field.unique:
                 unique_fields = [field.db_field]
@@ -853,14 +852,17 @@ class BaseDocument(object):
                     unique_with = []
                     for other_name in field.unique_with:
                         parts = other_name.split('.')
+
                         # Lookup real name
                         parts = cls._lookup_field(parts)
                         name_parts = [part.db_field for part in parts]
                         unique_with.append('.'.join(name_parts))
+
                         # Unique field should be required
                         parts[-1].required = True
                         sparse = (not sparse and
                                   parts[-1].name not in cls.__dict__)
+
                     unique_fields += unique_with
 
                 # Add the new index to the list
@@ -896,10 +898,12 @@ class BaseDocument(object):
         for field in cls._fields.values():
             if not isinstance(field, geo_field_types):
                 continue
+
             if hasattr(field, 'document_type'):
                 field_cls = field.document_type
                 if field_cls in inspected:
                     continue
+
                 if hasattr(field_cls, '_geo_indices'):
                     geo_indices += field_cls._geo_indices(
                         inspected, parent_field=field.db_field)
@@ -907,8 +911,10 @@ class BaseDocument(object):
                 field_name = field.db_field
                 if parent_field:
                     field_name = "%s.%s" % (parent_field, field_name)
-                geo_indices.append({'fields':
-                                    [(field_name, field._geo_index)]})
+                geo_indices.append({
+                    'fields': [(field_name, field._geo_index)]
+                })
+
         return geo_indices
 
     @classmethod

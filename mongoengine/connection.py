@@ -141,16 +141,17 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     # Validate that the requested alias exists in the _connection_settings.
     # Raise MongoEngineConnectionError if it doesn't.
     if alias not in _connection_settings:
-        msg = 'Connection with alias "%s" has not been defined' % alias
         if alias == DEFAULT_CONNECTION_NAME:
             msg = 'You have not defined a default connection'
+        else:
+            msg = 'Connection with alias "%s" has not been defined' % alias
         raise MongoEngineConnectionError(msg)
 
     def _clean_settings(settings_dict):
-        irrelevant_fields = (
+        irrelevant_fields = set([
             'name', 'username', 'password', 'authentication_source',
             'authentication_mechanism'
-        )
+        ])
         return dict(
             (k, v) for k, v in settings_dict.items()
             if k not in irrelevant_fields
@@ -162,7 +163,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     conn_settings = _clean_settings(_connection_settings[alias].copy())
 
     # Determine if we should use PyMongo's or mongomock's MongoClient.
-    is_mock = conn_settings.pop('is_mock', None)
+    is_mock = conn_settings.pop('is_mock', False)
     if is_mock:
         try:
             import mongomock
@@ -173,17 +174,22 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     else:
         connection_class = MongoClient
 
-    # For replica set connections with PyMongo 2.x, use MongoReplicaSetClient
-    # TODO remove this block once we stop supporting PyMongo 2.x.
-    if 'replicaSet' in conn_settings:
-        # Discard port since it can't be used on MongoReplicaSetClient
-        conn_settings.pop('port', None)
-        # Discard replicaSet if it's not a string
-        if not isinstance(conn_settings['replicaSet'], six.string_types):
-            conn_settings.pop('replicaSet', None)
-        if not IS_PYMONGO_3:
-            connection_class = MongoReplicaSetClient
-            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
+        # Handle replica set connections
+        if 'replicaSet' in conn_settings:
+
+            # Discard port since it can't be used on MongoReplicaSetClient
+            conn_settings.pop('port', None)
+
+            # Discard replicaSet if it's not a string
+            if not isinstance(conn_settings['replicaSet'], six.string_types):
+                del conn_settings['replicaSet']
+
+            # For replica set connections with PyMongo 2.x, use
+            # MongoReplicaSetClient.
+            # TODO remove this once we stop supporting PyMongo 2.x.
+            if not IS_PYMONGO_3:
+                connection_class = MongoReplicaSetClient
+                conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
 
     # Iterate over all of the connection settings and if a connection with
     # the same parameters is already established, use it instead of creating

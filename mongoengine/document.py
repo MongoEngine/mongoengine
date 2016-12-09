@@ -219,7 +219,7 @@ class Document(BaseDocument):
             if self._data.get('id') is None:
                 del data['_id']
             else:
-                data["_id"] = self._data['id']
+                data['_id'] = self._data['id']
 
         return data
 

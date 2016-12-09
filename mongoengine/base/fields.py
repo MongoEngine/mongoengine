@@ -196,7 +196,9 @@ class BaseField(object):
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
                 self.error(
-                    'Value must be instance of %s' % six.text_type(choice_list)
+                    'Value must be an instance of %s' % (
+                        six.text_type(choice_list)
+                    )
                 )
         # Choices which are types other than Documents
         elif value not in choice_list:
