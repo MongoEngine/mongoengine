@@ -730,22 +730,30 @@ class BaseDocument(object):
         unique_indices = cls._unique_with_indexes()
         index_specs = [cls._build_index_spec(spec) for spec in meta_indexes]
 
-        # Merge geo indexes and unique_with indexes into the meta index specs
         def merge_index_specs(index_specs, indices):
+            """Helper method for merging index specs."""
             if not indices:
                 return index_specs
 
-            spec_fields = [idx['fields'] for idx in index_specs]
+            # Create a map of index fields to index spec. We're converting
+            # the fields from a list to a tuple so that it's hashable.
+            spec_fields = dict(
+                (tuple(index['fields']), index) for index in index_specs
+            )
 
-            # Merge unique_indexes with existing specs
-            for idx in indices:
-                if idx['fields'] in spec_fields:
-                    index_specs[spec_fields.index(idx['fields'])].update(idx)
+            # For each new index, if there's an existing index with the same
+            # fields list, update the existing spec with all data from the
+            # new spec.
+            for new_index in indices:
+                candidate = spec_fields.get(tuple(new_index['fields']))
+                if candidate is None:
+                    index_specs.append(new_index)
                 else:
-                    index_specs.append(idx)
+                    candidate.update(new_index)
 
             return index_specs
 
+        # Merge geo indexes and unique_with indexes into the meta index specs.
         index_specs = merge_index_specs(index_specs, geo_indices)
         index_specs = merge_index_specs(index_specs, unique_indices)
         return index_specs
@@ -866,16 +874,18 @@ class BaseDocument(object):
                     unique_fields += unique_with
 
                 # Add the new index to the list
-                fields = [("%s%s" % (namespace, f), pymongo.ASCENDING)
-                          for f in unique_fields]
+                fields = [
+                    ("%s%s" % (namespace, f), pymongo.ASCENDING)
+                    for f in unique_fields
+                ]
                 index = {'fields': fields, 'unique': True, 'sparse': sparse}
                 unique_indexes.append(index)
 
-            if field.__class__.__name__ == "ListField":
+            if field.__class__.__name__ == 'ListField':
                 field = field.field
 
             # Grab any embedded document field unique indexes
-            if (field.__class__.__name__ == "EmbeddedDocumentField" and
+            if (field.__class__.__name__ == 'EmbeddedDocumentField' and
                     field.document_type != cls):
                 field_namespace = "%s." % field_name
                 doc_cls = field.document_type
@@ -889,8 +899,9 @@ class BaseDocument(object):
         geo_indices = []
         inspected.append(cls)
 
-        geo_field_type_names = ["EmbeddedDocumentField", "GeoPointField",
-                                "PointField", "LineStringField", "PolygonField"]
+        geo_field_type_names = ('EmbeddedDocumentField', 'GeoPointField',
+                                'PointField', 'LineStringField',
+                                'PolygonField')
 
         geo_field_types = tuple([_import_class(field)
                                  for field in geo_field_type_names])
