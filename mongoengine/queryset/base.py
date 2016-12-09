@@ -383,7 +383,8 @@ class BaseQuerySet(object):
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
-    def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
+    def delete(self, write_concern=None, _from_doc_delete=False,
+               cascade_refs=None):
         """Delete the documents matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
@@ -406,8 +407,9 @@ class BaseQuerySet(object):
         # Handle deletes where skips or limits have been applied or
         # there is an untriggered delete signal
         has_delete_signal = signals.signals_available and (
-            signals.pre_delete.has_receivers_for(self._document) or
-            signals.post_delete.has_receivers_for(self._document))
+            signals.pre_delete.has_receivers_for(doc) or
+            signals.post_delete.has_receivers_for(doc)
+        )
 
         call_document_delete = (queryset._skip or queryset._limit or
                                 has_delete_signal) and not _from_doc_delete
@@ -420,23 +422,29 @@ class BaseQuerySet(object):
             return cnt
 
         delete_rules = doc._meta.get('delete_rules') or {}
+
         # Check for DENY rules before actually deleting/nullifying any other
         # references
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
                 continue
-            rule = doc._meta['delete_rules'][rule_entry]
-            if rule == DENY and document_cls.objects(
-                    **{field_name + '__in': self}).count() > 0:
-                msg = ('Could not delete document (%s.%s refers to it)'
-                       % (document_cls.__name__, field_name))
-                raise OperationError(msg)
 
+            rule = doc._meta['delete_rules'][rule_entry]
+            if rule == DENY:
+                refs = document_cls.objects(**{field_name + '__in': self})
+                if refs.limit(1).count() > 0:
+                    raise OperationError(
+                        'Could not delete document (%s.%s refers to it)'
+                        % (document_cls.__name__, field_name)
+                    )
+
+        # Check all the other rules
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
                 continue
+
             rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
@@ -444,13 +452,15 @@ class BaseQuerySet(object):
                 if doc._collection == document_cls._collection:
                     for ref in queryset:
                         cascade_refs.add(ref.id)
-                ref_q = document_cls.objects(**{field_name + '__in': self, 'pk__nin': cascade_refs})
-                ref_q_count = ref_q.count()
-                if ref_q_count > 0:
-                    ref_q.delete(write_concern=write_concern, cascade_refs=cascade_refs)
+                refs = document_cls.objects(**{field_name + '__in': self,
+                                               'pk__nin': cascade_refs})
+                if refs.count() > 0:
+                    refs.delete(write_concern=write_concern,
+                                cascade_refs=cascade_refs)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + '__in': self}).update(
-                    write_concern=write_concern, **{'unset__%s' % field_name: 1})
+                    write_concern=write_concern,
+                    **{'unset__%s' % field_name: 1})
             elif rule == PULL:
                 document_cls.objects(**{field_name + '__in': self}).update(
                     write_concern=write_concern,
