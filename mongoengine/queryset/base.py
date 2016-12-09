@@ -817,39 +817,46 @@ class BaseQuerySet(object):
         .. versionchanged:: 0.6 - Improved db_field refrence handling
         """
         queryset = self.clone()
+
         try:
             field = self._fields_to_dbfields([field]).pop()
-        finally:
-            distinct = self._dereference(queryset._cursor.distinct(field), 1,
-                                         name=field, instance=self._document)
+        except LookUpError:
+            pass
 
-            doc_field = self._document._fields.get(field.split('.', 1)[0])
-            instance = False
-            # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
-            EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
-            ListField = _import_class('ListField')
-            GenericEmbeddedDocumentField = _import_class('GenericEmbeddedDocumentField')
-            if isinstance(doc_field, ListField):
-                doc_field = getattr(doc_field, 'field', doc_field)
-            if isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
-                instance = getattr(doc_field, 'document_type', False)
-            # handle distinct on subdocuments
-            if '.' in field:
-                for field_part in field.split('.')[1:]:
-                    # if looping on embedded document, get the document type instance
-                    if instance and isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
-                        doc_field = instance
-                    # now get the subdocument
-                    doc_field = getattr(doc_field, field_part, doc_field)
-                    # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
-                    if isinstance(doc_field, ListField):
-                        doc_field = getattr(doc_field, 'field', doc_field)
-                    if isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
-                        instance = getattr(doc_field, 'document_type', False)
-            if instance and isinstance(doc_field, (EmbeddedDocumentField,
-                                                   GenericEmbeddedDocumentField)):
-                distinct = [instance(**doc) for doc in distinct]
-            return distinct
+        distinct = self._dereference(queryset._cursor.distinct(field), 1,
+                                     name=field, instance=self._document)
+
+        doc_field = self._document._fields.get(field.split('.', 1)[0])
+        instance = None
+
+        # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
+        EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
+        ListField = _import_class('ListField')
+        GenericEmbeddedDocumentField = _import_class('GenericEmbeddedDocumentField')
+        if isinstance(doc_field, ListField):
+            doc_field = getattr(doc_field, 'field', doc_field)
+        if isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
+            instance = getattr(doc_field, 'document_type', None)
+
+        # handle distinct on subdocuments
+        if '.' in field:
+            for field_part in field.split('.')[1:]:
+                # if looping on embedded document, get the document type instance
+                if instance and isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
+                    doc_field = instance
+                # now get the subdocument
+                doc_field = getattr(doc_field, field_part, doc_field)
+                # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
+                if isinstance(doc_field, ListField):
+                    doc_field = getattr(doc_field, 'field', doc_field)
+                if isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
+                    instance = getattr(doc_field, 'document_type', None)
+
+        if instance and isinstance(doc_field, (EmbeddedDocumentField,
+                                               GenericEmbeddedDocumentField)):
+            distinct = [instance(**doc) for doc in distinct]
+
+        return distinct
 
     def only(self, *fields):
         """Load only a subset of this document's fields. ::
