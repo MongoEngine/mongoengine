@@ -1,6 +1,5 @@
 import copy
 import numbers
-import operator
 from collections import Hashable
 from functools import partial
 

@@ -1395,11 +1395,13 @@ class GridFSProxy(object):
                 get_db(self.db_alias), self.collection_name)
         return self._fs
 
-    def get(self, id=None):
-        if id:
-            self.grid_id = id
+    def get(self, grid_id=None):
+        if grid_id:
+            self.grid_id = grid_id
+
         if self.grid_id is None:
             return None
+
         try:
             if self.gridout is None:
                 self.gridout = self.fs.get(self.grid_id)
