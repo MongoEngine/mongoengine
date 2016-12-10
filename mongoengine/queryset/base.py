@@ -422,15 +422,15 @@ class BaseQuerySet(object):
             return cnt
 
         delete_rules = doc._meta.get('delete_rules') or {}
+        delete_rules = list(delete_rules.items())
 
         # Check for DENY rules before actually deleting/nullifying any other
         # references
-        for rule_entry in delete_rules:
+        for rule_entry, rule in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
                 continue
 
-            rule = doc._meta['delete_rules'][rule_entry]
             if rule == DENY:
                 refs = document_cls.objects(**{field_name + '__in': self})
                 if refs.limit(1).count() > 0:
@@ -440,12 +440,11 @@ class BaseQuerySet(object):
                     )
 
         # Check all the other rules
-        for rule_entry in delete_rules:
+        for rule_entry, rule in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
                 continue
 
-            rule = doc._meta['delete_rules'][rule_entry]
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
                 # Handle recursive reference
