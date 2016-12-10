@@ -1,8 +1,9 @@
 """Helper functions and types to aid with Python 2.6 - 3 support."""
 
 import sys
-import pymongo
 import warnings
+
+import pymongo
 
 
 # Show a deprecation warning for people using Python v2.6
