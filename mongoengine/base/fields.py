@@ -297,14 +297,14 @@ class ComplexBaseField(BaseField):
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = dict([(k, v) for k, v in enumerate(value)])
+                value = {k: v for k, v in enumerate(value)}
             except TypeError:  # Not iterable return the value
                 return value
 
         if self.field:
             self.field._auto_dereference = self._auto_dereference
-            value_dict = dict([(key, self.field.to_python(item))
-                               for key, item in value.items()])
+            value_dict = {key: self.field.to_python(item)
+                          for key, item in value.items()}
         else:
             Document = _import_class('Document')
             value_dict = {}
@@ -349,13 +349,15 @@ class ComplexBaseField(BaseField):
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = dict([(k, v) for k, v in enumerate(value)])
+                value = {k: v for k, v in enumerate(value)}
             except TypeError:  # Not iterable return the value
                 return value
 
         if self.field:
-            value_dict = dict([(key, self.field._to_mongo_safe_call(item, use_db_field, fields))
-                               for key, item in value.iteritems()])
+            value_dict = {
+                key: self.field._to_mongo_safe_call(item, use_db_field, fields)
+                for key, item in value.iteritems()
+            }
         else:
             value_dict = {}
             for k, v in value.iteritems():

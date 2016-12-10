@@ -876,7 +876,7 @@ class BaseQuerySet(object):
         .. versionadded:: 0.3
         .. versionchanged:: 0.5 - Added subfield support
         """
-        fields = dict([(f, QueryFieldList.ONLY) for f in fields])
+        fields = {f: QueryFieldList.ONLY for f in fields}
         self.only_fields = fields.keys()
         return self.fields(True, **fields)
 
@@ -897,7 +897,7 @@ class BaseQuerySet(object):
 
         .. versionadded:: 0.5
         """
-        fields = dict([(f, QueryFieldList.EXCLUDE) for f in fields])
+        fields = {f: QueryFieldList.EXCLUDE for f in fields}
         return self.fields(**fields)
 
     def fields(self, _only_called=False, **kwargs):
@@ -1553,7 +1553,7 @@ class BaseQuerySet(object):
                     emit(null, 1);
                 }
             }
-        """ % dict(field=field)
+        """ % {'field': field}
         reduce_func = """
             function(key, values) {
                 var total = 0;
@@ -1575,8 +1575,8 @@ class BaseQuerySet(object):
 
         if normalize:
             count = sum(frequencies.values())
-            frequencies = dict([(k, float(v) / count)
-                                for k, v in frequencies.items()])
+            frequencies = {k: float(v) / count
+                           for k, v in frequencies.items()}
 
         return frequencies
 
@@ -1628,10 +1628,10 @@ class BaseQuerySet(object):
             }
         """
         total, data, types = self.exec_js(freq_func, field)
-        values = dict([(types.get(k), int(v)) for k, v in data.iteritems()])
+        values = {types.get(k): int(v) for k, v in data.iteritems()}
 
         if normalize:
-            values = dict([(k, float(v) / total) for k, v in values.items()])
+            values = {k: float(v) / total for k, v in values.items()}
 
         frequencies = {}
         for k, v in values.iteritems():

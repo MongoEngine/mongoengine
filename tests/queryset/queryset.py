@@ -617,11 +617,11 @@ class QuerySetTest(unittest.TestCase):
             members = DictField()
 
         club = Club()
-        club.members['John'] = dict(gender="M", age=13)
+        club.members['John'] = {'gender': 'M', 'age': 13}
         club.save()
 
         Club.objects().update(
-            set__members={"John": dict(gender="F", age=14)})
+            set__members={"John": {'gender': 'F', 'age': 14}})
 
         club = Club.objects().first()
         self.assertEqual(club.members['John']['gender'], "F")
@@ -2610,7 +2610,7 @@ class QuerySetTest(unittest.TestCase):
         BlogPost(hits=2, tags=['music', 'actors']).save()
 
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(
                 set(['music', 'film', 'actors', 'watch']), set(f.keys()))
             self.assertEqual(f['music'], 3)
@@ -2625,7 +2625,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Ensure query is taken into account
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(set(['music', 'actors', 'watch']), set(f.keys()))
             self.assertEqual(f['music'], 2)
             self.assertEqual(f['actors'], 1)
@@ -2689,7 +2689,7 @@ class QuerySetTest(unittest.TestCase):
         doc.save()
 
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(
                 set(['62-3331-1656', '62-3332-1656']), set(f.keys()))
             self.assertEqual(f['62-3331-1656'], 2)
@@ -2703,7 +2703,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Ensure query is taken into account
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(set(['62-3331-1656']), set(f.keys()))
             self.assertEqual(f['62-3331-1656'], 2)
 
@@ -4880,7 +4880,7 @@ class QuerySetTest(unittest.TestCase):
     def test_subclass_field_query(self):
         class Animal(Document):
             is_mamal = BooleanField()
-            meta = dict(allow_inheritance=True)
+            meta = {'allow_inheritance': True}
 
         class Cat(Animal):
             whiskers_length = FloatField()

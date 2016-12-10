@@ -805,7 +805,7 @@ class InstanceTest(unittest.TestCase):
 
         self.assertRaises(
             InvalidQueryError,
-            lambda: doc1.modify(dict(id=doc2.id), set__value=20))
+            lambda: doc1.modify({'id': doc2.id}, set__value=20))
 
         self.assertDbEqual(docs)
 
@@ -814,7 +814,7 @@ class InstanceTest(unittest.TestCase):
         doc2 = self.Person(name="jim", age=20).save()
         docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
 
-        assert not doc1.modify(dict(name=doc2.name), set__age=100)
+        assert not doc1.modify({'name': doc2.name}, set__age=100)
 
         self.assertDbEqual(docs)
 
@@ -823,7 +823,7 @@ class InstanceTest(unittest.TestCase):
         doc2 = self.Person(id=ObjectId(), name="jim", age=20)
         docs = [dict(doc1.to_mongo())]
 
-        assert not doc2.modify(dict(name=doc2.name), set__age=100)
+        assert not doc2.modify({'name': doc2.name}, set__age=100)
 
         self.assertDbEqual(docs)
 

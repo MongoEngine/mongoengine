@@ -650,7 +650,7 @@ class DynamicField(BaseField):
         is_list = False
         if not hasattr(value, 'items'):
             is_list = True
-            value = dict([(k, v) for k, v in enumerate(value)])
+            value = {k: v for k, v in enumerate(value)}
 
         data = {}
         for k, v in value.iteritems():
@@ -844,9 +844,10 @@ class DictField(ComplexBaseField):
 
         if hasattr(self.field, 'field'):
             if op in ('set', 'unset') and isinstance(value, dict):
-                return dict(
-                    (k, self.field.prepare_query_value(op, v))
-                    for k, v in value.items())
+                return {
+                    k: self.field.prepare_query_value(op, v)
+                    for k, v in value.items()
+                }
             return self.field.prepare_query_value(op, value)
 
         return super(DictField, self).prepare_query_value(op, value)
@@ -1062,18 +1063,20 @@ class CachedReferenceField(BaseField):
                                   sender=self.document_type)
 
     def on_document_pre_save(self, sender, document, created, **kwargs):
-        if not created:
-            update_kwargs = dict(
-                ('set__%s__%s' % (self.name, k), v)
-                for k, v in document._delta()[0].items()
-                if k in self.fields)
+        if created:
+            return None
 
-            if update_kwargs:
-                filter_kwargs = {}
-                filter_kwargs[self.name] = document
+        update_kwargs = {
+            'set__%s__%s' % (self.name, key): val
+            for key, val in document._delta()[0].items()
+            if key in self.fields
+        }
+        if update_kwargs:
+            filter_kwargs = {}
+            filter_kwargs[self.name] = document
 
-                self.owner_document.objects(
-                    **filter_kwargs).update(**update_kwargs)
+            self.owner_document.objects(
+                **filter_kwargs).update(**update_kwargs)
 
     def to_python(self, value):
         if isinstance(value, dict):
@@ -1707,7 +1710,10 @@ class ImageField(FileField):
             raise ImproperlyConfigured('PIL library was not found')
 
         params_size = ('width', 'height', 'force')
-        extra_args = dict(size=size, thumbnail_size=thumbnail_size)
+        extra_args = {
+            'size': size,
+            'thumbnail_size': thumbnail_size
+        }
         for att_name, att in extra_args.items():
             value = None
             if isinstance(att, (tuple, list)):

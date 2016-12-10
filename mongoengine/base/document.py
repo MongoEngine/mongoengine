@@ -416,33 +416,26 @@ class BaseDocument(object):
         return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):
-        """expand any dynamic values to their correct types / values"""
+        """Expand any dynamic values to their correct types / values."""
         if not isinstance(value, (dict, list, tuple)):
             return value
 
-        EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
-
-        is_list = False
-        if not hasattr(value, 'items'):
-            is_list = True
-            value = dict([(k, v) for k, v in enumerate(value)])
-
-        if not is_list and '_cls' in value:
+        # If the value is a dict with '_cls' in it, turn it into a document
+        is_dict = isinstance(value, dict)
+        if is_dict and '_cls' in value:
             cls = get_document(value['_cls'])
             return cls(**value)
 
-        data = {}
-        for k, v in value.items():
-            key = name if is_list else k
-            data[k] = self.__expand_dynamic_values(key, v)
-
-        if is_list:  # Convert back to a list
-            data_items = sorted(data.items(), key=operator.itemgetter(0))
-            value = [v for k, v in data_items]
+        if is_dict:
+            value = {
+                k: self.__expand_dynamic_values(k, v)
+                for k, v in value.items()
+            }
         else:
-            value = data
+            value = [self.__expand_dynamic_values(name, v) for v in value]
 
         # Convert lists / values so we can watch for any changes on them
+        EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
         if (isinstance(value, (list, tuple)) and
                 not isinstance(value, BaseList)):
             if issubclass(type(self), EmbeddedDocumentListField):
@@ -682,7 +675,7 @@ class BaseDocument(object):
         # get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
-        data = dict(('%s' % key, value) for key, value in son.iteritems())
+        data = {key: value for key, value in son.iteritems()}
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
@@ -714,9 +707,10 @@ class BaseDocument(object):
                    % (cls._class_name, errors))
             raise InvalidDocumentError(msg)
 
+        # In STRICT documents, remove any keys that aren't in cls._fields
         if cls.STRICT:
-            data = dict((k, v)
-                        for k, v in data.iteritems() if k in cls._fields)
+            data = {k: v for k, v in data.iteritems() if k in cls._fields}
+
         obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
@@ -738,9 +732,9 @@ class BaseDocument(object):
 
             # Create a map of index fields to index spec. We're converting
             # the fields from a list to a tuple so that it's hashable.
-            spec_fields = dict(
-                (tuple(index['fields']), index) for index in index_specs
-            )
+            spec_fields = {
+                tuple(index['fields']): index for index in index_specs
+            }
 
             # For each new index, if there's an existing index with the same
             # fields list, update the existing spec with all data from the

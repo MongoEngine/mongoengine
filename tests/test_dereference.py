@@ -617,10 +617,10 @@ class FieldTest(unittest.TestCase):
             user.save()
             members.append(user)
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -697,9 +697,9 @@ class FieldTest(unittest.TestCase):
 
             members += [a, b, c]
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -787,10 +787,10 @@ class FieldTest(unittest.TestCase):
 
             members += [a]
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -876,9 +876,9 @@ class FieldTest(unittest.TestCase):
 
             members += [a, b, c]
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:

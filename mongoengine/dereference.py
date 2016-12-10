@@ -66,11 +66,11 @@ class DeReference(object):
 
                         items = _get_items(items)
                     else:
-                        items = dict([
-                            (k, field.to_python(v))
-                            if not isinstance(v, (DBRef, Document)) else (k, v)
-                            for k, v in items.iteritems()]
-                        )
+                        items = {
+                            k: (v if isinstance(v, (DBRef, Document))
+                                else field.to_python(v))
+                            for k, v in items.iteritems()
+                        }
 
         self.reference_map = self._find_references(items)
         self.object_map = self._fetch_objects(doc_type=doc_type)

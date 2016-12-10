@@ -148,10 +148,10 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             'name', 'username', 'password', 'authentication_source',
             'authentication_mechanism'
         ])
-        return dict(
-            (k, v) for k, v in settings_dict.items()
+        return {
+            k: v for k, v in settings_dict.items()
             if k not in irrelevant_fields
-        )
+        }
 
     # Retrieve a copy of the connection settings associated with the requested
     # alias and remove the database name and authentication info (we don't

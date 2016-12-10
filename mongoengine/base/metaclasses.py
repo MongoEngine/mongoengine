@@ -95,10 +95,11 @@ class DocumentMetaclass(type):
 
         # Set _fields and db_field maps
         attrs['_fields'] = doc_fields
-        attrs['_db_field_map'] = dict([(k, getattr(v, 'db_field', k))
-                                       for k, v in doc_fields.iteritems()])
-        attrs['_reverse_db_field_map'] = dict(
-            (v, k) for k, v in attrs['_db_field_map'].iteritems())
+        attrs['_db_field_map'] = {k: getattr(v, 'db_field', k)
+                                  for k, v in doc_fields.items()}
+        attrs['_reverse_db_field_map'] = {
+            v: k for k, v in attrs['_db_field_map'].items()
+        }
 
         attrs['_fields_ordered'] = tuple(i[1] for i in sorted(
                                          (v.creation_counter, v.name)
