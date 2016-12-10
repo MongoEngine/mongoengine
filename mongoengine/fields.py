@@ -1261,7 +1261,7 @@ class GenericReferenceField(BaseField):
         if document is None:
             return None
 
-        if isinstance(document, (dict, SON)):
+        if isinstance(document, (dict, SON, ObjectId, DBRef)):
             return document
 
         id_field_name = document.__class__._meta['id_field']
