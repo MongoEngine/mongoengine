@@ -977,8 +977,15 @@ class BaseQuerySet(object):
         :param format: format the plan before returning it
         """
         plan = self._cursor.explain()
+
+        # TODO remove this option completely - it's useless. If somebody
+        # wants to pretty-print the output, they easily can.
         if format:
+            msg = ('"format" param of BaseQuerySet.explain has been '
+                   'deprecated and will be removed in future versions.')
+            warnings.warn(msg, DeprecationWarning)
             plan = pprint.pformat(plan)
+
         return plan
 
     # DEPRECATED. Has no more impact on PyMongo 3+
