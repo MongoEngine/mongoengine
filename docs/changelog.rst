@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Development
+===========
+- Fixed absent rounding for DecimalField when `force_string` is set. #1103
+
 Changes in 0.10.8
 =================
 - Added support for QuerySet.batch_size (#1426)
