@@ -1216,7 +1216,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertSequence(qs, expected)
 
     def test_clear_ordering(self):
-        """ Ensure that the default ordering can be cleared by calling order_by().
+        """Ensure that the default ordering can be cleared by calling
+        order_by() w/o any arguments.
         """
         class BlogPost(Document):
             title = StringField()
@@ -1237,7 +1238,6 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            print q.get_ops()[0]['query']
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 
     def test_no_ordering_for_get(self):
