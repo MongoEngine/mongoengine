@@ -2,6 +2,13 @@
 Upgrading
 #########
 
+0.10.7
+******
+
+`QuerySet.aggregate_sum` and `QuerySet.aggregate_average` are dropped. Use
+`QuerySet.sum` and `QuerySet.average` instead which use the aggreation framework
+by default from now on.
+
 0.9.0
 *****
 
