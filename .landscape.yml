@@ -4,9 +4,11 @@ pylint:
         - protected-access
 
     additional-builtins:
-        # add xrange as a valid built-in. In Python 3, xrange is translated
-        # into range via 2to3 (see "use_2to3" in setup.py).
-        - xrange
+        # add xrange and long as valid built-ins. In Python 3, xrange is
+        # translated into range and long is translated into int via 2to3 (see
+        # "use_2to3" in setup.py). This should be removed when we drop Python
+        # 2 support (which probably won't happen any time soon).
+        - xrange,long
 
 ignore-paths:
     - benchmark.py
