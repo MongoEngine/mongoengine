@@ -3,5 +3,10 @@ pylint:
         # We use this a lot (e.g. via document._meta)
         - protected-access
 
+    additional-builtins:
+        # add xrange as a valid built-in. In Python 3, xrange is translated
+        # into range via 2to3 (see "use_2to3" in setup.py).
+        - xrange
+
 ignore-paths:
     - benchmark.py
