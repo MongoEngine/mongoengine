@@ -5,7 +5,7 @@ Upgrading
 0.11.0
 ******
 This release includes a major rehaul of MongoEngine's code quality and
-introduces a couple breaking changes. It also touches many different parts of
+introduces a few breaking changes. It also touches many different parts of
 the package and although all the changes have been tested and scrutinized,
 you're encouraged to thorougly test the upgrade.
 
@@ -14,6 +14,12 @@ If you import or catch this exception, you'll need to rename it in your code.
 
 Second breaking change drops Python v2.6 support. If you run MongoEngine on
 that Python version, you'll need to upgrade it first.
+
+Third breaking change drops an old backward compatibility measure where
+`from mongoengine.base import ErrorClass` would work on top of
+`from mongoengine.errors import ErrorClass` (where `ErrorClass` is e.g.
+`ValidationError`). If you import any exceptions from `mongoengine.base`,
+change it to `mongoengine.errors`.
 
 0.10.8
 ******
