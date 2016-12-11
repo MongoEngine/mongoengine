@@ -4,6 +4,12 @@ Changelog
 
 Development
 ===========
+- (Fill this out as you fix issues and develop you features).
+
+Changes in 0.11.0
+=================
+- BREAKING CHANGE: Renamed `ConnectionError` to `MongoEngineConnectionError` since the former is a built-in exception name in Python v3.x. #1428
+- BREAKING CHANGE: Dropped Python 2.6 support. #1428
 - Fixed absent rounding for DecimalField when `force_string` is set. #1103
 
 Changes in 0.10.8
