@@ -411,7 +411,7 @@ class InstanceTest(unittest.TestCase):
         del(_document_registry['Place.NicePlace'])
 
         def query_without_importing_nice_place():
-            print Place.objects.all()
+            list(Place.objects.all())
         self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
     def test_document_registry_regressions(self):
