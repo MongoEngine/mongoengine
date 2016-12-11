@@ -3,7 +3,6 @@ import decimal
 import itertools
 import re
 import time
-import urllib2
 import uuid
 import warnings
 from operator import itemgetter
@@ -147,17 +146,6 @@ class URLField(StringField):
         if not self.url_regex.match(value):
             self.error('Invalid URL: {}'.format(value))
             return
-
-        if self.verify_exists:
-            warnings.warn(
-                'The URLField verify_exists argument has intractable security '
-                'and performance issues. Accordingly, it has been deprecated.',
-                DeprecationWarning)
-            try:
-                request = urllib2.Request(value)
-                urllib2.urlopen(request)
-            except Exception as e:
-                self.error('This URL appears to be a broken link: %s' % e)
 
 
 class EmailField(StringField):
