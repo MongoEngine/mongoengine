@@ -69,9 +69,9 @@ class QueryCompilerVisitor(QNodeVisitor):
         self.document = document
 
     def visit_combination(self, combination):
-        operator = "$and"
+        operator = '$and'
         if combination.operation == combination.OR:
-            operator = "$or"
+            operator = '$or'
         return {operator: combination.children}
 
     def visit_query(self, query):
@@ -79,8 +79,7 @@ class QueryCompilerVisitor(QNodeVisitor):
 
 
 class QNode(object):
-    """Base class for nodes in query trees.
-    """
+    """Base class for nodes in query trees."""
 
     AND = 0
     OR = 1
@@ -94,7 +93,8 @@ class QNode(object):
         raise NotImplementedError
 
     def _combine(self, other, operation):
-        """Combine this node with another node into a QCombination object.
+        """Combine this node with another node into a QCombination
+        object.
         """
         if getattr(other, 'empty', True):
             return self
@@ -116,8 +116,8 @@ class QNode(object):
 
 
 class QCombination(QNode):
-    """Represents the combination of several conditions by a given logical
-    operator.
+    """Represents the combination of several conditions by a given
+    logical operator.
     """
 
     def __init__(self, operation, children):

@@ -1,6 +1,3 @@
-import sys
-sys.path[0:0] = [""]
-
 import unittest
 
 from mongoengine import *
@@ -95,7 +92,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
         exclude = ['d', 'e']
         only = ['b', 'c']
 
-        qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
+        qs = MyDoc.objects.fields(**{i: 1 for i in include})
         self.assertEqual(qs._loaded_fields.as_dict(),
                          {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1})
         qs = qs.only(*only)
@@ -103,14 +100,14 @@ class OnlyExcludeAllTest(unittest.TestCase):
         qs = qs.exclude(*exclude)
         self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
 
-        qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
+        qs = MyDoc.objects.fields(**{i: 1 for i in include})
         qs = qs.exclude(*exclude)
         self.assertEqual(qs._loaded_fields.as_dict(), {'a': 1, 'b': 1, 'c': 1})
         qs = qs.only(*only)
         self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
 
         qs = MyDoc.objects.exclude(*exclude)
-        qs = qs.fields(**dict(((i, 1) for i in include)))
+        qs = qs.fields(**{i: 1 for i in include})
         self.assertEqual(qs._loaded_fields.as_dict(), {'a': 1, 'b': 1, 'c': 1})
         qs = qs.only(*only)
         self.assertEqual(qs._loaded_fields.as_dict(), {'b': 1, 'c': 1})
@@ -129,7 +126,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
         exclude = ['d', 'e']
         only = ['b', 'c']
 
-        qs = MyDoc.objects.fields(**dict(((i, 1) for i in include)))
+        qs = MyDoc.objects.fields(**{i: 1 for i in include})
         qs = qs.exclude(*exclude)
         qs = qs.only(*only)
         qs = qs.fields(slice__b=5)

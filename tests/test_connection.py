@@ -1,8 +1,5 @@
-import sys
 import datetime
 from pymongo.errors import OperationFailure
-
-sys.path[0:0] = [""]
 
 try:
     import unittest2 as unittest
@@ -19,7 +16,8 @@ from mongoengine import (
 )
 from mongoengine.python_support import IS_PYMONGO_3
 import mongoengine.connection
-from mongoengine.connection import get_db, get_connection, ConnectionError
+from mongoengine.connection import (MongoEngineConnectionError, get_db,
+                                    get_connection)
 
 
 def get_tz_awareness(connection):
@@ -159,7 +157,10 @@ class ConnectionTest(unittest.TestCase):
         c.mongoenginetest.add_user("username", "password")
 
         if not IS_PYMONGO_3:
-            self.assertRaises(ConnectionError, connect, "testdb_uri_bad", host='mongodb://test:password@localhost')
+            self.assertRaises(
+                MongoEngineConnectionError, connect, 'testdb_uri_bad',
+                host='mongodb://test:password@localhost'
+            )
 
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
 
@@ -229,10 +230,11 @@ class ConnectionTest(unittest.TestCase):
             self.assertRaises(OperationFailure, test_conn.server_info)
         else:
             self.assertRaises(
-                ConnectionError, connect, 'mongoenginetest', alias='test1',
+                MongoEngineConnectionError, connect, 'mongoenginetest',
+                alias='test1',
                 host='mongodb://username2:password@localhost/mongoenginetest'
             )
-            self.assertRaises(ConnectionError, get_db, 'test1')
+            self.assertRaises(MongoEngineConnectionError, get_db, 'test1')
 
         # Authentication succeeds with "authSource"
         connect(
@@ -253,7 +255,7 @@ class ConnectionTest(unittest.TestCase):
         """
         register_connection('testdb', 'mongoenginetest2')
 
-        self.assertRaises(ConnectionError, get_connection)
+        self.assertRaises(MongoEngineConnectionError, get_connection)
         conn = get_connection('testdb')
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 

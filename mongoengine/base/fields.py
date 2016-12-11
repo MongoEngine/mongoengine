@@ -4,21 +4,17 @@ import weakref
 
 from bson import DBRef, ObjectId, SON
 import pymongo
+import six
 
-from mongoengine.base.common import ALLOW_INHERITANCE
-from mongoengine.base.datastructures import (
-    BaseDict, BaseList, EmbeddedDocumentList
-)
+from mongoengine.base.common import UPDATE_OPERATORS
+from mongoengine.base.datastructures import (BaseDict, BaseList,
+                                             EmbeddedDocumentList)
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
 
-__all__ = ("BaseField", "ComplexBaseField",
-           "ObjectIdField", "GeoJsonBaseField")
 
-
-UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set',
-                        'set_on_insert', 'min', 'max'])
+__all__ = ('BaseField', 'ComplexBaseField', 'ObjectIdField',
+           'GeoJsonBaseField')
 
 
 class BaseField(object):
@@ -73,7 +69,7 @@ class BaseField(object):
         self.db_field = (db_field or name) if not primary_key else '_id'
 
         if name:
-            msg = "Fields' 'name' attribute deprecated in favour of 'db_field'"
+            msg = 'Field\'s "name" attribute deprecated in favour of "db_field"'
             warnings.warn(msg, DeprecationWarning)
         self.required = required or primary_key
         self.default = default
@@ -89,7 +85,7 @@ class BaseField(object):
         # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)) & set(kwargs)
         if conflicts:
-            raise TypeError("%s already has attribute(s): %s" % (
+            raise TypeError('%s already has attribute(s): %s' % (
                 self.__class__.__name__, ', '.join(conflicts)))
 
         # Assign metadata to the instance
@@ -147,25 +143,21 @@ class BaseField(object):
                     v._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
-    def error(self, message="", errors=None, field_name=None):
-        """Raises a ValidationError.
-        """
+    def error(self, message='', errors=None, field_name=None):
+        """Raise a ValidationError."""
         field_name = field_name if field_name else self.name
         raise ValidationError(message, errors=errors, field_name=field_name)
 
     def to_python(self, value):
-        """Convert a MongoDB-compatible type to a Python type.
-        """
+        """Convert a MongoDB-compatible type to a Python type."""
         return value
 
     def to_mongo(self, value):
-        """Convert a Python type to a MongoDB-compatible type.
-        """
+        """Convert a Python type to a MongoDB-compatible type."""
         return self.to_python(value)
 
     def _to_mongo_safe_call(self, value, use_db_field=True, fields=None):
-        """A helper method to call to_mongo with proper inputs
-        """
+        """Helper method to call to_mongo with proper inputs."""
         f_inputs = self.to_mongo.__code__.co_varnames
         ex_vars = {}
         if 'fields' in f_inputs:
@@ -177,15 +169,13 @@ class BaseField(object):
         return self.to_mongo(value, **ex_vars)
 
     def prepare_query_value(self, op, value):
-        """Prepare a value that is being used in a query for PyMongo.
-        """
+        """Prepare a value that is being used in a query for PyMongo."""
         if op in UPDATE_OPERATORS:
             self.validate(value)
         return value
 
     def validate(self, value, clean=True):
-        """Perform validation on a value.
-        """
+        """Perform validation on a value."""
         pass
 
     def _validate_choices(self, value):
@@ -200,11 +190,13 @@ class BaseField(object):
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
                 self.error(
-                    'Value must be instance of %s' % unicode(choice_list)
+                    'Value must be an instance of %s' % (
+                        six.text_type(choice_list)
+                    )
                 )
         # Choices which are types other than Documents
         elif value not in choice_list:
-            self.error('Value must be one of %s' % unicode(choice_list))
+            self.error('Value must be one of %s' % six.text_type(choice_list))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -247,8 +239,7 @@ class ComplexBaseField(BaseField):
     field = None
 
     def __get__(self, instance, owner):
-        """Descriptor to automatically dereference references.
-        """
+        """Descriptor to automatically dereference references."""
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -260,7 +251,7 @@ class ComplexBaseField(BaseField):
                        (self.field is None or isinstance(self.field,
                                                          (GenericReferenceField, ReferenceField))))
 
-        _dereference = _import_class("DeReference")()
+        _dereference = _import_class('DeReference')()
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         if instance._initialised and dereference and instance._data.get(self.name):
@@ -295,9 +286,8 @@ class ComplexBaseField(BaseField):
         return value
 
     def to_python(self, value):
-        """Convert a MongoDB-compatible type to a Python type.
-        """
-        if isinstance(value, basestring):
+        """Convert a MongoDB-compatible type to a Python type."""
+        if isinstance(value, six.string_types):
             return value
 
         if hasattr(value, 'to_python'):
@@ -307,14 +297,14 @@ class ComplexBaseField(BaseField):
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = dict([(k, v) for k, v in enumerate(value)])
+                value = {k: v for k, v in enumerate(value)}
             except TypeError:  # Not iterable return the value
                 return value
 
         if self.field:
             self.field._auto_dereference = self._auto_dereference
-            value_dict = dict([(key, self.field.to_python(item))
-                               for key, item in value.items()])
+            value_dict = {key: self.field.to_python(item)
+                          for key, item in value.items()}
         else:
             Document = _import_class('Document')
             value_dict = {}
@@ -337,13 +327,12 @@ class ComplexBaseField(BaseField):
         return value_dict
 
     def to_mongo(self, value, use_db_field=True, fields=None):
-        """Convert a Python type to a MongoDB-compatible type.
-        """
-        Document = _import_class("Document")
-        EmbeddedDocument = _import_class("EmbeddedDocument")
-        GenericReferenceField = _import_class("GenericReferenceField")
+        """Convert a Python type to a MongoDB-compatible type."""
+        Document = _import_class('Document')
+        EmbeddedDocument = _import_class('EmbeddedDocument')
+        GenericReferenceField = _import_class('GenericReferenceField')
 
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             return value
 
         if hasattr(value, 'to_mongo'):
@@ -360,13 +349,15 @@ class ComplexBaseField(BaseField):
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = dict([(k, v) for k, v in enumerate(value)])
+                value = {k: v for k, v in enumerate(value)}
             except TypeError:  # Not iterable return the value
                 return value
 
         if self.field:
-            value_dict = dict([(key, self.field._to_mongo_safe_call(item, use_db_field, fields))
-                               for key, item in value.iteritems()])
+            value_dict = {
+                key: self.field._to_mongo_safe_call(item, use_db_field, fields)
+                for key, item in value.iteritems()
+            }
         else:
             value_dict = {}
             for k, v in value.iteritems():
@@ -380,9 +371,7 @@ class ComplexBaseField(BaseField):
                     # any _cls data so make it a generic reference allows
                     # us to dereference
                     meta = getattr(v, '_meta', {})
-                    allow_inheritance = (
-                        meta.get('allow_inheritance', ALLOW_INHERITANCE)
-                        is True)
+                    allow_inheritance = meta.get('allow_inheritance')
                     if not allow_inheritance and not self.field:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
@@ -404,8 +393,7 @@ class ComplexBaseField(BaseField):
         return value_dict
 
     def validate(self, value):
-        """If field is provided ensure the value is valid.
-        """
+        """If field is provided ensure the value is valid."""
         errors = {}
         if self.field:
             if hasattr(value, 'iteritems') or hasattr(value, 'items'):
@@ -415,9 +403,9 @@ class ComplexBaseField(BaseField):
             for k, v in sequence:
                 try:
                     self.field._validate(v)
-                except ValidationError, error:
+                except ValidationError as error:
                     errors[k] = error.errors or error
-                except (ValueError, AssertionError), error:
+                except (ValueError, AssertionError) as error:
                     errors[k] = error
 
             if errors:
@@ -443,8 +431,7 @@ class ComplexBaseField(BaseField):
 
 
 class ObjectIdField(BaseField):
-    """A field wrapper around MongoDB's ObjectIds.
-    """
+    """A field wrapper around MongoDB's ObjectIds."""
 
     def to_python(self, value):
         try:
@@ -457,10 +444,10 @@ class ObjectIdField(BaseField):
     def to_mongo(self, value):
         if not isinstance(value, ObjectId):
             try:
-                return ObjectId(unicode(value))
-            except Exception, e:
+                return ObjectId(six.text_type(value))
+            except Exception as e:
                 # e.message attribute has been deprecated since Python 2.6
-                self.error(unicode(e))
+                self.error(six.text_type(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -468,7 +455,7 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            ObjectId(unicode(value))
+            ObjectId(six.text_type(value))
         except Exception:
             self.error('Invalid Object ID')
 
@@ -480,21 +467,20 @@ class GeoJsonBaseField(BaseField):
     """
 
     _geo_index = pymongo.GEOSPHERE
-    _type = "GeoBase"
+    _type = 'GeoBase'
 
     def __init__(self, auto_index=True, *args, **kwargs):
         """
-        :param bool auto_index: Automatically create a "2dsphere" index.\
+        :param bool auto_index: Automatically create a '2dsphere' index.\
             Defaults to `True`.
         """
-        self._name = "%sField" % self._type
+        self._name = '%sField' % self._type
         if not auto_index:
             self._geo_index = False
         super(GeoJsonBaseField, self).__init__(*args, **kwargs)
 
     def validate(self, value):
-        """Validate the GeoJson object based on its type
-        """
+        """Validate the GeoJson object based on its type."""
         if isinstance(value, dict):
             if set(value.keys()) == set(['type', 'coordinates']):
                 if value['type'] != self._type:
@@ -509,7 +495,7 @@ class GeoJsonBaseField(BaseField):
             self.error('%s can only accept lists of [x, y]' % self._name)
             return
 
-        validate = getattr(self, "_validate_%s" % self._type.lower())
+        validate = getattr(self, '_validate_%s' % self._type.lower())
         error = validate(value)
         if error:
             self.error(error)
@@ -522,7 +508,7 @@ class GeoJsonBaseField(BaseField):
         try:
             value[0][0][0]
         except (TypeError, IndexError):
-            return "Invalid Polygon must contain at least one valid linestring"
+            return 'Invalid Polygon must contain at least one valid linestring'
 
         errors = []
         for val in value:
@@ -533,12 +519,12 @@ class GeoJsonBaseField(BaseField):
                 errors.append(error)
         if errors:
             if top_level:
-                return "Invalid Polygon:\n%s" % ", ".join(errors)
+                return 'Invalid Polygon:\n%s' % ', '.join(errors)
             else:
-                return "%s" % ", ".join(errors)
+                return '%s' % ', '.join(errors)
 
     def _validate_linestring(self, value, top_level=True):
-        """Validates a linestring"""
+        """Validate a linestring."""
         if not isinstance(value, (list, tuple)):
             return 'LineStrings must contain list of coordinate pairs'
 
@@ -546,7 +532,7 @@ class GeoJsonBaseField(BaseField):
         try:
             value[0][0]
         except (TypeError, IndexError):
-            return "Invalid LineString must contain at least one valid point"
+            return 'Invalid LineString must contain at least one valid point'
 
         errors = []
         for val in value:
@@ -555,19 +541,19 @@ class GeoJsonBaseField(BaseField):
                 errors.append(error)
         if errors:
             if top_level:
-                return "Invalid LineString:\n%s" % ", ".join(errors)
+                return 'Invalid LineString:\n%s' % ', '.join(errors)
             else:
-                return "%s" % ", ".join(errors)
+                return '%s' % ', '.join(errors)
 
     def _validate_point(self, value):
         """Validate each set of coords"""
         if not isinstance(value, (list, tuple)):
             return 'Points must be a list of coordinate pairs'
         elif not len(value) == 2:
-            return "Value (%s) must be a two-dimensional point" % repr(value)
+            return 'Value (%s) must be a two-dimensional point' % repr(value)
         elif (not isinstance(value[0], (float, int)) or
               not isinstance(value[1], (float, int))):
-            return "Both values (%s) in point must be float or int" % repr(value)
+            return 'Both values (%s) in point must be float or int' % repr(value)
 
     def _validate_multipoint(self, value):
         if not isinstance(value, (list, tuple)):
@@ -577,7 +563,7 @@ class GeoJsonBaseField(BaseField):
         try:
             value[0][0]
         except (TypeError, IndexError):
-            return "Invalid MultiPoint must contain at least one valid point"
+            return 'Invalid MultiPoint must contain at least one valid point'
 
         errors = []
         for point in value:
@@ -586,7 +572,7 @@ class GeoJsonBaseField(BaseField):
                 errors.append(error)
 
         if errors:
-            return "%s" % ", ".join(errors)
+            return '%s' % ', '.join(errors)
 
     def _validate_multilinestring(self, value, top_level=True):
         if not isinstance(value, (list, tuple)):
@@ -596,7 +582,7 @@ class GeoJsonBaseField(BaseField):
         try:
             value[0][0][0]
         except (TypeError, IndexError):
-            return "Invalid MultiLineString must contain at least one valid linestring"
+            return 'Invalid MultiLineString must contain at least one valid linestring'
 
         errors = []
         for linestring in value:
@@ -606,9 +592,9 @@ class GeoJsonBaseField(BaseField):
 
         if errors:
             if top_level:
-                return "Invalid MultiLineString:\n%s" % ", ".join(errors)
+                return 'Invalid MultiLineString:\n%s' % ', '.join(errors)
             else:
-                return "%s" % ", ".join(errors)
+                return '%s' % ', '.join(errors)
 
     def _validate_multipolygon(self, value):
         if not isinstance(value, (list, tuple)):
@@ -618,7 +604,7 @@ class GeoJsonBaseField(BaseField):
         try:
             value[0][0][0][0]
         except (TypeError, IndexError):
-            return "Invalid MultiPolygon must contain at least one valid Polygon"
+            return 'Invalid MultiPolygon must contain at least one valid Polygon'
 
         errors = []
         for polygon in value:
@@ -627,9 +613,9 @@ class GeoJsonBaseField(BaseField):
                 errors.append(error)
 
         if errors:
-            return "Invalid MultiPolygon:\n%s" % ", ".join(errors)
+            return 'Invalid MultiPolygon:\n%s' % ', '.join(errors)
 
     def to_mongo(self, value):
         if isinstance(value, dict):
             return value
-        return SON([("type", self._type), ("coordinates", value)])
+        return SON([('type', self._type), ('coordinates', value)])

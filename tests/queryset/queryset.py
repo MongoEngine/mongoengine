@@ -9,13 +9,13 @@ from nose.plugins.skip import SkipTest
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
-
+import six
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.python_support import IS_PYMONGO_3, PY3
+from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
@@ -25,7 +25,10 @@ __all__ = ("QuerySetTest",)
 class db_ops_tracker(query_counter):
 
     def get_ops(self):
-        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
+        ignore_query = {
+            'ns': {'$ne': '%s.system.indexes' % self.db.name},
+            'command.count': {'$ne': 'system.profile'}
+        }
         return list(self.db.system.profile.find(ignore_query))
 
 
@@ -94,12 +97,12 @@ class QuerySetTest(unittest.TestCase):
             author = ReferenceField(self.Person)
             author2 = GenericReferenceField()
 
-        def test_reference():
+        # test addressing a field from a reference
+        with self.assertRaises(InvalidQueryError):
             list(BlogPost.objects(author__name="test"))
 
-        self.assertRaises(InvalidQueryError, test_reference)
-
-        def test_generic_reference():
+        # should fail for a generic reference as well
+        with self.assertRaises(InvalidQueryError):
             list(BlogPost.objects(author2__name="test"))
 
     def test_find(self):
@@ -174,7 +177,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Test larger slice __repr__
         self.Person.objects.delete()
-        for i in xrange(55):
+        for i in range(55):
             self.Person(name='A%s' % i, age=i).save()
 
         self.assertEqual(self.Person.objects.count(), 55)
@@ -218,14 +221,15 @@ class QuerySetTest(unittest.TestCase):
         person = self.Person.objects[1]
         self.assertEqual(person.name, "User B")
 
-        self.assertRaises(IndexError, self.Person.objects.__getitem__, 2)
+        with self.assertRaises(IndexError):
+            self.Person.objects[2]
 
         # Find a document using just the object id
         person = self.Person.objects.with_id(person1.id)
         self.assertEqual(person.name, "User A")
 
-        self.assertRaises(
-            InvalidQueryError, self.Person.objects(name="User A").with_id, person1.id)
+        with self.assertRaises(InvalidQueryError):
+            self.Person.objects(name="User A").with_id(person1.id)
 
     def test_find_only_one(self):
         """Ensure that a query using ``get`` returns at most one result.
@@ -363,7 +367,8 @@ class QuerySetTest(unittest.TestCase):
 
         # test invalid batch size
         qs = A.objects.batch_size(-1)
-        self.assertRaises(ValueError, lambda: list(qs))
+        with self.assertRaises(ValueError):
+            list(qs)
 
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
@@ -392,17 +397,13 @@ class QuerySetTest(unittest.TestCase):
         """Test to ensure that update is passed a value to update to"""
         self.Person.drop_collection()
 
-        author = self.Person(name='Test User')
-        author.save()
+        author = self.Person.objects.create(name='Test User')
 
-        def update_raises():
+        with self.assertRaises(OperationError):
             self.Person.objects(pk=author.pk).update({})
 
-        def update_one_raises():
+        with self.assertRaises(OperationError):
             self.Person.objects(pk=author.pk).update_one({})
-
-        self.assertRaises(OperationError, update_raises)
-        self.assertRaises(OperationError, update_one_raises)
 
     def test_update_array_position(self):
         """Ensure that updating by array position works.
@@ -431,8 +432,8 @@ class QuerySetTest(unittest.TestCase):
         Blog.objects.create(posts=[post2, post1])
 
         # Update all of the first comments of second posts of all blogs
-        Blog.objects().update(set__posts__1__comments__0__name="testc")
-        testc_blogs = Blog.objects(posts__1__comments__0__name="testc")
+        Blog.objects().update(set__posts__1__comments__0__name='testc')
+        testc_blogs = Blog.objects(posts__1__comments__0__name='testc')
         self.assertEqual(testc_blogs.count(), 2)
 
         Blog.drop_collection()
@@ -441,14 +442,13 @@ class QuerySetTest(unittest.TestCase):
 
         # Update only the first blog returned by the query
         Blog.objects().update_one(
-            set__posts__1__comments__1__name="testc")
-        testc_blogs = Blog.objects(posts__1__comments__1__name="testc")
+            set__posts__1__comments__1__name='testc')
+        testc_blogs = Blog.objects(posts__1__comments__1__name='testc')
         self.assertEqual(testc_blogs.count(), 1)
 
         # Check that using this indexing syntax on a non-list fails
-        def non_list_indexing():
-            Blog.objects().update(set__posts__1__comments__0__name__1="asdf")
-        self.assertRaises(InvalidQueryError, non_list_indexing)
+        with self.assertRaises(InvalidQueryError):
+            Blog.objects().update(set__posts__1__comments__0__name__1='asdf')
 
         Blog.drop_collection()
 
@@ -516,14 +516,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(simple.x, [1, 2, None, 4, 3, 2, 3, 4])
 
         # Nested updates arent supported yet..
-        def update_nested():
+        with self.assertRaises(OperationError):
             Simple.drop_collection()
             Simple(x=[{'test': [1, 2, 3, 4]}]).save()
             Simple.objects(x__test=2).update(set__x__S__test__S=3)
             self.assertEqual(simple.x, [1, 2, 3, 4])
-
-        self.assertRaises(OperationError, update_nested)
-        Simple.drop_collection()
 
     def test_update_using_positional_operator_embedded_document(self):
         """Ensure that the embedded documents can be updated using the positional
@@ -617,11 +614,11 @@ class QuerySetTest(unittest.TestCase):
             members = DictField()
 
         club = Club()
-        club.members['John'] = dict(gender="M", age=13)
+        club.members['John'] = {'gender': 'M', 'age': 13}
         club.save()
 
         Club.objects().update(
-            set__members={"John": dict(gender="F", age=14)})
+            set__members={"John": {'gender': 'F', 'age': 14}})
 
         club = Club.objects().first()
         self.assertEqual(club.members['John']['gender'], "F")
@@ -802,7 +799,7 @@ class QuerySetTest(unittest.TestCase):
             post2 = Post(comments=[comment2, comment2])
 
             blogs = []
-            for i in xrange(1, 100):
+            for i in range(1, 100):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
@@ -839,29 +836,30 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Blog.objects.count(), 2)
 
-        # test handles people trying to upsert
-        def throw_operation_error():
+        # test inserting an existing document (shouldn't be allowed)
+        with self.assertRaises(OperationError):
+            blog = Blog.objects.first()
+            Blog.objects.insert(blog)
+
+        # test inserting a query set
+        with self.assertRaises(OperationError):
             blogs = Blog.objects
             Blog.objects.insert(blogs)
 
-        self.assertRaises(OperationError, throw_operation_error)
-
-        # Test can insert new doc
+        # insert a new doc
         new_post = Blog(title="code123", id=ObjectId())
         Blog.objects.insert(new_post)
 
-        # test handles other classes being inserted
-        def throw_operation_error_wrong_doc():
-            class Author(Document):
-                pass
+        class Author(Document):
+            pass
+
+        # try inserting a different document class
+        with self.assertRaises(OperationError):
             Blog.objects.insert(Author())
 
-        self.assertRaises(OperationError, throw_operation_error_wrong_doc)
-
-        def throw_operation_error_not_a_document():
+        # try inserting a non-document
+        with self.assertRaises(OperationError):
             Blog.objects.insert("HELLO WORLD")
-
-        self.assertRaises(OperationError, throw_operation_error_not_a_document)
 
         Blog.drop_collection()
 
@@ -882,14 +880,13 @@ class QuerySetTest(unittest.TestCase):
         blog3 = Blog(title="baz", posts=[post1, post2])
         Blog.objects.insert([blog1, blog2])
 
-        def throw_operation_error_not_unique():
+        with self.assertRaises(NotUniqueError):
             Blog.objects.insert([blog2, blog3])
 
-        self.assertRaises(NotUniqueError, throw_operation_error_not_unique)
         self.assertEqual(Blog.objects.count(), 2)
 
-        Blog.objects.insert([blog2, blog3], write_concern={"w": 0,
-                                                           'continue_on_error': True})
+        Blog.objects.insert([blog2, blog3],
+                            write_concern={"w": 0, 'continue_on_error': True})
         self.assertEqual(Blog.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):
@@ -1022,7 +1019,7 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        for i in xrange(1000):
+        for i in range(1000):
             Doc(number=i).save()
 
         docs = Doc.objects.order_by('number')
@@ -1176,7 +1173,7 @@ class QuerySetTest(unittest.TestCase):
         qs = list(qs)
         expected = list(expected)
         self.assertEqual(len(qs), len(expected))
-        for i in xrange(len(qs)):
+        for i in range(len(qs)):
             self.assertEqual(qs[i], expected[i])
 
     def test_ordering(self):
@@ -1216,7 +1213,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertSequence(qs, expected)
 
     def test_clear_ordering(self):
-        """ Ensure that the default ordering can be cleared by calling order_by().
+        """Ensure that the default ordering can be cleared by calling
+        order_by() w/o any arguments.
         """
         class BlogPost(Document):
             title = StringField()
@@ -1232,12 +1230,13 @@ class QuerySetTest(unittest.TestCase):
             BlogPost.objects.filter(title='whatever').first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0]['query']['$orderby'], {u'published_date': -1})
+                q.get_ops()[0]['query']['$orderby'],
+                {'published_date': -1}
+            )
 
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            print q.get_ops()[0]['query']
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 
     def test_no_ordering_for_get(self):
@@ -1710,7 +1709,7 @@ class QuerySetTest(unittest.TestCase):
 
         Log.drop_collection()
 
-        for i in xrange(10):
+        for i in range(10):
             Log().save()
 
         Log.objects()[3:5].delete()
@@ -1910,11 +1909,9 @@ class QuerySetTest(unittest.TestCase):
         Site.objects(id=s.id).update_one(pull__collaborators__user='Esteban')
         self.assertEqual(Site.objects.first().collaborators, [])
 
-        def pull_all():
+        with self.assertRaises(InvalidQueryError):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__user=['Ross'])
-
-        self.assertRaises(InvalidQueryError, pull_all)
 
     def test_pull_from_nested_embedded(self):
 
@@ -1946,11 +1943,9 @@ class QuerySetTest(unittest.TestCase):
             pull__collaborators__unhelpful={'name': 'Frank'})
         self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
 
-        def pull_all():
+        with self.assertRaises(InvalidQueryError):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__helpful__name=['Ross'])
-
-        self.assertRaises(InvalidQueryError, pull_all)
 
     def test_pull_from_nested_mapfield(self):
 
@@ -1980,11 +1975,9 @@ class QuerySetTest(unittest.TestCase):
             pull__collaborators__unhelpful={'user': 'Frank'})
         self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
 
-        def pull_all():
+        with self.assertRaises(InvalidQueryError):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__helpful__user=['Ross'])
-
-        self.assertRaises(InvalidQueryError, pull_all)
 
     def test_update_one_pop_generic_reference(self):
 
@@ -2610,7 +2603,7 @@ class QuerySetTest(unittest.TestCase):
         BlogPost(hits=2, tags=['music', 'actors']).save()
 
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(
                 set(['music', 'film', 'actors', 'watch']), set(f.keys()))
             self.assertEqual(f['music'], 3)
@@ -2625,7 +2618,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Ensure query is taken into account
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(set(['music', 'actors', 'watch']), set(f.keys()))
             self.assertEqual(f['music'], 2)
             self.assertEqual(f['actors'], 1)
@@ -2689,7 +2682,7 @@ class QuerySetTest(unittest.TestCase):
         doc.save()
 
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(
                 set(['62-3331-1656', '62-3332-1656']), set(f.keys()))
             self.assertEqual(f['62-3331-1656'], 2)
@@ -2703,7 +2696,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Ensure query is taken into account
         def test_assertions(f):
-            f = dict((key, int(val)) for key, val in f.items())
+            f = {key: int(val) for key, val in f.items()}
             self.assertEqual(set(['62-3331-1656']), set(f.keys()))
             self.assertEqual(f['62-3331-1656'], 2)
 
@@ -2810,10 +2803,10 @@ class QuerySetTest(unittest.TestCase):
 
         Test.drop_collection()
 
-        for i in xrange(50):
+        for i in range(50):
             Test(val=1).save()
 
-        for i in xrange(20):
+        for i in range(20):
             Test(val=2).save()
 
         freqs = Test.objects.item_frequencies(
@@ -3603,7 +3596,7 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        for i in xrange(10):
+        for i in range(10):
             Post(title="Post %s" % i).save()
 
         self.assertEqual(5, Post.objects.limit(5).skip(5).count(with_limit_and_skip=True))
@@ -3618,7 +3611,7 @@ class QuerySetTest(unittest.TestCase):
             pass
 
         MyDoc.drop_collection()
-        for i in xrange(0, 10):
+        for i in range(0, 10):
             MyDoc().save()
 
         self.assertEqual(MyDoc.objects.count(), 10)
@@ -3674,7 +3667,7 @@ class QuerySetTest(unittest.TestCase):
 
         Number.drop_collection()
 
-        for i in xrange(1, 101):
+        for i in range(1, 101):
             t = Number(n=i)
             t.save()
 
@@ -3821,10 +3814,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(a in results)
         self.assertTrue(c in results)
 
-        def invalid_where():
+        with self.assertRaises(TypeError):
             list(IntPair.objects.where(fielda__gte=3))
-
-        self.assertRaises(TypeError, invalid_where)
 
     def test_scalar(self):
 
@@ -4081,7 +4072,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Test larger slice __repr__
         self.Person.objects.delete()
-        for i in xrange(55):
+        for i in range(55):
             self.Person(name='A%s' % i, age=i).save()
 
         self.assertEqual(self.Person.objects.scalar('name').count(), 55)
@@ -4089,7 +4080,7 @@ class QuerySetTest(unittest.TestCase):
             "A0", "%s" % self.Person.objects.order_by('name').scalar('name').first())
         self.assertEqual(
             "A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
-        if PY3:
+        if six.PY3:
             self.assertEqual("['A1', 'A2']", "%s" % self.Person.objects.order_by(
                 'age').scalar('name')[1:3])
             self.assertEqual("['A51', 'A52']", "%s" % self.Person.objects.order_by(
@@ -4107,7 +4098,7 @@ class QuerySetTest(unittest.TestCase):
 
         pks = self.Person.objects.order_by('age').scalar('pk')[1:3]
         names = self.Person.objects.scalar('name').in_bulk(list(pks)).values()
-        if PY3:
+        if six.PY3:
             expected = "['A1', 'A2']"
         else:
             expected = "[u'A1', u'A2']"
@@ -4463,7 +4454,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4494,7 +4485,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4538,7 +4529,7 @@ class QuerySetTest(unittest.TestCase):
             fields = DictField()
 
         Noddy.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             noddy = Noddy()
             for j in range(20):
                 noddy.fields["key" + str(j)] = "value " + str(j)
@@ -4550,7 +4541,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(counter, 100)
 
         self.assertEqual(len(list(docs)), 100)
-        self.assertRaises(TypeError, lambda: len(docs))
+
+        with self.assertRaises(TypeError):
+            len(docs)
 
         with query_counter() as q:
             self.assertEqual(q, 0)
@@ -4739,7 +4732,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4863,10 +4856,10 @@ class QuerySetTest(unittest.TestCase):
         ])
 
     def test_delete_count(self):
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
         self.assertEqual(self.Person.objects().delete(), 3)  # test ordinary QuerySey delete count
 
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
 
         self.assertEqual(self.Person.objects().skip(1).delete(), 2)  # test Document delete with existing documents
 
@@ -4875,12 +4868,14 @@ class QuerySetTest(unittest.TestCase):
 
     def test_max_time_ms(self):
         # 778: max_time_ms can get only int or None as input
-        self.assertRaises(TypeError, self.Person.objects(name="name").max_time_ms, "not a number")
+        self.assertRaises(TypeError,
+                          self.Person.objects(name="name").max_time_ms,
+                          'not a number')
 
     def test_subclass_field_query(self):
         class Animal(Document):
             is_mamal = BooleanField()
-            meta = dict(allow_inheritance=True)
+            meta = {'allow_inheritance': True}
 
         class Cat(Animal):
             whiskers_length = FloatField()
@@ -4925,7 +4920,7 @@ class QuerySetTest(unittest.TestCase):
         class Data(Document):
             pass
 
-        for i in xrange(300):
+        for i in range(300):
             Data().save()
 
         records = Data.objects.limit(250)
@@ -4957,7 +4952,7 @@ class QuerySetTest(unittest.TestCase):
         class Data(Document):
             pass
 
-        for i in xrange(300):
+        for i in range(300):
             Data().save()
 
         qs = Data.objects.limit(250)

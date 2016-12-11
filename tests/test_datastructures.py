@@ -23,7 +23,8 @@ class TestStrictDict(unittest.TestCase):
         self.assertEqual(repr(d), '{"a": \'"\', "b": "\'", "c": \'\'}')
 
     def test_init_fails_on_nonexisting_attrs(self):
-        self.assertRaises(AttributeError, lambda: self.dtype(a=1, b=2, d=3))
+        with self.assertRaises(AttributeError):
+            self.dtype(a=1, b=2, d=3)
 
     def test_eq(self):
         d = self.dtype(a=1, b=1, c=1)
@@ -46,14 +47,12 @@ class TestStrictDict(unittest.TestCase):
         d = self.dtype()
         d.a = 1
         self.assertEqual(d.a, 1)
-        self.assertRaises(AttributeError, lambda: d.b)
+        self.assertRaises(AttributeError, getattr, d, 'b')
 
     def test_setattr_raises_on_nonexisting_attr(self):
         d = self.dtype()
-
-        def _f():
+        with self.assertRaises(AttributeError):
             d.x = 1
-        self.assertRaises(AttributeError, _f)
 
     def test_setattr_getattr_special(self):
         d = self.strict_dict_class(["items"])

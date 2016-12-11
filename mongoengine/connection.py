@@ -1,7 +1,9 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
-from mongoengine.python_support import (IS_PYMONGO_3, str_types)
+import six
 
-__all__ = ['ConnectionError', 'connect', 'register_connection',
+from mongoengine.python_support import IS_PYMONGO_3
+
+__all__ = ['MongoEngineConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME']
 
 
@@ -14,7 +16,10 @@ else:
     READ_PREFERENCE = False
 
 
-class ConnectionError(Exception):
+class MongoEngineConnectionError(Exception):
+    """Error raised when the database connection can't be established or
+    when a connection with a requested alias can't be retrieved.
+    """
     pass
 
 
@@ -50,8 +55,6 @@ def register_connection(alias, name=None, host=None, port=None,
 
     .. versionchanged:: 0.10.6 - added mongomock support
     """
-    global _connection_settings
-
     conn_settings = {
         'name': name or 'test',
         'host': host or 'localhost',
@@ -66,7 +69,7 @@ def register_connection(alias, name=None, host=None, port=None,
     # Handle uri style connections
     conn_host = conn_settings['host']
     # host can be a list or a string, so if string, force to a list
-    if isinstance(conn_host, str_types):
+    if isinstance(conn_host, six.string_types):
         conn_host = [conn_host]
 
     resolved_hosts = []
@@ -111,9 +114,7 @@ def register_connection(alias, name=None, host=None, port=None,
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
-    global _connections
-    global _dbs
-
+    """Close the connection with a given alias."""
     if alias in _connections:
         get_connection(alias=alias).close()
         del _connections[alias]
@@ -122,71 +123,100 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
 
 
 def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
-    global _connections
+    """Return a connection with a given alias."""
+
     # Connect to the database if not already connected
     if reconnect:
         disconnect(alias)
 
-    if alias not in _connections:
-        if alias not in _connection_settings:
-            msg = 'Connection with alias "%s" has not been defined' % alias
-            if alias == DEFAULT_CONNECTION_NAME:
-                msg = 'You have not defined a default connection'
-            raise ConnectionError(msg)
-        conn_settings = _connection_settings[alias].copy()
+    # If the requested alias already exists in the _connections list, return
+    # it immediately.
+    if alias in _connections:
+        return _connections[alias]
 
-        conn_settings.pop('name', None)
-        conn_settings.pop('username', None)
-        conn_settings.pop('password', None)
-        conn_settings.pop('authentication_source', None)
-        conn_settings.pop('authentication_mechanism', None)
-
-        is_mock = conn_settings.pop('is_mock', None)
-        if is_mock:
-            # Use MongoClient from mongomock
-            try:
-                import mongomock
-            except ImportError:
-                raise RuntimeError('You need mongomock installed '
-                                   'to mock MongoEngine.')
-            connection_class = mongomock.MongoClient
+    # Validate that the requested alias exists in the _connection_settings.
+    # Raise MongoEngineConnectionError if it doesn't.
+    if alias not in _connection_settings:
+        if alias == DEFAULT_CONNECTION_NAME:
+            msg = 'You have not defined a default connection'
         else:
-            # Use MongoClient from pymongo
-            connection_class = MongoClient
+            msg = 'Connection with alias "%s" has not been defined' % alias
+        raise MongoEngineConnectionError(msg)
 
+    def _clean_settings(settings_dict):
+        irrelevant_fields = set([
+            'name', 'username', 'password', 'authentication_source',
+            'authentication_mechanism'
+        ])
+        return {
+            k: v for k, v in settings_dict.items()
+            if k not in irrelevant_fields
+        }
+
+    # Retrieve a copy of the connection settings associated with the requested
+    # alias and remove the database name and authentication info (we don't
+    # care about them at this point).
+    conn_settings = _clean_settings(_connection_settings[alias].copy())
+
+    # Determine if we should use PyMongo's or mongomock's MongoClient.
+    is_mock = conn_settings.pop('is_mock', False)
+    if is_mock:
+        try:
+            import mongomock
+        except ImportError:
+            raise RuntimeError('You need mongomock installed to mock '
+                               'MongoEngine.')
+        connection_class = mongomock.MongoClient
+    else:
+        connection_class = MongoClient
+
+        # Handle replica set connections
         if 'replicaSet' in conn_settings:
+
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
-            # Discard replicaSet if not base string
-            if not isinstance(conn_settings['replicaSet'], basestring):
-                conn_settings.pop('replicaSet', None)
+
+            # Discard replicaSet if it's not a string
+            if not isinstance(conn_settings['replicaSet'], six.string_types):
+                del conn_settings['replicaSet']
+
+            # For replica set connections with PyMongo 2.x, use
+            # MongoReplicaSetClient.
+            # TODO remove this once we stop supporting PyMongo 2.x.
             if not IS_PYMONGO_3:
                 connection_class = MongoReplicaSetClient
                 conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
 
-        try:
-            connection = None
-            # check for shared connections
-            connection_settings_iterator = (
-                (db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
-            for db_alias, connection_settings in connection_settings_iterator:
-                connection_settings.pop('name', None)
-                connection_settings.pop('username', None)
-                connection_settings.pop('password', None)
-                connection_settings.pop('authentication_source', None)
-                connection_settings.pop('authentication_mechanism', None)
-                if conn_settings == connection_settings and _connections.get(db_alias, None):
-                    connection = _connections[db_alias]
-                    break
+    # Iterate over all of the connection settings and if a connection with
+    # the same parameters is already established, use it instead of creating
+    # a new one.
+    existing_connection = None
+    connection_settings_iterator = (
+        (db_alias, settings.copy())
+        for db_alias, settings in _connection_settings.items()
+    )
+    for db_alias, connection_settings in connection_settings_iterator:
+        connection_settings = _clean_settings(connection_settings)
+        if conn_settings == connection_settings and _connections.get(db_alias):
+            existing_connection = _connections[db_alias]
+            break
 
-            _connections[alias] = connection if connection else connection_class(**conn_settings)
-        except Exception, e:
-            raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
+    # If an existing connection was found, assign it to the new alias
+    if existing_connection:
+        _connections[alias] = existing_connection
+    else:
+        # Otherwise, create the new connection for this alias. Raise
+        # MongoEngineConnectionError if it can't be established.
+        try:
+            _connections[alias] = connection_class(**conn_settings)
+        except Exception as e:
+            raise MongoEngineConnectionError(
+                'Cannot connect to database %s :\n%s' % (alias, e))
+
     return _connections[alias]
 
 
 def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
-    global _dbs
     if reconnect:
         disconnect(alias)
 
@@ -217,7 +247,6 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
     .. versionchanged:: 0.6 - added multiple database support.
     """
-    global _connections
     if alias not in _connections:
         register_connection(alias, db, **kwargs)
 

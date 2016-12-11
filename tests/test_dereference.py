@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path[0:0] = [""]
 import unittest
 
 from bson import DBRef, ObjectId
@@ -32,7 +30,7 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             user = User(name='user %s' % i)
             user.save()
 
@@ -90,7 +88,7 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             user = User(name='user %s' % i)
             user.save()
 
@@ -162,7 +160,7 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 26):
+        for i in range(1, 26):
             user = User(name='user %s' % i)
             user.save()
 
@@ -440,7 +438,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             a = UserA(name='User A %s' % i)
             a.save()
 
@@ -531,7 +529,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             a = UserA(name='User A %s' % i)
             a.save()
 
@@ -614,15 +612,15 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             user = User(name='user %s' % i)
             user.save()
             members.append(user)
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -687,7 +685,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             a = UserA(name='User A %s' % i)
             a.save()
 
@@ -699,9 +697,9 @@ class FieldTest(unittest.TestCase):
 
             members += [a, b, c]
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -783,16 +781,16 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             a = UserA(name='User A %s' % i)
             a.save()
 
             members += [a]
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -866,7 +864,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             a = UserA(name='User A %s' % i)
             a.save()
 
@@ -878,9 +876,9 @@ class FieldTest(unittest.TestCase):
 
             members += [a, b, c]
 
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
-        group = Group(members=dict([(str(u.id), u) for u in members]))
+        group = Group(members={str(u.id): u for u in members})
         group.save()
 
         with query_counter() as q:
@@ -1103,7 +1101,7 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             User(name='user %s' % i).save()
 
         Group(name="Test", members=User.objects).save()
@@ -1132,7 +1130,7 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             User(name='user %s' % i).save()
 
         Group(name="Test", members=User.objects).save()
@@ -1169,7 +1167,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
         members = []
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             a = UserA(name='User A %s' % i).save()
             b = UserB(name='User B %s' % i).save()
             c = UserC(name='User C %s' % i).save()
