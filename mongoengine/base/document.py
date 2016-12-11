@@ -477,8 +477,9 @@ class BaseDocument(object):
                         remove(field)
 
     def _clear_changed_fields(self):
-        """Using get_changed_fields iterate and remove any fields that are
-        marked as changed"""
+        """Using _get_changed_fields iterate and remove any fields that
+        are marked as changed.
+        """
         for changed in self._get_changed_fields():
             parts = changed.split('.')
             data = self
@@ -492,10 +493,13 @@ class BaseDocument(object):
                     data = data.get(part, None)
                 else:
                     data = getattr(data, part, None)
+
                 if hasattr(data, '_changed_fields'):
-                    if hasattr(data, '_is_document') and data._is_document:
+                    if getattr(data, '_is_document', False):
                         continue
+
                     data._changed_fields = []
+
         self._changed_fields = []
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
