@@ -675,10 +675,12 @@ class BaseDocument(object):
         if not only_fields:
             only_fields = []
 
-        # get the class name from the document, falling back to the given
+        # Get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
-        data = {key: value for key, value in son.iteritems()}
+
+        # Convert SON to a dict, making sure each key is a string
+        data = {str(key): value for key, value in son.iteritems()}
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
