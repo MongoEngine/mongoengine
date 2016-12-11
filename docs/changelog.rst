@@ -4,9 +4,19 @@ Changelog
 
 Changes in 0.10.8
 =================
+- Added support for QuerySet.batch_size (#1426)
+- Fixed query set iteration within iteration #1427
+- Fixed an issue where specifying a MongoDB URI host would override more information than it should #1421
+- Added ability to filter the generic reference field by ObjectId and DBRef #1425
+- Fixed delete cascade for models with a custom primary key field #1247
 - Added ability to specify an authentication mechanism (e.g. X.509) #1333
 - Added support for falsey primary keys (e.g. doc.pk = 0) #1354
-- Fixed BaseQuerySet#sum/average for fields w/ explicit db_field #1417
+- Fixed QuerySet#sum/average for fields w/ explicit db_field #1417
+- Fixed filtering by embedded_doc=None #1422
+- Added support for cursor.comment #1420
+- Fixed doc.get_<field>_display #1419
+- Fixed __repr__ method of the StrictDict #1424
+- Added a deprecation warning for Python 2.6
 
 Changes in 0.10.7
 =================
