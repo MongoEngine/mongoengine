@@ -127,7 +127,7 @@ class BaseList(list):
         return value
 
     def __iter__(self):
-        for i in range(self.__len__()):
+        for i in xrange(self.__len__()):
             yield self[i]
 
     def __setitem__(self, key, value, *args, **kwargs):
