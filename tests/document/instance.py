@@ -99,21 +99,18 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(options['size'], 4096)
 
         # Check that the document cannot be redefined with different options
-        def recreate_log_document():
-            class Log(Document):
-                date = DateTimeField(default=datetime.now)
-                meta = {
-                    'max_documents': 11,
-                }
-            # Create the collection by accessing Document.objects
-            Log.objects
-        self.assertRaises(InvalidCollectionError, recreate_log_document)
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_documents': 11,
+            }
 
-        Log.drop_collection()
+        # Accessing Document.objects creates the collection
+        with self.assertRaises(InvalidCollectionError):
+            Log.objects
 
     def test_capped_collection_default(self):
-        """Ensure that capped collections defaults work properly.
-        """
+        """Ensure that capped collections defaults work properly."""
         class Log(Document):
             date = DateTimeField(default=datetime.now)
             meta = {
@@ -131,16 +128,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(options['size'], 10 * 2**20)
 
         # Check that the document with default value can be recreated
-        def recreate_log_document():
-            class Log(Document):
-                date = DateTimeField(default=datetime.now)
-                meta = {
-                    'max_documents': 10,
-                }
-            # Create the collection by accessing Document.objects
-            Log.objects
-        recreate_log_document()
-        Log.drop_collection()
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_documents': 10,
+            }
+
+        # Create the collection by accessing Document.objects
+        Log.objects
 
     def test_capped_collection_no_max_size_problems(self):
         """Ensure that capped collections with odd max_size work properly.
@@ -163,16 +158,14 @@ class InstanceTest(unittest.TestCase):
         self.assertTrue(options['size'] >= 10000)
 
         # Check that the document with odd max_size value can be recreated
-        def recreate_log_document():
-            class Log(Document):
-                date = DateTimeField(default=datetime.now)
-                meta = {
-                    'max_size': 10000,
-                }
-            # Create the collection by accessing Document.objects
-            Log.objects
-        recreate_log_document()
-        Log.drop_collection()
+        class Log(Document):
+            date = DateTimeField(default=datetime.now)
+            meta = {
+                'max_size': 10000,
+            }
+
+        # Create the collection by accessing Document.objects
+        Log.objects
 
     def test_repr(self):
         """Ensure that unicode representation works
@@ -353,14 +346,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(User._fields['username'].db_field, '_id')
         self.assertEqual(User._meta['id_field'], 'username')
 
-        def create_invalid_user():
-            User(name='test').save()  # no primary key field
-        self.assertRaises(ValidationError, create_invalid_user)
+        # test no primary key field
+        self.assertRaises(ValidationError, User(name='test').save)
 
-        def define_invalid_user():
+        # define a subclass with a different primary key field than the
+        # parent
+        with self.assertRaises(ValueError):
             class EmailUser(User):
                 email = StringField(primary_key=True)
-        self.assertRaises(ValueError, define_invalid_user)
 
         class EmailUser(User):
             email = StringField()
@@ -410,9 +403,8 @@ class InstanceTest(unittest.TestCase):
         # and the NicePlace model not being imported in at query time.
         del(_document_registry['Place.NicePlace'])
 
-        def query_without_importing_nice_place():
+        with self.assertRaises(NotRegistered):
             list(Place.objects.all())
-        self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
     def test_document_registry_regressions(self):
 
@@ -794,8 +786,10 @@ class InstanceTest(unittest.TestCase):
 
     def test_modify_empty(self):
         doc = self.Person(name="bob", age=10).save()
-        self.assertRaises(
-            InvalidDocumentError, lambda: self.Person().modify(set__age=10))
+
+        with self.assertRaises(InvalidDocumentError):
+            self.Person().modify(set__age=10)
+
         self.assertDbEqual([dict(doc.to_mongo())])
 
     def test_modify_invalid_query(self):
@@ -803,9 +797,8 @@ class InstanceTest(unittest.TestCase):
         doc2 = self.Person(name="jim", age=20).save()
         docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
 
-        self.assertRaises(
-            InvalidQueryError,
-            lambda: doc1.modify({'id': doc2.id}, set__value=20))
+        with self.assertRaises(InvalidQueryError):
+            doc1.modify({'id': doc2.id}, set__value=20)
 
         self.assertDbEqual(docs)
 
@@ -1289,11 +1282,10 @@ class InstanceTest(unittest.TestCase):
 
     def test_document_update(self):
 
-        def update_not_saved_raises():
+        # try updating a non-saved document
+        with self.assertRaises(OperationError):
             person = self.Person(name='dcrosta')
             person.update(set__name='Dan Crosta')
-
-        self.assertRaises(OperationError, update_not_saved_raises)
 
         author = self.Person(name='dcrosta')
         author.save()
@@ -1304,19 +1296,17 @@ class InstanceTest(unittest.TestCase):
         p1 = self.Person.objects.first()
         self.assertEqual(p1.name, author.name)
 
-        def update_no_value_raises():
+        # try sending an empty update
+        with self.assertRaises(OperationError):
             person = self.Person.objects.first()
             person.update()
 
-        self.assertRaises(OperationError, update_no_value_raises)
-
-        def update_no_op_should_default_to_set():
-            person = self.Person.objects.first()
-            person.update(name="Dan")
-            person.reload()
-            return person.name
-
-        self.assertEqual("Dan", update_no_op_should_default_to_set())
+        # update that doesn't explicitly specify an operator should default
+        # to 'set__'
+        person = self.Person.objects.first()
+        person.update(name="Dan")
+        person.reload()
+        self.assertEqual("Dan", person.name)
 
     def test_update_unique_field(self):
         class Doc(Document):
@@ -1325,8 +1315,8 @@ class InstanceTest(unittest.TestCase):
         doc1 = Doc(name="first").save()
         doc2 = Doc(name="second").save()
 
-        self.assertRaises(NotUniqueError, lambda:
-                          doc2.update(set__name=doc1.name))
+        with self.assertRaises(NotUniqueError):
+            doc2.update(set__name=doc1.name)
 
     def test_embedded_update(self):
         """
@@ -1844,14 +1834,12 @@ class InstanceTest(unittest.TestCase):
 
     def test_duplicate_db_fields_raise_invalid_document_error(self):
         """Ensure a InvalidDocumentError is thrown if duplicate fields
-        declare the same db_field"""
-
-        def throw_invalid_document_error():
+        declare the same db_field.
+        """
+        with self.assertRaises(InvalidDocumentError):
             class Foo(Document):
                 name = StringField()
                 name2 = StringField(db_field='name')
-
-        self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
     def test_invalid_son(self):
         """Raise an error if loading invalid data"""
@@ -1864,11 +1852,13 @@ class InstanceTest(unittest.TestCase):
             forms = ListField(StringField(), default=list)
             occurs = ListField(EmbeddedDocumentField(Occurrence), default=list)
 
-        def raise_invalid_document():
-            Word._from_son({'stem': [1, 2, 3], 'forms': 1, 'count': 'one',
-                            'occurs': {"hello": None}})
-
-        self.assertRaises(InvalidDocumentError, raise_invalid_document)
+        with self.assertRaises(InvalidDocumentError):
+            Word._from_son({
+                'stem': [1, 2, 3],
+                'forms': 1,
+                'count': 'one',
+                'occurs': {"hello": None}
+            })
 
     def test_reverse_delete_rule_cascade_and_nullify(self):
         """Ensure that a referenced document is also deleted upon deletion.
@@ -2099,8 +2089,7 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(Bar.objects.get().foo, None)
 
     def test_invalid_reverse_delete_rule_raise_errors(self):
-
-        def throw_invalid_document_error():
+        with self.assertRaises(InvalidDocumentError):
             class Blog(Document):
                 content = StringField()
                 authors = MapField(ReferenceField(
@@ -2110,21 +2099,15 @@ class InstanceTest(unittest.TestCase):
                         self.Person,
                         reverse_delete_rule=NULLIFY))
 
-        self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
-
-        def throw_invalid_document_error_embedded():
+        with self.assertRaises(InvalidDocumentError):
             class Parents(EmbeddedDocument):
                 father = ReferenceField('Person', reverse_delete_rule=DENY)
                 mother = ReferenceField('Person', reverse_delete_rule=DENY)
-
-        self.assertRaises(
-            InvalidDocumentError, throw_invalid_document_error_embedded)
 
     def test_reverse_delete_rule_cascade_recurs(self):
         """Ensure that a chain of documents is also deleted upon cascaded
         deletion.
         """
-
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
@@ -2340,14 +2323,13 @@ class InstanceTest(unittest.TestCase):
         pickle_doc.save()
         pickle_doc.delete()
 
-    def test_throw_invalid_document_error(self):
-
-        # test handles people trying to upsert
-        def throw_invalid_document_error():
+    def test_override_method_with_field(self):
+        """Test creating a field with a field name that would override
+        the "validate" method.
+        """
+        with self.assertRaises(InvalidDocumentError):
             class Blog(Document):
                 validate = DictField()
-
-        self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
     def test_mutating_documents(self):
 
@@ -2811,10 +2793,9 @@ class InstanceTest(unittest.TestCase):
         log.log = "Saving"
         log.save()
 
-        def change_shard_key():
+        # try to change the shard key
+        with self.assertRaises(OperationError):
             log.machine = "127.0.0.1"
-
-        self.assertRaises(OperationError, change_shard_key)
 
     def test_shard_key_in_embedded_document(self):
         class Foo(EmbeddedDocument):
@@ -2836,11 +2817,10 @@ class InstanceTest(unittest.TestCase):
         bar_doc.bar = 'baz'
         bar_doc.save()
 
-        def change_shard_key():
+        # try to change the shard key
+        with self.assertRaises(OperationError):
             bar_doc.foo.foo = 'something'
             bar_doc.save()
-
-        self.assertRaises(OperationError, change_shard_key)
 
     def test_shard_key_primary(self):
         class LogEntry(Document):
@@ -2862,10 +2842,9 @@ class InstanceTest(unittest.TestCase):
         log.log = "Saving"
         log.save()
 
-        def change_shard_key():
+        # try to change the shard key
+        with self.assertRaises(OperationError):
             log.machine = "127.0.0.1"
-
-        self.assertRaises(OperationError, change_shard_key)
 
     def test_kwargs_simple(self):
 
@@ -2951,10 +2930,8 @@ class InstanceTest(unittest.TestCase):
     def test_bad_mixed_creation(self):
         """Ensure that document gives correct error when duplicating arguments
         """
-        def construct_bad_instance():
+        with self.assertRaises(TypeError):
             return self.Person("Test User", 42, name="Bad User")
-
-        self.assertRaises(TypeError, construct_bad_instance)
 
     def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'

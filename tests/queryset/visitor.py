@@ -268,14 +268,13 @@ class QTest(unittest.TestCase):
         self.assertEqual(self.Person.objects(Q(age__in=[20, 30])).count(), 3)
 
         # Test invalid query objs
-        def wrong_query_objs():
+        with self.assertRaises(InvalidQueryError):
             self.Person.objects('user1')
 
-        def wrong_query_objs_filter():
-            self.Person.objects('user1')
+        # filter should fail, too
+        with self.assertRaises(InvalidQueryError):
+            self.Person.objects.filter('user1')
 
-        self.assertRaises(InvalidQueryError, wrong_query_objs)
-        self.assertRaises(InvalidQueryError, wrong_query_objs_filter)
 
     def test_q_regex(self):
         """Ensure that Q objects can be queried using regexes.

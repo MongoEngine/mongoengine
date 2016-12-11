@@ -1115,11 +1115,10 @@ class FieldTest(unittest.TestCase):
         e.mapping = [1]
         e.save()
 
-        def create_invalid_mapping():
+        # try creating an invalid mapping
+        with self.assertRaises(ValidationError):
             e.mapping = ["abc"]
             e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
 
         Simple.drop_collection()
 
@@ -1387,11 +1386,10 @@ class FieldTest(unittest.TestCase):
         e.mapping['someint'] = 1
         e.save()
 
-        def create_invalid_mapping():
+        # try creating an invalid mapping
+        with self.assertRaises(ValidationError):
             e.mapping['somestring'] = "abc"
             e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
 
         Simple.drop_collection()
 
@@ -1465,10 +1463,9 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(BaseDict, type(e.mapping))
         self.assertEqual({"ints": [3, 4]}, e.mapping)
 
-        def create_invalid_mapping():
+        # try creating an invalid mapping
+        with self.assertRaises(ValueError):
             e.update(set__mapping={"somestrings": ["foo", "bar", ]})
-
-        self.assertRaises(ValueError, create_invalid_mapping)
 
         Simple.drop_collection()
 
@@ -1484,17 +1481,13 @@ class FieldTest(unittest.TestCase):
         e.mapping['someint'] = 1
         e.save()
 
-        def create_invalid_mapping():
+        with self.assertRaises(ValidationError):
             e.mapping['somestring'] = "abc"
             e.save()
 
-        self.assertRaises(ValidationError, create_invalid_mapping)
-
-        def create_invalid_class():
+        with self.assertRaises(ValidationError):
             class NoDeclaredType(Document):
                 mapping = MapField()
-
-        self.assertRaises(ValidationError, create_invalid_class)
 
         Simple.drop_collection()
 
@@ -1524,13 +1517,9 @@ class FieldTest(unittest.TestCase):
         self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
         self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
 
-        def create_invalid_mapping():
+        with self.assertRaises(ValidationError):
             e.mapping['someint'] = 123
             e.save()
-
-        self.assertRaises(ValidationError, create_invalid_mapping)
-
-        Extensible.drop_collection()
 
     def test_embedded_mapfield_db_field(self):
 
@@ -1741,8 +1730,8 @@ class FieldTest(unittest.TestCase):
         # Reference is no longer valid
         foo.delete()
         bar = Bar.objects.get()
-        self.assertRaises(DoesNotExist, lambda: getattr(bar, 'ref'))
-        self.assertRaises(DoesNotExist, lambda: getattr(bar, 'generic_ref'))
+        self.assertRaises(DoesNotExist, getattr, bar, 'ref')
+        self.assertRaises(DoesNotExist, getattr, bar, 'generic_ref')
 
         # When auto_dereference is disabled, there is no trouble returning DBRef
         bar = Bar.objects.get()
@@ -2017,7 +2006,7 @@ class FieldTest(unittest.TestCase):
         })
 
     def test_cached_reference_fields_on_embedded_documents(self):
-        def build():
+        with self.assertRaises(InvalidDocumentError):
             class Test(Document):
                 name = StringField()
 
@@ -2025,8 +2014,6 @@ class FieldTest(unittest.TestCase):
                 EmbeddedDocument,), {
                     'test': CachedReferenceField(Test)
             })
-
-        self.assertRaises(InvalidDocumentError, build)
 
     def test_cached_reference_auto_sync(self):
         class Person(Document):
@@ -3815,9 +3802,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         filtered = self.post1.comments.filter()
 
         # Ensure nothing was changed
-        # < 2.6 Incompatible >
-        # self.assertListEqual(filtered, self.post1.comments)
-        self.assertEqual(filtered, self.post1.comments)
+        self.assertListEqual(filtered, self.post1.comments)
 
     def test_single_keyword_filter(self):
         """
@@ -3868,10 +3853,8 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         Tests the filter method of a List of Embedded Documents
         when the keyword is not a known keyword.
         """
-        # < 2.6 Incompatible >
-        # with self.assertRaises(AttributeError):
-        #    self.post2.comments.filter(year=2)
-        self.assertRaises(AttributeError, self.post2.comments.filter, year=2)
+        with self.assertRaises(AttributeError):
+            self.post2.comments.filter(year=2)
 
     def test_no_keyword_exclude(self):
         """
@@ -3881,9 +3864,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         filtered = self.post1.comments.exclude()
 
         # Ensure everything was removed
-        # < 2.6 Incompatible >
-        # self.assertListEqual(filtered, [])
-        self.assertEqual(filtered, [])
+        self.assertListEqual(filtered, [])
 
     def test_single_keyword_exclude(self):
         """
@@ -3929,10 +3910,8 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         Tests the exclude method of a List of Embedded Documents
         when the keyword is not a known keyword.
         """
-        # < 2.6 Incompatible >
-        # with self.assertRaises(AttributeError):
-        #    self.post2.comments.exclude(year=2)
-        self.assertRaises(AttributeError, self.post2.comments.exclude, year=2)
+        with self.assertRaises(AttributeError):
+            self.post2.comments.exclude(year=2)
 
     def test_chained_filter_exclude(self):
         """
@@ -3970,10 +3949,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         single keyword.
         """
         comment = self.post1.comments.get(author='user1')
-
-        # < 2.6 Incompatible >
-        # self.assertIsInstance(comment, self.Comments)
-        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertIsInstance(comment, self.Comments)
         self.assertEqual(comment.author, 'user1')
 
     def test_multi_keyword_get(self):
@@ -3982,10 +3958,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         multiple keywords.
         """
         comment = self.post2.comments.get(author='user2', message='message2')
-
-        # < 2.6 Incompatible >
-        # self.assertIsInstance(comment, self.Comments)
-        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertIsInstance(comment, self.Comments)
         self.assertEqual(comment.author, 'user2')
         self.assertEqual(comment.message, 'message2')
 
@@ -3994,44 +3967,32 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         Tests the get method of a List of Embedded Documents without
         a keyword to return multiple documents.
         """
-        # < 2.6 Incompatible >
-        # with self.assertRaises(MultipleObjectsReturned):
-        #    self.post1.comments.get()
-        self.assertRaises(MultipleObjectsReturned, self.post1.comments.get)
+        with self.assertRaises(MultipleObjectsReturned):
+            self.post1.comments.get()
 
     def test_keyword_multiple_return_get(self):
         """
         Tests the get method of a List of Embedded Documents with a keyword
         to return multiple documents.
         """
-        # < 2.6 Incompatible >
-        # with self.assertRaises(MultipleObjectsReturned):
-        #    self.post2.comments.get(author='user2')
-        self.assertRaises(
-            MultipleObjectsReturned, self.post2.comments.get, author='user2'
-        )
+        with self.assertRaises(MultipleObjectsReturned):
+            self.post2.comments.get(author='user2')
 
     def test_unknown_keyword_get(self):
         """
         Tests the get method of a List of Embedded Documents with an
         unknown keyword.
         """
-        # < 2.6 Incompatible >
-        # with self.assertRaises(AttributeError):
-        #    self.post2.comments.get(year=2020)
-        self.assertRaises(AttributeError, self.post2.comments.get, year=2020)
+        with self.assertRaises(AttributeError):
+            self.post2.comments.get(year=2020)
 
     def test_no_result_get(self):
         """
         Tests the get method of a List of Embedded Documents where get
         returns no results.
         """
-        # < 2.6 Incompatible >
-        # with self.assertRaises(DoesNotExist):
-        #    self.post1.comments.get(author='user3')
-        self.assertRaises(
-            DoesNotExist, self.post1.comments.get, author='user3'
-        )
+        with self.assertRaises(DoesNotExist):
+            self.post1.comments.get(author='user3')
 
     def test_first(self):
         """
@@ -4041,9 +4002,7 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         comment = self.post1.comments.first()
 
         # Ensure a Comment object was returned.
-        # < 2.6 Incompatible >
-        # self.assertIsInstance(comment, self.Comments)
-        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertIsInstance(comment, self.Comments)
         self.assertEqual(comment, self.post1.comments[0])
 
     def test_create(self):
@@ -4056,22 +4015,14 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.post1.save()
 
         # Ensure the returned value is the comment object.
-        # < 2.6 Incompatible >
-        # self.assertIsInstance(comment, self.Comments)
-        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertIsInstance(comment, self.Comments)
         self.assertEqual(comment.author, 'user4')
         self.assertEqual(comment.message, 'message1')
 
         # Ensure the new comment was actually saved to the database.
-        # < 2.6 Incompatible >
-        # self.assertIn(
-        #    comment,
-        #    self.BlogPost.objects(comments__author='user4')[0].comments
-        # )
-        self.assertTrue(
-            comment in self.BlogPost.objects(
-                comments__author='user4'
-            )[0].comments
+        self.assertIn(
+            comment,
+            self.BlogPost.objects(comments__author='user4')[0].comments
         )
 
     def test_filtered_create(self):
@@ -4086,22 +4037,14 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.post1.save()
 
         # Ensure the returned value is the comment object.
-        # < 2.6 Incompatible >
-        # self.assertIsInstance(comment, self.Comments)
-        self.assertTrue(isinstance(comment, self.Comments))
+        self.assertIsInstance(comment, self.Comments)
         self.assertEqual(comment.author, 'user4')
         self.assertEqual(comment.message, 'message1')
 
         # Ensure the new comment was actually saved to the database.
-        # < 2.6 Incompatible >
-        # self.assertIn(
-        #    comment,
-        #    self.BlogPost.objects(comments__author='user4')[0].comments
-        # )
-        self.assertTrue(
-            comment in self.BlogPost.objects(
-                comments__author='user4'
-            )[0].comments
+        self.assertIn(
+            comment,
+            self.BlogPost.objects(comments__author='user4')[0].comments
         )
 
     def test_no_keyword_update(self):
@@ -4114,22 +4057,14 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.post1.save()
 
         # Ensure that nothing was altered.
-        # < 2.6 Incompatible >
-        # self.assertIn(
-        #    original[0],
-        #    self.BlogPost.objects(id=self.post1.id)[0].comments
-        # )
-        self.assertTrue(
-            original[0] in self.BlogPost.objects(id=self.post1.id)[0].comments
+        self.assertIn(
+            original[0],
+            self.BlogPost.objects(id=self.post1.id)[0].comments
         )
 
-        # < 2.6 Incompatible >
-        # self.assertIn(
-        #    original[1],
-        #    self.BlogPost.objects(id=self.post1.id)[0].comments
-        # )
-        self.assertTrue(
-            original[1] in self.BlogPost.objects(id=self.post1.id)[0].comments
+        self.assertIn(
+            original[1],
+            self.BlogPost.objects(id=self.post1.id)[0].comments
         )
 
         # Ensure the method returned 0 as the number of entries
@@ -4175,13 +4110,9 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         comments.save()
 
         # Ensure that the new comment has been added to the database.
-        # < 2.6 Incompatible >
-        # self.assertIn(
-        #    new_comment,
-        #    self.BlogPost.objects(id=self.post1.id)[0].comments
-        # )
-        self.assertTrue(
-            new_comment in self.BlogPost.objects(id=self.post1.id)[0].comments
+        self.assertIn(
+            new_comment,
+            self.BlogPost.objects(id=self.post1.id)[0].comments
         )
 
     def test_delete(self):
@@ -4193,23 +4124,15 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
         # Ensure that all the comments under post1 were deleted in the
         # database.
-        # < 2.6 Incompatible >
-        # self.assertListEqual(
-        #    self.BlogPost.objects(id=self.post1.id)[0].comments, []
-        # )
-        self.assertEqual(
+        self.assertListEqual(
             self.BlogPost.objects(id=self.post1.id)[0].comments, []
         )
 
         # Ensure that post1 comments were deleted from the list.
-        # < 2.6 Incompatible >
-        # self.assertListEqual(self.post1.comments, [])
-        self.assertEqual(self.post1.comments, [])
+        self.assertListEqual(self.post1.comments, [])
 
         # Ensure that comments still returned a EmbeddedDocumentList object.
-        # < 2.6 Incompatible >
-        # self.assertIsInstance(self.post1.comments, EmbeddedDocumentList)
-        self.assertTrue(isinstance(self.post1.comments, EmbeddedDocumentList))
+        self.assertIsInstance(self.post1.comments, EmbeddedDocumentList)
 
         # Ensure that the delete method returned 2 as the number of entries
         # deleted from the database
@@ -4249,21 +4172,15 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         self.post1.save()
 
         # Ensure that only the user2 comment was deleted.
-        # < 2.6 Incompatible >
-        # self.assertNotIn(
-        #     comment, self.BlogPost.objects(id=self.post1.id)[0].comments
-        # )
-        self.assertTrue(
-            comment not in self.BlogPost.objects(id=self.post1.id)[0].comments
+        self.assertNotIn(
+            comment, self.BlogPost.objects(id=self.post1.id)[0].comments
         )
         self.assertEqual(
             len(self.BlogPost.objects(id=self.post1.id)[0].comments), 1
         )
 
         # Ensure that the user2 comment no longer exists in the list.
-        # < 2.6 Incompatible >
-        # self.assertNotIn(comment, self.post1.comments)
-        self.assertTrue(comment not in self.post1.comments)
+        self.assertNotIn(comment, self.post1.comments)
         self.assertEqual(len(self.post1.comments), 1)
 
         # Ensure that the delete method returned 1 as the number of entries
