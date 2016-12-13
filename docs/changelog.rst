@@ -5,6 +5,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop you features).
+- Fixed connecting to a replica set with PyMongo 2.x #1436
 
 Changes in 0.11.0
 =================
