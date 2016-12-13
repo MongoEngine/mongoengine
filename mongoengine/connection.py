@@ -96,7 +96,7 @@ def register_connection(alias, name=None, host=None, port=None,
 
             uri_options = uri_dict['options']
             if 'replicaset' in uri_options:
-                conn_settings['replicaSet'] = True
+                conn_settings['replicaSet'] = uri_options['replicaset']
             if 'authsource' in uri_options:
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:

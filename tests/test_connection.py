@@ -200,6 +200,13 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'test')
 
+    def test_connect_uri_with_replicaset(self):
+        """Ensure connect() works when specifying a replicaSet."""
+        c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
+        db = get_db()
+        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertEqual(db.name, 'test')
+
     def test_uri_without_credentials_doesnt_override_conn_settings(self):
         """Ensure connect() uses the username & password params if the URI
         doesn't explicitly specify them.
