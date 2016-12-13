@@ -6,6 +6,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop you features).
 - Fixed connecting to a replica set with PyMongo 2.x #1436
+- Fixed an obscure error message when filtering by `field__in=non_iterable`. #1237
 
 Changes in 0.11.0
 =================
