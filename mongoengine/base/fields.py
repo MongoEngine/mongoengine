@@ -23,7 +23,6 @@ class BaseField(object):
 
     .. versionchanged:: 0.5 - added verbose and help text
     """
-
     name = None
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
