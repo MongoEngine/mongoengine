@@ -202,10 +202,16 @@ class ConnectionTest(unittest.TestCase):
 
     def test_connect_uri_with_replicaset(self):
         """Ensure connect() works when specifying a replicaSet."""
-        c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
-        db = get_db()
-        self.assertTrue(isinstance(db, pymongo.database.Database))
-        self.assertEqual(db.name, 'test')
+        if IS_PYMONGO_3:
+            c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
+            db = get_db()
+            self.assertTrue(isinstance(db, pymongo.database.Database))
+            self.assertEqual(db.name, 'test')
+        else:
+            # PyMongo < v3.x raises an exception:
+            # "localhost:27017 is not a member of replica set local-rs"
+            with self.assertRaises(MongoEngineConnectionError):
+                c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
 
     def test_uri_without_credentials_doesnt_override_conn_settings(self):
         """Ensure connect() uses the username & password params if the URI
