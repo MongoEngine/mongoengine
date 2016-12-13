@@ -4977,40 +4977,19 @@ class QuerySetTest(unittest.TestCase):
         User.drop_collection()
         BlogPost.drop_collection()
 
-        author = User(name='Test User')
-        author.save()
-        post = BlogPost(content='Had a good coffee today...', authors=[author])
-        post.save()
+        author = User.objects.create(name='Test User')
+        post = BlogPost.objects.create(content='Had a good coffee today...',
+                                       authors=[author])
 
+        # Make sure using `__in` with a list works
         blog_posts = BlogPost.objects(authors__in=[author])
         self.assertEqual(list(blog_posts), [post])
 
-        # Using the `__in`-operator with a non-iterable should raise a TypeError
-        self.assertRaises(TypeError, BlogPost.objects(authors__in=author.id).count)
+        # Using `__in` with a non-iterable should raise a TypeError
+        self.assertRaises(TypeError, BlogPost.objects(authors__in=author.pk).count)
 
-    def test_in_operator_on_document(self):
-        """Ensure that using the `__in` operator on a `Document` raises an
-        error.
-        """
-        class User(Document):
-            name = StringField()
-
-        class BlogPost(Document):
-            content = StringField()
-            authors = ListField(ReferenceField(User))
-
-        User.drop_collection()
-        BlogPost.drop_collection()
-
-        author = User(name='Test User')
-        author.save()
-        post = BlogPost(content='Had a good coffee today...', authors=[author])
-        post.save()
-
-        blog_posts = BlogPost.objects(authors__in=[author])
-        self.assertEqual(list(blog_posts), [post])
-
-        # Using the `__in`-operator with a `Document` should raise a TypeError
+        # Using `__in` with a `Document` (which is seemingly iterable but not
+        # in a way we'd expect) should raise a TypeError, too
         self.assertRaises(TypeError, BlogPost.objects(authors__in=author).count)
 
 
