@@ -34,7 +34,10 @@ def _import_class(cls_name):
     queryset_classes = ('OperationError',)
     deref_classes = ('DeReference',)
 
-    if cls_name in doc_classes:
+    if cls_name == 'BaseDocument':
+        from mongoengine.base import document as module
+        import_classes = ['BaseDocument']
+    elif cls_name in doc_classes:
         from mongoengine import document as module
         import_classes = doc_classes
     elif cls_name in field_classes:
