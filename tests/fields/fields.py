@@ -1055,6 +1055,73 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
         BlogPost.drop_collection()
 
+    def test_list_field_operations(self):
+        """Ensure that list types work with standard list operations.
+        """
+        class BlogPost(Document):
+            ref = StringField()
+            info = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.ref = "1234"
+        post.info = ['0', '1', '2', '3', '4', '5']
+        post.save()
+
+        # '__add__'
+        # '__class__'
+        # '__contains__'
+        # '__delattr__'
+        # '__delitem__'
+        # '__delslice__'
+        # '__eq__'
+        # '__format__'
+        # '__ge__'
+        # '__getattribute__'
+        # '__getitem__'
+        # '__getslice__'
+        # '__gt__'
+        # '__hash__'
+        # '__iadd__'
+        # '__imul__'
+        # '__iter__'
+        # '__le__'
+        # '__len__'
+        # '__lt__'
+        # '__mul__'
+        # '__ne__'
+        # '__new__'
+        # '__reduce__'
+        # '__reduce_ex__'
+        # '__reversed__'
+        # '__rmul__'
+        # '__setattr__'
+        # '__setitem__'
+        # '__setslice__'
+        # '__sizeof__'
+        # '__subclasshook__'
+        # 'append'
+        # 'count'
+        # 'extend'
+        # 'index'
+        # 'insert'
+        # 'pop'
+        # 'remove'
+        # 'reverse'
+        # 'sort'
+
+        # test del, __delitem__
+        post = BlogPost.objects(ref="1234").get()
+        del post.info[0] # del from start ('0')
+        del post.info[2] # del from middle ('3')
+        del post.info[3] # del from end['5']
+        self.assertEqual(post.info, ['1', '2', '4'])
+        post.save()
+        retrPost = BlogPost.objects(ref="1234").get()
+        self.assertEqual(retrPost.info, ['1', '2', '4'])
+        BlogPost.drop_collection()
+
     def test_list_assignment(self):
         """Ensure that list field element assignment and slicing work
         """
