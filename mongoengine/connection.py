@@ -66,9 +66,9 @@ def register_connection(alias, name=None, host=None, port=None,
         'authentication_mechanism': authentication_mechanism
     }
 
-    # Handle uri style connections
     conn_host = conn_settings['host']
-    # host can be a list or a string, so if string, force to a list
+
+    # Host can be a list or a string, so if string, force to a list.
     if isinstance(conn_host, six.string_types):
         conn_host = [conn_host]
 
@@ -170,22 +170,21 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     else:
         connection_class = MongoClient
 
-        # Handle replica set connections
-        if 'replicaSet' in conn_settings:
+        # For replica set connections with PyMongo 2.x, use
+        # MongoReplicaSetClient.
+        # TODO remove this once we stop supporting PyMongo 2.x.
+        if 'replicaSet' in conn_settings and not IS_PYMONGO_3:
+            connection_class = MongoReplicaSetClient
+            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
+
+            # hosts_or_uri has to be a string, so if 'host' was provided
+            # as a list, join its parts and separate them by ','
+            if isinstance(conn_settings['hosts_or_uri'], list):
+                conn_settings['hosts_or_uri'] = ','.join(
+                    conn_settings['hosts_or_uri'])
 
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
-
-            # Discard replicaSet if it's not a string
-            if not isinstance(conn_settings['replicaSet'], six.string_types):
-                del conn_settings['replicaSet']
-
-            # For replica set connections with PyMongo 2.x, use
-            # MongoReplicaSetClient.
-            # TODO remove this once we stop supporting PyMongo 2.x.
-            if not IS_PYMONGO_3:
-                connection_class = MongoReplicaSetClient
-                conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
 
     # Iterate over all of the connection settings and if a connection with
     # the same parameters is already established, use it instead of creating
