@@ -1063,7 +1063,7 @@ class FieldTest(unittest.TestCase):
         post.save()
         post.reload()
         target = "ccopy_reg\\n_reconstructor\\np0\\n\(cmongoengine.base.datastructures\\nBaseList"
-        self.assertRegexpMatches(pickle.dumps(post.info), target)
+        self.assertRegexpMatches(pickle.dumps(post.info).decode("utf-8"), target)
         BlogPost.drop_collection()
 
 
