@@ -1055,15 +1055,6 @@ class FieldTest(unittest.TestCase):
         post.save()
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
 
-        # test '__reduce__()'
-        # aka '__reduce_ex__(pickle_protocol)'
-        # aka 'pickle.dump()''
-        import pickle
-        post.info = ['0', '1', '2', '3', '4', '5']
-        post.save()
-        post.reload()
-        target = "ccopy_reg\\n_reconstructor\\np0\\n\(cmongoengine.base.datastructures\\nBaseList"
-        self.assertRegexpMatches(pickle.dumps(post.info).decode("utf-8"), target)
         BlogPost.drop_collection()
 
 
