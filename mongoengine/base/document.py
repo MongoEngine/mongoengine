@@ -17,7 +17,7 @@ from mongoengine.base.datastructures import (BaseDict, BaseList,
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
-                                LookUpError, OperationError, ValidationError)
+                                LookUpError, OperationError, ValidationError, InvalidQueryError)
 
 __all__ = ('BaseDocument',)
 
@@ -674,6 +674,10 @@ class BaseDocument(object):
         """
         if not only_fields:
             only_fields = []
+
+        if not isinstance(son, dict):
+            raise InvalidQueryError("A '%s'-typed query value was expected, but '%s' was seen." % (cls._class_name,
+                                                                                                   str(son)))
 
         # Get the class name from the document, falling back to the given
         # class if unavailable
