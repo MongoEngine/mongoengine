@@ -1860,6 +1860,10 @@ class InstanceTest(unittest.TestCase):
                 'occurs': {"hello": None}
             })
 
+        # Tests for issue #1438: https://github.com/MongoEngine/mongoengine/issues/1438
+        with self.assertRaises(InvalidQueryError):
+            Word._from_son('this is not a valid SON dict')
+
     def test_reverse_delete_rule_cascade_and_nullify(self):
         """Ensure that a referenced document is also deleted upon deletion.
         """
