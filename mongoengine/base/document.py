@@ -675,7 +675,7 @@ class BaseDocument(object):
         if not only_fields:
             only_fields = []
 
-        if not isinstance(son, dict):
+        if son and not isinstance(son, dict):
             raise InvalidQueryError("A '%s'-typed query value was expected, but '%s' was seen." % (cls._class_name,
                                                                                                    str(son)))
 
