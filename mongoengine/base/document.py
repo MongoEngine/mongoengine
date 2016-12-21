@@ -16,8 +16,7 @@ from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              SemiStrictDict, StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
-from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError, InvalidQueryError,
-                                LookUpError, OperationError, ValidationError)
+from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError, LookUpError, OperationError, ValidationError)
 
 __all__ = ('BaseDocument',)
 
@@ -676,8 +675,7 @@ class BaseDocument(object):
             only_fields = []
 
         if son and not isinstance(son, dict):
-            raise InvalidQueryError("A '%s'-typed query value was expected, but '%s' was seen." % (cls._class_name,
-                                                                                                   str(son)))
+            raise ValueError("The source SON object needs to be of type 'dict'")
 
         # Get the class name from the document, falling back to the given
         # class if unavailable

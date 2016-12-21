@@ -1861,7 +1861,7 @@ class InstanceTest(unittest.TestCase):
             })
 
         # Tests for issue #1438: https://github.com/MongoEngine/mongoengine/issues/1438
-        with self.assertRaises(InvalidQueryError):
+        with self.assertRaises(ValueError):
             Word._from_son('this is not a valid SON dict')
 
     def test_reverse_delete_rule_cascade_and_nullify(self):
