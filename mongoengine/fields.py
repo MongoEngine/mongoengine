@@ -28,7 +28,7 @@ from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
                               GeoJsonBaseField, ObjectIdField, get_document)
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
-from mongoengine.errors import DoesNotExist, ValidationError
+from mongoengine.errors import DoesNotExist, ValidationError, InvalidQueryError
 from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING, QuerySet
 
@@ -566,7 +566,11 @@ class EmbeddedDocumentField(BaseField):
 
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
-            value = self.document_type._from_son(value)
+            try:
+                value = self.document_type._from_son(value)
+            except ValueError as err:
+                raise InvalidQueryError("Querying the embedded document '%s' failed, due to an invalid query value" %
+                                        (self.document_type._class_name,))
         super(EmbeddedDocumentField, self).prepare_query_value(op, value)
         return self.to_mongo(value)
 

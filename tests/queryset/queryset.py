@@ -1266,7 +1266,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from
-        a query.
+        different manners of querying.
         """
         class User(EmbeddedDocument):
             name = StringField()
@@ -1277,14 +1277,28 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        user = User(name='Test User')
         BlogPost.objects.create(
-            author=User(name='Test User'),
+            author=user,
             content='Had a good coffee today...'
         )
 
         result = BlogPost.objects.first()
         self.assertTrue(isinstance(result.author, User))
         self.assertEqual(result.author.name, 'Test User')
+
+        result = BlogPost.objects.get(author__name=user.name)
+        self.assertTrue(isinstance(result.author, User))
+        self.assertEqual(result.author.name, 'Test User')
+
+        result = BlogPost.objects.get(author={'name': user.name})
+        self.assertTrue(isinstance(result.author, User))
+        self.assertEqual(result.author.name, 'Test User')
+
+        # Fails, since the string is not a type that is able to represent the
+        # author's document structure (should be dict)
+        with self.assertRaises(InvalidQueryError):
+            BlogPost.objects.get(author=user.name)
 
     def test_find_empty_embedded(self):
         """Ensure that you can save and find an empty embedded document."""

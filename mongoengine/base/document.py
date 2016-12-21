@@ -676,8 +676,7 @@ class BaseDocument(object):
             only_fields = []
 
         if son and not isinstance(son, dict):
-            raise InvalidQueryError("A '%s'-typed query value was expected, but '%s' was seen." % (cls._class_name,
-                                                                                                   str(son)))
+            raise ValueError("The source SON object needs to be of type 'dict'")
 
         # Get the class name from the document, falling back to the given
         # class if unavailable
