@@ -479,6 +479,8 @@ operators. To use a :class:`~mongoengine.queryset.Q` object, pass it in as the
 first positional argument to :attr:`Document.objects` when you filter it by
 calling it with keyword arguments::
 
+    from mongoengine.queryset.visitor import Q
+
     # Get published posts
     Post.objects(Q(published=True) | Q(publish_date__lte=datetime.now()))
 
