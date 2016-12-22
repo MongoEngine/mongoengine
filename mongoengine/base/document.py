@@ -16,7 +16,8 @@ from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              SemiStrictDict, StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
-from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError, LookUpError, OperationError, ValidationError)
+from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
+                                LookUpError, OperationError, ValidationError)
 
 __all__ = ('BaseDocument',)
 
