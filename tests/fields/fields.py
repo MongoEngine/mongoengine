@@ -1057,7 +1057,6 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-
     def test_list_field_manipulative_operators(self):
         """Ensure that ListField works with standard list operators that manipulate the list.
         """
@@ -1078,7 +1077,7 @@ class FieldTest(unittest.TestCase):
 
         # '__add__(listB)'
         # listA+listB
-        # operator.add(listA, listB) 
+        # operator.add(listA, listB)
         reset_post()
         temp = ['a', 'b']
         post.info = post.info + temp
@@ -1298,7 +1297,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(blogLargeB.bool_info, [False, False, True, True])
 
         BlogPost.drop_collection()
- 
+
     def test_list_assignment(self):
         """Ensure that list field element assignment and slicing work
         """
@@ -1345,7 +1344,6 @@ class FieldTest(unittest.TestCase):
         post.save()
         post.reload()
         self.assertEqual(post.info, [1, 2, 3, 4, 'n5'])
-
 
     def test_list_field_passed_in_value(self):
         class Foo(Document):
