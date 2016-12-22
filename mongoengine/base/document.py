@@ -16,8 +16,7 @@ from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              SemiStrictDict, StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
-from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
-                                LookUpError, OperationError, ValidationError)
+from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError, LookUpError, OperationError, ValidationError)
 
 __all__ = ('BaseDocument',)
 
@@ -674,6 +673,9 @@ class BaseDocument(object):
         """
         if not only_fields:
             only_fields = []
+
+        if son and not isinstance(son, dict):
+            raise ValueError("The source SON object needs to be of type 'dict'")
 
         # Get the class name from the document, falling back to the given
         # class if unavailable
