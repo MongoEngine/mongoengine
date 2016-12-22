@@ -1042,6 +1042,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(
             BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
 
+        # test queries by list
         post = BlogPost()
         post.info = ['1', '2']
         post.save()
@@ -1053,8 +1054,251 @@ class FieldTest(unittest.TestCase):
         post.info *= 2
         post.save()
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
+
         BlogPost.drop_collection()
 
+
+    def test_list_field_manipulative_operators(self):
+        """Ensure that ListField works with standard list operators that manipulate the list.
+        """
+        class BlogPost(Document):
+            ref = StringField()
+            info = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.ref = "1234"
+        post.info = ['0', '1', '2', '3', '4', '5']
+        post.save()
+
+        def reset_post():
+            post.info = ['0', '1', '2', '3', '4', '5']
+            post.save()
+
+        # '__add__(listB)'
+        # listA+listB
+        # operator.add(listA, listB) 
+        reset_post()
+        temp = ['a', 'b']
+        post.info = post.info + temp
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+
+        # '__delitem__(index)'
+        # aka 'del list[index]'
+        # aka 'operator.delitem(list, index)'
+        reset_post()
+        del post.info[2] # del from middle ('2')
+        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+
+        # '__delitem__(slice(i, j))'
+        # aka 'del list[i:j]'
+        # aka 'operator.delitem(list, slice(i,j))'
+        reset_post()
+        del post.info[1:3] # removes '1', '2'
+        self.assertEqual(post.info, ['0', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '3', '4', '5'])
+
+        # '__iadd__'
+        # aka 'list += list'
+        reset_post()
+        temp = ['a', 'b']
+        post.info += temp
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+
+        # '__imul__'
+        # aka 'list *= number'
+        reset_post()
+        post.info *= 2
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+
+        # '__mul__'
+        # aka 'listA*listB'
+        reset_post()
+        post.info = post.info * 2
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+
+        # '__rmul__'
+        # aka 'listB*listA'
+        reset_post()
+        post.info = 2 * post.info
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+
+        # '__setitem__(index, value)'
+        # aka 'list[index]=value'
+        # aka 'setitem(list, value)'
+        reset_post()
+        post.info[4] = 'a'
+        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+
+        # '__setitem__(slice(i, j), listB)'
+        # aka 'listA[i:j] = listB'
+        # aka 'setitem(listA, slice(i, j), listB)'
+        reset_post()
+        post.info[1:3] = ['h', 'e', 'l', 'l', 'o']
+        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+
+        # 'append'
+        reset_post()
+        post.info.append('h')
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h'])
+
+        # 'extend'
+        reset_post()
+        post.info.extend(['h', 'e', 'l', 'l', 'o'])
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h', 'e', 'l', 'l', 'o'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h', 'e', 'l', 'l', 'o'])
+        # 'insert'
+
+        # 'pop'
+        reset_post()
+        x = post.info.pop(2)
+        y = post.info.pop()
+        self.assertEqual(post.info, ['0', '1', '3', '4'])
+        self.assertEqual(x, '2')
+        self.assertEqual(y, '5')
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '3', '4'])
+
+        # 'remove'
+        reset_post()
+        post.info.remove('2')
+        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+
+        # 'reverse'
+        reset_post()
+        post.info.reverse()
+        self.assertEqual(post.info, ['5', '4', '3', '2', '1', '0'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['5', '4', '3', '2', '1', '0'])
+
+        # 'sort': though this operator method does manipulate the list, it is tested in
+        #     the 'test_list_field_lexicograpic_operators' function
+        BlogPost.drop_collection()
+
+    def test_list_field_invalid_operators(self):
+        class BlogPost(Document):
+            ref = StringField()
+            info = ListField(StringField())
+        post = BlogPost()
+        post.ref = "1234"
+        post.info = ['0', '1', '2', '3', '4', '5']
+        # '__hash__'
+        # aka 'hash(list)'
+        # # assert TypeError
+        self.assertRaises(TypeError, lambda: hash(post.info))
+
+    def test_list_field_lexicographic_operators(self):
+        """Ensure that ListField works with standard list operators that do lexigraphic ordering.
+        """
+        class BlogPost(Document):
+            ref = StringField()
+            text_info = ListField(StringField())
+            oid_info = ListField(ObjectIdField())
+            bool_info = ListField(BooleanField())
+        BlogPost.drop_collection()
+
+        blogSmall = BlogPost(ref="small")
+        blogSmall.text_info = ["a", "a", "a"]
+        blogSmall.bool_info = [False, False]
+        blogSmall.save()
+        blogSmall.reload()
+
+        blogLargeA = BlogPost(ref="big")
+        blogLargeA.text_info = ["a", "z", "j"]
+        blogLargeA.bool_info = [False, True]
+        blogLargeA.save()
+        blogLargeA.reload()
+
+        blogLargeB = BlogPost(ref="big2")
+        blogLargeB.text_info = ["a", "z", "j"]
+        blogLargeB.oid_info = [
+            "54495ad94c934721ede76f90",
+            "54495ad94c934721ede76d23",
+            "54495ad94c934721ede76d00"
+        ]
+        blogLargeB.bool_info = [False, True]
+        blogLargeB.save()
+        blogLargeB.reload()
+        # '__eq__' aka '=='
+        self.assertEqual(blogLargeA.text_info, blogLargeB.text_info)
+        self.assertEqual(blogLargeA.bool_info, blogLargeB.bool_info)
+        # '__ge__' aka '>='
+        self.assertGreaterEqual(blogLargeA.text_info, blogSmall.text_info)
+        self.assertGreaterEqual(blogLargeA.text_info, blogLargeB.text_info)
+        self.assertGreaterEqual(blogLargeA.bool_info, blogSmall.bool_info)
+        self.assertGreaterEqual(blogLargeA.bool_info, blogLargeB.bool_info)
+        # '__gt__' aka '>'
+        self.assertGreaterEqual(blogLargeA.text_info, blogSmall.text_info)
+        self.assertGreaterEqual(blogLargeA.bool_info, blogSmall.bool_info)
+        # '__le__' aka '<='
+        self.assertLessEqual(blogSmall.text_info, blogLargeB.text_info)
+        self.assertLessEqual(blogLargeA.text_info, blogLargeB.text_info)
+        self.assertLessEqual(blogSmall.bool_info, blogLargeB.bool_info)
+        self.assertLessEqual(blogLargeA.bool_info, blogLargeB.bool_info)
+        # '__lt__' aka '<'
+        self.assertLess(blogSmall.text_info, blogLargeB.text_info)
+        self.assertLess(blogSmall.bool_info, blogLargeB.bool_info)
+        # '__ne__' aka '!='
+        self.assertNotEqual(blogSmall.text_info, blogLargeB.text_info)
+        self.assertNotEqual(blogSmall.bool_info, blogLargeB.bool_info)
+        # 'sort'
+        blogLargeB.bool_info = [True, False, True, False]
+        blogLargeB.text_info.sort()
+        blogLargeB.oid_info.sort()
+        blogLargeB.bool_info.sort()
+        sorted_target_list = [
+            ObjectId("54495ad94c934721ede76d00"),
+            ObjectId("54495ad94c934721ede76d23"),
+            ObjectId("54495ad94c934721ede76f90")
+        ]
+        self.assertEqual(blogLargeB.text_info, ["a", "j", "z"])
+        self.assertEqual(blogLargeB.oid_info, sorted_target_list)
+        self.assertEqual(blogLargeB.bool_info, [False, False, True, True])
+        blogLargeB.save()
+        blogLargeB.reload()
+        self.assertEqual(blogLargeB.text_info, ["a", "j", "z"])
+        self.assertEqual(blogLargeB.oid_info, sorted_target_list)
+        self.assertEqual(blogLargeB.bool_info, [False, False, True, True])
+
+        BlogPost.drop_collection()
+ 
     def test_list_assignment(self):
         """Ensure that list field element assignment and slicing work
         """
