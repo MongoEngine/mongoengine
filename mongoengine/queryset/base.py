@@ -900,18 +900,24 @@ class BaseQuerySet(object):
         return self.fields(**fields)
 
     def fields(self, _only_called=False, **kwargs):
-        """Manipulate how you load this document's fields.  Used by `.only()`
-        and `.exclude()` to manipulate which fields to retrieve.  Fields also
-        allows for a greater level of control for example:
+        """Manipulate how you load this document's fields. Used by `.only()`
+        and `.exclude()` to manipulate which fields to retrieve. If called
+        directly, use a set of kwargs similar to the MongoDB projection
+        document. For example:
 
-        Retrieving a Subrange of Array Elements:
+        Include only a subset of fields:
 
-        You can use the $slice operator to retrieve a subrange of elements in
-        an array. For example to get the first 5 comments::
+            posts = BlogPost.objects(...).fields(author=1, title=1)
 
-            post = BlogPost.objects(...).fields(slice__comments=5)
+        Exclude a specific field:
 
-        :param kwargs: A dictionary identifying what to include
+            posts = BlogPost.objects(...).fields(comments=0)
+
+        To retrieve a subrange of array elements:
+
+            posts = BlogPost.objects(...).fields(slice__comments=5)
+
+        :param kwargs: A set keywors arguments identifying what to include.
 
         .. versionadded:: 0.5
         """
