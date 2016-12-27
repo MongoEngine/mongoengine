@@ -81,6 +81,17 @@ class BaseField(object):
         self.sparse = sparse
         self._owner_document = None
 
+        # Validate the db_field
+        if self.db_field and (
+            '.' in self.db_field or
+            '\0' in self.db_field or
+            self.db_field.startswith('$')
+        ):
+            raise ValueError(
+                'field names cannot contain dots (".") or null characters '
+                '("\\0"), and they must not start with a dollar sign ("$").'
+            )
+
         # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)) & set(kwargs)
         if conflicts:
