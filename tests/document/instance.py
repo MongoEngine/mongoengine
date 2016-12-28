@@ -435,6 +435,15 @@ class InstanceTest(unittest.TestCase):
 
         person.to_dbref()
 
+    def test_save_abstract_document(self):
+        """Saving an abstract document should fail."""
+        class Doc(Document):
+            name = StringField()
+            meta = {'abstract': True}
+
+        with self.assertRaises(InvalidDocumentError):
+            Doc(name='aaa').save()
+
     def test_reload(self):
         """Ensure that attributes may be reloaded.
         """
