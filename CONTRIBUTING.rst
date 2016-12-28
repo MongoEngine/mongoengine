@@ -14,7 +14,7 @@ Before starting to write code, look for existing `tickets
 <https://github.com/MongoEngine/mongoengine/issues?state=open>`_ or `create one
 <https://github.com/MongoEngine/mongoengine/issues>`_ for your specific
 issue or feature request. That way you avoid working on something
-that might not be of interest or that has already been addressed.  If in doubt
+that might not be of interest or that has already been addressed. If in doubt
 post to the `user group <http://groups.google.com/group/mongoengine-users>`
 
 Supported Interpreters

@@ -130,7 +130,6 @@ Community
   <http://groups.google.com/group/mongoengine-users>`_
 - `MongoEngine Developers mailing list
   <http://groups.google.com/group/mongoengine-dev>`_
-- `#mongoengine IRC channel <http://webchat.freenode.net/?channels=mongoengine>`_
 
 Contributing
 ============
