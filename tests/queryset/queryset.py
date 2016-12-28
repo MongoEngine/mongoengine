@@ -1826,6 +1826,11 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.hits, 10)
 
+        # Negative dec operator is equal to a positive inc operator
+        BlogPost.objects.update_one(dec__hits=-1)
+        post.reload()
+        self.assertEqual(post.hits, 11)
+
         BlogPost.objects.update(push__tags='mongo')
         post.reload()
         self.assertTrue('mongo' in post.tags)

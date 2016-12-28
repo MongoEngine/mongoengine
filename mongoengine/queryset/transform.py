@@ -233,8 +233,7 @@ def update(_doc_cls=None, **update):
                 # Support decrement by flipping a positive value's sign
                 # and using 'inc'
                 op = 'inc'
-                if value > 0:
-                    value = -value
+                value = -value
             elif op == 'add_to_set':
                 op = 'addToSet'
             elif op == 'set_on_insert':
