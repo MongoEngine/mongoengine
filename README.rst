@@ -57,7 +57,7 @@ Some simple examples of what MongoEngine code looks like:
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
-        posted = DateTimeField(default=datetime.datetime.now)
+        posted = DateTimeField(default=datetime.datetime.utcnow)
         tags = ListField(StringField(max_length=50))
         meta = {'allow_inheritance': True}
 
@@ -87,17 +87,18 @@ Some simple examples of what MongoEngine code looks like:
     ...     print
     ...
 
-    >>> len(BlogPost.objects)
+    # Count all blog posts and its subtypes
+    >>> BlogPost.objects.count()
     2
-    >>> len(TextPost.objects)
+    >>> TextPost.objects.count()
     1
-    >>> len(LinkPost.objects)
+    >>> LinkPost.objects.count()
     1
 
-    # Find tagged posts
-    >>> len(BlogPost.objects(tags='mongoengine'))
+    # Count tagged posts
+    >>> BlogPost.objects(tags='mongoengine').count()
     2
-    >>> len(BlogPost.objects(tags='mongodb'))
+    >>> BlogPost.objects(tags='mongodb').count()
     1
 
 Tests
@@ -133,4 +134,4 @@ Community
 
 Contributing
 ============
-We welcome contributions! see  the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
+We welcome contributions! See the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
