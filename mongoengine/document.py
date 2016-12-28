@@ -313,6 +313,9 @@ class Document(BaseDocument):
         .. versionchanged:: 0.10.7
             Add signal_kwargs argument
         """
+        if self._meta.get('abstract'):
+            raise InvalidDocumentError('Cannot save an abstract document.')
+
         signal_kwargs = signal_kwargs or {}
         signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
@@ -828,7 +831,6 @@ class Document(BaseDocument):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
-
         if cls._meta.get('abstract'):
             return []
 
