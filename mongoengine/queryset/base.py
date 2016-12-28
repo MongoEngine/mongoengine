@@ -933,7 +933,20 @@ class BaseQuerySet(object):
             key = '.'.join(parts)
             cleaned_fields.append((key, value))
 
-        fields = sorted(cleaned_fields, key=operator.itemgetter(1))
+        # Sort fields by their values, explicitly excluded fields first, then
+        # explicitly included, and then more complicated operators such as
+        # $slice.
+        def _sort_key(field_tuple):
+            key, value = field_tuple
+            if isinstance(value, (int)):
+                return value  # 0 for exclusion, 1 for inclusion
+            else:
+                return 2  # so that complex values appear last
+
+        fields = sorted(cleaned_fields, key=_sort_key)
+
+        # Clone the queryset, group all fields by their value, convert
+        # each of them to db_fields, and set the queryset's _loaded_fields
         queryset = self.clone()
         for value, group in itertools.groupby(fields, lambda x: x[1]):
             fields = [field for field, value in group]

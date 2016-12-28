@@ -141,6 +141,16 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(qs._loaded_fields.as_dict(),
                          {'b': {'$slice': 5}})
 
+    def test_mix_slice_with_other_fields(self):
+        class MyDoc(Document):
+            a = ListField()
+            b = ListField()
+            c = ListField()
+
+        qs = MyDoc.objects.fields(a=1, b=0, slice__c=2)
+        self.assertEqual(qs._loaded_fields.as_dict(),
+                         {'c': {'$slice': 2}, 'a': 1})
+
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
         """
