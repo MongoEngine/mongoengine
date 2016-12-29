@@ -1232,6 +1232,19 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, None)
 
+    def test_update_rename_operator(self):
+        """Test the $rename operator."""
+        coll = self.Person._get_collection()
+        doc = self.Person(name='John').save()
+        raw_doc = coll.find_one({'_id': doc.pk})
+        self.assertEqual(set(raw_doc.keys()), set(['_id', '_cls', 'name']))
+
+        doc.update(rename__name='first_name')
+        raw_doc = coll.find_one({'_id': doc.pk})
+        self.assertEqual(set(raw_doc.keys()),
+                         set(['_id', '_cls', 'first_name']))
+        self.assertEqual(raw_doc['first_name'], 'John')
+
     def test_inserts_if_you_set_the_pk(self):
         p1 = self.Person(name='p1', id=bson.ObjectId()).save()
         p2 = self.Person(name='p2')
