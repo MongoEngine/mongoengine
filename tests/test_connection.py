@@ -296,6 +296,19 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection('t2')
         self.assertFalse(get_tz_awareness(conn))
 
+    def test_write_concern(self):
+        """Ensure write concern can be specified in connect() via
+        a kwarg or as part of the connection URI.
+        """
+        conn1 = connect(alias='conn1', host='mongodb://localhost/testing?w=1&j=true')
+        conn2 = connect('testing', alias='conn2', w=1, j=True)
+        if IS_PYMONGO_3:
+            self.assertEqual(conn1.write_concern.document, {'w': 1, 'j': True})
+            self.assertEqual(conn2.write_concern.document, {'w': 1, 'j': True})
+        else:
+            self.assertEqual(dict(conn1.write_concern), {'w': 1, 'j': True})
+            self.assertEqual(dict(conn2.write_concern), {'w': 1, 'j': True})
+
     def test_datetime(self):
         connect('mongoenginetest', tz_aware=True)
         d = datetime.datetime(2010, 5, 5, tzinfo=utc)
