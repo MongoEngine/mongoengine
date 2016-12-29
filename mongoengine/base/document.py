@@ -402,9 +402,11 @@ class BaseDocument(object):
             raise ValidationError(message, errors=errors)
 
     def to_json(self, *args, **kwargs):
-        """Converts a document to JSON.
-        :param use_db_field: Set to True by default but enables the output of the json structure with the field names
-            and not the mongodb store db_names in case of set to False
+        """Convert this document to JSON.
+
+        :param use_db_field: Serialize field names as they appear in
+            MongoDB (as opposed to attribute names on this document).
+            Defaults to True.
         """
         use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
