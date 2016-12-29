@@ -41,7 +41,7 @@ class BaseField(object):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
-        :param name: Depreciated - use db_field
+        :param name: Deprecated - use db_field
         :param required: If the field is required. Whether it has to have a
             value or not. Defaults to False.
         :param default: (optional) The default value for this field if no value
@@ -80,6 +80,17 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
+
+        # Validate the db_field
+        if isinstance(self.db_field, six.string_types) and (
+            '.' in self.db_field or
+            '\0' in self.db_field or
+            self.db_field.startswith('$')
+        ):
+            raise ValueError(
+                'field names cannot contain dots (".") or null characters '
+                '("\\0"), and they must not start with a dollar sign ("$").'
+            )
 
         # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)) & set(kwargs)

@@ -306,6 +306,24 @@ class FieldTest(unittest.TestCase):
         person.id = '497ce96f395f2f052a494fd4'
         person.validate()
 
+    def test_db_field_validation(self):
+        """Ensure that db_field doesn't accept invalid values."""
+
+        # dot in the name
+        with self.assertRaises(ValueError):
+            class User(Document):
+                name = StringField(db_field='user.name')
+
+        # name starting with $
+        with self.assertRaises(ValueError):
+            class User(Document):
+                name = StringField(db_field='$name')
+
+        # name containing a null character
+        with self.assertRaises(ValueError):
+            class User(Document):
+                name = StringField(db_field='name\0')
+
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields.
         """
@@ -3973,29 +3991,24 @@ class FieldTest(unittest.TestCase):
         """Tests if a `FieldDoesNotExist` exception is raised when trying to
         instanciate a document with a field that's not defined.
         """
-
         class Doc(Document):
-            foo = StringField(db_field='f')
+            foo = StringField()
 
-        def test():
+        with self.assertRaises(FieldDoesNotExist):
             Doc(bar='test')
 
-        self.assertRaises(FieldDoesNotExist, test)
 
     def test_undefined_field_exception_with_strict(self):
         """Tests if a `FieldDoesNotExist` exception is raised when trying to
         instanciate a document with a field that's not defined,
         even when strict is set to False.
         """
-
         class Doc(Document):
-            foo = StringField(db_field='f')
+            foo = StringField()
             meta = {'strict': False}
 
-        def test():
+        with self.assertRaises(FieldDoesNotExist):
             Doc(bar='test')
-
-        self.assertRaises(FieldDoesNotExist, test)
 
     def test_long_field_is_considered_as_int64(self):
         """
