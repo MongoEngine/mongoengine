@@ -302,8 +302,12 @@ class ConnectionTest(unittest.TestCase):
         """
         conn1 = connect(alias='conn1', host='mongodb://localhost/testing?w=1&j=true')
         conn2 = connect('testing', alias='conn2', w=1, j=True)
-        self.assertEqual(conn1.write_concern.document, {'j': True, 'w': 1})
-        self.assertEqual(conn2.write_concern.document, {'j': True, 'w': 1})
+        if IS_PYMONGO_3:
+            self.assertEqual(conn1.write_concern.document, {'w': 1, 'j': True})
+            self.assertEqual(conn2.write_concern.document, {'w': 1, 'j': True})
+        else:
+            self.assertEqual(dict(conn1.write_concern), {'w': 1, 'j': True})
+            self.assertEqual(dict(conn2.write_concern), {'w': 1, 'j': True})
 
     def test_datetime(self):
         connect('mongoenginetest', tz_aware=True)
