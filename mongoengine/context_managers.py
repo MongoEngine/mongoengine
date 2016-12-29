@@ -6,7 +6,6 @@ __all__ = ('no_dereference',
            'no_sub_classes', 'query_counter')
 
 
-
 class no_dereference(object):
     """no_dereference context manager.
 

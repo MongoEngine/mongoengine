@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from mongoengine.connection import get_db, get_connection
+from mongoengine.connection import get_connection, get_db
 
 __all__ = ['InvalidCollectionError', 'connection_manager']
 
@@ -58,8 +58,10 @@ class ConnectionManager(object):
                 # The collection already exists, check if its capped
                 # options match the specified capped options
                 options = _collection.options()
-                if options.get('max') != max_documents or \
-                                options.get('size') != max_size:
+                if (
+                    options.get('max') != max_documents or
+                    options.get('size') != max_size
+                ):
                     msg = (('Cannot create collection "%s" as a capped '
                             'collection as it already exists')
                            % _collection)
@@ -103,5 +105,6 @@ class ConnectionManager(object):
 
     def reset(self):
         self.connections_registry = defaultdict(dict)
+
 
 connection_manager = ConnectionManager()
