@@ -356,7 +356,7 @@ class GeoFieldTest(unittest.TestCase):
         self.assertEqual([], Log._geo_indices())
 
         Log.drop_collection()
-        Log.ensure_indexes()
+        Log.ensure_indexes(Log._get_collection())
 
         info = Log._get_collection().index_information()
         self.assertEqual(info["location_2dsphere_datetime_1"]["key"],
@@ -376,7 +376,7 @@ class GeoFieldTest(unittest.TestCase):
         self.assertEqual([], Log._geo_indices())
 
         Log.drop_collection()
-        Log.ensure_indexes()
+        Log.ensure_indexes(Log._get_collection())
 
         info = Log._get_collection().index_information()
         self.assertEqual(info["location_2dsphere_datetime_1"]["key"],

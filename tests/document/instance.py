@@ -19,7 +19,7 @@ from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError, NotUniqueError,
                                 FieldDoesNotExist, SaveConditionError)
 from mongoengine.queryset import NULLIFY, Q
-from mongoengine.context_managers import switch_db, query_counter
+from mongoengine.context_managers import query_counter
 from mongoengine import signals
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
@@ -104,6 +104,8 @@ class InstanceTest(unittest.TestCase):
             meta = {
                 'max_documents': 11,
             }
+
+        connection_manager.reset()
 
         # Accessing Document.objects creates the collection
         with self.assertRaises(InvalidCollectionError):
@@ -1333,6 +1335,8 @@ class InstanceTest(unittest.TestCase):
     def test_update_unique_field(self):
         class Doc(Document):
             name = StringField(unique=True)
+
+        connection_manager.reset()
 
         doc1 = Doc(name="first").save()
         doc2 = Doc(name="second").save()
@@ -2624,56 +2628,6 @@ class InstanceTest(unittest.TestCase):
                                                        this.name == '2';}"""
                                     })]),
                          "1,2")
-
-    def test_switch_db_instance(self):
-        register_connection('testdb-1', 'mongoenginetest2')
-
-        class Group(Document):
-            name = StringField()
-
-        Group.drop_collection()
-        with switch_db(Group, 'testdb-1') as Group:
-            Group.drop_collection()
-
-        Group(name="hello - default").save()
-        self.assertEqual(1, Group.objects.count())
-
-        group = Group.objects.first()
-        group.switch_db('testdb-1')
-        group.name = "hello - testdb!"
-        group.save()
-
-        with switch_db(Group, 'testdb-1') as Group:
-            group = Group.objects.first()
-            self.assertEqual("hello - testdb!", group.name)
-
-        group = Group.objects.first()
-        self.assertEqual("hello - default", group.name)
-
-        # Slightly contrived now - perform an update
-        # Only works as they have the same object_id
-        group.switch_db('testdb-1')
-        group.update(set__name="hello - update")
-
-        with switch_db(Group, 'testdb-1') as Group:
-            group = Group.objects.first()
-            self.assertEqual("hello - update", group.name)
-            Group.drop_collection()
-            self.assertEqual(0, Group.objects.count())
-
-        group = Group.objects.first()
-        self.assertEqual("hello - default", group.name)
-
-        # Totally contrived now - perform a delete
-        # Only works as they have the same object_id
-        group.switch_db('testdb-1')
-        group.delete()
-
-        with switch_db(Group, 'testdb-1') as Group:
-            self.assertEqual(0, Group.objects.count())
-
-        group = Group.objects.first()
-        self.assertEqual("hello - default", group.name)
 
     def test_load_undefined_fields(self):
         class User(Document):

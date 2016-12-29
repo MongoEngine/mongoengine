@@ -18,7 +18,6 @@ from mongoengine import signals
 from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
-from mongoengine.context_managers import switch_db
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -448,7 +447,7 @@ class BaseQuerySet(object):
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
                 # Handle recursive reference
-                if doc._collection == document_cls._collection:
+                if doc._get_collection() == document_cls._get_collection():
                     for ref in queryset:
                         cascade_refs.add(ref.id)
                 refs = document_cls.objects(**{field_name + '__in': self,
@@ -703,8 +702,7 @@ class BaseQuerySet(object):
         .. versionadded:: 0.9
         """
 
-        with switch_db(self._document, alias) as cls:
-            collection = cls._get_collection()
+        collection = self._document._get_collection(alias=alias)
 
         return self.clone_into(self.__class__(self._document, collection))
 

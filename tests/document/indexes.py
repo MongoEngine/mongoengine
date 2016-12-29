@@ -31,7 +31,7 @@ class IndexesTest(unittest.TestCase):
         self.Person = Person
 
     def tearDown(self):
-        self.connection.drop_database(self.db)
+        connection_manager.drop_database(doc_cls=self.Person)
 
     def test_indexes_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
@@ -64,7 +64,7 @@ class IndexesTest(unittest.TestCase):
                           {'fields': [('category', 1), ('addDate', -1)]}]
         self.assertEqual(expected_specs, BlogPost._meta['index_specs'])
 
-        BlogPost.ensure_indexes()
+        BlogPost.ensure_indexes(BlogPost._get_collection())
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         self.assertEqual(len(info), 4)
@@ -93,7 +93,7 @@ class IndexesTest(unittest.TestCase):
                                       ('addDate', -1)]}]
         self.assertEqual(expected_specs, BlogPost._meta['index_specs'])
 
-        BlogPost.ensure_indexes()
+        BlogPost.ensure_indexes(BlogPost._get_collection())
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         # NB: there is no index on _cls by itself, since
@@ -113,7 +113,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        ExtendedBlogPost.ensure_indexes()
+        ExtendedBlogPost.ensure_indexes(ExtendedBlogPost._get_collection())
         info = ExtendedBlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         for expected in expected_specs:
@@ -167,7 +167,7 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual([('title', 1)], A._meta['index_specs'][0]['fields'])
         A._get_collection().drop_indexes()
-        A.ensure_indexes()
+        A.ensure_indexes(A._get_collection())
         info = A._get_collection().index_information()
         self.assertEqual(len(info.keys()), 2)
 
@@ -195,7 +195,7 @@ class IndexesTest(unittest.TestCase):
                          [{'fields': [('keywords', 1)]}])
 
         # Force index creation
-        MyDoc.ensure_indexes()
+        MyDoc.ensure_indexes(MyDoc._get_collection())
 
         self.assertEqual(MyDoc._meta['index_specs'],
                         [{'fields': [('keywords', 1)]}])
@@ -243,7 +243,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual([{'fields': [('location.point', '2d')]}],
                          Place._meta['index_specs'])
 
-        Place.ensure_indexes()
+        Place.ensure_indexes(Place._get_collection())
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', '2d')] in info)
@@ -266,7 +266,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual([{'fields': [('current.location.point', '2d')]}],
                          Place._meta['index_specs'])
 
-        Place.ensure_indexes()
+        Place.ensure_indexes(Place._get_collection())
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('current.location.point', '2d')] in info)
@@ -286,7 +286,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual([{'fields': [('location.point', '2dsphere')]}],
                          Place._meta['index_specs'])
 
-        Place.ensure_indexes()
+        Place.ensure_indexes(Place._get_collection())
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', '2dsphere')] in info)
@@ -308,7 +308,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual([{'fields': [('location.point', 'geoHaystack'), ('name', 1)]}],
                          Place._meta['index_specs'])
 
-        Place.ensure_indexes()
+        Place.ensure_indexes(Place._get_collection())
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('location.point', 'geoHaystack')] in info)
@@ -409,7 +409,7 @@ class IndexesTest(unittest.TestCase):
         info = User.objects._collection.index_information()
         self.assertEqual(info.keys(), ['_id_'])
 
-        User.ensure_indexes()
+        User.ensure_indexes(User._get_collection())
         info = User.objects._collection.index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1_user_guid_1', '_id_'])
         User.drop_collection()
@@ -472,7 +472,7 @@ class IndexesTest(unittest.TestCase):
             recursive_obj = EmbeddedDocumentField(RecursiveObject)
             meta = {'allow_inheritance': True}
 
-        RecursiveDocument.ensure_indexes()
+        RecursiveDocument.ensure_indexes(RecursiveDocument._get_collection())
         info = RecursiveDocument._get_collection().index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1', '_id_'])
 
@@ -806,7 +806,6 @@ class IndexesTest(unittest.TestCase):
                              'unique': True}]}
         except UnboundLocalError:
             self.fail('Unbound local error at index + pk definition')
-
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         index_item = [('_id', 1), ('comments.comment_id', 1)]
@@ -924,8 +923,8 @@ class IndexesTest(unittest.TestCase):
             post1 = BlogPost(title='test1', slug='test')
             post1.save()
 
-            # Drop the Database
-            connection.drop_database('tempdatabase')
+            # Drop the collection
+            BlogPost.drop_collection()
 
             # Re-create Post #1
             post1 = BlogPost(title='test1', slug='test')
@@ -969,8 +968,8 @@ class IndexesTest(unittest.TestCase):
             }
 
         TestDoc.drop_collection()
-        TestDoc.ensure_indexes()
-        TestChildDoc.ensure_indexes()
+        TestDoc.ensure_indexes(TestDoc._get_collection())
+        TestChildDoc.ensure_indexes(TestChildDoc._get_collection())
 
         index_info = TestDoc._get_collection().index_information()
         for key in index_info:
@@ -1017,7 +1016,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         TestDoc.drop_collection()
-        TestDoc.ensure_indexes()
+        TestDoc.ensure_indexes(TestDoc._get_collection())
 
         index_info = TestDoc._get_collection().index_information()
         self.assertTrue('shard_1_1__cls_1_txt_1_1' in index_info)

@@ -17,7 +17,7 @@ class FindAndModifyTest(unittest.TestCase):
         Doc.drop_collection()
 
     def assertDbEqual(self, docs):
-        self.assertEqual(list(Doc._collection.find().sort("id")), docs)
+        self.assertEqual(list(Doc._get_collection().find().sort("id")), docs)
 
     def test_modify(self):
         Doc(id=0, value=0).save()

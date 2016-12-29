@@ -13,7 +13,7 @@ import six
 
 from mongoengine import *
 from mongoengine.connection import get_connection, get_db
-from mongoengine.context_managers import query_counter, switch_db
+from mongoengine.context_managers import query_counter
 from mongoengine.errors import InvalidQueryError
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
@@ -810,7 +810,7 @@ class QuerySetTest(unittest.TestCase):
                 self.assertEqual(q, 99)
 
         Blog.drop_collection()
-        Blog.ensure_indexes()
+        Blog.ensure_indexes(Blog._get_collection())
 
         with query_counter() as q:
             self.assertEqual(q, 0)
@@ -3714,15 +3714,14 @@ class QuerySetTest(unittest.TestCase):
             n = IntField()
 
         Number2.drop_collection()
-        with switch_db(Number2, 'test2') as Number2:
-            Number2.drop_collection()
+        Number2.drop_collection(alias='test2')
 
         for i in range(1, 10):
             t = Number2(n=i)
-            t.switch_db('test2')
-            t.save()
+            t.save(alias='test2')
 
         self.assertEqual(len(Number2.objects.using('test2')), 9)
+        self.assertEqual(len(Number2.objects()), 0)
 
     def test_unset_reference(self):
         class Comment(Document):
@@ -4184,7 +4183,7 @@ class QuerySetTest(unittest.TestCase):
 
         Test.drop_collection()
         Test.objects(test='foo').update_one(upsert=True, set__test='foo')
-        self.assertFalse('_cls' in Test._collection.find_one())
+        self.assertFalse('_cls' in Test._get_collection().find_one())
 
         class Test(Document):
             meta = {'allow_inheritance': True}
@@ -4193,7 +4192,7 @@ class QuerySetTest(unittest.TestCase):
         Test.drop_collection()
 
         Test.objects(test='foo').update_one(upsert=True, set__test='foo')
-        self.assertTrue('_cls' in Test._collection.find_one())
+        self.assertTrue('_cls' in Test._get_collection().find_one())
 
     def test_update_upsert_looks_like_a_digit(self):
         class MyDoc(DynamicDocument):

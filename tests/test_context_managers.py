@@ -2,64 +2,11 @@ import unittest
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.context_managers import (switch_db, switch_collection,
-                                          no_sub_classes, no_dereference,
-                                          query_counter)
+from mongoengine.context_managers import (
+    no_sub_classes, no_dereference, query_counter)
 
 
 class ContextManagersTest(unittest.TestCase):
-
-    def test_switch_db_context_manager(self):
-        connect('mongoenginetest')
-        register_connection('testdb-1', 'mongoenginetest2')
-
-        class Group(Document):
-            name = StringField()
-
-        Group.drop_collection()
-
-        Group(name="hello - default").save()
-        self.assertEqual(1, Group.objects.count())
-
-        with switch_db(Group, 'testdb-1') as Group:
-
-            self.assertEqual(0, Group.objects.count())
-
-            Group(name="hello").save()
-
-            self.assertEqual(1, Group.objects.count())
-
-            Group.drop_collection()
-            self.assertEqual(0, Group.objects.count())
-
-        self.assertEqual(1, Group.objects.count())
-
-    def test_switch_collection_context_manager(self):
-        connect('mongoenginetest')
-        register_connection('testdb-1', 'mongoenginetest2')
-
-        class Group(Document):
-            name = StringField()
-
-        Group.drop_collection()
-        with switch_collection(Group, 'group1') as Group:
-            Group.drop_collection()
-
-        Group(name="hello - group").save()
-        self.assertEqual(1, Group.objects.count())
-
-        with switch_collection(Group, 'group1') as Group:
-
-            self.assertEqual(0, Group.objects.count())
-
-            Group(name="hello - group1").save()
-
-            self.assertEqual(1, Group.objects.count())
-
-            Group.drop_collection()
-            self.assertEqual(0, Group.objects.count())
-
-        self.assertEqual(1, Group.objects.count())
 
     def test_no_dereference_context_manager_object_id(self):
         """Ensure that DBRef items in ListFields aren't dereferenced.
