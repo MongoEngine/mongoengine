@@ -215,7 +215,7 @@ class InheritanceTest(unittest.TestCase):
         B.drop_collection()
         C.drop_collection()
 
-        C.ensure_indexes()
+        C.ensure_indexes(C._get_collection())
 
         self.assertEqual(
             sorted([idx['key'] for idx in C._get_collection().index_information().values()]),

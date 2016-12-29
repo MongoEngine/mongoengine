@@ -16,6 +16,7 @@ from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              SemiStrictDict, StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
+from mongoengine.connection import DEFAULT_CONNECTION_NAME
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
 
@@ -666,6 +667,10 @@ class BaseDocument(object):
         class.
         """
         return cls._meta.get('collection', None)
+
+    @classmethod
+    def _get_db_alias(cls):
+        return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):

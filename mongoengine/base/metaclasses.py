@@ -149,9 +149,6 @@ class DocumentMetaclass(type):
         (Document, EmbeddedDocument, DictField,
          CachedReferenceField) = cls._import_classes()
 
-        if issubclass(new_class, Document):
-            new_class._collection = None
-
         # Add class to the _document_registry
         _document_registry[new_class._class_name] = new_class
 

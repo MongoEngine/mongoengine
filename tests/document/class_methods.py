@@ -100,7 +100,7 @@ class ClassMethodsTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        BlogPost.ensure_indexes()
+        BlogPost.ensure_indexes(BlogPost._get_collection())
         self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
 
         BlogPost.ensure_index(['author', 'description'])
@@ -137,8 +137,8 @@ class ClassMethodsTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        BlogPost.ensure_indexes()
-        BlogPostWithTags.ensure_indexes()
+        BlogPost.ensure_indexes(BlogPost._get_collection())
+        BlogPostWithTags.ensure_indexes(BlogPost._get_collection())
         self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
 
         BlogPostWithTags.ensure_index(['author', 'tag_list'])
@@ -179,9 +179,9 @@ class ClassMethodsTest(unittest.TestCase):
                 'indexes': [('author', 'custom')]
             }
 
-        BlogPost.ensure_indexes()
-        BlogPostWithTags.ensure_indexes()
-        BlogPostWithCustomField.ensure_indexes()
+        BlogPost.ensure_indexes(BlogPost._get_collection())
+        BlogPostWithTags.ensure_indexes(BlogPost._get_collection())
+        BlogPostWithCustomField.ensure_indexes(BlogPost._get_collection())
 
         self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
         self.assertEqual(BlogPostWithTags.compare_indexes(), { 'missing': [], 'extra': [] })
@@ -217,9 +217,9 @@ class ClassMethodsTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        BlogPost.ensure_indexes()
-        BlogPostWithTags.ensure_indexes()
-        BlogPostWithTagsAndExtraText.ensure_indexes()
+        BlogPost.ensure_indexes(BlogPost._get_collection())
+        BlogPostWithTags.ensure_indexes(BlogPost._get_collection())
+        BlogPostWithTagsAndExtraText.ensure_indexes(BlogPost._get_collection())
 
         self.assertEqual(BlogPost.list_indexes(),
                          BlogPostWithTags.list_indexes())
