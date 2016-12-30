@@ -344,8 +344,8 @@ class Document(BaseDocument):
                                                        write_concern)
 
             if cascade is None:
-                cascade = self._meta.get(
-                    'cascade', False) or cascade_kwargs is not None
+                cascade = (self._meta.get('cascade', False) or
+                           cascade_kwargs is not None)
 
             if cascade:
                 kwargs = {
@@ -358,6 +358,7 @@ class Document(BaseDocument):
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
                 self.cascade_save(**kwargs)
+
         except pymongo.errors.DuplicateKeyError as err:
             message = u'Tried to save duplicate unique keys (%s)'
             raise NotUniqueError(message % six.text_type(err))
@@ -416,10 +417,9 @@ class Document(BaseDocument):
         object_id = doc['_id']
         created = False
 
+        select_dict = {}
         if save_condition is not None:
             select_dict = transform.query(self.__class__, **save_condition)
-        else:
-            select_dict = {}
 
         select_dict['_id'] = object_id
 
