@@ -433,16 +433,8 @@ class Document(BaseDocument):
                 val = val[ak]
             select_dict['.'.join(actual_key)] = val
 
-        def _is_new_object(last_error):
-            if last_error is not None:
-                updated = last_error.get('updatedExisting')
-                if updated is not None:
-                    return not updated
-            return created
-
-        update_query = {}
-
         updates, removals = self._delta()
+        update_query = {}
         if updates:
             update_query['$set'] = updates
         if removals:
@@ -454,7 +446,13 @@ class Document(BaseDocument):
             if not upsert and last_error['n'] == 0:
                 raise SaveConditionError('Race condition preventing'
                                          ' document update detected')
-            created = _is_new_object(last_error)
+            if last_error is not None:
+                updated_existing = last_error.get('updatedExisting')
+                if updated_existing is False:
+                    created = True
+                    # !!! This is bad, means we accidentally created a new,
+                    # potentially corrupted document. See
+                    # https://github.com/MongoEngine/mongoengine/issues/564
 
         return object_id, created
 
