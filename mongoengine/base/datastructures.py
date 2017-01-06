@@ -429,7 +429,7 @@ class StrictDict(object):
     def __eq__(self, other):
         return self.items() == other.items()
 
-    def __neq__(self, other):
+    def __ne__(self, other):
         return self.items() != other.items()
 
     @classmethod
