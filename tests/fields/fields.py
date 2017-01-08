@@ -1985,7 +1985,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(content, User.objects.first().groups[0].content)
 
     def test_reference_miss(self):
-        """Ensure an exception is raised when dereferencing unknow document
+        """Ensure an exception is raised when dereferencing unknown document
         """
 
         class Foo(Document):
