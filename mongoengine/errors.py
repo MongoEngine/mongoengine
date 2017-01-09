@@ -51,7 +51,7 @@ class FieldDoesNotExist(Exception):
 
     To avoid this behavior on data loading,
     you should set the :attr:`strict` to ``False``
-    in the :attr:`meta` dictionnary.
+    in the :attr:`meta` dictionary.
     """
 
 
