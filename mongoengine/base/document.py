@@ -72,7 +72,10 @@ class BaseDocument(object):
 
         # Check if there are undefined fields supplied to the constructor,
         # if so raise an Exception.
-        if not self._dynamic and (self._meta.get('strict', True) or _created):
+        
+        # Commenting out the missing fields check. [Prasanna]
+        #if not self._dynamic and (self._meta.get('strict', True) or _created):
+        if False:
             for var in values.keys():
                 if var not in self._fields.keys() + ['id', 'pk', '_cls', '_text_score']:
                     msg = (
