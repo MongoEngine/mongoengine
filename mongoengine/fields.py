@@ -68,9 +68,9 @@ class StringField(BaseField):
 
     def to_python(self, value):
         if isinstance(value, unicode):
-            return value
+            return value.strip()
         try:
-            value = value.decode('utf-8')
+            value = value.decode('utf-8').strip()
         except Exception:
             pass
         return value
