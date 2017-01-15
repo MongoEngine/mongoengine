@@ -766,8 +766,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(record.embed.field, 2)
 
     def test_bulk_insert(self):
-        """Ensure that bulk insert works
-        """
+        """Ensure that bulk insert works."""
 
         class Comment(EmbeddedDocument):
             name = StringField()
@@ -885,9 +884,37 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Blog.objects.count(), 2)
 
-        Blog.objects.insert([blog2, blog3],
-                            write_concern={"w": 0, 'continue_on_error': True})
-        self.assertEqual(Blog.objects.count(), 3)
+    def test_bulk_insert_continue_on_error(self):
+        """Ensure that bulk insert works with the continue_on_error option."""
+
+        class Person(Document):
+            email = EmailField(unique=True)
+
+        Person.drop_collection()
+
+        Person.objects.insert([
+            Person(email='alice@example.com'),
+            Person(email='bob@example.com')
+        ])
+        self.assertEqual(Person.objects.count(), 2)
+
+        new_docs = [
+            Person(email='alice@example.com'),  # dupe
+            Person(email='bob@example.com'),  # dupe
+            Person(email='steve@example.com')  # new one
+        ]
+
+        # By default inserting dupe docs should fail and no new docs should
+        # be inserted.
+        with self.assertRaises(NotUniqueError):
+            Person.objects.insert(new_docs)
+        self.assertEqual(Person.objects.count(), 2)
+
+        # With continue_on_error, new doc should be inserted, even though we
+        # still get a NotUniqueError caused by the other 2 dupes.
+        with self.assertRaises(NotUniqueError):
+            Person.objects.insert(new_docs, continue_on_error=True)
+        self.assertEqual(Person.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):
 

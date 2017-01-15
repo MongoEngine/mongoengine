@@ -296,22 +296,25 @@ class BaseQuerySet(object):
             result = None
         return result
 
-    def insert(self, doc_or_docs, load_bulk=True,
-               write_concern=None, signal_kwargs=None):
+    def insert(self, doc_or_docs, load_bulk=True, write_concern=None,
+               signal_kwargs=None, continue_on_error=None):
         """bulk insert documents
 
         :param doc_or_docs: a document or list of documents to be inserted
         :param load_bulk (optional): If True returns the list of document
             instances
-        :param write_concern: Extra keyword arguments are passed down to
-                :meth:`~pymongo.collection.Collection.insert`
-                which will be used as options for the resultant
-                ``getLastError`` command.  For example,
-                ``insert(..., {w: 2, fsync: True})`` will wait until at least
-                two servers have recorded the write and will force an fsync on
-                each server being written to.
+        :param write_concern: Optional keyword argument passed down to
+                :meth:`~pymongo.collection.Collection.insert`, representing
+                the write concern. For example,
+                ``insert(..., write_concert={w: 2, fsync: True})`` will
+                wait until at least two servers have recorded the write
+                and will force an fsync on each server being written to.
         :parm signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
+        :param continue_on_error: Optional keyword argument passed down to
+                :meth:`~pymongo.collection.Collection.insert`. Defines what
+                to do when a document cannot be inserted (e.g. due to
+                duplicate IDs). Read PyMongo's docs for more info.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
@@ -322,12 +325,10 @@ class BaseQuerySet(object):
         """
         Document = _import_class('Document')
 
-        if write_concern is None:
-            write_concern = {}
-
+        # Determine if we're inserting one doc or more
         docs = doc_or_docs
         return_one = False
-        if isinstance(docs, Document) or issubclass(docs.__class__, Document):
+        if isinstance(docs, Document):
             return_one = True
             docs = [docs]
 
@@ -344,9 +345,16 @@ class BaseQuerySet(object):
         signals.pre_bulk_insert.send(self._document,
                                      documents=docs, **signal_kwargs)
 
+        # Resolve optional insert kwargs
+        insert_kwargs = {}
+        if write_concern is not None:
+            insert_kwargs.update(write_concern)
+        if continue_on_error is not None:
+            insert_kwargs['continue_on_error'] = continue_on_error
+
         raw = [doc.to_mongo() for doc in docs]
         try:
-            ids = self._collection.insert(raw, **write_concern)
+            ids = self._collection.insert(raw, **insert_kwargs)
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % six.text_type(err))
