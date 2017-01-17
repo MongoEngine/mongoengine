@@ -35,16 +35,20 @@ setup.py install``.
 
 Dependencies
 ============
-- pymongo>=2.7.1
-- sphinx (optional - for documentation generation)
+All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
 
-Optional Dependencies
----------------------
-- **Image Fields**: Pillow>=2.0.0
+Bare minimum you need to use this package:
+- pymongo>=2.7.1
+- six>=1.10.0
+
+If you utilize a ``DateTimeField`` and want to use a more flexible date parser:
 - dateutil>=2.1.0
 
-.. note
-   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: PyMongo 3.0.1
+If you to utilize an ``ImageField`` or ``ImageGridFsProxy``:
+- Pillow>=2.0.0
+
+If you want to generate the documentation (e.g. to contribute to it):
+- sphinx
 
 Examples
 ========
