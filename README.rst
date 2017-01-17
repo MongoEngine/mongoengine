@@ -35,18 +35,16 @@ setup.py install``.
 
 Dependencies
 ============
-All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
-
-Bare minimum you need to use this package:
+All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_. At the very least, you'll need these two packages to use MongoEngine:
 
 - pymongo>=2.7.1
 - six>=1.10.0
 
-If you utilize a ``DateTimeField`` and want to use a more flexible date parser:
+If you utilize a ``DateTimeField`` and you want to use a more flexible date parser:
 
 - dateutil>=2.1.0
 
-If you to utilize an ``ImageField`` or ``ImageGridFsProxy``:
+If you also utilize an ``ImageField`` or ``ImageGridFsProxy``:
 
 - Pillow>=2.0.0
 
