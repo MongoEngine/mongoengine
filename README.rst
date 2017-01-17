@@ -40,11 +40,11 @@ All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`
 - pymongo>=2.7.1
 - six>=1.10.0
 
-If you utilize a ``DateTimeField`` and you want to use a more flexible date parser:
+If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
 
 - dateutil>=2.1.0
 
-If you also utilize an ``ImageField`` or ``ImageGridFsProxy``:
+If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
 
 - Pillow>=2.0.0
 
