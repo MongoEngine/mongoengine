@@ -702,13 +702,13 @@ class BaseDocument(object):
             field._auto_dereference = _auto_dereference
             if field.db_field in data:
                 value = data[field.db_field]
-                try:
-                    data[field_name] = (value if value is None
+                ## try:
+                data[field_name] = (value if value is None
                                         else field.to_python(value))
-                    if field_name != field.db_field:
+                if field_name != field.db_field:
                         del data[field.db_field]
-                except (AttributeError, ValueError) as e:
-                    errors_dict[field_name] = e
+                ## except (AttributeError, ValueError) as e:
+                ##    errors_dict[field_name] = e
 
         if errors_dict:
             errors = '\n'.join(['%s - %s' % (k, v)
@@ -720,6 +720,8 @@ class BaseDocument(object):
         # In STRICT documents, remove any keys that aren't in cls._fields
         if cls.STRICT:
             data = {k: v for k, v in data.iteritems() if k in cls._fields}
+
+        print("raw_data", data)
 
         obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields
