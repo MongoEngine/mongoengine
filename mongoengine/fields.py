@@ -559,10 +559,10 @@ class EmbeddedDocumentField(BaseField):
         """
         # handle "None" first (None = no data to post; in a list this creates a null)
         if value is None:
-            if self.required and not getattr(self, '_auto_gen', False):
+            if self.required:
                 raise ValidationError('Field is required', field_name=self.name)
             return
-        # otherwise, it should be an embeeded document
+        # otherwise, it should be an embedded document
         # Using isinstance also works for subclasses of self.document
         if not isinstance(value, self.document_type):
             self.error('Invalid embedded document instance provided to an '
