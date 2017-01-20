@@ -2061,17 +2061,3 @@ class MultiPolygonField(GeoJsonBaseField):
     .. versionadded:: 0.9
     """
     _type = 'MultiPolygon'
-
-
-class MissingType(object):
-    __slots__ = () # save a few bytes
-
-    def __repr__(self):
-        return 'Missing'
-
-    def __bool__(self):
-        return False
-
-    __nonzero__=__bool__
-
-Missing = MissingType()
