@@ -891,6 +891,8 @@ class Document(BaseDocument):
         # updates behave like set instead of find (None)... this is relevant for
         # setting list values since you're setting the value of the whole list,
         # not an element inside the list (like in find)
+        is_scatter_gather = cls.is_scatter_gather(spec)
+
         document = cls._transform_value(document, cls, op='$set')
         spec = cls._transform_value(spec, cls)
 
@@ -922,9 +924,9 @@ class Document(BaseDocument):
 
             raise ValueError("Cannot do empty specs")
 
+
         spec = cls._update_spec(spec, **kwargs)
 
-        is_scatter_gather = cls.is_scatter_gather(spec)
         set_comment = cls.attach_trace(
             MongoComment.get_query_comment(), is_scatter_gather)
 
@@ -948,7 +950,7 @@ class Document(BaseDocument):
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
-        
+
         is_scatter_gather = cls.is_scatter_gather(spec)
         set_comment = cls.attach_trace(
             MongoComment.get_query_comment(), is_scatter_gather)
