@@ -756,6 +756,7 @@ class BaseDocument(object):
         unique_indices = cls._unique_with_indexes()
         index_specs = [cls._build_index_spec(spec)
                        for spec in meta_indexes]
+        reference_indices = cls._build_reference_indices()
 
         def merge_index_specs(index_specs, indices):
             if not indices:
@@ -773,7 +774,30 @@ class BaseDocument(object):
 
         index_specs = merge_index_specs(index_specs, geo_indices)
         index_specs = merge_index_specs(index_specs, unique_indices)
+        index_specs = merge_index_specs(index_specs, reference_indices)
+        index_specs = [cls._rippling_process_index_spec(spec) for spec in index_specs]
+        # Compact.
+        index_specs = [spec for spec in index_specs if spec]
         return index_specs
+    
+    @classmethod
+    def _build_reference_indices(cls):
+        res = []
+        for name, field in cls._fields.iteritems():
+            if 'fields.ReferenceField' in str(field):
+                res.append({ 'fields': [(name, 1)] })
+        return res
+        
+    @classmethod
+    def _rippling_process_index_spec(cls, spec):
+        # Remove `company` for spec['fields']
+        spec['fields'] = [field for field in spec['fields'] if field[0] != 'company']
+        if not spec['fields']:
+            return None
+        # Add `company` forcibly to the front.
+        if cls._fields.get('company'):
+            spec['fields'].insert(0, ('company', 1))
+        return spec
 
     @classmethod
     def _build_index_spec(cls, spec):
