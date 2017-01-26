@@ -751,35 +751,28 @@ class BaseDocument(object):
     def _build_index_specs(cls, meta_indexes):
         """Generate and merge the full index specs
         """
-
         geo_indices = cls._geo_indices()
         unique_indices = cls._unique_with_indexes()
-        index_specs = [cls._build_index_spec(spec)
+        base_index_specs = [cls._build_index_spec(spec)
                        for spec in meta_indexes]
         reference_indices = cls._build_reference_indices()
 
-        def merge_index_specs(index_specs, indices):
-            if not indices:
-                return index_specs
-
-            spec_fields = [v['fields']
-                           for k, v in enumerate(index_specs)]
-            # Merge unique_indexes with existing specs
-            for k, v in enumerate(indices):
-                if v['fields'] in spec_fields:
-                    index_specs[spec_fields.index(v['fields'])].update(v)
+        # Merge all the indices, so that uniques dont make new indexes.
+        res_index_specs = []
+        spec_fields = []
+        for index_specs in [base_index_specs, reference_indices, geo_indices, unique_indices]:
+            for index_spec in index_specs:
+                index_spec = cls._rippling_process_index_spec(index_spec)
+                if not index_spec:
+                    continue
+                fields = index_spec['fields']
+                if fields in spec_fields:
+                    res_index_specs[spec_fields.index(fields)].update(index_spec)
                 else:
-                    index_specs.append(v)
-            return index_specs
-        
-        index_specs = merge_index_specs(index_specs, reference_indices)
-        index_specs = merge_index_specs(index_specs, geo_indices)
-        index_specs = merge_index_specs(index_specs, unique_indices)
-        index_specs = [cls._rippling_process_index_spec(spec) for spec in index_specs]
-        
-        # Compact.
-        index_specs = [spec for spec in index_specs if spec]
-        return index_specs
+                    res_index_specs.append(index_spec)
+                    spec_fields.append(fields)
+            
+        return res_index_specs
     
     @classmethod
     def _build_reference_indices(cls):
