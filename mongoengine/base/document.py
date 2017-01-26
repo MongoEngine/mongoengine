@@ -771,11 +771,12 @@ class BaseDocument(object):
                 else:
                     index_specs.append(v)
             return index_specs
-
+        
+        index_specs = merge_index_specs(index_specs, reference_indices)
         index_specs = merge_index_specs(index_specs, geo_indices)
         index_specs = merge_index_specs(index_specs, unique_indices)
-        index_specs = merge_index_specs(index_specs, reference_indices)
         index_specs = [cls._rippling_process_index_spec(spec) for spec in index_specs]
+        
         # Compact.
         index_specs = [spec for spec in index_specs if spec]
         return index_specs
