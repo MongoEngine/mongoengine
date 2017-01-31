@@ -30,6 +30,7 @@ OPS_EMAIL = 'ops@wish.com'
 
 high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
 execution_timeout_logger = logging.getLogger('sweeper.prod.mongodb_execution_timeout')
+notimeout_cursor_logger = logging.getLogger('sweeper.prod.mongodb_notimeout')
 
 class BulkOperationError(OperationError):
     pass
@@ -569,6 +570,14 @@ class Document(BaseDocument):
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
                  comment=None, **kwargs):
+        if kwargs.get("timeout") is False and slave_ok != "offline":
+            trace = "".join(traceback.format_stack())
+            notimeout_cursor_logger.info({
+                'trace' : trace,
+            })
+            warnings.warn('Avoid noTimeout cursors on primaries')
+            del kwargs["timeout"]
+
         is_scatter_gather = cls.is_scatter_gather(spec)
 
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
