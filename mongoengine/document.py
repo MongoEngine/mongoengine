@@ -495,10 +495,27 @@ class Document(BaseDocument):
         '''
         is_scatter_gather = False
         try:
-            shard_keys = cls.__dict__['meta']['shard_key'].split(',')
+            shard_keys = cls.__dict__['meta']['shard_key']
+
+            # if shard_keys is false, the collection is not sharded
+            if not shard_keys:
+                return False
+
+            shard_keys = shard_keys.split(',')
             shard_keys = [s.split(':')[0] for s in shard_keys]
+
+            # For custom primary key fields, convert them all to id here
+            id_field = cls._meta['id_field']
             spec_keys = set(spec.keys())
+
+            if id_field in spec_keys:
+                spec_keys.remove(id_field)
+                spec_keys.add('id')
+
             for sk in shard_keys:
+                if sk == id_field:
+                    sk = 'id'
+
                 if sk == 'id' or sk == '_id':
                     if 'id' not in spec_keys and '_id' not in spec_keys:
                         is_scatter_gather = True
@@ -508,7 +525,7 @@ class Document(BaseDocument):
                         is_scatter_gather = True
                         break;
         except Exception:
-            pass
+            logging.exception("Failed to determine if query is scatter_gather")
 
         return is_scatter_gather
 
