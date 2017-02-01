@@ -888,10 +888,6 @@ class ReferenceField(BaseField):
 
         Foo.register_delete_rule(Bar, 'foo', NULLIFY)
 
-    .. note ::
-        `reverse_delete_rule` does not trigger pre / post delete signals to be
-        triggered.
-
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
