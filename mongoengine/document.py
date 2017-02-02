@@ -525,8 +525,8 @@ class Document(BaseDocument):
                     if sk not in spec_keys:
                         is_scatter_gather = True
                         break;
-        except Exception:
-            logging.exception("Failed to determine if query is scatter_gather")
+        except Exception as e:
+            pass
 
         return is_scatter_gather
 
