@@ -106,8 +106,7 @@ class QuerySetTest(unittest.TestCase):
             list(BlogPost.objects(author2__name="test"))
 
     def test_find(self):
-        """Ensure that a query returns a valid set of results.
-        """
+        """Ensure that a query returns a valid set of results."""
         self.Person(name="User A", age=20).save()
         self.Person(name="User B", age=30).save()
 
@@ -134,10 +133,20 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User A')
 
+        # Test limit on an existing queryset
+        people = self.Person.objects
+        self.assertEqual(len(people), 2)
+        self.assertEqual(len(people.limit(1)), 1)
+
         # Test skip
         people = list(self.Person.objects.skip(1))
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
+
+        # Test skip on an existing queryset
+        people = self.Person.objects
+        self.assertEqual(len(people), 2)
+        self.assertEqual(len(people.skip(1)), 1)
 
         person3 = self.Person(name="User C", age=40)
         person3.save()
@@ -159,6 +168,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
+        # Test slice limit and skip on an existing queryset
+        people = self.Person.objects
+        self.assertEqual(len(people), 3)
+        self.assertEqual(people[1:2], 1)
+        self.assertEqual(people[0].name, 'User B')
+
         # Test slice limit and skip cursor reset
         qs = self.Person.objects[1:2]
         # fetch then delete the cursor
@@ -168,6 +183,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
+        # Test empty slice
         people = list(self.Person.objects[1:1])
         self.assertEqual(len(people), 0)
 
