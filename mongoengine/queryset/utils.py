@@ -6,7 +6,7 @@ from functools import wraps
 from pymongo.errors import ConnectionFailure
 
 
-def retry_upon_connection_failure(func):
+def _retry_upon_connection_failure(func):
     """
     Decorator to retry operations on connection failures.
     It determines the retry count from the environment variable `MONGOENGINE_RETRY_COUNT`
