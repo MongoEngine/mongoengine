@@ -136,13 +136,15 @@ class QuerySet(BaseQuerySet):
         return self._len
 
     def no_cache(self):
-        """Convert to a non_caching queryset
+        """Convert to a non-caching queryset
 
         .. versionadded:: 0.8.3 Convert to non caching queryset
         """
         if self._result_cache is not None:
             raise OperationError('QuerySet already cached')
-        return self.clone_into(QuerySetNoCache(self._document, self._collection))
+
+        return self._clone_into(QuerySetNoCache(self._document,
+                                                self._collection))
 
 
 class QuerySetNoCache(BaseQuerySet):
@@ -153,7 +155,7 @@ class QuerySetNoCache(BaseQuerySet):
 
         .. versionadded:: 0.8.3 Convert to caching queryset
         """
-        return self.clone_into(QuerySet(self._document, self._collection))
+        return self._clone_into(QuerySet(self._document, self._collection))
 
     def __repr__(self):
         """Provides the string representation of the QuerySet

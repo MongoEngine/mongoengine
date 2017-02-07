@@ -706,23 +706,20 @@ class BaseQuerySet(object):
         with switch_db(self._document, alias) as cls:
             collection = cls._get_collection()
 
-        return self.clone_into(self.__class__(self._document, collection))
+        return self._clone_into(self.__class__(self._document, collection))
 
     def clone(self):
-        """Creates a copy of the current
-          :class:`~mongoengine.queryset.QuerySet`
+        """Create a copy of the current queryset."""
+        return self._clone_into(self.__class__(self._document, self._collection_obj))
 
-        .. versionadded:: 0.5
+    def _clone_into(self, new_qs):
+        """Copy all of the relevant properties of this queryset to
+        a new queryset (which has to be an instance of
+        :class:`~mongoengine.queryset.base.BaseQuerySet`).
         """
-        return self.clone_into(self.__class__(self._document, self._collection_obj))
-
-    def clone_into(self, cls):
-        """Creates a copy of the current
-          :class:`~mongoengine.queryset.base.BaseQuerySet` into another child class
-        """
-        if not isinstance(cls, BaseQuerySet):
+        if not isinstance(new_qs, BaseQuerySet):
             raise OperationError(
-                '%s is not a subclass of BaseQuerySet' % cls.__name__)
+                '%s is not a subclass of BaseQuerySet' % new_qs.__name__)
 
         copy_props = ('_mongo_query', '_initial_query', '_none', '_query_obj',
                       '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
@@ -733,12 +730,12 @@ class BaseQuerySet(object):
 
         for prop in copy_props:
             val = getattr(self, prop)
-            setattr(cls, prop, copy.copy(val))
+            setattr(new_qs, prop, copy.copy(val))
 
         if self._cursor_obj:
-            cls._cursor_obj = self._cursor_obj.clone()
+            new_qs._cursor_obj = self._cursor_obj.clone()
 
-        return cls
+        return new_qs
 
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects or
@@ -760,7 +757,8 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._limit = n if n != 0 else 1
-        # Return self to allow chaining
+
+        # Return the new queryset to allow chaining
         return queryset
 
     def skip(self, n):
