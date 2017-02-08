@@ -1745,7 +1745,6 @@ class BaseQuerySet(object):
                     raise err
         return ret
 
-
     def _get_order_by(self, keys):
         """Given a list of MongoEngine-style sort keys, return a list
         of sorting tuples that can be applied to a PyMongo cursor. For
@@ -1886,7 +1885,7 @@ class BaseQuerySet(object):
 
         # Find the requested method on the cursor and call it with the
         # provided value
-        method = getattr(cursor, method_name)(val)
+        getattr(cursor, method_name)(val)
 
         # Cache the value on the queryset._{method_name}
         setattr(queryset, '_' + method_name, val)
