@@ -759,7 +759,10 @@ class BaseQuerySet(object):
         queryset = self.clone()
         queryset._limit = n if n != 0 else 1
 
-        # Return the new queryset to allow chaining
+        # If a cursor object has already been created, apply the limit to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.limit(queryset._limit)
+
         return queryset
 
     def skip(self, n):
@@ -770,6 +773,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._skip = n
+
+        # If a cursor object has already been created, apply the skip to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.skip(queryset._skip)
+
         return queryset
 
     def hint(self, index=None):
@@ -787,6 +795,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._hint = index
+
+        # If a cursor object has already been created, apply the hint to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.hint(queryset._hint)
+
         return queryset
 
     def batch_size(self, size):
@@ -800,6 +813,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._batch_size = size
+
+        # If a cursor object has already been created, apply the batch size to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.batch_size(queryset._batch_size)
+
         return queryset
 
     def distinct(self, field):

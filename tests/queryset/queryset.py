@@ -171,8 +171,9 @@ class QuerySetTest(unittest.TestCase):
         # Test slice limit and skip on an existing queryset
         people = self.Person.objects
         self.assertEqual(len(people), 3)
-        self.assertEqual(people[1:2], 1)
-        self.assertEqual(people[0].name, 'User B')
+        people2 = people[1:2]
+        self.assertEqual(len(people2), 1)
+        self.assertEqual(people2[0].name, 'User B')
 
         # Test slice limit and skip cursor reset
         qs = self.Person.objects[1:2]
