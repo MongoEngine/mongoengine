@@ -86,6 +86,7 @@ class BaseQuerySet(object):
         self._batch_size = None
         self.only_fields = []
         self._max_time_ms = None
+        self._comment = None
 
     def __call__(self, q_obj=None, class_check=True, read_preference=None,
                  **query):
@@ -726,7 +727,7 @@ class BaseQuerySet(object):
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
                       '_limit', '_skip', '_hint', '_auto_dereference',
-                      '_search_text', 'only_fields', '_max_time_ms')
+                      '_search_text', 'only_fields', '_max_time_ms', '_comment')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -1817,10 +1818,21 @@ class BaseQuerySet(object):
         return code
 
     def _chainable_method(self, method_name, val):
+        """Call a particular method on the PyMongo cursor call a particular chainable method
+        with the provided value.
+        """
         queryset = self.clone()
-        method = getattr(queryset._cursor, method_name)
-        method(val)
+
+        # Get an existing cursor object or create a new one
+        cursor = queryset._cursor
+
+        # Find the requested method on the cursor and call it with the
+        # provided value
+        method = getattr(cursor, method_name)(val)
+
+        # Cache the value on the queryset._{method_name}
         setattr(queryset, '_' + method_name, val)
+
         return queryset
 
     # Deprecated
