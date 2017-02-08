@@ -1242,6 +1242,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        # default ordering should be used by default
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').first()
             self.assertEqual(len(q.get_ops()), 1)
@@ -1250,8 +1251,25 @@ class QuerySetTest(unittest.TestCase):
                 {'published_date': -1}
             )
 
+        # calling order_by() should clear the default ordering
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
+            self.assertEqual(len(q.get_ops()), 1)
+            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+
+        # calling an explicit order_by should use a specified sort
+        with db_ops_tracker() as q:
+            BlogPost.objects.filter(title='whatever').order_by('published_date').first()
+            self.assertEqual(len(q.get_ops()), 1)
+            self.assertEqual(
+                q.get_ops()[0]['query']['$orderby'],
+                {'published_date': 1}
+            )
+
+        # calling order_by() after an explicit sort should clear it
+        with db_ops_tracker() as q:
+            qs = BlogPost.objects.filter(title='whatever').order_by('published_date')
+            qs.order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 

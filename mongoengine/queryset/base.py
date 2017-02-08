@@ -971,13 +971,31 @@ class BaseQuerySet(object):
     def order_by(self, *keys):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
         order may be specified by prepending each of the keys by a + or a -.
-        Ascending order is assumed.
+        Ascending order is assumed. If no keys are passed, existing ordering
+        is cleared instead.
 
         :param keys: fields to order the query results by; keys may be
             prefixed with **+** or **-** to determine the ordering direction
         """
         queryset = self.clone()
-        queryset._ordering = queryset._get_order_by(keys)
+
+        old_ordering = queryset._ordering
+        new_ordering = queryset._get_order_by(keys)
+
+        if queryset._cursor_obj:
+
+            # If a cursor object has already been created, apply the sort to it
+            if new_ordering:
+                queryset._cursor_obj.sort(new_ordering)
+
+            # If we're trying to clear a previous explicit ordering, we need
+            # to clear the cursor entirely (because PyMongo doesn't allow
+            # clearing an existing sort on a cursor).
+            elif old_ordering:
+                queryset._cursor_obj = None
+
+        queryset._ordering = new_ordering
+
         return queryset
 
     def comment(self, text):
@@ -1423,10 +1441,13 @@ class BaseQuerySet(object):
             raise StopIteration
 
         raw_doc = self._cursor.next()
+
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
-        doc = self._document._from_son(raw_doc,
-                                       _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
+
+        doc = self._document._from_son(
+            raw_doc, _auto_dereference=self._auto_dereference,
+            only_fields=self.only_fields)
 
         if self._scalar:
             return self._get_scalar(doc)
@@ -1435,7 +1456,6 @@ class BaseQuerySet(object):
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
-
 
         .. versionadded:: 0.3
         """
@@ -1486,43 +1506,54 @@ class BaseQuerySet(object):
 
     @property
     def _cursor(self):
-        if self._cursor_obj is None:
+        """Return a PyMongo cursor object corresponding to this queryset."""
 
-            # In PyMongo 3+, we define the read preference on a collection
-            # level, not a cursor level. Thus, we need to get a cloned
-            # collection object using `with_options` first.
-            if IS_PYMONGO_3 and self._read_preference is not None:
-                self._cursor_obj = self._collection\
-                    .with_options(read_preference=self._read_preference)\
-                    .find(self._query, **self._cursor_args)
-            else:
-                self._cursor_obj = self._collection.find(self._query,
-                                                         **self._cursor_args)
-            # Apply where clauses to cursor
-            if self._where_clause:
-                where_clause = self._sub_js_fields(self._where_clause)
-                self._cursor_obj.where(where_clause)
+        # If _cursor_obj already exists, return it immediately.
+        if self._cursor_obj is not None:
+            return self._cursor_obj
 
-            if self._ordering:
-                # Apply query ordering
-                self._cursor_obj.sort(self._ordering)
-            elif self._ordering is None and self._document._meta['ordering']:
-                # Otherwise, apply the ordering from the document model, unless
-                # it's been explicitly cleared via order_by with no arguments
-                order = self._get_order_by(self._document._meta['ordering'])
-                self._cursor_obj.sort(order)
+        # Create a new PyMongo cursor.
+        # XXX In PyMongo 3+, we define the read preference on a collection
+        # level, not a cursor level. Thus, we need to get a cloned collection
+        # object using `with_options` first.
+        if IS_PYMONGO_3 and self._read_preference is not None:
+            self._cursor_obj = self._collection\
+                .with_options(read_preference=self._read_preference)\
+                .find(self._query, **self._cursor_args)
+        else:
+            self._cursor_obj = self._collection.find(self._query,
+                                                     **self._cursor_args)
+        # Apply "where" clauses to cursor
+        if self._where_clause:
+            where_clause = self._sub_js_fields(self._where_clause)
+            self._cursor_obj.where(where_clause)
 
-            if self._limit is not None:
-                self._cursor_obj.limit(self._limit)
+        # Apply ordering to the cursor.
+        # XXX self._ordering can be equal to:
+        # * None if we didn't explicitly call order_by on this queryset.
+        # * A list of PyMongo-style sorting tuples.
+        # * An empty list if we explicitly called order_by() without any
+        #   arguments. This indicates that we want to clear the default
+        #   ordering.
+        if self._ordering:
+            # explicit ordering
+            self._cursor_obj.sort(self._ordering)
+        elif self._ordering is None and self._document._meta['ordering']:
+            # default ordering
+            order = self._get_order_by(self._document._meta['ordering'])
+            self._cursor_obj.sort(order)
 
-            if self._skip is not None:
-                self._cursor_obj.skip(self._skip)
+        if self._limit is not None:
+            self._cursor_obj.limit(self._limit)
 
-            if self._hint != -1:
-                self._cursor_obj.hint(self._hint)
+        if self._skip is not None:
+            self._cursor_obj.skip(self._skip)
 
-            if self._batch_size is not None:
-                self._cursor_obj.batch_size(self._batch_size)
+        if self._hint != -1:
+            self._cursor_obj.hint(self._hint)
+
+        if self._batch_size is not None:
+            self._cursor_obj.batch_size(self._batch_size)
 
         return self._cursor_obj
 
@@ -1696,8 +1727,15 @@ class BaseQuerySet(object):
                     raise err
         return ret
 
+
     def _get_order_by(self, keys):
-        """Creates a list of order by fields"""
+        """Given a list of MongoEngine-style sort keys, return a list
+        of sorting tuples that can be applied to a PyMongo cursor. For
+        example:
+
+        >>> qs._get_order_by(['-last_name', 'first_name'])
+        [('last_name', -1), ('first_name', 1)]
+        """
         key_list = []
         for key in keys:
             if not key:
@@ -1710,17 +1748,19 @@ class BaseQuerySet(object):
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING
+
             if key[0] in ('-', '+'):
                 key = key[1:]
+
             key = key.replace('__', '.')
             try:
                 key = self._document._translate_field_name(key)
             except Exception:
+                # TODO this exception should be more specific
                 pass
+
             key_list.append((key, direction))
 
-        if self._cursor_obj and key_list:
-            self._cursor_obj.sort(key_list)
         return key_list
 
     def _get_scalar(self, doc):
