@@ -2,6 +2,20 @@
 Upgrading
 #########
 
+Development
+***********
+(Fill this out whenever you introduce breaking changes to MongoEngine)
+
+This release includes various fixes for the `BaseQuerySet` methods and how they
+are chained together. Since version 0.10.1 applying limit/skip/hint/batch_size
+to an already-existing queryset wouldn't modify the underlying PyMongo cursor.
+This has been fixed now, so you'll need to make sure that your code didn't rely
+on the broken implementation.
+
+Additionally, a public `BaseQuerySet.clone_into` has been renamed to a private
+`_clone_into`. If you directly used that method in your code, you'll need to
+rename its occurrences.
+
 0.11.0
 ******
 This release includes a major rehaul of MongoEngine's code quality and

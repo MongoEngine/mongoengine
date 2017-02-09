@@ -5,6 +5,8 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop you features).
+- POTENTIAL BREAKING CHANGE: Fixed limit/skip/hint/batch_size chaining #1476
+- POTENTIAL BREAKING CHANGE: Changed a public `QuerySet.clone_into` method to a private `QuerySet._clone_into` #1476
 - Fixed connecting to a replica set with PyMongo 2.x #1436
 - Fixed an obscure error message when filtering by `field__in=non_iterable`. #1237
 
