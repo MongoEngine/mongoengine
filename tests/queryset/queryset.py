@@ -106,58 +106,111 @@ class QuerySetTest(unittest.TestCase):
             list(BlogPost.objects(author2__name="test"))
 
     def test_find(self):
-        """Ensure that a query returns a valid set of results.
-        """
-        self.Person(name="User A", age=20).save()
-        self.Person(name="User B", age=30).save()
+        """Ensure that a query returns a valid set of results."""
+        user_a = self.Person.objects.create(name='User A', age=20)
+        user_b = self.Person.objects.create(name='User B', age=30)
 
         # Find all people in the collection
         people = self.Person.objects
         self.assertEqual(people.count(), 2)
         results = list(people)
+
         self.assertTrue(isinstance(results[0], self.Person))
         self.assertTrue(isinstance(results[0].id, (ObjectId, str, unicode)))
-        self.assertEqual(results[0].name, "User A")
+
+        self.assertEqual(results[0], user_a)
+        self.assertEqual(results[0].name, 'User A')
         self.assertEqual(results[0].age, 20)
-        self.assertEqual(results[1].name, "User B")
+
+        self.assertEqual(results[1], user_b)
+        self.assertEqual(results[1].name, 'User B')
         self.assertEqual(results[1].age, 30)
 
-        # Use a query to filter the people found to just person1
+        # Filter people by age
         people = self.Person.objects(age=20)
         self.assertEqual(people.count(), 1)
         person = people.next()
+        self.assertEqual(person, user_a)
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
-        # Test limit
+    def test_limit(self):
+        """Ensure that QuerySet.limit works as expected."""
+        user_a = self.Person.objects.create(name='User A', age=20)
+        user_b = self.Person.objects.create(name='User B', age=30)
+
+        # Test limit on a new queryset
         people = list(self.Person.objects.limit(1))
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0].name, 'User A')
+        self.assertEqual(people[0], user_a)
 
-        # Test skip
+        # Test limit on an existing queryset
+        people = self.Person.objects
+        self.assertEqual(len(people), 2)
+        people2 = people.limit(1)
+        self.assertEqual(len(people), 2)
+        self.assertEqual(len(people2), 1)
+        self.assertEqual(people2[0], user_a)
+
+        # Test chaining of only after limit
+        person = self.Person.objects().limit(1).only('name').first()
+        self.assertEqual(person, user_a)
+        self.assertEqual(person.name, 'User A')
+        self.assertEqual(person.age, None)
+
+    def test_skip(self):
+        """Ensure that QuerySet.skip works as expected."""
+        user_a = self.Person.objects.create(name='User A', age=20)
+        user_b = self.Person.objects.create(name='User B', age=30)
+
+        # Test skip on a new queryset
         people = list(self.Person.objects.skip(1))
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0].name, 'User B')
+        self.assertEqual(people[0], user_b)
 
-        person3 = self.Person(name="User C", age=40)
-        person3.save()
+        # Test skip on an existing queryset
+        people = self.Person.objects
+        self.assertEqual(len(people), 2)
+        people2 = people.skip(1)
+        self.assertEqual(len(people), 2)
+        self.assertEqual(len(people2), 1)
+        self.assertEqual(people2[0], user_b)
+
+        # Test chaining of only after skip
+        person = self.Person.objects().skip(1).only('name').first()
+        self.assertEqual(person, user_b)
+        self.assertEqual(person.name, 'User B')
+        self.assertEqual(person.age, None)
+
+    def test_slice(self):
+        """Ensure slicing a queryset works as expected."""
+        user_a = self.Person.objects.create(name='User A', age=20)
+        user_b = self.Person.objects.create(name='User B', age=30)
+        user_c = self.Person.objects.create(name="User C", age=40)
 
         # Test slice limit
         people = list(self.Person.objects[:2])
         self.assertEqual(len(people), 2)
-        self.assertEqual(people[0].name, 'User A')
-        self.assertEqual(people[1].name, 'User B')
+        self.assertEqual(people[0], user_a)
+        self.assertEqual(people[1], user_b)
 
         # Test slice skip
         people = list(self.Person.objects[1:])
         self.assertEqual(len(people), 2)
-        self.assertEqual(people[0].name, 'User B')
-        self.assertEqual(people[1].name, 'User C')
+        self.assertEqual(people[0], user_b)
+        self.assertEqual(people[1], user_c)
 
         # Test slice limit and skip
         people = list(self.Person.objects[1:2])
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0].name, 'User B')
+        self.assertEqual(people[0], user_b)
+
+        # Test slice limit and skip on an existing queryset
+        people = self.Person.objects
+        self.assertEqual(len(people), 3)
+        people2 = people[1:2]
+        self.assertEqual(len(people2), 1)
+        self.assertEqual(people2[0], user_b)
 
         # Test slice limit and skip cursor reset
         qs = self.Person.objects[1:2]
@@ -168,6 +221,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 1)
         self.assertEqual(people[0].name, 'User B')
 
+        # Test empty slice
         people = list(self.Person.objects[1:1])
         self.assertEqual(len(people), 0)
 
@@ -186,12 +240,6 @@ class QuerySetTest(unittest.TestCase):
                          "%s" % self.Person.objects[1:3])
         self.assertEqual("[<Person: Person object>, <Person: Person object>]",
                          "%s" % self.Person.objects[51:53])
-
-        # Test only after limit
-        self.assertEqual(self.Person.objects().limit(2).only('name')[0].age, None)
-
-        # Test only after skip
-        self.assertEqual(self.Person.objects().skip(2).only('name')[0].age, None)
 
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
@@ -1226,6 +1274,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+        # default ordering should be used by default
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').first()
             self.assertEqual(len(q.get_ops()), 1)
@@ -1234,8 +1283,25 @@ class QuerySetTest(unittest.TestCase):
                 {'published_date': -1}
             )
 
+        # calling order_by() should clear the default ordering
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
+            self.assertEqual(len(q.get_ops()), 1)
+            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+
+        # calling an explicit order_by should use a specified sort
+        with db_ops_tracker() as q:
+            BlogPost.objects.filter(title='whatever').order_by('published_date').first()
+            self.assertEqual(len(q.get_ops()), 1)
+            self.assertEqual(
+                q.get_ops()[0]['query']['$orderby'],
+                {'published_date': 1}
+            )
+
+        # calling order_by() after an explicit sort should clear it
+        with db_ops_tracker() as q:
+            qs = BlogPost.objects.filter(title='whatever').order_by('published_date')
+            qs.order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 

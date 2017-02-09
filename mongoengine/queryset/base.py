@@ -86,6 +86,7 @@ class BaseQuerySet(object):
         self._batch_size = None
         self.only_fields = []
         self._max_time_ms = None
+        self._comment = None
 
     def __call__(self, q_obj=None, class_check=True, read_preference=None,
                  **query):
@@ -706,39 +707,36 @@ class BaseQuerySet(object):
         with switch_db(self._document, alias) as cls:
             collection = cls._get_collection()
 
-        return self.clone_into(self.__class__(self._document, collection))
+        return self._clone_into(self.__class__(self._document, collection))
 
     def clone(self):
-        """Creates a copy of the current
-          :class:`~mongoengine.queryset.QuerySet`
+        """Create a copy of the current queryset."""
+        return self._clone_into(self.__class__(self._document, self._collection_obj))
 
-        .. versionadded:: 0.5
+    def _clone_into(self, new_qs):
+        """Copy all of the relevant properties of this queryset to
+        a new queryset (which has to be an instance of
+        :class:`~mongoengine.queryset.base.BaseQuerySet`).
         """
-        return self.clone_into(self.__class__(self._document, self._collection_obj))
-
-    def clone_into(self, cls):
-        """Creates a copy of the current
-          :class:`~mongoengine.queryset.base.BaseQuerySet` into another child class
-        """
-        if not isinstance(cls, BaseQuerySet):
+        if not isinstance(new_qs, BaseQuerySet):
             raise OperationError(
-                '%s is not a subclass of BaseQuerySet' % cls.__name__)
+                '%s is not a subclass of BaseQuerySet' % new_qs.__name__)
 
         copy_props = ('_mongo_query', '_initial_query', '_none', '_query_obj',
                       '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
                       '_timeout', '_class_check', '_slave_okay', '_read_preference',
                       '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
                       '_limit', '_skip', '_hint', '_auto_dereference',
-                      '_search_text', 'only_fields', '_max_time_ms')
+                      '_search_text', 'only_fields', '_max_time_ms', '_comment')
 
         for prop in copy_props:
             val = getattr(self, prop)
-            setattr(cls, prop, copy.copy(val))
+            setattr(new_qs, prop, copy.copy(val))
 
         if self._cursor_obj:
-            cls._cursor_obj = self._cursor_obj.clone()
+            new_qs._cursor_obj = self._cursor_obj.clone()
 
-        return cls
+        return new_qs
 
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects or
@@ -760,7 +758,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._limit = n if n != 0 else 1
-        # Return self to allow chaining
+
+        # If a cursor object has already been created, apply the limit to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.limit(queryset._limit)
+
         return queryset
 
     def skip(self, n):
@@ -771,6 +773,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._skip = n
+
+        # If a cursor object has already been created, apply the skip to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.skip(queryset._skip)
+
         return queryset
 
     def hint(self, index=None):
@@ -788,6 +795,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._hint = index
+
+        # If a cursor object has already been created, apply the hint to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.hint(queryset._hint)
+
         return queryset
 
     def batch_size(self, size):
@@ -801,6 +813,11 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._batch_size = size
+
+        # If a cursor object has already been created, apply the batch size to it.
+        if queryset._cursor_obj:
+            queryset._cursor_obj.batch_size(queryset._batch_size)
+
         return queryset
 
     def distinct(self, field):
@@ -972,13 +989,31 @@ class BaseQuerySet(object):
     def order_by(self, *keys):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
         order may be specified by prepending each of the keys by a + or a -.
-        Ascending order is assumed.
+        Ascending order is assumed. If no keys are passed, existing ordering
+        is cleared instead.
 
         :param keys: fields to order the query results by; keys may be
             prefixed with **+** or **-** to determine the ordering direction
         """
         queryset = self.clone()
-        queryset._ordering = queryset._get_order_by(keys)
+
+        old_ordering = queryset._ordering
+        new_ordering = queryset._get_order_by(keys)
+
+        if queryset._cursor_obj:
+
+            # If a cursor object has already been created, apply the sort to it
+            if new_ordering:
+                queryset._cursor_obj.sort(new_ordering)
+
+            # If we're trying to clear a previous explicit ordering, we need
+            # to clear the cursor entirely (because PyMongo doesn't allow
+            # clearing an existing sort on a cursor).
+            elif old_ordering:
+                queryset._cursor_obj = None
+
+        queryset._ordering = new_ordering
+
         return queryset
 
     def comment(self, text):
@@ -1424,10 +1459,13 @@ class BaseQuerySet(object):
             raise StopIteration
 
         raw_doc = self._cursor.next()
+
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
-        doc = self._document._from_son(raw_doc,
-                                       _auto_dereference=self._auto_dereference, only_fields=self.only_fields)
+
+        doc = self._document._from_son(
+            raw_doc, _auto_dereference=self._auto_dereference,
+            only_fields=self.only_fields)
 
         if self._scalar:
             return self._get_scalar(doc)
@@ -1436,7 +1474,6 @@ class BaseQuerySet(object):
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
-
 
         .. versionadded:: 0.3
         """
@@ -1487,43 +1524,54 @@ class BaseQuerySet(object):
 
     @property
     def _cursor(self):
-        if self._cursor_obj is None:
+        """Return a PyMongo cursor object corresponding to this queryset."""
 
-            # In PyMongo 3+, we define the read preference on a collection
-            # level, not a cursor level. Thus, we need to get a cloned
-            # collection object using `with_options` first.
-            if IS_PYMONGO_3 and self._read_preference is not None:
-                self._cursor_obj = self._collection\
-                    .with_options(read_preference=self._read_preference)\
-                    .find(self._query, **self._cursor_args)
-            else:
-                self._cursor_obj = self._collection.find(self._query,
-                                                         **self._cursor_args)
-            # Apply where clauses to cursor
-            if self._where_clause:
-                where_clause = self._sub_js_fields(self._where_clause)
-                self._cursor_obj.where(where_clause)
+        # If _cursor_obj already exists, return it immediately.
+        if self._cursor_obj is not None:
+            return self._cursor_obj
 
-            if self._ordering:
-                # Apply query ordering
-                self._cursor_obj.sort(self._ordering)
-            elif self._ordering is None and self._document._meta['ordering']:
-                # Otherwise, apply the ordering from the document model, unless
-                # it's been explicitly cleared via order_by with no arguments
-                order = self._get_order_by(self._document._meta['ordering'])
-                self._cursor_obj.sort(order)
+        # Create a new PyMongo cursor.
+        # XXX In PyMongo 3+, we define the read preference on a collection
+        # level, not a cursor level. Thus, we need to get a cloned collection
+        # object using `with_options` first.
+        if IS_PYMONGO_3 and self._read_preference is not None:
+            self._cursor_obj = self._collection\
+                .with_options(read_preference=self._read_preference)\
+                .find(self._query, **self._cursor_args)
+        else:
+            self._cursor_obj = self._collection.find(self._query,
+                                                     **self._cursor_args)
+        # Apply "where" clauses to cursor
+        if self._where_clause:
+            where_clause = self._sub_js_fields(self._where_clause)
+            self._cursor_obj.where(where_clause)
 
-            if self._limit is not None:
-                self._cursor_obj.limit(self._limit)
+        # Apply ordering to the cursor.
+        # XXX self._ordering can be equal to:
+        # * None if we didn't explicitly call order_by on this queryset.
+        # * A list of PyMongo-style sorting tuples.
+        # * An empty list if we explicitly called order_by() without any
+        #   arguments. This indicates that we want to clear the default
+        #   ordering.
+        if self._ordering:
+            # explicit ordering
+            self._cursor_obj.sort(self._ordering)
+        elif self._ordering is None and self._document._meta['ordering']:
+            # default ordering
+            order = self._get_order_by(self._document._meta['ordering'])
+            self._cursor_obj.sort(order)
 
-            if self._skip is not None:
-                self._cursor_obj.skip(self._skip)
+        if self._limit is not None:
+            self._cursor_obj.limit(self._limit)
 
-            if self._hint != -1:
-                self._cursor_obj.hint(self._hint)
+        if self._skip is not None:
+            self._cursor_obj.skip(self._skip)
 
-            if self._batch_size is not None:
-                self._cursor_obj.batch_size(self._batch_size)
+        if self._hint != -1:
+            self._cursor_obj.hint(self._hint)
+
+        if self._batch_size is not None:
+            self._cursor_obj.batch_size(self._batch_size)
 
         return self._cursor_obj
 
@@ -1698,7 +1746,13 @@ class BaseQuerySet(object):
         return ret
 
     def _get_order_by(self, keys):
-        """Creates a list of order by fields"""
+        """Given a list of MongoEngine-style sort keys, return a list
+        of sorting tuples that can be applied to a PyMongo cursor. For
+        example:
+
+        >>> qs._get_order_by(['-last_name', 'first_name'])
+        [('last_name', -1), ('first_name', 1)]
+        """
         key_list = []
         for key in keys:
             if not key:
@@ -1711,17 +1765,19 @@ class BaseQuerySet(object):
             direction = pymongo.ASCENDING
             if key[0] == '-':
                 direction = pymongo.DESCENDING
+
             if key[0] in ('-', '+'):
                 key = key[1:]
+
             key = key.replace('__', '.')
             try:
                 key = self._document._translate_field_name(key)
             except Exception:
+                # TODO this exception should be more specific
                 pass
+
             key_list.append((key, direction))
 
-        if self._cursor_obj and key_list:
-            self._cursor_obj.sort(key_list)
         return key_list
 
     def _get_scalar(self, doc):
@@ -1819,10 +1875,21 @@ class BaseQuerySet(object):
         return code
 
     def _chainable_method(self, method_name, val):
+        """Call a particular method on the PyMongo cursor call a particular chainable method
+        with the provided value.
+        """
         queryset = self.clone()
-        method = getattr(queryset._cursor, method_name)
-        method(val)
+
+        # Get an existing cursor object or create a new one
+        cursor = queryset._cursor
+
+        # Find the requested method on the cursor and call it with the
+        # provided value
+        getattr(cursor, method_name)(val)
+
+        # Cache the value on the queryset._{method_name}
         setattr(queryset, '_' + method_name, val)
+
         return queryset
 
     # Deprecated
