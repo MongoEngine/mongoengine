@@ -831,9 +831,17 @@ class MongoComment(object):
         'cl/utils/lfu_cache.py',
     )
 
+    # If we override any base methods upstream in a child document class,
+    # we need to go up one more stack to get the proper comment
+    FUNCTION_BLACKLIST = ('find_raw', 'find', 'update', 'insert')
+
     @classmethod
     def blacklisted(cls, filename):
         return any(filename.endswith(bl) for bl in cls.AUTO_BLACKLIST)
+
+    @classmethod
+    def function_blacklisted(cls, function_name):
+        return function_name in cls.FUNCTION_BLACKLIST
 
     @classmethod
     def context(cls, filename):
@@ -865,6 +873,9 @@ class MongoComment(object):
                 filename, line, functionname, text = last_stacks[i]
 
                 if cls.blacklisted(filename):
+                    continue
+
+                if cls.function_blacklisted(functionname):
                     continue
 
                 msg = '[%s]%s @ %s:%s' % (
