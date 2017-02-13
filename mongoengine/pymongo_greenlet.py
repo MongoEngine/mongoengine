@@ -658,6 +658,13 @@ class GreenletClient(object):
                 io_loop.stop()
 
         # clear cls.client so we can't return an old one
+        if cls.client is not None:
+            try:
+                # manually close old unused connection
+                cls.client.close()
+            except:
+                logging.exception("Clearing old pymongo connection")
+
         cls.client = None
 
         # do the connection
