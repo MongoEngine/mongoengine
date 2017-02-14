@@ -150,7 +150,7 @@ arguments can be set on all fields:
     .. note:: If set, this field is also accessible through the `pk` field.
 
 :attr:`choices` (Default: None)
-    An iterable (e.g. a list or tuple) of choices to which the value of this
+    An iterable (e.g. list, tuple or set) of choices to which the value of this
     field should be limited.
 
     Can be either be a nested tuples of value (stored in mongo) and a
@@ -214,8 +214,8 @@ document class as the first argument::
 
 Dictionary Fields
 -----------------
-Often, an embedded document may be used instead of a dictionary – generally 
-embedded documents are recommended as dictionaries don’t support validation 
+Often, an embedded document may be used instead of a dictionary – generally
+embedded documents are recommended as dictionaries don’t support validation
 or custom field types. However, sometimes you will not know the structure of what you want to
 store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate::
 

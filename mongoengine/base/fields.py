@@ -193,7 +193,8 @@ class BaseField(object):
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
         choice_list = self.choices
-        if isinstance(choice_list[0], (list, tuple)):
+        if isinstance(next(iter(choice_list)), (list, tuple)):
+            # next(iter) is useful for sets
             choice_list = [k for k, _ in choice_list]
 
         # Choices which are other types of Documents

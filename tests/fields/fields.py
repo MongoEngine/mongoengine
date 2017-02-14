@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-import six
-from nose.plugins.skip import SkipTest
-
 import datetime
 import unittest
 import uuid
 import math
 import itertools
 import re
+
+from nose.plugins.skip import SkipTest
 import six
 
 try:
@@ -27,21 +26,13 @@ from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
                               _document_registry)
-from mongoengine.errors import NotRegistered, DoesNotExist
+
+from tests.utils import MongoDBTestCase
 
 __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
 
-class FieldTest(unittest.TestCase):
-
-    def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
-
-    def tearDown(self):
-        self.db.drop_collection('fs.files')
-        self.db.drop_collection('fs.chunks')
-        self.db.drop_collection('mongoengine.counters')
+class FieldTest(MongoDBTestCase):
 
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating a document.
@@ -3186,26 +3177,42 @@ class FieldTest(unittest.TestCase):
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 
-    def test_choices_validation(self):
-        """Ensure that value is in a container of allowed values.
+    def test_choices_allow_using_sets_as_choices(self):
+        """Ensure that sets can be used when setting choices
         """
         class Shirt(Document):
-            size = StringField(max_length=3, choices=(
-                ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
+            size = StringField(choices={'M', 'L'})
 
-        Shirt.drop_collection()
+        Shirt(size='M').validate()
+
+    def test_choices_validation_allow_no_value(self):
+        """Ensure that .validate passes and no value was provided
+        for a field setup with choices
+        """
+        class Shirt(Document):
+            size = StringField(choices=('S', 'M'))
 
         shirt = Shirt()
         shirt.validate()
 
-        shirt.size = "S"
+    def test_choices_validation_accept_possible_value(self):
+        """Ensure that value is in a container of allowed values.
+        """
+        class Shirt(Document):
+            size = StringField(choices=('S', 'M'))
+
+        shirt = Shirt(size='S')
         shirt.validate()
 
-        shirt.size = "XS"
-        self.assertRaises(ValidationError, shirt.validate)
+    def test_choices_validation_reject_unknown_value(self):
+        """Ensure that unallowed value are rejected upon validation
+        """
+        class Shirt(Document):
+            size = StringField(choices=('S', 'M'))
 
-        Shirt.drop_collection()
+        shirt = Shirt(size="XS")
+        with self.assertRaises(ValidationError):
+            shirt.validate()
 
     def test_choices_validation_documents(self):
         """
@@ -4420,7 +4427,8 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
             my_list = ListField(EmbeddedDocumentField(EmbeddedWithUnique))
 
         A(my_list=[]).save()
-        self.assertRaises(NotUniqueError, lambda: A(my_list=[]).save())
+        with self.assertRaises(NotUniqueError):
+            A(my_list=[]).save()
 
         class EmbeddedWithSparseUnique(EmbeddedDocument):
             number = IntField(unique=True, sparse=True)
@@ -4430,6 +4438,9 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
 
         B(my_list=[]).save()
         B(my_list=[]).save()
+
+        A.drop_collection()
+        B.drop_collection()
 
     def test_filtered_delete(self):
         """
