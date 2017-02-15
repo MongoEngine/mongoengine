@@ -189,14 +189,18 @@ class BaseField(object):
         pass
 
     def _validate_choices(self, value):
+        """Validate that value is a valid choice for this field."""
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
+        # Field choices can be given as an iterable (e.g. tuple/list/set) of
+        # values or an iterable of value-label pairs, e.g. ('XS', 'Extra Small').
+        # It the latter case, extract just the values for comparison.
         choice_list = self.choices
-        if isinstance(choice_list[0], (list, tuple)):
-            choice_list = [k for k, _ in choice_list]
+        if isinstance(next(iter(choice_list)), (list, tuple)):
+            choice_list = [val for val, label in choice_list]
 
-        # Choices which are other types of Documents
+        # Validate Document/EmbeddedDocument choices
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
                 self.error(
@@ -204,7 +208,8 @@ class BaseField(object):
                         six.text_type(choice_list)
                     )
                 )
-        # Choices which are types other than Documents
+
+        # Validate any other type of choices
         elif value not in choice_list:
             self.error('Value must be one of %s' % six.text_type(choice_list))
 
