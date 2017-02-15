@@ -18,15 +18,13 @@ try:
 except ImportError:
     HAS_PIL = False
 
+from tests.utils import MongoDBTestCase
+
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
 
 
-class FileTest(unittest.TestCase):
-
-    def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+class FileTest(MongoDBTestCase):
 
     def tearDown(self):
         self.db.drop_collection('fs.files')
