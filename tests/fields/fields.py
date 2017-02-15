@@ -3205,7 +3205,21 @@ class FieldTest(unittest.TestCase):
         shirt.size = "XS"
         self.assertRaises(ValidationError, shirt.validate)
 
+    def test_choices_as_set(self):
+        """Ensure that sets can be used as field choices"""
+        class Shirt(Document):
+            size = StringField(choices={'S', 'M', 'L', 'XL', 'XXL'})
+
         Shirt.drop_collection()
+
+        shirt = Shirt()
+        shirt.validate()
+
+        shirt.size = "S"
+        shirt.validate()
+
+        shirt.size = "XS"
+        self.assertRaises(ValidationError, shirt.validate)
 
     def test_choices_validation_documents(self):
         """
