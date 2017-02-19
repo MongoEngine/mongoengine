@@ -31,10 +31,22 @@ addons:
     - mongodb-org-server
     - mongodb-org-shell
 
+    # Optional dependencies for the ImageField and others
+    - python-dev
+    - python3-dev
+    - libopenjpeg-dev
+    - zlib1g-dev
+    - libjpeg-turbo8-dev
+    - libtiff4-dev
+    - libjpeg8-dev
+    - libfreetype6-dev
+    - liblcms2-dev
+    - libwebp-dev
+    - tcl8.5-dev
+    - tk8.5-dev
+    - python-tk
+
 install:
-- sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
-  libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
-  python-tk
 - travis_retry pip install --upgrade pip
 - travis_retry pip install coveralls
 - travis_retry pip install flake8
