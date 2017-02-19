@@ -28,8 +28,8 @@ addons:
     sources:
     - mongodb-3.0-precise
     packages:
-    - mongodb-org-server
-    - mongodb-org-shell
+    - mongodb-org-server=3.0.13
+    - mongodb-org-shell=3.0.13
 
     # Optional dependencies for the ImageField and others
     - python-dev
