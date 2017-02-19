@@ -42,6 +42,9 @@ install:
 - travis_retry pip install "virtualenv<14.0.0"  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
 - travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 
+# Cache dependencies installed via pip
+cache: pip
+
 # Run flake8 for py27
 before_script:
 - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then tox -e flake8; fi
