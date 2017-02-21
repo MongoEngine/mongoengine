@@ -394,7 +394,10 @@ class Document(BaseDocument):
         if force_insert:
             return collection.insert(doc, **write_concern)
 
-        object_id = collection.save(doc, **write_concern)
+        #object_id = collection.save(doc, **write_concern)
+        # instead of using SAVE as in previous line, which has been deprecated in pymongo:
+        result = collection.insert_one(doc)
+        object_id = result.inserted_id
 
         # In PyMongo 3.0, the save() call calls internally the _update() call
         # but they forget to return the _id value passed back, therefore getting it back here
