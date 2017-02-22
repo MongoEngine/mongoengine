@@ -792,6 +792,27 @@ class IndexesTest(unittest.TestCase):
 
         User.drop_collection()
 
+    def test_unique_and_primary_create(self):
+        """Create a new record with a duplicate primary key
+        throws an exception
+        """
+
+        class User(Document):
+            name = StringField(primary_key=True)
+            password = StringField()
+
+        User.drop_collection()
+
+        User.objects.create(name='huangz', password='secret')
+        def duplicate_primary_key():
+            User.objects.create(name='huangz', password='secret2')
+        self.assertRaises(NotUniqueError, duplicate_primary_key)
+
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().password, 'secret')
+
+        User.drop_collection()
+
     def test_index_with_pk(self):
         """Ensure you can use `pk` as part of a query"""
 
