@@ -218,9 +218,9 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(isinstance(ret.comp_dt_fld, datetime.datetime))
 
     def test_not_required_handles_none_from_database(self):
-        """Ensure that every fields can handle null values from the database.
+        """Ensure that every field can handle null values from the
+        database.
         """
-
         class HandleNoneFields(Document):
             str_fld = StringField(required=True)
             int_fld = IntField(required=True)
@@ -4031,12 +4031,13 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(isinstance(doc.some_long, six.integer_types))
 
 
-class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
+class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.db = connect(db='EmbeddedDocumentListFieldTestCase')
-
+    def setUp(self):
+        """
+        Create two BlogPost entries in the database, each with
+        several EmbeddedDocuments.
+        """
         class Comments(EmbeddedDocument):
             author = StringField()
             message = StringField()
@@ -4044,14 +4045,11 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         class BlogPost(Document):
             comments = EmbeddedDocumentListField(Comments)
 
-        cls.Comments = Comments
-        cls.BlogPost = BlogPost
+        BlogPost.drop_collection()
 
-    def setUp(self):
-        """
-        Create two BlogPost entries in the database, each with
-        several EmbeddedDocuments.
-        """
+        self.Comments = Comments
+        self.BlogPost = BlogPost
+
         self.post1 = self.BlogPost(comments=[
             self.Comments(author='user1', message='message1'),
             self.Comments(author='user2', message='message1')
@@ -4062,13 +4060,6 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
             self.Comments(author='user2', message='message3'),
             self.Comments(author='user3', message='message1')
         ]).save()
-
-    def tearDown(self):
-        self.BlogPost.drop_collection()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.db.drop_database('EmbeddedDocumentListFieldTestCase')
 
     def test_no_keyword_filter(self):
         """
@@ -4436,11 +4427,11 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         class B(Document):
             my_list = ListField(EmbeddedDocumentField(EmbeddedWithSparseUnique))
 
-        B(my_list=[]).save()
-        B(my_list=[]).save()
-
         A.drop_collection()
         B.drop_collection()
+
+        B(my_list=[]).save()
+        B(my_list=[]).save()
 
     def test_filtered_delete(self):
         """
@@ -4477,6 +4468,8 @@ class EmbeddedDocumentListFieldTestCase(unittest.TestCase):
         class CustomData(Document):
             a_field = IntField()
             c_field = IntField(custom_data=custom_data)
+
+        CustomData.drop_collection()
 
         a1 = CustomData(a_field=1, c_field=2).save()
         self.assertEqual(2, a1.c_field)
