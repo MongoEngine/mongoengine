@@ -139,12 +139,12 @@ class URLField(StringField):
         # Check first if the scheme is valid
         scheme = value.split('://')[0].lower()
         if scheme not in self.schemes:
-            self.error('Invalid scheme {} in URL: {}'.format(scheme, value))
+            self.error(u'Invalid scheme {} in URL: {}'.format(scheme, value))
             return
 
         # Then check full URL
         if not self.url_regex.match(value):
-            self.error('Invalid URL: {}'.format(value))
+            self.error(u'Invalid URL: {}'.format(value))
             return
 
 

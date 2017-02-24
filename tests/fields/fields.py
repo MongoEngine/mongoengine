@@ -341,10 +341,11 @@ class FieldTest(MongoDBTestCase):
         person.validate()
 
     def test_url_validation(self):
-        """Ensure that URLFields validate urls properly.
-        """
+        """Ensure that URLFields validate urls properly."""
         class Link(Document):
             url = URLField()
+
+        Link.drop_collection()
 
         link = Link()
         link.url = 'google'
@@ -352,6 +353,27 @@ class FieldTest(MongoDBTestCase):
 
         link.url = 'http://www.google.com:8080'
         link.validate()
+
+    def test_unicode_url_validation(self):
+        """Ensure unicode URLs are validated properly."""
+        class Link(Document):
+            url = URLField()
+
+        Link.drop_collection()
+
+        link = Link()
+        link.url = u'http://привет.com'
+
+        # TODO fix URL validation - this *IS* a valid URL
+        # For now we just want to make sure that the error message is correct
+        try:
+            link.validate()
+            self.assertTrue(False)
+        except ValidationError as e:
+            self.assertEqual(
+                unicode(e),
+                u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
+            )
 
     def test_url_scheme_validation(self):
         """Ensure that URLFields validate urls with specific schemes properly.
