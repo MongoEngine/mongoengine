@@ -1,38 +1,50 @@
+# For full coverage, we'd have to test all supported Python, MongoDB, and
+# PyMongo combinations. However, that would result in an overly long build
+# with a very large number of jobs, hence we only test a subset of all the
+# combinations:
+# * MongoDB v2.4 & v3.0 are only tested against Python v2.7 & v3.5, and
+#   PyMongo v2.7 & v3.x.
+# * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
+#   v3.4, v3.5, PyPy & PyPy3, and PyMongo v2.7, v2.8 & v3.x.
+
 language: python
 
 python:
-- '2.7'
-- '3.3'
-- '3.4'
-- '3.5'
+- 2.7
+- 3.4
+- 3.5
 - pypy
 - pypy3
 
 env:
+- PYMONGO=2.7 MONGODB=2.6
+- PYMONGO=2.8 MONGODB=2.6
+- PYMONGO=3.0 MONGODB=2.6
 
-# MongoDB v2.4 w/ PyMongo v2.7.x, v2.8.x, v3.x
-- PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14' SERVICE_NAME='mongodb'
-- PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14'  SERVICE_NAME='mongodb'
-- PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-10gen=2.4.14' SERVICE_NAME='mongodb'
-
-# MongoDB v2.6 w/ PyMongo v2.7.x, v2.8.x, v3.x
-- PYMONGO=2.7 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
-- PYMONGO=2.8 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
-- PYMONGO=3.0 REPOSITORY='deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' PACKAGE_NAME='mongodb-org-server=2.6.10'
-
-# MongoDB v3.0 w/ PyMongo v3.x
-- PYMONGO=3.0 REPOSITORY='deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse' PACKAGE_NAME='mongodb-org-server=3.0.4'
-
-# Finish the build as soon as one job fails
 matrix:
+  # Finish the build as soon as one job fails
   fast_finish: true
 
+  include:
+  - python: 2.7
+    env: PYMONGO=2.7 MONGODB=2.4
+  - python: 2.7
+    env: PYMONGO=2.7 MONGODB=3.0
+  - python: 2.7
+    env: PYMONGO=3.0 MONGODB=2.4
+  - python: 2.7
+    env: PYMONGO=3.0 MONGODB=3.0
+  - python: 3.5
+    env: PYMONGO=2.7 MONGODB=2.4
+  - python: 3.5
+    env: PYMONGO=2.7 MONGODB=3.0
+  - python: 3.5
+    env: PYMONGO=3.0 MONGODB=2.4
+  - python: 3.5
+    env: PYMONGO=3.0 MONGODB=3.0
+
 before_install:
-- travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-- echo $REPOSITORY | sudo tee /etc/apt/sources.list.d/mongodb.list
-- travis_retry sudo apt-get update
-- travis_retry sudo apt-get install $PACKAGE_NAME
-- if [ -z $SERVICE_NAME ]; then echo "MongoDB is already started"; else sudo service $SERVICE_NAME start; fi
+- ./.install_mongodb_on_travis.sh
 
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
