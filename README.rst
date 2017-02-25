@@ -4,25 +4,25 @@ MongoEngine
 :Info: MongoEngine is an ORM-like layer on top of PyMongo.
 :Repository: https://github.com/MongoEngine/mongoengine
 :Author: Harry Marr (http://github.com/hmarr)
-:Maintainer: Ross Lawley (http://github.com/rozza)
+:Maintainer: Stefan Wójcik (http://github.com/wojcikstefan)
 
-.. image:: https://secure.travis-ci.org/MongoEngine/mongoengine.png?branch=master
-  :target: http://travis-ci.org/MongoEngine/mongoengine
+.. image:: https://travis-ci.org/MongoEngine/mongoengine.svg?branch=master
+  :target: https://travis-ci.org/MongoEngine/mongoengine
 
-.. image:: https://coveralls.io/repos/MongoEngine/mongoengine/badge.png?branch=master
-  :target: https://coveralls.io/r/MongoEngine/mongoengine?branch=master
+.. image:: https://coveralls.io/repos/github/MongoEngine/mongoengine/badge.svg?branch=master
+  :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
 
-.. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.png
-   :target: https://landscape.io/github/MongoEngine/mongoengine/master
-   :alt: Code Health
+.. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.svg?style=flat
+  :target: https://landscape.io/github/MongoEngine/mongoengine/master
+  :alt: Code Health
 
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
-Documentation available at http://mongoengine-odm.rtfd.org - there is currently
-a `tutorial <http://readthedocs.org/docs/mongoengine-odm/en/latest/tutorial.html>`_, a `user guide
-<https://mongoengine-odm.readthedocs.org/en/latest/guide/index.html>`_ and an `API reference
-<http://readthedocs.org/docs/mongoengine-odm/en/latest/apireference.html>`_.
+Documentation available at https://mongoengine-odm.readthedocs.io - there is currently
+a `tutorial <https://mongoengine-odm.readthedocs.io/tutorial.html>`_, a `user guide
+<https://mongoengine-odm.readthedocs.io/guide/index.html>`_ and an `API reference
+<https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Installation
 ============
@@ -35,25 +35,37 @@ setup.py install``.
 
 Dependencies
 ============
-- pymongo>=2.7.1
-- sphinx (optional - for documentation generation)
+All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_. At the very least, you'll need these two packages to use MongoEngine:
 
-Optional Dependencies
----------------------
-- **Image Fields**: Pillow>=2.0.0
+- pymongo>=2.7.1
+- six>=1.10.0
+
+If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
+
 - dateutil>=2.1.0
 
-.. note
-   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: PyMongo 3.0.1
+If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
+
+- Pillow>=2.0.0
+
+If you want to generate the documentation (e.g. to contribute to it):
+
+- sphinx
 
 Examples
 ========
-Some simple examples of what MongoEngine code looks like::
+Some simple examples of what MongoEngine code looks like:
+
+.. code :: python
+
+    from mongoengine import *
+    connect('mydb')
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
-        posted = DateTimeField(default=datetime.datetime.now)
+        posted = DateTimeField(default=datetime.datetime.utcnow)
         tags = ListField(StringField(max_length=50))
+        meta = {'allow_inheritance': True}
 
     class TextPost(BlogPost):
         content = StringField(required=True)
@@ -81,23 +93,24 @@ Some simple examples of what MongoEngine code looks like::
     ...     print
     ...
 
-    >>> len(BlogPost.objects)
+    # Count all blog posts and its subtypes
+    >>> BlogPost.objects.count()
     2
-    >>> len(TextPost.objects)
+    >>> TextPost.objects.count()
     1
-    >>> len(LinkPost.objects)
+    >>> LinkPost.objects.count()
     1
 
-    # Find tagged posts
-    >>> len(BlogPost.objects(tags='mongoengine'))
+    # Count tagged posts
+    >>> BlogPost.objects(tags='mongoengine').count()
     2
-    >>> len(BlogPost.objects(tags='mongodb'))
+    >>> BlogPost.objects(tags='mongodb').count()
     1
 
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port, and run: ``python setup.py nosetests``.
+the standard port and have ``nose`` installed. Then, run: ``python setup.py nosetests``.
 
 To run the test suite on every supported Python version and every supported PyMongo version,
 you can use ``tox``.
@@ -124,8 +137,7 @@ Community
   <http://groups.google.com/group/mongoengine-users>`_
 - `MongoEngine Developers mailing list
   <http://groups.google.com/group/mongoengine-dev>`_
-- `#mongoengine IRC channel <http://webchat.freenode.net/?channels=mongoengine>`_
 
 Contributing
 ============
-We welcome contributions! see  the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
+We welcome contributions! See the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_

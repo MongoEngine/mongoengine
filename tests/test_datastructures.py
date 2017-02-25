@@ -1,5 +1,6 @@
 import unittest
-from mongoengine.base.datastructures import StrictDict, SemiStrictDict 
+
+from mongoengine.base.datastructures import StrictDict, SemiStrictDict
 
 
 class TestStrictDict(unittest.TestCase):
@@ -13,9 +14,18 @@ class TestStrictDict(unittest.TestCase):
         d = self.dtype(a=1, b=1, c=1)
         self.assertEqual((d.a, d.b, d.c), (1, 1, 1))
 
+    def test_repr(self):
+        d = self.dtype(a=1, b=2, c=3)
+        self.assertEqual(repr(d), '{"a": 1, "b": 2, "c": 3}')
+
+        # make sure quotes are escaped properly
+        d = self.dtype(a='"', b="'", c="")
+        self.assertEqual(repr(d), '{"a": \'"\', "b": "\'", "c": \'\'}')
+
     def test_init_fails_on_nonexisting_attrs(self):
-        self.assertRaises(AttributeError, lambda: self.dtype(a=1, b=2, d=3))
-        
+        with self.assertRaises(AttributeError):
+            self.dtype(a=1, b=2, d=3)
+
     def test_eq(self):
         d = self.dtype(a=1, b=1, c=1)
         dd = self.dtype(a=1, b=1, c=1)
@@ -24,7 +34,7 @@ class TestStrictDict(unittest.TestCase):
         g = self.strict_dict_class(("a", "b", "c", "d"))(a=1, b=1, c=1, d=1)
         h = self.strict_dict_class(("a", "c", "b"))(a=1, b=1, c=1)
         i = self.strict_dict_class(("a", "c", "b"))(a=1, b=1, c=2)
-        
+
         self.assertEqual(d, dd)
         self.assertNotEqual(d, e)
         self.assertNotEqual(d, f)
@@ -37,20 +47,18 @@ class TestStrictDict(unittest.TestCase):
         d = self.dtype()
         d.a = 1
         self.assertEqual(d.a, 1)
-        self.assertRaises(AttributeError, lambda: d.b)
-    
+        self.assertRaises(AttributeError, getattr, d, 'b')
+
     def test_setattr_raises_on_nonexisting_attr(self):
         d = self.dtype()
-
-        def _f():
+        with self.assertRaises(AttributeError):
             d.x = 1
-        self.assertRaises(AttributeError, _f)
-    
+
     def test_setattr_getattr_special(self):
         d = self.strict_dict_class(["items"])
         d.items = 1
         self.assertEqual(d.items, 1)
-    
+
     def test_get(self):
         d = self.dtype(a=1)
         self.assertEqual(d.get('a'), 1)
@@ -88,7 +96,7 @@ class TestSemiSrictDict(TestStrictDict):
     def test_init_succeeds_with_nonexisting_attrs(self):
         d = self.dtype(a=1, b=1, c=1, x=2)
         self.assertEqual((d.a, d.b, d.c, d.x), (1, 1, 1, 2))
-   
+
     def test_iter_with_nonexisting_attrs(self):
         d = self.dtype(a=1, b=1, c=1, x=2)
         self.assertEqual(list(d), ['a', 'b', 'c', 'x'])

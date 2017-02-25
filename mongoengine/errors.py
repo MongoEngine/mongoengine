@@ -1,12 +1,11 @@
 from collections import defaultdict
 
-from mongoengine.python_support import txt_type
-
+import six
 
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
            'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
            'OperationError', 'NotUniqueError', 'FieldDoesNotExist',
-           'ValidationError')
+           'ValidationError', 'SaveConditionError')
 
 
 class NotRegistered(Exception):
@@ -41,14 +40,18 @@ class NotUniqueError(OperationError):
     pass
 
 
+class SaveConditionError(OperationError):
+    pass
+
+
 class FieldDoesNotExist(Exception):
     """Raised when trying to set a field
     not declared in a :class:`~mongoengine.Document`
     or an :class:`~mongoengine.EmbeddedDocument`.
 
     To avoid this behavior on data loading,
-    you should the :attr:`strict` to ``False``
-    in the :attr:`meta` dictionnary.
+    you should set the :attr:`strict` to ``False``
+    in the :attr:`meta` dictionary.
     """
 
 
@@ -67,13 +70,13 @@ class ValidationError(AssertionError):
     field_name = None
     _message = None
 
-    def __init__(self, message="", **kwargs):
+    def __init__(self, message='', **kwargs):
         self.errors = kwargs.get('errors', {})
         self.field_name = kwargs.get('field_name')
         self.message = message
 
     def __str__(self):
-        return txt_type(self.message)
+        return six.text_type(self.message)
 
     def __repr__(self):
         return '%s(%s,)' % (self.__class__.__name__, self.message)
@@ -107,17 +110,20 @@ class ValidationError(AssertionError):
             errors_dict = {}
             if not source:
                 return errors_dict
+
             if isinstance(source, dict):
                 for field_name, error in source.iteritems():
                     errors_dict[field_name] = build_dict(error)
             elif isinstance(source, ValidationError) and source.errors:
                 return build_dict(source.errors)
             else:
-                return unicode(source)
+                return six.text_type(source)
+
             return errors_dict
 
         if not self.errors:
             return {}
+
         return build_dict(self.errors)
 
     def _format_errors(self):
@@ -130,10 +136,10 @@ class ValidationError(AssertionError):
                 value = ' '.join(
                     [generate_key(v, k) for k, v in value.iteritems()])
 
-            results = "%s.%s" % (prefix, value) if prefix else value
+            results = '%s.%s' % (prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
         for k, v in self.to_dict().iteritems():
             error_dict[generate_key(v)].append(k)
-        return ' '.join(["%s: %s" % (k, v) for k, v in error_dict.iteritems()])
+        return ' '.join(['%s: %s' % (k, v) for k, v in error_dict.iteritems()])

@@ -1,13 +1,12 @@
 from bson import DBRef, SON
+import six
 
-from base import (
-    BaseDict, BaseList, EmbeddedDocumentList,
-    TopLevelDocumentMetaclass, get_document
-)
-from fields import (ReferenceField, ListField, DictField, MapField)
-from connection import get_db
-from queryset import QuerySet
-from document import Document, EmbeddedDocument
+from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList,
+                              TopLevelDocumentMetaclass, get_document)
+from mongoengine.connection import get_db
+from mongoengine.document import Document, EmbeddedDocument
+from mongoengine.fields import DictField, ListField, MapField, ReferenceField
+from mongoengine.queryset import QuerySet
 
 
 class DeReference(object):
@@ -24,7 +23,7 @@ class DeReference(object):
             :class:`~mongoengine.base.ComplexBaseField`
         :param get: A boolean determining if being called by __get__
         """
-        if items is None or isinstance(items, basestring):
+        if items is None or isinstance(items, six.string_types):
             return items
 
         # cheapest way to convert a queryset to a list
@@ -67,11 +66,11 @@ class DeReference(object):
 
                         items = _get_items(items)
                     else:
-                        items = dict([
-                            (k, field.to_python(v))
-                            if not isinstance(v, (DBRef, Document)) else (k, v)
-                            for k, v in items.iteritems()]
-                        )
+                        items = {
+                            k: (v if isinstance(v, (DBRef, Document))
+                                else field.to_python(v))
+                            for k, v in items.iteritems()
+                        }
 
         self.reference_map = self._find_references(items)
         self.object_map = self._fetch_objects(doc_type=doc_type)
@@ -89,14 +88,14 @@ class DeReference(object):
             return reference_map
 
         # Determine the iterator to use
-        if not hasattr(items, 'items'):
-            iterator = enumerate(items)
+        if isinstance(items, dict):
+            iterator = items.values()
         else:
-            iterator = items.iteritems()
+            iterator = items
 
         # Recursively find dbreferences
         depth += 1
-        for k, item in iterator:
+        for item in iterator:
             if isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
@@ -150,7 +149,7 @@ class DeReference(object):
                     references = get_db()[collection].find({'_id': {'$in': refs}})
                     for ref in references:
                         if '_cls' in ref:
-                            doc = get_document(ref["_cls"])._from_son(ref)
+                            doc = get_document(ref['_cls'])._from_son(ref)
                         elif doc_type is None:
                             doc = get_document(
                                 ''.join(x.capitalize()
@@ -217,7 +216,7 @@ class DeReference(object):
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
             elif isinstance(v, (Document, EmbeddedDocument)):
-                for field_name, field in v._fields.iteritems():
+                for field_name in v._fields:
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, DBRef):
                         data[k]._data[field_name] = self.object_map.get(
@@ -226,7 +225,7 @@ class DeReference(object):
                         data[k]._data[field_name] = self.object_map.get(
                             (v['_ref'].collection, v['_ref'].id), v)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                        item_name = "{0}.{1}.{2}".format(name, k, field_name)
+                        item_name = six.text_type('{0}.{1}.{2}').format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name

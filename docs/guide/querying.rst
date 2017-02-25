@@ -237,7 +237,7 @@ is preferred for achieving this::
     # All except for the first 5 people
     users = User.objects[5:]
 
-    # 5 users, starting from the 10th user found
+    # 5 users, starting from the 11th user found
     users = User.objects[10:15]
 
 You may also index the query to retrieve a single result. If an item at that
@@ -346,6 +346,8 @@ Just as with limiting and skipping results, there is a method on
 way of achieving this::
 
     num_users = len(User.objects)
+
+Even if len() is the Pythonic way of counting results, keep in mind that if you concerned about performance, :meth:`~mongoengine.queryset.QuerySet.count` is the way to go since it only execute a server side count query, while len() retrieves the results, places them in cache, and finally counts them. If we compare the performance of the two operations, len() is much slower than :meth:`~mongoengine.queryset.QuerySet.count`.
 
 Further aggregation
 -------------------
@@ -476,6 +478,8 @@ documents. To build a complex query, you may combine
 operators. To use a :class:`~mongoengine.queryset.Q` object, pass it in as the
 first positional argument to :attr:`Document.objects` when you filter it by
 calling it with keyword arguments::
+
+    from mongoengine.queryset.visitor import Q
 
     # Get published posts
     Post.objects(Q(published=True) | Q(publish_date__lte=datetime.now()))

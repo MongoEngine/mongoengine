@@ -142,11 +142,4 @@ cleaner looking while still allowing manual execution of the callback::
         modified = DateTimeField()
 
 
-ReferenceFields and Signals
----------------------------
-
-Currently `reverse_delete_rule` does not trigger signals on the other part of
-the relationship.  If this is required you must manually handle the
-reverse deletion.
-
 .. _blinker: http://pypi.python.org/pypi/blinker

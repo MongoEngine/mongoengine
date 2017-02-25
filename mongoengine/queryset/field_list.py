@@ -67,7 +67,7 @@ class QueryFieldList(object):
         return bool(self.fields)
 
     def as_dict(self):
-        field_list = dict((field, self.value) for field in self.fields)
+        field_list = {field: self.value for field in self.fields}
         if self.slice:
             field_list.update(self.slice)
         if self._id is not None:

@@ -29,7 +29,7 @@ documents are serialized based on their field order.
 
 Dynamic document schemas
 ========================
-One of the benefits of MongoDb is dynamic schemas for a collection, whilst data
+One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
 should be planned and organised (after all explicit is better than implicit!)
 there are scenarios where having dynamic / expando style documents is desirable.
 
@@ -75,6 +75,7 @@ are as follows:
 * :class:`~mongoengine.fields.DynamicField`
 * :class:`~mongoengine.fields.EmailField`
 * :class:`~mongoengine.fields.EmbeddedDocumentField`
+* :class:`~mongoengine.fields.EmbeddedDocumentListField`
 * :class:`~mongoengine.fields.FileField`
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
@@ -149,7 +150,7 @@ arguments can be set on all fields:
     .. note:: If set, this field is also accessible through the `pk` field.
 
 :attr:`choices` (Default: None)
-    An iterable (e.g. a list or tuple) of choices to which the value of this
+    An iterable (e.g. list, tuple or set) of choices to which the value of this
     field should be limited.
 
     Can be either be a nested tuples of value (stored in mongo) and a
@@ -172,11 +173,11 @@ arguments can be set on all fields:
         class Shirt(Document):
             size = StringField(max_length=3, choices=SIZE)
 
-:attr:`help_text` (Default: None)
-    Optional help text to output with the field -- used by form libraries
-
-:attr:`verbose_name` (Default: None)
-    Optional human-readable name for the field -- used by form libraries
+:attr:`**kwargs` (Optional)
+    You can supply additional metadata as arbitrary additional keyword
+    arguments.  You can not override existing attributes, however.  Common
+    choices include `help_text` and `verbose_name`, commonly used by form and
+    widget libraries.
 
 
 List fields
@@ -213,9 +214,9 @@ document class as the first argument::
 
 Dictionary Fields
 -----------------
-Often, an embedded document may be used instead of a dictionary -- generally
-this is recommended as dictionaries don't support validation or custom field
-types. However, sometimes you will not know the structure of what you want to
+Often, an embedded document may be used instead of a dictionary – generally
+embedded documents are recommended as dictionaries don’t support validation
+or custom field types. However, sometimes you will not know the structure of what you want to
 store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate::
 
     class SurveyResponse(Document):
@@ -359,11 +360,6 @@ Its value can take any of the following constants:
 
    In Django, be sure to put all apps that have such delete rule declarations in
    their :file:`models.py` in the :const:`INSTALLED_APPS` tuple.
-
-
-.. warning::
-   Signals are not triggered when doing cascading updates / deletes - if this
-   is required you must manually handle the update / delete.
 
 Generic reference fields
 ''''''''''''''''''''''''

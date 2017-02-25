@@ -2,11 +2,101 @@
 Changelog
 =========
 
-Changes in 0.10.1 - DEV
-=======================
+Development
+===========
+- (Fill this out as you fix issues and develop your features).
+- Fixed using sets in field choices #1481
+- POTENTIAL BREAKING CHANGE: Fixed limit/skip/hint/batch_size chaining #1476
+- POTENTIAL BREAKING CHANGE: Changed a public `QuerySet.clone_into` method to a private `QuerySet._clone_into` #1476
+- Fixed connecting to a replica set with PyMongo 2.x #1436
+- Fixed an obscure error message when filtering by `field__in=non_iterable`. #1237
+
+Changes in 0.11.0
+=================
+- BREAKING CHANGE: Renamed `ConnectionError` to `MongoEngineConnectionError` since the former is a built-in exception name in Python v3.x. #1428
+- BREAKING CHANGE: Dropped Python 2.6 support. #1428
+- BREAKING CHANGE: `from mongoengine.base import ErrorClass` won't work anymore for any error from `mongoengine.errors` (e.g. `ValidationError`). Use `from mongoengine.errors import ErrorClass instead`. #1428
+- BREAKING CHANGE: Accessing a broken reference will raise a `DoesNotExist` error. In the past it used to return `None`. #1334
+- Fixed absent rounding for DecimalField when `force_string` is set. #1103
+
+Changes in 0.10.8
+=================
+- Added support for QuerySet.batch_size (#1426)
+- Fixed query set iteration within iteration #1427
+- Fixed an issue where specifying a MongoDB URI host would override more information than it should #1421
+- Added ability to filter the generic reference field by ObjectId and DBRef #1425
+- Fixed delete cascade for models with a custom primary key field #1247
+- Added ability to specify an authentication mechanism (e.g. X.509) #1333
+- Added support for falsey primary keys (e.g. doc.pk = 0) #1354
+- Fixed QuerySet#sum/average for fields w/ explicit db_field #1417
+- Fixed filtering by embedded_doc=None #1422
+- Added support for cursor.comment #1420
+- Fixed doc.get_<field>_display #1419
+- Fixed __repr__ method of the StrictDict #1424
+- Added a deprecation warning for Python 2.6
+
+Changes in 0.10.7
+=================
+- Dropped Python 3.2 support #1390
+- Fixed the bug where dynamic doc has index inside a dict field #1278
+- Fixed: ListField minus index assignment does not work #1128
+- Fixed cascade delete mixing among collections #1224
+- Add `signal_kwargs` argument to `Document.save`, `Document.delete` and `BaseQuerySet.insert` to be passed to signals calls #1206
+- Raise `OperationError` when trying to do a `drop_collection` on document with no collection set.
+- count on ListField of EmbeddedDocumentField fails. #1187
+- Fixed long fields stored as int32 in Python 3. #1253
+- MapField now handles unicodes keys correctly. #1267
+- ListField now handles negative indicies correctly. #1270
+- Fixed AttributeError when initializing EmbeddedDocument with positional args. #681
+- Fixed no_cursor_timeout error with pymongo 3.0+ #1304
+- Replaced map-reduce based QuerySet.sum/average with aggregation-based implementations #1336
+- Fixed support for `__` to escape field names that match operators names in `update` #1351
+- Fixed BaseDocument#_mark_as_changed #1369
+- Added support for pickling QuerySet instances. #1397
+- Fixed connecting to a list of hosts #1389
+- Fixed a bug where accessing broken references wouldn't raise a DoesNotExist error #1334
+- Fixed not being able to specify use_db_field=False on ListField(EmbeddedDocumentField) instances #1218
+- Improvements to the dictionary fields docs #1383
+
+Changes in 0.10.6
+=================
+- Add support for mocking MongoEngine based on mongomock. #1151
+- Fixed not being able to run tests on Windows. #1153
+- Allow creation of sparse compound indexes. #1114
+- count on ListField of EmbeddedDocumentField fails. #1187
+
+Changes in 0.10.5
+=================
+- Fix for reloading of strict with special fields. #1156
+
+Changes in 0.10.4
+=================
+- SaveConditionError is now importable from the top level package. #1165
+- upsert_one method added. #1157
+
+Changes in 0.10.3
+=================
+- Fix `read_preference` (it had chaining issues with PyMongo 2.x and it didn't work at all with PyMongo 3.x) #1042
+
+Changes in 0.10.2
+=================
+- Allow shard key to point to a field in an embedded document. #551
+- Allow arbirary metadata in fields. #1129
+- ReferenceFields now support abstract document types. #837
+
+Changes in 0.10.1
+=================
 - Fix infinite recursion with CASCADE delete rules under specific conditions. #1046
 - Fix CachedReferenceField bug when loading cached docs as DBRef but failing to save them. #1047
 - Fix ignored chained options #842
+- Document save's save_condition error raises `SaveConditionError` exception #1070
+- Fix Document.reload for DynamicDocument. #1050
+- StrictDict & SemiStrictDict are shadowed at init time. #1105
+- Fix ListField minus index assignment does not work. #1119
+- Remove code that marks field as changed when the field has default but not existed in database #1126
+- Remove test dependencies (nose and rednose) from install dependencies list. #1079
+- Recursively build query when using elemMatch operator. #1130
+- Fix instance back references for lists of embedded documents. #1131
 
 Changes in 0.10.0
 =================

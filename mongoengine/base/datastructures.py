@@ -1,14 +1,16 @@
-import weakref
 import itertools
+import weakref
+
+import six
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
-__all__ = ("BaseDict", "BaseList", "EmbeddedDocumentList")
+__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList')
 
 
 class BaseDict(dict):
-    """A special dict so we can watch any changes"""
+    """A special dict so we can watch any changes."""
 
     _dereferenced = False
     _instance = None
@@ -93,8 +95,7 @@ class BaseDict(dict):
 
 
 class BaseList(list):
-    """A special list so we can watch any changes
-    """
+    """A special list so we can watch any changes."""
 
     _dereferenced = False
     _instance = None
@@ -137,10 +138,7 @@ class BaseList(list):
         return super(BaseList, self).__setitem__(key, value)
 
     def __delitem__(self, key, *args, **kwargs):
-        if isinstance(key, slice):
-            self._mark_as_changed()
-        else:
-            self._mark_as_changed(key)
+        self._mark_as_changed()
         return super(BaseList, self).__delitem__(key)
 
     def __setslice__(self, *args, **kwargs):
@@ -199,7 +197,9 @@ class BaseList(list):
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
             if key:
-                self._instance._mark_as_changed('%s.%s' % (self._name, key))
+                self._instance._mark_as_changed(
+                    '%s.%s' % (self._name, key % len(self))
+                )
             else:
                 self._instance._mark_as_changed(self._name)
 
@@ -207,17 +207,22 @@ class BaseList(list):
 class EmbeddedDocumentList(BaseList):
 
     @classmethod
-    def __match_all(cls, i, kwargs):
-        items = kwargs.items()
-        return all([
-            getattr(i, k) == v or str(getattr(i, k)) == v for k, v in items
-        ])
+    def __match_all(cls, embedded_doc, kwargs):
+        """Return True if a given embedded doc matches all the filter
+        kwargs. If it doesn't return False.
+        """
+        for key, expected_value in kwargs.items():
+            doc_val = getattr(embedded_doc, key)
+            if doc_val != expected_value and six.text_type(doc_val) != expected_value:
+                return False
+        return True
 
     @classmethod
-    def __only_matches(cls, obj, kwargs):
+    def __only_matches(cls, embedded_docs, kwargs):
+        """Return embedded docs that match the filter kwargs."""
         if not kwargs:
-            return obj
-        return filter(lambda i: cls.__match_all(i, kwargs), obj)
+            return embedded_docs
+        return [doc for doc in embedded_docs if cls.__match_all(doc, kwargs)]
 
     def __init__(self, list_items, instance, name):
         super(EmbeddedDocumentList, self).__init__(list_items, instance, name)
@@ -283,18 +288,18 @@ class EmbeddedDocumentList(BaseList):
         values = self.__only_matches(self, kwargs)
         if len(values) == 0:
             raise DoesNotExist(
-                "%s matching query does not exist." % self._name
+                '%s matching query does not exist.' % self._name
             )
         elif len(values) > 1:
             raise MultipleObjectsReturned(
-                "%d items returned, instead of 1" % len(values)
+                '%d items returned, instead of 1' % len(values)
             )
 
         return values[0]
 
     def first(self):
-        """
-        Returns the first embedded document in the list, or ``None`` if empty.
+        """Return the first embedded document in the list, or ``None``
+        if empty.
         """
         if len(self) > 0:
             return self[0]
@@ -424,7 +429,7 @@ class StrictDict(object):
     def __eq__(self, other):
         return self.items() == other.items()
 
-    def __neq__(self, other):
+    def __ne__(self, other):
         return self.items() != other.items()
 
     @classmethod
@@ -436,7 +441,7 @@ class StrictDict(object):
                 __slots__ = allowed_keys_tuple
 
                 def __repr__(self):
-                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k) for k in self.iterkeys())
+                    return '{%s}' % ', '.join('"{0!s}": {1!r}'.format(k, v) for k, v in self.items())
 
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]

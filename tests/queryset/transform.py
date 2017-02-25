@@ -1,11 +1,7 @@
-import sys
-sys.path[0:0] = [""]
-
 import unittest
 
 from mongoengine import *
-from mongoengine.queryset import Q
-from mongoengine.queryset import transform
+from mongoengine.queryset import Q, transform
 
 __all__ = ("TransformTest",)
 
@@ -41,8 +37,8 @@ class TransformTest(unittest.TestCase):
         DicDoc.drop_collection()
         Doc.drop_collection()
 
+        DicDoc().save()
         doc = Doc().save()
-        dic_doc = DicDoc().save()
 
         for k, v in (("set", "$set"), ("set_on_insert", "$setOnInsert"), ("push", "$push")):
             update = transform.update(DicDoc, **{"%s__dictField__test" % k: doc})
@@ -54,7 +50,6 @@ class TransformTest(unittest.TestCase):
 
         update = transform.update(DicDoc, pull__dictField__test=doc)
         self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
-
 
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.
@@ -156,26 +151,33 @@ class TransformTest(unittest.TestCase):
         class Doc(Document):
             meta = {'allow_inheritance': False}
 
-        raw_query = Doc.objects(__raw__={'deleted': False,
-                                'scraped': 'yes',
-                                '$nor': [{'views.extracted': 'no'},
-                                         {'attachments.views.extracted':'no'}]
-                                })._query
+        raw_query = Doc.objects(__raw__={
+            'deleted': False,
+            'scraped': 'yes',
+            '$nor': [
+                {'views.extracted': 'no'},
+                {'attachments.views.extracted': 'no'}
+            ]
+        })._query
 
-        expected = {'deleted': False, 'scraped': 'yes',
-                    '$nor': [{'views.extracted': 'no'},
-                             {'attachments.views.extracted': 'no'}]}
-        self.assertEqual(expected, raw_query)
+        self.assertEqual(raw_query, {
+            'deleted': False,
+            'scraped': 'yes',
+            '$nor': [
+                {'views.extracted': 'no'},
+                {'attachments.views.extracted': 'no'}
+            ]
+        })
 
     def test_geojson_PointField(self):
         class Location(Document):
             loc = PointField()
 
         update = transform.update(Location, set__loc=[1, 2])
-        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
+        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1, 2]}}})
 
-        update = transform.update(Location, set__loc={"type": "Point", "coordinates": [1,2]})
-        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1,2]}}})
+        update = transform.update(Location, set__loc={"type": "Point", "coordinates": [1, 2]})
+        self.assertEqual(update, {'$set': {'loc': {"type": "Point", "coordinates": [1, 2]}}})
 
     def test_geojson_LineStringField(self):
         class Location(Document):
@@ -224,6 +226,10 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(1, Doc.objects(item__type__="axe").count())
         self.assertEqual(1, Doc.objects(item__name__="Heroic axe").count())
 
+        Doc.objects(id=doc.id).update(set__item__type__='sword')
+        self.assertEqual(1, Doc.objects(item__type__="sword").count())
+        self.assertEqual(0, Doc.objects(item__type__="axe").count())
+
     def test_understandable_error_raised(self):
         class Event(Document):
             title = StringField()
@@ -232,7 +238,9 @@ class TransformTest(unittest.TestCase):
         box = [(35.0, -125.0), (40.0, -100.0)]
         # I *meant* to execute location__within_box=box
         events = Event.objects(location__within=box)
-        self.assertRaises(InvalidQueryError, lambda: events.count())
+        with self.assertRaises(InvalidQueryError):
+            events.count()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,22 @@
+pylint:
+    disable:
+        # We use this a lot (e.g. via document._meta)
+        - protected-access
+
+    options:
+        additional-builtins:
+            # add xrange and long as valid built-ins. In Python 3, xrange is
+            # translated into range and long is translated into int via 2to3 (see
+            # "use_2to3" in setup.py). This should be removed when we drop Python
+            # 2 support (which probably won't happen any time soon).
+            - xrange
+            - long
+
+pyflakes:
+    disable:
+        # undefined variables are already covered by pylint (and exclude
+        # xrange & long)
+        - F821
+
+ignore-paths:
+    - benchmark.py

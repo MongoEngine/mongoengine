@@ -14,13 +14,13 @@ Before starting to write code, look for existing `tickets
 <https://github.com/MongoEngine/mongoengine/issues?state=open>`_ or `create one
 <https://github.com/MongoEngine/mongoengine/issues>`_ for your specific
 issue or feature request. That way you avoid working on something
-that might not be of interest or that has already been addressed.  If in doubt
+that might not be of interest or that has already been addressed. If in doubt
 post to the `user group <http://groups.google.com/group/mongoengine-users>`
 
 Supported Interpreters
 ----------------------
 
-MongoEngine supports CPython 2.6 and newer. Language
+MongoEngine supports CPython 2.7 and newer. Language
 features not supported by all interpreters can not be used.
 Please also ensure that your code is properly converted by
 `2to3 <http://docs.python.org/library/2to3.html>`_ for Python 3 support.

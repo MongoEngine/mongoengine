@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path[0:0] = [""]
 import unittest
 
 from bson import SON

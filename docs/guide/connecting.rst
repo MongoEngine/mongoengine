@@ -33,7 +33,7 @@ the :attr:`host` to
     corresponding parameters in :func:`~mongoengine.connect`: ::
 
         connect(
-            name='test',
+            db='test',
             username='user',
             password='12345',
             host='mongodb://admin:qwerty@localhost/production'

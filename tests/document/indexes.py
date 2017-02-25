@@ -2,7 +2,6 @@
 import unittest
 import sys
 
-sys.path[0:0] = [""]
 
 import pymongo
 
@@ -32,10 +31,7 @@ class IndexesTest(unittest.TestCase):
         self.Person = Person
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
-            self.db.drop_collection(collection)
+        self.connection.drop_database(self.db)
 
     def test_indexes_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
@@ -560,8 +556,8 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        for i in xrange(0, 10):
-            tags = [("tag %i" % n) for n in xrange(0, i % 2)]
+        for i in range(0, 10):
+            tags = [("tag %i" % n) for n in range(0, i % 2)]
             BlogPost(tags=tags).save()
 
         self.assertEqual(BlogPost.objects.count(), 10)
@@ -822,33 +818,34 @@ class IndexesTest(unittest.TestCase):
             name = StringField(required=True)
             term = StringField(required=True)
 
-        class Report(Document):
+        class ReportEmbedded(Document):
             key = EmbeddedDocumentField(CompoundKey, primary_key=True)
             text = StringField()
 
-        Report.drop_collection()
-
         my_key = CompoundKey(name="n", term="ok")
-        report = Report(text="OK", key=my_key).save()
+        report = ReportEmbedded(text="OK", key=my_key).save()
 
         self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
                          report.to_mongo())
-        self.assertEqual(report, Report.objects.get(pk=my_key))
+        self.assertEqual(report, ReportEmbedded.objects.get(pk=my_key))
 
     def test_compound_key_dictfield(self):
 
-        class Report(Document):
+        class ReportDictField(Document):
             key = DictField(primary_key=True)
             text = StringField()
 
-        Report.drop_collection()
-
         my_key = {"name": "n", "term": "ok"}
-        report = Report(text="OK", key=my_key).save()
+        report = ReportDictField(text="OK", key=my_key).save()
 
         self.assertEqual({'text': 'OK', '_id': {'term': 'ok', 'name': 'n'}},
                          report.to_mongo())
-        self.assertEqual(report, Report.objects.get(pk=my_key))
+
+        # We can't directly call ReportDictField.objects.get(pk=my_key),
+        # because dicts are unordered, and if the order in MongoDB is
+        # different than the one in `my_key`, this test will fail.
+        self.assertEqual(report, ReportDictField.objects.get(pk__name=my_key['name']))
+        self.assertEqual(report, ReportDictField.objects.get(pk__term=my_key['term']))
 
     def test_string_indexes(self):
 
@@ -862,6 +859,20 @@ class IndexesTest(unittest.TestCase):
         info = [value['key'] for key, value in info.iteritems()]
         self.assertTrue([('provider_ids.foo', 1)] in info)
         self.assertTrue([('provider_ids.bar', 1)] in info)
+
+    def test_sparse_compound_indexes(self):
+
+        class MyDoc(Document):
+            provider_ids = DictField()
+            meta = {
+                "indexes": [{'fields': ("provider_ids.foo", "provider_ids.bar"),
+                             'sparse': True}],
+            }
+
+        info = MyDoc.objects._collection.index_information()
+        self.assertEqual([('provider_ids.foo', 1), ('provider_ids.bar', 1)],
+                         info['provider_ids.foo_1_provider_ids.bar_1']['key'])
+        self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
     def test_text_indexes(self):
 
@@ -895,26 +906,38 @@ class IndexesTest(unittest.TestCase):
 
         Issue #812
         """
+        # Use a new connection and database since dropping the database could
+        # cause concurrent tests to fail.
+        connection = connect(db='tempdatabase',
+                             alias='test_indexes_after_database_drop')
+
         class BlogPost(Document):
             title = StringField()
             slug = StringField(unique=True)
 
-        BlogPost.drop_collection()
+            meta = {'db_alias': 'test_indexes_after_database_drop'}
 
-        # Create Post #1
-        post1 = BlogPost(title='test1', slug='test')
-        post1.save()
+        try:
+            BlogPost.drop_collection()
 
-        # Drop the Database
-        self.connection.drop_database(BlogPost._get_db().name)
+            # Create Post #1
+            post1 = BlogPost(title='test1', slug='test')
+            post1.save()
 
-        # Re-create Post #1
-        post1 = BlogPost(title='test1', slug='test')
-        post1.save()
+            # Drop the Database
+            connection.drop_database('tempdatabase')
 
-        # Create Post #2
-        post2 = BlogPost(title='test2', slug='test')
-        self.assertRaises(NotUniqueError, post2.save)
+            # Re-create Post #1
+            post1 = BlogPost(title='test1', slug='test')
+            post1.save()
+
+            # Create Post #2
+            post2 = BlogPost(title='test2', slug='test')
+            self.assertRaises(NotUniqueError, post2.save)
+        finally:
+            # Drop the temporary database at the end
+            connection.drop_database('tempdatabase')
+
 
     def test_index_dont_send_cls_option(self):
         """

@@ -1,7 +1,9 @@
-"""Helper functions and types to aid with Python 2.5 - 3 support."""
-
-import sys
+"""
+Helper functions, constants, and types to aid with Python v2.7 - v3.x and
+PyMongo v2.7 - v3.x support.
+"""
 import pymongo
+import six
 
 
 if pymongo.version_tuple[0] < 3:
@@ -9,29 +11,15 @@ if pymongo.version_tuple[0] < 3:
 else:
     IS_PYMONGO_3 = True
 
-PY3 = sys.version_info[0] == 3
 
-if PY3:
-    import codecs
-    from io import BytesIO as StringIO
+# six.BytesIO resolves to StringIO.StringIO in Py2 and io.BytesIO in Py3.
+StringIO = six.BytesIO
 
-    # return s converted to binary.  b('test') should be equivalent to b'test'
-    def b(s):
-        return codecs.latin_1_encode(s)[0]
-
-    bin_type = bytes
-    txt_type = str
-else:
+# Additionally for Py2, try to use the faster cStringIO, if available
+if not six.PY3:
     try:
-        from cStringIO import StringIO
+        import cStringIO
     except ImportError:
-        from StringIO import StringIO
-
-    # Conversion to binary only necessary in Python 3
-    def b(s):
-        return s
-
-    bin_type = str
-    txt_type = unicode
-
-str_types = (bin_type, txt_type)
+        pass
+    else:
+        StringIO = cStringIO.StringIO

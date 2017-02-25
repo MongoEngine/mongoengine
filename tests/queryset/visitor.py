@@ -1,14 +1,12 @@
-import sys
-sys.path[0:0] = [""]
-
+import datetime
+import re
 import unittest
 
 from bson import ObjectId
-from datetime import datetime
 
 from mongoengine import *
-from mongoengine.queryset import Q
 from mongoengine.errors import InvalidQueryError
+from mongoengine.queryset import Q
 
 __all__ = ("QTest",)
 
@@ -132,12 +130,12 @@ class QTest(unittest.TestCase):
         TestDoc(x=10).save()
         TestDoc(y=True).save()
 
-        self.assertEqual(query,
-        {'$and': [
-            {'$or': [{'x': {'$gt': 0}}, {'x': {'$exists': False}}]},
-            {'$or': [{'x': {'$lt': 100}}, {'y': True}]}
-        ]})
-
+        self.assertEqual(query, {
+            '$and': [
+                {'$or': [{'x': {'$gt': 0}}, {'x': {'$exists': False}}]},
+                {'$or': [{'x': {'$lt': 100}}, {'y': True}]}
+            ]
+        })
         self.assertEqual(2, TestDoc.objects(q1 & q2).count())
 
     def test_or_and_or_combination(self):
@@ -157,15 +155,14 @@ class QTest(unittest.TestCase):
         q2 = (Q(x__lt=100) & (Q(y=False) | Q(y__exists=False)))
         query = (q1 | q2).to_query(TestDoc)
 
-        self.assertEqual(query,
-            {'$or': [
+        self.assertEqual(query, {
+            '$or': [
                 {'$and': [{'x': {'$gt': 0}},
                           {'$or': [{'y': True}, {'y': {'$exists': False}}]}]},
                 {'$and': [{'x': {'$lt': 100}},
                           {'$or': [{'y': False}, {'y': {'$exists': False}}]}]}
-            ]}
-        )
-
+            ]
+        })
         self.assertEqual(2, TestDoc.objects(q1 | q2).count())
 
     def test_multiple_occurence_in_field(self):
@@ -188,7 +185,7 @@ class QTest(unittest.TestCase):
             x = IntField()
 
         TestDoc.drop_collection()
-        for i in xrange(1, 101):
+        for i in range(1, 101):
             t = TestDoc(x=i)
             t.save()
 
@@ -215,19 +212,19 @@ class QTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(title='Test 1', publish_date=datetime(2010, 1, 8), published=False)
+        post1 = BlogPost(title='Test 1', publish_date=datetime.datetime(2010, 1, 8), published=False)
         post1.save()
 
-        post2 = BlogPost(title='Test 2', publish_date=datetime(2010, 1, 15), published=True)
+        post2 = BlogPost(title='Test 2', publish_date=datetime.datetime(2010, 1, 15), published=True)
         post2.save()
 
         post3 = BlogPost(title='Test 3', published=True)
         post3.save()
 
-        post4 = BlogPost(title='Test 4', publish_date=datetime(2010, 1, 8))
+        post4 = BlogPost(title='Test 4', publish_date=datetime.datetime(2010, 1, 8))
         post4.save()
 
-        post5 = BlogPost(title='Test 1', publish_date=datetime(2010, 1, 15))
+        post5 = BlogPost(title='Test 1', publish_date=datetime.datetime(2010, 1, 15))
         post5.save()
 
         post6 = BlogPost(title='Test 1', published=False)
@@ -250,7 +247,7 @@ class QTest(unittest.TestCase):
         self.assertTrue(all(obj.id in posts for obj in published_posts))
 
         # Check Q object combination
-        date = datetime(2010, 1, 10)
+        date = datetime.datetime(2010, 1, 10)
         q = BlogPost.objects(Q(publish_date__lte=date) | Q(published=True))
         posts = [post.id for post in q]
 
@@ -271,12 +268,13 @@ class QTest(unittest.TestCase):
         self.assertEqual(self.Person.objects(Q(age__in=[20, 30])).count(), 3)
 
         # Test invalid query objs
-        def wrong_query_objs():
+        with self.assertRaises(InvalidQueryError):
             self.Person.objects('user1')
-        def wrong_query_objs_filter():
-            self.Person.objects('user1')
-        self.assertRaises(InvalidQueryError, wrong_query_objs)
-        self.assertRaises(InvalidQueryError, wrong_query_objs_filter)
+
+        # filter should fail, too
+        with self.assertRaises(InvalidQueryError):
+            self.Person.objects.filter('user1')
+
 
     def test_q_regex(self):
         """Ensure that Q objects can be queried using regexes.
@@ -284,7 +282,6 @@ class QTest(unittest.TestCase):
         person = self.Person(name='Guido van Rossum')
         person.save()
 
-        import re
         obj = self.Person.objects(Q(name=re.compile('^Gui'))).first()
         self.assertEqual(obj, person)
         obj = self.Person.objects(Q(name=re.compile('^gui'))).first()

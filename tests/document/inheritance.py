@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path[0:0] = [""]
 import unittest
 import warnings
 
@@ -253,18 +251,16 @@ class InheritanceTest(unittest.TestCase):
         self.assertEqual(classes, [Human])
 
     def test_allow_inheritance(self):
-        """Ensure that inheritance may be disabled on simple classes and that
-        _cls and _subclasses will not be used.
+        """Ensure that inheritance is disabled by default on simple
+        classes and that _cls will not be used.
         """
-
         class Animal(Document):
             name = StringField()
 
-        def create_dog_class():
+        # can't inherit because Animal didn't explicitly allow inheritance
+        with self.assertRaises(ValueError):
             class Dog(Animal):
                 pass
-
-        self.assertRaises(ValueError, create_dog_class)
 
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name='dog').save()
@@ -275,17 +271,15 @@ class InheritanceTest(unittest.TestCase):
         self.assertFalse('_cls' in obj)
 
     def test_cant_turn_off_inheritance_on_subclass(self):
-        """Ensure if inheritance is on in a subclass you cant turn it off
+        """Ensure if inheritance is on in a subclass you cant turn it off.
         """
-
         class Animal(Document):
             name = StringField()
             meta = {'allow_inheritance': True}
 
-        def create_mammal_class():
+        with self.assertRaises(ValueError):
             class Mammal(Animal):
                 meta = {'allow_inheritance': False}
-        self.assertRaises(ValueError, create_mammal_class)
 
     def test_allow_inheritance_abstract_document(self):
         """Ensure that abstract documents can set inheritance rules and that
@@ -298,10 +292,9 @@ class InheritanceTest(unittest.TestCase):
         class Animal(FinalDocument):
             name = StringField()
 
-        def create_mammal_class():
+        with self.assertRaises(ValueError):
             class Mammal(Animal):
                 pass
-        self.assertRaises(ValueError, create_mammal_class)
 
         # Check that _cls isn't present in simple documents
         doc = Animal(name='dog')
@@ -360,28 +353,25 @@ class InheritanceTest(unittest.TestCase):
         self.assertEqual(berlin.pk, berlin.auto_id_0)
 
     def test_abstract_document_creation_does_not_fail(self):
-
         class City(Document):
             continent = StringField()
             meta = {'abstract': True,
                     'allow_inheritance': False}
+
         bkk = City(continent='asia')
         self.assertEqual(None, bkk.pk)
         # TODO: expected error? Shouldn't we create a new error type?
-        self.assertRaises(KeyError, lambda: setattr(bkk, 'pk', 1))
+        with self.assertRaises(KeyError):
+            setattr(bkk, 'pk', 1)
 
     def test_allow_inheritance_embedded_document(self):
-        """Ensure embedded documents respect inheritance
-        """
-
+        """Ensure embedded documents respect inheritance."""
         class Comment(EmbeddedDocument):
             content = StringField()
 
-        def create_special_comment():
+        with self.assertRaises(ValueError):
             class SpecialComment(Comment):
                 pass
-
-        self.assertRaises(ValueError, create_special_comment)
 
         doc = Comment(content='test')
         self.assertFalse('_cls' in doc.to_mongo())
@@ -411,7 +401,7 @@ class InheritanceTest(unittest.TestCase):
         try:
             class MyDocument(DateCreatedDocument, DateUpdatedDocument):
                 pass
-        except:
+        except Exception:
             self.assertTrue(False, "Couldn't create MyDocument class")
 
     def test_abstract_documents(self):
@@ -454,11 +444,11 @@ class InheritanceTest(unittest.TestCase):
         self.assertEqual(Guppy._get_collection_name(), 'fish')
         self.assertEqual(Human._get_collection_name(), 'human')
 
-        def create_bad_abstract():
+        # ensure that a subclass of a non-abstract class can't be abstract
+        with self.assertRaises(ValueError):
             class EvilHuman(Human):
                 evil = BooleanField(default=True)
                 meta = {'abstract': True}
-        self.assertRaises(ValueError, create_bad_abstract)
 
     def test_abstract_embedded_documents(self):
         # 789: EmbeddedDocument shouldn't inherit abstract
