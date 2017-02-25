@@ -26,10 +26,9 @@ services:
 addons:
   apt:
     sources:
-    - mongodb-3.0-precise
+    - mongodb-upstart
     packages:
-    - mongodb-org-server=3.0.13
-    - mongodb-org-shell=3.0.13
+    - mongodb-org-server=2.6.9
 
     # Optional dependencies for the ImageField and others
     - python-dev
