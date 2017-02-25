@@ -51,7 +51,9 @@ def register_connection(alias, name=None, host=None, port=None,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
     :param is_mock: explicitly use mongomock for this connection
         (can also be done by using `mongomock://` as db host prefix)
-    :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
+    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+        for example maxpoolsize, tz_aware, etc. See the documentation
+        for pymongo's `MongoClient` for a full list.
 
     .. versionchanged:: 0.10.6 - added mongomock support
     """
@@ -241,8 +243,11 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     running on the default port on localhost. If authentication is needed,
     provide username and password arguments as well.
 
-    Multiple databases are supported by using aliases.  Provide a separate
+    Multiple databases are supported by using aliases. Provide a separate
     `alias` to connect to a different instance of :program:`mongod`.
+
+    See the docstring for `register_connection` for more details about all
+    supported kwargs.
 
     .. versionchanged:: 0.6 - added multiple database support.
     """
