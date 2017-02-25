@@ -11,6 +11,7 @@ python:
 - pypy
 - pypy3
 
+# Test on PyMongo v2.7.x, v2.8.x, and v3.x
 env:
 - PYMONGO=2.7
 - PYMONGO=2.8
