@@ -1,3 +1,6 @@
+# Use a container-based environment
+sudo: false
+
 language: python
 
 python:
@@ -8,32 +11,50 @@ python:
 - pypy
 - pypy3
 
+# Test on PyMongo v2.7.x, v2.8.x, and v3.x
 env:
 - PYMONGO=2.7
 - PYMONGO=2.8
 - PYMONGO=3.0
-- PYMONGO=dev
 
 matrix:
   fast_finish: true
 
-before_install:
-- travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-- echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' |
-  sudo tee /etc/apt/sources.list.d/mongodb.list
-- travis_retry sudo apt-get update
-- travis_retry sudo apt-get install mongodb-org-server
+services:
+- mongodb
+
+addons:
+  apt:
+    sources:
+    - mongodb-upstart
+    packages:
+    - mongodb-org-server=2.6.9
+
+    # Optional dependencies for the ImageField and others
+    - python-dev
+    - python3-dev
+    - libopenjpeg-dev
+    - zlib1g-dev
+    - libjpeg-turbo8-dev
+    - libtiff4-dev
+    - libjpeg8-dev
+    - libfreetype6-dev
+    - liblcms2-dev
+    - libwebp-dev
+    - tcl8.5-dev
+    - tk8.5-dev
+    - python-tk
 
 install:
-- sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
-  libtiff4-dev libjpeg8-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.5-dev tk8.5-dev
-  python-tk
 - travis_retry pip install --upgrade pip
 - travis_retry pip install coveralls
 - travis_retry pip install flake8
 - travis_retry pip install tox>=1.9
 - travis_retry pip install "virtualenv<14.0.0"  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
 - travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
+
+# Cache dependencies installed via pip
+cache: pip
 
 # Run flake8 for py27
 before_script:
@@ -45,7 +66,7 @@ script:
 # For now only submit coveralls for Python v2.7. Python v3.x currently shows
 # 0% coverage. That's caused by 'use_2to3', which builds the py3-compatible
 # code in a separate dir and runs tests on that.
-after_script:
+after_success:
 - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then coveralls --verbose; fi
 
 notifications:
@@ -56,11 +77,22 @@ branches:
   - master
   - /^v.*$/
 
+# Whenever a new release is created via GitHub, publish it on PyPI.
 deploy:
   provider: pypi
   user: the_drow
   password:
     secure: QMyatmWBnC6ZN3XLW2+fTBDU4LQcp1m/LjR2/0uamyeUzWKdlOoh/Wx5elOgLwt/8N9ppdPeG83ose1jOz69l5G0MUMjv8n/RIcMFSpCT59tGYqn3kh55b0cIZXFT9ar+5cxlif6a5rS72IHm5li7QQyxexJIII6Uxp0kpvUmek=
+
+  # create a source distribution and a pure python wheel for faster installs
+  distributions: "sdist bdist_wheel"
+
+  # only deploy on tagged commits (aka GitHub releases) and only for the
+  # parent repo's builds running Python 2.7 along with dev PyMongo (we run
+  # Travis against many different Python and PyMongo versions and we don't
+  # want the deploy to occur multiple times).
   on:
     tags: true
     repo: MongoEngine/mongoengine
+    condition: "$PYMONGO = 3.0"
+    python: 2.7
