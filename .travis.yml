@@ -15,7 +15,6 @@ env:
 - PYMONGO=2.7
 - PYMONGO=2.8
 - PYMONGO=3.0
-- PYMONGO=dev
 
 matrix:
   fast_finish: true
@@ -94,5 +93,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: "$PYMONGO = dev"
+    condition: "$PYMONGO = 3.0"
     python: 2.7
