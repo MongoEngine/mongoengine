@@ -44,7 +44,7 @@ matrix:
     env: PYMONGO=3.0 MONGODB=3.0
 
 before_install:
-- bash .install_mongodb_on_travis.sh
+- ./.install_mongodb_on_travis.sh
 
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
