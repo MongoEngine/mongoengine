@@ -308,14 +308,17 @@ class ConnectionTest(unittest.TestCase):
         else:
             pool_size_kwargs = {'max_pool_size': 100}
 
-        conn = connect('mongoenginetest', alias='t1', **pool_size_kwargs)
+        conn = connect('mongoenginetest', alias='max_pool_size_via_kwarg', **pool_size_kwargs)
         self.assertEqual(conn.max_pool_size, 100)
 
     def test_connection_pool_via_uri(self):
         """Ensure we can specify a max connection pool size using
         an option in a connection URI.
         """
-        conn = connect(host='mongodb://localhost/test?maxpoolsize=100')
+        if pymongo.version_tuple[0] == 2 and pymongo.version_tuple[1] < 9:
+            raise SkipTest('maxpoolsize as a URI option is only supported in PyMongo v2.9+')
+
+        conn = connect(host='mongodb://localhost/test?maxpoolsize=100', alias='max_pool_size_via_uri')
         self.assertEqual(conn.max_pool_size, 100)
 
     def test_write_concern(self):
