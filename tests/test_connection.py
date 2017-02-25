@@ -285,8 +285,7 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
 
     def test_connection_kwargs(self):
-        """Ensure that connection kwargs get passed to pymongo.
-        """
+        """Ensure that connection kwargs get passed to pymongo."""
         connect('mongoenginetest', alias='t1', tz_aware=True)
         conn = get_connection('t1')
 
@@ -295,6 +294,32 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest2', alias='t2')
         conn = get_connection('t2')
         self.assertFalse(get_tz_awareness(conn))
+
+    def test_connection_pool_via_kwarg(self):
+        """Ensure we can specify a max connection pool size using
+        a connection kwarg.
+        """
+        # Use "max_pool_size" or "maxpoolsize" depending on PyMongo version
+        # (former was changed to the latter as described in
+        # https://jira.mongodb.org/browse/PYTHON-854).
+        # TODO remove once PyMongo < 3.0 support is dropped
+        if pymongo.version_tuple[0] >= 3:
+            pool_size_kwargs = {'maxpoolsize': 100}
+        else:
+            pool_size_kwargs = {'max_pool_size': 100}
+
+        conn = connect('mongoenginetest', alias='max_pool_size_via_kwarg', **pool_size_kwargs)
+        self.assertEqual(conn.max_pool_size, 100)
+
+    def test_connection_pool_via_uri(self):
+        """Ensure we can specify a max connection pool size using
+        an option in a connection URI.
+        """
+        if pymongo.version_tuple[0] == 2 and pymongo.version_tuple[1] < 9:
+            raise SkipTest('maxpoolsize as a URI option is only supported in PyMongo v2.9+')
+
+        conn = connect(host='mongodb://localhost/test?maxpoolsize=100', alias='max_pool_size_via_uri')
+        self.assertEqual(conn.max_pool_size, 100)
 
     def test_write_concern(self):
         """Ensure write concern can be specified in connect() via
