@@ -155,9 +155,7 @@ class GeoQueriesTest(MongoDBTestCase):
         """Ensure that spherical geospatial queries are working
         """
         # Needs MongoDB > 2.6.4 https://jira.mongodb.org/browse/SERVER-14039
-        connection = get_connection()
-        info = connection.test.command('buildInfo')
-        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
+        mongodb_version = get_mongodb_version()
         if mongodb_version < (2, 6, 4):
             raise SkipTest("Need MongoDB version 2.6.4+")
 
@@ -314,7 +312,7 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(events.count(), 0)
 
         # $minDistance was only added in MongoDB v2.6, skip for older versions
-        mongodb_ver = get_mongodb_ver()
+        mongodb_ver = get_mongodb_version()
         if mongodb_ver[0] == 2 and mongodb_ver[1] < 6:
             raise SkipTest('Need MongoDB v2.6+')
 

@@ -584,10 +584,10 @@ class QuerySetTest(unittest.TestCase):
         Scores.objects(id=scores.id).update(min__low_score=250)
         self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
 
-        Scores.objects(id=scores.id).update(max__high_score=250)
-        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 250)
-        Scores.objects(id=scores.id).update(max__high_score=100)
-        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 250)
+        Scores.objects(id=scores.id).update(max__high_score=1000)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 1000)
+        Scores.objects(id=scores.id).update(max__high_score=500)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 1000)
 
     def test_updates_can_have_match_operators(self):
 
