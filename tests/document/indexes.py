@@ -2,14 +2,14 @@
 import unittest
 import sys
 
-
-import pymongo
-
 from nose.plugins.skip import SkipTest
 from datetime import datetime
+import pymongo
 
 from mongoengine import *
-from mongoengine.connection import get_db, get_connection
+from mongoengine.connection import get_db
+
+from tests.utils import get_mongodb_version, needs_mongodb_v26
 
 __all__ = ("IndexesTest", )
 
@@ -494,8 +494,7 @@ class IndexesTest(unittest.TestCase):
         obj = Test(a=1)
         obj.save()
 
-        connection = get_connection()
-        IS_MONGODB_3 = connection.server_info()['versionArray'][0] >= 3
+        IS_MONGODB_3 = get_mongodb_version()[0] >= 3
 
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
@@ -733,14 +732,6 @@ class IndexesTest(unittest.TestCase):
 
         Log.drop_collection()
 
-        if pymongo.version_tuple[0] < 2 and pymongo.version_tuple[1] < 3:
-            raise SkipTest('pymongo needs to be 2.3 or higher for this test')
-
-        connection = get_connection()
-        version_array = connection.server_info()['versionArray']
-        if version_array[0] < 2 and version_array[1] < 2:
-            raise SkipTest('MongoDB needs to be 2.2 or higher for this test')
-
         # Indexes are lazy so use list() to perform query
         list(Log.objects)
         info = Log.objects._collection.index_information()
@@ -874,8 +865,8 @@ class IndexesTest(unittest.TestCase):
                          info['provider_ids.foo_1_provider_ids.bar_1']['key'])
         self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
+    @needs_mongodb_v26
     def test_text_indexes(self):
-
         class Book(Document):
             title = DictField()
             meta = {

@@ -1,28 +1,48 @@
+# For full coverage, we'd have to test all supported Python, MongoDB, and
+# PyMongo combinations. However, that would result in an overly long build
+# with a very large number of jobs, hence we only test a subset of all the
+# combinations:
+# * MongoDB v2.4 & v3.0 are only tested against Python v2.7 & v3.5.
+# * MongoDB v2.4 is tested against PyMongo v2.7 & v3.x.
+# * MongoDB v3.0 is tested against PyMongo v3.x.
+# * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
+#   v3.5, PyPy & PyPy3, and PyMongo v2.7, v2.8 & v3.x.
+#
+# Reminder: Update README.rst if you change MongoDB versions we test.
+
 language: python
 
 python:
-- '2.7'
-- '3.3'
-- '3.4'
-- '3.5'
+- 2.7
+- 3.5
 - pypy
 - pypy3
 
 env:
-- PYMONGO=2.7
-- PYMONGO=2.8
-- PYMONGO=3.0
-- PYMONGO=dev
+- MONGODB=2.6 PYMONGO=2.7
+- MONGODB=2.6 PYMONGO=2.8
+- MONGODB=2.6 PYMONGO=3.0
 
 matrix:
+  # Finish the build as soon as one job fails
   fast_finish: true
 
+  include:
+  - python: 2.7
+    env: MONGODB=2.4 PYMONGO=2.7
+  - python: 2.7
+    env: MONGODB=2.4 PYMONGO=3.0
+  - python: 2.7
+    env: MONGODB=3.0 PYMONGO=3.0
+  - python: 3.5
+    env: MONGODB=2.4 PYMONGO=2.7
+  - python: 3.5
+    env: MONGODB=2.4 PYMONGO=3.0
+  - python: 3.5
+    env: MONGODB=3.0 PYMONGO=3.0
+
 before_install:
-- travis_retry sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-- echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' |
-  sudo tee /etc/apt/sources.list.d/mongodb.list
-- travis_retry sudo apt-get update
-- travis_retry sudo apt-get install mongodb-org-server
+- bash .install_mongodb_on_travis.sh
 
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
@@ -30,14 +50,17 @@ install:
   python-tk
 - travis_retry pip install --upgrade pip
 - travis_retry pip install coveralls
-- travis_retry pip install flake8
+- travis_retry pip install flake8 flake8-import-order
 - travis_retry pip install tox>=1.9
 - travis_retry pip install "virtualenv<14.0.0"  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
 - travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 
+# Cache dependencies installed via pip
+cache: pip
+
 # Run flake8 for py27
 before_script:
-- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then tox -e flake8; fi
+- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then flake8 .; else echo "flake8 only runs on py27"; fi
 
 script:
 - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
@@ -45,22 +68,34 @@ script:
 # For now only submit coveralls for Python v2.7. Python v3.x currently shows
 # 0% coverage. That's caused by 'use_2to3', which builds the py3-compatible
 # code in a separate dir and runs tests on that.
-after_script:
+after_success:
 - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then coveralls --verbose; fi
 
 notifications:
   irc: irc.freenode.org#mongoengine
 
+# Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
 branches:
   only:
   - master
   - /^v.*$/
 
+# Whenever a new release is created via GitHub, publish it on PyPI.
 deploy:
   provider: pypi
   user: the_drow
   password:
     secure: QMyatmWBnC6ZN3XLW2+fTBDU4LQcp1m/LjR2/0uamyeUzWKdlOoh/Wx5elOgLwt/8N9ppdPeG83ose1jOz69l5G0MUMjv8n/RIcMFSpCT59tGYqn3kh55b0cIZXFT9ar+5cxlif6a5rS72IHm5li7QQyxexJIII6Uxp0kpvUmek=
+
+  # create a source distribution and a pure python wheel for faster installs
+  distributions: "sdist bdist_wheel"
+
+  # only deploy on tagged commits (aka GitHub releases) and only for the
+  # parent repo's builds running Python 2.7 along with dev PyMongo (we run
+  # Travis against many different Python and PyMongo versions and we don't
+  # want the deploy to occur multiple times).
   on:
     tags: true
     repo: MongoEngine/mongoengine
+    condition: "$PYMONGO = 3.0"
+    python: 2.7

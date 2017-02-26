@@ -19,6 +19,9 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
+from tests.utils import needs_mongodb_v26, skip_pymongo3
+
+
 __all__ = ("QuerySetTest",)
 
 
@@ -30,37 +33,6 @@ class db_ops_tracker(query_counter):
             'command.count': {'$ne': 'system.profile'}
         }
         return list(self.db.system.profile.find(ignore_query))
-
-
-def skip_older_mongodb(f):
-    def _inner(*args, **kwargs):
-        connection = get_connection()
-        info = connection.test.command('buildInfo')
-        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
-
-        if mongodb_version < (2, 6):
-            raise SkipTest("Need MongoDB version 2.6+")
-
-        return f(*args, **kwargs)
-
-    _inner.__name__ = f.__name__
-    _inner.__doc__ = f.__doc__
-
-    return _inner
-
-
-def skip_pymongo3(f):
-    def _inner(*args, **kwargs):
-
-        if IS_PYMONGO_3:
-            raise SkipTest("Useless with PyMongo 3+")
-
-        return f(*args, **kwargs)
-
-    _inner.__name__ = f.__name__
-    _inner.__doc__ = f.__doc__
-
-    return _inner
 
 
 class QuerySetTest(unittest.TestCase):
@@ -599,16 +571,23 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
 
+    @needs_mongodb_v26
     def test_update_min_max(self):
         class Scores(Document):
             high_score = IntField()
             low_score = IntField()
-        scores = Scores(high_score=800, low_score=200)
-        scores.save()
+
+        scores = Scores.objects.create(high_score=800, low_score=200)
+
         Scores.objects(id=scores.id).update(min__low_score=150)
-        self.assertEqual(Scores.objects(id=scores.id).get().low_score, 150)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
         Scores.objects(id=scores.id).update(min__low_score=250)
-        self.assertEqual(Scores.objects(id=scores.id).get().low_score, 150)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
+
+        Scores.objects(id=scores.id).update(max__high_score=1000)
+        self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
+        Scores.objects(id=scores.id).update(max__high_score=500)
+        self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
 
     def test_updates_can_have_match_operators(self):
 
@@ -1012,7 +991,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     @skip_pymongo3
     def test_cursor_args(self):
         """Ensures the cursor args can be set as expected
@@ -3129,7 +3108,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -3216,7 +3195,7 @@ class QuerySetTest(unittest.TestCase):
             'brasil').order_by('$text_score').first()
         self.assertEqual(item.get_text_score(), max_text_score)
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_distinct_handles_references_to_alias(self):
         register_connection('testdb', 'mongoenginetest2')
 
@@ -4891,6 +4870,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
+    @needs_mongodb_v26
     def test_queryset_aggregation_framework(self):
         class Person(Document):
             name = StringField()
@@ -4925,17 +4905,13 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
         ])
 
-        data = Person.objects(
-            age__gte=17, age__lte=40).order_by('-age').aggregate(
-                {'$group': {
-                    '_id': None,
-                    'total': {'$sum': 1},
-                    'avg': {'$avg': '$age'}
-                }
-                }
-
-        )
-
+        data = Person.objects(age__gte=17, age__lte=40).order_by('-age').aggregate({
+            '$group': {
+                '_id': None,
+                'total': {'$sum': 1},
+                'avg': {'$avg': '$age'}
+            }
+        })
         self.assertEqual(list(data), [
             {'_id': None, 'avg': 29, 'total': 2}
         ])
@@ -4976,11 +4952,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
         self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
 
-    def test_loop_via_invalid_id_does_not_crash(self):
+    def test_loop_over_invalid_id_does_not_crash(self):
         class Person(Document):
             name = StringField()
-        Person.objects.delete()
-        Person._get_collection().update({"name": "a"}, {"$set": {"_id": ""}}, upsert=True)
+
+        Person.drop_collection()
+
+        Person._get_collection().insert({'name': 'a', 'id': ''})
         for p in Person.objects():
             self.assertEqual(p.name, 'a')
 
