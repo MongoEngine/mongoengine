@@ -1,16 +1,19 @@
-from datetime import datetime, timedelta
+import datetime
 import unittest
 
+from nose.plugins.skip import SkipTest
 from pymongo.errors import OperationFailure
+
 from mongoengine import *
 from mongoengine.connection import get_connection
-from nose.plugins.skip import SkipTest
+
+from tests.utils import MongoDBTestCase, skip_in_old_mongodb
 
 
 __all__ = ("GeoQueriesTest",)
 
 
-class GeoQueriesTest(unittest.TestCase):
+class GeoQueriesTest(MongoDBTestCase):
 
     def setUp(self):
         connect(db='mongoenginetest')
@@ -29,13 +32,13 @@ class GeoQueriesTest(unittest.TestCase):
         Event.drop_collection()
 
         event1 = Event(title="Coltrane Motion @ Double Door",
-                       date=datetime.now() - timedelta(days=1),
+                       date=datetime.datetime.now() - datetime.timedelta(days=1),
                        location=[-87.677137, 41.909889]).save()
         event2 = Event(title="Coltrane Motion @ Bottom of the Hill",
-                       date=datetime.now() - timedelta(days=10),
+                       date=datetime.datetime.now() - datetime.timedelta(days=10),
                        location=[-122.4194155, 37.7749295]).save()
         event3 = Event(title="Coltrane Motion @ Empty Bottle",
-                       date=datetime.now(),
+                       date=datetime.datetime.now(),
                        location=[-87.686638, 41.900474]).save()
 
         # find all events "near" pitchfork office, chicago.
@@ -225,7 +228,6 @@ class GeoQueriesTest(unittest.TestCase):
         self.assertEqual(points[0].id, south_point.id)
 
     def test_2dsphere_point(self):
-
         class Event(Document):
             title = StringField()
             date = DateTimeField()
@@ -237,14 +239,13 @@ class GeoQueriesTest(unittest.TestCase):
         Event.drop_collection()
 
         event1 = Event(title="Coltrane Motion @ Double Door",
-                       date=datetime.now() - timedelta(days=1),
-                       location=[-87.677137, 41.909889])
-        event1.save()
+                       date=datetime.datetime.now() - datetime.timedelta(days=1),
+                       location=[-87.677137, 41.909889]).save()
         event2 = Event(title="Coltrane Motion @ Bottom of the Hill",
-                       date=datetime.now() - timedelta(days=10),
+                       date=datetime.datetime.now() - datetime.timedelta(days=10),
                        location=[-122.4194155, 37.7749295]).save()
         event3 = Event(title="Coltrane Motion @ Empty Bottle",
-                       date=datetime.now(),
+                       date=datetime.datetime.now(),
                        location=[-87.686638, 41.900474]).save()
 
         # find all events "near" pitchfork office, chicago.
@@ -271,12 +272,14 @@ class GeoQueriesTest(unittest.TestCase):
 
         # find events within 10km of san francisco
         point = [-122.415579, 37.7566023]
-        events = Event.objects(location__near=point, location__max_distance=10000)
+        events = Event.objects(location__near=point,
+                               location__max_distance=10000)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
 
         # find events within 1km of greenpoint, broolyn, nyc, ny
-        events = Event.objects(location__near=[-73.9509714, 40.7237134], location__max_distance=1000)
+        events = Event.objects(location__near=[-73.9509714, 40.7237134],
+                               location__max_distance=1000)
         self.assertEqual(events.count(), 0)
 
         # ensure ordering is respected by "near"
@@ -284,20 +287,6 @@ class GeoQueriesTest(unittest.TestCase):
                                location__max_distance=10000).order_by("-date")
         self.assertEqual(events.count(), 2)
         self.assertEqual(events[0], event3)
-
-        # ensure min_distance and max_distance combine well
-        events = Event.objects(location__near=[-87.67892, 41.9120459],
-                               location__min_distance=1000,
-                               location__max_distance=10000).order_by("-date")
-        self.assertEqual(events.count(), 1)
-        self.assertEqual(events[0], event3)
-
-        # ensure ordering is respected by "near"
-        events = Event.objects(location__near=[-87.67892, 41.9120459],
-                               # location__min_distance=10000
-                               location__min_distance=10000).order_by("-date")
-        self.assertEqual(events.count(), 1)
-        self.assertEqual(events[0], event2)
 
         # check that within_box works
         box = [(-125.0, 35.0), (-100.0, 40.0)]
@@ -323,6 +312,23 @@ class GeoQueriesTest(unittest.TestCase):
         ]
         events = Event.objects(location__geo_within_polygon=polygon2)
         self.assertEqual(events.count(), 0)
+
+        # $minDistance was only added in MongoDB v2.6, skip for older versions
+        skip_in_old_mongodb('Need MongoDB v2.6+')
+
+        # ensure min_distance and max_distance combine well
+        events = Event.objects(location__near=[-87.67892, 41.9120459],
+                               location__min_distance=1000,
+                               location__max_distance=10000).order_by("-date")
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0], event3)
+
+        # ensure ordering is respected by "near"
+        events = Event.objects(location__near=[-87.67892, 41.9120459],
+                               # location__min_distance=10000
+                               location__min_distance=10000).order_by("-date")
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events[0], event2)
 
     def test_2dsphere_point_embedded(self):
 
