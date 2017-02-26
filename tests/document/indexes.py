@@ -2,15 +2,14 @@
 import unittest
 import sys
 
-
-import pymongo
-
 from nose.plugins.skip import SkipTest
 from datetime import datetime
+import pymongo
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from tests.utils import get_mongodb_version
+
+from tests.utils import get_mongodb_version, skip_in_old_mongodb
 
 __all__ = ("IndexesTest", )
 
@@ -733,13 +732,6 @@ class IndexesTest(unittest.TestCase):
 
         Log.drop_collection()
 
-        if pymongo.version_tuple[0] < 2 and pymongo.version_tuple[1] < 3:
-            raise SkipTest('pymongo needs to be 2.3 or higher for this test')
-
-        version_array = get_mongodb_version()
-        if version_array[0] < 2 and version_array[1] < 2:
-            raise SkipTest('MongoDB needs to be 2.2 or higher for this test')
-
         # Indexes are lazy so use list() to perform query
         list(Log.objects)
         info = Log.objects._collection.index_information()
@@ -874,9 +866,7 @@ class IndexesTest(unittest.TestCase):
         self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
     def test_text_indexes(self):
-        mongodb_ver = get_mongodb_version()
-        if mongodb_ver[0] == 2 and mongodb_ver[1] < 6:
-            raise SkipTest('Text search is disabled by default in MongoDB < v2.6')
+        skip_in_old_mongodb('Text search is disabled by default in MongoDB < v2.6')
 
         class Book(Document):
             title = DictField()

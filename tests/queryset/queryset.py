@@ -19,6 +19,8 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
+from tests.utils import skip_in_old_mongodb
+
 __all__ = ("QuerySetTest",)
 
 
@@ -600,6 +602,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].votes.score, 4)
 
     def test_update_min_max(self):
+        skip_in_old_mongodb('$min is not supported in MongoDB < v2.6')
+
         class Scores(Document):
             high_score = IntField()
             low_score = IntField()
@@ -4977,11 +4981,13 @@ class QuerySetTest(unittest.TestCase):
         self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
         self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
 
-    def test_loop_via_invalid_id_does_not_crash(self):
+    def test_loop_over_invalid_id_does_not_crash(self):
         class Person(Document):
             name = StringField()
-        Person.objects.delete()
-        Person._get_collection().update({"name": "a"}, {"$set": {"_id": ""}}, upsert=True)
+
+        Person.drop_collection()
+
+        Person._get_collection().insert({'name': 'a', 'id': ''})
         for p in Person.objects():
             self.assertEqual(p.name, 'a')
 

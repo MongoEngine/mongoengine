@@ -1,7 +1,10 @@
 import unittest
 
+from nose.plugins.skip import SkipTest
+
 from mongoengine import connect
 from mongoengine.connection import get_db, get_connection
+
 
 MONGO_TEST_DB = 'mongoenginetest'
 
@@ -27,3 +30,12 @@ def get_mongodb_version():
     connection is connected to.
     """
     return get_connection().server_info()['versionArray']
+
+
+def skip_in_old_mongodb(msg):
+    """Raise a SkipTest exception with a given message if we're working
+    with MongoDB version lower than v2.6.
+    """
+    mongodb_ver = get_mongodb_version()
+    if mongodb_ver[0] == 2 and mongodb_ver[1] < 6:
+        raise SkipTest(msg)
