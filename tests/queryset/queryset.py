@@ -19,7 +19,8 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
-from tests.utils import skip_in_old_mongodb
+from tests.utils import skip_older_mongodb, skip_pymongo3
+
 
 __all__ = ("QuerySetTest",)
 
@@ -32,37 +33,6 @@ class db_ops_tracker(query_counter):
             'command.count': {'$ne': 'system.profile'}
         }
         return list(self.db.system.profile.find(ignore_query))
-
-
-def skip_older_mongodb(f):
-    def _inner(*args, **kwargs):
-        connection = get_connection()
-        info = connection.test.command('buildInfo')
-        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
-
-        if mongodb_version < (2, 6):
-            raise SkipTest("Need MongoDB version 2.6+")
-
-        return f(*args, **kwargs)
-
-    _inner.__name__ = f.__name__
-    _inner.__doc__ = f.__doc__
-
-    return _inner
-
-
-def skip_pymongo3(f):
-    def _inner(*args, **kwargs):
-
-        if IS_PYMONGO_3:
-            raise SkipTest("Useless with PyMongo 3+")
-
-        return f(*args, **kwargs)
-
-    _inner.__name__ = f.__name__
-    _inner.__doc__ = f.__doc__
-
-    return _inner
 
 
 class QuerySetTest(unittest.TestCase):
@@ -601,9 +571,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
 
+    @skip_older_mongodb
     def test_update_min_max(self):
-        skip_in_old_mongodb('$min is not supported in MongoDB < v2.6')
-
         class Scores(Document):
             high_score = IntField()
             low_score = IntField()
@@ -614,6 +583,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
         Scores.objects(id=scores.id).update(min__low_score=250)
         self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
+
+        Scores.objects(id=scores.id).update(max__high_score=250)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 250)
+        Scores.objects(id=scores.id).update(max__high_score=100)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 250)
 
     def test_updates_can_have_match_operators(self):
 
@@ -4896,6 +4870,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
+    @skip_older_mongodb
     def test_queryset_aggregation_framework(self):
         class Person(Document):
             name = StringField()
@@ -4930,17 +4905,13 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
         ])
 
-        data = Person.objects(
-            age__gte=17, age__lte=40).order_by('-age').aggregate(
-                {'$group': {
-                    '_id': None,
-                    'total': {'$sum': 1},
-                    'avg': {'$avg': '$age'}
-                }
-                }
-
-        )
-
+        data = Person.objects(age__gte=17, age__lte=40).order_by('-age').aggregate({
+            '$group': {
+                '_id': None,
+                'total': {'$sum': 1},
+                'avg': {'$avg': '$age'}
+            }
+        })
         self.assertEqual(list(data), [
             {'_id': None, 'avg': 29, 'total': 2}
         ])

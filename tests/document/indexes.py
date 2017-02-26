@@ -9,7 +9,7 @@ import pymongo
 from mongoengine import *
 from mongoengine.connection import get_db
 
-from tests.utils import get_mongodb_version, skip_in_old_mongodb
+from tests.utils import get_mongodb_version, skip_older_mongodb
 
 __all__ = ("IndexesTest", )
 
@@ -865,9 +865,8 @@ class IndexesTest(unittest.TestCase):
                          info['provider_ids.foo_1_provider_ids.bar_1']['key'])
         self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
+    @skip_older_mongodb
     def test_text_indexes(self):
-        skip_in_old_mongodb('Text search is disabled by default in MongoDB < v2.6')
-
         class Book(Document):
             title = DictField()
             meta = {

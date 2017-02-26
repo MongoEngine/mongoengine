@@ -7,7 +7,7 @@ from pymongo.errors import OperationFailure
 from mongoengine import *
 from mongoengine.connection import get_connection
 
-from tests.utils import MongoDBTestCase, skip_in_old_mongodb
+from tests.utils import MongoDBTestCase, get_mongodb_version
 
 
 __all__ = ("GeoQueriesTest",)
@@ -314,7 +314,9 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(events.count(), 0)
 
         # $minDistance was only added in MongoDB v2.6, skip for older versions
-        skip_in_old_mongodb('Need MongoDB v2.6+')
+        mongodb_ver = get_mongodb_ver()
+        if mongodb_ver[0] == 2 and mongodb_ver[1] < 6:
+            raise SkipTest('Need MongoDB v2.6+')
 
         # ensure min_distance and max_distance combine well
         events = Event.objects(location__near=[-87.67892, 41.9120459],
