@@ -171,7 +171,6 @@ class ConnectionTest(unittest.TestCase):
 
         c.admin.system.users.remove({})
         c.mongoenginetest.system.users.remove({})
-        self.assertTrue(False)
 
     def test_connect_uri_without_db(self):
         """Ensure connect() method works properly if the URI doesn't
