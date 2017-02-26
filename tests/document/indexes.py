@@ -9,7 +9,7 @@ import pymongo
 from mongoengine import *
 from mongoengine.connection import get_db
 
-from tests.utils import get_mongodb_version, skip_older_mongodb
+from tests.utils import get_mongodb_version, needs_mongodb_v26
 
 __all__ = ("IndexesTest", )
 
@@ -865,7 +865,7 @@ class IndexesTest(unittest.TestCase):
                          info['provider_ids.foo_1_provider_ids.bar_1']['key'])
         self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_text_indexes(self):
         class Book(Document):
             title = DictField()

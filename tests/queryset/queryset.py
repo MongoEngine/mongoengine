@@ -19,7 +19,7 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
-from tests.utils import skip_older_mongodb, skip_pymongo3
+from tests.utils import needs_mongodb_v26, skip_pymongo3
 
 
 __all__ = ("QuerySetTest",)
@@ -571,7 +571,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_update_min_max(self):
         class Scores(Document):
             high_score = IntField()
@@ -991,7 +991,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     @skip_pymongo3
     def test_cursor_args(self):
         """Ensures the cursor args can be set as expected
@@ -3108,7 +3108,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -3195,7 +3195,7 @@ class QuerySetTest(unittest.TestCase):
             'brasil').order_by('$text_score').first()
         self.assertEqual(item.get_text_score(), max_text_score)
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_distinct_handles_references_to_alias(self):
         register_connection('testdb', 'mongoenginetest2')
 
@@ -4870,7 +4870,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
-    @skip_older_mongodb
+    @needs_mongodb_v26
     def test_queryset_aggregation_framework(self):
         class Person(Document):
             name = StringField()

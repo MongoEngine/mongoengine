@@ -3,7 +3,7 @@ import unittest
 
 from mongoengine import *
 
-from tests.utils import MongoDBTestCase, skip_older_mongodb
+from tests.utils import MongoDBTestCase, needs_mongodb_v3
 
 
 __all__ = ("GeoQueriesTest",)
@@ -70,8 +70,9 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
 
-    # $minDistance was only added in MongoDB v2.6, skip for older versions
-    @skip_older_mongodb
+    # $minDistance was added in MongoDB v2.6, but continued being buggy
+    # until v3.0; skip for older versions
+    @needs_mongodb_v3
     def test_near_and_min_distance(self):
         """Ensure the "min_distance" operator works alongside the "near"
         operator.
@@ -242,8 +243,9 @@ class GeoQueriesTest(MongoDBTestCase):
         events = self.Event.objects(location__geo_within_polygon=polygon2)
         self.assertEqual(events.count(), 0)
 
-    # $minDistance was only added in MongoDB v2.6, skip for older versions
-    @skip_older_mongodb
+    # $minDistance was added in MongoDB v2.6, but continued being buggy
+    # until v3.0; skip for older versions
+    @needs_mongodb_v3
     def test_2dsphere_near_and_min_max_distance(self):
         """Ensure "min_distace" and "max_distance" operators work well
         together with the "near" operator in a 2dsphere index.
@@ -327,7 +329,7 @@ class GeoQueriesTest(MongoDBTestCase):
         self._test_embedded(point_field_class=PointField)
 
     # Needs MongoDB > 2.6.4 https://jira.mongodb.org/browse/SERVER-14039
-    @skip_older_mongodb
+    @needs_mongodb_v3
     def test_spherical_geospatial_operators(self):
         """Ensure that spherical geospatial queries are working."""
         class Point(Document):
