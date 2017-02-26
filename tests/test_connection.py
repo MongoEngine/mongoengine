@@ -225,9 +225,8 @@ class ConnectionTest(unittest.TestCase):
         self.assertRaises(OperationFailure, get_db)
 
     def test_connect_uri_with_authsource(self):
-        """Ensure that the connect() method works well with
-        the option `authSource` in URI.
-        This feature was introduced in MongoDB 2.4 and removed in 2.6
+        """Ensure that the connect() method works well with `authSource`
+        option in the URI.
         """
         # Create users
         c = connect('mongoenginetest')
@@ -236,30 +235,31 @@ class ConnectionTest(unittest.TestCase):
 
         # Authentication fails without "authSource"
         if IS_PYMONGO_3:
-            test_conn = connect('mongoenginetest', alias='test1',
-                                host='mongodb://username2:password@localhost/mongoenginetest')
+            test_conn = connect(
+                'mongoenginetest', alias='test1',
+                host='mongodb://username2:password@localhost/mongoenginetest'
+            )
             self.assertRaises(OperationFailure, test_conn.server_info)
         else:
             self.assertRaises(
-                MongoEngineConnectionError, connect, 'mongoenginetest',
-                alias='test1',
+                MongoEngineConnectionError,
+                connect, 'mongoenginetest', alias='test1',
                 host='mongodb://username2:password@localhost/mongoenginetest'
             )
             self.assertRaises(MongoEngineConnectionError, get_db, 'test1')
 
         # Authentication succeeds with "authSource"
-        connect(
+        authd_conn = connect(
             'mongoenginetest', alias='test2',
             host=('mongodb://username2:password@localhost/'
                   'mongoenginetest?authSource=admin')
         )
-        # This will fail starting from MongoDB 2.6+
         db = get_db('test2')
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'mongoenginetest')
 
         # Clear all users
-        c.admin.system.users.remove({})
+        authd_conn.admin.system.users.remove({})
 
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.
