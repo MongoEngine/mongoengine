@@ -156,7 +156,7 @@ class GeoQueriesTest(MongoDBTestCase):
         """
         # Needs MongoDB > 2.6.4 https://jira.mongodb.org/browse/SERVER-14039
         mongodb_version = get_mongodb_version()
-        if mongodb_version < (2, 6, 4):
+        if mongodb_version[0] <= 2 and mongodb_version[1] <= 6 and mongodb_version[2] <= 4:
             raise SkipTest("Need MongoDB version 2.6.4+")
 
         class Point(Document):
