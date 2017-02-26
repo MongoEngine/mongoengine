@@ -30,7 +30,7 @@ def get_mongodb_version():
     """Return the version tuple of the MongoDB server that the default
     connection is connected to.
     """
-    return get_connection().server_info()['versionArray']
+    return tuple(get_connection().server_info()['versionArray'])
 
 def _decorated_with_ver_requirement(func, ver_tuple):
     """Return a given function decorated with the version requirement
