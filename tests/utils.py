@@ -1,7 +1,7 @@
 import unittest
 
 from mongoengine import connect
-from mongoengine.connection import get_db
+from mongoengine.connection import get_db, get_connection
 
 MONGO_TEST_DB = 'mongoenginetest'
 
@@ -20,3 +20,10 @@ class MongoDBTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls._connection.drop_database(MONGO_TEST_DB)
+
+
+def get_mongodb_version():
+    """Return the version tuple of the MongoDB server that the default
+    connection is connected to.
+    """
+    return get_connection().server_info()['versionArray']

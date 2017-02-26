@@ -603,12 +603,13 @@ class QuerySetTest(unittest.TestCase):
         class Scores(Document):
             high_score = IntField()
             low_score = IntField()
-        scores = Scores(high_score=800, low_score=200)
-        scores.save()
+
+        scores = Scores.objects.create(high_score=800, low_score=200)
+
         Scores.objects(id=scores.id).update(min__low_score=150)
-        self.assertEqual(Scores.objects(id=scores.id).get().low_score, 150)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
         Scores.objects(id=scores.id).update(min__low_score=250)
-        self.assertEqual(Scores.objects(id=scores.id).get().low_score, 150)
+        self.assertEqual(Scores.objects.get(id=scores.id).low_score, 150)
 
     def test_updates_can_have_match_operators(self):
 

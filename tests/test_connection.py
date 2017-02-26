@@ -35,8 +35,7 @@ class ConnectionTest(unittest.TestCase):
         mongoengine.connection._dbs = {}
 
     def test_connect(self):
-        """Ensure that the connect() method works properly.
-        """
+        """Ensure that the connect() method works properly."""
         connect('mongoenginetest')
 
         conn = get_connection()
@@ -146,8 +145,7 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(expected_connection, actual_connection)
 
     def test_connect_uri(self):
-        """Ensure that the connect() method works properly with uri's
-        """
+        """Ensure that the connect() method works properly with URIs."""
         c = connect(db='mongoenginetest', alias='admin')
         c.admin.system.users.remove({})
         c.mongoenginetest.system.users.remove({})
@@ -173,6 +171,7 @@ class ConnectionTest(unittest.TestCase):
 
         c.admin.system.users.remove({})
         c.mongoenginetest.system.users.remove({})
+        self.assertTrue(False)
 
     def test_connect_uri_without_db(self):
         """Ensure connect() method works properly if the URI doesn't
