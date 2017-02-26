@@ -60,7 +60,7 @@ cache: pip
 
 # Run flake8 for py27
 before_script:
-- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then flake8 .; fi
+- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then flake8 .; else echo "flake8 only runs on py27"; fi
 
 script:
 - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
