@@ -24,6 +24,13 @@ is currently a `tutorial <https://mongoengine-odm.readthedocs.io/tutorial.html>`
 a `user guide <https://mongoengine-odm.readthedocs.io/guide/index.html>`_, and
 an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
+Supported MongoDB Versions
+==========================
+MongoEngine is currently tested against MongoDB v2.4, v2.6, and v3.0. Future
+versions should be supported as well, but aren't actively tested at the moment.
+Make sure to open an issue or submit a pull request if you experience any
+problems with MongoDB v3.2+.
+
 Installation
 ============
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
@@ -107,7 +114,7 @@ Some simple examples of what MongoEngine code looks like:
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port and have ``nose`` installed. Then, run: ``python setup.py nosetests``.
+the standard port and have ``nose`` installed. Then, run ``python setup.py nosetests``.
 
 To run the test suite on every supported Python and PyMongo version, you can
 use ``tox``. You'll need to make sure you have each supported Python version
@@ -120,7 +127,7 @@ installed in your environment and then:
     # Run the test suites
     $ tox
 
-If you wish to run a subset of tests, use the nosetest convention:
+If you wish to run a subset of tests, use the nosetests convention:
 
 .. code-block:: shell
 
@@ -141,10 +148,3 @@ Community
 Contributing
 ============
 We welcome contributions! See the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
-
-Supported MongoDB Versions
-==========================
-MongoEngine is currently tested against MongoDB v2.4, v2.6, and v3.0. Future
-versions should be supported as well, but aren't actively tested at the moment.
-Make sure to open an issue or submit a pull request if you experience any
-problems with MongoDB v3.2+.
