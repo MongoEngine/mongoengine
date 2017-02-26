@@ -5,21 +5,20 @@
 # * MongoDB v2.4 & v3.0 are only tested against Python v2.7 & v3.5, and
 #   PyMongo v2.7 & v3.x.
 # * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
-#   v3.4, v3.5, PyPy & PyPy3, and PyMongo v2.7, v2.8 & v3.x.
+#   v3.5, PyPy & PyPy3, and PyMongo v2.7, v2.8 & v3.x.
 
 language: python
 
 python:
 - 2.7
-- 3.4
 - 3.5
 - pypy
 - pypy3
 
 env:
-- PYMONGO=2.7 MONGODB=2.6
-- PYMONGO=2.8 MONGODB=2.6
-- PYMONGO=3.0 MONGODB=2.6
+- MONGODB=2.6 PYMONGO=2.7
+- MONGODB=2.6 PYMONGO=2.8
+- MONGODB=2.6 PYMONGO=3.0
 
 matrix:
   # Finish the build as soon as one job fails
@@ -27,21 +26,21 @@ matrix:
 
   include:
   - python: 2.7
-    env: PYMONGO=2.7 MONGODB=2.4
+    env: MONGODB=2.4 PYMONGO=2.7
   - python: 2.7
-    env: PYMONGO=2.7 MONGODB=3.0
+    env: MONGODB=2.4 PYMONGO=3.0
   - python: 2.7
-    env: PYMONGO=3.0 MONGODB=2.4
+    env: MONGODB=3.0 PYMONGO=2.7
   - python: 2.7
-    env: PYMONGO=3.0 MONGODB=3.0
+    env: MONGODB=3.0 PYMONGO=3.0
   - python: 3.5
-    env: PYMONGO=2.7 MONGODB=2.4
+    env: MONGODB=2.4 PYMONGO=2.7
   - python: 3.5
-    env: PYMONGO=2.7 MONGODB=3.0
+    env: MONGODB=2.4 PYMONGO=3.0
   - python: 3.5
-    env: PYMONGO=3.0 MONGODB=2.4
+    env: MONGODB=3.0 PYMONGO=2.7
   - python: 3.5
-    env: PYMONGO=3.0 MONGODB=3.0
+    env: MONGODB=3.0 PYMONGO=3.0
 
 before_install:
 - bash .install_mongodb_on_travis.sh
@@ -76,6 +75,7 @@ after_success:
 notifications:
   irc: irc.freenode.org#mongoengine
 
+# Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
 branches:
   only:
   - master
