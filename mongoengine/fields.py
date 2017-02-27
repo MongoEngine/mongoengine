@@ -5,6 +5,7 @@ import re
 import time
 import uuid
 import warnings
+from collections import OrderedDict
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
@@ -49,7 +50,7 @@ __all__ = (
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
-    'MultiPolygonField', 'GeoJsonBaseField'
+    'MultiPolygonField', 'GeoJsonBaseField', 'OrderedDynamicField'
 )
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -644,7 +645,7 @@ class DynamicField(BaseField):
             is_list = True
             value = {k: v for k, v in enumerate(value)}
 
-        data = {}
+        data = self._container_type() if hasattr(self, '_container_type') else {}
         for k, v in value.iteritems():
             data[k] = self.to_mongo(v, use_db_field, fields)
 
@@ -673,6 +674,16 @@ class DynamicField(BaseField):
     def validate(self, value, clean=True):
         if hasattr(value, 'validate'):
             value.validate(clean=clean)
+
+
+class OrderedDynamicField(DynamicField):
+    """A field that wraps DynamicField. This uses OrderedDict class
+    to guarantee to store data in the defined order instead of dict.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(OrderedDynamicField, self).__init__(*args, **kwargs)
+        self._container_type = OrderedDict
 
 
 class ListField(ComplexBaseField):
