@@ -2,13 +2,13 @@
 Installing MongoEngine
 ======================
 
-To use MongoEngine, you will need to download `MongoDB <http://mongodb.org/>`_
+To use MongoEngine, you will need to download `MongoDB <http://mongodb.com/>`_
 and ensure it is running in an accessible location. You will also need
 `PyMongo <http://api.mongodb.org/python>`_ to use MongoEngine, but if you
 install MongoEngine using setuptools, then the dependencies will be handled for
 you.
 
-MongoEngine is available on PyPI, so to use it you can use :program:`pip`:
+MongoEngine is available on PyPI, so you can use :program:`pip`:
 
 .. code-block:: console
 
