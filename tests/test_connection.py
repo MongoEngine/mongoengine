@@ -198,19 +198,6 @@ class ConnectionTest(unittest.TestCase):
         self.assertTrue(isinstance(db, pymongo.database.Database))
         self.assertEqual(db.name, 'test')
 
-    def test_connect_uri_with_replicaset(self):
-        """Ensure connect() works when specifying a replicaSet."""
-        if IS_PYMONGO_3:
-            c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
-            db = get_db()
-            self.assertTrue(isinstance(db, pymongo.database.Database))
-            self.assertEqual(db.name, 'test')
-        else:
-            # PyMongo < v3.x raises an exception:
-            # "localhost:27017 is not a member of replica set local-rs"
-            with self.assertRaises(MongoEngineConnectionError):
-                c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
-
     def test_uri_without_credentials_doesnt_override_conn_settings(self):
         """Ensure connect() uses the username & password params if the URI
         doesn't explicitly specify them.
@@ -331,6 +318,38 @@ class ConnectionTest(unittest.TestCase):
         else:
             self.assertEqual(dict(conn1.write_concern), {'w': 1, 'j': True})
             self.assertEqual(dict(conn2.write_concern), {'w': 1, 'j': True})
+
+    def test_connect_with_replicaset_via_uri(self):
+        """Ensure connect() works when specifying a replicaSet via the
+        MongoDB URI.
+        """
+        if IS_PYMONGO_3:
+            c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
+            db = get_db()
+            self.assertTrue(isinstance(db, pymongo.database.Database))
+            self.assertEqual(db.name, 'test')
+        else:
+            # PyMongo < v3.x raises an exception:
+            # "localhost:27017 is not a member of replica set local-rs"
+            with self.assertRaises(MongoEngineConnectionError):
+                c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
+
+    def test_connect_with_replicaset_via_kwargs(self):
+        """Ensure connect() works when specifying a replicaSet via the
+        connection kwargs
+        """
+        if IS_PYMONGO_3:
+            c = connect(replicaset='local-rs')
+            self.assertEqual(c._MongoClient__options.replica_set_name,
+                             'local-rs')
+            db = get_db()
+            self.assertTrue(isinstance(db, pymongo.database.Database))
+            self.assertEqual(db.name, 'test')
+        else:
+            # PyMongo < v3.x raises an exception:
+            # "localhost:27017 is not a member of replica set local-rs"
+            with self.assertRaises(MongoEngineConnectionError):
+                c = connect(replicaset='local-rs')
 
     def test_datetime(self):
         connect('mongoenginetest', tz_aware=True)
