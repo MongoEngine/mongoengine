@@ -412,7 +412,6 @@ class IndexesTest(unittest.TestCase):
         User.ensure_indexes()
         info = User.objects._collection.index_information()
         self.assertEqual(sorted(info.keys()), ['_cls_1_user_guid_1', '_id_'])
-        User.drop_collection()
 
     def test_embedded_document_index(self):
         """Tests settings an index on an embedded document
@@ -434,7 +433,6 @@ class IndexesTest(unittest.TestCase):
 
         info = BlogPost.objects._collection.index_information()
         self.assertEqual(sorted(info.keys()), ['_id_', 'date.yr_-1'])
-        BlogPost.drop_collection()
 
     def test_list_embedded_document_index(self):
         """Ensure list embedded documents can be indexed
@@ -461,7 +459,6 @@ class IndexesTest(unittest.TestCase):
         post1 = BlogPost(title="Embedded Indexes tests in place",
                          tags=[Tag(name="about"), Tag(name="time")])
         post1.save()
-        BlogPost.drop_collection()
 
     def test_recursive_embedded_objects_dont_break_indexes(self):
 
@@ -622,8 +619,6 @@ class IndexesTest(unittest.TestCase):
         post3 = BlogPost(title='test3', date=Date(year=2010), slug='test')
         self.assertRaises(OperationError, post3.save)
 
-        BlogPost.drop_collection()
-
     def test_unique_embedded_document(self):
         """Ensure that uniqueness constraints are applied to fields on embedded documents.
         """
@@ -650,8 +645,6 @@ class IndexesTest(unittest.TestCase):
         post3 = BlogPost(title='test3',
                          sub=SubDocument(year=2010, slug='test'))
         self.assertRaises(NotUniqueError, post3.save)
-
-        BlogPost.drop_collection()
 
     def test_unique_embedded_document_in_list(self):
         """
@@ -682,8 +675,6 @@ class IndexesTest(unittest.TestCase):
         )
 
         self.assertRaises(NotUniqueError, post2.save)
-
-        BlogPost.drop_collection()
 
     def test_unique_with_embedded_document_and_embedded_unique(self):
         """Ensure that uniqueness constraints are applied to fields on
@@ -717,8 +708,6 @@ class IndexesTest(unittest.TestCase):
         post3 = BlogPost(title='test1',
                          sub=SubDocument(year=2009, slug='test-1'))
         self.assertRaises(NotUniqueError, post3.save)
-
-        BlogPost.drop_collection()
 
     def test_ttl_indexes(self):
 
@@ -759,13 +748,11 @@ class IndexesTest(unittest.TestCase):
             raise AssertionError("We saved a dupe!")
         except NotUniqueError:
             pass
-        Customer.drop_collection()
 
     def test_unique_and_primary(self):
         """If you set a field as primary, then unexpected behaviour can occur.
         You won't create a duplicate but you will update an existing document.
         """
-
         class User(Document):
             name = StringField(primary_key=True, unique=True)
             password = StringField()
@@ -781,7 +768,22 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(User.objects.get().password, 'secret2')
 
+    def test_unique_and_primary_create(self):
+        """Create a new record with a duplicate primary key
+        throws an exception
+        """
+        class User(Document):
+            name = StringField(primary_key=True)
+            password = StringField()
+
         User.drop_collection()
+
+        User.objects.create(name='huangz', password='secret')
+        with self.assertRaises(NotUniqueError):
+            User.objects.create(name='huangz', password='secret2')
+
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().password, 'secret')
 
     def test_index_with_pk(self):
         """Ensure you can use `pk` as part of a query"""

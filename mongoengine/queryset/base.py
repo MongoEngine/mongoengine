@@ -286,7 +286,7 @@ class BaseQuerySet(object):
 
         .. versionadded:: 0.4
         """
-        return self._document(**kwargs).save()
+        return self._document(**kwargs).save(force_insert=True)
 
     def first(self):
         """Retrieve the first object matching the query."""
