@@ -1501,6 +1501,10 @@ class BaseQuerySet(object):
                 cursor_args['read_preference'] = self._read_preference
             else:
                 cursor_args['slave_okay'] = self._slave_okay
+
+            # set decode format if needed
+            if hasattr(self._document, 'decoded_class'):
+                cursor_args['as_class'] = self._document.decoded_class
         else:
             fields_name = 'projection'
             # snapshot is not handled at all by PyMongo 3+
