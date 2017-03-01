@@ -4519,7 +4519,6 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertEqual(type(doc.ordered_data), OrderedDict)
         self.assertEqual(type(doc.unordered_data), dict)
         self.assertEqual([k for k,_ in doc.ordered_data.items()], ['d', 'c', 'b', 'a'])
-        self.assertNotEqual([k for k,_ in doc.unordered_data.items()], ['d', 'c', 'b', 'a'])
 
     def test_dynamicfield_with_wrong_container_class(self):
         with self.assertRaises(ValidationError):
