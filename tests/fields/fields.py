@@ -4500,39 +4500,31 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
 
-    def test_ordered_dynamic_fields_class(self):
+    def test_dynamicfield_with_container_class(self):
         """
-        Tests that OrderedDynamicFields interits features of the DynamicFields
-        and saves/retrieves data in order.
+        Tests that object can be stored in order by DynamicField class
+        with container_class parameter.
         """
-        class Member(Document):
-            name = StringField()
-            age = IntField()
+        raw_data = [('d', 1), ('c', 2), ('b', 3), ('a', 4)]
 
-        class Team(OrderedDocument):
-            members = OrderedDynamicField()
+        class Doc(Document):
+            ordered_data = DynamicField(container_class=OrderedDict)
+            unordered_data = DynamicField()
 
-        Member.drop_collection()
-        Team.drop_collection()
+        Doc.drop_collection()
 
-        member_info = [
-            ('Martin McFly', 17),
-            ('Emmett Brown', 65),
-            ('George McFly', 47)
-        ]
-        members = OrderedDict()
-        for name, age in member_info:
-            members[name] = Member(name=name, age=age)
-            members[name].save()
+        doc = Doc(ordered_data=OrderedDict(raw_data),
+                  unordered_data=dict(raw_data)).save()
 
-        Team(members=members).save()
+        self.assertEqual(type(doc.ordered_data), OrderedDict)
+        self.assertEqual(type(doc.unordered_data), dict)
+        self.assertEqual([k for k,_ in doc.ordered_data.items()], ['d', 'c', 'b', 'a'])
+        self.assertNotEqual([k for k,_ in doc.unordered_data.items()], ['d', 'c', 'b', 'a'])
 
-        index = 0
-        team = Team.objects.get()
-        for member in team.members:
-            print("%s == %s" % (member, member_info[index][0]))
-            self.assertEqual(member, member_info[index][0])
-            index += 1
+    def test_dynamicfield_with_wrong_container_class(self):
+        with self.assertRaises(ValidationError):
+            class DocWithInvalidField:
+                data = DynamicField(container_class=list)
 
 
 if __name__ == '__main__':
