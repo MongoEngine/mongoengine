@@ -16,7 +16,7 @@ except ImportError:
 
 from decimal import Decimal
 
-from bson import Binary, DBRef, ObjectId
+from bson import Binary, DBRef, ObjectId, SON
 try:
     from bson.int64 import Int64
 except ImportError:
@@ -35,7 +35,8 @@ __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 class FieldTest(MongoDBTestCase):
 
     def test_default_values_nothing_set(self):
-        """Ensure that default field values are used when creating a document.
+        """Ensure that default field values are used when creating
+        a document.
         """
         class Person(Document):
             name = StringField()
@@ -47,8 +48,9 @@ class FieldTest(MongoDBTestCase):
 
         # Confirm saving now would store values
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(
-            data_to_be_saved, ['age', 'created', 'name', 'userid'])
+        self.assertEqual(data_to_be_saved,
+            ['age', 'created', 'name', 'userid']
+        )
 
         self.assertTrue(person.validate() is None)
 
@@ -68,7 +70,8 @@ class FieldTest(MongoDBTestCase):
             data_to_be_saved, ['age', 'created', 'name', 'userid'])
 
     def test_default_values_set_to_None(self):
-        """Ensure that default field values are used when creating a document.
+        """Ensure that default field values are used even when
+        we explcitly initialize the doc with None values.
         """
         class Person(Document):
             name = StringField()
@@ -100,7 +103,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
     def test_default_values_when_setting_to_None(self):
-        """Ensure that default field values are used when creating a document.
+        """Ensure that default field values are used when creating
+        a document.
         """
         class Person(Document):
             name = StringField()
@@ -120,10 +124,10 @@ class FieldTest(MongoDBTestCase):
 
         self.assertTrue(person.validate() is None)
 
-        self.assertEqual(person.name, person.name)
-        self.assertEqual(person.age, person.age)
-        self.assertEqual(person.userid, person.userid)
-        self.assertEqual(person.created, person.created)
+        self.assertEqual(person.name, None)
+        self.assertEqual(person.age, 30)
+        self.assertEqual(person.userid, 'test')
+        self.assertTrue(isinstance(person.created, datetime.datetime))
 
         self.assertEqual(person._data['name'], person.name)
         self.assertEqual(person._data['age'], person.age)
@@ -135,7 +139,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
     def test_default_values_when_deleting_value(self):
-        """Ensure that default field values are used when creating a document.
+        """Ensure that default field values are used after non-default
+        values are explicitly deleted.
         """
         class Person(Document):
             name = StringField()
@@ -143,7 +148,8 @@ class FieldTest(MongoDBTestCase):
             userid = StringField(default=lambda: 'test', required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
 
-        person = Person(name="Ross")
+        person = Person(name="Ross", age=50, userid='different',
+                        created=datetime.datetime(2014, 6, 12))
         del person.name
         del person.age
         del person.userid
@@ -154,10 +160,11 @@ class FieldTest(MongoDBTestCase):
 
         self.assertTrue(person.validate() is None)
 
-        self.assertEqual(person.name, person.name)
-        self.assertEqual(person.age, person.age)
-        self.assertEqual(person.userid, person.userid)
-        self.assertEqual(person.created, person.created)
+        self.assertEqual(person.name, None)
+        self.assertEqual(person.age, 30)
+        self.assertEqual(person.userid, 'test')
+        self.assertTrue(isinstance(person.created, datetime.datetime))
+        self.assertNotEqual(person.created, datetime.datetime(2014, 6, 12))
 
         self.assertEqual(person._data['name'], person.name)
         self.assertEqual(person._data['age'], person.age)
@@ -169,8 +176,7 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
     def test_required_values(self):
-        """Ensure that required field constraints are enforced.
-        """
+        """Ensure that required field constraints are enforced."""
         class Person(Document):
             name = StringField(required=True)
             age = IntField(required=True)
@@ -182,9 +188,9 @@ class FieldTest(MongoDBTestCase):
         self.assertRaises(ValidationError, person.validate)
 
     def test_not_required_handles_none_in_update(self):
-        """Ensure that every fields should accept None if required is False.
+        """Ensure that every fields should accept None if required is
+        False.
         """
-
         class HandleNoneFields(Document):
             str_fld = StringField()
             int_fld = IntField()
@@ -236,23 +242,27 @@ class FieldTest(MongoDBTestCase):
         doc.com_dt_fld = datetime.datetime.utcnow()
         doc.save()
 
-        collection = self.db[HandleNoneFields._get_collection_name()]
-        obj = collection.update({"_id": doc.id}, {"$unset": {
-            "str_fld": 1,
-            "int_fld": 1,
-            "flt_fld": 1,
-            "comp_dt_fld": 1}
+        # Unset all the fields
+        obj = HandleNoneFields._get_collection().update({"_id": doc.id}, {
+            "$unset": {
+                "str_fld": 1,
+                "int_fld": 1,
+                "flt_fld": 1,
+                "comp_dt_fld": 1
+            }
         })
 
         # Retrive data from db and verify it.
-        ret = HandleNoneFields.objects.all()[0]
-
+        ret = HandleNoneFields.objects.first()
         self.assertEqual(ret.str_fld, None)
         self.assertEqual(ret.int_fld, None)
         self.assertEqual(ret.flt_fld, None)
-        # Return current time if retrived value is None.
+
+        # ComplexDateTimeField returns current time if retrived value is None.
         self.assertTrue(isinstance(ret.comp_dt_fld, datetime.datetime))
 
+        # Retrieved object shouldn't pass validation when a re-save is
+        # attempted.
         self.assertRaises(ValidationError, ret.validate)
 
     def test_int_and_float_ne_operator(self):
@@ -280,7 +290,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(1, TestDocument.objects(long_fld__ne=None).count())
 
     def test_object_id_validation(self):
-        """Ensure that invalid values cannot be assigned to string fields.
+        """Ensure that invalid values cannot be assigned to an
+        ObjectIdField.
         """
         class Person(Document):
             name = StringField()
@@ -297,27 +308,8 @@ class FieldTest(MongoDBTestCase):
         person.id = '497ce96f395f2f052a494fd4'
         person.validate()
 
-    def test_db_field_validation(self):
-        """Ensure that db_field doesn't accept invalid values."""
-
-        # dot in the name
-        with self.assertRaises(ValueError):
-            class User(Document):
-                name = StringField(db_field='user.name')
-
-        # name starting with $
-        with self.assertRaises(ValueError):
-            class User(Document):
-                name = StringField(db_field='$name')
-
-        # name containing a null character
-        with self.assertRaises(ValueError):
-            class User(Document):
-                name = StringField(db_field='name\0')
-
     def test_string_validation(self):
-        """Ensure that invalid values cannot be assigned to string fields.
-        """
+        """Ensure that invalid values cannot be assigned to string fields."""
         class Person(Document):
             name = StringField(max_length=20)
             userid = StringField(r'[0-9a-z_]+$')
@@ -490,10 +482,25 @@ class FieldTest(MongoDBTestCase):
         person_2 = Person(height='something invalid')
         self.assertRaises(ValidationError, person_2.validate)
 
-        Person.drop_collection()
+    def test_db_field_validation(self):
+        """Ensure that db_field doesn't accept invalid values."""
+
+        # dot in the name
+        with self.assertRaises(ValueError):
+            class User(Document):
+                name = StringField(db_field='user.name')
+
+        # name starting with $
+        with self.assertRaises(ValueError):
+            class User(Document):
+                name = StringField(db_field='$name')
+
+        # name containing a null character
+        with self.assertRaises(ValueError):
+            class User(Document):
+                name = StringField(db_field='name\0')
 
     def test_decimal_comparison(self):
-
         class Person(Document):
             money = DecimalField()
 
@@ -546,7 +553,8 @@ class FieldTest(MongoDBTestCase):
             self.assertEqual(expected, actual)
 
     def test_boolean_validation(self):
-        """Ensure that invalid values cannot be assigned to boolean fields.
+        """Ensure that invalid values cannot be assigned to boolean
+        fields.
         """
         class Person(Document):
             admin = BooleanField()
@@ -586,8 +594,7 @@ class FieldTest(MongoDBTestCase):
             self.assertRaises(ValidationError, person.validate)
 
     def test_uuid_field_binary(self):
-        """Test UUID fields storing as Binary object
-        """
+        """Test UUID fields storing as Binary object."""
         class Person(Document):
             api_key = UUIDField(binary=True)
 
@@ -611,7 +618,8 @@ class FieldTest(MongoDBTestCase):
             self.assertRaises(ValidationError, person.validate)
 
     def test_datetime_validation(self):
-        """Ensure that invalid values cannot be assigned to datetime fields.
+        """Ensure that invalid values cannot be assigned to datetime
+        fields.
         """
         class LogEntry(Document):
             time = DateTimeField()
@@ -675,8 +683,6 @@ class FieldTest(MongoDBTestCase):
         log.reload()
         self.assertEqual(log.date.date(), datetime.date.today())
 
-        LogEntry.drop_collection()
-
         # Post UTC - microseconds are rounded (down) nearest millisecond and
         # dropped
         d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999)
@@ -708,8 +714,6 @@ class FieldTest(MongoDBTestCase):
             self.assertNotEqual(log.date, d1)
             self.assertEqual(log.date, d2)
 
-        LogEntry.drop_collection()
-
     def test_datetime_usage(self):
         """Tests for regular datetime fields"""
         class LogEntry(Document):
@@ -731,48 +735,42 @@ class FieldTest(MongoDBTestCase):
             log1 = LogEntry.objects.get(date=d1.isoformat('T'))
             self.assertEqual(log, log1)
 
-        LogEntry.drop_collection()
-
-        # create 60 log entries
-        for i in range(1950, 2010):
+        # create additional 19 log entries for a total of 20
+        for i in range(1971, 1990):
             d = datetime.datetime(i, 1, 1, 0, 0, 1)
             LogEntry(date=d).save()
 
-        self.assertEqual(LogEntry.objects.count(), 60)
+        self.assertEqual(LogEntry.objects.count(), 20)
 
         # Test ordering
         logs = LogEntry.objects.order_by("date")
-        count = logs.count()
         i = 0
-        while i == count - 1:
+        while i < 19:
             self.assertTrue(logs[i].date <= logs[i + 1].date)
             i += 1
 
         logs = LogEntry.objects.order_by("-date")
-        count = logs.count()
         i = 0
-        while i == count - 1:
+        while i < 19:
             self.assertTrue(logs[i].date >= logs[i + 1].date)
             i += 1
 
         # Test searching
         logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
-        self.assertEqual(logs.count(), 30)
-
-        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980, 1, 1))
-        self.assertEqual(logs.count(), 30)
-
-        logs = LogEntry.objects.filter(
-            date__lte=datetime.datetime(2011, 1, 1),
-            date__gte=datetime.datetime(2000, 1, 1),
-        )
         self.assertEqual(logs.count(), 10)
 
-        LogEntry.drop_collection()
+        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980, 1, 1))
+        self.assertEqual(logs.count(), 10)
+
+        logs = LogEntry.objects.filter(
+            date__lte=datetime.datetime(1980, 1, 1),
+            date__gte=datetime.datetime(1975, 1, 1),
+        )
+        self.assertEqual(logs.count(), 5)
 
     def test_complexdatetime_storage(self):
-        """Tests for complex datetime fields - which can handle microseconds
-        without rounding.
+        """Tests for complex datetime fields - which can handle
+        microseconds without rounding.
         """
         class LogEntry(Document):
             date = ComplexDateTimeField()
@@ -829,18 +827,16 @@ class FieldTest(MongoDBTestCase):
         stored = LogEntry(date_with_dots=datetime.datetime(2014, 1, 1)).to_mongo()['date_with_dots']
         self.assertTrue(re.match('^\d{4}.\d{2}.\d{2}.\d{2}.\d{2}.\d{2}.\d{6}$', stored) is not None)
 
-        LogEntry.drop_collection()
-
     def test_complexdatetime_usage(self):
-        """Tests for complex datetime fields - which can handle microseconds
-        without rounding.
+        """Tests for complex datetime fields - which can handle
+        microseconds without rounding.
         """
         class LogEntry(Document):
             date = ComplexDateTimeField()
 
         LogEntry.drop_collection()
 
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999)
+        d1 = datetime.datetime(1950, 1, 1, 0, 0, 1, 999)
         log = LogEntry()
         log.date = d1
         log.save()
@@ -848,10 +844,8 @@ class FieldTest(MongoDBTestCase):
         log1 = LogEntry.objects.get(date=d1)
         self.assertEqual(log, log1)
 
-        LogEntry.drop_collection()
-
-        # create 60 log entries
-        for i in range(1950, 2010):
+        # create extra 59 log entries for a total of 60
+        for i in range(1951, 2010):
             d = datetime.datetime(i, 1, 1, 0, 0, 1, 999)
             LogEntry(date=d).save()
 
@@ -859,16 +853,14 @@ class FieldTest(MongoDBTestCase):
 
         # Test ordering
         logs = LogEntry.objects.order_by("date")
-        count = logs.count()
         i = 0
-        while i == count - 1:
+        while i < 59:
             self.assertTrue(logs[i].date <= logs[i + 1].date)
             i += 1
 
         logs = LogEntry.objects.order_by("-date")
-        count = logs.count()
         i = 0
-        while i == count - 1:
+        while i < 59:
             self.assertTrue(logs[i].date >= logs[i + 1].date)
             i += 1
 
@@ -889,7 +881,9 @@ class FieldTest(MongoDBTestCase):
 
         # Test microsecond-level ordering/filtering
         for microsecond in (99, 999, 9999, 10000):
-            LogEntry(date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)).save()
+            LogEntry(
+                date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)
+            ).save()
 
         logs = list(LogEntry.objects.order_by('date'))
         for next_idx, log in enumerate(logs[:-1], start=1):
@@ -901,14 +895,12 @@ class FieldTest(MongoDBTestCase):
             next_log = logs[next_idx]
             self.assertTrue(log.date > next_log.date)
 
-        logs = LogEntry.objects.filter(date__lte=datetime.datetime(2015, 1, 1, 0, 0, 0, 10000))
+        logs = LogEntry.objects.filter(
+            date__lte=datetime.datetime(2015, 1, 1, 0, 0, 0, 10000))
         self.assertEqual(logs.count(), 4)
 
-        LogEntry.drop_collection()
-
     def test_list_validation(self):
-        """Ensure that a list field only accepts lists with valid elements.
-        """
+        """Ensure that a list field only accepts lists with valid elements."""
         class User(Document):
             pass
 
@@ -921,6 +913,9 @@ class FieldTest(MongoDBTestCase):
             tags = ListField(StringField())
             authors = ListField(ReferenceField(User))
             generic = ListField(GenericReferenceField())
+
+        User.drop_collection()
+        BlogPost.drop_collection()
 
         post = BlogPost(content='Went for a walk today...')
         post.validate()
@@ -967,9 +962,6 @@ class FieldTest(MongoDBTestCase):
         post.generic = [user]
         post.validate()
 
-        User.drop_collection()
-        BlogPost.drop_collection()
-
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
         """
@@ -982,6 +974,8 @@ class FieldTest(MongoDBTestCase):
             comments = SortedListField(EmbeddedDocumentField(Comment),
                                        ordering='order')
             tags = SortedListField(StringField())
+
+        BlogPost.drop_collection()
 
         post = BlogPost(content='Went for a walk today...')
         post.save()
@@ -1007,8 +1001,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(post.comments[0].content, comment1.content)
         self.assertEqual(post.comments[1].content, comment2.content)
 
-        BlogPost.drop_collection()
-
     def test_reverse_list_sorting(self):
         """Ensure that a reverse sorted list field properly sorts values"""
 
@@ -1020,6 +1012,8 @@ class FieldTest(MongoDBTestCase):
             categories = SortedListField(EmbeddedDocumentField(Category),
                                          ordering='count', reverse=True)
             name = StringField()
+
+        CategoryList.drop_collection()
 
         catlist = CategoryList(name="Top categories")
         cat1 = Category(name='posts', count=10)
@@ -1033,11 +1027,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(catlist.categories[1].name, cat3.name)
         self.assertEqual(catlist.categories[2].name, cat1.name)
 
-        CategoryList.drop_collection()
-
     def test_list_field(self):
-        """Ensure that list types work as expected.
-        """
+        """Ensure that list types work as expected."""
         class BlogPost(Document):
             info = ListField()
 
@@ -1085,8 +1076,6 @@ class FieldTest(MongoDBTestCase):
         post.info *= 2
         post.save()
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
-
-        BlogPost.drop_collection()
 
     def test_list_field_manipulative_operators(self):
         """Ensure that ListField works with standard list operators that manipulate the list.
@@ -1238,30 +1227,32 @@ class FieldTest(MongoDBTestCase):
         post.reload()
         self.assertEqual(post.info, ['5', '4', '3', '2', '1', '0'])
 
-        # 'sort': though this operator method does manipulate the list, it is tested in
-        #     the 'test_list_field_lexicograpic_operators' function
-        BlogPost.drop_collection()
+        # 'sort': though this operator method does manipulate the list, it is
+        # tested in the 'test_list_field_lexicograpic_operators' function
 
     def test_list_field_invalid_operators(self):
         class BlogPost(Document):
             ref = StringField()
             info = ListField(StringField())
+
         post = BlogPost()
         post.ref = "1234"
         post.info = ['0', '1', '2', '3', '4', '5']
+
         # '__hash__'
         # aka 'hash(list)'
-        # # assert TypeError
         self.assertRaises(TypeError, lambda: hash(post.info))
 
     def test_list_field_lexicographic_operators(self):
-        """Ensure that ListField works with standard list operators that do lexigraphic ordering.
+        """Ensure that ListField works with standard list operators that
+        do lexigraphic ordering.
         """
         class BlogPost(Document):
             ref = StringField()
             text_info = ListField(StringField())
             oid_info = ListField(ObjectIdField())
             bool_info = ListField(BooleanField())
+
         BlogPost.drop_collection()
 
         blogSmall = BlogPost(ref="small")
@@ -1286,28 +1277,35 @@ class FieldTest(MongoDBTestCase):
         blogLargeB.bool_info = [False, True]
         blogLargeB.save()
         blogLargeB.reload()
+
         # '__eq__' aka '=='
         self.assertEqual(blogLargeA.text_info, blogLargeB.text_info)
         self.assertEqual(blogLargeA.bool_info, blogLargeB.bool_info)
+
         # '__ge__' aka '>='
         self.assertGreaterEqual(blogLargeA.text_info, blogSmall.text_info)
         self.assertGreaterEqual(blogLargeA.text_info, blogLargeB.text_info)
         self.assertGreaterEqual(blogLargeA.bool_info, blogSmall.bool_info)
         self.assertGreaterEqual(blogLargeA.bool_info, blogLargeB.bool_info)
+
         # '__gt__' aka '>'
         self.assertGreaterEqual(blogLargeA.text_info, blogSmall.text_info)
         self.assertGreaterEqual(blogLargeA.bool_info, blogSmall.bool_info)
+
         # '__le__' aka '<='
         self.assertLessEqual(blogSmall.text_info, blogLargeB.text_info)
         self.assertLessEqual(blogLargeA.text_info, blogLargeB.text_info)
         self.assertLessEqual(blogSmall.bool_info, blogLargeB.bool_info)
         self.assertLessEqual(blogLargeA.bool_info, blogLargeB.bool_info)
+
         # '__lt__' aka '<'
         self.assertLess(blogSmall.text_info, blogLargeB.text_info)
         self.assertLess(blogSmall.bool_info, blogLargeB.bool_info)
+
         # '__ne__' aka '!='
         self.assertNotEqual(blogSmall.text_info, blogLargeB.text_info)
         self.assertNotEqual(blogSmall.bool_info, blogLargeB.bool_info)
+
         # 'sort'
         blogLargeB.bool_info = [True, False, True, False]
         blogLargeB.text_info.sort()
@@ -1327,11 +1325,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(blogLargeB.oid_info, sorted_target_list)
         self.assertEqual(blogLargeB.bool_info, [False, False, True, True])
 
-        BlogPost.drop_collection()
-
     def test_list_assignment(self):
-        """Ensure that list field element assignment and slicing work
-        """
+        """Ensure that list field element assignment and slicing work."""
         class BlogPost(Document):
             info = ListField()
 
@@ -1391,8 +1386,9 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(repr(foo.bars), '[<Bar: Bar object>]')
 
     def test_list_field_strict(self):
-        """Ensure that list field handles validation if provided a strict field type."""
-
+        """Ensure that list field handles validation if provided
+        a strict field type.
+        """
         class Simple(Document):
             mapping = ListField(field=IntField())
 
@@ -1407,30 +1403,26 @@ class FieldTest(MongoDBTestCase):
             e.mapping = ["abc"]
             e.save()
 
-        Simple.drop_collection()
-
     def test_list_field_rejects_strings(self):
-        """Strings aren't valid list field data types"""
-
+        """Strings aren't valid list field data types."""
         class Simple(Document):
             mapping = ListField()
 
         Simple.drop_collection()
+
         e = Simple()
         e.mapping = 'hello world'
-
         self.assertRaises(ValidationError, e.save)
 
     def test_complex_field_required(self):
-        """Ensure required cant be None / Empty"""
-
+        """Ensure required cant be None / Empty."""
         class Simple(Document):
             mapping = ListField(required=True)
 
         Simple.drop_collection()
+
         e = Simple()
         e.mapping = []
-
         self.assertRaises(ValidationError, e.save)
 
         class Simple(Document):
@@ -1439,18 +1431,17 @@ class FieldTest(MongoDBTestCase):
         Simple.drop_collection()
         e = Simple()
         e.mapping = {}
-
         self.assertRaises(ValidationError, e.save)
 
     def test_complex_field_same_value_not_changed(self):
-        """
-        If a complex field is set to the same value, it should not be marked as
-        changed.
+        """If a complex field is set to the same value, it should not
+        be marked as changed.
         """
         class Simple(Document):
             mapping = ListField()
 
         Simple.drop_collection()
+
         e = Simple().save()
         e.mapping = []
         self.assertEqual([], e._changed_fields)
@@ -1459,12 +1450,12 @@ class FieldTest(MongoDBTestCase):
             mapping = DictField()
 
         Simple.drop_collection()
+
         e = Simple().save()
         e.mapping = {}
         self.assertEqual([], e._changed_fields)
 
     def test_slice_marks_field_as_changed(self):
-
         class Simple(Document):
             widgets = ListField()
 
@@ -1477,7 +1468,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(simple.widgets, [4])
 
     def test_del_slice_marks_field_as_changed(self):
-
         class Simple(Document):
             widgets = ListField()
 
@@ -1490,7 +1480,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(simple.widgets, [4])
 
     def test_list_field_with_negative_indices(self):
-
         class Simple(Document):
             widgets = ListField()
 
@@ -1504,7 +1493,6 @@ class FieldTest(MongoDBTestCase):
 
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
-
         class SettingBase(EmbeddedDocument):
             meta = {'allow_inheritance': True}
 
@@ -1518,6 +1506,7 @@ class FieldTest(MongoDBTestCase):
             mapping = ListField()
 
         Simple.drop_collection()
+
         e = Simple()
         e.mapping.append(StringSetting(value='foo'))
         e.mapping.append(IntegerSetting(value=42))
@@ -1555,11 +1544,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(
             Simple.objects.filter(mapping__2__list__1__value='Boo').count(), 1)
 
-        Simple.drop_collection()
-
     def test_dict_field(self):
-        """Ensure that dict types work as expected.
-        """
+        """Ensure that dict types work as expected."""
         class BlogPost(Document):
             info = DictField()
 
@@ -1621,11 +1607,8 @@ class FieldTest(MongoDBTestCase):
         post.reload()
         self.assertEqual([], post.info['authors'])
 
-        BlogPost.drop_collection()
-
     def test_dictfield_dump_document(self):
-        """Ensure a DictField can handle another document's dump
-        """
+        """Ensure a DictField can handle another document's dump."""
         class Doc(Document):
             field = DictField()
 
@@ -1663,7 +1646,6 @@ class FieldTest(MongoDBTestCase):
 
     def test_dictfield_strict(self):
         """Ensure that dict field handles validation if provided a strict field type."""
-
         class Simple(Document):
             mapping = DictField(field=IntField())
 
@@ -1678,11 +1660,8 @@ class FieldTest(MongoDBTestCase):
             e.mapping['somestring'] = "abc"
             e.save()
 
-        Simple.drop_collection()
-
     def test_dictfield_complex(self):
         """Ensure that the dict field can handle the complex types."""
-
         class SettingBase(EmbeddedDocument):
             meta = {'allow_inheritance': True}
 
@@ -1696,6 +1675,7 @@ class FieldTest(MongoDBTestCase):
             mapping = DictField()
 
         Simple.drop_collection()
+
         e = Simple()
         e.mapping['somestring'] = StringSetting(value='foo')
         e.mapping['someint'] = IntegerSetting(value=42)
@@ -1732,11 +1712,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(
             Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
 
-        Simple.drop_collection()
-
     def test_atomic_update_dict_field(self):
         """Ensure that the entire DictField can be atomically updated."""
-
         class Simple(Document):
             mapping = DictField(field=ListField(IntField(required=True)))
 
@@ -1754,11 +1731,8 @@ class FieldTest(MongoDBTestCase):
         with self.assertRaises(ValueError):
             e.update(set__mapping={"somestrings": ["foo", "bar", ]})
 
-        Simple.drop_collection()
-
     def test_mapfield(self):
         """Ensure that the MapField handles the declared type."""
-
         class Simple(Document):
             mapping = MapField(IntField())
 
@@ -1776,11 +1750,8 @@ class FieldTest(MongoDBTestCase):
             class NoDeclaredType(Document):
                 mapping = MapField()
 
-        Simple.drop_collection()
-
     def test_complex_mapfield(self):
         """Ensure that the MapField can handle complex declared types."""
-
         class SettingBase(EmbeddedDocument):
             meta = {"allow_inheritance": True}
 
@@ -1809,7 +1780,6 @@ class FieldTest(MongoDBTestCase):
             e.save()
 
     def test_embedded_mapfield_db_field(self):
-
         class Embedded(EmbeddedDocument):
             number = IntField(default=0, db_field='i')
 
@@ -1846,11 +1816,10 @@ class FieldTest(MongoDBTestCase):
         test.my_map['1'].name = 'test updated'
         test.save()
 
-        Test.drop_collection()
-
     def test_map_field_lookup(self):
-        """Ensure MapField lookups succeed on Fields without a lookup method"""
-
+        """Ensure MapField lookups succeed on Fields without a lookup
+        method.
+        """
         class Action(EmbeddedDocument):
             operation = StringField()
             object = StringField()
@@ -1872,7 +1841,6 @@ class FieldTest(MongoDBTestCase):
             actions__friends__object='beer').count())
 
     def test_map_field_unicode(self):
-
         class Info(EmbeddedDocument):
             description = StringField()
             value_list = ListField(field=StringField())
@@ -1890,12 +1858,12 @@ class FieldTest(MongoDBTestCase):
 
         tree.save()
 
-        self.assertEqual(BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description, u"VALUE: éééé")
-
-        BlogPost.drop_collection()
+        self.assertEqual(
+            BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description,
+            u"VALUE: éééé"
+        )
 
     def test_embedded_db_field(self):
-
         class Embedded(EmbeddedDocument):
             number = IntField(default=0, db_field='i')
 
@@ -1949,8 +1917,8 @@ class FieldTest(MongoDBTestCase):
         person.validate()
 
     def test_embedded_document_inheritance(self):
-        """Ensure that subclasses of embedded documents may be provided to
-        EmbeddedDocumentFields of the superclass' type.
+        """Ensure that subclasses of embedded documents may be provided
+        to EmbeddedDocumentFields of the superclass' type.
         """
         class User(EmbeddedDocument):
             name = StringField()
@@ -1976,7 +1944,6 @@ class FieldTest(MongoDBTestCase):
         """Ensure that nested list of subclassed embedded documents is
         handled correctly.
         """
-
         class Group(EmbeddedDocument):
             name = StringField()
             content = ListField(StringField())
@@ -1998,9 +1965,9 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(content, User.objects.first().groups[0].content)
 
     def test_reference_miss(self):
-        """Ensure an exception is raised when dereferencing unknown document
+        """Ensure an exception is raised when dereferencing an unknown
+        document.
         """
-
         class Foo(Document):
             pass
 
@@ -2029,8 +1996,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(bar.generic_ref, {'_ref': expected, '_cls': 'Foo'})
 
     def test_reference_validation(self):
-        """Ensure that invalid docment objects cannot be assigned to reference
-        fields.
+        """Ensure that invalid document objects cannot be assigned to
+        reference fields.
         """
         class User(Document):
             name = StringField()
@@ -2042,6 +2009,8 @@ class FieldTest(MongoDBTestCase):
         User.drop_collection()
         BlogPost.drop_collection()
 
+        # Make sure ReferenceField only accepts a document class or a string
+        # with a document class name.
         self.assertRaises(ValidationError, ReferenceField, EmbeddedDocument)
 
         user = User(name='Test User')
@@ -2056,19 +2025,18 @@ class FieldTest(MongoDBTestCase):
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
 
+        # Make sure referencing a saved document of the right type works
         user.save()
         post1.author = user
         post1.save()
 
+        # Make sure referencing a saved document of the *wrong* type fails
         post2.save()
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
 
-        User.drop_collection()
-        BlogPost.drop_collection()
-
     def test_dbref_reference_fields(self):
-
+        """Make sure storing references as bson.dbref.DBRef works."""
         class Person(Document):
             name = StringField()
             parent = ReferenceField('self', dbref=True)
@@ -2078,410 +2046,31 @@ class FieldTest(MongoDBTestCase):
         p1 = Person(name="John").save()
         Person(name="Ross", parent=p1).save()
 
-        col = Person._get_collection()
-        data = col.find_one({'name': 'Ross'})
-        self.assertEqual(data['parent'], DBRef('person', p1.pk))
+        self.assertEqual(
+            Person._get_collection().find_one({'name': 'Ross'})['parent'],
+            DBRef('person', p1.pk)
+        )
 
         p = Person.objects.get(name="Ross")
         self.assertEqual(p.parent, p1)
 
     def test_dbref_to_mongo(self):
+        """Make sure that calling to_mongo on a ReferenceField which
+        has dbref=False, but actually actually contains a DBRef returns
+        an ID of that DBRef.
+        """
         class Person(Document):
             name = StringField()
             parent = ReferenceField('self', dbref=False)
 
-        p1 = Person._from_son({'name': "Yakxxx",
-                               'parent': "50a234ea469ac1eda42d347d"})
-        mongoed = p1.to_mongo()
-        self.assertTrue(isinstance(mongoed['parent'], ObjectId))
-
-    def test_cached_reference_field_get_and_save(self):
-        """
-        Tests #1047: CachedReferenceField creates DBRefs on to_python, but can't save them on to_mongo
-        """
-        class Animal(Document):
-            name = StringField()
-            tag = StringField()
-
-        class Ocorrence(Document):
-            person = StringField()
-            animal = CachedReferenceField(Animal)
-
-        Animal.drop_collection()
-        Ocorrence.drop_collection()
-
-        Ocorrence(person="testte",
-                  animal=Animal(name="Leopard", tag="heavy").save()).save()
-        p = Ocorrence.objects.get()
-        p.person = 'new_testte'
-        p.save()
-
-    def test_cached_reference_fields(self):
-        class Animal(Document):
-            name = StringField()
-            tag = StringField()
-
-        class Ocorrence(Document):
-            person = StringField()
-            animal = CachedReferenceField(
-                Animal, fields=['tag'])
-
-        Animal.drop_collection()
-        Ocorrence.drop_collection()
-
-        a = Animal(name="Leopard", tag="heavy")
-        a.save()
-
-        self.assertEqual(Animal._cached_reference_fields, [Ocorrence.animal])
-        o = Ocorrence(person="teste", animal=a)
-        o.save()
-
-        p = Ocorrence(person="Wilson")
-        p.save()
-
-        self.assertEqual(Ocorrence.objects(animal=None).count(), 1)
-
-        self.assertEqual(
-            a.to_mongo(fields=['tag']), {'tag': 'heavy', "_id": a.pk})
-
-        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
-
-        # counts
-        Ocorrence(person="teste 2").save()
-        Ocorrence(person="teste 3").save()
-
-        count = Ocorrence.objects(animal__tag='heavy').count()
-        self.assertEqual(count, 1)
-
-        ocorrence = Ocorrence.objects(animal__tag='heavy').first()
-        self.assertEqual(ocorrence.person, "teste")
-        self.assertTrue(isinstance(ocorrence.animal, Animal))
-
-    def test_cached_reference_field_decimal(self):
-        class PersonAuto(Document):
-            name = StringField()
-            salary = DecimalField()
-
-        class SocialTest(Document):
-            group = StringField()
-            person = CachedReferenceField(
-                PersonAuto,
-                fields=('salary',))
-
-        PersonAuto.drop_collection()
-        SocialTest.drop_collection()
-
-        p = PersonAuto(name="Alberto", salary=Decimal('7000.00'))
-        p.save()
-
-        s = SocialTest(group="dev", person=p)
-        s.save()
-
-        self.assertEqual(
-            SocialTest.objects._collection.find_one({'person.salary': 7000.00}), {
-                '_id': s.pk,
-                'group': s.group,
-                'person': {
-                    '_id': p.pk,
-                    'salary': 7000.00
-                }
-            })
-
-    def test_cached_reference_field_reference(self):
-        class Group(Document):
-            name = StringField()
-
-        class Person(Document):
-            name = StringField()
-            group = ReferenceField(Group)
-
-        class SocialData(Document):
-            obs = StringField()
-            tags = ListField(
-                StringField())
-            person = CachedReferenceField(
-                Person,
-                fields=('group',))
-
-        Group.drop_collection()
-        Person.drop_collection()
-        SocialData.drop_collection()
-
-        g1 = Group(name='dev')
-        g1.save()
-
-        g2 = Group(name="designers")
-        g2.save()
-
-        p1 = Person(name="Alberto", group=g1)
-        p1.save()
-
-        p2 = Person(name="Andre", group=g1)
-        p2.save()
-
-        p3 = Person(name="Afro design", group=g2)
-        p3.save()
-
-        s1 = SocialData(obs="testing 123", person=p1, tags=['tag1', 'tag2'])
-        s1.save()
-
-        s2 = SocialData(obs="testing 321", person=p3, tags=['tag3', 'tag4'])
-        s2.save()
-
-        self.assertEqual(SocialData.objects._collection.find_one(
-            {'tags': 'tag2'}), {
-                '_id': s1.pk,
-                'obs': 'testing 123',
-                'tags': ['tag1', 'tag2'],
-                'person': {
-                    '_id': p1.pk,
-                    'group': g1.pk
-                }
-        })
-
-        self.assertEqual(SocialData.objects(person__group=g2).count(), 1)
-        self.assertEqual(SocialData.objects(person__group=g2).first(), s2)
-
-    def test_cached_reference_field_update_all(self):
-        class Person(Document):
-            TYPES = (
-                ('pf', "PF"),
-                ('pj', "PJ")
-            )
-            name = StringField()
-            tp = StringField(
-                choices=TYPES
-            )
-
-            father = CachedReferenceField('self', fields=('tp',))
-
-        Person.drop_collection()
-
-        a1 = Person(name="Wilson Father", tp="pj")
-        a1.save()
-
-        a2 = Person(name='Wilson Junior', tp='pf', father=a1)
-        a2.save()
-
-        self.assertEqual(dict(a2.to_mongo()), {
-            "_id": a2.pk,
-            "name": u"Wilson Junior",
-            "tp": u"pf",
-            "father": {
-                "_id": a1.pk,
-                "tp": u"pj"
-            }
-        })
-
-        self.assertEqual(Person.objects(father=a1)._query, {
-            'father._id': a1.pk
-        })
-        self.assertEqual(Person.objects(father=a1).count(), 1)
-
-        Person.objects.update(set__tp="pf")
-        Person.father.sync_all()
-
-        a2.reload()
-        self.assertEqual(dict(a2.to_mongo()), {
-            "_id": a2.pk,
-            "name": u"Wilson Junior",
-            "tp": u"pf",
-            "father": {
-                "_id": a1.pk,
-                "tp": u"pf"
-            }
-        })
-
-    def test_cached_reference_fields_on_embedded_documents(self):
-        with self.assertRaises(InvalidDocumentError):
-            class Test(Document):
-                name = StringField()
-
-            type('WrongEmbeddedDocument', (
-                EmbeddedDocument,), {
-                    'test': CachedReferenceField(Test)
-            })
-
-    def test_cached_reference_auto_sync(self):
-        class Person(Document):
-            TYPES = (
-                ('pf', "PF"),
-                ('pj', "PJ")
-            )
-            name = StringField()
-            tp = StringField(
-                choices=TYPES
-            )
-
-            father = CachedReferenceField('self', fields=('tp',))
-
-        Person.drop_collection()
-
-        a1 = Person(name="Wilson Father", tp="pj")
-        a1.save()
-
-        a2 = Person(name='Wilson Junior', tp='pf', father=a1)
-        a2.save()
-
-        a1.tp = 'pf'
-        a1.save()
-
-        a2.reload()
-        self.assertEqual(dict(a2.to_mongo()), {
-            '_id': a2.pk,
-            'name': 'Wilson Junior',
-            'tp': 'pf',
-            'father': {
-                '_id': a1.pk,
-                'tp': 'pf'
-            }
-        })
-
-    def test_cached_reference_auto_sync_disabled(self):
-        class Persone(Document):
-            TYPES = (
-                ('pf', "PF"),
-                ('pj', "PJ")
-            )
-            name = StringField()
-            tp = StringField(
-                choices=TYPES
-            )
-
-            father = CachedReferenceField(
-                'self', fields=('tp',), auto_sync=False)
-
-        Persone.drop_collection()
-
-        a1 = Persone(name="Wilson Father", tp="pj")
-        a1.save()
-
-        a2 = Persone(name='Wilson Junior', tp='pf', father=a1)
-        a2.save()
-
-        a1.tp = 'pf'
-        a1.save()
-
-        self.assertEqual(Persone.objects._collection.find_one({'_id': a2.pk}), {
-            '_id': a2.pk,
-            'name': 'Wilson Junior',
-            'tp': 'pf',
-            'father': {
-                '_id': a1.pk,
-                'tp': 'pj'
-            }
-        })
-
-    def test_cached_reference_embedded_fields(self):
-        class Owner(EmbeddedDocument):
-            TPS = (
-                ('n', "Normal"),
-                ('u', "Urgent")
-            )
-            name = StringField()
-            tp = StringField(
-                verbose_name="Type",
-                db_field="t",
-                choices=TPS)
-
-        class Animal(Document):
-            name = StringField()
-            tag = StringField()
-
-            owner = EmbeddedDocumentField(Owner)
-
-        class Ocorrence(Document):
-            person = StringField()
-            animal = CachedReferenceField(
-                Animal, fields=['tag', 'owner.tp'])
-
-        Animal.drop_collection()
-        Ocorrence.drop_collection()
-
-        a = Animal(name="Leopard", tag="heavy",
-                   owner=Owner(tp='u', name="Wilson Júnior")
-                   )
-        a.save()
-
-        o = Ocorrence(person="teste", animal=a)
-        o.save()
-        self.assertEqual(dict(a.to_mongo(fields=['tag', 'owner.tp'])), {
-            '_id': a.pk,
-            'tag': 'heavy',
-            'owner': {
-                't': 'u'
-            }
-        })
-        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
-        self.assertEqual(o.to_mongo()['animal']['owner']['t'], 'u')
-
-        # counts
-        Ocorrence(person="teste 2").save()
-        Ocorrence(person="teste 3").save()
-
-        count = Ocorrence.objects(
-            animal__tag='heavy', animal__owner__tp='u').count()
-        self.assertEqual(count, 1)
-
-        ocorrence = Ocorrence.objects(
-            animal__tag='heavy',
-            animal__owner__tp='u').first()
-        self.assertEqual(ocorrence.person, "teste")
-        self.assertTrue(isinstance(ocorrence.animal, Animal))
-
-    def test_cached_reference_embedded_list_fields(self):
-        class Owner(EmbeddedDocument):
-            name = StringField()
-            tags = ListField(StringField())
-
-        class Animal(Document):
-            name = StringField()
-            tag = StringField()
-
-            owner = EmbeddedDocumentField(Owner)
-
-        class Ocorrence(Document):
-            person = StringField()
-            animal = CachedReferenceField(
-                Animal, fields=['tag', 'owner.tags'])
-
-        Animal.drop_collection()
-        Ocorrence.drop_collection()
-
-        a = Animal(name="Leopard", tag="heavy",
-                   owner=Owner(tags=['cool', 'funny'],
-                               name="Wilson Júnior")
-                   )
-        a.save()
-
-        o = Ocorrence(person="teste 2", animal=a)
-        o.save()
-        self.assertEqual(dict(a.to_mongo(fields=['tag', 'owner.tags'])), {
-            '_id': a.pk,
-            'tag': 'heavy',
-            'owner': {
-                'tags': ['cool', 'funny']
-            }
-        })
-
-        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
-        self.assertEqual(o.to_mongo()['animal']['owner']['tags'],
-                         ['cool', 'funny'])
-
-        # counts
-        Ocorrence(person="teste 2").save()
-        Ocorrence(person="teste 3").save()
-
-        query = Ocorrence.objects(
-            animal__tag='heavy', animal__owner__tags='cool')._query
-        self.assertEqual(
-            query, {'animal.owner.tags': 'cool', 'animal.tag': 'heavy'})
-
-        ocorrence = Ocorrence.objects(
-            animal__tag='heavy',
-            animal__owner__tags='cool').first()
-        self.assertEqual(ocorrence.person, "teste 2")
-        self.assertTrue(isinstance(ocorrence.animal, Animal))
+        p = Person(
+            name='Steve',
+            parent=DBRef('person', 'abcdefghijklmnop')
+        )
+        self.assertEqual(p.to_mongo(), SON([
+            ('name', u'Steve'),
+            ('parent', 'abcdefghijklmnop')
+        ]))
 
     def test_objectid_reference_fields(self):
 
@@ -2526,9 +2115,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(group_obj.members[0].name, user1.name)
         self.assertEqual(group_obj.members[1].name, user2.name)
 
-        User.drop_collection()
-        Group.drop_collection()
-
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
         """
@@ -2538,6 +2124,7 @@ class FieldTest(MongoDBTestCase):
             friends = ListField(ReferenceField('self'))
 
         Employee.drop_collection()
+
         bill = Employee(name='Bill Lumbergh')
         bill.save()
 
@@ -2567,8 +2154,8 @@ class FieldTest(MongoDBTestCase):
             children = ListField(EmbeddedDocumentField('TreeNode'))
 
         Tree.drop_collection()
-        tree = Tree(name="Tree")
 
+        tree = Tree(name="Tree")
         first_child = TreeNode(name="Child 1")
         tree.children.append(first_child)
 
@@ -2681,9 +2268,6 @@ class FieldTest(MongoDBTestCase):
         post = BlogPost.objects(author=m2).first()
         self.assertEqual(post.id, post2.id)
 
-        Member.drop_collection()
-        BlogPost.drop_collection()
-
     def test_reference_query_conversion_dbref(self):
         """Ensure that ReferenceFields can be queried using objects and values
         of the type of the primary key of the referenced object.
@@ -2714,9 +2298,6 @@ class FieldTest(MongoDBTestCase):
 
         post = BlogPost.objects(author=m2).first()
         self.assertEqual(post.id, post2.id)
-
-        Member.drop_collection()
-        BlogPost.drop_collection()
 
     def test_drop_abstract_document(self):
         """Ensure that an abstract document cannot be dropped given it
@@ -2751,9 +2332,6 @@ class FieldTest(MongoDBTestCase):
 
         self.assertEquals(Brother.objects[0].sibling.name, sister.name)
 
-        Sister.drop_collection()
-        Brother.drop_collection()
-
     def test_reference_abstract_class(self):
         """Ensure that an abstract class instance cannot be used in the
         reference of that abstract class.
@@ -2774,9 +2352,6 @@ class FieldTest(MongoDBTestCase):
         sister = Sibling(name="Alice")
         brother = Brother(name="Bob", sibling=sister)
         self.assertRaises(ValidationError, brother.save)
-
-        Sister.drop_collection()
-        Brother.drop_collection()
 
     def test_abstract_reference_base_type(self):
         """Ensure that an an abstract reference fails validation when given a
@@ -2799,9 +2374,6 @@ class FieldTest(MongoDBTestCase):
         mother.save()
         brother = Brother(name="Bob", sibling=mother)
         self.assertRaises(ValidationError, brother.save)
-
-        Brother.drop_collection()
-        Mother.drop_collection()
 
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
@@ -2842,10 +2414,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(bm.bookmark_object, link_1)
         self.assertTrue(isinstance(bm.bookmark_object, Link))
 
-        Link.drop_collection()
-        Post.drop_collection()
-        Bookmark.drop_collection()
-
     def test_generic_reference_list(self):
         """Ensure that a ListField properly dereferences generic references.
         """
@@ -2875,10 +2443,6 @@ class FieldTest(MongoDBTestCase):
 
         self.assertEqual(user.bookmarks[0], post_1)
         self.assertEqual(user.bookmarks[1], link_1)
-
-        Link.drop_collection()
-        Post.drop_collection()
-        User.drop_collection()
 
     def test_generic_reference_document_not_registered(self):
         """Ensure dereferencing out of the document registry throws a
@@ -2910,9 +2474,6 @@ class FieldTest(MongoDBTestCase):
         except NotRegistered:
             pass
 
-        Link.drop_collection()
-        User.drop_collection()
-
     def test_generic_reference_is_none(self):
 
         class Person(Document):
@@ -2920,14 +2481,13 @@ class FieldTest(MongoDBTestCase):
             city = GenericReferenceField()
 
         Person.drop_collection()
-        Person(name="Wilson Jr").save()
 
+        Person(name="Wilson Jr").save()
         self.assertEqual(repr(Person.objects(city=None)),
                          "[<Person: Person object>]")
 
     def test_generic_reference_choices(self):
-        """Ensure that a GenericReferenceField can handle choices
-        """
+        """Ensure that a GenericReferenceField can handle choices."""
         class Link(Document):
             title = StringField()
 
@@ -3044,10 +2604,6 @@ class FieldTest(MongoDBTestCase):
         user = User.objects.first()
         self.assertEqual(user.bookmarks, [post_1])
 
-        Link.drop_collection()
-        Post.drop_collection()
-        User.drop_collection()
-
     def test_generic_reference_list_item_modification(self):
         """Ensure that modifications of related documents (through generic reference) don't influence on querying
         """
@@ -3075,9 +2631,6 @@ class FieldTest(MongoDBTestCase):
 
         self.assertNotEqual(user, None)
         self.assertEqual(user.bookmarks[0], post_1)
-
-        Post.drop_collection()
-        User.drop_collection()
 
     def test_generic_reference_filter_by_dbref(self):
         """Ensure we can search for a specific generic reference by
@@ -3130,8 +2683,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(MIME_TYPE, attachment_1.content_type)
         self.assertEqual(BLOB, six.binary_type(attachment_1.blob))
 
-        Attachment.drop_collection()
-
     def test_binary_validation(self):
         """Ensure that invalid values cannot be assigned to binary fields.
         """
@@ -3164,12 +2715,7 @@ class FieldTest(MongoDBTestCase):
         attachment_size_limit.blob = six.b('\xe6\x00\xc4\xff')
         attachment_size_limit.validate()
 
-        Attachment.drop_collection()
-        AttachmentRequired.drop_collection()
-        AttachmentSizeLimit.drop_collection()
-
     def test_binary_field_primary(self):
-
         class Attachment(Document):
             id = BinaryField(primary_key=True)
 
@@ -3178,13 +2724,10 @@ class FieldTest(MongoDBTestCase):
         att = Attachment(id=binary_id).save()
         self.assertEqual(1, Attachment.objects.count())
         self.assertEqual(1, Attachment.objects.filter(id=att.id).count())
-        # TODO use assertIsNotNone once Python 2.6 support is dropped
-        self.assertTrue(Attachment.objects.filter(id=att.id).first() is not None)
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 
     def test_binary_field_primary_filter_by_binary_pk_as_str(self):
-
         raise SkipTest("Querying by id as string is not currently supported")
 
         class Attachment(Document):
@@ -3194,8 +2737,6 @@ class FieldTest(MongoDBTestCase):
         binary_id = uuid.uuid4().bytes
         att = Attachment(id=binary_id).save()
         self.assertEqual(1, Attachment.objects.filter(id=binary_id).count())
-        # TODO use assertIsNotNone once Python 2.6 support is dropped
-        self.assertTrue(Attachment.objects.filter(id=binary_id).first() is not None)
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 
@@ -3363,8 +2904,6 @@ class FieldTest(MongoDBTestCase):
         shirt.size = "XS"
         self.assertRaises(ValidationError, shirt.validate)
 
-        Shirt.drop_collection()
-
     def test_simple_choices_get_field_display(self):
         """Test dynamic helper for returning the display value of a choices
         field.
@@ -3394,8 +2933,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(shirt.get_size_display(), 'Z')
         self.assertEqual(shirt.get_style_display(), 'Z')
         self.assertRaises(ValidationError, shirt.validate)
-
-        Shirt.drop_collection()
 
     def test_simple_choices_validation_invalid_value(self):
         """Ensure that error messages are correct.
@@ -3428,8 +2965,6 @@ class FieldTest(MongoDBTestCase):
             error_dict = error.to_dict()
             self.assertEqual(error_dict['size'], SIZE_MESSAGE)
             self.assertEqual(error_dict['color'], COLOR_MESSAGE)
-
-        Shirt.drop_collection()
 
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""
@@ -3581,7 +3116,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(a.counter, 2)
 
     def test_multiple_sequence_fields_on_docs(self):
-
         class Animal(Document):
             id = SequenceField(primary_key=True)
             name = StringField()
@@ -3737,8 +3271,7 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(isinstance(person.like, Dish))
 
     def test_generic_embedded_document_choices(self):
-        """Ensure you can limit GenericEmbeddedDocument choices
-        """
+        """Ensure you can limit GenericEmbeddedDocument choices."""
         class Car(EmbeddedDocument):
             name = StringField()
 
@@ -3763,8 +3296,8 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(isinstance(person.like, Dish))
 
     def test_generic_list_embedded_document_choices(self):
-        """Ensure you can limit GenericEmbeddedDocument choices inside a list
-        field
+        """Ensure you can limit GenericEmbeddedDocument choices inside
+        a list field.
         """
         class Car(EmbeddedDocument):
             name = StringField()
@@ -3790,8 +3323,7 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(isinstance(person.likes[0], Dish))
 
     def test_recursive_validation(self):
-        """Ensure that a validation result to_dict is available.
-        """
+        """Ensure that a validation result to_dict is available."""
         class Author(EmbeddedDocument):
             name = StringField(required=True)
 
@@ -3868,9 +3400,8 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(user.validate() is None)
 
     def test_tuples_as_tuples(self):
-        """
-        Ensure that tuples remain tuples when they are
-        inside a ComplexBaseField
+        """Ensure that tuples remain tuples when they are inside
+        a ComplexBaseField.
         """
         class EnumField(BaseField):
 
@@ -3887,6 +3418,7 @@ class FieldTest(MongoDBTestCase):
             items = ListField(EnumField())
 
         TestDoc.drop_collection()
+
         tuples = [(100, 'Testing')]
         doc = TestDoc()
         doc.items = tuples
@@ -3898,7 +3430,6 @@ class FieldTest(MongoDBTestCase):
         self.assertTrue(x.items[0] in tuples)
 
     def test_dynamic_fields_class(self):
-
         class Doc2(Document):
             field_1 = StringField(db_field='f')
 
@@ -3921,7 +3452,6 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(doc.embed_me.field_1, "hello")
 
     def test_dynamic_fields_embedded_class(self):
-
         class Embed(EmbeddedDocument):
             field_1 = StringField(db_field='f')
 
@@ -3938,8 +3468,7 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(doc.embed_me.field_1, "hello")
 
     def test_dynamicfield_dump_document(self):
-        """Ensure a DynamicField can handle another document's dump
-        """
+        """Ensure a DynamicField can handle another document's dump."""
         class Doc(Document):
             field = DynamicField()
 
@@ -4010,15 +3539,15 @@ class FieldTest(MongoDBTestCase):
     def test_sparse_field(self):
         class Doc(Document):
             name = StringField(required=False, unique=True, sparse=True)
-        try:
-            Doc().save()
-            Doc().save()
-        except Exception:
-            self.fail()
+
+        # This would raise an exception in a non-sparse unique index
+        Doc().save()
+        Doc().save()
 
     def test_undefined_field_exception(self):
-        """Tests if a `FieldDoesNotExist` exception is raised when trying to
-        instanciate a document with a field that's not defined.
+        """Tests if a `FieldDoesNotExist` exception is raised when
+        trying to instantiate a document with a field that's not
+        defined.
         """
         class Doc(Document):
             foo = StringField()
@@ -4026,11 +3555,10 @@ class FieldTest(MongoDBTestCase):
         with self.assertRaises(FieldDoesNotExist):
             Doc(bar='test')
 
-
     def test_undefined_field_exception_with_strict(self):
-        """Tests if a `FieldDoesNotExist` exception is raised when trying to
-        instanciate a document with a field that's not defined,
-        even when strict is set to False.
+        """Tests if a `FieldDoesNotExist` exception is raised when
+        trying to instantiate a document with a field that's not
+        defined, even when strict is set to False.
         """
         class Doc(Document):
             foo = StringField()
@@ -4041,8 +3569,8 @@ class FieldTest(MongoDBTestCase):
 
     def test_long_field_is_considered_as_int64(self):
         """
-        Tests that long fields are stored as long in mongo, even if long value
-        is small enough to be an int.
+        Tests that long fields are stored as long in mongo, even if long
+        value is small enough to be an int.
         """
         class TestLongFieldConsideredAsInt64(Document):
             some_long = LongField()
@@ -4498,6 +4026,398 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertFalse(hasattr(a1.c_field, 'custom_data'))
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
+
+
+class CachedReferenceFieldTest(MongoDBTestCase):
+
+    def test_cached_reference_field_get_and_save(self):
+        """
+        Tests #1047: CachedReferenceField creates DBRefs on to_python,
+        but can't save them on to_mongo.
+        """
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        Ocorrence(person="testte",
+                  animal=Animal(name="Leopard", tag="heavy").save()).save()
+        p = Ocorrence.objects.get()
+        p.person = 'new_testte'
+        p.save()
+
+    def test_cached_reference_fields(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(
+                Animal, fields=['tag'])
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        a = Animal(name="Leopard", tag="heavy")
+        a.save()
+
+        self.assertEqual(Animal._cached_reference_fields, [Ocorrence.animal])
+        o = Ocorrence(person="teste", animal=a)
+        o.save()
+
+        p = Ocorrence(person="Wilson")
+        p.save()
+
+        self.assertEqual(Ocorrence.objects(animal=None).count(), 1)
+
+        self.assertEqual(
+            a.to_mongo(fields=['tag']), {'tag': 'heavy', "_id": a.pk})
+
+        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
+
+        # counts
+        Ocorrence(person="teste 2").save()
+        Ocorrence(person="teste 3").save()
+
+        count = Ocorrence.objects(animal__tag='heavy').count()
+        self.assertEqual(count, 1)
+
+        ocorrence = Ocorrence.objects(animal__tag='heavy').first()
+        self.assertEqual(ocorrence.person, "teste")
+        self.assertTrue(isinstance(ocorrence.animal, Animal))
+
+    def test_cached_reference_field_decimal(self):
+        class PersonAuto(Document):
+            name = StringField()
+            salary = DecimalField()
+
+        class SocialTest(Document):
+            group = StringField()
+            person = CachedReferenceField(
+                PersonAuto,
+                fields=('salary',))
+
+        PersonAuto.drop_collection()
+        SocialTest.drop_collection()
+
+        p = PersonAuto(name="Alberto", salary=Decimal('7000.00'))
+        p.save()
+
+        s = SocialTest(group="dev", person=p)
+        s.save()
+
+        self.assertEqual(
+            SocialTest.objects._collection.find_one({'person.salary': 7000.00}), {
+                '_id': s.pk,
+                'group': s.group,
+                'person': {
+                    '_id': p.pk,
+                    'salary': 7000.00
+                }
+            })
+
+    def test_cached_reference_field_reference(self):
+        class Group(Document):
+            name = StringField()
+
+        class Person(Document):
+            name = StringField()
+            group = ReferenceField(Group)
+
+        class SocialData(Document):
+            obs = StringField()
+            tags = ListField(
+                StringField())
+            person = CachedReferenceField(
+                Person,
+                fields=('group',))
+
+        Group.drop_collection()
+        Person.drop_collection()
+        SocialData.drop_collection()
+
+        g1 = Group(name='dev')
+        g1.save()
+
+        g2 = Group(name="designers")
+        g2.save()
+
+        p1 = Person(name="Alberto", group=g1)
+        p1.save()
+
+        p2 = Person(name="Andre", group=g1)
+        p2.save()
+
+        p3 = Person(name="Afro design", group=g2)
+        p3.save()
+
+        s1 = SocialData(obs="testing 123", person=p1, tags=['tag1', 'tag2'])
+        s1.save()
+
+        s2 = SocialData(obs="testing 321", person=p3, tags=['tag3', 'tag4'])
+        s2.save()
+
+        self.assertEqual(SocialData.objects._collection.find_one(
+            {'tags': 'tag2'}), {
+                '_id': s1.pk,
+                'obs': 'testing 123',
+                'tags': ['tag1', 'tag2'],
+                'person': {
+                    '_id': p1.pk,
+                    'group': g1.pk
+                }
+        })
+
+        self.assertEqual(SocialData.objects(person__group=g2).count(), 1)
+        self.assertEqual(SocialData.objects(person__group=g2).first(), s2)
+
+    def test_cached_reference_field_update_all(self):
+        class Person(Document):
+            TYPES = (
+                ('pf', "PF"),
+                ('pj', "PJ")
+            )
+            name = StringField()
+            tp = StringField(
+                choices=TYPES
+            )
+
+            father = CachedReferenceField('self', fields=('tp',))
+
+        Person.drop_collection()
+
+        a1 = Person(name="Wilson Father", tp="pj")
+        a1.save()
+
+        a2 = Person(name='Wilson Junior', tp='pf', father=a1)
+        a2.save()
+
+        self.assertEqual(dict(a2.to_mongo()), {
+            "_id": a2.pk,
+            "name": u"Wilson Junior",
+            "tp": u"pf",
+            "father": {
+                "_id": a1.pk,
+                "tp": u"pj"
+            }
+        })
+
+        self.assertEqual(Person.objects(father=a1)._query, {
+            'father._id': a1.pk
+        })
+        self.assertEqual(Person.objects(father=a1).count(), 1)
+
+        Person.objects.update(set__tp="pf")
+        Person.father.sync_all()
+
+        a2.reload()
+        self.assertEqual(dict(a2.to_mongo()), {
+            "_id": a2.pk,
+            "name": u"Wilson Junior",
+            "tp": u"pf",
+            "father": {
+                "_id": a1.pk,
+                "tp": u"pf"
+            }
+        })
+
+    def test_cached_reference_fields_on_embedded_documents(self):
+        with self.assertRaises(InvalidDocumentError):
+            class Test(Document):
+                name = StringField()
+
+            type('WrongEmbeddedDocument', (
+                EmbeddedDocument,), {
+                    'test': CachedReferenceField(Test)
+            })
+
+    def test_cached_reference_auto_sync(self):
+        class Person(Document):
+            TYPES = (
+                ('pf', "PF"),
+                ('pj', "PJ")
+            )
+            name = StringField()
+            tp = StringField(
+                choices=TYPES
+            )
+
+            father = CachedReferenceField('self', fields=('tp',))
+
+        Person.drop_collection()
+
+        a1 = Person(name="Wilson Father", tp="pj")
+        a1.save()
+
+        a2 = Person(name='Wilson Junior', tp='pf', father=a1)
+        a2.save()
+
+        a1.tp = 'pf'
+        a1.save()
+
+        a2.reload()
+        self.assertEqual(dict(a2.to_mongo()), {
+            '_id': a2.pk,
+            'name': 'Wilson Junior',
+            'tp': 'pf',
+            'father': {
+                '_id': a1.pk,
+                'tp': 'pf'
+            }
+        })
+
+    def test_cached_reference_auto_sync_disabled(self):
+        class Persone(Document):
+            TYPES = (
+                ('pf', "PF"),
+                ('pj', "PJ")
+            )
+            name = StringField()
+            tp = StringField(
+                choices=TYPES
+            )
+
+            father = CachedReferenceField(
+                'self', fields=('tp',), auto_sync=False)
+
+        Persone.drop_collection()
+
+        a1 = Persone(name="Wilson Father", tp="pj")
+        a1.save()
+
+        a2 = Persone(name='Wilson Junior', tp='pf', father=a1)
+        a2.save()
+
+        a1.tp = 'pf'
+        a1.save()
+
+        self.assertEqual(Persone.objects._collection.find_one({'_id': a2.pk}), {
+            '_id': a2.pk,
+            'name': 'Wilson Junior',
+            'tp': 'pf',
+            'father': {
+                '_id': a1.pk,
+                'tp': 'pj'
+            }
+        })
+
+    def test_cached_reference_embedded_fields(self):
+        class Owner(EmbeddedDocument):
+            TPS = (
+                ('n', "Normal"),
+                ('u', "Urgent")
+            )
+            name = StringField()
+            tp = StringField(
+                verbose_name="Type",
+                db_field="t",
+                choices=TPS)
+
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+            owner = EmbeddedDocumentField(Owner)
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(
+                Animal, fields=['tag', 'owner.tp'])
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        a = Animal(name="Leopard", tag="heavy",
+                   owner=Owner(tp='u', name="Wilson Júnior")
+                   )
+        a.save()
+
+        o = Ocorrence(person="teste", animal=a)
+        o.save()
+        self.assertEqual(dict(a.to_mongo(fields=['tag', 'owner.tp'])), {
+            '_id': a.pk,
+            'tag': 'heavy',
+            'owner': {
+                't': 'u'
+            }
+        })
+        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
+        self.assertEqual(o.to_mongo()['animal']['owner']['t'], 'u')
+
+        # counts
+        Ocorrence(person="teste 2").save()
+        Ocorrence(person="teste 3").save()
+
+        count = Ocorrence.objects(
+            animal__tag='heavy', animal__owner__tp='u').count()
+        self.assertEqual(count, 1)
+
+        ocorrence = Ocorrence.objects(
+            animal__tag='heavy',
+            animal__owner__tp='u').first()
+        self.assertEqual(ocorrence.person, "teste")
+        self.assertTrue(isinstance(ocorrence.animal, Animal))
+
+    def test_cached_reference_embedded_list_fields(self):
+        class Owner(EmbeddedDocument):
+            name = StringField()
+            tags = ListField(StringField())
+
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+            owner = EmbeddedDocumentField(Owner)
+
+        class Ocorrence(Document):
+            person = StringField()
+            animal = CachedReferenceField(
+                Animal, fields=['tag', 'owner.tags'])
+
+        Animal.drop_collection()
+        Ocorrence.drop_collection()
+
+        a = Animal(name="Leopard", tag="heavy",
+                   owner=Owner(tags=['cool', 'funny'],
+                               name="Wilson Júnior")
+                   )
+        a.save()
+
+        o = Ocorrence(person="teste 2", animal=a)
+        o.save()
+        self.assertEqual(dict(a.to_mongo(fields=['tag', 'owner.tags'])), {
+            '_id': a.pk,
+            'tag': 'heavy',
+            'owner': {
+                'tags': ['cool', 'funny']
+            }
+        })
+
+        self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
+        self.assertEqual(o.to_mongo()['animal']['owner']['tags'],
+                         ['cool', 'funny'])
+
+        # counts
+        Ocorrence(person="teste 2").save()
+        Ocorrence(person="teste 3").save()
+
+        query = Ocorrence.objects(
+            animal__tag='heavy', animal__owner__tags='cool')._query
+        self.assertEqual(
+            query, {'animal.owner.tags': 'cool', 'animal.tag': 'heavy'})
+
+        ocorrence = Ocorrence.objects(
+            animal__tag='heavy',
+            animal__owner__tags='cool').first()
+        self.assertEqual(ocorrence.person, "teste 2")
+        self.assertTrue(isinstance(ocorrence.animal, Animal))
 
 
 if __name__ == '__main__':
