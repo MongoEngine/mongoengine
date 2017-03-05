@@ -1077,6 +1077,75 @@ class FieldTest(MongoDBTestCase):
         post.save()
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
 
+    def test_list_field_null_support(self):
+        """Ensure that ListField supports None and 'null' entries.
+        """
+        class Comment(EmbeddedDocument):
+            author = StringField()
+
+        class BlogPost(Document):
+            variable_list = ListField()
+            embedded_list = EmbeddedDocumentListField(Comment)
+            string_list = ListField(StringField())
+            url_list = ListField(URLField())
+            email_list = ListField(EmailField())
+            int_list = ListField(IntField())
+            long_list = ListField(LongField())
+            float_list = ListField(FloatField())
+            decimal_list = ListField(DecimalField())
+            boolean_list = ListField(BooleanField())
+            datetime_list = ListField(DateTimeField())
+            complexdatetime_list = ListField(ComplexDateTimeField())
+            dynamic_list = ListField(DynamicField())
+            sorted_list = SortedListField(StringField())
+            dict_list = ListField(DictField())
+            map_list = ListField(MapField(StringField()))
+            binary_list = ListField(BinaryField())
+            oid_list = ListField(ObjectIdField())
+
+        # not covered:
+        #   ReferenceField
+        #   GenericReferenceField
+        #   CachedReferenceField
+        #   FileField
+        #   ImageField
+        #   SequenceField
+        #   GeoPointField
+        #   PointField
+        #   LineStringField
+        #   PolygonField
+        #   MultiPointField
+        #   MultiLineStringField
+        #   MultiPolygonField
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.save()
+
+        post.variable_list = [1, "two", None, 4.5]
+        self.assertEqual(post.variable_list, [1, "two", None, 4.5])
+        post.save()
+        post.reload()
+        self.assertEqual(post.variable_list, [1, "two", None, 4.5])
+
+        comment_one = Comment()
+        comment_one.author = "Joe"
+        comment_two = Comment()
+        comment_two.author = "Larry"
+        post.embedded_list = [comment_one, None, comment_two]
+        self.assertEqual(post.embedded_list, [comment_one, None, comment_two])
+        post.save()
+        post.reload()
+        self.assertEqual(post.embedded_list, [comment_one, None, comment_two])
+
+        post.string_list = ["one", "two", None, "four"]
+        self.assertEqual(post.string_list, ["one", "two", None, "four"])
+        post.save()
+        post.reload()
+        self.assertEqual(post.string_list, ["one", "two", None, "four"])
+
+  
     def test_list_field_manipulative_operators(self):
         """Ensure that ListField works with standard list operators that manipulate the list.
         """
