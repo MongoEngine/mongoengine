@@ -1883,6 +1883,29 @@ class FieldTest(MongoDBTestCase):
         doc = self.db.test.find_one()
         self.assertEqual(doc['x']['i'], 2)
 
+    def test_double_embedded_db_field(self):
+        """Make sure that multiple layers of embedded fields resolve db
+        fields properly and can be initialized using dicts.
+        """
+        class C(EmbeddedDocument):
+            txt = StringField()
+
+        class B(EmbeddedDocument):
+            c = EmbeddedDocumentField(C, db_field='fc')
+
+        class A(Document):
+            b = EmbeddedDocumentField(B, db_field='fb')
+
+        a = A(
+            b=B(
+                c=C(txt='hi')
+            )
+        )
+        a.validate()
+
+        a = A(b={'c': {'txt': 'hi'}})
+        a.validate()
+
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.
