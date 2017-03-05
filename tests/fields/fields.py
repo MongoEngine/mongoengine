@@ -1173,6 +1173,14 @@ class FieldTest(MongoDBTestCase):
         post.reload()
         self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
 
+        # __setitem__(index, value) with a negative index
+        reset_post()
+        post.info[-2] = 'a'
+        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+
         # '__setitem__(slice(i, j), listB)'
         # aka 'listA[i:j] = listB'
         # aka 'setitem(listA, slice(i, j), listB)'
@@ -1182,6 +1190,16 @@ class FieldTest(MongoDBTestCase):
         post.save()
         post.reload()
         self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+
+        # '__setitem__(slice(i, j), listB)' with negative i and j
+        reset_post()
+        post.info[-5:-3] = ['h', 'e', 'l', 'l', 'o']
+        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+        post.save()
+        post.reload()
+        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+
+        # negative
 
         # 'append'
         reset_post()
