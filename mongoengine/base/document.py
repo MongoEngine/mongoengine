@@ -684,8 +684,13 @@ class BaseDocument(object):
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
 
-        # Convert SON to a dict, making sure each key is a string
-        data = {str(key): value for key, value in son.iteritems()}
+        # Convert SON to a data dict, making sure each key is a string and
+        # corresponds to the right db field.
+        data = {}
+        for key, value in son.iteritems():
+            key = str(key)
+            key = cls._db_field_map.get(key, key)
+            data[key] = value
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
