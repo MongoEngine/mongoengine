@@ -1884,8 +1884,8 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(doc['x']['i'], 2)
 
     def test_double_embedded_db_field(self):
-        """Make sure that multiple layers of embedded fields resolve db
-        fields properly and can be initialized using dicts.
+        """Make sure multiple layers of embedded docs resolve db fields
+        properly and can be initialized using dicts.
         """
         class C(EmbeddedDocument):
             txt = StringField()
@@ -1905,6 +1905,28 @@ class FieldTest(MongoDBTestCase):
 
         a = A(b={'c': {'txt': 'hi'}})
         a.validate()
+
+    def test_double_embedded_db_field_from_son(self):
+        """Make sure multiple layers of embedded docs resolve db fields
+        from SON properly.
+        """
+        class C(EmbeddedDocument):
+            txt = StringField()
+
+        class B(EmbeddedDocument):
+            c = EmbeddedDocumentField(C, db_field='fc')
+
+        class A(Document):
+            b = EmbeddedDocumentField(B, db_field='fb')
+
+        a = A._from_son(SON([
+            ('fb', SON([
+                ('fc', SON([
+                    ('txt', 'hi')
+                ]))
+            ]))
+        ]))
+        self.assertEqual(a.b.c.txt, 'hi')
 
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
