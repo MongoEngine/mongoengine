@@ -158,44 +158,49 @@ class BaseQuerySet(object):
         # self._cursor
 
     def __getitem__(self, key):
-        """Support skip and limit using getitem and slicing syntax."""
+        """Return a document instance corresponding to a given index if
+        the key is an integer. If the key is a slice, translate its
+        bounds into a skip and a limit, and return a cloned queryset
+        with that skip/limit applied. For example:
+
+        >>> User.objects[0]
+        <User: User object>
+        >>> User.objects[1:3]
+        [<User: User object>, <User: User object>]
+        """
         queryset = self.clone()
 
-        # Slice provided
+        # Handle a slice
         if isinstance(key, slice):
-            try:
-                queryset._cursor_obj = queryset._cursor[key]
-                queryset._skip, queryset._limit = key.start, key.stop
-                if key.start and key.stop:
-                    queryset._limit = key.stop - key.start
-            except IndexError as err:
-                # PyMongo raises an error if key.start == key.stop, catch it,
-                # bin it, kill it.
-                start = key.start or 0
-                if start >= 0 and key.stop >= 0 and key.step is None:
-                    if start == key.stop:
-                        queryset.limit(0)
-                        queryset._skip = key.start
-                        queryset._limit = key.stop - start
-                        return queryset
-                raise err
+            queryset._cursor_obj = queryset._cursor[key]
+            queryset._skip, queryset._limit = key.start, key.stop
+            if key.start and key.stop:
+                queryset._limit = key.stop - key.start
+
             # Allow further QuerySet modifications to be performed
             return queryset
-        # Integer index provided
+
+        # Handle an index
         elif isinstance(key, int):
             if queryset._scalar:
                 return queryset._get_scalar(
-                    queryset._document._from_son(queryset._cursor[key],
-                                                 _auto_dereference=self._auto_dereference,
-                                                 only_fields=self.only_fields))
+                    queryset._document._from_son(
+                        queryset._cursor[key],
+                        _auto_dereference=self._auto_dereference,
+                        only_fields=self.only_fields
+                    )
+                )
 
             if queryset._as_pymongo:
                 return queryset._get_as_pymongo(queryset._cursor[key])
-            return queryset._document._from_son(queryset._cursor[key],
-                                                _auto_dereference=self._auto_dereference,
-                                                only_fields=self.only_fields)
 
-        raise AttributeError
+            return queryset._document._from_son(
+                queryset._cursor[key],
+                _auto_dereference=self._auto_dereference,
+                only_fields=self.only_fields
+            )
+
+        raise AttributeError('Provide a slice or an integer index')
 
     def __iter__(self):
         raise NotImplementedError
