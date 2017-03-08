@@ -5,6 +5,7 @@ import uuid
 import math
 import itertools
 import re
+import pymongo
 
 from nose.plugins.skip import SkipTest
 from collections import OrderedDict
@@ -26,9 +27,12 @@ except ImportError:
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
-                              _document_registry)
+                              _document_registry, TopLevelDocumentMetaclass)
 
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, MONGO_TEST_DB
+from mongoengine.python_support import IS_PYMONGO_3
+if IS_PYMONGO_3:
+    from bson import CodecOptions
 
 __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
@@ -4513,18 +4517,54 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
 
         Doc.drop_collection()
 
-        doc = Doc(ordered_data=OrderedDict(raw_data),
-                  unordered_data=dict(raw_data)).save()
+        doc = Doc(ordered_data=OrderedDict(raw_data), unordered_data=dict(raw_data)).save()
 
+        # checks that the data is in order
         self.assertEqual(type(doc.ordered_data), OrderedDict)
         self.assertEqual(type(doc.unordered_data), dict)
-        self.assertEqual([k for k,_ in doc.ordered_data.items()], ['d', 'c', 'b', 'a'])
+        self.assertEqual(','.join(doc.ordered_data.keys()), 'd,c,b,a')
+
+        # checks that the data is stored to the database in order
+        pymongo_db = pymongo.MongoClient()[MONGO_TEST_DB]
+        if IS_PYMONGO_3:
+            codec_option = CodecOptions(document_class=OrderedDict)
+            db_doc = pymongo_db.doc.with_options(codec_options=codec_option).find_one()
+        else:
+            db_doc = pymongo_db.doc.find_one(as_class=OrderedDict)
+
+        self.assertEqual(','.join(doc.ordered_data.keys()), 'd,c,b,a')
 
     def test_dynamicfield_with_wrong_container_class(self):
         with self.assertRaises(ValidationError):
             class DocWithInvalidField:
                 data = DynamicField(container_class=list)
 
+    def test_dynamicfield_with_wrong_container_class_and_reload_docuemnt(self):
+        # This is because 'codec_options' is supported on pymongo3 or later
+        if IS_PYMONGO_3:
+            class OrderedDocument(Document):
+                my_metaclass = TopLevelDocumentMetaclass
+                __metaclass__ = TopLevelDocumentMetaclass
+
+                @classmethod
+                def _get_collection(cls):
+                    collection = super(OrderedDocument, cls)._get_collection()
+                    opts = CodecOptions(document_class=OrderedDict)
+
+                    return collection.with_options(codec_options=opts)
+
+            raw_data = [('d', 1), ('c', 2), ('b', 3), ('a', 4)]
+
+            class Doc(OrderedDocument):
+                data = DynamicField(container_class=OrderedDict)
+
+            Doc.drop_collection()
+
+            doc = Doc(data=OrderedDict(raw_data)).save()
+            doc.reload()
+
+            self.assertEqual(type(doc.data), OrderedDict)
+            self.assertEqual(','.join(doc.data.keys()), 'd,c,b,a')
 
 if __name__ == '__main__':
     unittest.main()
