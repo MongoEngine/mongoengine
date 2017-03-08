@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from bson import DBRef, SON
 import six
 
@@ -201,6 +202,10 @@ class DeReference(object):
             as_tuple = isinstance(items, tuple)
             iterator = enumerate(items)
             data = []
+        elif type(items) == OrderedDict:
+            is_list = False
+            iterator = items.iteritems()
+            data = OrderedDict()
         else:
             is_list = False
             iterator = items.iteritems()
