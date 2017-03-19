@@ -183,7 +183,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_collection(cls):
         """Return a PyMongo collection for the document."""
-        if not hasattr(cls, '_collection') or cls._collection is None:
+        if getattr(cls, '_collection', None) is None:
 
             # Get the collection, either capped or regular.
             if cls._meta.get('max_size') or cls._meta.get('max_documents'):
@@ -364,9 +364,6 @@ class Document(BaseDocument):
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)
-
-        if self._meta.get('auto_create_index', True):
-            self.ensure_indexes()
 
         try:
             # Save a new document or update an existing one
