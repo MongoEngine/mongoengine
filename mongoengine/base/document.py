@@ -786,8 +786,6 @@ class BaseDocument(object):
     def _rippling_process_index_spec(cls, spec):
         # Remove `company` for spec['fields']
         spec['fields'] = [field for field in spec['fields'] if field[0] != 'company']
-        if not spec['fields']:
-            return None
         # Add `company` forcibly to the front.
         if cls._fields.get('company'):
             spec['fields'].insert(0, ('company', 1))
