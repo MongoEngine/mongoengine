@@ -441,20 +441,52 @@ class Document(BaseDocument):
             update_query['$unset'] = removals
         if updates or removals:
             upsert = save_condition is None
-            last_error = collection.update(select_dict, update_query,
-                                           upsert=upsert, **write_concern)
-            if not upsert and last_error['n'] == 0:
-                raise SaveConditionError('Race condition preventing'
-                                         ' document update detected')
-            if last_error is not None:
-                updated_existing = last_error.get('updatedExisting')
-                if updated_existing is False:
-                    created = True
-                    # !!! This is bad, means we accidentally created a new,
-                    # potentially corrupted document. See
-                    # https://github.com/MongoEngine/mongoengine/issues/564
+
+            if self._check_conflict_may_happen(update_query):
+                for operation, fname, fvalue in [(operation, key, value)
+                                                 for operation, fields in update_query.items()
+                                                 for key, value in fields.items()]:
+                    created |= self._do_save_update(collection, select_dict,
+                                                    {operation: {fname: fvalue}}, upsert,
+                                                    **write_concern)
+            else:
+                created = self._do_save_update(collection, select_dict,
+                                               update_query, upsert, **write_concern)
 
         return object_id, created
+
+    def _check_conflict_may_happen(self, update_query):
+        """Checks that the update_query may cause a conflict, or not.
+        """
+        for target in [t for t in update_query.values() if t]:
+            update_fields = sorted(target.keys(), key=lambda x: len(x), reverse=True)
+
+            while update_fields:
+                check_field = update_fields.pop()
+
+                # checks that target query has multiple orders to update the same field.
+                if any([re.match(r"^%s" % check_field, x) for x in update_fields]):
+                    return True
+
+        return False
+
+    def _do_save_update(self, collection, select_dict, update_query, upsert, **write_concern):
+        created = False
+        last_error = collection.update(select_dict, update_query,
+                                       upsert=upsert, **write_concern)
+
+        if not upsert and last_error['n'] == 0:
+            raise SaveConditionError('Race condition preventing'
+                                     ' document update detected')
+        if last_error is not None:
+            updated_existing = last_error.get('updatedExisting')
+            if updated_existing is False:
+                created = True
+                # !!! This is bad, means we accidentally created a new,
+                # potentially corrupted document. See
+                # https://github.com/MongoEngine/mongoengine/issues/564
+
+        return created
 
     def cascade_save(self, **kwargs):
         """Recursively save any references and generic references on the
