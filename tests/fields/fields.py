@@ -2113,7 +2113,7 @@ class FieldTest(MongoDBTestCase):
         Person.drop_collection()
 
         p1 = Person(name="John").save()
-        Person(name="Ross", parent=p1).save()
+        Person(name="Ross", parent=p1.pk).save()
 
         p = Person.objects.get(name="Ross")
         self.assertEqual(p.parent, p1)
