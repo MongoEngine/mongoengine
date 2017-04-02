@@ -7,6 +7,7 @@ import itertools
 import re
 
 from nose.plugins.skip import SkipTest
+from collections import OrderedDict
 import six
 
 try:
@@ -4109,6 +4110,40 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertFalse(hasattr(a1.c_field, 'custom_data'))
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
+
+    def test_ordered_dynamic_fields_class(self):
+        """
+        Tests that OrderedDynamicFields interits features of the DynamicFields
+        and saves/retrieves data in order.
+        """
+        class Member(Document):
+            name = StringField()
+            age = IntField()
+
+        class Team(OrderedDocument):
+            members = OrderedDynamicField()
+
+        Member.drop_collection()
+        Team.drop_collection()
+
+        member_info = [
+            ('Martin McFly', 17),
+            ('Emmett Brown', 65),
+            ('George McFly', 47)
+        ]
+        members = OrderedDict()
+        for name, age in member_info:
+            members[name] = Member(name=name, age=age)
+            members[name].save()
+
+        Team(members=members).save()
+
+        index = 0
+        team = Team.objects.get()
+        for member in team.members:
+            print("%s == %s" % (member, member_info[index][0]))
+            self.assertEqual(member, member_info[index][0])
+            index += 1
 
 
 class CachedReferenceFieldTest(MongoDBTestCase):

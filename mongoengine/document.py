@@ -6,6 +6,9 @@ import pymongo
 from pymongo.read_preferences import ReadPreference
 import six
 
+from collections import OrderedDict
+from bson import CodecOptions
+
 from mongoengine import signals
 from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               DocumentMetaclass, EmbeddedDocumentList,
@@ -21,7 +24,8 @@ from mongoengine.queryset import (NotUniqueError, OperationError,
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
-           'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
+           'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument',
+           'OrderedDocument')
 
 
 def includes_cls(fields):
@@ -1036,3 +1040,21 @@ class MapReduceDocument(object):
             self._key_object = self._document.objects.with_id(self.key)
             return self._key_object
         return self._key_object
+
+
+class OrderedDocument(Document):
+    """A document that is almost same with Document except for returning
+    results in OrderedDict instead of dict.
+    """
+
+    # The __metaclass__ attribute is removed by 2to3 when running with Python3
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass = TopLevelDocumentMetaclass
+    __metaclass__ = TopLevelDocumentMetaclass
+
+    @classmethod
+    def _get_collection(cls):
+        collection = super(OrderedDocument, cls)._get_collection()
+
+        # returns collection object which is set OrderedDict class to be decoded from BSON document
+        return collection.with_options(codec_options=CodecOptions(document_class=OrderedDict))
