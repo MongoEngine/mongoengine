@@ -1,6 +1,7 @@
 import re
 import warnings
 
+from collections import OrderedDict
 from bson.dbref import DBRef
 import pymongo
 from pymongo.read_preferences import ReadPreference

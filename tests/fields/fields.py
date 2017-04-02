@@ -7,6 +7,7 @@ import itertools
 import re
 
 from nose.plugins.skip import SkipTest
+from collections import OrderedDict
 import six
 
 try:
@@ -4109,6 +4110,32 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertFalse(hasattr(a1.c_field, 'custom_data'))
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
+
+    def test_dynamicfield_with_container_class(self):
+        """
+        Tests that object can be stored in order by DynamicField class
+        with container_class parameter.
+        """
+        raw_data = [('d', 1), ('c', 2), ('b', 3), ('a', 4)]
+
+        class Doc(Document):
+            ordered_data = DynamicField(container_class=OrderedDict)
+            unordered_data = DynamicField()
+
+        Doc.drop_collection()
+
+        doc = Doc(ordered_data=OrderedDict(raw_data),
+                  unordered_data=dict(raw_data)).save()
+
+        self.assertEqual(type(doc.ordered_data), OrderedDict)
+        self.assertEqual(type(doc.unordered_data), dict)
+        self.assertEqual([k for k,_ in doc.ordered_data.items()], ['d', 'c', 'b', 'a'])
+        self.assertNotEqual([k for k,_ in doc.unordered_data.items()], ['d', 'c', 'b', 'a'])
+
+    def test_dynamicfield_with_wrong_container_class(self):
+        with self.assertRaises(ValidationError):
+            class DocWithInvalidField:
+                data = DynamicField(container_class=list)
 
 
 class CachedReferenceFieldTest(MongoDBTestCase):
