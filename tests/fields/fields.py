@@ -2088,6 +2088,12 @@ class FieldTest(MongoDBTestCase):
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
 
+        # Ensure ObjectID's are accepted as references
+        user_object_id = user.pk
+        post3 = BlogPost(content="Chips and curry sauce taste good.")
+        post3.author = user_object_id
+        post3.save()
+
         # Make sure referencing a saved document of the right type works
         user.save()
         post1.author = user
@@ -2097,6 +2103,20 @@ class FieldTest(MongoDBTestCase):
         post2.save()
         post1.author = post2
         self.assertRaises(ValidationError, post1.validate)
+
+    def test_objectid_reference_fields(self):
+        """Make sure storing Object ID references works."""
+        class Person(Document):
+            name = StringField()
+            parent = ReferenceField('self')
+
+        Person.drop_collection()
+
+        p1 = Person(name="John").save()
+        Person(name="Ross", parent=p1.pk).save()
+
+        p = Person.objects.get(name="Ross")
+        self.assertEqual(p.parent, p1)
 
     def test_dbref_reference_fields(self):
         """Make sure storing references as bson.dbref.DBRef works."""
