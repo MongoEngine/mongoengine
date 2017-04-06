@@ -5,6 +5,7 @@ import re
 import time
 import uuid
 import warnings
+from collections import Mapping
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
@@ -621,7 +622,7 @@ class DynamicField(BaseField):
 
     def __init__(self, container_class=dict, *args, **kwargs):
         self._container_cls = container_class
-        if not issubclass(self._container_cls, dict):
+        if not issubclass(self._container_cls, Mapping):
             self.error('The class that is specified in `container_class` parameter '
                        'must be a subclass of `dict`.')
 

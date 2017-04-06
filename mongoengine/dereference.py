@@ -202,7 +202,7 @@ class DeReference(object):
             as_tuple = isinstance(items, tuple)
             iterator = enumerate(items)
             data = []
-        elif type(items) == OrderedDict:
+        elif isinstance(items, OrderedDict):
             is_list = False
             iterator = items.iteritems()
             data = OrderedDict()
