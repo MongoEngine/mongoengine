@@ -10,6 +10,7 @@ Changes in 0.12.0
 =================
 - POTENTIAL BREAKING CHANGE: Fixed limit/skip/hint/batch_size chaining #1476
 - POTENTIAL BREAKING CHANGE: Changed a public `QuerySet.clone_into` method to a private `QuerySet._clone_into` #1476
+- Fixed the way `Document.objects.create` works with duplicate IDs #1485
 - Fixed connecting to a replica set with PyMongo 2.x #1436
 - Fixed using sets in field choices #1481
 - Fixed deleting items from a `ListField` #1318
