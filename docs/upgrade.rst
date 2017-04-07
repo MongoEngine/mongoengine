@@ -6,6 +6,9 @@ Development
 ***********
 (Fill this out whenever you introduce breaking changes to MongoEngine)
 
+
+0.12.0
+******
 This release includes various fixes for the `BaseQuerySet` methods and how they
 are chained together. Since version 0.10.1 applying limit/skip/hint/batch_size
 to an already-existing queryset wouldn't modify the underlying PyMongo cursor.

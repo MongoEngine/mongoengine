@@ -5,11 +5,21 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- Fixed using sets in field choices #1481
+
+Changes in 0.12.0
+=================
 - POTENTIAL BREAKING CHANGE: Fixed limit/skip/hint/batch_size chaining #1476
 - POTENTIAL BREAKING CHANGE: Changed a public `QuerySet.clone_into` method to a private `QuerySet._clone_into` #1476
 - Fixed connecting to a replica set with PyMongo 2.x #1436
+- Fixed using sets in field choices #1481
+- Fixed deleting items from a `ListField` #1318
 - Fixed an obscure error message when filtering by `field__in=non_iterable`. #1237
+- Fixed behavior of a `dec` update operator #1450
+- Added a `rename` update operator #1454
+- Added validation for the `db_field` parameter #1448
+- Fixed the error message displayed when querying an `EmbeddedDocumentField` by an invalid value #1440
+- Fixed the error message displayed when validating unicode URLs #1486
+- Raise an error when trying to save an abstract document #1449
 
 Changes in 0.11.0
 =================
