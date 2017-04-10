@@ -2,9 +2,9 @@ import datetime
 import decimal
 import itertools
 import re
+import socket
 import time
 import uuid
-import socket
 import warnings
 from collections import Mapping
 from operator import itemgetter
@@ -223,7 +223,7 @@ class EmailField(StringField):
         if domain_part[0] == '[' and domain_part[-1] == ']':
             for addr_family in socket.AF_INET, socket.AF_INET6:
                 try:
-                    return socket.inet_pton(addr_family , domain_part[1:-1])
+                    socket.inet_pton(addr_family, domain_part[1:-1])
                     return True
                 except (socket.error, UnicodeEncodeError):
                     pass
