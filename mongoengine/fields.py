@@ -4,6 +4,7 @@ import itertools
 import re
 import time
 import uuid
+import socket
 import warnings
 from collections import Mapping
 from operator import itemgetter
@@ -154,20 +155,102 @@ class EmailField(StringField):
 
     .. versionadded:: 0.4
     """
-
-    EMAIL_REGEX = re.compile(
-        # dot-atom
-        r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"
-        # quoted-string
-        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'
-        # domain (max length of an ICAAN TLD is 22 characters)
-        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}|[A-Z0-9-]{2,}(?<!-))$', re.IGNORECASE
+    USER_REGEX = re.compile(
+        # `dot-atom` defined in RFC 5322 Section 3.2.3.
+        r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*\Z"
+        # `quoted-string` defined in RFC 5322 Section 3.2.4.
+        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"\Z)',
+        re.IGNORECASE
     )
 
+    UTF8_USER_REGEX = re.compile(
+        # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to include
+        # `UTF8-non-ascii`.
+        ur"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+)*\Z"
+        # `quoted-string`
+        ur'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"\Z)',
+        re.IGNORECASE | re.UNICODE
+    )
+
+    DOMAIN_REGEX = re.compile(
+        r'((?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+)(?:[A-Z0-9-]{2,63}(?<!-))\Z',
+        re.IGNORECASE
+    )
+
+    domain_whitelist = ['localhost']
+
+    error_msg = u'Invalid email address: %s'
+
+    def __init__(self, domain_whitelist=None, allow_utf8_user=False, *args,
+                 **kwargs):
+        """Initialize the EmailField.
+
+        Args:
+            domain_whitelist (list) - list of otherwise invalid domain
+                                      names which you'd like to support.
+                                      Includes "localhost" by default.
+            allow_utf8_user (bool) - if True, the user part of the email
+                                     address can contain UTF8 characters.
+                                     False by default.
+        """
+        if domain_whitelist is not None:
+            self.domain_whitelist = domain_whitelist
+
+        self.allow_utf8_user = allow_utf8_user
+
+        super(EmailField, self).__init__(*args, **kwargs)
+
+    def validate_user_part(self, user_part):
+        """Validate the user part of the email address. Return True if
+        valid and False otherwise.
+        """
+        if self.allow_utf8_user:
+            return self.UTF8_USER_REGEX.match(user_part)
+        return self.USER_REGEX.match(user_part)
+
+    def validate_domain_part(self, domain_part):
+        """Validate the domain part of the email address. Return True if
+        valid and False otherwise.
+        """
+        # Skip domain validation if it's in the whitelist.
+        if domain_part in self.domain_whitelist:
+            return True
+
+        if self.DOMAIN_REGEX.match(domain_part):
+            return True
+
+        # Validate IPv4/IPv6, e.g. user@[192.168.0.1]
+        if domain_part[0] == '[' and domain_part[-1] == ']':
+            for addr_family in socket.AF_INET, socket.AF_INET6:
+                try:
+                    return socket.inet_pton(addr_family , domain_part[1:-1])
+                    return True
+                except (socket.error, UnicodeEncodeError):
+                    pass
+
+        return False
+
     def validate(self, value):
-        if not EmailField.EMAIL_REGEX.match(value):
-            self.error('Invalid email address: %s' % value)
         super(EmailField, self).validate(value)
+
+        if '@' not in value:
+            self.error(self.error_msg % value)
+
+        user_part, domain_part = value.rsplit('@', 1)
+
+        # Validate the user part.
+        if not self.validate_user_part(user_part):
+            self.error(self.error_msg % value)
+
+        # Validate the domain and, if invalid, see if it's IDN-encoded.
+        if not self.validate_domain_part(domain_part):
+            try:
+                domain_part = domain_part.encode('idna').decode('ascii')
+            except UnicodeError:
+                self.error(self.error_msg % value)
+            else:
+                if not self.validate_domain_part(domain_part):
+                    self.error(self.error_msg % value)
 
 
 class IntField(BaseField):
