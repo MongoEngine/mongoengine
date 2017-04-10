@@ -3468,22 +3468,6 @@ class FieldTest(MongoDBTestCase):
         user = User(email='ross@example.com.')
         self.assertRaises(ValidationError, user.validate)
 
-        # localhost should be whitelisted by default
-        user = User(email='me@localhost')
-        user.validate()
-
-        # valid IPv4 domain
-        user = User(email='email@[127.0.0.1]')
-        user.validate()
-
-        # valid IPv6 domain
-        user = User(email='email@[2001:dB8::1]')
-        user.validate()
-
-        # invalid IP
-        user = User(email='email@[324.0.0.1]')
-        self.assertRaises(ValidationError, user.validate)
-
         # unicode domain
         user = User(email=u'user@пример.рф')
         user.validate()
@@ -3491,6 +3475,10 @@ class FieldTest(MongoDBTestCase):
         # invalid unicode domain
         user = User(email=u'user@пример')
         self.assertRaises(ValidationError, user.validate)
+
+    def test_email_field_unicode_user(self):
+        class User(Document):
+            email = EmailField()
 
         # unicode user shouldn't validate by default...
         user = User(email=u'Dörte@Sörensen.example.com')
@@ -3502,6 +3490,53 @@ class FieldTest(MongoDBTestCase):
 
         user = User(email=u'Dörte@Sörensen.example.com')
         user.validate()
+
+    def test_email_field_domain_whitelist(self):
+        class User(Document):
+            email = EmailField()
+
+        # localhost domain shouldn't validate by default...
+        user = User(email='me@localhost')
+        self.assertRaises(ValidationError, user.validate)
+
+        # ...but it should be fine if it's whitelisted
+        class User(Document):
+            email = EmailField(domain_whitelist=['localhost'])
+
+        user = User(email='me@localhost')
+        user.validate()
+
+    def test_email_field_ip_domain(self):
+        class User(Document):
+            email = EmailField()
+
+        valid_ipv4 = 'email@[127.0.0.1]'
+        valid_ipv6 = 'email@[2001:dB8::1]'
+        invalid_ip = 'email@[324.0.0.1]'
+
+        # IP address as a domain shouldn't validate by default...
+        user = User(email=valid_ipv4)
+        self.assertRaises(ValidationError, user.validate)
+
+        user = User(email=valid_ipv6)
+        self.assertRaises(ValidationError, user.validate)
+
+        user = User(email=invalid_ip)
+        self.assertRaises(ValidationError, user.validate)
+
+        # ...but it should be fine with allow_ip_domain set to True
+        class User(Document):
+            email = EmailField(allow_ip_domain=True)
+
+        user = User(email=valid_ipv4)
+        user.validate()
+
+        user = User(email=valid_ipv6)
+        user.validate()
+
+        # invalid IP should still fail validation
+        user = User(email=invalid_ip)
+        self.assertRaises(ValidationError, user.validate)
 
     def test_email_field_honors_regex(self):
         class User(Document):

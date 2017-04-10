@@ -844,7 +844,7 @@ class InstanceTest(unittest.TestCase):
         class Recipient(Document):
             email = EmailField(required=True)
 
-        recipient = Recipient(email='root@localhost')
+        recipient = Recipient(email='not-an-email')
         self.assertRaises(ValidationError, recipient.save)
         recipient.save(validate=False)
 

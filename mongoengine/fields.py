@@ -177,27 +177,24 @@ class EmailField(StringField):
         re.IGNORECASE
     )
 
-    domain_whitelist = ['localhost']
-
     error_msg = u'Invalid email address: %s'
 
-    def __init__(self, domain_whitelist=None, allow_utf8_user=False, *args,
-                 **kwargs):
+    def __init__(self, domain_whitelist=None, allow_utf8_user=False,
+                 allow_ip_domain=False, *args, **kwargs):
         """Initialize the EmailField.
 
         Args:
             domain_whitelist (list) - list of otherwise invalid domain
                                       names which you'd like to support.
-                                      Includes "localhost" by default.
             allow_utf8_user (bool) - if True, the user part of the email
                                      address can contain UTF8 characters.
                                      False by default.
+            allow_ip_domain (bool) - if True, the domain part of the email
+                                     can be a valid IPv4 or IPv6 address.
         """
-        if domain_whitelist is not None:
-            self.domain_whitelist = domain_whitelist
-
+        self.domain_whitelist = domain_whitelist or []
         self.allow_utf8_user = allow_utf8_user
-
+        self.allow_ip_domain = allow_ip_domain
         super(EmailField, self).__init__(*args, **kwargs)
 
     def validate_user_part(self, user_part):
@@ -220,8 +217,12 @@ class EmailField(StringField):
             return True
 
         # Validate IPv4/IPv6, e.g. user@[192.168.0.1]
-        if domain_part[0] == '[' and domain_part[-1] == ']':
-            for addr_family in socket.AF_INET, socket.AF_INET6:
+        if (
+            self.allow_ip_domain and
+            domain_part[0] == '[' and
+            domain_part[-1] == ']'
+        ):
+            for addr_family in (socket.AF_INET, socket.AF_INET6):
                 try:
                     socket.inet_pton(addr_family, domain_part[1:-1])
                     return True
