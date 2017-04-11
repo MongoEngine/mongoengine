@@ -419,6 +419,15 @@ class Document(BaseDocument):
         return hash(str(value))
 
     @classmethod
+    def _get_proxy_client(cls):
+        db_name = cls._meta['db_name']
+        if db_name and db_name in ('sweeper-campaign','wish-notifications'):
+            return None
+
+        if MongoProxyClient:
+            return MongoProxyClient.instance()
+
+    @classmethod
     def _pymongo(cls, use_async=True):
         # we can't do async queries if we're on the root greenlet since we have
         # nothing to yield back to
@@ -683,13 +692,14 @@ class Document(BaseDocument):
              slave_ok=False, excluded_fields=None, max_time_ms=None,
              timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         # If the client has been initialized, use the proxy
-        if MongoProxyClient and MongoProxyClient.instance():
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
                 if 'comment' not in kwargs:
                     kwargs['comment'] = MongoComment.get_comment()
-                return MongoProxyClient.instance().find(
+                return proxy_client.instance().find(
                     cls, spec, fields=fields, skip=skip,
                     limit=limit, sort=sort, slave_ok=slave_ok,
                     excluded_fields=excluded_fields, max_time_ms=max_time_ms,
@@ -760,13 +770,14 @@ class Document(BaseDocument):
                 cls.cleanup_trace(set_comment)
 
         # If the client has been initialized, use the proxy
-        if MongoProxyClient and MongoProxyClient.instance():
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
                 if 'comment' not in kwargs:
                     kwargs['comment'] = MongoComment.get_comment()
-                for doc in MongoProxyClient.instance().find_iter(
+                for doc in proxy_client.instance().find_iter(
                     cls, spec, fields=fields, skip=skip,
                     limit=limit, sort=sort, slave_ok=slave_ok,
                     excluded_fields=excluded_fields, max_time_ms=max_time_ms,
@@ -842,14 +853,15 @@ class Document(BaseDocument):
                  excluded_fields=None, max_time_ms=None,
                  timeout_value=NO_TIMEOUT_DEFAULT, **kwargs):
         # If the client has been initialized, use the proxy
-        if MongoProxyClient and MongoProxyClient.instance():
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
                 if 'comment' not in kwargs:
                     kwargs['comment'] = MongoComment.get_comment()
                 kwargs['find_one'] = True
-                return MongoProxyClient.instance().find(
+                return proxy_client.instance().find(
                     cls, spec, fields=fields, skip=skip,
                     sort=sort, slave_ok=slave_ok,
                     excluded_fields=excluded_fields, max_time_ms=max_time_ms,
@@ -936,13 +948,14 @@ class Document(BaseDocument):
         timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
 
         # If the client has been initialized, use the proxy
-        if MongoProxyClient and MongoProxyClient.instance():
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
                 if 'comment' not in kwargs:
                     kwargs['comment'] = MongoComment.get_comment()
-                return MongoProxyClient.instance().count(
+                return proxy_client.instance().count(
                     cls, spec, slave_ok=slave_ok,
                     max_time_ms=max_time_ms,
                     timeout_value=timeout_value, **kwargs
