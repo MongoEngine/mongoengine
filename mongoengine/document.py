@@ -18,6 +18,11 @@ import warnings
 from bson import SON, ObjectId, DBRef
 from connection import _get_db, _get_slave_ok
 
+try:
+    from sweeper.grpc_proxy.clients import MongoProxyProxyClient as MongoProxyClient
+except:
+    print "Failed to load MongoProxyClient, talking to mongo directly"
+    MongoProxyClient = None
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
            'OperationError', 'BulkOperationError']
@@ -677,6 +682,20 @@ class Document(BaseDocument):
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=False, excluded_fields=None, max_time_ms=None,
              timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
+        # If the client has been initialized, use the proxy
+        if MongoProxyClient and MongoProxyClient.instance():
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs:
+                    kwargs['comment'] = MongoComment.get_comment()
+                return MongoProxyClient.instance().find(
+                    cls, spec, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
+
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
                                slave_ok=slave_ok,
@@ -719,25 +738,48 @@ class Document(BaseDocument):
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
                   slave_ok=False, timeout=True, batch_size=10000,
                   excluded_fields=None, max_time_ms=0, **kwargs):
-        last_doc = None
-        cur, set_comment = cls.find_raw(spec, fields, skip, limit,
-                           sort, slave_ok=slave_ok, timeout=timeout,
-                           batch_size=batch_size,
-                           excluded_fields=excluded_fields,
-                           max_time_ms=max_time_ms,**kwargs)
-        try:
-            for doc in cls._iterate_cursor(cur):
-                try:
-                    last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
-                    yield last_doc
-                except pymongo.errors.ExecutionTimeout:
-                    execution_timeout_logger.info({
-                        '_comment' : str(cur._Cursor__comment),
-                        '_max_time_ms' : cur._Cursor__max_time_ms,
-                     })
-                    raise
-        finally:
-            cls.cleanup_trace(set_comment)
+        def _old_find_iter():
+            last_doc = None
+            cur, set_comment = cls.find_raw(spec, fields, skip, limit,
+                               sort, slave_ok=slave_ok, timeout=timeout,
+                               batch_size=batch_size,
+                               excluded_fields=excluded_fields,
+                               max_time_ms=max_time_ms,**kwargs)
+            try:
+                for doc in cls._iterate_cursor(cur):
+                    try:
+                        last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
+                        yield last_doc
+                    except pymongo.errors.ExecutionTimeout:
+                        execution_timeout_logger.info({
+                            '_comment' : str(cur._Cursor__comment),
+                            '_max_time_ms' : cur._Cursor__max_time_ms,
+                         })
+                        raise
+            finally:
+                cls.cleanup_trace(set_comment)
+
+        # If the client has been initialized, use the proxy
+        if MongoProxyClient and MongoProxyClient.instance():
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs:
+                    kwargs['comment'] = MongoComment.get_comment()
+                for doc in MongoProxyClient.instance().find_iter(
+                    cls, spec, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    **kwargs
+                    ):
+                    yield doc
+            else:
+                for doc in _old_find_iter():
+                    yield doc
+        else:
+            for doc in _old_find_iter():
+                yield doc
+
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
@@ -799,6 +841,21 @@ class Document(BaseDocument):
     def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=False,
                  excluded_fields=None, max_time_ms=None,
                  timeout_value=NO_TIMEOUT_DEFAULT, **kwargs):
+        # If the client has been initialized, use the proxy
+        if MongoProxyClient and MongoProxyClient.instance():
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs:
+                    kwargs['comment'] = MongoComment.get_comment()
+                kwargs['find_one'] = True
+                return MongoProxyClient.instance().find(
+                    cls, spec, fields=fields, skip=skip,
+                    sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
+
         cur, set_comment = cls.find_raw(spec, fields, skip=skip, sort=sort,
                          slave_ok=slave_ok, find_one=True,
                          excluded_fields=excluded_fields,
@@ -877,6 +934,20 @@ class Document(BaseDocument):
     @classmethod
     def count(cls, spec, slave_ok=False, comment=None, max_time_ms=None,
         timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
+
+        # If the client has been initialized, use the proxy
+        if MongoProxyClient and MongoProxyClient.instance():
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs:
+                    kwargs['comment'] = MongoComment.get_comment()
+                return MongoProxyClient.instance().count(
+                    cls, spec, slave_ok=slave_ok,
+                    max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
+
         kwargs['comment'] = comment
 
         cur, set_comment = cls.find_raw(spec, slave_ok=slave_ok,
