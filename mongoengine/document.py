@@ -31,7 +31,6 @@ OPS_EMAIL = 'ops@wish.com'
 high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
 execution_timeout_logger = logging.getLogger('sweeper.prod.mongodb_execution_timeout')
 notimeout_cursor_logger = logging.getLogger('sweeper.prod.mongodb_notimeout')
-filter_orphan_logger = logging.getLogger('sweeper.prod.mongodb_filter_orphan')
 
 class BulkOperationError(OperationError):
     pass
@@ -92,13 +91,6 @@ class Document(BaseDocument):
 
     __metaclass__ = TopLevelDocumentMetaclass
 
-    @classmethod
-    def bump_up_version(cls, document):
-        if '$inc' in document:
-            document['$inc']['_v'] = 1
-        else:
-            document['$inc'] = {'_v': 1}
-
     def save(self, safe=True, force_insert=None, validate=True):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -133,18 +125,10 @@ class Document(BaseDocument):
         try:
             collection = self._pymongo()
             w = self._meta.get('write_concern', 1)
-            # If there are concurrent updates, it will be an issue for all the
-            # fields. So it is ok to do inc op during save() operation.
-            if 'version' in self._fields:
-                if '_v' not in doc:
-                    doc['_v'] = 1
-                else:
-                    doc['_v'] += 1
             if force_insert:
                 object_id = collection.insert(doc, w=w)
             else:
                 object_id = collection.save(doc, w=w)
-
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if u'duplicate key' in unicode(err):
@@ -692,7 +676,7 @@ class Document(BaseDocument):
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=False, excluded_fields=None, max_time_ms=None,
-             timeout_value=NO_TIMEOUT_DEFAULT, filter_orphan=False, **kwargs):
+             timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
                                slave_ok=slave_ok,
@@ -700,60 +684,10 @@ class Document(BaseDocument):
                                max_time_ms=max_time_ms,**kwargs)
 
             try:
-                if filter_orphan:
-                    # filter_orphan should be only allowed when version support
-                    # is enabled.
-                    if 'version' not in cls._fields:
-                        # Fail loudly.
-                        raise Exception("Filter orphan cannot be performed when"
-                                        " versioning is not enabled.")
-
-                    result_set = {}
-                    for doc in cls._iterate_cursor(cur):
-                        oid = doc['_id']
-                        if oid not in result_set:
-                            result_set[oid] = doc
-                        # orphan doc found
-                        else:
-                            # orphan doc is the same as the valid doc. This is
-                            # the simple case that doc was never updated when
-                            # orphan was generated.
-                            if result_set[oid] == doc:
-                                continue
-                            if '_v' in doc:
-                                if '_v' in result_set[oid]:
-                                    # Filter orphan based on lower version.
-                                    if result_set[oid]['_v'] < doc['_v']:
-                                        result_set[oid] = doc
-                                else:
-                                    # This happens when version is enabled after
-                                    # the orphan was generated. The one with
-                                    # version is the latest doc.
-                                    result_set['_id'] = doc
-                            else:
-                                # Both docs have no version. The filter orphan
-                                # will fail here. This happens to all existing
-                                # docs which already have orphans and never had
-                                # a version due to no update() performed.
-                                if '_v' not in result_set[oid]:
-                                    # log the orphans being hit.
-                                    filter_orphan_logger.info({
-                                        'collection':
-                                            cls._meta['collection'],
-                                        'orphan_id': oid
-                                    })
-                                    # This should never happen after version is
-                                    # enabled on every doc after the migration.
-                                    raise Exception('Cannot filter orphan due'
-                                                    ' to missing version.')
-
-                    return [cls._from_augmented_son(d, fields, excluded_fields)
-                            for d in result_set.values()]
-                else:
-                    return [
-                        cls._from_augmented_son(d, fields, excluded_fields)
-                        for d in cls._iterate_cursor(cur)
-                    ]
+                return [
+                    cls._from_augmented_son(d, fields, excluded_fields)
+                    for d in cls._iterate_cursor(cur)
+                ]
             except pymongo.errors.ExecutionTimeout:
                 execution_timeout_logger.info({
                     '_comment' : str(cur._Cursor__comment),
@@ -784,91 +718,24 @@ class Document(BaseDocument):
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
                   slave_ok=False, timeout=True, batch_size=10000,
-                  excluded_fields=None, max_time_ms=0, filter_orphan=False,
-                  **kwargs):
+                  excluded_fields=None, max_time_ms=0, **kwargs):
         last_doc = None
-        if filter_orphan:
-            if 'version' not in cls._fields:
-                raise Exception("Filter orphan cannot be performed when"
-                                " versioning is not enabled.")
-            if sort is None or (sort[0][0] != '_id' and sort[0][0] != 'id'):
-                raise Exception("Filter orphan requires to sort by _id or id as"
-                                " the highest sorting preference.")
-
         cur, set_comment = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
                            batch_size=batch_size,
                            excluded_fields=excluded_fields,
-                           max_time_ms=max_time_ms, **kwargs)
+                           max_time_ms=max_time_ms,**kwargs)
         try:
-            if filter_orphan:
-                prev_doc = None
-                for doc in cls._iterate_cursor(cur):
-                    if prev_doc is None:
-                        # Skipping the first doc and start "yield" after
-                        # comparison with the prev_doc starts.
-                        prev_doc = doc
-                    elif prev_doc['_id'] == doc['_id']:
-                        # Orphan is a simple dupe. Return any of them.
-                        if prev_doc == doc:
-                            continue
-                        if '_v' in doc:
-                            if '_v' in prev_doc:
-                                # Filter orphan based on lower version.
-                                if prev_doc['_v'] < doc['_v']:
-                                    prev_doc = doc
-                            else:
-                                # Replace if the previous doc has no version
-                                prev_doc = doc
-                        else:
-                            # both docs have no version.
-                            if '_v' not in prev_doc:
-                                # log the orphans being hit.
-                                filter_orphan_logger.info({
-                                    'collection':
-                                        cls._meta['collection'],
-                                    'orphan_id': doc['_id']
-                                })
-                                # This should never happen after version is
-                                # enabled on every doc after the migration.
-                                raise Exception('Cannot filter orphan due'
-                                                ' to missing version.')
-                    # yield the prev_doc when '_id' changes.
-                    else:
-                        try:
-                            ret = cls._from_augmented_son(prev_doc, fields,
-                                                          excluded_fields)
-                            prev_doc = doc
-                            yield ret
-                        except pymongo.errors.ExecutionTimeout:
-                            execution_timeout_logger.info({
-                                '_comment' : str(cur._Cursor__comment),
-                                '_max_time_ms' : cur._Cursor__max_time_ms,
-                            })
-                            raise
-                # yield the last prev_doc.
+            for doc in cls._iterate_cursor(cur):
                 try:
-                    ret = cls._from_augmented_son(prev_doc, fields,
-                                                  excluded_fields)
-                    yield ret
+                    last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
+                    yield last_doc
                 except pymongo.errors.ExecutionTimeout:
                     execution_timeout_logger.info({
                         '_comment' : str(cur._Cursor__comment),
                         '_max_time_ms' : cur._Cursor__max_time_ms,
-                    })
+                     })
                     raise
-            else:
-                for doc in cls._iterate_cursor(cur):
-                    try:
-                        last_doc = cls._from_augmented_son(doc, fields,
-                                                           excluded_fields)
-                        yield last_doc
-                    except pymongo.errors.ExecutionTimeout:
-                        execution_timeout_logger.info({
-                            '_comment' : str(cur._Cursor__comment),
-                            '_max_time_ms' : cur._Cursor__max_time_ms,
-                         })
-                        raise
         finally:
             cls.cleanup_trace(set_comment)
 
@@ -995,8 +862,6 @@ class Document(BaseDocument):
 
         try:
             with log_slow_event("find_and_modify", cls._meta['collection'], spec):
-                if update is not None and 'version' in cls._fields:
-                    cls.bump_up_version(update)
                 result = cls._pymongo().find_and_modify(
                     spec, sort=sort, remove=remove, update=update, new=new,
                     fields=fields, upsert=upsert, **kwargs
@@ -1093,8 +958,6 @@ class Document(BaseDocument):
 
         try:
             with log_slow_event("update", cls._meta['collection'], spec):
-                if 'version' in cls._fields:
-                    cls.bump_up_version(document)
                 result = cls._pymongo().update(spec,
                                                document,
                                                upsert=upsert,
@@ -1216,15 +1079,12 @@ class Document(BaseDocument):
 
         try:
             with log_slow_event("update_one", self._meta['collection'], spec):
-                if 'version' in self._fields:
-                    self.bump_up_version(document)
                 result = self._pymongo().update(query_spec,
                                                 document,
                                                 upsert=upsert,
                                                 multi=False,
                                                 w=self._meta['write_concern'],
                                                 **kwargs)
-
 
             # do in-memory updates on the object if the query succeeded
             if result['n'] == 1:
