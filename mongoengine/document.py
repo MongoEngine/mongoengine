@@ -2,7 +2,7 @@ from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError, MongoComment, get_document, FieldStatus,
                   FieldNotLoadedError)
 from queryset import OperationError
-from cl.utils.greenletutil import CLGreenlet
+from cl.utils.greenletutil import CLGreenlet, GreenletUtil
 import contextlib
 import pymongo
 import time
@@ -771,7 +771,7 @@ class Document(BaseDocument):
 
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
-        if proxy_client:
+        if proxy_client and not GreenletUtil.is_async():
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
