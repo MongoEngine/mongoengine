@@ -164,12 +164,13 @@ class EmailField(StringField):
     )
 
     UTF8_USER_REGEX = re.compile(
-        # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to include
-        # `UTF8-non-ascii`.
-        ur"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+)*\Z"
-        # `quoted-string`
-        ur'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"\Z)',
-        re.IGNORECASE | re.UNICODE
+        six.u(
+            # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to
+            # include `UTF8-non-ascii`.
+            r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+)*\Z"
+            # `quoted-string`
+            r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"\Z)'
+        ), re.IGNORECASE | re.UNICODE
     )
 
     DOMAIN_REGEX = re.compile(
