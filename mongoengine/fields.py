@@ -159,7 +159,7 @@ class EmailField(StringField):
         # `dot-atom` defined in RFC 5322 Section 3.2.3.
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*\Z"
         # `quoted-string` defined in RFC 5322 Section 3.2.4.
-        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"\Z)',
+        r'|^"([\x01-\x08\x0b\x0c\x0e-\x1f!#-\[\]-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*"\Z)',
         re.IGNORECASE
     )
 
@@ -167,9 +167,9 @@ class EmailField(StringField):
         six.u(
             # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to
             # include `UTF8-non-ascii`.
-            r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+)*\Z"
+            r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z\x80-\U0010FFFF]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z\x80-\U0010FFFF]+)*\Z"
             # `quoted-string`
-            r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"\Z)'
+            r'|^"([\x01-\x08\x0b\x0c\x0e-\x1f!#-\[\]-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*"\Z)',
         ), re.IGNORECASE | re.UNICODE
     )
 
