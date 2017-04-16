@@ -6,6 +6,17 @@ Development
 ***********
 (Fill this out whenever you introduce breaking changes to MongoEngine)
 
+0.13.0
+******
+This release adds Unicode support to the `EmailField` and changes its
+structure significantly. Previously, email addresses containing Unicode
+characters didn't work at all. Starting with v0.13.0, domains with Unicode
+characters are supported out of the box, meaning some emails that previously
+didn't pass validation now do. Make sure the rest of your application can
+accept such email addresses. Additionally, if you subclassed the `EmailField`
+in your application and overrode `EmailField.EMAIL_REGEX`, you will have to
+adjust your code to override `EmailField.USER_REGEX`, `EmailField.DOMAIN_REGEX`,
+and potentially `EmailField.UTF8_USER_REGEX`.
 
 0.12.0
 ******

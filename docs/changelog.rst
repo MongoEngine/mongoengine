@@ -6,6 +6,11 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.13.0
+=================
+- POTENTIAL BREAKING CHANGE: Added Unicode support to the `EmailField`, see
+  docs/upgrade.rst for details.
+
 Changes in 0.12.0
 =================
 - POTENTIAL BREAKING CHANGE: Fixed limit/skip/hint/batch_size chaining #1476
