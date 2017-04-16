@@ -3477,6 +3477,10 @@ class FieldTest(MongoDBTestCase):
         user = User(email=u'user@пример')
         self.assertRaises(ValidationError, user.validate)
 
+        # invalid data type
+        user = User(email=123)
+        self.assertRaises(ValidationError, user.validate)
+
     def test_email_field_unicode_user(self):
         # Don't run this test on pypy3, which doesn't support unicode regex:
         # https://bitbucket.org/pypy/pypy/issues/1821/regular-expression-doesnt-find-unicode
