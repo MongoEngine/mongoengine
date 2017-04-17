@@ -2,6 +2,12 @@ import os
 import sys
 from setuptools import find_packages, setup
 
+# Avoid configparser issues on PyPy3
+if sys.version_info >= (3, 0):
+    from distutils.core import setup
+else:
+    from setuptools import setup
+
 # Hack to silence atexit traceback in newer python versions
 try:
     import multiprocessing
