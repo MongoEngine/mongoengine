@@ -272,13 +272,6 @@ class BaseDocument(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __hash__(self):
-        if getattr(self, 'pk', None) is None:
-            # For new object
-            return super(BaseDocument, self).__hash__()
-        else:
-            return hash(self.pk)
-
     def clean(self):
         """
         Hook for doing document level data cleaning before validation is run.

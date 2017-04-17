@@ -60,6 +60,12 @@ class EmbeddedDocument(BaseDocument):
     my_metaclass = DocumentMetaclass
     __metaclass__ = DocumentMetaclass
 
+    # A generic embedded document doesn't have any immutable properties
+    # that describe it uniquely, hence it shouldn't be hashable. You can
+    # define your own __hash__ method on a subclass if you need your
+    # embedded documents to be hashable.
+    __hash__ = None
+
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
         self._instance = None
@@ -159,6 +165,15 @@ class Document(BaseDocument):
     def pk(self, value):
         """Set the primary key."""
         return setattr(self, self._meta['id_field'], value)
+
+    def __hash__(self):
+        """Return the hash based on the PK of this document. If it's new
+        and doesn't have a PK yet, return the default object hash instead.
+        """
+        if self.pk is None:
+            return super(BaseDocument, self).__hash__()
+        else:
+            return hash(self.pk)
 
     @classmethod
     def _get_db(cls):
