@@ -697,7 +697,7 @@ class Document(BaseDocument):
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
-                if 'comment' not in kwargs:
+                if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 return proxy_client.instance().find(
                     cls, spec, fields=fields, skip=skip,
@@ -775,7 +775,7 @@ class Document(BaseDocument):
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
-                if 'comment' not in kwargs:
+                if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 for doc in proxy_client.instance().find_iter(
                     cls, spec, fields=fields, skip=skip,
@@ -858,7 +858,7 @@ class Document(BaseDocument):
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
-                if 'comment' not in kwargs:
+                if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 kwargs['find_one'] = True
                 return proxy_client.instance().find(
@@ -953,7 +953,7 @@ class Document(BaseDocument):
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
-                if 'comment' not in kwargs:
+                if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 return proxy_client.instance().count(
                     cls, spec, slave_ok=slave_ok,
