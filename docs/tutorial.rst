@@ -206,7 +206,9 @@ object::
         ross.last_name = 'Lawley'
         ross.save()
 
-Now that we've got our user in the database, let's add a couple of posts::
+It's your turn. Assign another user to the variable-name ``john``, just like we did above with ``ross``.
+
+Now that we've got our users in the database, let's add a couple of posts::
 
     post1 = TextPost(title='Fun with MongoEngine', author=john)
     post1.content = 'Took a look at MongoEngine today, looks pretty cool.'
