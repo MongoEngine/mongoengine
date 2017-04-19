@@ -771,7 +771,7 @@ class Document(BaseDocument):
 
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
-        if proxy_client and not GreenletUtil.is_async():
+        if proxy_client:
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
