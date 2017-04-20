@@ -608,9 +608,9 @@ class EmbeddedDocumentField(BaseField):
     """
 
     def __init__(self, document_type, **kwargs):
-        if (
-            not isinstance(document_type, six.string_types) and
-            not issubclass(document_type, EmbeddedDocument)
+        if not (
+            isinstance(document_type, six.string_types) or
+            issubclass(document_type, EmbeddedDocument)
         ):
             self.error('Invalid embedded document class provided to an '
                        'EmbeddedDocumentField')
