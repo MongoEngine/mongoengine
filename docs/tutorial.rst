@@ -206,7 +206,8 @@ object::
         ross.last_name = 'Lawley'
         ross.save()
 
-It's your turn. Assign another user to the variable-name ``john``, just like we did above with ``ross``.
+Assign another user to a variable called ``john``, just like we did above with
+``ross``.
 
 Now that we've got our users in the database, let's add a couple of posts::
 
