@@ -626,6 +626,9 @@ class Document(BaseDocument):
                         # is in memory, a reload would cause a KeyError
                         # i.e. obj.update(unset__field=1) followed by obj.reload()
                         delattr(self, field)
+                    except AttributeError:
+                        # By(prasanna): If a DB field has been converted to a property.
+                        pass
 
         self._changed_fields = obj._changed_fields
         self._created = False
