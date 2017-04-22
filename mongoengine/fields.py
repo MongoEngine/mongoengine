@@ -484,6 +484,9 @@ class DateTimeField(BaseField):
         if not isinstance(value, six.string_types):
             return None
 
+        if value == '':
+            return None
+
         # Attempt to parse a datetime:
         if dateutil:
             try:
