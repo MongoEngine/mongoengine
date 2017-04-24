@@ -40,6 +40,16 @@ __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
 class FieldTest(MongoDBTestCase):
 
+    def test_datetime_from_empty_string(self):
+        """
+        Ensure an exception is raised when trying to
+        cast an empty string to datetime.
+        """
+        class MyDoc(Document):
+            dt = DateTimeField()
+        md = MyDoc(dt='')
+        self.assertRaises(ValidationError, md.save)
+
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating
         a document.
