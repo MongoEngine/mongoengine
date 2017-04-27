@@ -1140,11 +1140,10 @@ class CachedReferenceField(BaseField):
         raise NotImplementedError
 
     def validate(self, value):
-
-        if not isinstance(value, self.document_type):
+        if not isinstance(value, (self.document_type, DBRef)):
             self.error("A CachedReferenceField only accepts documents")
 
-        if isinstance(value, Document) and value.id is None:
+        if isinstance(value, (Document, DBRef)) and value.id is None:
             self.error('You can only reference documents once they have been '
                        'saved to the database')
 
