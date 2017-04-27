@@ -1070,7 +1070,7 @@ class CachedReferenceField(BaseField):
             collection = self.document_type._get_collection_name()
             value = DBRef(
                 collection, self.document_type.id.to_python(value['_id']))
-            return self.document_type._from_son(self.document_type._get_db().dereference(value))
+            # return self.document_type._from_son(self.document_type._get_db().dereference(value))
 
         return value
 
@@ -1102,6 +1102,9 @@ class CachedReferenceField(BaseField):
     def to_mongo(self, document, **kwargs):
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
+        
+        if isinstance(document, DBRef):
+            document = self.document_type._from_son(self.document_type._get_db().dereference(document))
 
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
