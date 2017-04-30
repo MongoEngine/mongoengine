@@ -77,4 +77,6 @@ You might also use the github `Edit <https://github.com/blog/844-forking-with-th
 button.
 
 If you want to test your documentation changes locally, you need to install
-the ``sphinx`` package.
+the ``sphinx`` and ``sphinx_rtd_theme`` packages. Once these are installed,
+go to the ``docs`` directory, run ``make html`` and inspect the updated docs
+by running ``open _build/html/index.html``.
