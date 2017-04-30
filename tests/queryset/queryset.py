@@ -917,7 +917,9 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(Blog.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):
-
+        """Make sure we don't perform unnecessary db operations when
+        none of document's fields were updated.
+        """
         class Person(Document):
             name = StringField()
             owns = ListField(ReferenceField('Organization'))
@@ -925,8 +927,8 @@ class QuerySetTest(unittest.TestCase):
 
         class Organization(Document):
             name = StringField()
-            owner = ReferenceField('Person')
-            employees = ListField(ReferenceField('Person'))
+            owner = ReferenceField(Person)
+            employees = ListField(ReferenceField(Person))
 
         class Project(Document):
             name = StringField()
@@ -945,35 +947,35 @@ class QuerySetTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(q, 0)
 
-            fresh_o1 = Organization.objects.get(id=o1.id)
-            self.assertEqual(1, q)
-            fresh_o1._get_changed_fields()
-            self.assertEqual(1, q)
-
-        with query_counter() as q:
-            self.assertEqual(q, 0)
-
-            fresh_o1 = Organization.objects.get(id=o1.id)
-            fresh_o1.save()   # No changes, does nothing
-
+            # Fetching a document should result in a query.
+            org = Organization.objects.get(id=o1.id)
             self.assertEqual(q, 1)
 
-        with query_counter() as q:
-            self.assertEqual(q, 0)
-
-            fresh_o1 = Organization.objects.get(id=o1.id)
-            fresh_o1.save(cascade=False)  # No changes, does nothing
-
+            # Checking changed fields of a newly fetched document should not
+            # result in a query.
+            org._get_changed_fields()
             self.assertEqual(q, 1)
 
+        # Saving a doc without changing any of its fields should not result
+        # in a query (with or without cascade=False).
+        org = Organization.objects.get(id=o1.id)
         with query_counter() as q:
+            org.save()
             self.assertEqual(q, 0)
 
-            fresh_o1 = Organization.objects.get(id=o1.id)
-            fresh_o1.employees.append(p2)  # Dereferences
-            fresh_o1.save(cascade=False)   # Saves
+        org = Organization.objects.get(id=o1.id)
+        with query_counter() as q:
+            org.save(cascade=False)
+            self.assertEqual(q, 0)
 
-            self.assertEqual(q, 3)
+        # Saving a doc after you append a reference to it should result in
+        # two db operations (a query for the reference and an update).
+        # TODO dereferencing of p2 shouldn't be necessary.
+        org = Organization.objects.get(id=o1.id)
+        with query_counter() as q:
+            org.employees.append(p2)  # dereferences p2
+            org.save()  # saves the org
+            self.assertEqual(q, 2)
 
     @skip_pymongo3
     def test_slave_okay(self):
