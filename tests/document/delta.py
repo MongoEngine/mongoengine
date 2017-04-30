@@ -863,5 +863,65 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual('oops', delta[0]["users.007.rolist"][0]["type"])
         self.assertEqual(uinfo.id, delta[0]["users.007.info"])
 
+    def test_avoid_conflict(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            content = StringField()
+            docs = ListField(EmbeddedDocumentField('EmbeddedDoc'))
+
+        class Doc(Document):
+            docs = ListField(EmbeddedDocumentField(EmbeddedDoc))
+
+        Doc.drop_collection()
+
+        d = Doc(docs=[EmbeddedDoc()])
+        d.save()
+
+        # for checking the result of conflict checker in this test
+        orig_conflict_checker = d._check_conflict_may_happen
+        def mock_conflict_checker(*args, **kwargs):
+            self._may_conflict = orig_conflict_checker(*args, **kwargs)
+            return self._may_conflict
+        d._check_conflict_may_happen = mock_conflict_checker
+
+        from pymongo.collection import Collection
+        orig_update = Collection.update
+        try:
+            # for counting the number to call update method
+            def mock_update(*args, **kwargs):
+                self._num_update += 1
+                return orig_update(*args, **kwargs)
+            Collection.update = mock_update
+
+            # test to avoid conflict by splitting update query
+            e = EmbeddedDoc()
+            e.content = 'hoge'
+
+            d.docs[0].docs.append(e)
+            delta = d._delta()
+            self.assertTrue('docs.0.docs.0.content' in delta[0])
+            self.assertTrue('docs.0.docs' in delta[0])
+
+            self._num_update = 0
+            self._may_conflict = False
+            d.save()
+            self.assertTrue(self._may_conflict)
+            self.assertEqual(self._num_update, 2)
+
+            # test not to split query when target query may not occur conflict
+            e = EmbeddedDoc(content='hoge')
+
+            d.docs[0].docs.append(e)
+            delta = d._delta()
+            self.assertFalse('docs.0.docs.1.content' in delta[0])
+            self.assertTrue('docs.0.docs' in delta[0])
+
+            self._num_update = 0
+            self._may_conflict = False
+            d.save()
+            self.assertFalse(self._may_conflict)
+            self.assertEqual(self._num_update, 1)
+        finally:
+            Collection.update = orig_update
+
 if __name__ == '__main__':
     unittest.main()
