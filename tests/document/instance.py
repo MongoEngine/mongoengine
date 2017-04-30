@@ -2164,7 +2164,7 @@ class InstanceTest(unittest.TestCase):
         class BlogPost(Document):
             pass
 
-        # Clear old datas
+        # Clear old data
         User.drop_collection()
         BlogPost.drop_collection()
 
@@ -2176,17 +2176,18 @@ class InstanceTest(unittest.TestCase):
         b1 = BlogPost.objects.create()
         b2 = BlogPost.objects.create()
 
-        # in List
+        # Make sure docs are properly identified in a list (__eq__ is used
+        # for the comparison).
         all_user_list = list(User.objects.all())
-
         self.assertTrue(u1 in all_user_list)
         self.assertTrue(u2 in all_user_list)
         self.assertTrue(u3 in all_user_list)
-        self.assertFalse(u4 in all_user_list)  # New object
-        self.assertFalse(b1 in all_user_list)  # Other object
-        self.assertFalse(b2 in all_user_list)  # Other object
+        self.assertTrue(u4 not in all_user_list)  # New object
+        self.assertTrue(b1 not in all_user_list)  # Other object
+        self.assertTrue(b2 not in all_user_list)  # Other object
 
-        # in Dict
+        # Make sure docs can be used as keys in a dict (__hash__ is used
+        # for hashing the docs).
         all_user_dic = {}
         for u in User.objects.all():
             all_user_dic[u] = "OK"
@@ -2198,9 +2199,20 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(all_user_dic.get(b1, False), False)  # Other object
         self.assertEqual(all_user_dic.get(b2, False), False)  # Other object
 
-        # in Set
+        # Make sure docs are properly identified in a set (__hash__ is used
+        # for hashing the docs).
         all_user_set = set(User.objects.all())
         self.assertTrue(u1 in all_user_set)
+        self.assertTrue(u4 not in all_user_set)
+        self.assertTrue(b1 not in all_user_list)
+        self.assertTrue(b2 not in all_user_list)
+
+        # Make sure duplicate docs aren't accepted in the set
+        self.assertEqual(len(all_user_set), 3)
+        all_user_set.add(u1)
+        all_user_set.add(u2)
+        all_user_set.add(u3)
+        self.assertEqual(len(all_user_set), 3)
 
     def test_picklable(self):
         pickle_doc = PickleTest(number=1, string="One", lists=['1', '2'])
