@@ -182,44 +182,62 @@ class Document(BaseDocument):
 
     @classmethod
     def _get_collection(cls):
-        """Returns the collection for the document."""
-        # TODO: use new get_collection() with PyMongo3 ?
+        """Return a PyMongo collection for the document."""
         if not hasattr(cls, '_collection') or cls._collection is None:
-            db = cls._get_db()
-            collection_name = cls._get_collection_name()
-            # Create collection as a capped collection if specified
-            if cls._meta.get('max_size') or cls._meta.get('max_documents'):
-                # Get max document limit and max byte size from meta
-                max_size = cls._meta.get('max_size') or 10 * 2 ** 20  # 10MB default
-                max_documents = cls._meta.get('max_documents')
-                # Round up to next 256 bytes as MongoDB would do it to avoid exception
-                if max_size % 256:
-                    max_size = (max_size // 256 + 1) * 256
 
-                if collection_name in db.collection_names():
-                    cls._collection = db[collection_name]
-                    # The collection already exists, check if its capped
-                    # options match the specified capped options
-                    options = cls._collection.options()
-                    if options.get('max') != max_documents or \
-                            options.get('size') != max_size:
-                        msg = (('Cannot create collection "%s" as a capped '
-                                'collection as it already exists')
-                               % cls._collection)
-                        raise InvalidCollectionError(msg)
-                else:
-                    # Create the collection as a capped collection
-                    opts = {'capped': True, 'size': max_size}
-                    if max_documents:
-                        opts['max'] = max_documents
-                    cls._collection = db.create_collection(
-                        collection_name, **opts
-                    )
+            # Get the collection, either capped or regular.
+            if cls._meta.get('max_size') or cls._meta.get('max_documents'):
+                cls._collection = cls._get_capped_collection()
             else:
+                db = cls._get_db()
+                collection_name = cls._get_collection_name()
                 cls._collection = db[collection_name]
+
+            # Ensure indexes on the collection unless auto_create_index was
+            # set to False.
             if cls._meta.get('auto_create_index', True):
                 cls.ensure_indexes()
+
         return cls._collection
+
+    @classmethod
+    def _get_capped_collection(cls):
+        """Create a new or get an existing capped PyMongo collection."""
+        db = cls._get_db()
+        collection_name = cls._get_collection_name()
+
+        # Get max document limit and max byte size from meta.
+        max_size = cls._meta.get('max_size') or 10 * 2 ** 20  # 10MB default
+        max_documents = cls._meta.get('max_documents')
+
+        # MongoDB will automatically raise the size to make it a multiple of
+        # 256 bytes. We raise it here ourselves to be able to reliably compare
+        # the options below.
+        if max_size % 256:
+            max_size = (max_size // 256 + 1) * 256
+
+        # If the collection already exists and has different options
+        # (i.e. isn't capped or has different max/size), raise an error.
+        if collection_name in db.collection_names():
+            collection = db[collection_name]
+            options = collection.options()
+            if (
+                options.get('max') != max_documents or
+                options.get('size') != max_size
+            ):
+                raise InvalidCollectionError(
+                    'Cannot create collection "{}" as a capped '
+                    'collection as it already exists'.format(cls._collection)
+                )
+
+            return collection
+
+        # Create a new capped collection.
+        opts = {'capped': True, 'size': max_size}
+        if max_documents:
+            opts['max'] = max_documents
+
+        return db.create_collection(collection_name, **opts)
 
     def to_mongo(self, *args, **kwargs):
         data = super(Document, self).to_mongo(*args, **kwargs)
