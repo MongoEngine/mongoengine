@@ -1,7 +1,8 @@
 from collections import defaultdict
 
 import pymongo
-from bson import SON
+from bson import ObjectId, SON
+from bson.dbref import DBRef
 
 from mongoengine.base.fields import UPDATE_OPERATORS
 from mongoengine.connection import get_connection
@@ -26,6 +27,7 @@ MATCH_OPERATORS = (COMPARISON_OPERATORS + GEO_OPERATORS +
                    STRING_OPERATORS + CUSTOM_OPERATORS)
 
 
+# TODO make this less complex
 def query(_doc_cls=None, **kwargs):
     """Transform a query from Django-style format to Mongo format.
     """
@@ -62,6 +64,7 @@ def query(_doc_cls=None, **kwargs):
             parts = []
 
             CachedReferenceField = _import_class('CachedReferenceField')
+            GenericReferenceField = _import_class('GenericReferenceField')
 
             cleaned_fields = []
             for field in fields:
@@ -101,6 +104,16 @@ def query(_doc_cls=None, **kwargs):
                 # 'in', 'nin' and 'all' require a list of values
                 value = [field.prepare_query_value(op, v) for v in value]
 
+            # If we're querying a GenericReferenceField, we need to alter the
+            # key depending on the value:
+            # * If the value is a DBRef, the key should be "field_name._ref".
+            # * If the value is an ObjectId, the key should be "field_name._ref.$id".
+            if isinstance(field, GenericReferenceField):
+                if isinstance(value, DBRef):
+                    parts[-1] += '._ref'
+                elif isinstance(value, ObjectId):
+                    parts[-1] += '._ref.$id'
+
         # if op and op not in COMPARISON_OPERATORS:
         if op:
             if op in GEO_OPERATORS:
@@ -125,11 +138,13 @@ def query(_doc_cls=None, **kwargs):
 
         for i, part in indices:
             parts.insert(i, part)
+
         key = '.'.join(parts)
+
         if op is None or key not in mongo_query:
             mongo_query[key] = value
         elif key in mongo_query:
-            if key in mongo_query and isinstance(mongo_query[key], dict):
+            if isinstance(mongo_query[key], dict):
                 mongo_query[key].update(value)
                 # $max/minDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]

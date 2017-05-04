@@ -2731,6 +2731,38 @@ class FieldTest(unittest.TestCase):
         Post.drop_collection()
         User.drop_collection()
 
+    def test_generic_reference_filter_by_dbref(self):
+        """Ensure we can search for a specific generic reference by
+        providing its ObjectId.
+        """
+        class Doc(Document):
+            ref = GenericReferenceField()
+
+        Doc.drop_collection()
+
+        doc1 = Doc.objects.create()
+        doc2 = Doc.objects.create(ref=doc1)
+
+        doc = Doc.objects.get(ref=DBRef('doc', doc1.pk))
+        self.assertEqual(doc, doc2)
+
+    def test_generic_reference_filter_by_objectid(self):
+        """Ensure we can search for a specific generic reference by
+        providing its DBRef.
+        """
+        class Doc(Document):
+            ref = GenericReferenceField()
+
+        Doc.drop_collection()
+
+        doc1 = Doc.objects.create()
+        doc2 = Doc.objects.create(ref=doc1)
+
+        self.assertTrue(isinstance(doc1.pk, ObjectId))
+
+        doc = Doc.objects.get(ref=doc1.pk)
+        self.assertEqual(doc, doc2)
+
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
