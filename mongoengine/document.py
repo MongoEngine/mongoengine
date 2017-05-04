@@ -16,13 +16,7 @@ from timer import log_slow_event
 import warnings
 
 from bson import SON, ObjectId, DBRef
-from connection import _get_db, _get_slave_ok
-
-try:
-    from sweeper.grpc_proxy.clients import MongoProxyProxyClient as MongoProxyClient
-except:
-    print "Failed to load MongoProxyClient, talking to mongo directly"
-    MongoProxyClient = None
+from connection import _get_db, _get_slave_ok, _get_proxy_client
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
            'OperationError', 'BulkOperationError']
@@ -421,11 +415,7 @@ class Document(BaseDocument):
     @classmethod
     def _get_proxy_client(cls):
         db_name = cls._meta['db_name']
-        if db_name and db_name in ('sweeper-campaign','wish-notifications'):
-            return None
-
-        if MongoProxyClient:
-            return MongoProxyClient.instance()
+        return _get_proxy_client(db_name)
 
     @classmethod
     def _pymongo(cls, use_async=True):

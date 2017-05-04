@@ -20,8 +20,35 @@ _slave_ok_settings = {
     True: SlaveOkSettings(ReadPreference.SECONDARY_PREFERRED, [{}])
 }
 
+_proxy_clients = {}
+_proxy_dbs_to_conn = {}
+_proxy_connections = {}
+
 class ConnectionError(Exception):
     pass
+
+
+def _get_proxy_client(db_name='test'):
+    global _proxy_clients, _proxy_dbs_to_conn, _proxy_connections
+    if not db_name:
+        db_name = _default_db
+
+    if db_name not in _proxy_clients:
+        if not _proxy_dbs_to_conn:
+            conn_name = None
+        else:
+            if db_name not in _proxy_dbs_to_conn:
+                return None
+            conn_name = _proxy_dbs_to_conn[db_name]
+
+        if conn_name not in _proxy_connections:
+            return None
+
+        conn = _proxy_connections[conn_name]
+        _proxy_clients[db_name] = conn
+
+    client = _proxy_clients[db_name]
+    return client()
 
 
 def _get_db(db_name='test', reconnect=False, allow_async=True):
@@ -54,6 +81,14 @@ def _get_db(db_name='test', reconnect=False, allow_async=True):
 def _get_slave_ok(slave_ok):
     return _slave_ok_settings[slave_ok]
 
+def connect_proxy(client_func, conn_name=None, db_names=None):
+    global _proxy_dbs_to_conn, _proxy_connections
+    if conn_name not in _proxy_connections:
+        _proxy_connections[conn_name] = client_func
+    if db_names:
+        for db in db_names:
+            _proxy_dbs_to_conn[db] = conn_name
+    return _proxy_connections[conn_name]
 
 def connect(host='localhost', conn_name=None, db_names=None, allow_async=False,
             slave_ok_settings=None, **kwargs):
