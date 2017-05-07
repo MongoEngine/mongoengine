@@ -300,7 +300,7 @@ class Document(BaseDocument):
         created.
 
         :param force_insert: only try to create a new document, don't allow
-            updates of existing documents
+            updates of existing documents.
         :param validate: validates the document; set to ``False`` to skip.
         :param clean: call the document clean method, requires `validate` to be
             True.
@@ -441,6 +441,21 @@ class Document(BaseDocument):
 
         return object_id
 
+    def _get_update_doc(self):
+        """Return a dict containing all the $set and $unset operations
+        that should be sent to MongoDB based on the changes made to this
+        Document.
+        """
+        updates, removals = self._delta()
+
+        update_doc = {}
+        if updates:
+            update_doc['$set'] = updates
+        if removals:
+            update_doc['$unset'] = removals
+
+        return update_doc
+
     def _save_update(self, doc, save_condition, write_concern):
         """Update an existing document.
 
@@ -466,15 +481,10 @@ class Document(BaseDocument):
                 val = val[ak]
             select_dict['.'.join(actual_key)] = val
 
-        updates, removals = self._delta()
-        update_query = {}
-        if updates:
-            update_query['$set'] = updates
-        if removals:
-            update_query['$unset'] = removals
-        if updates or removals:
+        update_doc = self._get_update_doc()
+        if update_doc:
             upsert = save_condition is None
-            last_error = collection.update(select_dict, update_query,
+            last_error = collection.update(select_dict, update_doc,
                                            upsert=upsert, **write_concern)
             if not upsert and last_error['n'] == 0:
                 raise SaveConditionError('Race condition preventing'
