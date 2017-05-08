@@ -8,7 +8,7 @@ Development
 
 Changes in 0.14.0
 =================
-- BREAKING CHANGE: Removed the `coerce_types` param from `QuerySet.as_pymongo`.
+- BREAKING CHANGE: Removed the `coerce_types` param from `QuerySet.as_pymongo` #1549
 - POTENTIAL BREAKING CHANGE: Made EmbeddedDocument not hashable by default #1528
 - Improved code quality #1531, #1540, #1541, #1547
 

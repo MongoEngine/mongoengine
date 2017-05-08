@@ -8,8 +8,8 @@ Development
 
 0.14.0
 ******
-This release includes a few bug fixes and another significant code cleanup.
-The most important change is that `QuerySet.as_pymongo` no longer supports a
+This release includes a few bug fixes and a significant code cleanup. The most
+important change is that `QuerySet.as_pymongo` no longer supports a
 `coerce_types` mode. If you used it in the past, a) please let us know of your
 use case, b) you'll need to override `as_pymongo` to get the desired outcome.
 
