@@ -4073,7 +4073,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(activity.owner, person)
 
         activity = TestActivity.objects(owner=person).only('id', 'owner').as_pymongo().first()
-        print activity
         self.assertEqual(activity['_id'], a1.pk)
         self.assertTrue(activity['owner']['_ref'], DBRef('test_person', person.pk))
 
