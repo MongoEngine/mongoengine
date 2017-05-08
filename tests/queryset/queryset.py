@@ -4047,6 +4047,36 @@ class QuerySetTest(unittest.TestCase):
         plist = list(Person.objects.scalar('name', 'state'))
         self.assertEqual(plist, [(u'Wilson JR', s1)])
 
+    def test_generic_reference_field_with_only_and_as_pymongo(self):
+        class TestPerson(Document):
+            name = StringField()
+
+        class TestActivity(Document):
+            name = StringField()
+            owner = GenericReferenceField()
+
+        TestPerson.drop_collection()
+        TestActivity.drop_collection()
+
+        person = TestPerson(name='owner')
+        person.save()
+
+        a1 = TestActivity(name='a1', owner=person)
+        a1.save()
+
+        activity = TestActivity.objects(owner=person).scalar('id', 'owner').no_dereference().first()
+        self.assertEqual(activity[0], a1.pk)
+        self.assertEqual(activity[1]['_ref'], DBRef('test_person', person.pk))
+
+        activity = TestActivity.objects(owner=person).only('id', 'owner')[0]
+        self.assertEqual(activity.pk, a1.pk)
+        self.assertEqual(activity.owner, person)
+
+        activity = TestActivity.objects(owner=person).only('id', 'owner').as_pymongo().first()
+        print activity
+        self.assertEqual(activity['_id'], a1.pk)
+        self.assertTrue(activity['owner']['_ref'], DBRef('test_person', person.pk))
+
     def test_scalar_db_field(self):
 
         class TestDoc(Document):
