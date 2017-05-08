@@ -16,7 +16,6 @@ python:
 - 2.7
 - 3.5
 - pypy
-- pypy3
 
 env:
 - MONGODB=2.6 PYMONGO=2.7
