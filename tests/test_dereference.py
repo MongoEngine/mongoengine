@@ -2,15 +2,10 @@
 import unittest
 
 from bson import DBRef, ObjectId
-from collections import OrderedDict
 
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter
-from mongoengine.python_support import IS_PYMONGO_3
-from mongoengine.base import TopLevelDocumentMetaclass
-if IS_PYMONGO_3:
-    from bson import CodecOptions
 
 
 class FieldTest(unittest.TestCase):
@@ -1291,71 +1286,6 @@ class FieldTest(unittest.TestCase):
             songs = [item.song for item in playlist.items]
 
             self.assertEqual(q, 2)
-
-    def test_dynamic_field_dereference(self):
-        class Merchandise(Document):
-            name = StringField()
-            price = IntField()
-
-        class Store(Document):
-            merchandises = DynamicField()
-
-        Merchandise.drop_collection()
-        Store.drop_collection()
-
-        merchandises = {
-            '#1': Merchandise(name='foo', price=100).save(),
-            '#2': Merchandise(name='bar', price=120).save(),
-            '#3': Merchandise(name='baz', price=110).save(),
-        }
-        Store(merchandises=merchandises).save()
-
-        store = Store.objects().first()
-        for obj in store.merchandises.values():
-            self.assertFalse(isinstance(obj, Merchandise))
-
-        store.select_related()
-        for obj in store.merchandises.values():
-            self.assertTrue(isinstance(obj, Merchandise))
-
-    def test_dynamic_field_dereference_with_ordering_guarantee_on_pymongo3(self):
-        # This is because 'codec_options' is supported on pymongo3 or later
-        if IS_PYMONGO_3:
-            class OrderedDocument(Document):
-                my_metaclass = TopLevelDocumentMetaclass
-                __metaclass__ = TopLevelDocumentMetaclass
-
-                @classmethod
-                def _get_collection(cls):
-                    collection = super(OrderedDocument, cls)._get_collection()
-                    opts = CodecOptions(document_class=OrderedDict)
-
-                    return collection.with_options(codec_options=opts)
-
-            class Merchandise(Document):
-                name = StringField()
-                price = IntField()
-
-            class Store(OrderedDocument):
-                merchandises = DynamicField(container_class=OrderedDict)
-
-            Merchandise.drop_collection()
-            Store.drop_collection()
-
-            merchandises = OrderedDict()
-            merchandises['#1'] = Merchandise(name='foo', price=100).save()
-            merchandises['#2'] = Merchandise(name='bar', price=120).save()
-            merchandises['#3'] = Merchandise(name='baz', price=110).save()
-
-            Store(merchandises=merchandises).save()
-
-            store = Store.objects().first()
-
-            store.select_related()
-
-            # confirms that the load data order is same with the one at storing
-            self.assertTrue(type(store.merchandises), OrderedDict)
-            self.assertEqual(','.join(store.merchandises.keys()), '#1,#2,#3')
 
 if __name__ == '__main__':
     unittest.main()

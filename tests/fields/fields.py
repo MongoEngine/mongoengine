@@ -5,11 +5,9 @@ import uuid
 import math
 import itertools
 import re
-import pymongo
 import sys
 
 from nose.plugins.skip import SkipTest
-from collections import OrderedDict
 import six
 
 try:
@@ -28,12 +26,9 @@ except ImportError:
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
-                              _document_registry, TopLevelDocumentMetaclass)
+                              _document_registry)
 
-from tests.utils import MongoDBTestCase, MONGO_TEST_DB
-from mongoengine.python_support import IS_PYMONGO_3
-if IS_PYMONGO_3:
-    from bson import CodecOptions
+from tests.utils import MongoDBTestCase
 
 __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
@@ -4188,67 +4183,6 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
 
-    def test_dynamicfield_with_container_class(self):
-        """
-        Tests that object can be stored in order by DynamicField class
-        with container_class parameter.
-        """
-        raw_data = [('d', 1), ('c', 2), ('b', 3), ('a', 4)]
-
-        class Doc(Document):
-            ordered_data = DynamicField(container_class=OrderedDict)
-            unordered_data = DynamicField()
-
-        Doc.drop_collection()
-
-        doc = Doc(ordered_data=OrderedDict(raw_data), unordered_data=dict(raw_data)).save()
-
-        # checks that the data is in order
-        self.assertEqual(type(doc.ordered_data), OrderedDict)
-        self.assertEqual(type(doc.unordered_data), dict)
-        self.assertEqual(','.join(doc.ordered_data.keys()), 'd,c,b,a')
-
-        # checks that the data is stored to the database in order
-        pymongo_db = pymongo.MongoClient()[MONGO_TEST_DB]
-        if IS_PYMONGO_3:
-            codec_option = CodecOptions(document_class=OrderedDict)
-            db_doc = pymongo_db.doc.with_options(codec_options=codec_option).find_one()
-        else:
-            db_doc = pymongo_db.doc.find_one(as_class=OrderedDict)
-
-        self.assertEqual(','.join(doc.ordered_data.keys()), 'd,c,b,a')
-
-    def test_dynamicfield_with_wrong_container_class(self):
-        with self.assertRaises(ValidationError):
-            class DocWithInvalidField:
-                data = DynamicField(container_class=list)
-
-    def test_dynamicfield_with_wrong_container_class_and_reload_docuemnt(self):
-        # This is because 'codec_options' is supported on pymongo3 or later
-        if IS_PYMONGO_3:
-            class OrderedDocument(Document):
-                my_metaclass = TopLevelDocumentMetaclass
-                __metaclass__ = TopLevelDocumentMetaclass
-
-                @classmethod
-                def _get_collection(cls):
-                    collection = super(OrderedDocument, cls)._get_collection()
-                    opts = CodecOptions(document_class=OrderedDict)
-
-                    return collection.with_options(codec_options=opts)
-
-            raw_data = [('d', 1), ('c', 2), ('b', 3), ('a', 4)]
-
-            class Doc(OrderedDocument):
-                data = DynamicField(container_class=OrderedDict)
-
-            Doc.drop_collection()
-
-            doc = Doc(data=OrderedDict(raw_data)).save()
-            doc.reload()
-
-            self.assertEqual(type(doc.data), OrderedDict)
-            self.assertEqual(','.join(doc.data.keys()), 'd,c,b,a')
 
 class CachedReferenceFieldTest(MongoDBTestCase):
 

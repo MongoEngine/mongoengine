@@ -6,7 +6,6 @@ import socket
 import time
 import uuid
 import warnings
-from collections import Mapping
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
@@ -705,14 +704,6 @@ class DynamicField(BaseField):
 
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
-    def __init__(self, container_class=dict, *args, **kwargs):
-        self._container_cls = container_class
-        if not issubclass(self._container_cls, Mapping):
-            self.error('The class that is specified in `container_class` parameter '
-                       'must be a subclass of `dict`.')
-
-        super(DynamicField, self).__init__(*args, **kwargs)
-
     def to_mongo(self, value, use_db_field=True, fields=None):
         """Convert a Python type to a MongoDB compatible type.
         """
@@ -738,7 +729,7 @@ class DynamicField(BaseField):
             is_list = True
             value = {k: v for k, v in enumerate(value)}
 
-        data = self._container_cls()
+        data = {}
         for k, v in value.iteritems():
             data[k] = self.to_mongo(v, use_db_field, fields)
 
