@@ -242,7 +242,7 @@ class InstanceTest(unittest.TestCase):
         Zoo.drop_collection()
 
         class Zoo(Document):
-            animals = ListField(GenericReferenceField(Animal))
+            animals = ListField(GenericReferenceField())
 
         # Save a reference to each animal
         zoo = Zoo(animals=Animal.objects)

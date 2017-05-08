@@ -81,7 +81,14 @@ class BaseField(object):
         self.sparse = sparse
         self._owner_document = None
 
-        # Validate the db_field
+        # Make sure db_field is a string (if it's explicitly defined).
+        if (
+            self.db_field is not None and
+            not isinstance(self.db_field, six.string_types)
+        ):
+            raise TypeError('db_field should be a string.')
+
+        # Make sure db_field doesn't contain any forbidden characters.
         if isinstance(self.db_field, six.string_types) and (
             '.' in self.db_field or
             '\0' in self.db_field or
