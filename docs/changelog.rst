@@ -6,6 +6,12 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.14.0
+=================
+- BREAKING CHANGE: Removed the `coerce_types` param from `QuerySet.as_pymongo`.
+- POTENTIAL BREAKING CHANGE: Made EmbeddedDocument not hashable by default #1528
+- Improved code quality #1531, #1540, #1541, #1547
+
 Changes in 0.13.0
 =================
 - POTENTIAL BREAKING CHANGE: Added Unicode support to the `EmailField`, see

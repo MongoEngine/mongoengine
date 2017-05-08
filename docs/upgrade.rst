@@ -6,6 +6,18 @@ Development
 ***********
 (Fill this out whenever you introduce breaking changes to MongoEngine)
 
+0.14.0
+******
+This release includes a few bug fixes and another significant code cleanup.
+The most important change is that `QuerySet.as_pymongo` no longer supports a
+`coerce_types` mode. If you used it in the past, a) please let us know of your
+use case, b) you'll need to override `as_pymongo` to get the desired outcome.
+
+This release also makes the EmbeddedDocument not hashable by default. If you
+use embedded documents in sets or dictionaries, you might have to override
+`__hash__` and implement a hashing logic specific to your use case. See #1528
+for the reason behind this change.
+
 0.13.0
 ******
 This release adds Unicode support to the `EmailField` and changes its
