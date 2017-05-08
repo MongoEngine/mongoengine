@@ -4931,7 +4931,6 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
-    @needs_mongodb_v26
     def test_queryset_aggregation_framework(self):
         class Person(Document):
             name = StringField()
@@ -4939,19 +4938,13 @@ class QuerySetTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
-        p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
-        p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        p1 = Person.objects.create(name="Isabella Luanna", age=16)
+        p2 = Person.objects.create(name="Wilson Junior", age=21)
+        p3 = Person.objects.create(name="Sandra Mara", age=37)
 
         data = Person.objects(age__lte=22).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
         )
-
         self.assertEqual(list(data), [
             {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
             {'_id': p2.pk, 'name': "WILSON JUNIOR"}
@@ -4960,7 +4953,6 @@ class QuerySetTest(unittest.TestCase):
         data = Person.objects(age__lte=22).order_by('-name').aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
         )
-
         self.assertEqual(list(data), [
             {'_id': p2.pk, 'name': "WILSON JUNIOR"},
             {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
