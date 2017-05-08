@@ -4646,7 +4646,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_no_cache(self):
         """Ensure you can add meta data to file"""
-
         class Noddy(Document):
             fields = DictField()
 
@@ -4664,15 +4663,19 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(len(list(docs)), 100)
 
+        # Can't directly get a length of a no-cache queryset.
         with self.assertRaises(TypeError):
             len(docs)
 
+        # Another iteration over the queryset should result in another db op.
         with query_counter() as q:
-            self.assertEqual(q, 0)
             list(docs)
             self.assertEqual(q, 1)
+
+        # ... and another one to double-check.
+        with query_counter() as q:
             list(docs)
-            self.assertEqual(q, 2)
+            self.assertEqual(q, 1)
 
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
