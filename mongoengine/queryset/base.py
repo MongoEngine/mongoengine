@@ -1132,6 +1132,9 @@ class BaseQuerySet(object):
     def as_pymongo(self):
         """Instead of returning Document instances, return raw values from
         pymongo.
+
+        This method is particularly useful if you don't need dereferencing
+        and care primarily about the speed of data retrieval.
         """
         queryset = self.clone()
         queryset._as_pymongo = True
