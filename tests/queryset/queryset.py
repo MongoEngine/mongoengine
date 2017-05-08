@@ -4392,21 +4392,44 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))
 
     def test_as_pymongo(self):
-
         from decimal import Decimal
+
+        class LastLogin(EmbeddedDocument):
+            location = StringField()
+            ip = StringField()
 
         class User(Document):
             id = ObjectIdField('_id')
             name = StringField()
             age = IntField()
             price = DecimalField()
+            last_login = EmbeddedDocumentField(LastLogin)
 
         User.drop_collection()
-        User(name="Bob Dole", age=89, price=Decimal('1.11')).save()
-        User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
+
+        User.objects.create(name="Bob Dole", age=89, price=Decimal('1.11'))
+        User.objects.create(
+            name="Barack Obama",
+            age=51,
+            price=Decimal('2.22'),
+            last_login=LastLogin(
+                location='White House',
+                ip='104.107.108.116'
+            )
+        )
+
+        results = User.objects.as_pymongo()
+        self.assertEqual(
+            set(results[0].keys()),
+            set(['_id', 'name', 'age', 'price'])
+        )
+        self.assertEqual(
+            set(results[1].keys()),
+            set(['_id', 'name', 'age', 'price', 'last_login'])
+        )
 
         results = User.objects.only('id', 'name').as_pymongo()
-        self.assertEqual(sorted(results[0].keys()), sorted(['_id', 'name']))
+        self.assertEqual(set(results[0].keys()), set(['_id', 'name']))
 
         users = User.objects.only('name', 'price').as_pymongo()
         results = list(users)
@@ -4417,16 +4440,20 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(results[1]['name'], 'Barack Obama')
         self.assertEqual(results[1]['price'], 2.22)
 
-        # Test coerce_types
-        users = User.objects.only(
-            'name', 'price').as_pymongo(coerce_types=True)
+        users = User.objects.only('name', 'last_login').as_pymongo()
         results = list(users)
         self.assertTrue(isinstance(results[0], dict))
         self.assertTrue(isinstance(results[1], dict))
-        self.assertEqual(results[0]['name'], 'Bob Dole')
-        self.assertEqual(results[0]['price'], Decimal('1.11'))
-        self.assertEqual(results[1]['name'], 'Barack Obama')
-        self.assertEqual(results[1]['price'], Decimal('2.22'))
+        self.assertEqual(results[0], {
+            'name': 'Bob Dole'
+        })
+        self.assertEqual(results[1], {
+            'name': 'Barack Obama',
+            'last_login': {
+                'location': 'White House',
+                'ip': '104.107.108.116'
+            }
+        })
 
     def test_as_pymongo_json_limit_fields(self):
 
