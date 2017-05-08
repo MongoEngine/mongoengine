@@ -4047,6 +4047,35 @@ class QuerySetTest(unittest.TestCase):
         plist = list(Person.objects.scalar('name', 'state'))
         self.assertEqual(plist, [(u'Wilson JR', s1)])
 
+    def test_generic_reference_field_with_only_and_as_pymongo(self):
+        class TestPerson(Document):
+            name = StringField()
+
+        class TestActivity(Document):
+            name = StringField()
+            owner = GenericReferenceField()
+
+        TestPerson.drop_collection()
+        TestActivity.drop_collection()
+
+        person = TestPerson(name='owner')
+        person.save()
+
+        a1 = TestActivity(name='a1', owner=person)
+        a1.save()
+
+        activity = TestActivity.objects(owner=person).scalar('id', 'owner').no_dereference().first()
+        self.assertEqual(activity[0], a1.pk)
+        self.assertEqual(activity[1]['_ref'], DBRef('test_person', person.pk))
+
+        activity = TestActivity.objects(owner=person).only('id', 'owner')[0]
+        self.assertEqual(activity.pk, a1.pk)
+        self.assertEqual(activity.owner, person)
+
+        activity = TestActivity.objects(owner=person).only('id', 'owner').as_pymongo().first()
+        self.assertEqual(activity['_id'], a1.pk)
+        self.assertTrue(activity['owner']['_ref'], DBRef('test_person', person.pk))
+
     def test_scalar_db_field(self):
 
         class TestDoc(Document):
@@ -4392,21 +4421,44 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))
 
     def test_as_pymongo(self):
-
         from decimal import Decimal
+
+        class LastLogin(EmbeddedDocument):
+            location = StringField()
+            ip = StringField()
 
         class User(Document):
             id = ObjectIdField('_id')
             name = StringField()
             age = IntField()
             price = DecimalField()
+            last_login = EmbeddedDocumentField(LastLogin)
 
         User.drop_collection()
-        User(name="Bob Dole", age=89, price=Decimal('1.11')).save()
-        User(name="Barack Obama", age=51, price=Decimal('2.22')).save()
+
+        User.objects.create(name="Bob Dole", age=89, price=Decimal('1.11'))
+        User.objects.create(
+            name="Barack Obama",
+            age=51,
+            price=Decimal('2.22'),
+            last_login=LastLogin(
+                location='White House',
+                ip='104.107.108.116'
+            )
+        )
+
+        results = User.objects.as_pymongo()
+        self.assertEqual(
+            set(results[0].keys()),
+            set(['_id', 'name', 'age', 'price'])
+        )
+        self.assertEqual(
+            set(results[1].keys()),
+            set(['_id', 'name', 'age', 'price', 'last_login'])
+        )
 
         results = User.objects.only('id', 'name').as_pymongo()
-        self.assertEqual(sorted(results[0].keys()), sorted(['_id', 'name']))
+        self.assertEqual(set(results[0].keys()), set(['_id', 'name']))
 
         users = User.objects.only('name', 'price').as_pymongo()
         results = list(users)
@@ -4417,16 +4469,20 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(results[1]['name'], 'Barack Obama')
         self.assertEqual(results[1]['price'], 2.22)
 
-        # Test coerce_types
-        users = User.objects.only(
-            'name', 'price').as_pymongo(coerce_types=True)
+        users = User.objects.only('name', 'last_login').as_pymongo()
         results = list(users)
         self.assertTrue(isinstance(results[0], dict))
         self.assertTrue(isinstance(results[1], dict))
-        self.assertEqual(results[0]['name'], 'Bob Dole')
-        self.assertEqual(results[0]['price'], Decimal('1.11'))
-        self.assertEqual(results[1]['name'], 'Barack Obama')
-        self.assertEqual(results[1]['price'], Decimal('2.22'))
+        self.assertEqual(results[0], {
+            'name': 'Bob Dole'
+        })
+        self.assertEqual(results[1], {
+            'name': 'Barack Obama',
+            'last_login': {
+                'location': 'White House',
+                'ip': '104.107.108.116'
+            }
+        })
 
     def test_as_pymongo_json_limit_fields(self):
 
@@ -4590,7 +4646,6 @@ class QuerySetTest(unittest.TestCase):
 
     def test_no_cache(self):
         """Ensure you can add meta data to file"""
-
         class Noddy(Document):
             fields = DictField()
 
@@ -4608,15 +4663,19 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(len(list(docs)), 100)
 
+        # Can't directly get a length of a no-cache queryset.
         with self.assertRaises(TypeError):
             len(docs)
 
+        # Another iteration over the queryset should result in another db op.
         with query_counter() as q:
-            self.assertEqual(q, 0)
             list(docs)
             self.assertEqual(q, 1)
+
+        # ... and another one to double-check.
+        with query_counter() as q:
             list(docs)
-            self.assertEqual(q, 2)
+            self.assertEqual(q, 1)
 
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.

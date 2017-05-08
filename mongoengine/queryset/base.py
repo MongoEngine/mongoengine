@@ -67,7 +67,6 @@ class BaseQuerySet(object):
         self._scalar = []
         self._none = False
         self._as_pymongo = False
-        self._as_pymongo_coerce = False
         self._search_text = None
 
         # If inheritance is allowed, only return instances and instances of
@@ -728,11 +727,12 @@ class BaseQuerySet(object):
                 '%s is not a subclass of BaseQuerySet' % new_qs.__name__)
 
         copy_props = ('_mongo_query', '_initial_query', '_none', '_query_obj',
-                      '_where_clause', '_loaded_fields', '_ordering', '_snapshot',
-                      '_timeout', '_class_check', '_slave_okay', '_read_preference',
-                      '_iter', '_scalar', '_as_pymongo', '_as_pymongo_coerce',
+                      '_where_clause', '_loaded_fields', '_ordering',
+                      '_snapshot', '_timeout', '_class_check', '_slave_okay',
+                      '_read_preference', '_iter', '_scalar', '_as_pymongo',
                       '_limit', '_skip', '_hint', '_auto_dereference',
-                      '_search_text', 'only_fields', '_max_time_ms', '_comment')
+                      '_search_text', 'only_fields', '_max_time_ms',
+                      '_comment')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -939,7 +939,8 @@ class BaseQuerySet(object):
 
             posts = BlogPost.objects(...).fields(slice__comments=5)
 
-        :param kwargs: A set keywors arguments identifying what to include.
+        :param kwargs: A set of keyword arguments identifying what to
+            include, exclude, or slice.
 
         .. versionadded:: 0.5
         """
@@ -1128,16 +1129,15 @@ class BaseQuerySet(object):
         """An alias for scalar"""
         return self.scalar(*fields)
 
-    def as_pymongo(self, coerce_types=False):
+    def as_pymongo(self):
         """Instead of returning Document instances, return raw values from
         pymongo.
 
-        :param coerce_types: Field types (if applicable) would be use to
-            coerce types.
+        This method is particularly useful if you don't need dereferencing
+        and care primarily about the speed of data retrieval.
         """
         queryset = self.clone()
         queryset._as_pymongo = True
-        queryset._as_pymongo_coerce = coerce_types
         return queryset
 
     def max_time_ms(self, ms):
@@ -1799,59 +1799,25 @@ class BaseQuerySet(object):
 
         return tuple(data)
 
-    def _get_as_pymongo(self, row):
-        # Extract which fields paths we should follow if .fields(...) was
-        # used. If not, handle all fields.
-        if not getattr(self, '__as_pymongo_fields', None):
-            self.__as_pymongo_fields = []
+    def _get_as_pymongo(self, doc):
+        """Clean up a PyMongo doc, removing fields that were only fetched
+        for the sake of MongoEngine's implementation, and return it.
+        """
+        # Always remove _cls as a MongoEngine's implementation detail.
+        if '_cls' in doc:
+            del doc['_cls']
 
-            for field in self._loaded_fields.fields - set(['_cls']):
-                self.__as_pymongo_fields.append(field)
-                while '.' in field:
-                    field, _ = field.rsplit('.', 1)
-                    self.__as_pymongo_fields.append(field)
+        # If the _id was not included in a .only or was excluded in a .exclude,
+        # remove it from the doc (we always fetch it so that we can properly
+        # construct documents).
+        fields = self._loaded_fields
+        if fields and '_id' in doc and (
+            (fields.value == QueryFieldList.ONLY and '_id' not in fields.fields) or
+            (fields.value == QueryFieldList.EXCLUDE and '_id' in fields.fields)
+        ):
+            del doc['_id']
 
-        all_fields = not self.__as_pymongo_fields
-
-        def clean(data, path=None):
-            path = path or ''
-
-            if isinstance(data, dict):
-                new_data = {}
-                for key, value in data.iteritems():
-                    new_path = '%s.%s' % (path, key) if path else key
-
-                    if all_fields:
-                        include_field = True
-                    elif self._loaded_fields.value == QueryFieldList.ONLY:
-                        include_field = new_path in self.__as_pymongo_fields
-                    else:
-                        include_field = new_path not in self.__as_pymongo_fields
-
-                    if include_field:
-                        new_data[key] = clean(value, path=new_path)
-                data = new_data
-            elif isinstance(data, list):
-                data = [clean(d, path=path) for d in data]
-            else:
-                if self._as_pymongo_coerce:
-                    # If we need to coerce types, we need to determine the
-                    # type of this field and use the corresponding
-                    # .to_python(...)
-                    EmbeddedDocumentField = _import_class('EmbeddedDocumentField')
-
-                    obj = self._document
-                    for chunk in path.split('.'):
-                        obj = getattr(obj, chunk, None)
-                        if obj is None:
-                            break
-                        elif isinstance(obj, EmbeddedDocumentField):
-                            obj = obj.document_type
-                    if obj and data is not None:
-                        data = obj.to_python(data)
-            return data
-
-        return clean(row)
+        return doc
 
     def _sub_js_fields(self, code):
         """When fields are specified with [~fieldname] syntax, where
