@@ -574,6 +574,20 @@ class Document(BaseDocument):
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
                  comment=None, **kwargs):
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs or kwargs['comment'] is None:
+                    kwargs['comment'] = MongoComment.get_comment()
+                return proxy_client.instance().find_raw(
+                    cls, spec, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    batch_size=batch_size,
+                    find_one=find_one,**kwargs
+                ), False
         if kwargs.get("timeout") is False and slave_ok != "offline":
             trace = "".join(traceback.format_stack())
             notimeout_cursor_logger.info({
