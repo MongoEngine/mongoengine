@@ -320,7 +320,7 @@ class Document(BaseDocument):
         :param save_condition: only perform save if matching record in db
             satisfies condition(s) (e.g. version number).
             Raises :class:`OperationError` if the conditions are not satisfied
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
 
         .. versionchanged:: 0.5
