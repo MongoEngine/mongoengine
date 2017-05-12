@@ -573,9 +573,9 @@ class Document(BaseDocument):
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=False, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
-                 comment=None, **kwargs):
+                 comment=None, from_mengine=True, **kwargs):
         proxy_client = cls._get_proxy_client()
-        if proxy_client:
+        if not from_mengine and proxy_client:
             from sweeper.model.decider_key import DeciderKeyRatio
             dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
             if dkey and dkey.decide():
