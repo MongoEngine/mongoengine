@@ -47,7 +47,19 @@ class FieldTest(MongoDBTestCase):
         """
         class MyDoc(Document):
             dt = DateTimeField()
+
         md = MyDoc(dt='')
+        self.assertRaises(ValidationError, md.save)
+
+    def test_datetime_from_whitespace_string(self):
+        """
+        Ensure an exception is raised when trying to
+        cast a whitespace-only string to datetime.
+        """
+        class MyDoc(Document):
+            dt = DateTimeField()
+
+        md = MyDoc(dt='   ')
         self.assertRaises(ValidationError, md.save)
 
     def test_default_values_nothing_set(self):
