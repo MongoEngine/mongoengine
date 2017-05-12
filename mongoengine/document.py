@@ -585,7 +585,7 @@ class Document(BaseDocument):
                     cls, spec, fields=fields, skip=skip,
                     limit=limit, sort=sort, slave_ok=slave_ok,
                     excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                    batch_size=batch_size,
+                    batch_size=batch_size, hint=hint,
                     find_one=find_one,**kwargs
                 ), False
         if kwargs.get("timeout") is False and slave_ok != "offline":
