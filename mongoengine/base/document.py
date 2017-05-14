@@ -24,6 +24,8 @@ from mongoengine.base.datastructures import (
 )
 from mongoengine.base.fields import ComplexBaseField
 
+from mongoengine.base.proxy import DocumentProxy
+
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
@@ -265,6 +267,8 @@ class BaseDocument(object):
         return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
+        if type(other) is DocumentProxy:
+            return self.id == other.id
         if isinstance(other, self.__class__) and hasattr(other, 'id') and other.id is not None:
             return self.id == other.id
         if isinstance(other, DBRef):
