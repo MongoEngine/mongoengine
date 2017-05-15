@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import functools
 import itertools
 import re
 import time
@@ -9,6 +10,8 @@ import warnings
 from operator import itemgetter
 
 import six
+
+from mongoengine.base.proxy import DocumentProxy
 
 try:
     import dateutil
@@ -931,6 +934,19 @@ class ReferenceField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
+    def deference(self, instance, owner, value):
+        if self._auto_dereference and isinstance(value, DBRef):
+            if hasattr(value, 'cls'):
+                # Dereference using the class type specified in the reference
+                cls = get_document(value.cls)
+            else:
+                cls = self.document_type
+            value = cls._get_db().dereference(value)
+            if value is not None:
+                instance._data[self.name] = cls._from_son(value)
+
+        return super(ReferenceField, self).__get__(instance, owner)
+
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing.
         """
@@ -943,14 +959,8 @@ class ReferenceField(BaseField):
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
-            if hasattr(value, 'cls'):
-                # Dereference using the class type specified in the reference
-                cls = get_document(value.cls)
-            else:
-                cls = self.document_type
-            value = cls._get_db().dereference(value)
-            if value is not None:
-                instance._data[self.name] = cls._from_son(value)
+            return DocumentProxy(
+                functools.partial(self.deference, instance=instance, owner=owner, value=value), value.id)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
