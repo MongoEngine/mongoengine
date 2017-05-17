@@ -791,7 +791,7 @@ class BaseDocument(object):
         # Remove `company` for spec['fields']
         spec['fields'] = [field for field in spec['fields'] if field[0] != 'company']
         # Add `company` forcibly to the front.
-        noCompanyPrefix = spec.get('args', {}).get('noCompanyPrefix', False)
+        noCompanyPrefix = spec.pop('args', {}).get('noCompanyPrefix', False)
         if not noCompanyPrefix and cls._fields.get('company'):
             spec['fields'].insert(0, ('company', 1))
         return spec
