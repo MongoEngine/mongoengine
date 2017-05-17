@@ -55,6 +55,18 @@ __all__ = (
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
+class BetterBaseFieldMixin(object):
+    def __get__(self, instance, owner):
+        """Enhanced descriptor that fetches data from mongo dictionaries based on dotted field notation.
+        """
+        val = super(BetterBaseFieldMixin, self).__get__(instance, owner)
+        if val is not None:
+            return val
+        db_field_name_seq = self.db_field.split('.')
+        if len(db_field_name_seq) > 1:
+            val = reduce(lambda d, k: d.get(k) if d else None, db_field_name_seq, instance._data)
+            return val
+
 
 class StringField(BaseField):
     """A unicode string field."""
