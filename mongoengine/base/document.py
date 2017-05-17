@@ -760,11 +760,12 @@ class BaseDocument(object):
         base_index_specs = [cls._build_index_spec(spec)
                        for spec in meta_indexes]
         reference_indices = cls._build_reference_indices()
-
+        history_indices = cls._build_history_indices()
+        
         # Merge all the indices, so that uniques dont make new indexes.
         res_index_specs = []
         spec_fields = []
-        for index_specs in [base_index_specs, reference_indices, geo_indices, unique_indices]:
+        for index_specs in [base_index_specs, reference_indices, geo_indices, unique_indices, history_indices]:
             for index_spec in index_specs:
                 index_spec = cls._rippling_process_index_spec(index_spec)
                 if not index_spec:
@@ -784,7 +785,15 @@ class BaseDocument(object):
         for name, field in cls._fields.iteritems():
             if 'fields.ReferenceField' in str(field):
                 res.append({ 'fields': [(name, 1)] })
+            if 'fields.CachedReferenceField' in str(field):
+                res.append({ 'fields': [("%s._id" % name, 1)] })
         return res
+        
+    @classmethod
+    def _build_history_indices(cls):
+        if not cls.__name__.startswith("Historical"):
+            return []
+        return [{ 'fields': ['auto_id_0'], 'args': { 'noCompanyPrefix': True } }]
         
     @classmethod
     def _rippling_process_index_spec(cls, spec):
