@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import unittest
-import sys
 
 from nose.plugins.skip import SkipTest
 from datetime import datetime
@@ -218,7 +217,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         self.assertEqual([{'fields': [('rank.title', 1)]}],
-                        Person._meta['index_specs'])
+                         Person._meta['index_specs'])
 
         Person.drop_collection()
 
@@ -911,22 +910,26 @@ class IndexesTest(unittest.TestCase):
             meta = {'db_alias': 'test_indexes_after_database_drop'}
 
         try:
+            # Create Post #1
+            BlogPost(title='test1', slug='test').save()
+            # Re-create Post #1
+            with self.assertRaises(NotUniqueError):
+                BlogPost(title='test1', slug='test').save()
+
             BlogPost.drop_collection()
 
-            # Create Post #1
-            post1 = BlogPost(title='test1', slug='test')
-            post1.save()
+            # Create Post #1 again
+            BlogPost(title='test1', slug='test').save()
 
             # Drop the Database
             connection.drop_database('tempdatabase')
 
             # Re-create Post #1
-            post1 = BlogPost(title='test1', slug='test')
-            post1.save()
+            BlogPost(title='test1', slug='test').save()
 
             # Create Post #2
-            post2 = BlogPost(title='test2', slug='test')
-            self.assertRaises(NotUniqueError, post2.save)
+            with self.assertRaises(NotUniqueError):
+                BlogPost(title='test2', slug='test').save()
         finally:
             # Drop the temporary database at the end
             connection.drop_database('tempdatabase')
