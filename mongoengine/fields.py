@@ -776,7 +776,7 @@ class ListField(ComplexBaseField):
 
     def __init__(self, field=None, **kwargs):
         self.field = field
-        kwargs.setdefault('default', lambda: [])
+        kwargs.setdefault('default', [])
         super(ListField, self).__init__(**kwargs)
 
     def validate(self, value):
