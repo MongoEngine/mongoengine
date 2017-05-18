@@ -1731,14 +1731,14 @@ class BaseQuerySet(object):
                           for x in document._subclasses][1:]
         for field in fields:
             try:
-                field = '.'.join(f.db_field for f in
+                field = '.'.join(f.db_field if not isinstance(f, six.string_types) else f for f in
                                  document._lookup_field(field.split('.')))
                 ret.append(field)
             except LookUpError as err:
                 found = False
                 for subdoc in subclasses:
                     try:
-                        subfield = '.'.join(f.db_field for f in
+                        subfield = '.'.join(f.db_field if not isinstance(f, six.string_types) else f for f in
                                             subdoc._lookup_field(field.split('.')))
                         ret.append(subfield)
                         found = True
