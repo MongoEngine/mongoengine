@@ -219,8 +219,8 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(obj.author.name, 'Test User')
         self.assertEqual(obj.comments, [])
 
-	obj = BlogPost.objects.only('various.test_dynamic.some').get()
-	self.assertEqual(obj.various["test_dynamic"].some, True)
+        obj = BlogPost.objects.only('various.test_dynamic.some').get()
+        self.assertEqual(obj.various["test_dynamic"].some, True)
 
         obj = BlogPost.objects.only('content', 'comments.title',).get()
         self.assertEqual(obj.content, 'Had a good coffee today...')
