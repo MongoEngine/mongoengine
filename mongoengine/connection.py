@@ -111,6 +111,12 @@ def register_connection(alias, name=None, host=None, port=None,
     kwargs.pop('slaves', None)
     kwargs.pop('is_slave', None)
 
+    # mongoengine settings
+    retry_settings =  kwargs.pop('retry_upon_reconnect', {'times': 0, 'delay': 0})
+    kwargs['mongoengine_settings'] = {
+        'retry_upon_reconnect': retry_settings
+    }
+
     conn_settings.update(kwargs)
     _connection_settings[alias] = conn_settings
 
@@ -209,7 +215,10 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         # Otherwise, create the new connection for this alias. Raise
         # MongoEngineConnectionError if it can't be established.
         try:
-            _connections[alias] = connection_class(**conn_settings)
+            mongoengine_settings = conn_settings.pop('mongoengine_settings', {})
+            connection = connection_class(**conn_settings)
+            connection.mongoengine_settings = mongoengine_settings
+            _connections[alias] = connection
         except Exception as e:
             raise MongoEngineConnectionError(
                 'Cannot connect to database %s :\n%s' % (alias, e))
