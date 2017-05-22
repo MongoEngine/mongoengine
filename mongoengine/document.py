@@ -799,13 +799,21 @@ class Document(BaseDocument):
     def aggregate(cls, pipeline=None, **kwargs):
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            results = []
-            for doc in proxy_client.instance().aggregate(
-                    cls, pipeline=pipeline):
-                results.append(doc)
-            return {'result': results}
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                results = []
+                for doc in proxy_client.instance().aggregate(
+                        cls, pipeline=pipeline):
+                    results.append(doc)
+                return {'result': results}
+        result = cls._pymongo().aggregate(
+            pipeline,
+            read_preference=pymongo.read_preferences.ReadPreference.SECONDARY)
+        if result:
+            return result
         else:
-            raise Exception('No mongo proxy client found for' + cls.__name__)
+            return {'result': []}
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
