@@ -27,6 +27,7 @@ __all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
 _sleep = time.sleep
 OPS_EMAIL = 'ops@wish.com'
 
+upsert_and_multi_logger = logging.getLogger('sweeper.prod.mongodb_upsert_and_multi')
 high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
 execution_timeout_logger = logging.getLogger('sweeper.prod.mongodb_execution_timeout')
 notimeout_cursor_logger = logging.getLogger('sweeper.prod.mongodb_notimeout')
@@ -1059,9 +1060,14 @@ class Document(BaseDocument):
 
 
         spec = cls._update_spec(spec, **kwargs)
-
+        comment = MongoComment.get_query_comment()
         set_comment = cls.attach_trace(
-            MongoComment.get_query_comment(), is_scatter_gather)
+            comment, is_scatter_gather)
+
+        if upsert and multi:
+            upsert_and_multi_logger.info({
+                '_comment' : comment,
+            })
 
         try:
             with log_slow_event("update", cls._meta['collection'], spec):
