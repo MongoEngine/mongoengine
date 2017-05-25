@@ -106,6 +106,8 @@ class Document(BaseDocument):
         if self.__class__._bulk_op is not None:
             warnings.warn('Non-bulk update inside bulk operation')
 
+        proxy_client = self._get_proxy_client()
+
         if self._meta['hash_field']:
             # if we're hashing the ID and it hasn't been set yet, autogenerate it
             from fields import ObjectIdField
@@ -124,10 +126,39 @@ class Document(BaseDocument):
         try:
             collection = self._pymongo()
             w = self._meta.get('write_concern', 1)
-            if force_insert:
-                object_id = collection.insert(doc, w=w)
+            if force_insert or "_id" not in doc:
+                if proxy_client:
+                    from sweeper.model.decider_key import DeciderKeyRatio
+                    dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+                    if dkey and dkey.decide():
+                        # Copied from pymongo/collection.py. If the _id doesn't exist
+                        # generate it on the client side.
+                        if '_id' not in doc:
+                            doc['_id'] = ObjectId()
+                        proxy_client.instance().insert(
+                            self, [doc], write_concern=w)
+                        object_id = doc['_id']
+                    else:
+                        object_id = collection.insert(doc, w=w)
+                else:
+                    object_id = collection.insert(doc, w=w)
             else:
-                object_id = collection.save(doc, w=w)
+                if proxy_client:
+                    from sweeper.model.decider_key import DeciderKeyRatio
+                    dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+                    if dkey and dkey.decide():
+                        proxy_client.instance().update(
+                            self,
+                            {"_id" : doc["_id"]},
+                            doc,
+                            upsert=True,
+                            write_concern=w
+                        )
+                        object_id = doc["_id"]
+                    else:
+                        object_id = collection.save(doc, w=w)
+                else:
+                    object_id = collection.save(doc, w=w)
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'
             if u'duplicate key' in unicode(err):
@@ -1060,6 +1091,18 @@ class Document(BaseDocument):
 
         spec = cls._update_spec(spec, **kwargs)
 
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs or kwargs['comment'] is None:
+                    kwargs['comment'] = MongoComment.get_comment()
+                return proxy_client.instance().update(
+                    cls, spec, document, upsert=upsert, multi=multi,
+                    w=cls._meta['write_concern'], **kwargs
+                )
+
         set_comment = cls.attach_trace(
             MongoComment.get_query_comment(), is_scatter_gather)
 
@@ -1083,6 +1126,18 @@ class Document(BaseDocument):
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
+
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs or kwargs['comment'] is None:
+                    kwargs['comment'] = MongoComment.get_comment()
+                return proxy_client.instance().remove(
+                    cls, spec,  upsert=upsert, multi=multi,
+                    w=cls._meta['write_concern'], **kwargs
+                )
 
         is_scatter_gather = cls.is_scatter_gather(spec)
         set_comment = cls.attach_trace(
@@ -1183,11 +1238,29 @@ class Document(BaseDocument):
 
         is_scatter_gather = self.is_scatter_gather(
             query_spec)
-        set_comment = self.attach_trace(comment, is_scatter_gather)
 
         query_spec['$comment'] = comment
         query_spec = self._transform_value(query_spec, type(self))
 
+        proxy_client = self._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+            if dkey and dkey.decide():
+                if 'comment' not in kwargs or kwargs['comment'] is None:
+                    kwargs['comment'] = MongoComment.get_comment()
+                result = proxy_client.instance().update(
+                    self, query_spec,  upsert=upsert, multi=False,
+                    w=cls._meta['write_concern'], **kwargs
+                )
+                # do in-memory updates on the object if the query succeeded
+                if result['n'] == 1:
+                    for field, new_val in ops.iteritems():
+                        self[field] = new_val
+
+                return result
+
+        set_comment = self.attach_trace(comment, is_scatter_gather)
         try:
             with log_slow_event("update_one", self._meta['collection'], spec):
                 result = self._pymongo().update(query_spec,

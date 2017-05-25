@@ -873,6 +873,14 @@ class QuerySet(object):
 
         :param safe: check if the operation succeeded before returning
         """
+
+        proxy_client = self._document._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+            if dkey and dkey.decide():
+                proxy_client.instance().remove(self._document, self._query)
+                return
         self._collection.remove(self._query, safe=safe)
 
     @classmethod
