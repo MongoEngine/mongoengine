@@ -1090,7 +1090,11 @@ class Document(BaseDocument):
 
         try:
             with log_slow_event("remove", cls._meta['collection'], spec):
-                result = cls._pymongo().remove(spec, **kwargs)
+                result = cls._pymongo().remove(
+                    spec,
+                    w=cls._meta['write_concern'],
+                    **kwargs
+                )
             return result
         finally:
             cls.cleanup_trace(set_comment)
