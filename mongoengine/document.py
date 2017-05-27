@@ -24,6 +24,8 @@ from mongoengine.queryset import (OperationError, NotUniqueError,
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db, switch_collection
 
+import logging
+
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
            'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
@@ -696,6 +698,23 @@ class Document(BaseDocument):
         cls._collection = None
         db = cls._get_db()
         db.drop_collection(col_name)
+        
+    @classmethod
+    def __create_index(cls, *args, **kwargs):
+        collection = cls._get_collection()
+        try:
+            collection.create_index(*args, **kwargs)
+        except Exception as e:
+            if str(e.__class__) == "OperationFailure" and hasattr(e, 'message'):
+                m = re.match("Index with name: (.*) already exists with different options", e.message)
+                if m:
+                    indexName = m.group(1)
+                    logging.warning("Dropping index: %s on %s due to diff index options", indexName, collection.name)
+                    cls._get_collection().drop_index(indexName)
+                    cls._get_collection().create_index(*args, **kwargs)
+                else:
+                    raise
+            
 
     @classmethod
     def create_index(cls, keys, background=False, **kwargs):
@@ -715,11 +734,11 @@ class Document(BaseDocument):
             warnings.warn(msg, DeprecationWarning)
         elif not IS_PYMONGO_3:
             index_spec['drop_dups'] = drop_dups
-        index_spec['background'] = background
+        index_spec['background'] = True # background
         index_spec.update(kwargs)
 
         if IS_PYMONGO_3:
-            return cls._get_collection().create_index(fields, **index_spec)
+            return cls.__create_index(fields, **index_spec)
         else:
             return cls._get_collection().ensure_index(fields, **index_spec)
 
@@ -788,7 +807,7 @@ class Document(BaseDocument):
                     del opts['cls']
 
                 if IS_PYMONGO_3:
-                    collection.create_index(fields, background=background, **opts)
+                    cls.__create_index(fields, background=background, **opts)
                 else:
                     collection.ensure_index(fields, background=background,
                                             drop_dups=drop_dups, **opts)
