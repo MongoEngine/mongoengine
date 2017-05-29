@@ -252,12 +252,8 @@ class BaseDocument(object):
         return repr_type('<%s: %s>' % (self.__class__.__name__, u))
 
     def __str__(self):
-        # TODO this could be simpler?
         if hasattr(self, '__unicode__'):
-            if six.PY3:
-                return self.__unicode__()
-            else:
-                return six.text_type(self).encode('utf-8')
+            return six.text_type(self.__class__.__name__).encode('utf-8')
         return six.text_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
