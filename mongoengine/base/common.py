@@ -1,6 +1,7 @@
 from mongoengine.errors import NotRegistered
 
-__all__ = ('UPDATE_OPERATORS', 'get_document', '_document_registry')
+__all__ = ('UPDATE_OPERATORS', 'get_document', 'get_document_by_collection',
+           '_document_registry')
 
 
 UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
@@ -9,6 +10,12 @@ UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
 
 
 _document_registry = {}
+
+
+def _is_cls_collection(cls, collection):
+    """Check if a document is associated with the given collection"""
+    doc = _document_registry[cls]
+    return doc._meta.get('collection') == collection
 
 
 def get_document(name):
@@ -29,3 +36,14 @@ def get_document(name):
             been imported?
         """.strip() % name)
     return doc
+
+
+def get_document_by_collection(collection):
+    """Get a document class by the name of its collection."""
+    potential_docs = filter(
+        lambda cls: _is_cls_collection(cls, collection),
+        _document_registry
+    )
+    if not len(potential_docs) == 1:
+        return None
+    return get_document(potential_docs[0])

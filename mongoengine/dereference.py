@@ -2,9 +2,11 @@ from bson import DBRef, SON
 import six
 
 from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList,
-                              TopLevelDocumentMetaclass, get_document)
+                              TopLevelDocumentMetaclass, get_document,
+                              get_document_by_collection)
 from mongoengine.connection import get_db
 from mongoengine.document import Document, EmbeddedDocument
+from mongoengine.errors import NotRegistered
 from mongoengine.fields import DictField, ListField, MapField, ReferenceField
 from mongoengine.queryset import QuerySet
 
@@ -151,9 +153,14 @@ class DeReference(object):
                         if '_cls' in ref:
                             doc = get_document(ref['_cls'])._from_son(ref)
                         elif doc_type is None:
-                            doc = get_document(
-                                ''.join(x.capitalize()
-                                        for x in collection.split('_')))._from_son(ref)
+                            try:
+                                doc = get_document(
+                                    ''.join(x.capitalize()
+                                            for x in collection.split('_')))._from_son(ref)
+                            except NotRegistered as e:
+                                doc = get_document_by_collection(collection)
+                                if doc is None:
+                                    raise e
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc
