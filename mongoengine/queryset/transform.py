@@ -266,6 +266,9 @@ def update(_doc_cls=None, **update):
                     parts.append(field)
                     append_field = False
                 else:
+                    # Convert the S operator to $
+                    if field.db_field == 'S':
+                        field.db_field = '$'
                     parts.append(field.db_field)
                 if append_field:
                     appended_sub_field = False
