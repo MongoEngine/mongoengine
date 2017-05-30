@@ -1250,8 +1250,8 @@ class Document(BaseDocument):
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 result = proxy_client.instance().update(
-                    self, query_spec,  upsert=upsert, multi=False,
-                    w=cls._meta['write_concern'], **kwargs
+                    self, query_spec, document, upsert=upsert, multi=False,
+                    w=self._meta['write_concern'], **kwargs
                 )
                 # do in-memory updates on the object if the query succeeded
                 if result['n'] == 1:
