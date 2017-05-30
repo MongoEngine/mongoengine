@@ -1135,7 +1135,7 @@ class Document(BaseDocument):
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 return proxy_client.instance().remove(
-                    cls, spec, multi=multi,
+                    cls, spec,
                     w=cls._meta['write_concern'], **kwargs
                 )
 
