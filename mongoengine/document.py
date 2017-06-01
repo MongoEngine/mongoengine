@@ -152,7 +152,8 @@ class Document(BaseDocument):
                             {"_id" : doc["_id"]},
                             doc,
                             upsert=True,
-                            write_concern=w
+                            write_concern=w,
+                            multi=False
                         )
                         object_id = doc["_id"]
                     else:
