@@ -815,6 +815,7 @@ class Document(BaseDocument):
                 for doc in proxy_client.instance().find_iter(
                     cls, spec, fields=fields, skip=skip,
                     limit=limit, sort=sort, slave_ok=slave_ok,
+                    batch_size=batch_size,
                     excluded_fields=excluded_fields, max_time_ms=max_time_ms,
                     **kwargs
                     ):
