@@ -37,6 +37,7 @@ except ImportError:
 # not put signals in here.  Create your own namespace instead.
 _signals = Namespace()
 
+class_prepared = _signals.signal('class_prepared')
 pre_init = _signals.signal('pre_init')
 post_init = _signals.signal('post_init')
 pre_save = _signals.signal('pre_save')
