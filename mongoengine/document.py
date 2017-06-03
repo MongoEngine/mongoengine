@@ -199,17 +199,31 @@ class Document(BaseDocument):
 
     @classmethod
     @contextlib.contextmanager
-    def bulk(cls, allow_empty=None):
-        if cls._bulk_op is not None:
+    def bulk(cls, allow_empty=None, unordered=False):
+        if cls._bulk_op is not None or cls._bulk_ops is not None:
             raise RuntimeError('Cannot nest bulk operations')
         try:
-            cls._bulk_op = cls._pymongo().initialize_ordered_bulk_op()
+            if unordered:
+                cls._bulk_op = cls._pymongo().initialize_unordered_bulk_op()
+            else:
+                cls._bulk_op = cls._pymongo().initialize_ordered_bulk_op()
             cls._bulk_index = 0
             cls._bulk_save_objects = dict()
+            cls._bulk_ops = []
             yield
             try:
-                w = cls._meta.get('write_concern', 1)
-                cls._bulk_op.execute(write_concern={'w': w})
+                proxy_client = cls._get_proxy_client()
+                if proxy_client:
+                    from sweeper.model.decider_key import DeciderKeyRatio
+                    dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+                    if dkey and dkey.decide():
+                        proxy_client.instance().bulk(cls, unordered)
+                    else:
+                        w = cls._meta.get('write_concern', 1)
+                        cls._bulk_op.execute(write_concern={'w':w})
+                else:
+                    w = cls._meta.get('write_concern', 1)
+                    cls._bulk_op.execute(write_concern={'w': w})
 
                 for object_id, props in cls._bulk_save_objects.iteritems():
                     instance = props['obj']
@@ -253,13 +267,17 @@ class Document(BaseDocument):
                         pass
                 else:
                     raise
+            except (pymongo.errors.OperationFailure, ProxiedGrpcError), err:
+                message = u'Could not perform bulk operation (%s)' % err.message
+                raise OperationError(message)
         finally:
             cls._bulk_op = None
+            cls._bulk_ops = None
             cls._bulk_save_objects = None
 
     @classmethod
     def bulk_update(cls, spec, document, upsert=False, multi=True, **kwargs):
-        if cls._bulk_op is None:
+        if cls._bulk_op is None or cls._bulk_ops is None:
             raise RuntimeError('Cannot bulk update outside of bulk operation')
 
         document = cls._transform_value(document, cls, op='$set')
@@ -272,11 +290,20 @@ class Document(BaseDocument):
             raise ValueError("Cannot do empty specs")
 
         spec = cls._update_spec(spec, **kwargs)
+        bulk_step = {
+            'filter': spec,
+            'document': document
+        }
 
         # pymongo's bulk operation support is based on chaining
         if upsert:
             op = cls._bulk_op.find(spec).upsert()
+            bulk_step['op'] = 'upsert'
         else:
+            if multi:
+                bulk_step['op'] = 'update_all'
+            else:
+                bulk_step['op'] = 'update'
             op = cls._bulk_op.find(spec)
 
         if multi:
@@ -285,10 +312,39 @@ class Document(BaseDocument):
             op.update_one(document)
 
         cls._bulk_index += 1
+        cls._bulk_ops.append(bulk_step)
+
+    @classmethod
+    def bulk_remove(cls, spec, multi=True, **kwargs):
+        if cls._bulk_op is None or cls._bulk_ops is None:
+            raise RuntimeError('Cannot bulk remove outside of bulk operation')
+
+        spec = cls._transform_value(spec, cls)
+
+        if not spec:
+            raise ValueError("Cannot do empty specs")
+
+        spec = cls._update_spec(spec, **kwargs)
+
+        op = cls._bulk_op.find(spec)
+        if multi:
+            op.remove()
+            cls._bulk_ops.append({
+                'op': 'remove_all',
+                'filter': spec
+            })
+        else:
+            op.remove_one()
+            cls._bulk_ops.append({
+                'op': 'remove',
+                'filter': spec
+            })
+
+        cls._bulk_index += 1
 
     def bulk_save(self, validate=True):
         cls = self.__class__
-        if cls._bulk_op is None:
+        if cls._bulk_op is None or cls._bulk_ops is None:
             raise RuntimeError('Cannot bulk save outside of bulk operation')
 
         if validate:
@@ -321,6 +377,11 @@ class Document(BaseDocument):
             'obj': self
         }
         cls._bulk_index += 1
+
+        cls._bulk_ops.append({
+            'op': 'insert',
+            'document': doc
+        })
 
     @classmethod
     def _from_augmented_son(cls, d, fields, excluded_fields=None):
@@ -989,6 +1050,16 @@ class Document(BaseDocument):
 
         set_comment = cls.attach_trace(
             MongoComment.get_query_comment(), is_scatter_gather)
+
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
+            if dkey and dkey.decide():
+                return proxy_client.instance().find_and_modify(
+                    cls, spec, sort=sort, remove=remove, update=update, new=new,
+                    fields=fields, upsert=upsert, excluded_fields=excluded_fields, **kwargs
+                )
 
         try:
             with log_slow_event("find_and_modify", cls._meta['collection'], spec):

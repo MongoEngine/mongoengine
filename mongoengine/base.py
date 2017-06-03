@@ -385,6 +385,7 @@ class DocumentMetaclass(type):
         attrs['_fields'] = doc_fields
         attrs['_relationships'] = doc_relationships
         attrs['_bulk_op'] = None
+        attrs['_bulk_ops'] = None
         attrs['_allow_unloaded'] = False
 
         new_class = super_new(cls, name, bases, attrs)
