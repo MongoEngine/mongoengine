@@ -8,7 +8,7 @@ import time
 # So that 'setup.py doc' can import this module without Tornado or greenlet
 requirements_satisfied = True
 try:
-    from tornado import ioloop, iostream, locks
+    from tornado import iostream, ioloop
 except ImportError:
     requirements_satisfied = False
     warnings.warn("Tornado not installed", ImportWarning)
