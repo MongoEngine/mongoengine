@@ -589,6 +589,20 @@ class QuerySetTest(unittest.TestCase):
         Scores.objects(id=scores.id).update(max__high_score=500)
         self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
 
+    @needs_mongodb_v26
+    def test_update_multiple(self):
+        class Product(Document):
+            item = StringField()
+            price = FloatField()
+
+        product = Product.objects.create(item='ABC', price=10.99)
+        product = Product.objects.create(item='ABC', price=10.99)
+        Product.objects(id=product.id).update(mul__price=1.25)
+        self.assertEqual(Product.objects.get(id=product.id).price, 13.7375)
+        unknown_product = Product.objects.create(item='Unknown')
+        Product.objects(id=unknown_product.id).update(mul__price=100)
+        self.assertEqual(Product.objects.get(id=unknown_product.id).price, 0)
+
     def test_updates_can_have_match_operators(self):
 
         class Comment(EmbeddedDocument):
