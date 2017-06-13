@@ -22,13 +22,13 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
-from mongoengine.context_managers import switch_db, switch_collection
+from mongoengine.connections_manager import connection_manager
 
 import logging
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
-           'InvalidCollectionError', 'NotUniqueError', 'MapReduceDocument')
+           'NotUniqueError', 'MapReduceDocument')
 
 
 def includes_cls(fields):
@@ -42,10 +42,6 @@ def includes_cls(fields):
         elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
             first_field = fields[0][0]
     return first_field == '_cls'
-
-
-class InvalidCollectionError(Exception):
-    pass
 
 
 class EmbeddedDocument(BaseDocument):
@@ -166,52 +162,6 @@ class Document(BaseDocument):
 
     pk = pk()
 
-    @classmethod
-    def _get_db(cls):
-        """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
-
-    @classmethod
-    def _get_collection(cls):
-        """Returns the collection for the document."""
-        # TODO: use new get_collection() with PyMongo3 ?
-        if not hasattr(cls, '_collection') or cls._collection is None:
-            db = cls._get_db()
-            collection_name = cls._get_collection_name()
-            # Create collection as a capped collection if specified
-            if cls._meta.get('max_size') or cls._meta.get('max_documents'):
-                # Get max document limit and max byte size from meta
-                max_size = cls._meta.get('max_size') or 10 * 2 ** 20  # 10MB default
-                max_documents = cls._meta.get('max_documents')
-                # Round up to next 256 bytes as MongoDB would do it to avoid exception
-                if max_size % 256:
-                    max_size = (max_size // 256 + 1) * 256
-
-                if collection_name in db.collection_names():
-                    cls._collection = db[collection_name]
-                    # The collection already exists, check if its capped
-                    # options match the specified capped options
-                    options = cls._collection.options()
-                    if options.get('max') != max_documents or \
-                            options.get('size') != max_size:
-                        msg = (('Cannot create collection "%s" as a capped '
-                                'collection as it already exists')
-                               % cls._collection)
-                        raise InvalidCollectionError(msg)
-                else:
-                    # Create the collection as a capped collection
-                    opts = {'capped': True, 'size': max_size}
-                    if max_documents:
-                        opts['max'] = max_documents
-                    cls._collection = db.create_collection(
-                        collection_name, **opts
-                    )
-            else:
-                cls._collection = db[collection_name]
-            if cls._meta.get('auto_create_index', True):
-                cls.ensure_indexes()
-        return cls._collection
-
     def modify(self, query={}, **update):
         """Perform an atomic update of the document in the database and reload
         the document object using updated version.
@@ -252,7 +202,8 @@ class Document(BaseDocument):
 
     def save(self, force_insert=False, validate=True, clean=True,
              write_concern=None, cascade=None, cascade_kwargs=None,
-             _refs=None, save_condition=None, signal_kwargs=None, **kwargs):
+             _refs=None, save_condition=None, signal_kwargs=None,
+             alias=None, collection_name=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created.
@@ -321,9 +272,7 @@ class Document(BaseDocument):
                                               created=created, **signal_kwargs)
 
         try:
-            collection = self._get_collection()
-            if self._meta.get('auto_create_index', True):
-                self.ensure_indexes()
+            collection = connection_manager.get_and_setup(self.__class__, alias=alias, collection_name=collection_name)
             if created:
                 if force_insert:
                     object_id = collection.insert(doc, **write_concern)
@@ -446,7 +395,7 @@ class Document(BaseDocument):
         Returns the queryset to use for updating / reloading / deletions
         """
         if not hasattr(self, '__objects'):
-            self.__objects = QuerySet(self, self._get_collection())
+            self.__objects = QuerySet(self, connection_manager.get_and_setup(self.__class__))
         return self.__objects
 
     @property
@@ -516,65 +465,6 @@ class Document(BaseDocument):
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
-
-    def switch_db(self, db_alias, keep_created=True):
-        """
-        Temporarily switch the database for a document instance.
-
-        Only really useful for archiving off data and calling `save()`::
-
-            user = User.objects.get(id=user_id)
-            user.switch_db('archive-db')
-            user.save()
-
-        :param str db_alias: The database alias to use for saving the document
-
-        :param bool keep_created: keep self._created value after switching db, else is reset to True
-
-
-        .. seealso::
-            Use :class:`~mongoengine.context_managers.switch_collection`
-            if you need to read from another collection
-        """
-        with switch_db(self.__class__, db_alias) as cls:
-            collection = cls._get_collection()
-            db = cls._get_db()
-        self._get_collection = lambda: collection
-        self._get_db = lambda: db
-        self._collection = collection
-        self._created = True if not keep_created else self._created
-        self.__objects = self._qs
-        self.__objects._collection_obj = collection
-        return self
-
-    def switch_collection(self, collection_name, keep_created=True):
-        """
-        Temporarily switch the collection for a document instance.
-
-        Only really useful for archiving off data and calling `save()`::
-
-            user = User.objects.get(id=user_id)
-            user.switch_collection('old-users')
-            user.save()
-
-        :param str collection_name: The database alias to use for saving the
-            document
-
-        :param bool keep_created: keep self._created value after switching collection, else is reset to True
-
-
-        .. seealso::
-            Use :class:`~mongoengine.context_managers.switch_db`
-            if you need to read from another database
-        """
-        with switch_collection(self.__class__, collection_name) as cls:
-            collection = cls._get_collection()
-        self._get_collection = lambda: collection
-        self._collection = collection
-        self._created = True if not keep_created else self._created
-        self.__objects = self._qs
-        self.__objects._collection_obj = collection
-        return self
 
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
@@ -681,7 +571,7 @@ class Document(BaseDocument):
                 klass._meta['delete_rules'] = delete_rules
 
     @classmethod
-    def drop_collection(cls):
+    def drop_collection(cls, alias=None, collection_name=None):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
 
@@ -691,17 +581,21 @@ class Document(BaseDocument):
         .. versionchanged:: 0.10.7
             :class:`OperationError` exception raised if no collection available
         """
-        col_name = cls._get_collection_name()
-        if not col_name:
-            raise OperationError('Document %s has no collection defined '
-                                 '(is it abstract ?)' % cls)
-        cls._collection = None
-        db = cls._get_db()
-        db.drop_collection(col_name)
+        connection_manager.drop_collection(cls, alias=alias, collection_name=collection_name)
+
+    @classmethod
+    def _get_collection(cls, alias=None, collection_name=None):
+        return connection_manager.get_and_setup(cls, alias=alias, collection_name=collection_name)
+
+    @classmethod
+    def _get_db(cls, alias=None):
+        if alias is None:
+            alias = cls._get_db_alias()
+        return connection_manager._get_db(alias)
         
     @classmethod
     def __create_index(cls, *args, **kwargs):
-        collection = cls._get_collection()
+        collection = connection_manager.get_collection(cls)
         try:
             collection.create_index(*args, **kwargs)
         except Exception as e:
@@ -710,8 +604,8 @@ class Document(BaseDocument):
                 if m:
                     indexName = m.group(1)
                     logging.warning("Dropping index: %s on %s due to diff index options", indexName, collection.name)
-                    cls._get_collection().drop_index(indexName)
-                    cls._get_collection().create_index(*args, **kwargs)
+                    connection_manager.get_collection(cls).drop_index(indexName)
+                    connection_manager.get_collection(cls).create_index(*args, **kwargs)
                 else:
                     raise
             
@@ -740,7 +634,7 @@ class Document(BaseDocument):
         if IS_PYMONGO_3:
             return cls.__create_index(fields, **index_spec)
         else:
-            return cls._get_collection().ensure_index(fields, **index_spec)
+            return connection_manager.get_collection(cls).ensure_index(fields, **index_spec)
 
     @classmethod
     def ensure_index(cls, key_or_list, drop_dups=False, background=False,
@@ -763,7 +657,7 @@ class Document(BaseDocument):
         return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
-    def ensure_indexes(cls):
+    def ensure_indexes(cls, collection):
         """Checks the document meta data and ensures all the indexes exist.
 
         Global defaults can be set in the meta - see :doc:`guide/defining-documents`
@@ -779,7 +673,6 @@ class Document(BaseDocument):
             msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
             warnings.warn(msg, DeprecationWarning)
 
-        collection = cls._get_collection()
         # 746: when connection is via mongos, the read preference is not necessarily an indication that
         # this code runs on a secondary
         if not collection.is_mongos and collection.read_preference > 1:
@@ -851,13 +744,13 @@ class Document(BaseDocument):
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
                         base_cls != Document and
                         not base_cls._meta.get('abstract') and
-                        base_cls._get_collection().full_name == cls._get_collection().full_name and
+                        connection_manager.get_collection(base_cls).full_name == connection_manager.get_collection(cls).full_name and
                         base_cls not in classes):
                     classes.append(base_cls)
                     get_classes(base_cls)
             for subclass in cls.__subclasses__():
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
-                        subclass._get_collection().full_name == cls._get_collection().full_name and
+                        connection_manager.get_collection(subclass).full_name == connection_manager.get_collection(cls).full_name and
                         subclass not in classes):
                     classes.append(subclass)
                     get_classes(subclass)
@@ -899,7 +792,7 @@ class Document(BaseDocument):
 
         required = cls.list_indexes()
         existing = [info['key']
-                    for info in cls._get_collection().index_information().values()]
+                    for info in connection_manager.get_collection(cls).index_information().values()]
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
