@@ -632,7 +632,7 @@ class Document(BaseDocument):
         index_spec.update(kwargs)
 
         if IS_PYMONGO_3:
-            return connection_manager.get_collection(cls).create_index(fields, **index_spec)
+            return cls.__create_index(fields, **index_spec)
         else:
             return connection_manager.get_collection(cls).ensure_index(fields, **index_spec)
 
