@@ -17,15 +17,18 @@ class ConnectionManager(object):
             alias = doc_cls._get_db_alias()
 
         if collection_name is None:
+            registry_collection_name = getattr(doc_cls, '_class_name', doc_cls._get_collection_name())
             collection_name = doc_cls._get_collection_name()
+        else:
+            registry_collection_name = collection_name
 
-        _collection = self.connections_registry[alias].get(collection_name)
+        _collection = self.connections_registry[alias].get(registry_collection_name)
         if not _collection:
             _collection = self.get_collection(doc_cls, alias, collection_name)
             if doc_cls._meta.get('auto_create_index', True):
                 doc_cls.ensure_indexes(_collection)
-            self.connections_registry[alias][collection_name] = _collection
-        return self.connections_registry[alias][collection_name]
+            self.connections_registry[alias][registry_collection_name] = _collection
+        return self.connections_registry[alias][registry_collection_name]
 
     @classmethod
     def _get_db(cls, alias):
