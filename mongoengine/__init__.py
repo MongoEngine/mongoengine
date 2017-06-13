@@ -9,10 +9,12 @@ from queryset import *
 import signals
 from signals import *
 from errors import *
+import connections_manager
 import errors
 
 __all__ = (list(document.__all__) + fields.__all__ + connection.__all__ +
-           list(queryset.__all__) + signals.__all__ + list(errors.__all__))
+           list(queryset.__all__) + signals.__all__ + list(errors.__all__) +
+           list(connections_manager.__all__))
 
 VERSION = (0, 10, 6)
 

@@ -25,6 +25,7 @@ from mongoengine.base.datastructures import (
 from mongoengine.base.fields import ComplexBaseField
 
 from mongoengine.base.proxy import DocumentProxy
+from mongoengine.connection import DEFAULT_CONNECTION_NAME
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -690,6 +691,10 @@ class BaseDocument(object):
         """Returns the collection name for this class. None for abstract class
         """
         return cls._meta.get('collection', None)
+
+    @classmethod
+    def _get_db_alias(cls):
+        return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
