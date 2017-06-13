@@ -21,8 +21,6 @@ from mongoengine.errors import (InvalidQueryError, InvalidDocumentError,
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
-from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
-from mongoengine.context_managers import switch_db, switch_collection
 from mongoengine.connections_manager import connection_manager
 
 import logging
