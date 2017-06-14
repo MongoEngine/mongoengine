@@ -5119,8 +5119,49 @@ class QuerySetTest(unittest.TestCase):
 
         User.objects.all().for_each(grow_up)
 
-        self.assertEqual(23, User.objects.get(name="Peter").age)
-        self.assertEqual(33, User.objects.get(name="Victor").age)
+        self.assertEqual(User.objects.get(name="Peter").age, 23)
+        self.assertEqual(User.objects.get(name="Victor").age, 33)
+
+    def test_chained_for_each(self):
+        """Ensure that using the 'for_each' method applies as expected"""
+        class User(Document):
+            name = StringField()
+            age = IntField()
+
+        User.drop_collection()
+
+        User.objects.create(name="Peter", age=22)
+        User.objects.create(name="Victor", age=32)
+
+        def grow_up(user):
+            user.age += 1
+            user.save()
+
+        User.objects.all().for_each(grow_up).for_each(grow_up)
+
+        self.assertEqual(User.objects.get(name="Peter").age, 24)
+        self.assertEqual(User.objects.get(name="Victor").age, 34)
+
+    def test_for_each_return_type(self):
+        """Ensure that using the 'for_each' method applies as expected"""
+        class User(Document):
+            name = StringField()
+            age = IntField()
+
+        User.drop_collection()
+
+        User.objects.create(name="Peter", age=22)
+        User.objects.create(name="Victor", age=32)
+
+        def grow_up(user):
+            user.age += 1
+            user.save()
+
+        result = User.objects.all().for_each(grow_up)
+
+        self.assertTrue(isinstance(result, QuerySet))
+        self.assertEqual(result.count(), 2)
+        self.assertEqual(result.first().age, 23)
 
 
 if __name__ == '__main__':

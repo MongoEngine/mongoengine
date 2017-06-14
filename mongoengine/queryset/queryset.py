@@ -154,6 +154,8 @@ class QuerySet(BaseQuerySet):
         for document in self:
             function(document)
 
+        return self
+
 
 class QuerySetNoCache(BaseQuerySet):
     """A non caching QuerySet"""
