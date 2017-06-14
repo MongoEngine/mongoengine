@@ -5102,6 +5102,26 @@ class QuerySetTest(unittest.TestCase):
         # in a way we'd expect) should raise a TypeError, too
         self.assertRaises(TypeError, BlogPost.objects(authors__in=author).count)
 
+    def test_for_each(self):
+        """Ensure that using the 'for_each' method applies as expected"""
+        class User(Document):
+            name = StringField()
+            age = IntField()
+
+        User.drop_collection()
+
+        User.objects.create(name="Peter", age=22)
+        User.objects.create(name="Victor", age=32)
+
+        def grow_up(user):
+            user.age += 1
+            user.save()
+
+        User.objects.all().for_each(grow_up)
+
+        self.assertEqual(23, User.objects.get(name="Peter").age)
+        self.assertEqual(33, User.objects.get(name="Victor").age)
+
 
 if __name__ == '__main__':
     unittest.main()
