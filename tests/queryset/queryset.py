@@ -5161,7 +5161,6 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertTrue(isinstance(result, QuerySet))
         self.assertEqual(result.count(), 2)
-        self.assertEqual(result.first().age, 23)
 
 
 if __name__ == '__main__':
