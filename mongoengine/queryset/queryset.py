@@ -146,6 +146,16 @@ class QuerySet(BaseQuerySet):
         return self._clone_into(QuerySetNoCache(self._document,
                                                 self._collection))
 
+    def for_each(self, function):
+        """Applies a function to each of the documents in the queryset
+
+        :param function: function that takes as argument a document of the queryset
+        """
+        for document in self:
+            function(document)
+
+        return self
+
 
 class QuerySetNoCache(BaseQuerySet):
     """A non caching QuerySet"""
