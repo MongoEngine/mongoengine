@@ -2306,6 +2306,8 @@ class QuerySetTest(unittest.TestCase):
         class User(Document):
             age = IntField()
 
+        User.drop_collection()
+
         with db_ops_tracker() as q:
             adult = (User.objects.filter(age__gte=18)
                 .comment('looking for an adult')
@@ -5161,7 +5163,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertTrue(isinstance(result, QuerySet))
         self.assertEqual(result.count(), 2)
-
+        self.assertEqual(result.first().age, 23)
 
 if __name__ == '__main__':
     unittest.main()
