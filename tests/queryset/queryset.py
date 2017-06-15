@@ -1903,6 +1903,29 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_update_push_with_position(self):
+        """Ensure that the 'push' update with position works properly.
+        """
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
+        post.save()
+
+        BlogPost.objects.filter(id=post.id).update(push__tags="code")
+        BlogPost.objects.filter(id=post.id).update(push__tags__0=["mongodb", "python"])
+        post.reload()
+        self.assertEqual(post.tags[0], "mongodb")
+        self.assertEqual(post.tags[1], "python")
+        self.assertEqual(post.tags[2], "code")
+
+        BlogPost.objects.filter(id=post.id).update(set__tags__2="java")
+        post.reload()
+        self.assertEqual(post.tags[2], "java")
+
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """

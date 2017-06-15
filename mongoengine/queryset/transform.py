@@ -284,9 +284,11 @@ def update(_doc_cls=None, **update):
             if isinstance(field, GeoJsonBaseField):
                 value = field.to_mongo(value)
 
-            if op in (None, 'set', 'push', 'pull'):
+            if op == 'push' and isinstance(value, (list, tuple, set)):
+                value = [field.prepare_query_value(op, v) for v in value]
+            elif op in (None, 'set', 'push', 'pull'):
                 if field.required or value is not None:
-                    value = field.prepare_query_value(op, value)
+                        value = field.prepare_query_value(op, value)
             elif op in ('pushAll', 'pullAll'):
                 value = [field.prepare_query_value(op, v) for v in value]
             elif op in ('addToSet', 'setOnInsert'):
@@ -302,6 +304,10 @@ def update(_doc_cls=None, **update):
             value = {match: value}
 
         key = '.'.join(parts)
+        position = None
+        if parts[-1].isdigit() and isinstance(value, (list, tuple, set)):
+            key = parts[0]
+            position = int(parts[-1])
 
         if not op:
             raise InvalidQueryError('Updates must supply an operation '
@@ -333,10 +339,14 @@ def update(_doc_cls=None, **update):
                 value = {key: value}
         elif op == 'addToSet' and isinstance(value, list):
             value = {key: {'$each': value}}
+        elif op == 'push' and isinstance(value, list):
+            if position is not None:
+                value = {key: {'$each': value, '$position': position}}
+            else:
+                value = {key: {'$each': value}}
         else:
             value = {key: value}
         key = '$' + op
-
         if key not in mongo_update:
             mongo_update[key] = value
         elif key in mongo_update and isinstance(mongo_update[key], dict):
