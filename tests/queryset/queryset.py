@@ -2306,8 +2306,6 @@ class QuerySetTest(unittest.TestCase):
         class User(Document):
             age = IntField()
 
-        User.drop_collection()
-
         with db_ops_tracker() as q:
             adult = (User.objects.filter(age__gte=18)
                 .comment('looking for an adult')
@@ -5106,60 +5104,60 @@ class QuerySetTest(unittest.TestCase):
 
     def test_for_each(self):
         """Ensure that using the 'for_each' method applies as expected"""
-        class User(Document):
+        class UserWithAge(Document):
             name = StringField()
             age = IntField()
 
-        User.drop_collection()
+        UserWithAge.drop_collection()
 
-        User.objects.create(name="Peter", age=22)
-        User.objects.create(name="Victor", age=32)
+        UserWithAge.objects.create(name="Peter", age=22)
+        UserWithAge.objects.create(name="Victor", age=32)
 
         def grow_up(user):
             user.age += 1
             user.save()
 
-        User.objects.all().for_each(grow_up)
+        UserWithAge.objects.all().for_each(grow_up)
 
-        self.assertEqual(User.objects.get(name="Peter").age, 23)
-        self.assertEqual(User.objects.get(name="Victor").age, 33)
+        self.assertEqual(UserWithAge.objects.get(name="Peter").age, 23)
+        self.assertEqual(UserWithAge.objects.get(name="Victor").age, 33)
 
     def test_chained_for_each(self):
         """Ensure that using the 'for_each' method applies as expected"""
-        class User(Document):
+        class UserWithAge(Document):
             name = StringField()
             age = IntField()
 
-        User.drop_collection()
+        UserWithAge.drop_collection()
 
-        User.objects.create(name="Peter", age=22)
-        User.objects.create(name="Victor", age=32)
+        UserWithAge.objects.create(name="Peter", age=22)
+        UserWithAge.objects.create(name="Victor", age=32)
 
         def grow_up(user):
             user.age += 1
             user.save()
 
-        User.objects.all().for_each(grow_up).for_each(grow_up)
+        UserWithAge.objects.all().for_each(grow_up).for_each(grow_up)
 
-        self.assertEqual(User.objects.get(name="Peter").age, 24)
-        self.assertEqual(User.objects.get(name="Victor").age, 34)
+        self.assertEqual(UserWithAge.objects.get(name="Peter").age, 24)
+        self.assertEqual(UserWithAge.objects.get(name="Victor").age, 34)
 
     def test_for_each_return_type(self):
         """Ensure that using the 'for_each' method applies as expected"""
-        class User(Document):
+        class UserWithAge(Document):
             name = StringField()
             age = IntField()
 
-        User.drop_collection()
+        UserWithAge.drop_collection()
 
-        User.objects.create(name="Peter", age=22)
-        User.objects.create(name="Victor", age=32)
+        UserWithAge.objects.create(name="Peter", age=22)
+        UserWithAge.objects.create(name="Victor", age=32)
 
         def grow_up(user):
             user.age += 1
             user.save()
 
-        result = User.objects.all().for_each(grow_up)
+        result = UserWithAge.objects.all().for_each(grow_up)
 
         self.assertTrue(isinstance(result, QuerySet))
         self.assertEqual(result.count(), 2)
