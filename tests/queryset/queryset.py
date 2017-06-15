@@ -1903,6 +1903,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    @needs_mongodb_v26
     def test_update_push_with_position(self):
         """Ensure that the 'push' update with position works properly.
         """
