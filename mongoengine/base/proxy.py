@@ -11,3 +11,8 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     def __call__(self, *args, **kwargs):
         # Hack as callable(lazy_object_proxy.Proxy) return True
         return self.__wrapped__
+
+    def __eq__(self, other):
+        if type(other) is DocumentProxy or hasattr(other, 'id'):
+            return self.id == other.id
+        return self.__wrapped__ == other
