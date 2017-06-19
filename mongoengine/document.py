@@ -640,12 +640,15 @@ class Document(BaseDocument):
             if not hasattr(current_greenlet,
                 '__mongoengine_comment__'):
                 trace_comment = comment#'%f:%s' % (time.time(), comment)
-                current_greenlet.add_mongo_start(
-                    trace_comment, time.time())
                 setattr(current_greenlet,
                     '__mongoengine_comment__', trace_comment)
                 set_comment = True
-
+                current_greenlet.add_mongo_start(
+                    trace_comment, time.time())
+            else:
+                trace_comment = getattr(current_greenlet, '__mongoengine_comment__')
+                current_greenlet.add_mongo_start(
+                    trace_comment, time.time())
             setattr(current_greenlet,
                 '__scatter_gather__', is_scatter_gather)
 
@@ -662,7 +665,7 @@ class Document(BaseDocument):
                 current.__mongoengine_comment__, time.time(),
                 is_scatter_gather)
 
-        if set_comment and hasattr(
+        if hasattr(
             current,'__mongoengine_comment__'):
             delattr(current,
                 '__mongoengine_comment__')
@@ -679,13 +682,18 @@ class Document(BaseDocument):
             if dkey and dkey.decide():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                return proxy_client.instance().find_raw(
-                    cls, spec, fields=fields, skip=skip,
-                    limit=limit, sort=sort, slave_ok=slave_ok,
-                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                    batch_size=batch_size, hint=hint,
-                    find_one=find_one,**kwargs
-                ), False
+                is_scatter_gather = cls.is_scatter_gather(spec)
+                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
+                try:
+                    return proxy_client.instance().find_raw(
+                        cls, spec, fields=fields, skip=skip,
+                        limit=limit, sort=sort, slave_ok=slave_ok,
+                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                        batch_size=batch_size, hint=hint,
+                        find_one=find_one,**kwargs
+                    ), False
+                finally:
+                    cls.cleanup_trace(set_comment)
         if kwargs.get("timeout") is False and slave_ok != "offline":
             trace = "".join(traceback.format_stack())
             notimeout_cursor_logger.info({
@@ -801,12 +809,17 @@ class Document(BaseDocument):
             if dkey and dkey.decide():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                return proxy_client.instance().find(
-                    cls, spec, fields=fields, skip=skip,
-                    limit=limit, sort=sort, slave_ok=slave_ok,
-                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                    timeout_value=timeout_value, **kwargs
-                )
+                is_scatter_gather = cls.is_scatter_gather(spec)
+                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
+                try:
+                    return proxy_client.instance().find(
+                        cls, spec, fields=fields, skip=skip,
+                        limit=limit, sort=sort, slave_ok=slave_ok,
+                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                        timeout_value=timeout_value, **kwargs
+                    )
+                finally:
+                    cls.cleanup_trace(set_comment)
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
@@ -879,6 +892,9 @@ class Document(BaseDocument):
             if dkey and dkey.decide():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
+                is_scatter_gather = cls.is_scatter_gather(spec)
+                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
+                cls.cleanup_trace(set_comment)
                 for doc in proxy_client.instance().find_iter(
                     cls, spec, fields=fields, skip=skip,
                     limit=limit, sort=sort, slave_ok=slave_ok,
@@ -983,12 +999,17 @@ class Document(BaseDocument):
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 kwargs['find_one'] = True
-                return proxy_client.instance().find(
-                    cls, spec, fields=fields, skip=skip,
-                    sort=sort, slave_ok=slave_ok,
-                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                    timeout_value=timeout_value, **kwargs
-                )
+                is_scatter_gather = cls.is_scatter_gather(spec)
+                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
+                try:
+                    return proxy_client.instance().find(
+                        cls, spec, fields=fields, skip=skip,
+                        sort=sort, slave_ok=slave_ok,
+                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                        timeout_value=timeout_value, **kwargs
+                    )
+                finally:
+                    cls.cleanup_trace(set_comment)
 
         cur, set_comment = cls.find_raw(spec, fields, skip=skip, sort=sort,
                          slave_ok=slave_ok, find_one=True,
@@ -1091,11 +1112,16 @@ class Document(BaseDocument):
             if dkey and dkey.decide():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                return proxy_client.instance().count(
-                    cls, spec, slave_ok=slave_ok,
-                    max_time_ms=max_time_ms,
-                    timeout_value=timeout_value, **kwargs
-                )
+                is_scatter_gather = cls.is_scatter_gather(spec)
+                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
+                try:
+                    return proxy_client.instance().count(
+                        cls, spec, slave_ok=slave_ok,
+                        max_time_ms=max_time_ms,
+                        timeout_value=timeout_value, **kwargs
+                    )
+                finally:
+                    cls.cleanup_trace(set_comment)
 
         kwargs['comment'] = comment
 
