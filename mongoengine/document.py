@@ -53,7 +53,7 @@ class EmbeddedDocument(BaseDocument):
     :attr:`meta` dictionary.
     """
 
-    __slots__ = ('_instance', )
+    __slots__ = ('_instance',)
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
@@ -222,8 +222,8 @@ class Document(BaseDocument):
             collection = db[collection_name]
             options = collection.options()
             if (
-                options.get('max') != max_documents or
-                options.get('size') != max_size
+                            options.get('max') != max_documents or
+                            options.get('size') != max_size
             ):
                 raise InvalidCollectionError(
                     'Cannot create collection "{}" as a capped '
@@ -916,16 +916,16 @@ class Document(BaseDocument):
 
             for base_cls in cls.__bases__:
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
-                        base_cls != Document and
+                            base_cls != Document and
                         not base_cls._meta.get('abstract') and
-                        base_cls._get_collection().full_name == cls._get_collection().full_name and
-                        base_cls not in classes):
+                            base_cls._get_collection().full_name == cls._get_collection().full_name and
+                            base_cls not in classes):
                     classes.append(base_cls)
                     get_classes(base_cls)
             for subclass in cls.__subclasses__():
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
-                        subclass._get_collection().full_name == cls._get_collection().full_name and
-                        subclass not in classes):
+                            subclass._get_collection().full_name == cls._get_collection().full_name and
+                            subclass not in classes):
                     classes.append(subclass)
                     get_classes(subclass)
 
