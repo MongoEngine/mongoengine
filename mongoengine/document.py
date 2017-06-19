@@ -935,10 +935,27 @@ class Document(BaseDocument):
                  slave_ok=False, timeout=True, excluded_fields=None,
                  max_time_ms=None, timeout_value=NO_TIMEOUT_DEFAULT,
                  **kwargs):
+
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
+            from sweeper.model.decider_key import DeciderKeyRatio
+            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
+            if dkey and dkey.decide():
+                spec = cls._transform_value(spec, cls)
+                spec = cls._update_spec(spec, **kwargs)
+                key = cls._transform_key(key, cls)[0]
+                return proxy_client.instance().distinct(
+                    cls, spec, distinct_key=key, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
+
         cur, set_comment = cls.find_raw(spec, fields, skip, limit,
                            sort, slave_ok=slave_ok, timeout=timeout,
                            excluded_fields=excluded_fields,
                            max_time_ms=max_time_ms,**kwargs)
+
         try:
             return cur.distinct(cls._transform_key(key, cls)[0])
         except pymongo.errors.ExecutionTimeout:
