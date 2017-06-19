@@ -777,7 +777,6 @@ class InstanceTest(unittest.TestCase):
 
         self.assertDbEqual([dict(doc.to_mongo())])
 
-
     def test_modify_invalid_query(self):
         doc1 = self.Person(name="bob", age=10).save()
         doc2 = self.Person(name="jim", age=20).save()
