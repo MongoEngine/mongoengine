@@ -88,9 +88,6 @@ class EmbeddedDocument(BaseDocument):
 
         return data
 
-    def save(self, *args, **kwargs):
-        self._instance.save(*args, **kwargs)
-
     def reload(self, *args, **kwargs):
         self._instance.reload(*args, **kwargs)
 
