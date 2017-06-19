@@ -5102,6 +5102,66 @@ class QuerySetTest(unittest.TestCase):
         # in a way we'd expect) should raise a TypeError, too
         self.assertRaises(TypeError, BlogPost.objects(authors__in=author).count)
 
+    def test_for_each(self):
+        """Ensure that using the 'for_each' method applies as expected"""
+        class UserWithAge(Document):
+            name = StringField()
+            age = IntField()
+
+        UserWithAge.drop_collection()
+
+        UserWithAge.objects.create(name="Peter", age=22)
+        UserWithAge.objects.create(name="Victor", age=32)
+
+        def grow_up(user):
+            user.age += 1
+            user.save()
+
+        UserWithAge.objects.all().for_each(grow_up)
+
+        self.assertEqual(UserWithAge.objects.get(name="Peter").age, 23)
+        self.assertEqual(UserWithAge.objects.get(name="Victor").age, 33)
+
+    def test_chained_for_each(self):
+        """Ensure that using the 'for_each' method applies as expected"""
+        class UserWithAge(Document):
+            name = StringField()
+            age = IntField()
+
+        UserWithAge.drop_collection()
+
+        UserWithAge.objects.create(name="Peter", age=22)
+        UserWithAge.objects.create(name="Victor", age=32)
+
+        def grow_up(user):
+            user.age += 1
+            user.save()
+
+        UserWithAge.objects.all().for_each(grow_up).for_each(grow_up)
+
+        self.assertEqual(UserWithAge.objects.get(name="Peter").age, 24)
+        self.assertEqual(UserWithAge.objects.get(name="Victor").age, 34)
+
+    def test_for_each_return_type(self):
+        """Ensure that using the 'for_each' method applies as expected"""
+        class UserWithAge(Document):
+            name = StringField()
+            age = IntField()
+
+        UserWithAge.drop_collection()
+
+        UserWithAge.objects.create(name="Peter", age=22)
+        UserWithAge.objects.create(name="Victor", age=32)
+
+        def grow_up(user):
+            user.age += 1
+            user.save()
+
+        result = UserWithAge.objects.all().for_each(grow_up)
+
+        self.assertTrue(isinstance(result, QuerySet))
+        self.assertEqual(result.count(), 2)
+        self.assertEqual(result.first().age, 23)
 
 if __name__ == '__main__':
     unittest.main()
