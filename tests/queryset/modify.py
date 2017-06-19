@@ -1,6 +1,6 @@
 import unittest
 
-from mongoengine import connect, Document, IntField
+from mongoengine import connect, Document, IntField, StringField, ListField
 
 __all__ = ("FindAndModifyTest",)
 
@@ -93,6 +93,29 @@ class FindAndModifyTest(unittest.TestCase):
         old_doc = Doc.objects(id=1).only("id").modify(set__value=-1)
         self.assertEqual(old_doc.to_mongo(), {"_id": 1})
         self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+
+    def test_modify_with_push(self):
+        class BlogPost(Document):
+            id = StringField(primary_key=True)
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        BlogPost(id="ABC").save()
+        BlogPost(id="BCD").save()
+        blog = BlogPost.objects(id="ABC").modify(push__tags="code")
+
+        self.assertEqual(blog.to_mongo(), {"_id": "ABC", "tags": []})
+        docs = [{"_id": "ABC", "tags":["code"]}, {"_id": "BCD", "tags":[]}]
+        self.assertEqual(list(BlogPost._collection.find().sort("id")), docs)
+
+        another_blog = BlogPost.objects(id="BCD").modify(push__tags="java")
+        self.assertEqual(another_blog.to_mongo(), {"_id": "BCD", "tags": []})
+        another_blog = BlogPost.objects(id="BCD").modify(push__tags__0=["python"])
+        self.assertEqual(another_blog.to_mongo(), {"_id": "BCD", "tags": ["java"]})
+        docs = [{"_id": "ABC", "tags":["code"]},
+                {"_id": "BCD", "tags":["python", "java"]}]
+        self.assertEqual(list(BlogPost._collection.find().sort("id")), docs)
 
 
 if __name__ == '__main__':
