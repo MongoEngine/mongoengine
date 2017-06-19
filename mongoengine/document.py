@@ -1025,26 +1025,30 @@ class Document(BaseDocument):
     @classmethod
     def find_and_modify(cls, spec, update=None, sort=None, remove=False,
                         new=False, fields=None, upsert=False,
-                        excluded_fields=None, **kwargs):
-        spec = cls._transform_value(spec, cls)
-        if update is not None:
-            update = cls._transform_value(update, cls, op='$set')
-        elif not remove:
-            raise ValueError("Cannot have empty update and no remove flag")
-
-        # handle queries with inheritance
-        spec = cls._update_spec(spec, **kwargs)
-        if sort is None:
-            sort = {}
+                        excluded_fields=None, skip_transform=False, **kwargs):
+        if skip_transform:
+            if update is None and not remove:
+                raise ValueError("Cannot have empty update and no remove flag")
         else:
-            new_sort = {}
-            for f, dir in sort.iteritems():
-                f, _ = cls._transform_key(f, cls)
-                new_sort[f] = dir
+            spec = cls._transform_value(spec, cls)
+            if update is not None:
+                update = cls._transform_value(update, cls, op='$set')
+            elif not remove:
+                raise ValueError("Cannot have empty update and no remove flag")
 
-            sort = new_sort
+            # handle queries with inheritance
+            spec = cls._update_spec(spec, **kwargs)
+            if sort is None:
+                sort = {}
+            else:
+                new_sort = {}
+                for f, dir in sort.iteritems():
+                    f, _ = cls._transform_key(f, cls)
+                    new_sort[f] = dir
 
-        fields = cls._transform_fields(fields, excluded_fields)
+                sort = new_sort
+
+            fields = cls._transform_fields(fields, excluded_fields)
 
         is_scatter_gather = cls.is_scatter_gather(spec)
 
