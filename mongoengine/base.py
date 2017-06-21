@@ -481,6 +481,15 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # DocumentMetaclass before instantiating CollectionManager object
         new_class = super_new(cls, name, bases, attrs)
 
+        # Check if trying to use sweeper db; default to unsharded DB which has
+        # unsharded shard as default primary to reduce load
+        if hasattr(new_class, 'meta') and 'abstract' not in new_class.meta and\
+                'shard_key' not in new_class.meta:
+            import mongoengine.connection
+            if mongoengine.connection._default_db == 'sweeper':
+                new_class.meta['shard_key'] = False
+                new_class._meta['db_name'] = 'sweeper-unsharded'
+
         # Provide a default queryset unless one has been manually provided
         if not hasattr(new_class, 'objects'):
             new_class.objects = QuerySetManager()
