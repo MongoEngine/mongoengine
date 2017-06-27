@@ -486,7 +486,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         if hasattr(new_class, 'meta') and 'abstract' not in new_class.meta and\
                 'shard_key' not in new_class.meta:
             import mongoengine.connection
-            if mongoengine.connection._default_db == 'sweeper':
+            import inspect
+            if mongoengine.connection._default_db == 'sweeper' and 'clroot/sweeper' in inspect.getfile(new_class):
                 new_class.meta['shard_key'] = False
                 new_class._meta['db_name'] = 'sweeper-unsharded'
 
