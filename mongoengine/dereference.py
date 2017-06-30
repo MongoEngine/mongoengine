@@ -14,11 +14,6 @@ from document import Document, EmbeddedDocument
 
 class DeReference(object):
     def __call__(self, items, max_depth=1, instance=None, name=None):
-        # Do not Dereference - its a performance killer
-        return items
-
-
-
         """
         Cheaply dereferences the items to a set depth.
         Also handles the conversion of complex data types.
