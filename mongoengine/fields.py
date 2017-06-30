@@ -936,16 +936,22 @@ class ReferenceField(BaseField):
 
     def deference(self, instance, owner, value):
         if self._auto_dereference and isinstance(value, DBRef):
-            if hasattr(value, 'cls'):
-                # Dereference using the class type specified in the reference
-                cls = get_document(value.cls)
-            else:
-                cls = self.document_type
-            value = cls._get_db().dereference(value)
+            value = self.dereference_dbref(value)
             if value is not None:
-                instance._data[self.name] = cls._from_son(value)
+                instance._data[self.name] = value
 
         return super(ReferenceField, self).__get__(instance, owner)
+
+    def dereference_dbref(self, value):
+        if hasattr(value, 'cls'):
+            # Dereference using the class type specified in the reference
+            cls = get_document(value.cls)
+        else:
+            cls = self.document_type
+        value = cls._get_db().dereference(value)
+        if value is not None:
+            value = cls._from_son(value)
+        return value
 
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing.
@@ -1000,10 +1006,16 @@ class ReferenceField(BaseField):
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
+        if type(value) is DocumentProxy:
+            return value
         if (not self.dbref and
                 not isinstance(value, (DBRef, Document, EmbeddedDocument))):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value))
+        if isinstance(value, DBRef):
+            value = DocumentProxy(
+                functools.partial(self.dereference_dbref, value=value), value.id)
+
         return value
 
     def prepare_query_value(self, op, value):

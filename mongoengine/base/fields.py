@@ -234,6 +234,31 @@ class ComplexBaseField(BaseField):
 
     field = None
 
+    def __get__(self, instance, owner):
+        """Descriptor to automatically dereference references.
+        """
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
+
+        value = super(ComplexBaseField, self).__get__(instance, owner)
+
+        # Convert lists / values so we can watch for any changes on them
+        if isinstance(value, (list, tuple)):
+            if (issubclass(type(self), EmbeddedDocumentListField) and
+                    not isinstance(value, EmbeddedDocumentList)):
+                value = EmbeddedDocumentList(value, instance, self.name)
+            elif not isinstance(value, BaseList):
+                value = BaseList(value, instance, self.name)
+            instance._data[self.name] = value
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
+            value = BaseDict(value, instance, self.name)
+            instance._data[self.name] = value
+
+        return value
+
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
