@@ -16,3 +16,9 @@ class DocumentProxy(lazy_object_proxy.Proxy):
         if type(other) is DocumentProxy or hasattr(other, 'id'):
             return self.id == other.id
         return self.__wrapped__ == other
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __nonzero__(self):
+        return True
