@@ -702,6 +702,14 @@ class ListField(ComplexBaseField):
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
 
+    def to_python(self, val):
+        to_python = getattr(self.field, 'to_python', None)
+        return [to_python(v) for v in val] if to_python and val else val or None
+
+    def to_mongo(self, val, **kwargs):
+        to_mongo = getattr(self.field, 'to_mongo', None)
+        return [to_mongo(v) for v in val] if to_mongo and val else val or None
+
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
@@ -936,16 +944,22 @@ class ReferenceField(BaseField):
 
     def deference(self, instance, owner, value):
         if self._auto_dereference and isinstance(value, DBRef):
-            if hasattr(value, 'cls'):
-                # Dereference using the class type specified in the reference
-                cls = get_document(value.cls)
-            else:
-                cls = self.document_type
-            value = cls._get_db().dereference(value)
+            value = self.dereference_dbref(value)
             if value is not None:
-                instance._data[self.name] = cls._from_son(value)
+                instance._data[self.name] = value
 
         return super(ReferenceField, self).__get__(instance, owner)
+
+    def dereference_dbref(self, value):
+        if hasattr(value, 'cls'):
+            # Dereference using the class type specified in the reference
+            cls = get_document(value.cls)
+        else:
+            cls = self.document_type
+        value = cls._get_db().dereference(value)
+        if value is not None:
+            value = cls._from_son(value)
+        return value
 
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing.
@@ -958,6 +972,8 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
+        if type(value) is DocumentProxy:
+            return value
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.deference, instance=instance, owner=owner, value=value), value.id)
@@ -965,6 +981,8 @@ class ReferenceField(BaseField):
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document, **kwargs):
+        if type(document) is DocumentProxy:
+            return document.id
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id
@@ -1000,10 +1018,16 @@ class ReferenceField(BaseField):
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type.
         """
+        if type(value) is DocumentProxy:
+            return value
         if (not self.dbref and
                 not isinstance(value, (DBRef, Document, EmbeddedDocument))):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value))
+        if isinstance(value, DBRef):
+            value = DocumentProxy(
+                functools.partial(self.dereference_dbref, value=value), value.id)
+
         return value
 
     def prepare_query_value(self, op, value):
@@ -1013,6 +1037,8 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
+        if type(value) is DocumentProxy:
+            return
 
         if not isinstance(value, (self.document_type, DBRef, ObjectId)):
             self.error("A ReferenceField only accepts DBRef or documents")

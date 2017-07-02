@@ -4,6 +4,7 @@ import weakref
 
 from bson import DBRef, ObjectId, SON
 import pymongo
+from mongoengine.base.proxy import DocumentProxy
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
@@ -138,13 +139,14 @@ class BaseField(object):
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument):
-            value._instance = weakref.proxy(instance)
-        elif isinstance(value, (list, tuple)):
-            for v in value:
-                if isinstance(v, EmbeddedDocument):
-                    v._instance = weakref.proxy(instance)
+        if not type(value) is DocumentProxy:
+            EmbeddedDocument = _import_class('EmbeddedDocument')
+            if isinstance(value, EmbeddedDocument):
+                value._instance = weakref.proxy(instance)
+            elif isinstance(value, (list, tuple)):
+                for v in value:
+                    if isinstance(v, EmbeddedDocument):
+                        v._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
@@ -241,21 +243,7 @@ class ComplexBaseField(BaseField):
             # Document class being used rather than a document object
             return self
 
-        ReferenceField = _import_class('ReferenceField')
-        GenericReferenceField = _import_class('GenericReferenceField')
         EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
-        dereference = (self._auto_dereference and
-                       (self.field is None or isinstance(self.field,
-                                                         (GenericReferenceField, ReferenceField))))
-
-        _dereference = _import_class("DeReference")()
-
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
-        if instance._initialised and dereference and instance._data.get(self.name):
-            instance._data[self.name] = _dereference(
-                instance._data.get(self.name), max_depth=1, instance=instance,
-                name=self.name
-            )
 
         value = super(ComplexBaseField, self).__get__(instance, owner)
 
@@ -269,15 +257,6 @@ class ComplexBaseField(BaseField):
             instance._data[self.name] = value
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, instance, self.name)
-            instance._data[self.name] = value
-
-        if (self._auto_dereference and instance._initialised and
-                isinstance(value, (BaseList, BaseDict)) and
-                not value._dereferenced):
-            value = _dereference(
-                value, max_depth=1, instance=instance, name=self.name
-            )
-            value._dereferenced = True
             instance._data[self.name] = value
 
         return value
