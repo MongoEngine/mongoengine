@@ -971,6 +971,8 @@ class ReferenceField(BaseField):
         return super(ReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document, **kwargs):
+        if type(document) is DocumentProxy:
+            return document.id
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id
