@@ -702,6 +702,14 @@ class ListField(ComplexBaseField):
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
 
+    def to_python(self, val):
+        to_python = getattr(self.field, 'to_python', None)
+        return [to_python(v) for v in val] if to_python and val else val or None
+
+    def to_mongo(self, val, **kwargs):
+        to_mongo = getattr(self.field, 'to_mongo', None)
+        return [to_mongo(v) for v in val] if to_mongo and val else val or None
+
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
         """
@@ -964,6 +972,8 @@ class ReferenceField(BaseField):
         value = instance._data.get(self.name)
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
+        if type(value) is DocumentProxy:
+            return value
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.deference, instance=instance, owner=owner, value=value), value.id)
