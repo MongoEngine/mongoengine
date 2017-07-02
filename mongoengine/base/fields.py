@@ -4,6 +4,7 @@ import weakref
 
 from bson import DBRef, ObjectId, SON
 import pymongo
+from mongoengine.base.proxy import DocumentProxy
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
@@ -138,13 +139,14 @@ class BaseField(object):
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument):
-            value._instance = weakref.proxy(instance)
-        elif isinstance(value, (list, tuple)):
-            for v in value:
-                if isinstance(v, EmbeddedDocument):
-                    v._instance = weakref.proxy(instance)
+        if not type(value) is DocumentProxy:
+            EmbeddedDocument = _import_class('EmbeddedDocument')
+            if isinstance(value, EmbeddedDocument):
+                value._instance = weakref.proxy(instance)
+            elif isinstance(value, (list, tuple)):
+                for v in value:
+                    if isinstance(v, EmbeddedDocument):
+                        v._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
