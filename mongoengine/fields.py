@@ -1027,6 +1027,8 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
+        if type(value) is DocumentProxy:
+            return
 
         if not isinstance(value, (self.document_type, DBRef, ObjectId)):
             self.error("A ReferenceField only accepts DBRef or documents")
