@@ -16,7 +16,7 @@ from timer import log_slow_event
 import warnings
 
 from bson import SON, ObjectId, DBRef
-from connection import _get_db, _get_slave_ok, _get_proxy_client
+from connection import _get_db, _get_slave_ok, _get_proxy_client, _get_proxy_decider, OpClass
 
 try:
     from soa.services.base_grpc_client import ProxiedGrpcError
@@ -133,9 +133,7 @@ class Document(BaseDocument):
             w = self._meta.get('write_concern', 1)
             if force_insert or "_id" not in doc:
                 if proxy_client:
-                    from sweeper.model.decider_key import DeciderKeyRatio
-                    dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-                    if dkey and dkey.decide():
+                    if self._get_write_decider():
                         # Copied from pymongo/collection.py. If the _id doesn't exist
                         # generate it on the client side.
                         if '_id' not in doc:
@@ -149,9 +147,7 @@ class Document(BaseDocument):
                     object_id = collection.insert(doc, w=w)
             else:
                 if proxy_client:
-                    from sweeper.model.decider_key import DeciderKeyRatio
-                    dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-                    if dkey and dkey.decide():
+                    if self._get_write_decider():
                         proxy_client.instance().update(
                             self,
                             {"_id" : doc["_id"]},
@@ -214,9 +210,7 @@ class Document(BaseDocument):
             try:
                 proxy_client = cls._get_proxy_client()
                 if proxy_client:
-                    from sweeper.model.decider_key import DeciderKeyRatio
-                    dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-                    if dkey and dkey.decide():
+                    if cls._get_write_decider():
                         proxy_client.instance().bulk(cls, unordered)
                     else:
                         w = cls._meta.get('write_concern', 1)
@@ -516,6 +510,14 @@ class Document(BaseDocument):
         return _get_proxy_client(db_name)
 
     @classmethod
+    def _get_read_decider(cls):
+        return _get_proxy_decider(OpClass.READ)
+
+    @classmethod
+    def _get_write_decider(cls):
+        return _get_proxy_decider(OpClass.WRITE)
+
+    @classmethod
     def _pymongo(cls, use_async=True):
         # we can't do async queries if we're on the root greenlet since we have
         # nothing to yield back to
@@ -677,9 +679,7 @@ class Document(BaseDocument):
                  comment=None, from_mengine=True, **kwargs):
         proxy_client = cls._get_proxy_client()
         if not from_mengine and proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 is_scatter_gather = cls.is_scatter_gather(spec)
@@ -804,9 +804,7 @@ class Document(BaseDocument):
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 is_scatter_gather = cls.is_scatter_gather(spec)
@@ -887,9 +885,7 @@ class Document(BaseDocument):
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 is_scatter_gather = cls.is_scatter_gather(spec)
@@ -914,9 +910,7 @@ class Document(BaseDocument):
     def aggregate(cls, pipeline=None, **kwargs):
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 results = []
                 for doc in proxy_client.instance().aggregate(
                         cls, pipeline=pipeline):
@@ -938,9 +932,7 @@ class Document(BaseDocument):
 
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 spec = cls._transform_value(spec, cls)
                 spec = cls._update_spec(spec, **kwargs)
                 key = cls._transform_key(key, cls)[0]
@@ -1010,9 +1002,7 @@ class Document(BaseDocument):
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 kwargs['find_one'] = True
@@ -1095,9 +1085,7 @@ class Document(BaseDocument):
 
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-            if dkey and dkey.decide():
+            if cls._get_write_decider():
                 return proxy_client.instance().find_and_modify(
                     cls, spec, sort=sort, remove=remove, update=update, new=new,
                     fields=fields, upsert=upsert, excluded_fields=excluded_fields, **kwargs
@@ -1124,9 +1112,7 @@ class Document(BaseDocument):
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_service')
-            if dkey and dkey.decide():
+            if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 is_scatter_gather = cls.is_scatter_gather(spec)
@@ -1218,9 +1204,7 @@ class Document(BaseDocument):
 
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-            if dkey and dkey.decide():
+            if cls._get_write_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 return proxy_client.instance().update(
@@ -1254,9 +1238,7 @@ class Document(BaseDocument):
 
         proxy_client = cls._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-            if dkey and dkey.decide():
+            if cls._get_write_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 return proxy_client.instance().remove(
@@ -1369,9 +1351,7 @@ class Document(BaseDocument):
 
         proxy_client = self._get_proxy_client()
         if proxy_client:
-            from sweeper.model.decider_key import DeciderKeyRatio
-            dkey = DeciderKeyRatio.get_by_name('mongo_proxy_write_service')
-            if dkey and dkey.decide():
+            if self._get_write_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 result = proxy_client.instance().update(

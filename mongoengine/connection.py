@@ -21,12 +21,38 @@ _slave_ok_settings = {
 }
 
 _proxy_clients = {}
+
 _proxy_dbs_to_conn = {}
 _proxy_connections = {}
+
+class OpClass(object):
+    READ = 0
+    WRITE = 1
+
+    @classmethod
+    def all(cls):
+        return set([cls.READ, cls.WRITE])
+
+# Default to off if haven't been inited
+_proxy_decider_keys = {OpClass.READ  : lambda : False,
+                       OpClass.WRITE : lambda : False}
+
+def inject_decider(opclass, func):
+    if opclass not in OpClass.all():
+        raise Exception('Not a valid OpClass')
+
+    if not callable(func):
+        raise Exception('Func must be a callable')
+
+    global _proxy_decider_keys
+    _proxy_decider_keys[opclass] = func
 
 class ConnectionError(Exception):
     pass
 
+def _get_proxy_decider(opclass):
+    global _proxy_decider_keys
+    return _proxy_decider_keys[opclass]()
 
 def _get_proxy_client(db_name='test'):
     global _proxy_clients, _proxy_dbs_to_conn, _proxy_connections
