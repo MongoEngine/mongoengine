@@ -145,7 +145,7 @@ class BaseField(object):
                 value._instance = weakref.proxy(instance)
             elif isinstance(value, (list, tuple)):
                 for v in value:
-                    if isinstance(v, EmbeddedDocument):
+                    if type(v) is not DocumentProxy and isinstance(v, EmbeddedDocument):
                         v._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
