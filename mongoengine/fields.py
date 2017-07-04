@@ -1146,6 +1146,7 @@ class CachedReferenceField(BaseField):
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.dereference, instance=instance, owner=owner, value=value), value.id)
+        return super(CachedReferenceField, self).__get__(instance, owner)
 
 
     def to_mongo(self, document, **kwargs):
