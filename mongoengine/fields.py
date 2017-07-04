@@ -2,15 +2,14 @@ import datetime
 import decimal
 import functools
 import itertools
-import re
 import time
 import urllib2
 import uuid
-import warnings
 from operator import itemgetter
 
+import re
 import six
-
+import warnings
 from mongoengine.base.proxy import DocumentProxy
 
 try:
@@ -875,6 +874,18 @@ class MapField(DictField):
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
+def dereference_dbref(value, document_type):
+    if hasattr(value, 'cls'):
+        # Dereference using the class type specified in the reference
+        cls = get_document(value.cls)
+    else:
+        cls = document_type
+    value = cls._get_db().dereference(value)
+    if value is not None:
+        value = cls._from_son(value)
+    return value
+
+
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
@@ -944,22 +955,12 @@ class ReferenceField(BaseField):
 
     def deference(self, instance, owner, value):
         if self._auto_dereference and isinstance(value, DBRef):
-            value = self.dereference_dbref(value)
+            value = dereference_dbref(value, self.document_type)
             if value is not None:
                 instance._data[self.name] = value
 
         return super(ReferenceField, self).__get__(instance, owner)
 
-    def dereference_dbref(self, value):
-        if hasattr(value, 'cls'):
-            # Dereference using the class type specified in the reference
-            cls = get_document(value.cls)
-        else:
-            cls = self.document_type
-        value = cls._get_db().dereference(value)
-        if value is not None:
-            value = cls._from_son(value)
-        return value
 
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing.
@@ -1026,7 +1027,7 @@ class ReferenceField(BaseField):
             value = DBRef(collection, self.document_type.id.to_python(value))
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(self.dereference_dbref, value=value), value.id)
+                functools.partial(dereference_dbref, value=value, document_type=self.document_type), value.id)
 
         return value
 
@@ -1102,11 +1103,17 @@ class CachedReferenceField(BaseField):
                     **filter_kwargs).update(**update_kwargs)
 
     def to_python(self, value):
+        if type(value) is DocumentProxy:
+            return value
         if isinstance(value, dict):
             collection = self.document_type._get_collection_name()
             value = DBRef(
                 collection, self.document_type.id.to_python(value['_id']))
             # return self.document_type._from_son(self.document_type._get_db().dereference(value))
+
+        if isinstance(value, DBRef):
+            value = DocumentProxy(
+                functools.partial(dereference_dbref, value=value, document_type=self.document_type), value.id)
 
         return value
 
@@ -1119,6 +1126,12 @@ class CachedReferenceField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
+    def dereference(self, instance, owner, value):
+        value = self.document_type._get_db().dereference(value)
+        if value is not None:
+            instance._data[self.name] = self.document_type._from_son(value)
+        return super(CachedReferenceField, self).__get__(instance, owner)
+
     def __get__(self, instance, owner):
         if instance is None:
             # Document class being used rather than a document object
@@ -1128,12 +1141,12 @@ class CachedReferenceField(BaseField):
         value = instance._data.get(self.name)
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
+        if type(value) is DocumentProxy:
+            return value
         if self._auto_dereference and isinstance(value, DBRef):
-            value = self.document_type._get_db().dereference(value)
-            if value is not None:
-                instance._data[self.name] = self.document_type._from_son(value)
+            return DocumentProxy(
+                functools.partial(self.dereference, instance=instance, owner=owner, value=value), value.id)
 
-        return super(CachedReferenceField, self).__get__(instance, owner)
 
     def to_mongo(self, document, **kwargs):
         id_field_name = self.document_type._meta['id_field']
