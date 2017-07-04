@@ -22,9 +22,3 @@ class DocumentProxy(lazy_object_proxy.Proxy):
 
     def __nonzero__(self):
         return True
-
-    def __unicode__(self):
-        return str(self.id)
-
-    def __str__(self):
-        return str(self.id)
