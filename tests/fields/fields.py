@@ -957,10 +957,10 @@ class FieldTest(MongoDBTestCase):
         post.validate()
 
         post.access_list = 'a,b'
-        self.assertRaises(ValidationError, post.validate())
+        self.assertRaises(ValidationError, post.validate)
 
         post.access_list = ['c', 'd']
-        self.assertRaises(ValidationError, post.validate())
+        self.assertRaises(ValidationError, post.validate)
 
         post.access_list = ['a', 'b']
         post.validate()
