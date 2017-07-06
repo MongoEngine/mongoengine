@@ -213,8 +213,10 @@ class BaseField(object):
                     )
                 )
         # Choices which are types other than Documents
-        elif value not in choice_list:
-            self.error('Value must be one of %s' % six.text_type(choice_list))
+        else:
+            values = value if isinstance(value, (list, tuple)) else [value]
+            if len(set(values) - set(choice_list)):
+                self.error('Value must be one of %s' % six.text_type(choice_list))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
