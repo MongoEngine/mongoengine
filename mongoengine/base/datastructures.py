@@ -25,7 +25,7 @@ class BaseDict(dict):
 
     def __getitem__(self, key, *args, **kwargs):
         value = super(BaseDict, self).__getitem__(key)
-
+        
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
@@ -111,6 +111,9 @@ class BaseList(list):
 
     def __getitem__(self, key, *args, **kwargs):
         value = super(BaseList, self).__getitem__(key)
+
+        if 'DocumentProxy' in str(type(value)):
+            return value
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:

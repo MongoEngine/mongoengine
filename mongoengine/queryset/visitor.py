@@ -56,7 +56,14 @@ class SimplificationVisitor(QNodeVisitor):
                 raise DuplicateQueryConditionsError()
 
             query_ops.update(ops)
+            
+            # Convert DocumentProxy to ids.
+            for op in ops:
+                if 'DocumentProxy' in str(type(query[op])):
+                    query[op] = query[op].id
+            
             combined_query.update(copy.deepcopy(query))
+            
         return combined_query
 
 
