@@ -211,7 +211,7 @@ class Document(BaseDocument):
                 proxy_client = cls._get_proxy_client()
                 if proxy_client:
                     if cls._get_write_decider():
-                        proxy_client.instance().bulk(cls, unordered)
+                        proxy_client.instance().bulk(cls, cls._bulk_ops, unordered)
                     else:
                         w = cls._meta.get('write_concern', 1)
                         cls._bulk_op.execute(write_concern={'w':w})
