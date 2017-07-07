@@ -970,12 +970,14 @@ class ReferenceField(BaseField):
     bi-directional delete rules)
 
     .. code-block:: python
+    
+        class Org(Document):
+            owner = ReferenceField('User')
 
-        class Bar(Document):
-            content = StringField()
-            foo = ReferenceField('Foo')
+        class User(Document):
+            org = ReferenceField('Org', reverse_delete_rule=CASCADE)
 
-        Foo.register_delete_rule(Bar, 'foo', NULLIFY)
+        User.register_delete_rule(Org, 'owner', DENY)        
 
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
