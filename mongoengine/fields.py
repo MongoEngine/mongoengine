@@ -971,13 +971,13 @@ class ReferenceField(BaseField):
 
     .. code-block:: python
 
-        class Org(Document):
-            owner = ReferenceField('User')
+    class Org(Document):
+        owner = ReferenceField('User')
 
-        class User(Document):
-	        org = ReferenceField('Org', reverse_delete_rule=CASCADE)
+    class User(Document):
+        org = ReferenceField('Org', reverse_delete_rule=CASCADE)
 
-        User.register_delete_rule(Org, 'owner', DENY)
+    User.register_delete_rule(Org, 'owner', DENY)
 
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
