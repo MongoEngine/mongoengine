@@ -10,6 +10,12 @@ class Doc(Document):
     value = IntField()
 
 
+class DocTwo(Document):
+    id = IntField(primary_key=True)
+    value1 = IntField(default=-1)
+    value2 = IntField(default=-1)
+
+
 class FindAndModifyTest(unittest.TestCase):
 
     def setUp(self):
@@ -18,6 +24,9 @@ class FindAndModifyTest(unittest.TestCase):
 
     def assertDbEqual(self, docs):
         self.assertEqual(list(Doc._collection.find().sort("id")), docs)
+
+    def assertDbTwoEqual(self, docs):
+        self.assertEqual(list(DocTwo._collection.find().sort("id")), docs)
 
     def test_modify(self):
         Doc(id=0, value=0).save()
@@ -93,6 +102,32 @@ class FindAndModifyTest(unittest.TestCase):
         old_doc = Doc.objects(id=1).only("id").modify(set__value=-1)
         self.assertEqual(old_doc.to_mongo(), {"_id": 1})
         self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+
+    def test_modify_with_exclude_then_save(self):
+        DocTwo(id=0, value1=1, value2=1).save()
+
+        doc = DocTwo.objects(id=0).exclude("value1").modify(set__value2=2)
+
+        # value1 is -1 (the default) on the object, but still 1 in the database
+        self.assertEqual(doc.value1, -1)
+        self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 2}])
+
+        # calling save() on the object incorrectly writes the default value of value1 to the database
+        doc.save()
+        self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 2}])
+
+    def test_first_with_exclude_then_save(self):
+        DocTwo(id=0, value1=1, value2=1).save()
+
+        doc = DocTwo.objects(id=0).exclude("value1").first()
+
+        # value1 is -1 (the default) on the object, but still 1 in the database
+        self.assertEqual(doc.value1, -1)
+        self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 1}])
+
+        # calling save() on the object incorrectly writes the default value of value1 to the database
+        doc.save()
+        self.assertDbTwoEqual([{"_id": 0, "value1": 1, "value2": 1}])
 
 
 if __name__ == '__main__':
