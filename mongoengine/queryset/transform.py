@@ -288,7 +288,7 @@ def update(_doc_cls=None, **update):
                 value = [field.prepare_query_value(op, v) for v in value]
             elif op in (None, 'set', 'push', 'pull'):
                 if field.required or value is not None:
-                        value = field.prepare_query_value(op, value)
+                    value = field.prepare_query_value(op, value)
             elif op in ('pushAll', 'pullAll'):
                 value = [field.prepare_query_value(op, v) for v in value]
             elif op in ('addToSet', 'setOnInsert'):

@@ -1919,13 +1919,11 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.objects.filter(id=post.id).update(push__tags="code")
         BlogPost.objects.filter(id=post.id).update(push__tags__0=["mongodb", "python"])
         post.reload()
-        self.assertEqual(post.tags[0], "mongodb")
-        self.assertEqual(post.tags[1], "python")
-        self.assertEqual(post.tags[2], "code")
+        self.assertEqual(post.tags, ['mongodb', 'python', 'code'])
 
         BlogPost.objects.filter(id=post.id).update(set__tags__2="java")
         post.reload()
-        self.assertEqual(post.tags[2], "java")
+        self.assertEqual(post.tags, ['mongodb', 'python', 'java'])
 
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.

@@ -829,25 +829,20 @@ class InstanceTest(unittest.TestCase):
         self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
     @needs_mongodb_v26
-    def test_modity_push_position(self):
+    def test_modify_with_positional_push(self):
         class BlogPost(Document):
-            slug = StringField()
             tags = ListField(StringField())
 
-        other_blog = BlogPost(slug="ABC", tags=["code", "java", "python"]).save()
+        post = BlogPost.objects.create(tags=['python'])
+        self.assertEqual(post.tags, ['python'])
+        post.modify(push__tags__0=['code', 'mongo'])
+        self.assertEqual(post.tags, ['code', 'mongo', 'python'])
 
-        blog = BlogPost(slug="ABC", tags=["python"]).save()
-        blog_copy = blog._from_son(blog.to_mongo())
-
-        assert blog.modify(push__tags__0=["code", "java"])
-        blog_copy.tags = ["code", "java", "python"]
-        assert blog.to_json() == blog_copy.to_json()
-        assert blog._get_changed_fields() == []
-
-        docs = [dict(other_blog.to_mongo()), dict(blog.to_mongo())]
+        # Assert same order of the list items is maintained in the db
         self.assertEqual(
-            list(BlogPost._get_collection().find().sort("id")),
-            sorted(docs, key=lambda doc: doc["_id"]))
+            BlogPost._get_collection().find_one({'_id': post.pk})['tags'],
+            ['code', 'mongo', 'python']
+        )
 
     def test_save(self):
         """Ensure that a document may be saved in the database."""
@@ -3186,8 +3181,7 @@ class InstanceTest(unittest.TestCase):
 
         blog.update(push__tags__0=["mongodb", "code"])
         blog.reload()
-        self.assertEqual(blog.tags[0], "mongodb")
-        self.assertEqual(blog.tags[2], "python")
+        self.assertEqual(blog.tags, ['mongodb', 'code', 'python'])
 
 
 if __name__ == '__main__':
