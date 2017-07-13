@@ -146,13 +146,14 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         raise MongoEngineConnectionError(msg)
 
     def _clean_settings(settings_dict):
-        irrelevant_fields = set([
-            'name', 'username', 'password', 'authentication_source',
-            'authentication_mechanism'
-        ])
+        # set literal more efficient than calling set function
+        irrelevant_fields_set = {
+            'name', 'username', 'password',
+            'authentication_source', 'authentication_mechanism'
+        }
         return {
             k: v for k, v in settings_dict.items()
-            if k not in irrelevant_fields
+            if k not in irrelevant_fields_set
         }
 
     # Retrieve a copy of the connection settings associated with the requested

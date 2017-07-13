@@ -1722,25 +1722,33 @@ class BaseQuerySet(object):
         return frequencies
 
     def _fields_to_dbfields(self, fields):
-        """Translate fields paths to its db equivalents"""
-        ret = []
+        """Translate fields' paths to their db equivalents."""
         subclasses = []
-        document = self._document
-        if document._meta['allow_inheritance']:
+        if self._document._meta['allow_inheritance']:
             subclasses = [get_document(x)
-                          for x in document._subclasses][1:]
+                          for x in self._document._subclasses][1:]
+
+        db_field_paths = []
         for field in fields:
+            field_parts = field.split('.')
             try:
-                field = '.'.join(f.db_field for f in
-                                 document._lookup_field(field.split('.')))
-                ret.append(field)
+                field = '.'.join(
+                    f if isinstance(f, six.string_types) else f.db_field
+                    for f in self._document._lookup_field(field_parts)
+                )
+                db_field_paths.append(field)
             except LookUpError as err:
                 found = False
+
+                # If a field path wasn't found on the main document, go
+                # through its subclasses and see if it exists on any of them.
                 for subdoc in subclasses:
                     try:
-                        subfield = '.'.join(f.db_field for f in
-                                            subdoc._lookup_field(field.split('.')))
-                        ret.append(subfield)
+                        subfield = '.'.join(
+                            f if isinstance(f, six.string_types) else f.db_field
+                            for f in subdoc._lookup_field(field_parts)
+                        )
+                        db_field_paths.append(subfield)
                         found = True
                         break
                     except LookUpError:
@@ -1748,7 +1756,8 @@ class BaseQuerySet(object):
 
                 if not found:
                     raise err
-        return ret
+
+        return db_field_paths
 
     def _get_order_by(self, keys):
         """Given a list of MongoEngine-style sort keys, return a list
