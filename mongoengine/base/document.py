@@ -1082,8 +1082,8 @@ class BaseDocument(object):
         if field.choices and isinstance(field.choices[0], (list, tuple)):
             if value is None:
                 return None
-            sep = getattr(field, 'display_sep', u' ')
-            values = value if field.__class__.__name__ == 'ListField' else [value]
+            sep = getattr(field, 'display_sep', ' ')
+            values = value if field.__class__.__name__ in ('ListField', 'SortedListField') else [value]
             return sep.join([
                 dict(field.choices).get(val, val)
                 for val in values or []])

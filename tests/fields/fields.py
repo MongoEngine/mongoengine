@@ -921,7 +921,7 @@ class FieldTest(MongoDBTestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements."""
         AccessLevelChoices = (
-            ('a', u'Administrator'),
+            ('a', u'Administration'),
             ('b', u'Manager'),
             ('c', u'Staff'),
         )
@@ -938,7 +938,7 @@ class FieldTest(MongoDBTestCase):
             tags = ListField(StringField())
             authors = ListField(ReferenceField(User))
             generic = ListField(GenericReferenceField())
-            access_list = ListField(required=False, default=[], choices=AccessLevelChoices, display_sep=u',')
+            access_list = ListField(choices=AccessLevelChoices, display_sep=', ')
 
         User.drop_collection()
         BlogPost.drop_collection()
@@ -965,7 +965,7 @@ class FieldTest(MongoDBTestCase):
         post.access_list = ['a', 'b']
         post.validate()
 
-        self.assertEqual(post.get_access_list_display(), u'Administrator,Manager')
+        self.assertEqual(post.get_access_list_display(), u'Administration, Manager')
 
         post.comments = ['a']
         self.assertRaises(ValidationError, post.validate)
