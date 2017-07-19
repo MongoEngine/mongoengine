@@ -89,8 +89,10 @@ class BaseDocument(object):
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
         else:
-            self._data = SemiStrictDict.create(
-                allowed_keys=self._fields_ordered)()
+            # self._data = SemiStrictDict.create(
+            #     allowed_keys=self._fields_ordered)()
+            # Based on https://github.com/MongoEngine/mongoengine/issues/1230#issuecomment-316308308 [Saurav]
+            self._data = {}
 
         self._dynamic_fields = SON()
 
