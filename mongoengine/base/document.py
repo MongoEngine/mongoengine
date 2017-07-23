@@ -418,7 +418,7 @@ class BaseDocument(object):
         is_dict = isinstance(value, dict)
         if is_dict and '_cls' in value:
             cls = get_document(value['_cls'])
-            return cls(**value)
+            return cls()
 
         if is_dict:
             value = {
