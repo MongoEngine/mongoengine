@@ -1899,6 +1899,37 @@ class FieldTest(MongoDBTestCase):
             BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description,
             u"VALUE: éééé"
         )
+    
+    def test_mapfield_reference(self):
+        """Ensure that the MapField can contain references."""
+        class Child(Document):
+            name = StringField()
+        class Parent(Document):
+            refs = MapField(ReferenceField(Child))
+            null_refs = MapField(ReferenceField(Child, null=True))
+
+        Child.drop_collection()
+        Parent.drop_collection()
+    
+        p = Parent.objects.create()
+        c = Child.objects.create()
+        p.refs['id'] = c
+        p.save()
+        assert p.refs['id'].id == c.id
+
+        p = Parent.objects.create()
+        with self.assertRaises(ValidationError):
+            p.refs['null'] = None
+            p.save()
+
+        p = Parent.objects.create()
+        p.null_refs = {'key': None}
+        # In version 0.13.0, dereferencing was applied on MapField (base/fields.py:276)
+        # and we called `ObjectId(None)`, which returned a new `ObjectId` whereas
+        # we want the value to be `None`
+        assert p.null_refs['key'] is None
+        p.save()  # The exception is raised at base/fields.py:423
+        assert p.null_refs['key'] is None
 
     def test_embedded_db_field(self):
         class Embedded(EmbeddedDocument):
