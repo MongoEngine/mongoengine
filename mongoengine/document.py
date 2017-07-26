@@ -1086,10 +1086,13 @@ class Document(BaseDocument):
         proxy_client = cls._get_proxy_client()
         if proxy_client:
             if cls._get_write_decider():
-                return proxy_client.instance().find_and_modify(
-                    cls, spec, sort=sort, remove=remove, update=update, new=new,
-                    fields=fields, upsert=upsert, excluded_fields=excluded_fields, **kwargs
-                )
+                try:
+                    return proxy_client.instance().find_and_modify(
+                        cls, spec, sort=sort, remove=remove, update=update, new=new,
+                        fields=fields, upsert=upsert, excluded_fields=excluded_fields, **kwargs
+                    )
+                finally:
+                    cls.cleanup_trace(set_comment)
 
         try:
             with log_slow_event("find_and_modify", cls._meta['collection'], spec):
