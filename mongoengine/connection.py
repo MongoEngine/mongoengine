@@ -65,7 +65,8 @@ def register_connection(alias, name=None, host=None, port=None,
         'username': username,
         'password': password,
         'authentication_source': authentication_source,
-        'authentication_mechanism': authentication_mechanism
+        'authentication_mechanism': authentication_mechanism,
+        'connect': False
     }
 
     conn_host = conn_settings['host']
