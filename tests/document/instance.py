@@ -22,6 +22,8 @@ from mongoengine.queryset import NULLIFY, Q
 from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
 
+from tests.utils import needs_mongodb_v26
+
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
 
@@ -825,6 +827,22 @@ class InstanceTest(unittest.TestCase):
         assert doc._get_changed_fields() == []
 
         self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
+
+    @needs_mongodb_v26
+    def test_modify_with_positional_push(self):
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        post = BlogPost.objects.create(tags=['python'])
+        self.assertEqual(post.tags, ['python'])
+        post.modify(push__tags__0=['code', 'mongo'])
+        self.assertEqual(post.tags, ['code', 'mongo', 'python'])
+
+        # Assert same order of the list items is maintained in the db
+        self.assertEqual(
+            BlogPost._get_collection().find_one({'_id': post.pk})['tags'],
+            ['code', 'mongo', 'python']
+        )
 
     def test_save(self):
         """Ensure that a document may be saved in the database."""
@@ -3148,6 +3166,22 @@ class InstanceTest(unittest.TestCase):
         person.save()
 
         person.update(set__height=2.0)
+
+    @needs_mongodb_v26
+    def test_push_with_position(self):
+        """Ensure that push with position works properly for an instance."""
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        blog = BlogPost()
+        blog.slug = "ABC"
+        blog.tags = ["python"]
+        blog.save()
+
+        blog.update(push__tags__0=["mongodb", "code"])
+        blog.reload()
+        self.assertEqual(blog.tags, ['mongodb', 'code', 'python'])
 
 
 if __name__ == '__main__':

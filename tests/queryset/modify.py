@@ -1,6 +1,8 @@
 import unittest
 
-from mongoengine import connect, Document, IntField
+from mongoengine import connect, Document, IntField, StringField, ListField
+
+from tests.utils import needs_mongodb_v26
 
 __all__ = ("FindAndModifyTest",)
 
@@ -93,6 +95,37 @@ class FindAndModifyTest(unittest.TestCase):
         old_doc = Doc.objects(id=1).only("id").modify(set__value=-1)
         self.assertEqual(old_doc.to_mongo(), {"_id": 1})
         self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+
+    @needs_mongodb_v26
+    def test_modify_with_push(self):
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        blog = BlogPost.objects.create()
+
+        # Push a new tag via modify with new=False (default).
+        BlogPost(id=blog.id).modify(push__tags='code')
+        self.assertEqual(blog.tags, [])
+        blog.reload()
+        self.assertEqual(blog.tags, ['code'])
+
+        # Push a new tag via modify with new=True.
+        blog = BlogPost.objects(id=blog.id).modify(push__tags='java', new=True)
+        self.assertEqual(blog.tags, ['code', 'java'])
+
+        # Push a new tag with a positional argument.
+        blog = BlogPost.objects(id=blog.id).modify(
+            push__tags__0='python',
+            new=True)
+        self.assertEqual(blog.tags, ['python', 'code', 'java'])
+
+        # Push multiple new tags with a positional argument.
+        blog = BlogPost.objects(id=blog.id).modify(
+            push__tags__1=['go', 'rust'],
+            new=True)
+        self.assertEqual(blog.tags, ['python', 'go', 'rust', 'code', 'java'])
 
 
 if __name__ == '__main__':
