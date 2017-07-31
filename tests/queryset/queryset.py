@@ -1913,8 +1913,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post = BlogPost(slug="test")
-        post.save()
+        post = BlogPost.objects.create(slug="test")
 
         BlogPost.objects.filter(id=post.id).update(push__tags="code")
         BlogPost.objects.filter(id=post.id).update(push__tags__0=["mongodb", "python"])

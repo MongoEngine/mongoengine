@@ -99,26 +99,33 @@ class FindAndModifyTest(unittest.TestCase):
     @needs_mongodb_v26
     def test_modify_with_push(self):
         class BlogPost(Document):
-            id = StringField(primary_key=True)
             tags = ListField(StringField())
 
         BlogPost.drop_collection()
 
         BlogPost(id="ABC").save()
-        BlogPost(id="BCD").save()
-        blog = BlogPost.objects(id="ABC").modify(push__tags="code")
 
-        self.assertEqual(blog.to_mongo(), {"_id": "ABC", "tags": []})
-        docs = [{"_id": "ABC", "tags":["code"]}, {"_id": "BCD", "tags":[]}]
-        self.assertEqual(list(BlogPost._collection.find().sort("id")), docs)
+        # Push a new tag via modify with new=False (default).
+        blog = BlogPost(pk='ABC').modify(push__tags='code')
+        self.assertEqual(blog.tags, [])
+        blog.reload()
+        self.assertEqual(blog.tags, ['code'])
 
-        another_blog = BlogPost.objects(id="BCD").modify(push__tags="java")
-        self.assertEqual(another_blog.to_mongo(), {"_id": "BCD", "tags": []})
-        another_blog = BlogPost.objects(id="BCD").modify(push__tags__0=["python"])
-        self.assertEqual(another_blog.to_mongo(), {"_id": "BCD", "tags": ["java"]})
-        docs = [{"_id": "ABC", "tags":["code"]},
-                {"_id": "BCD", "tags":["python", "java"]}]
-        self.assertEqual(list(BlogPost._collection.find().sort("id")), docs)
+        # Push a new tag via modify with new=True.
+        blog = BlogPost.objects(pk='ABC').modify(push__tags='java', new=True)
+        self.assertEqual(blog.tags, ['code', 'java'])
+
+        # Push a new tag with a positional argument.
+        blog = BlogPost.objects(pk='ABC').modify(
+            push__tags__0='python',
+            new=True)
+        self.assertEqual(blog.tags, ['python', 'code', 'java'])
+
+        # Push multiple new tags with a positional argument.
+        blog = BlogPost.objects(pk='ABC').modify(
+            push__tags__1=['go', 'rust'],
+            new=True)
+        self.assertEqual(blog.tags, ['python', 'go', 'rust', 'code', 'java'])
 
 
 if __name__ == '__main__':
