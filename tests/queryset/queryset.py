@@ -1925,6 +1925,11 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, ['mongodb', 'python', 'java'])
 
+        #test push with singular value
+        BlogPost.objects.filter(id=post.id).update(push__tags__0='scala')
+        post.reload()
+        self.assertEqual(post.tags, ['scala', 'mongodb', 'python', 'java'])
+
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """
