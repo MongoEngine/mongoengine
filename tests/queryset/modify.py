@@ -103,26 +103,26 @@ class FindAndModifyTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        BlogPost(id="ABC").save()
+        blog = BlogPost.objects.create()
 
         # Push a new tag via modify with new=False (default).
-        blog = BlogPost(pk='ABC').modify(push__tags='code')
+        BlogPost(id=blog.id).modify(push__tags='code')
         self.assertEqual(blog.tags, [])
         blog.reload()
         self.assertEqual(blog.tags, ['code'])
 
         # Push a new tag via modify with new=True.
-        blog = BlogPost.objects(pk='ABC').modify(push__tags='java', new=True)
+        blog = BlogPost.objects(id=blog.id).modify(push__tags='java', new=True)
         self.assertEqual(blog.tags, ['code', 'java'])
 
         # Push a new tag with a positional argument.
-        blog = BlogPost.objects(pk='ABC').modify(
+        blog = BlogPost.objects(id=blog.id).modify(
             push__tags__0='python',
             new=True)
         self.assertEqual(blog.tags, ['python', 'code', 'java'])
 
         # Push multiple new tags with a positional argument.
-        blog = BlogPost.objects(pk='ABC').modify(
+        blog = BlogPost.objects(id=blog.id).modify(
             push__tags__1=['go', 'rust'],
             new=True)
         self.assertEqual(blog.tags, ['python', 'go', 'rust', 'code', 'java'])
