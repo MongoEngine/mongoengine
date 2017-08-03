@@ -122,6 +122,36 @@ class BaseQuerySet(object):
 
         return queryset
 
+    def __getstate__(self):
+        """
+        Need for pickling queryset
+        See https://github.com/MongoEngine/mongoengine/issues/442
+        """
+
+        obj_dict = self.__dict__.copy()
+
+        # don't picke collection, instead pickle collection params
+        obj_dict.pop("_collection_obj")
+
+        # don't pickle cursor
+        obj_dict["_cursor_obj"] = None
+
+        return obj_dict
+
+    def __setstate__(self, obj_dict):
+        """
+        Need for pickling queryset
+        See https://github.com/MongoEngine/mongoengine/issues/442
+        """
+
+        obj_dict["_collection_obj"] = obj_dict["_document"]._get_collection()
+
+        # update attributes
+        self.__dict__.update(obj_dict)
+
+        # forse load cursor
+        # self._cursor
+
     def __getitem__(self, key):
         """Support skip and limit using getitem and slicing syntax.
         """
