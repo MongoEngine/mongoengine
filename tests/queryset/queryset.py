@@ -413,6 +413,7 @@ class QuerySetTest(unittest.TestCase):
             set__name='Test User', write_concern={"w": 0})
         self.assertEqual(result, None)
 
+
     def test_update_update_has_a_value(self):
         """Test to ensure that update is passed a value to update to"""
         self.Person.drop_collection()
@@ -1762,6 +1763,27 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(post.authors, [me])
         self.assertEqual(another.authors, [])
+
+    def test_update_with_limits(self):
+        """Ensure that the update regards limit.
+        """
+
+        class Item(Document):
+            value = IntField()
+
+        Item.drop_collection()
+
+        for i in range(1, 6):
+            Item(value=i).save()
+
+        Item.objects[:3].update(set__value=88)
+        items = [item.value for item in Item.objects.all()]
+        self.assertEqual(items, [88, 88, 88, 4, 5])
+
+        Item.objects.limit(3).update(set__value=99)
+        items = [item.value for item in Item.objects.all()]
+        self.assertEqual(items, [99, 99, 99, 4, 5])
+
 
     def test_delete_with_limits(self):
 
