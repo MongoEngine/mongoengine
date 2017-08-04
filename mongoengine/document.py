@@ -139,7 +139,7 @@ class Document(BaseDocument):
                         if '_id' not in doc:
                             doc['_id'] = ObjectId()
                         proxy_client.instance().insert(
-                            self, [doc], write_concern=w)
+                            self.__class__, [doc], write_concern=w)
                         object_id = doc['_id']
                     else:
                         object_id = collection.insert(doc, w=w)
@@ -149,7 +149,7 @@ class Document(BaseDocument):
                 if proxy_client:
                     if self._get_write_decider():
                         proxy_client.instance().update(
-                            self,
+                            self.__class__,
                             {"_id" : doc["_id"]},
                             doc,
                             upsert=True,
@@ -1358,7 +1358,7 @@ class Document(BaseDocument):
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 result = proxy_client.instance().update(
-                    self, query_spec, document, upsert=upsert, multi=False,
+                    self.__class__, query_spec, document, upsert=upsert, multi=False,
                     w=self._meta['write_concern'], **kwargs
                 )
                 # do in-memory updates on the object if the query succeeded
