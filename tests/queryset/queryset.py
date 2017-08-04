@@ -124,6 +124,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people2), 1)
         self.assertEqual(people2[0], user_a)
 
+        # Test limit with 0 as parameter
+        people = self.Person.objects.limit(0)
+        self.assertEqual(people.count(with_limit_and_skip=True), 2)
+        self.assertEqual(len(people), 2)
+
         # Test chaining of only after limit
         person = self.Person.objects().limit(1).only('name').first()
         self.assertEqual(person, user_a)

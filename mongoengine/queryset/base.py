@@ -384,7 +384,7 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0 and with_limit_and_skip or self._none:
+        if self._limit == 0 and with_limit_and_skip is False or self._none:
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
@@ -759,10 +759,11 @@ class BaseQuerySet(object):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
 
-        :param n: the maximum number of objects to return
+        :param n: the maximum number of objects to return if n is greater than 0. 
+        When 0 is passed, returns all the documents in the cursor
         """
         queryset = self.clone()
-        queryset._limit = n if n != 0 else 1
+        queryset._limit = n
 
         # If a cursor object has already been created, apply the limit to it.
         if queryset._cursor_obj:
