@@ -1057,6 +1057,9 @@ class Document(BaseDocument):
         if skip_transform:
             if update is None and not remove:
                 raise ValueError("Cannot have empty update and no remove flag")
+            if fields or excluded_fields:
+                raise ValueError("Cannot specify fields or excluded fields when using skip_transform=True")
+            transformed_fields = None
         else:
             spec = cls._transform_value(spec, cls)
             if update is not None:
@@ -1076,7 +1079,7 @@ class Document(BaseDocument):
 
                 sort = new_sort
 
-            fields = cls._transform_fields(fields, excluded_fields)
+            transformed_fields = cls._transform_fields(fields, excluded_fields)
 
         is_scatter_gather = cls.is_scatter_gather(spec)
 
@@ -1089,7 +1092,8 @@ class Document(BaseDocument):
                 try:
                     return proxy_client.instance().find_and_modify(
                         cls, spec, sort=sort, remove=remove, update=update, new=new,
-                        fields=fields, upsert=upsert, excluded_fields=excluded_fields, **kwargs
+                        fields=fields, upsert=upsert, excluded_fields=excluded_fields,
+                        **kwargs
                     )
                 finally:
                     cls.cleanup_trace(set_comment)
@@ -1098,9 +1102,8 @@ class Document(BaseDocument):
             with log_slow_event("find_and_modify", cls._meta['collection'], spec):
                 result = cls._pymongo().find_and_modify(
                     spec, sort=sort, remove=remove, update=update, new=new,
-                    fields=fields, upsert=upsert, **kwargs
+                    fields=transformed_fields, upsert=upsert, **kwargs
                 )
-
             if result:
                 return cls._from_augmented_son(result, fields, excluded_fields)
             else:
