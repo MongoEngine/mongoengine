@@ -5133,6 +5133,16 @@ class QuerySetTest(unittest.TestCase):
         # in a way we'd expect) should raise a TypeError, too
         self.assertRaises(TypeError, BlogPost.objects(authors__in=author).count)
 
+    def test_create_count(self):
+        self.Person.drop_collection()
+        self.Person.objects.create(name="Foo")
+        self.Person.objects.create(name="Bar")
+        self.Person.objects.create(name="Baz")
+        self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 3)
+
+        newPerson = self.Person.objects.create(name="Foo_1")
+        self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 4)
+
 
 if __name__ == '__main__':
     unittest.main()
