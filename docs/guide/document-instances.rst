@@ -57,7 +57,8 @@ document values for example::
 
         def clean(self):
             """Ensures that only published essays have a `pub_date` and
-            automatically sets the pub_date if published and not set"""
+            automatically sets `pub_date` if essay is published and `pub_date`
+            is not set"""
             if self.status == 'Draft' and self.pub_date is not None:
                 msg = 'Draft entries should not have a publication date.'
                 raise ValidationError(msg)
