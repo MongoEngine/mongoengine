@@ -565,6 +565,15 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     >>> post.tags
     ['database', 'mongodb']
 
+From MongoDB version 2.6, push operator supports $position value which allows
+to push values with index.
+    >>> post = BlogPost(title="Test", tags=["mongo"])
+    >>> post.save()
+    >>> post.update(push__tags__0=["database", "code"])
+    >>> post.reload()
+    >>> post.tags
+    ['database', 'code', 'mongo']
+
 .. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
