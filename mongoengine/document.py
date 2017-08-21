@@ -674,7 +674,7 @@ class Document(BaseDocument):
 
     @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
-                 slave_ok=False, find_one=False, allow_async=True, hint=None,
+                 slave_ok=True, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
                  comment=None, from_mengine=True, **kwargs):
         proxy_client = cls._get_proxy_client()
@@ -799,7 +799,7 @@ class Document(BaseDocument):
 
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
-             slave_ok=False, excluded_fields=None, max_time_ms=None,
+             slave_ok=True, excluded_fields=None, max_time_ms=None,
              timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
@@ -859,7 +859,7 @@ class Document(BaseDocument):
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
-                  slave_ok=False, timeout=True, batch_size=10000,
+                  slave_ok=True, timeout=True, batch_size=10000,
                   excluded_fields=None, max_time_ms=0, **kwargs):
         def _old_find_iter():
             last_doc = None
@@ -926,7 +926,7 @@ class Document(BaseDocument):
 
     @classmethod
     def distinct(cls, spec, key, fields=None, skip=0, limit=0, sort=None,
-                 slave_ok=False, timeout=True, excluded_fields=None,
+                 slave_ok=True, timeout=True, excluded_fields=None,
                  max_time_ms=None, timeout_value=NO_TIMEOUT_DEFAULT,
                  **kwargs):
 
@@ -996,7 +996,7 @@ class Document(BaseDocument):
             yield doc
 
     @classmethod
-    def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=False,
+    def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=True,
                  excluded_fields=None, max_time_ms=None,
                  timeout_value=NO_TIMEOUT_DEFAULT, **kwargs):
         # If the client has been initialized, use the proxy
@@ -1112,7 +1112,7 @@ class Document(BaseDocument):
             cls.cleanup_trace(set_comment)
 
     @classmethod
-    def count(cls, spec, slave_ok=False, comment=None, max_time_ms=None,
+    def count(cls, spec, slave_ok=True, comment=None, max_time_ms=None,
         timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
 
         # If the client has been initialized, use the proxy
