@@ -1,5 +1,5 @@
 #!/bin/bash
-
+sudo apt-get remove mongodb-org-server
 sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
 
 if [ "$MONGODB" = "2.4" ]; then
