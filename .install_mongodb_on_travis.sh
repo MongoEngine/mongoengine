@@ -13,7 +13,7 @@ elif [ "$MONGODB" = "2.6" ]; then
     sudo apt-get install mongodb-org-server=2.6.12
     # service should be started automatically
 elif [ "$MONGODB" = "3.0" ]; then
-    echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb.list
+    echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb.list
     sudo apt-get update
     sudo apt-get install mongodb-org-server=3.0.14
     # service should be started automatically
