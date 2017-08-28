@@ -510,6 +510,24 @@ class GeoQueriesTest(MongoDBTestCase):
         roads = Road.objects.filter(poly__geo_intersects={"$geometry": polygon}).count()
         self.assertEqual(1, roads)
 
+    def test_aspymongo_with_only(self):
+        """Ensure as_pymongo works with only"""
+        class Place(Document):
+            location = PointField()
+
+        Place.drop_collection()
+        p = Place(location=[24.946861267089844, 60.16311983618494])
+        p.save()
+        qs = Place.objects().only('location')
+        self.assertDictEqual(
+            qs.as_pymongo()[0]['location'],
+            {u'type': u'Point',
+             u'coordinates': [
+                24.946861267089844,
+                60.16311983618494]
+            }
+        )
+
     def test_2dsphere_point_sets_correctly(self):
         class Location(Document):
             loc = PointField()
