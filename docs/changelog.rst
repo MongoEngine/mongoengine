@@ -4,7 +4,7 @@ Changelog
 
 Development
 ===========
-- (Fill this out as you fix issues and develop your features).
+- Improve performances by removing SemiStrictDict
 
 Changes in 0.14.0
 =================

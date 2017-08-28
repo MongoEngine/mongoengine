@@ -1,6 +1,6 @@
 import unittest
 
-from mongoengine.base.datastructures import StrictDict, SemiStrictDict
+from mongoengine.base.datastructures import StrictDict
 
 
 class TestStrictDict(unittest.TestCase):
@@ -75,45 +75,6 @@ class TestStrictDict(unittest.TestCase):
         assert dict(d) == {'a': 1, 'b': 2}
         assert dict(**d) == {'a': 1, 'b': 2}
 
-
-class TestSemiSrictDict(TestStrictDict):
-    def strict_dict_class(self, *args, **kwargs):
-        return SemiStrictDict.create(*args, **kwargs)
-
-    def test_init_fails_on_nonexisting_attrs(self):
-        # disable irrelevant test
-        pass
-
-    def test_setattr_raises_on_nonexisting_attr(self):
-        # disable irrelevant test
-        pass
-
-    def test_setattr_getattr_nonexisting_attr_succeeds(self):
-        d = self.dtype()
-        d.x = 1
-        self.assertEqual(d.x, 1)
-
-    def test_init_succeeds_with_nonexisting_attrs(self):
-        d = self.dtype(a=1, b=1, c=1, x=2)
-        self.assertEqual((d.a, d.b, d.c, d.x), (1, 1, 1, 2))
-
-    def test_iter_with_nonexisting_attrs(self):
-        d = self.dtype(a=1, b=1, c=1, x=2)
-        self.assertEqual(list(d), ['a', 'b', 'c', 'x'])
-
-    def test_iteritems_with_nonexisting_attrs(self):
-        d = self.dtype(a=1, b=1, c=1, x=2)
-        self.assertEqual(list(d.iteritems()), [('a', 1), ('b', 1), ('c', 1), ('x', 2)])
-
-    def tets_cmp_with_strict_dicts(self):
-        d = self.dtype(a=1, b=1, c=1)
-        dd = StrictDict.create(("a", "b", "c"))(a=1, b=1, c=1)
-        self.assertEqual(d, dd)
-
-    def test_cmp_with_strict_dict_with_nonexisting_attrs(self):
-        d = self.dtype(a=1, b=1, c=1, x=2)
-        dd = StrictDict.create(("a", "b", "c", "x"))(a=1, b=1, c=1, x=2)
-        self.assertEqual(d, dd)
 
 if __name__ == '__main__':
     unittest.main()
