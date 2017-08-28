@@ -15,6 +15,7 @@ language: python
 python:
 - 2.7
 - 3.5
+- 3.6
 - pypy
 
 env:
@@ -38,6 +39,10 @@ matrix:
   - python: 3.5
     env: MONGODB=2.4 PYMONGO=3.0
   - python: 3.5
+    env: MONGODB=3.0 PYMONGO=3.0
+  - python: 3.6
+    env: MONGODB=2.4 PYMONGO=3.0
+  - python: 3.6
     env: MONGODB=3.0 PYMONGO=3.0
 
 before_install:
