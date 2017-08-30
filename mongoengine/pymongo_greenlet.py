@@ -163,7 +163,6 @@ class GreenletSocket(object):
 
     @green_sock_method
     def sendall(self, data):
-        # do the send on the underlying socket synchronously...
         try:
             self.stream.write(data, greenlet.getcurrent().switch)
         except IOError as e:

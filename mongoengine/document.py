@@ -933,8 +933,6 @@ class Document(BaseDocument):
         proxy_client = cls._get_proxy_client()
         if proxy_client:
             if cls._get_read_decider():
-                spec = cls._transform_value(spec, cls)
-                spec = cls._update_spec(spec, **kwargs)
                 key = cls._transform_key(key, cls)[0]
                 return proxy_client.instance().distinct(
                     cls, spec, distinct_key=key, fields=fields, skip=skip,
