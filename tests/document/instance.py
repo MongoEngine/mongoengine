@@ -476,6 +476,24 @@ class InstanceTest(unittest.TestCase):
         doc.save()
         doc.reload()
 
+    def test_reload_with_changed_fields(self):
+        """Ensures reloading will not affect changed fields"""
+        class User(Document):
+            name = StringField()
+            number = IntField()
+        User.drop_collection()
+
+        user = User(name="Bob", number=1).save()
+        user.name = "John"
+        user.number = 2
+
+        self.assertEqual(user._get_changed_fields(), ['name', 'number'])
+        user.reload('number')
+        self.assertEqual(user._get_changed_fields(), ['name'])
+        user.save()
+        user.reload()
+        self.assertEqual(user.name, "John")
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly."""
         class Embedded(EmbeddedDocument):
@@ -521,7 +539,7 @@ class InstanceTest(unittest.TestCase):
         doc.save()
         doc.dict_field['extra'] = 1
         doc = doc.reload(10, 'list_field')
-        self.assertEqual(doc._get_changed_fields(), [])
+        self.assertEqual(doc._get_changed_fields(), ['dict_field.extra'])
         self.assertEqual(len(doc.list_field), 5)
         self.assertEqual(len(doc.dict_field), 3)
         self.assertEqual(len(doc.embedded_field.list_field), 4)
