@@ -719,7 +719,7 @@ class Document(BaseDocument):
 
         self._changed_fields = list(
             set(self._changed_fields) - set(fields)
-            ) if fields else obj._changed_fields
+        ) if fields else obj._changed_fields
         self._created = False
         return self
 
