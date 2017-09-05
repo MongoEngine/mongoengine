@@ -1465,6 +1465,9 @@ class GridFSProxy(object):
         else:
             return False
 
+    def __ne__(self, other):
+        return not self == other
+
     @property
     def fs(self):
         if not self._fs:

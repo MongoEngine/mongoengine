@@ -127,7 +127,7 @@ class BaseList(list):
         return value
 
     def __iter__(self):
-        for i in xrange(self.__len__()):
+        for i in six.moves.range(self.__len__()):
             yield self[i]
 
     def __setitem__(self, key, value, *args, **kwargs):
@@ -445,42 +445,3 @@ class StrictDict(object):
 
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]
-
-
-class SemiStrictDict(StrictDict):
-    __slots__ = ('_extras', )
-    _classes = {}
-
-    def __getattr__(self, attr):
-        try:
-            super(SemiStrictDict, self).__getattr__(attr)
-        except AttributeError:
-            try:
-                return self.__getattribute__('_extras')[attr]
-            except KeyError as e:
-                raise AttributeError(e)
-
-    def __setattr__(self, attr, value):
-        try:
-            super(SemiStrictDict, self).__setattr__(attr, value)
-        except AttributeError:
-            try:
-                self._extras[attr] = value
-            except AttributeError:
-                self._extras = {attr: value}
-
-    def __delattr__(self, attr):
-        try:
-            super(SemiStrictDict, self).__delattr__(attr)
-        except AttributeError:
-            try:
-                del self._extras[attr]
-            except KeyError as e:
-                raise AttributeError(e)
-
-    def __iter__(self):
-        try:
-            extras_iter = iter(self.__getattribute__('_extras'))
-        except AttributeError:
-            extras_iter = ()
-        return itertools.chain(super(SemiStrictDict, self).__iter__(), extras_iter)

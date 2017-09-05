@@ -13,13 +13,13 @@ from mongoengine import signals
 from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList,
-                                             SemiStrictDict, StrictDict)
+                                             StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
 
-__all__ = ('BaseDocument',)
+__all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
 
@@ -79,8 +79,7 @@ class BaseDocument(object):
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
         else:
-            self._data = SemiStrictDict.create(
-                allowed_keys=self._fields_ordered)()
+            self._data = {}
 
         self._dynamic_fields = SON()
 
