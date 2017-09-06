@@ -183,13 +183,14 @@ class Document(BaseDocument):
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
 
-    def reload(self):
+    def reload(self, slave_ok=False):
         """Reloads all attributes from the database.
 
         .. versionadded:: 0.1.2
         """
         id_field = self._meta['id_field']
-        obj = self.__class__.find_one(self._by_id_key(self[id_field]))
+        obj = self.__class__.find_one(self._by_id_key(self[id_field]),
+                                      slave_ok=slave_ok)
         for field in self._fields:
             setattr(self, field, obj[field])
 
