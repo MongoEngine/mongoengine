@@ -8,7 +8,7 @@ import uuid
 import warnings
 from operator import itemgetter
 
-from bson import Binary, DBRef, ObjectId, SON
+from bson import Binary, DBRef, ObjectId, Regex, SON
 import gridfs
 import pymongo
 import six
@@ -50,7 +50,7 @@ __all__ = (
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
     'SequenceField', 'UUIDField', 'MultiPointField', 'MultiLineStringField',
-    'MultiPolygonField', 'GeoJsonBaseField'
+    'MultiPolygonField', 'GeoJsonBaseField', 'RegexField'
 )
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
@@ -2141,3 +2141,31 @@ class MultiPolygonField(GeoJsonBaseField):
     .. versionadded:: 0.9
     """
     _type = 'MultiPolygon'
+
+
+class RegexField(BaseField):
+    """Regular expression field."""
+    _RE_TYPE = type(re.compile(""))
+
+    def to_python(self, value):
+        """Try to convert bson Regex object to regular python regex one.
+        If it fails returns value.
+        """
+        try:
+            return value.try_compile()
+        except Exception:
+            return value
+
+    def to_mongo(self, value):
+        """Convert python regex object to a bson one.
+        If it fails keep the original value.
+        """
+        try:
+            return Regex.from_native(value)
+        except TypeError:
+            return value
+
+    def validate(self, value):
+        """Raise error if value is not a regex object"""
+        if not isinstance(value, self._RE_TYPE):
+            self.error("RegexField can only accept regex objects")
