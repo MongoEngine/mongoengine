@@ -334,7 +334,7 @@ class FieldTest(MongoDBTestCase):
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields."""
         class Person(Document):
-            name = StringField(max_length=20)
+            name = StringField(max_length=20, min_length=5)
             userid = StringField(r'[0-9a-z_]+$')
 
         person = Person(name=34)
@@ -350,6 +350,10 @@ class FieldTest(MongoDBTestCase):
 
         # Test max length validation on name
         person = Person(name='Name that is more than twenty characters')
+        self.assertRaises(ValidationError, person.validate)
+
+        # Test max length validation on name
+        person = Person(name='aa')
         self.assertRaises(ValidationError, person.validate)
 
         person.name = 'Shorter name'
@@ -435,6 +439,10 @@ class FieldTest(MongoDBTestCase):
         doc.age = 120
         self.assertRaises(ValidationError, doc.validate)
         doc.age = 'ten'
+        self.assertRaises(ValidationError, doc.validate)
+
+        # Test max_value validation
+        doc.value = 200
         self.assertRaises(ValidationError, doc.validate)
 
     def test_float_validation(self):

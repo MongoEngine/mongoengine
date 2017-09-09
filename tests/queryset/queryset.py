@@ -1882,6 +1882,12 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertTrue('mongo' in post.tags)
 
+        # Push with arrays
+        BlogPost.objects.update(push__tags=['python', 'scala'])
+        post.reload()
+        self.assertTrue('python' in post.tags)
+        self.assertTrue('scala' in post.tags)
+
         BlogPost.objects.update_one(push_all__tags=['db', 'nosql'])
         post.reload()
         self.assertTrue('db' in post.tags and 'nosql' in post.tags)
