@@ -1861,6 +1861,10 @@ class QuerySetTest(unittest.TestCase):
         post = BlogPost(name="Test Post", hits=5, tags=['test'])
         post.save()
 
+        BlogPost.objects.update(hits=11)
+        post.reload()
+        self.assertEqual(post.hits, 11)
+
         BlogPost.objects.update(set__hits=10)
         post.reload()
         self.assertEqual(post.hits, 10)

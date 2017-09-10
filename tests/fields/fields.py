@@ -312,6 +312,27 @@ class FieldTest(MongoDBTestCase):
 
         self.assertEqual(1, TestDocument.objects(long_fld__ne=None).count())
 
+    def test_callable_validation(self):
+        """Ensure that callable validation works"""
+        def check_even(value):
+            return value % 2 == 0
+
+        class Order(Document):
+            number = IntField(validation=check_even)
+
+        Order.drop_collection()
+
+        order = Order(number=3)
+        self.assertRaises(ValidationError, order.validate)
+
+        class User(Document):
+            name = StringField(validation=1)
+
+        User.drop_collection()
+
+        user = User(name='test')
+        self.assertRaises(ValidationError, user.validate)
+
     def test_object_id_validation(self):
         """Ensure that invalid values cannot be assigned to an
         ObjectIdField.
@@ -526,6 +547,11 @@ class FieldTest(MongoDBTestCase):
         with self.assertRaises(ValueError):
             class User(Document):
                 name = StringField(db_field='name\0')
+
+        # db field should be a string
+        with self.assertRaises(TypeError):
+            class User(Document):
+                name = StringField(db_field=1)
 
     def test_decimal_comparison(self):
         class Person(Document):
