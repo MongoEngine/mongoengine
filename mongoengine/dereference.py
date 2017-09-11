@@ -3,6 +3,7 @@ import six
 
 from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList,
                               TopLevelDocumentMetaclass, get_document)
+from mongoengine.base.proxy import DocumentProxy
 from mongoengine.connection import get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.fields import DictField, ListField, MapField, ReferenceField
@@ -96,10 +97,10 @@ class DeReference(object):
         # Recursively find dbreferences
         depth += 1
         for item in iterator:
-            if isinstance(item, (Document, EmbeddedDocument)):
+            if type(item) is not DocumentProxy and isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
-                    if isinstance(v, DBRef):
+                    if type(v) is DocumentProxy or isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
@@ -110,7 +111,7 @@ class DeReference(object):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, set()).update(refs)
-            elif isinstance(item, DBRef):
+            elif type(item) is DocumentProxy or isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and '_ref' in item:
                 reference_map.setdefault(get_document(item['_cls']), set()).add(item['_ref'].id)
@@ -170,6 +171,10 @@ class DeReference(object):
         :param name: The name of the field, used for tracking changes by
             :class:`~mongoengine.base.ComplexBaseField`
         """
+
+        if type(items) is DocumentProxy:
+            return items
+
         if not items:
             if isinstance(items, (BaseDict, BaseList)):
                 return items
@@ -215,10 +220,12 @@ class DeReference(object):
 
             if k in self.object_map and not is_list:
                 data[k] = self.object_map[k]
+            elif type(v) is DocumentProxy:
+                data[k] = self.object_map.get((v.collection, v.id), v)
             elif isinstance(v, (Document, EmbeddedDocument)):
                 for field_name in v._fields:
                     v = data[k]._data.get(field_name, None)
-                    if isinstance(v, DBRef):
+                    if type(v) is DocumentProxy or isinstance(v, DBRef):
                         data[k]._data[field_name] = self.object_map.get(
                             (v.collection, v.id), v)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
