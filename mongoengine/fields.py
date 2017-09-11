@@ -977,7 +977,8 @@ class ReferenceField(BaseField):
             return value
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
-                functools.partial(self.deference, instance=instance, owner=owner, value=value), value.id)
+                functools.partial(self.deference, instance=instance, owner=owner, value=value),
+                value.id, value.collection)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -1027,7 +1028,8 @@ class ReferenceField(BaseField):
             value = DBRef(collection, self.document_type.id.to_python(value))
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(dereference_dbref, value=value, document_type=self.document_type), value.id)
+                functools.partial(dereference_dbref, value=value, document_type=self.document_type),
+                value.id, value.collection)
 
         return value
 
@@ -1113,7 +1115,8 @@ class CachedReferenceField(BaseField):
 
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(dereference_dbref, value=value, document_type=self.document_type), value.id)
+                functools.partial(dereference_dbref, value=value, document_type=self.document_type),
+                value.id, value.collection)
 
         return value
 
@@ -1145,7 +1148,8 @@ class CachedReferenceField(BaseField):
             return value
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
-                functools.partial(self.dereference, instance=instance, owner=owner, value=value), value.id)
+                functools.partial(self.dereference, instance=instance, owner=owner, value=value),
+                value.id, value.collection)
         return super(CachedReferenceField, self).__get__(instance, owner)
 
 
