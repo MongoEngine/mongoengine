@@ -291,7 +291,7 @@ class BaseDocument(object):
 
         return self._data['_text_score']
 
-    def to_mongo(self, use_db_field=True, fields=None, populate=False):
+    def to_mongo(self, use_db_field=True, fields=None, populate=[]):
         """
         Return as SON data ready for use with MongoDB.
         """
@@ -303,7 +303,6 @@ class BaseDocument(object):
         data['_cls'] = self._class_name
 
         Document = _import_class("Document")
-        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         ReferenceField = _import_class("ReferenceField")
         ListField = _import_class("ListField")
 
@@ -311,8 +310,8 @@ class BaseDocument(object):
         root_fields = set([f.split('.')[0] for f in fields])
 
         if populate:
-            populate_list = [ _field.split('.') for _field in populate.split(',')]
-            populate_domain = dict((_field[0],_field[1:]) for _field in populate_list)
+            populate_list = [_field.split('.') for _field in populate]
+            populate_domain = dict((_field[0], _field[1:]) for _field in populate_list)
 
         for field_name in self:
 
@@ -345,14 +344,13 @@ class BaseDocument(object):
                     if isinstance(field, ListField):
                         _obj = []
                         for ref in value:
-                            if isinstance(ref, DBRef):
+                            if isinstance(ref, ObjectId):
                                 _ref_model = field.field.document_type
+                                _obj.append(_ref_model.objects.get(id=ref).to_mongo(populate=['.'.join(populate_domain[field_name])]))
 
-                                if isinstance(ref.id, ObjectId):
-                                    ref_id = ref.id
-                                    _obj.append(_ref_model.objects.get(id=ref_id).to_mongo(populate='.'.join(populate_domain[field_name])))
                             elif isinstance(ref, Document):
-                                _obj.append(ref.to_mongo(populate='.'.join(populate_domain[field_name])))
+                                _obj.append(ref.to_mongo(populate=['.'.join(populate_domain[field_name])]))
+
                             else:
                                 _obj.append(ref)
 
@@ -360,11 +358,7 @@ class BaseDocument(object):
 
                     if isinstance(field, ReferenceField):
                         _ref_model = field.document_type
-                        try:
-                            _obj = _ref_model.objects.get(id=value.id).to_mongo(populate='.'.join(populate_domain[field_name]))
-                        except:
-                            _obj = None
-
+                        _obj = _ref_model.objects.get(id=value).to_mongo(populate=['.'.join(populate_domain[field_name])])
                         value = _obj
 
             # Handle self generating fields
@@ -382,8 +376,7 @@ class BaseDocument(object):
         if not self._meta.get('allow_inheritance'):
             data.pop('_cls')
 
-        return data    
-
+        return data
 
     def validate(self, clean=True):
         """Ensure that all fields' values are valid and that required fields
@@ -438,7 +431,7 @@ class BaseDocument(object):
             Defaults to True.
         :param populate:
         """
-        populate = kwargs.pop('populate', False)
+        populate = kwargs.pop('populate', [])
         use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field, populate=populate), *args, **kwargs)
 

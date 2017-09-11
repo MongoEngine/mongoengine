@@ -75,7 +75,7 @@ class TestJson(unittest.TestCase):
         docum = Doc(simple_ref=Simple(inner=VerySimple().save()).save())
         docum.list_ref=[Simple(inner=VerySimple().save()).save(), Simple().save()]
         docum.save()
-        _json = docum.to_json( populate='simple_ref,list_ref.inner')
+        _json = docum.to_json( populate=['simple_ref','list_ref.inner'])
         
         import json
         _json = json.loads(_json)
