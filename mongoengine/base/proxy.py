@@ -1,6 +1,7 @@
-import wrapt
+from lazy_object_proxy.slots import Proxy
 
-class DocumentProxy(wrapt.ObjectProxy):
+
+class DocumentProxy(Proxy):
     id = None
     collection = None
     wrapped = None
@@ -8,11 +9,11 @@ class DocumentProxy(wrapt.ObjectProxy):
         super(DocumentProxy, self).__init__(wrapped)
         self.id = id
         self.collection = collection
-        for attr, val in kwargs.iteritems():
-            setattr(self, attr, val)
+        for attr, val in kwargs.items():
+            object.__setattr__(self, attr, val)
 
     def __call__(self, *args, **kwargs):
-        # Hack as callable(lazy_object_proxy.Proxy) return True
+        # Hack as callable(lazy_object_proxy.Proxy) returns True
         return self.__wrapped__
 
     def __eq__(self, other):
