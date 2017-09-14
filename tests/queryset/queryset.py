@@ -4790,6 +4790,30 @@ class QuerySetTest(unittest.TestCase):
         for obj in C.objects.no_sub_classes():
             self.assertEqual(obj.__class__, C)
 
+    def test_query_generic_embedded_document(self):
+        """Ensure that querying sub field on generic_embedded_field works
+        """
+        class A(EmbeddedDocument):
+            a_name = StringField()
+
+        class B(EmbeddedDocument):
+            b_name = StringField()
+
+        class Doc(Document):
+            document = GenericEmbeddedDocumentField(choices=(A, B))
+
+        Doc.drop_collection()
+        Doc(document=A(a_name='A doc')).save()
+        Doc(document=B(b_name='B doc')).save()
+
+        # Using raw in filter working fine
+        self.assertEqual(Doc.objects(
+            __raw__={'document.a_name': 'A doc'}).count(), 1)
+        self.assertEqual(Doc.objects(
+            __raw__={'document.b_name': 'B doc'}).count(), 1)
+        self.assertEqual(Doc.objects(document__a_name='A doc').count(), 1)
+        self.assertEqual(Doc.objects(document__b_name='B doc').count(), 1)
+
     def test_query_reference_to_custom_pk_doc(self):
 
         class A(Document):
