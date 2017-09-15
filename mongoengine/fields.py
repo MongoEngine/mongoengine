@@ -692,6 +692,14 @@ class GenericEmbeddedDocumentField(BaseField):
 
         value.validate(clean=clean)
 
+    def lookup_member(self, member_name):
+        if self.choices:
+            for choice in self.choices:
+                field = choice._fields.get(member_name)
+                if field:
+                    return field
+        return None
+
     def to_mongo(self, document, use_db_field=True, fields=None):
         if document is None:
             return None
