@@ -10,6 +10,7 @@ from operator import itemgetter
 import re
 import six
 import warnings
+from bson import Decimal128
 from mongoengine.base.proxy import DocumentProxy
 
 try:
@@ -345,7 +346,7 @@ class DecimalField(BaseField):
             return value
         if self.force_string:
             return unicode(value)
-        return float(self.to_python(value))
+        return Decimal128(self.to_python(value))
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
