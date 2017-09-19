@@ -10,6 +10,7 @@ from operator import itemgetter
 import re
 import six
 import warnings
+from bson import Decimal128
 from mongoengine.base.proxy import DocumentProxy
 
 try:
@@ -333,11 +334,14 @@ class DecimalField(BaseField):
         if value is None:
             return value
 
-        # Convert to string for python 2.6 before casting to Decimal
-        try:
-            value = decimal.Decimal("%s" % value)
-        except decimal.InvalidOperation:
-            return value
+        if isinstance(value, Decimal128):
+            value = value.to_decimal()
+        else:
+            # Convert to string for python 2.6 before casting to Decimal
+            try:
+                value = decimal.Decimal("%s" % value)
+            except decimal.InvalidOperation:
+                return value
         return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
 
     def to_mongo(self, value, **kwargs):
@@ -345,7 +349,7 @@ class DecimalField(BaseField):
             return value
         if self.force_string:
             return unicode(value)
-        return float(self.to_python(value))
+        return Decimal128(self.to_python(value))
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
