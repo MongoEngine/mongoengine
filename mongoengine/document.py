@@ -737,7 +737,7 @@ class Document(BaseDocument):
         try:
             slave_ok = _get_slave_ok(slave_ok)
         except KeyError:
-            raise ValueError("Invalid slave_ok preference")
+            raise ValueError("Invalid slave_ok preference: %s" % slave_ok)
 
         # do field name transformation on hints
         #
