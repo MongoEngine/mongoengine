@@ -19,8 +19,10 @@ from bson import SON, ObjectId, DBRef
 from connection import _get_db, _get_slave_ok, _get_proxy_client, _get_proxy_decider, OpClass
 
 try:
+    from soa.services.base_client import RPCException
     from soa.services.base_grpc_client import ProxiedGrpcError
 except:
+    RPCException = None
     ProxiedGrpcError = None
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
@@ -161,7 +163,7 @@ class Document(BaseDocument):
                         object_id = collection.save(doc, w=w)
                 else:
                     object_id = collection.save(doc, w=w)
-        except (pymongo.errors.OperationFailure, ProxiedGrpcError), err:
+        except (pymongo.errors.OperationFailure, ProxiedGrpcError, RPCException), err:
             message = 'Could not save document (%s)'
             if u'duplicate key' in unicode(err):
                 message = u'Tried to save duplicate unique keys (%s)'
@@ -179,7 +181,7 @@ class Document(BaseDocument):
         object_id = self._fields[id_field].to_mongo(self[id_field])
         try:
             self.__class__.objects(**{id_field: object_id}).delete()
-        except (pymongo.errors.OperationFailure, ProxiedGrpcError), err:
+        except (pymongo.errors.OperationFailure, ProxiedGrpcError, RPCException), err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
 
@@ -262,7 +264,7 @@ class Document(BaseDocument):
                         pass
                 else:
                     raise
-            except (pymongo.errors.OperationFailure, ProxiedGrpcError), err:
+            except (pymongo.errors.OperationFailure, ProxiedGrpcError, RPCException), err:
                 message = u'Could not perform bulk operation (%s)' % err.message
                 raise OperationError(message)
         finally:
