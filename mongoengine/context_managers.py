@@ -129,7 +129,11 @@ class query_counter(object):
 
     def _get_count(self):
         """ Get the number of queries. """
-        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
-        count = self.db.system.profile.find(ignore_query).count() - self.counter
+        count = self.get_queries().count() - self.counter
         self.counter += 1
         return count
+
+    def get_queries(self):
+        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
+        return self.db.system.profile.find(ignore_query)
+
