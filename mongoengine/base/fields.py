@@ -312,7 +312,7 @@ class ComplexBaseField(BaseField):
             return value.to_python()
 
         is_list = False
-        if not hasattr(value, 'items'):
+        if not callable(getattr(value, 'items', None)):
             try:
                 is_list = True
                 value = {k: v for k, v in enumerate(value)}
@@ -364,7 +364,7 @@ class ComplexBaseField(BaseField):
             return val
 
         is_list = False
-        if not hasattr(value, 'items'):
+        if not callable(getattr(value, 'items', None)):
             try:
                 is_list = True
                 value = {k: v for k, v in enumerate(value)}
