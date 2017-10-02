@@ -365,9 +365,10 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(d, date_doc.the_date)
 
     def test_read_preference_from_parse(self):
-        from pymongo import ReadPreference
-        conn = connect(host="mongodb://a1.vpc,a2.vpc,a3.vpc/prod?readPreference=secondaryPreferred")
-        self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_PREFERRED)
+        if IS_PYMONGO_3:
+            from pymongo import ReadPreference
+            conn = connect(host="mongodb://a1.vpc,a2.vpc,a3.vpc/prod?readPreference=secondaryPreferred")
+            self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_PREFERRED)
 
     def test_multiple_connection_settings(self):
         connect('mongoenginetest', alias='t1', host="localhost")
