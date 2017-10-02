@@ -103,7 +103,7 @@ def register_connection(alias, name=None, host=None, port=None,
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
-            if 'readpreference' in uri_options:
+            if IS_PYMONGO_3 and 'readpreference' in uri_options:
                 read_preferences = (ReadPreference.NEAREST,
                                     ReadPreference.PRIMARY,
                                     ReadPreference.PRIMARY_PREFERRED,
