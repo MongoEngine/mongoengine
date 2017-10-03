@@ -104,14 +104,15 @@ def register_connection(alias, name=None, host=None, port=None,
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
             if IS_PYMONGO_3 and 'readpreference' in uri_options:
-                read_preferences = (ReadPreference.NEAREST,
-                                    ReadPreference.PRIMARY,
-                                    ReadPreference.PRIMARY_PREFERRED,
-                                    ReadPreference.SECONDARY,
-                                    ReadPreference.SECONDARY_PREFERRED)
-                read_pf_mode = uri_options['readpreference']
+                read_preferences = (
+                    ReadPreference.NEAREST,
+                    ReadPreference.PRIMARY,
+                    ReadPreference.PRIMARY_PREFERRED,
+                    ReadPreference.SECONDARY,
+                    ReadPreference.SECONDARY_PREFERRED)
+                read_pf_mode = uri_options['readpreference'].lower()
                 for preference in read_preferences:
-                    if preference.mode == read_pf_mode:
+                    if preference.name.lower() == read_pf_mode:
                         conn_settings['read_preference'] = preference
                         break
         else:
