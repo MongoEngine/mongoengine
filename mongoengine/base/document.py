@@ -126,7 +126,8 @@ class BaseDocument(object):
                         field = self._fields.get(key)
                         if field and not isinstance(field, FileField):
                             value = field.to_python(value)
-                    setattr(self, key, value)
+                    self.setattr_quick(key, value)
+                    # setattr(self, key, value)
                 else:
                     self._data[key] = value
                     
@@ -203,6 +204,9 @@ class BaseDocument(object):
                 self__created and name == self._meta.get('id_field')):
             super(BaseDocument, self).__setattr__('_created', False)
 
+        super(BaseDocument, self).__setattr__(name, value)
+        
+    def setattr_quick(self, name, value):
         super(BaseDocument, self).__setattr__(name, value)
 
     def __getstate__(self):
