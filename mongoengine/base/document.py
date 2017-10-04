@@ -97,11 +97,12 @@ class BaseDocument(object):
         self._dynamic_fields = SON()
 
         # Assign default values to instance
-        for key, field in self._fields.iteritems():
-            if self._db_field_map.get(key, key) in __only_fields:
-                continue
-            value = getattr(self, key, None)
-            setattr(self, key, value)
+        if False:
+            for key, field in self._fields.iteritems():
+                if self._db_field_map.get(key, key) in __only_fields:
+                    continue
+                value = getattr(self, key, None)
+                setattr(self, key, value)
 
         if "_cls" not in values:
             self._cls = self._class_name
