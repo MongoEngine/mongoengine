@@ -211,6 +211,78 @@ class ConnectionTest(unittest.TestCase):
         # behavior. If the MongoDB URI would override the credentials
         self.assertRaises(OperationFailure, get_db)
 
+    @unittest.skip('require authentication enabled and meet needed prerequisites')
+    def test_uri_overide_kwargs_with_right_authSource_not_pass(self):
+        """Authenticated during building connection"""
+        ###as prerequisite, require two users at the time when authentication is disabled###
+        #no_auth_conn_obj = connect(db='mongoenginetest')
+        #no_auth_conn_obj.admin.system.users.remove({})
+        #no_auth_conn_obj.admin.add_user('rjxu', 'rjxp', read_only=True)
+        #no_auth_conn_obj.mongoenginetest.add_user('rjxtu','rjxtp', read_only=True)
+
+        auth_conn_obj = connect(
+            db='mongoenginetest',
+            alias='authtest',
+            username='rjxu',
+            password='rjxp',
+            host="mongodb://rjxtu:rjxtp@localhost:27017" +
+                 "/?authSource=mongoenginetest",
+            authentication_source='admin',
+            authentication_mechanism='MONGODB-X509'
+        )
+
+        if not IS_PYMONGO_3:
+            #attempt to read data from a collection authored by admin
+            def get_data_case():
+                auth_db_obj = auth_conn_obj['admin']
+                coll_from_auth_db = auth_db_obj['system.users']
+                return [sys_user for sys_user in coll_from_auth_db.find()]
+            try:
+                get_data_case()
+            except:
+                self.assertRaises(OperationFailure, get_data_case)
+        else:
+            credentials_obj = auth_conn_obj._MongoClient__options.credentials
+            self.assertEqual(credentials_obj.username, 'rjxtu')
+            self.assertEqual(credentials_obj.source, 'mongoenginetest')
+            self.assertEqual(credentials_obj.mechanism, 'DEFAULT')
+
+    @unittest.skip('require authentication enabled and meet needed prerequisite')
+    def test_post_auth_mongo_client_with_get_db(self):
+        '''Post authentication at get db stage'''
+        ###as prerequisite, require one user at the time when authentication is disabled###
+        #no_auth_conn_obj = connect(db='mongoenginetest')
+        #no_auth_conn_obj.admin.system.users.remove({})
+        #no_auth_conn_obj.mongoenginetest.add_user('rjxtu', 'rjxtp', read_only=True)
+
+        no_auth_conn_obj = connect(
+            db='mongoenginetest',
+            username='rjxtu',
+            password='rjxtp',
+            host="mongodb://localhost:27017",
+            authentication_source='mongoenginetest',
+            authentication_mechanism='DEFAULT'
+        )
+
+        #read data from auth or non-auth conn
+        def get_data_case(is_get_db=False):
+            if not is_get_db:
+                _db_obj = no_auth_conn_obj['mongoenginetest']
+            else:
+                _db_obj = get_db()
+            coll_from_db = _db_obj['testcoll']
+            return [_td for _td in coll_from_db.find()]
+
+        #
+        try:
+            get_data_case()
+        except:
+            self.assertRaises(OperationFailure, get_data_case)
+        #
+        self.assertRaises(AssertionError, self.assertRaises,
+                          OperationFailure, get_data_case, True)
+
+
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`
         option in the URI.
@@ -318,38 +390,6 @@ class ConnectionTest(unittest.TestCase):
         else:
             self.assertEqual(dict(conn1.write_concern), {'w': 1, 'j': True})
             self.assertEqual(dict(conn2.write_concern), {'w': 1, 'j': True})
-
-    def test_connect_with_replicaset_via_uri(self):
-        """Ensure connect() works when specifying a replicaSet via the
-        MongoDB URI.
-        """
-        if IS_PYMONGO_3:
-            c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
-            db = get_db()
-            self.assertTrue(isinstance(db, pymongo.database.Database))
-            self.assertEqual(db.name, 'test')
-        else:
-            # PyMongo < v3.x raises an exception:
-            # "localhost:27017 is not a member of replica set local-rs"
-            with self.assertRaises(MongoEngineConnectionError):
-                c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
-
-    def test_connect_with_replicaset_via_kwargs(self):
-        """Ensure connect() works when specifying a replicaSet via the
-        connection kwargs
-        """
-        if IS_PYMONGO_3:
-            c = connect(replicaset='local-rs')
-            self.assertEqual(c._MongoClient__options.replica_set_name,
-                             'local-rs')
-            db = get_db()
-            self.assertTrue(isinstance(db, pymongo.database.Database))
-            self.assertEqual(db.name, 'test')
-        else:
-            # PyMongo < v3.x raises an exception:
-            # "localhost:27017 is not a member of replica set local-rs"
-            with self.assertRaises(MongoEngineConnectionError):
-                c = connect(replicaset='local-rs')
 
     def test_datetime(self):
         connect('mongoenginetest', tz_aware=True)
