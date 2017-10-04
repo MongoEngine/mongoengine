@@ -129,11 +129,20 @@ class BaseDocument(object):
                     setattr(self, key, value)
                 else:
                     self._data[key] = value
+                    
+        if True:
+            for key, field in self._fields.iteritems():
+                if key in self._data or field.default is None:
+                    continue
+                if self._db_field_map.get(key, key) in __only_fields:
+                    continue
+                value = getattr(self, key, None)
+                setattr(self, key, value)
 
         # Set any get_fieldname_display methods
         self.__set_field_display()
 
-        if False:
+        if self._dynamic:
             self._dynamic_lock = False
             for key, value in dynamic_data.iteritems():
                 setattr(self, key, value)
