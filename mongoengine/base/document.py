@@ -132,7 +132,7 @@ class BaseDocument(object):
         # Set any get_fieldname_display methods
         self.__set_field_display()
 
-        if self._dynamic:
+        if False:
             self._dynamic_lock = False
             for key, value in dynamic_data.iteritems():
                 setattr(self, key, value)
