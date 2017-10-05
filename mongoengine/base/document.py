@@ -97,11 +97,12 @@ class BaseDocument(object):
         self._dynamic_fields = SON()
 
         # Assign default values to instance
-        for key, field in self._fields.iteritems():
-            if self._db_field_map.get(key, key) in __only_fields:
-                continue
-            value = getattr(self, key, None)
-            setattr(self, key, value)
+        if False:
+            for key, field in self._fields.iteritems():
+                if self._db_field_map.get(key, key) in __only_fields:
+                    continue
+                value = getattr(self, key, None)
+                setattr(self, key, value)
 
         if "_cls" not in values:
             self._cls = self._class_name
@@ -125,9 +126,19 @@ class BaseDocument(object):
                         field = self._fields.get(key)
                         if field and not isinstance(field, FileField):
                             value = field.to_python(value)
-                    setattr(self, key, value)
+                    self.setattr_quick(key, value)
+                    # setattr(self, key, value)
                 else:
                     self._data[key] = value
+                    
+        if True:
+            for key, field in self._fields.iteritems():
+                if key in self._data or field.default is None:
+                    continue
+                if self._db_field_map.get(key, key) in __only_fields:
+                    continue
+                value = getattr(self, key, None)
+                setattr(self, key, value)
 
         # Set any get_fieldname_display methods
         self.__set_field_display()
@@ -193,6 +204,9 @@ class BaseDocument(object):
                 self__created and name == self._meta.get('id_field')):
             super(BaseDocument, self).__setattr__('_created', False)
 
+        super(BaseDocument, self).__setattr__(name, value)
+        
+    def setattr_quick(self, name, value):
         super(BaseDocument, self).__setattr__(name, value)
 
     def __getstate__(self):
@@ -480,6 +494,12 @@ class BaseDocument(object):
 
         if not hasattr(self, '_changed_fields'):
             return
+        
+        if not hasattr(self, '_original_values'):
+            self._original_values = {}
+            
+        if key not in self._original_values:
+            self._original_values[key] = self[key]
 
         if '.' in key:
             key, rest = key.split('.', 1)
@@ -524,6 +544,7 @@ class BaseDocument(object):
                         continue
                     data._changed_fields = []
         self._changed_fields = []
+        self._original_values = {}
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
         # Loop list / dict fields as they contain documents

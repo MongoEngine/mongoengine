@@ -356,10 +356,15 @@ class Document(BaseDocument):
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
-        signals.post_save.send(self.__class__, document=self,
-                               created=created, **signal_kwargs)
+        changed_fields = getattr(self, '_changed_fields', [])
+        original_values = getattr(self, '_original_values', {})
         self._clear_changed_fields()
         self._created = False
+        signals.post_save.send(self.__class__, document=self,
+                               created=created, 
+                               _changed_fields=changed_fields,
+                               _original_values=original_values,
+                               **signal_kwargs)
         return self
 
     def cascade_save(self, *args, **kwargs):
@@ -506,25 +511,34 @@ class Document(BaseDocument):
 
         for field in obj._data:
             if not fields or field in fields:
-                try:
-                    setattr(self, field, self._reload(field, obj[field]))
-                except (KeyError, AttributeError):
-                    try:
-                        # If field is a special field, e.g. items is stored as _reserved_items,
-                        # an KeyError is thrown. So try to retrieve the field from _data
-                        setattr(self, field, self._reload(field, obj._data.get(field)))
-                    except KeyError:
-                        # If field is removed from the database while the object
-                        # is in memory, a reload would cause a KeyError
-                        # i.e. obj.update(unset__field=1) followed by obj.reload()
-                        delattr(self, field)
-                    except AttributeError:
-                        # By(prasanna): If a DB field has been converted to a property.
-                        pass
-
+                self._reload_single_field_internal(field, obj)
+        
+        if not fields:
+            # If we are looking to reload the whole object, reset stuff the DB did not return.
+            for field in (set(self._data.keys()) - set(obj._data.keys())):
+                self._reload_single_field_internal(field, obj)
+                
         self._changed_fields = obj._changed_fields
         self._created = False
         return self
+        
+    def _reload_single_field_internal(self, field, obj):
+        try:
+            setattr(self, field, self._reload(field, obj[field]))
+        except (KeyError, AttributeError):
+            try:
+                # If field is a special field, e.g. items is stored as _reserved_items,
+                # an KeyError is thrown. So try to retrieve the field from _data
+                setattr(self, field, self._reload(field, obj._data.get(field)))
+            except KeyError:
+                # If field is removed from the database while the object
+                # is in memory, a reload would cause a KeyError
+                # i.e. obj.update(unset__field=1) followed by obj.reload()
+                delattr(self, field)
+            except AttributeError:
+                # By(prasanna): If a DB field has been converted to a property.
+                pass
+        
 
     def _reload(self, key, value):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the
