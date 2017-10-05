@@ -706,12 +706,16 @@ class ListField(ComplexBaseField):
         super(ListField, self).__init__(**kwargs)
 
     def to_python(self, val):
+        if val is None:
+            return None
         to_python = getattr(self.field, 'to_python', None)
-        return [to_python(v) for v in val] if to_python and val else val or None
+        return [to_python(v) for v in val] if to_python else val
 
     def to_mongo(self, val, **kwargs):
+        if val is None:
+            return None
         to_mongo = getattr(self.field, 'to_mongo', None)
-        return [to_mongo(v) for v in val] if to_mongo and val else val or None
+        return [to_mongo(v) for v in val] if to_mongo else val
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
