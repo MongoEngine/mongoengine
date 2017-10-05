@@ -498,9 +498,6 @@ class BaseDocument(object):
         if not hasattr(self, '_original_values'):
             self._original_values = {}
             
-        if key not in self._original_values:
-            self._original_values[key] = self[key]
-
         if '.' in key:
             key, rest = key.split('.', 1)
             key = self._db_field_map.get(key, key)
@@ -516,6 +513,9 @@ class BaseDocument(object):
                 idx += 1
             else:
                 self._changed_fields.append(key)
+                if (key not in self._original_values) and ("." not in key):
+                    self._original_values[key] = self[key]
+
                 # remove lower level changed fields
                 level = '.'.join(levels[:idx]) + '.'
                 remove = self._changed_fields.remove
