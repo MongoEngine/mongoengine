@@ -494,6 +494,12 @@ class BaseDocument(object):
 
         if not hasattr(self, '_changed_fields'):
             return
+        
+        if not hasattr(self, '_original_values'):
+            self._original_values = {}
+            
+        if key not in self._original_values:
+            self._original_values[key] = self[key]
 
         if '.' in key:
             key, rest = key.split('.', 1)
@@ -538,6 +544,7 @@ class BaseDocument(object):
                         continue
                     data._changed_fields = []
         self._changed_fields = []
+        self._original_values = {}
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
         # Loop list / dict fields as they contain documents
