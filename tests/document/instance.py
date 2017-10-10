@@ -3183,6 +3183,17 @@ class InstanceTest(unittest.TestCase):
         blog.reload()
         self.assertEqual(blog.tags, ['mongodb', 'code', 'python'])
 
+    def test_push_nested_list(self):
+        """Ensure that push update works in nested list"""
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField()
+
+        blog = BlogPost(slug="test").save()
+        blog.update(push__tags=["value1", 123])
+        blog.reload()
+        self.assertEqual(blog.tags, [["value1", 123]])
+
 
 if __name__ == '__main__':
     unittest.main()

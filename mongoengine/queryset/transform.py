@@ -344,8 +344,6 @@ def update(_doc_cls=None, **update):
                 if not isinstance(value, (set, tuple, list)):
                     value = [value]
                 value = {key: {'$each': value, '$position': position}}
-            elif isinstance(value, list):
-                value = {key: {'$each': value}}
             else:
                 value = {key: value}
         else:

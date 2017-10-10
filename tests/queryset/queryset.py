@@ -1929,6 +1929,21 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, ['scala', 'mongodb', 'python', 'java'])
 
+    def test_update_push_list_of_list(self):
+        """Ensure that the 'push' update operation works in the list of list
+        """
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test").save()
+
+        BlogPost.objects.filter(slug="test").update(push__tags=["value1", 123])
+        post.reload()
+        self.assertEqual(post.tags, [["value1", 123]])
+
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """
