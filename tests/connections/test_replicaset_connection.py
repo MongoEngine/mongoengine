@@ -97,26 +97,28 @@ class ConnectionTest(unittest.TestCase):
             self.assertEqual(read_preference_obj.tag_sets, [{}])
         else:
             if pymongo.version_tuple[1] < 9: # like v2.8
-                c_obj = connect(
-                    db='testrjx',
-                    host="mongodb://localhost:27018/?replicaset=dev_rs"
-                    + "&read_preference=nearest&readpreferencetags=dc:east,use:dev",
-                    read_preference=ReadPreference.SECONDARY,
-                    readpreferencetags=[{}] #tag_sets as an alternative
-                )
-                self.assertEqual(c_obj.read_preference, ReadPreference.NEAREST)
-                self.assertEqual(c_obj.tag_sets, [{'dc':'east','use':'dev'}])
+                with self.assertRaises(MongoEngineConnectionError):
+                    c_obj = connect(
+                        db='testrjx',
+                        host="mongodb://localhost:27018/?replicaset=dev_rs"
+                        + "&read_preference=nearest&readpreferencetags=dc:east,use:dev",
+                        read_preference=ReadPreference.SECONDARY,
+                        readpreferencetags=[{}] #tag_sets as an alternative
+                    )
+                    self.assertEqual(c_obj.read_preference, ReadPreference.NEAREST)
+                    self.assertEqual(c_obj.tag_sets, [{'dc':'east','use':'dev'}])
             else:
                 #for 2.9 as transition version, also accept read_preference object subclassing _ServerMode
-                c_obj = connect(
-                    db='testrjx',
-                    host="mongodb://localhost:27018/?replicaset=dev_rs",
-                    read_preference=read_preferences.SecondaryPreferred(
-                        [{'dc':'east','use':'dev'}]
-                    ),
-                )
-                self.assertEqual(c_obj.read_preference, ReadPreference.SECONDARY_PREFERRED)
-                self.assertEqual(c_obj.tag_sets, [{'dc':'east','use':'dev'}])
+                with self.assertRaises(MongoEngineConnectionError):
+                    c_obj = connect(
+                        db='testrjx',
+                        host="mongodb://localhost:27018/?replicaset=dev_rs",
+                        read_preference=read_preferences.SecondaryPreferred(
+                            [{'dc':'east','use':'dev'}]
+                        ),
+                    )
+                    self.assertEqual(c_obj.read_preference, ReadPreference.SECONDARY_PREFERRED)
+                    self.assertEqual(c_obj.tag_sets, [{'dc':'east','use':'dev'}])
 
     def test_replica_set_as_uri_or_kwargs(self):
         '''replicaset as uri option or kwargs'''
@@ -124,12 +126,13 @@ class ConnectionTest(unittest.TestCase):
         # replicaset case insensitive
         if not IS_PYMONGO_3: #like 2.9 and 2.8
             # uri opt overrides kwargs for connecting replica set
-            c_obj = connect(
-                db='testrjx',
-                host="mongodb://localhost:27018/?replicaset=dev_rs",
-                replicaset='test_rs'
-            )
-            self.assertEqual(c_obj._MongoReplicaSetClient__name, 'dev_rs')
+            with self.assertRaises(MongoEngineConnectionError):
+                c_obj = connect(
+                    db='testrjx',
+                    host="mongodb://localhost:27018/?replicaset=dev_rs",
+                    replicaset='test_rs'
+                )
+                self.assertEqual(c_obj._MongoReplicaSetClient__name, 'dev_rs')
         else: #like 3.3
             #here, kwargs overrides uri option
             #though wrong replica set to be connected, it is ok until issuing real data operation
