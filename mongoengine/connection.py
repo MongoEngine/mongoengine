@@ -97,15 +97,15 @@ def register_connection(alias, name=None, host=None, port=None,
                     conn_settings[param] = uri_dict[param]
 
             uri_options = uri_dict['options']
-            if 'replicaset' in uri_options or \
-                'replicaset' in [kw_key.lower() for kw_key in kwargs.keys()]:
+            if 'replicaset' in uri_options \
+                    or 'replicaset' in [kw_key.lower() for kw_key in kwargs.keys()]:
                 conn_settings['isreplicaSet'] = True
             if 'authsource' in uri_options:
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
-            if IS_PYMONGO_3 and 'readpreference' in uri_options and \
-                    'readpreferencetags' in uri_options:
+            if IS_PYMONGO_3 and 'readpreference' in uri_options \
+                    and 'readpreferencetags' in uri_options:
                 del conn_settings['read_preference']
         else:
             resolved_hosts.append(entity)
@@ -180,7 +180,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         # For replica set connections with PyMongo 2.x, use
         # MongoReplicaSetClient.
         # TODO remove this once we stop supporting PyMongo 2.x.
-        if conn_settings.has_key('isreplicaSet'):
+        if 'isreplicaSet' in conn_settings.keys():
             if not IS_PYMONGO_3:
                 connection_class = MongoReplicaSetClient
                 conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
