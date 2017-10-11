@@ -123,7 +123,6 @@ class ConnectionTest(unittest.TestCase):
         # dev_rs as real replica set name, while test_rs is false as comparision
         # replicaset case insensitive
         if not IS_PYMONGO_3: #like 2.9 and 2.8
-            print pymongo.version_tuple
             # uri opt overrides kwargs for connecting replica set
             c_obj = connect(
                 db='testrjx',
