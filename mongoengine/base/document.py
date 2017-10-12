@@ -126,10 +126,8 @@ class BaseDocument(object):
                         field = self._fields.get(key)
                         if field and not isinstance(field, FileField):
                             value = field.to_python(value)
-                    if __auto_convert:
-                        self.setattr_quick(key, value)
-                    else:
-                        self._data[key] = value
+                    self.setattr_quick(key, value)
+                    # setattr(self, key, value)
                 else:
                     self._data[key] = value
                     
