@@ -1461,7 +1461,7 @@ class BaseQuerySet(object):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
         if self._limit == 0 or self._none:
-            raise StopIteration
+            return
 
         raw_doc = self._cursor.next()
 
