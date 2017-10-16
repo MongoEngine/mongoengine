@@ -1098,11 +1098,11 @@ class CachedReferenceField(BaseField):
         signals.post_save.connect(self.on_document_pre_save,
                                   sender=self.document_type)
 
-    def on_document_pre_save(self, sender, document, created, **kwargs):
-        if not created:
+    def on_document_pre_save(self, sender, document, created, _changed_fields, **kwargs):
+        if not created and _changed_fields:
             update_kwargs = dict(
-                ('set__%s__%s' % (self.name, k), v)
-                for k, v in document._delta()[0].items()
+                ('set__%s__%s' % (self.name, k), document[k])
+                for k in _changed_fields
                 if k in self.fields)
 
             if update_kwargs:
