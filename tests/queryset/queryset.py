@@ -1964,6 +1964,18 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, ["code", "mongodb"])
 
+    def test_push_dict(self):
+
+        class Model(Document):
+            events = ListField(DictField())
+
+        doc = Model().save()
+
+        Model.objects(id=doc.id).update(events__push={})
+        doc.reload()
+        self.assertEqual(len(doc.events), 1)
+        self.assertEqual(doc.events[0], {})
+
     def test_add_to_set_each(self):
         class Item(Document):
             name = StringField(required=True)
