@@ -1254,6 +1254,9 @@ class Document(BaseDocument):
         if not spec:
             raise ValueError("Cannot do empty specs")
 
+        is_scatter_gather = cls.is_scatter_gather(spec)
+        set_comment = cls.attach_trace(
+            MongoComment.get_query_comment(), is_scatter_gather)
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
@@ -1268,9 +1271,6 @@ class Document(BaseDocument):
                     w=cls._meta['write_concern'], **kwargs
                 )
 
-        is_scatter_gather = cls.is_scatter_gather(spec)
-        set_comment = cls.attach_trace(
-            MongoComment.get_query_comment(), is_scatter_gather)
 
         try:
             with log_slow_event("remove", cls._meta['collection'], spec):
