@@ -356,7 +356,7 @@ class Document(BaseDocument):
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
-        changed_fields = getattr(self, '_changed_fields', [])
+        changed_fields = list(set([f.split('.')[0] for f in getattr(self, '_changed_fields', [])]))
         original_values = getattr(self, '_original_values', {})
         self._clear_changed_fields()
         self._created = False

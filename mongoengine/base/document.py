@@ -587,8 +587,8 @@ class BaseDocument(object):
         DynamicEmbeddedDocument = _import_class("DynamicEmbeddedDocument")
         ReferenceField = _import_class("ReferenceField")
         SortedListField = _import_class("SortedListField")
-        changed_fields = []
-        changed_fields += getattr(self, '_changed_fields', [])
+        changed_fields = getattr(self, '_changed_fields', [])
+        original_values = getattr(self, '_original_values', {})
 
         inspected = inspected or set()
         if hasattr(self, 'id') and isinstance(self.id, Hashable):
@@ -611,7 +611,13 @@ class BaseDocument(object):
                   and db_field_name not in changed_fields):
                 # Find all embedded fields that have been changed
                 changed = data._get_changed_fields(inspected)
-                changed_fields += ["%s%s" % (key, k) for k in changed if k]
+                for k in changed:
+                    if k:
+                        field_name = "%s%s" % (key, k)
+                        if field_name not in changed_fields:
+                            changed_fields.append(field_name)
+                            if k in getattr(data, '_original_values', {}):
+                                original_values[field_name] = getattr(data, '_original_values', {})[k]
             elif (isinstance(data, (list, tuple, dict)) and
                     db_field_name not in changed_fields):
                 if (hasattr(field, 'field') and
