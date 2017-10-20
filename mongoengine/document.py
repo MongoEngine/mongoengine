@@ -1433,7 +1433,8 @@ class Document(BaseDocument):
         return cls._transform_value(query, cls, validate=validate)
 
     @staticmethod
-    def _transform_value(value, context, op=None, validate=True, fields=False):
+    def _transform_value(value, context, op=None, validate=True, fields=False,
+            embeddeddoc=False):
         from fields import DictField, EmbeddedDocumentField, ListField, \
                            ArbitraryField
 
@@ -1448,7 +1449,7 @@ class Document(BaseDocument):
                            '$elemMatch', '$size', '$type', '$not', '$returnKey',
                            '$maxScan', '$orderby', '$explain', '$snapshot',
                            '$max', '$min', '$showDiskLoc', '$hint', '$comment',
-                           '$slice', '$options', '$regex']
+                           '$slice', '$options', '$regex', '$position']
 
         # recurse on list, unless we're at a ListField
         if isinstance(value, list) and not isinstance(context, ListField):
@@ -1477,16 +1478,23 @@ class Document(BaseDocument):
         if isinstance(value, dict) and not isinstance(context, DictField):
             transformed_value = SON()
 
+
             for key, subvalue in value.iteritems():
+                embeddeddoc = False
                 if key[0] == '$':
                     op = key
+
+                if isinstance(context, ListField):
+                    if isinstance(context.field, EmbeddedDocumentField):
+                        context = context.field
+                        embeddeddoc = True
 
                 new_key, value_context = Document._transform_key(key, context,
                                              is_find=(op is None))
 
                 transformed_value[new_key] = \
                     Document._transform_value(subvalue, value_context,
-                                              op, validate, fields)
+                                              op, validate, fields, embeddeddoc=embeddeddoc)
 
             return transformed_value
         # if we're in a dict field and there's operations on it, recurse
@@ -1522,6 +1530,9 @@ class Document(BaseDocument):
             elif op in VALIDATE_OPS:
                 op_type = 'value'
 
+            if op_type in ('list',) and embeddeddoc:
+                op_type = 'value'
+
             value = Document._transform_id_reference_value(value, context,
                                                            op_type)
 
@@ -1546,7 +1557,10 @@ class Document(BaseDocument):
                 # same special case as above (for {list: x} meaning "x in list")
                 elif op in LIST_VALIDATE_OPS or \
                       (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
-                    context.field.validate(value)
+                    if not isinstance(context, ListField):
+                        context.validate(value)
+                    else:
+                        context.field.validate(value)
                 elif op in VALIDATE_OPS:
                     context.validate(value)
                 elif op not in NO_VALIDATE_OPS:
