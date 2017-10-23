@@ -394,6 +394,7 @@ class Document(BaseDocument):
                 'op': 'insert',
                 'document': doc
             })
+        return object_id
 
     @classmethod
     def _from_augmented_son(cls, d, fields, excluded_fields=None):
