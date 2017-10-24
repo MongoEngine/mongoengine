@@ -1,6 +1,6 @@
 from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
-                  ValidationError, MongoComment, get_document, FieldStatus,
-                  FieldNotLoadedError)
+                  ValidationError, MongoComment, get_document, get_embedded_doc_fields,
+                  FieldStatus, FieldNotLoadedError)
 from queryset import OperationError
 from cl.utils.greenletutil import CLGreenlet, GreenletUtil
 import contextlib
@@ -1759,6 +1759,13 @@ class Document(BaseDocument):
             field = context
 
         if not field:
+            # This is a hack for subclassed EmbeddedDocuments. Since we validate
+            # on the top level EmbeddedDocument, and it might not have all the fields
+            # pull the info from the registry and use that instead.
+            if isinstance(context, EmbeddedDocumentField):
+                potential_fields = get_embedded_doc_fields(context.document_type)
+                if first_part in potential_fields:
+                    return potential_fields[first_part].db_field, potential_fields[first_part]
             raise ValueError("Can't find field %s" % first_part)
 
         # another unfortunate hack... in find queries "list.field_name" means
