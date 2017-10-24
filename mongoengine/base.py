@@ -13,11 +13,15 @@ import greenlet
 from collections import defaultdict
 
 _document_registry = {}
-
+_embedded_doc_registry = {}
 
 def get_document(name):
     return _document_registry[name]
 
+def get_embedded_doc_fields(cls):
+    if cls not in _embedded_doc_registry:
+        return {}
+    return _embedded_doc_registry[cls]
 
 class ValidationError(Exception):
     pass
@@ -391,6 +395,15 @@ class DocumentMetaclass(type):
         new_class = super_new(cls, name, bases, attrs)
         for field in new_class._fields.values():
             field.owner_document = new_class
+
+        from mongoengine.document import EmbeddedDocument
+        if issubclass(new_class, EmbeddedDocument):
+            for base in new_class.__bases__:
+                if base != EmbeddedDocument and issubclass(base, EmbeddedDocument):
+                    if base in _embedded_doc_registry:
+                        _embedded_doc_registry[base].update(new_class._fields)
+                    else:
+                        _embedded_doc_registry[base] = new_class._fields
 
         module = attrs.get('__module__')
 
