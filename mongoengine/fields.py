@@ -244,14 +244,17 @@ class EmailField(StringField):
             self.error(self.error_msg % value)
 
         # Validate the domain and, if invalid, see if it's IDN-encoded.
-        if not self.validate_domain_part(domain_part):
+        domain_part_valid = self.validate_domain_part(domain_part)
+        if domain_part_valid:
+            return
+        else:
             try:
-                domain_part = domain_part.encode('idna').decode('ascii')
+                domain_part.encode('idna').decode('ascii')
+                return
             except UnicodeError:
                 self.error(self.error_msg % value)
-            else:
-                if not self.validate_domain_part(domain_part):
-                    self.error(self.error_msg % value)
+
+            self.error(self.error_msg % value)
 
 
 class IntField(BaseField):
