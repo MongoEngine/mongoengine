@@ -247,12 +247,8 @@ class EmailField(StringField):
         if not self.validate_domain_part(domain_part):
             try:
                 domain_part = domain_part.encode('idna').decode('ascii')
-            except UnicodeError:
+            except Exception:
                 self.error(self.error_msg % value)
-            else:
-                if not self.validate_domain_part(domain_part):
-                    self.error(self.error_msg % value)
-
 
 class IntField(BaseField):
     """32-bit integer field."""
