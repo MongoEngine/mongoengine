@@ -986,7 +986,7 @@ class ReferenceField(BaseField):
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.deference, instance=instance, owner=owner, value=value),
-                value.id, value.collection)
+                value.id, value.collection, instance)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -1157,7 +1157,7 @@ class CachedReferenceField(BaseField):
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.dereference, instance=instance, owner=owner, value=value),
-                value.id, value.collection)
+                value.id, value.collection, instance)
         return super(CachedReferenceField, self).__get__(instance, owner)
 
 
