@@ -147,6 +147,9 @@ class BaseField(object):
                 for v in value:
                     if type(v) is not DocumentProxy and isinstance(v, EmbeddedDocument):
                         v._instance = weakref.proxy(instance)
+        else:
+            # Set this for DocumentProxy as well
+            value._instance = weakref.proxy(instance)
         instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
