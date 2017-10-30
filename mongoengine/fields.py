@@ -26,7 +26,8 @@ except ImportError:
     Int64 = long
 
 from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
-                              GeoJsonBaseField, ObjectIdField, get_document)
+                              GeoJsonBaseField, ObjectIdField, get_document,
+                              LazyReference)
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
@@ -46,6 +47,8 @@ __all__ = (
     'GenericEmbeddedDocumentField', 'DynamicField', 'ListField',
     'SortedListField', 'EmbeddedDocumentListField', 'DictField',
     'MapField', 'ReferenceField', 'CachedReferenceField',
+    'LazyReferenceField',
+    # 'GenericLazyReferenceField',
     'GenericReferenceField', 'BinaryField', 'GridFSError', 'GridFSProxy',
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
@@ -953,6 +956,15 @@ class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
 
+    Note this means you will get a database I/O access everytime you access
+    this field. This is necessary because the field returns a :class:`~mongoengine.Document`
+    which precise type can depend of the value of the `_cls` field present in the
+    document in database.
+    In short, using this type of field can lead to poor performances (especially
+    if you access this field only to retrieve it `pk` field which is already
+    known before dereference). To solve this you should consider using the
+    :class:`~mongoengine.fields.LazyReferenceField`.
+
     Use the `reverse_delete_rule` to handle what should happen if the document
     the field is referencing is deleted.  EmbeddedDocuments, DictFields and
     MapFields does not support reverse_delete_rule and an `InvalidDocumentError`
@@ -1087,8 +1099,8 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
 
-        if not isinstance(value, (self.document_type, DBRef, ObjectId)):
-            self.error('A ReferenceField only accepts DBRef, ObjectId or documents')
+        if not isinstance(value, (self.document_type, LazyReference, DBRef, ObjectId)):
+            self.error('A ReferenceField only accepts DBRef, LazyReference, ObjectId or documents')
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
@@ -2141,3 +2153,124 @@ class MultiPolygonField(GeoJsonBaseField):
     .. versionadded:: 0.9
     """
     _type = 'MultiPolygon'
+
+
+class LazyReferenceField(BaseField):
+    """A really lazy reference to a document.
+    Unlike the :class:`~mongoengine.fields.ReferenceField` it must be manually
+    dereferenced using it ``fetch()`` method.
+    """
+
+    def __init__(self, document_type, passthrough=False, dbref=False,
+                 reverse_delete_rule=DO_NOTHING, **kwargs):
+        """Initialises the Reference Field.
+
+        :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
+          or as the :class:`~pymongo.objectid.ObjectId`.id .
+        :param reverse_delete_rule: Determines what to do when the referring
+          object is deleted
+        :param passthrough: When trying to access unknown fields, the
+        :class:`~mongoengine.base.datastructure.LazyReference` instance will
+        automatically call `fetch()` and try to retrive the field on the fetched
+        document. Note this only work getting field (not setting or deleting).
+        """
+        if (
+            not isinstance(document_type, six.string_types) and
+            not issubclass(document_type, Document)
+        ):
+            self.error('Argument to LazyReferenceField constructor must be a '
+                       'document class or a string')
+
+        self.dbref = dbref
+        self.passthrough = passthrough
+        self.document_type_obj = document_type
+        self.reverse_delete_rule = reverse_delete_rule
+        super(LazyReferenceField, self).__init__(**kwargs)
+
+    @property
+    def document_type(self):
+        if isinstance(self.document_type_obj, six.string_types):
+            if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
+                self.document_type_obj = self.owner_document
+            else:
+                self.document_type_obj = get_document(self.document_type_obj)
+        return self.document_type_obj
+
+    def __get__(self, instance, owner):
+        """Descriptor to allow lazy dereferencing."""
+        if instance is None:
+            # Document class being used rather than a document object
+            return self
+
+        value = instance._data.get(self.name)
+        if isinstance(value, LazyReference):
+            if value.passthrough != self.passthrough:
+                instance._data[self.name] = LazyReference(
+                    value.document_type, value.pk, passthrough=self.passthrough)
+        elif value is not None:
+            if isinstance(value, self.document_type):
+                value = LazyReference(self.document_type, value.pk, passthrough=self.passthrough)
+            elif isinstance(value, DBRef):
+                value = LazyReference(self.document_type, value.id, passthrough=self.passthrough)
+            else:
+                # value is the primary key of the referenced document
+                value = LazyReference(self.document_type, value, passthrough=self.passthrough)
+            instance._data[self.name] = value
+
+        return super(LazyReferenceField, self).__get__(instance, owner)
+
+    def to_mongo(self, value):
+        if isinstance(value, LazyReference):
+            pk = value.pk
+        elif isinstance(value, self.document_type):
+            pk = value.pk
+        elif isinstance(value, DBRef):
+            pk = value.id
+        else:
+            # value is the primary key of the referenced document
+            pk = value
+        id_field_name = self.document_type._meta['id_field']
+        id_field = self.document_type._fields[id_field_name]
+        pk = id_field.to_mongo(pk)
+        if self.dbref:
+            return DBRef(self.document_type._get_collection_name(), pk)
+        else:
+            return pk
+
+    def validate(self, value):
+        if isinstance(value, LazyReference):
+            if not issubclass(value.document_type, self.document_type):
+                self.error('Reference must be on a `%s` document.' % self.document_type)
+            pk = value.pk
+        elif isinstance(value, self.document_type):
+            pk = value.pk
+        elif isinstance(value, DBRef):
+            # TODO: check collection ?
+            collection = self.document_type._get_collection_name()
+            if value.collection != collection:
+                self.error("DBRef on bad collection (must be on `%s`)" % collection)
+            pk = value.id
+        else:
+            # value is the primary key of the referenced document
+            id_field_name = self.document_type._meta['id_field']
+            id_field = getattr(self.document_type, id_field_name)
+            pk = value
+            try:
+                id_field.validate(pk)
+            except ValidationError:
+                self.error("value should be `{0}` document, LazyReference or DBRef on `{0}` "
+                           "or `{0}`'s primary key (i.e. `{1}`)".format(
+                            self.document_type.__name__, type(id_field).__name__))
+
+        if pk is None:
+            self.error('You can only reference documents once they have been '
+                       'saved to the database')
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return None
+        super(LazyReferenceField, self).prepare_query_value(op, value)
+        return self.to_mongo(value)
+
+    def lookup_member(self, member_name):
+        return self.document_type._fields.get(member_name)

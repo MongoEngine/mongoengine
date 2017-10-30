@@ -2,9 +2,9 @@
 Changelog
 =========
 
-Development
-===========
-- (Fill this out as you fix issues and develop your features).
+Changes in 0.15.0
+=================
+- Add LazyReferenceField to address #1230
 
 Changes in 0.14.1
 =================
