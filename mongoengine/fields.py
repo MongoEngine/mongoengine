@@ -26,8 +26,8 @@ except ImportError:
     Int64 = long
 
 from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
-                              GeoJsonBaseField, ObjectIdField, get_document,
-                              LazyReference)
+                              GeoJsonBaseField, LazyReference, ObjectIdField,
+                              get_document)
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
@@ -2265,9 +2265,10 @@ class LazyReferenceField(BaseField):
             try:
                 id_field.validate(pk)
             except ValidationError:
-                self.error("value should be `{0}` document, LazyReference or DBRef on `{0}` "
-                           "or `{0}`'s primary key (i.e. `{1}`)".format(
-                            self.document_type.__name__, type(id_field).__name__))
+                self.error(
+                    "value should be `{0}` document, LazyReference or DBRef on `{0}` "
+                    "or `{0}`'s primary key (i.e. `{1}`)".format(
+                        self.document_type.__name__, type(id_field).__name__))
 
         if pk is None:
             self.error('You can only reference documents once they have been '
