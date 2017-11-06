@@ -4,7 +4,7 @@ Changelog
 
 Changes in 0.15.0
 =================
-- Add LazyReferenceField to address #1230
+- Add LazyReferenceField and GenericLazyReferenceField to address #1230
 
 Changes in 0.14.1
 =================

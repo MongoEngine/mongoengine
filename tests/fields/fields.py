@@ -933,7 +933,7 @@ class FieldTest(MongoDBTestCase):
             authors = ListField(ReferenceField(User))
             authors_as_lazy = ListField(LazyReferenceField(User))
             generic = ListField(GenericReferenceField())
-            # generic_as_lazy = ListField(LazyGenericReferenceField())
+            generic_as_lazy = ListField(GenericLazyReferenceField())
 
         User.drop_collection()
         BlogPost.drop_collection()
@@ -992,17 +992,17 @@ class FieldTest(MongoDBTestCase):
         post.generic = [user]
         post.validate()
 
-        # post.generic_as_lazy = [1, 2]
-        # self.assertRaises(ValidationError, post.validate)
+        post.generic_as_lazy = [1, 2]
+        self.assertRaises(ValidationError, post.validate)
 
-        # post.generic_as_lazy = [User(), Comment()]
-        # self.assertRaises(ValidationError, post.validate)
+        post.generic_as_lazy = [User(), Comment()]
+        self.assertRaises(ValidationError, post.validate)
 
-        # post.generic_as_lazy = [Comment()]
-        # self.assertRaises(ValidationError, post.validate)
+        post.generic_as_lazy = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
 
-        # post.generic_as_lazy = [user]
-        # post.validate()
+        post.generic_as_lazy = [user]
+        post.validate()
 
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
@@ -4870,6 +4870,186 @@ class LazyReferenceFieldTest(MongoDBTestCase):
         other_animalref = LazyReference(Animal, ObjectId("54495ad94c934721ede76f90"))
         self.assertNotEqual(animal, other_animalref)
         self.assertNotEqual(other_animalref, animal)
+
+
+class GenericLazyReferenceFieldTest(MongoDBTestCase):
+    def test_generic_lazy_reference_simple(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        Ocurrence(person="test", animal=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertIsInstance(p.animal, LazyReference)
+        fetched_animal = p.animal.fetch()
+        self.assertEqual(fetched_animal, animal)
+        # `fetch` keep cache on referenced document by default...
+        animal.tag = "not so heavy"
+        animal.save()
+        double_fetch = p.animal.fetch()
+        self.assertIs(fetched_animal, double_fetch)
+        self.assertEqual(double_fetch.tag, "heavy")
+        # ...unless specified otherwise
+        fetch_force = p.animal.fetch(force=True)
+        self.assertIsNot(fetch_force, fetched_animal)
+        self.assertEqual(fetch_force.tag, "not so heavy")
+
+    def test_generic_lazy_reference_choices(self):
+        class Animal(Document):
+            name = StringField()
+
+        class Vegetal(Document):
+            name = StringField()
+
+        class Mineral(Document):
+            name = StringField()
+
+        class Ocurrence(Document):
+            living_thing = GenericLazyReferenceField(choices=[Animal, Vegetal])
+            thing = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Vegetal.drop_collection()
+        Mineral.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard").save()
+        vegetal = Vegetal(name="Oak").save()
+        mineral = Mineral(name="Granite").save()
+
+        occ_animal = Ocurrence(living_thing=animal, thing=animal).save()
+        occ_vegetal = Ocurrence(living_thing=vegetal, thing=vegetal).save()
+        with self.assertRaises(ValidationError):
+            Ocurrence(living_thing=mineral).save()
+
+        occ = Ocurrence.objects.get(living_thing=animal)
+        self.assertEqual(occ, occ_animal)
+        self.assertIsInstance(occ.thing, LazyReference)
+        self.assertIsInstance(occ.living_thing, LazyReference)
+
+        occ.thing = vegetal
+        occ.living_thing = vegetal
+        occ.save()
+
+        occ.thing = mineral
+        occ.living_thing = mineral
+        with self.assertRaises(ValidationError):
+            occ.save()
+
+    def test_generic_lazy_reference_set(self):
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
+
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        class SubAnimal(Animal):
+            nick = StringField()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        sub_animal = SubAnimal(nick='doggo', name='dog').save()
+        for ref in (
+                animal,
+                LazyReference(Animal, animal.pk),
+                {'_cls': 'Animal', '_ref': DBRef(animal._get_collection_name(), animal.pk)},
+
+                sub_animal,
+                LazyReference(SubAnimal, sub_animal.pk),
+                {'_cls': 'SubAnimal', '_ref': DBRef(sub_animal._get_collection_name(), sub_animal.pk)},
+                ):
+            p = Ocurrence(person="test", animal=ref).save()
+            p.reload()
+            self.assertIsInstance(p.animal, (LazyReference, Document))
+            p.animal.fetch()
+
+    def test_generic_lazy_reference_bad_set(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField(choices=['Animal'])
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        class BadDoc(Document):
+            pass
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        baddoc = BadDoc().save()
+        for bad in (
+                42,
+                'foo',
+                baddoc,
+                LazyReference(BadDoc, animal.pk)
+                ):
+            with self.assertRaises(ValidationError):
+                p = Ocurrence(person="test", animal=bad).save()
+
+    def test_generic_lazy_reference_query_conversion(self):
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = GenericLazyReferenceField()
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2).first()
+        self.assertEqual(post.id, post2.id)
+
+        # Same thing by passing a LazyReference instance
+        post = BlogPost.objects(author=LazyReference(Member, m2.pk)).first()
+        self.assertEqual(post.id, post2.id)
+
+    def test_generic_lazy_reference_not_set(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        Ocurrence(person='foo').save()
+        p = Ocurrence.objects.get()
+        self.assertIs(p.animal, None)
 
 
 if __name__ == '__main__':

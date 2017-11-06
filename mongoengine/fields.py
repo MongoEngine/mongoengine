@@ -47,8 +47,7 @@ __all__ = (
     'GenericEmbeddedDocumentField', 'DynamicField', 'ListField',
     'SortedListField', 'EmbeddedDocumentListField', 'DictField',
     'MapField', 'ReferenceField', 'CachedReferenceField',
-    'LazyReferenceField',
-    # 'GenericLazyReferenceField',
+    'LazyReferenceField', 'GenericLazyReferenceField',
     'GenericReferenceField', 'BinaryField', 'GridFSError', 'GridFSProxy',
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
     'GeoPointField', 'PointField', 'LineStringField', 'PolygonField',
@@ -1275,6 +1274,12 @@ class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
+    Note this field works the same way as :class:`~mongoengine.document.ReferenceField`,
+    doing database I/O access the first time it is accessed (even if it's to access
+    it ``pk`` or ``id`` field).
+    To solve this you should consider using the
+    :class:`~mongoengine.fields.GenericLazyReferenceField`.
+
     .. note ::
         * Any documents used as a generic reference must be registered in the
           document registry.  Importing the model will automatically register
@@ -2159,6 +2164,8 @@ class LazyReferenceField(BaseField):
     """A really lazy reference to a document.
     Unlike the :class:`~mongoengine.fields.ReferenceField` it must be manually
     dereferenced using it ``fetch()`` method.
+
+    .. versionadded:: 0.15
     """
 
     def __init__(self, document_type, passthrough=False, dbref=False,
@@ -2274,3 +2281,65 @@ class LazyReferenceField(BaseField):
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
+
+
+class GenericLazyReferenceField(GenericReferenceField):
+    """A reference to *any* :class:`~mongoengine.document.Document` subclass
+    that will be automatically dereferenced on access (lazily).
+    Unlike the :class:`~mongoengine.fields.GenericReferenceField` it must be
+    manually dereferenced using it ``fetch()`` method.
+
+    .. note ::
+        * Any documents used as a generic reference must be registered in the
+          document registry.  Importing the model will automatically register
+          it.
+
+        * You can use the choices param to limit the acceptable Document types
+
+    .. versionadded:: 0.15
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.passthrough = kwargs.pop('passthrough', False)
+        super(GenericLazyReferenceField, self).__init__(*args, **kwargs)
+
+    def _validate_choices(self, value):
+        if isinstance(value, LazyReference):
+            value = value.document_type
+        super(GenericLazyReferenceField, self)._validate_choices(value)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        value = instance._data.get(self.name)
+        if isinstance(value, LazyReference):
+            if value.passthrough != self.passthrough:
+                instance._data[self.name] = LazyReference(
+                    value.document_type, value.pk, passthrough=self.passthrough)
+        elif value is not None:
+            if isinstance(value, (dict, SON)):
+                value = LazyReference(get_document(value['_cls']), value['_ref'].id, passthrough=self.passthrough)
+            elif isinstance(value, Document):
+                value = LazyReference(type(value), value.pk, passthrough=self.passthrough)
+            instance._data[self.name] = value
+
+        return super(GenericLazyReferenceField, self).__get__(instance, owner)
+
+    def validate(self, value):
+        if isinstance(value, LazyReference) and value.pk is None:
+            self.error('You can only reference documents once they have been'
+                       ' saved to the database')
+        return super(GenericLazyReferenceField, self).validate(value)
+
+    def to_mongo(self, document):
+        if document is None:
+            return None
+
+        if isinstance(document, LazyReference):
+            return SON((
+                ('_cls', document.document_type._class_name),
+                ('_ref', document)
+            ))
+        else:
+            return super(GenericLazyReferenceField, self).to_mongo(document)
