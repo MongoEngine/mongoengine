@@ -97,9 +97,9 @@ class StringField(BaseField):
             return value
 
         if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
-            flags = 0
+            options = ''
             if op.startswith('i'):
-                flags = re.IGNORECASE
+                options = 'i'
                 op = op.lstrip('i')
 
             regex = r'%s'
@@ -112,7 +112,11 @@ class StringField(BaseField):
 
             # escape unsafe characters which could lead to a re.error
             value = re.escape(value)
-            value = re.compile(regex % value, flags)
+            value = {
+                '$regex': regex % value
+            }
+            if options:
+                value['$options'] = options
         return super(StringField, self).prepare_query_value(op, value)
 
 
