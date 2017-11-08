@@ -13,6 +13,7 @@ from mongoengine import signals
 from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList,
+                                             LazyReference,
                                              StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
@@ -488,7 +489,7 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
 
-                if hasattr(data, '_changed_fields'):
+                if not isinstance(data, LazyReference) and hasattr(data, '_changed_fields'):
                     if getattr(data, '_is_document', False):
                         continue
 
