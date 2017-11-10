@@ -52,6 +52,17 @@ class EmbeddedDocument(BaseDocument):
     __metaclass__ = DocumentMetaclass
 
 
+class WrappedCounter(object):
+
+    def __init__(self):
+        self.value = 0
+
+    def inc(self):
+        self.value += 1
+
+    def get(self):
+        return self.value
+
 class Document(BaseDocument):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
@@ -199,33 +210,64 @@ class Document(BaseDocument):
         for field in self._fields:
             setattr(self, field, obj[field])
 
+    BULK_INDEX = "bulk_index"
+    BULK_SAVE_OBJECTS = "bulk_save_objects"
+    BULK_OP = "bulk_op"
+    PROXY_BULK_OP = "proxy_bulk_op"
+
+    @classmethod
+    def bulk_name(cls, name):
+        return "_bulk_%s_%s" % (name, cls.__name__)
+
+    @classmethod
+    def get_bulk_attr(cls, name):
+        current_greenlet = greenlet.getcurrent()
+        if hasattr(current_greenlet, cls.bulk_name(name)):
+            return getattr(current_greenlet, cls.bulk_name(name))
+        return None
+
+    @classmethod
+    def init_bulk_attr(cls, name, default):
+        current_greenlet = greenlet.getcurrent()
+        if not hasattr(current_greenlet, cls.bulk_name(name)) or \
+            getattr(current_greenlet, cls.bulk_name(name)) is None:
+            setattr(current_greenlet, cls.bulk_name(name), default)
+        return getattr(current_greenlet, cls.bulk_name(name))
+
+    @classmethod
+    def clear_bulk_attr(cls, name):
+        current_greenlet = greenlet.getcurrent()
+        setattr(current_greenlet, cls.bulk_name(name), None)
+
     @classmethod
     @contextlib.contextmanager
     def bulk(cls, allow_empty=None, unordered=False):
-        if cls._bulk_op is not None or cls._bulk_ops is not None:
+        if cls.get_bulk_attr(cls.BULK_OP) is not None or cls.get_bulk_attr(cls.PROXY_BULK_OP) is not None:
             raise RuntimeError('Cannot nest bulk operations')
         try:
-            cls._bulk_index = 0
-            cls._bulk_save_objects = dict()
-            cls._bulk_ops = []
+            cls.init_bulk_attr(cls.BULK_INDEX, WrappedCounter())
+            cls.init_bulk_attr(cls.BULK_SAVE_OBJECTS, dict())
+
             usemongoproxy=False
             proxy_client = cls._get_proxy_client()
             if proxy_client:
                 usemongoproxy = cls._get_write_decider()
             if not usemongoproxy:
                 if unordered:
-                    cls._bulk_op = cls._pymongo().initialize_unordered_bulk_op()
+                    cls.init_bulk_attr(cls.BULK_OP,cls._pymongo().initialize_unordered_bulk_op())
                 else:
-                    cls._bulk_op = cls._pymongo().initialize_ordered_bulk_op()
+                    cls.init_bulk_attr(cls.BULK_OP,cls._pymongo().initialize_ordered_bulk_op())
+            else:
+                cls.init_bulk_attr(cls.PROXY_BULK_OP, list())
             yield
             try:
                 if usemongoproxy:
-                    proxy_client.instance().bulk(cls, cls._bulk_ops, unordered)
+                    proxy_client.instance().bulk(cls, cls.get_bulk_attr(cls.PROXY_BULK_OP), unordered)
                 else:
                     w = cls._meta.get('write_concern', 1)
-                    cls._bulk_op.execute(write_concern={'w': w})
+                    cls.get_bulk_attr(cls.BULK_OP).execute(write_concern={'w': w})
 
-                for object_id, props in cls._bulk_save_objects.iteritems():
+                for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).iteritems():
                     instance = props['obj']
                     if instance.id is None:
                         id_field = cls.pk_field()
@@ -240,7 +282,7 @@ class Document(BaseDocument):
                     messages = '\n'.join(_['errmsg'] for _ in wc_errors)
                     message = 'Write concern errors for bulk op: %s' % messages
                 elif w_error:
-                    for object_id, props in cls._bulk_save_objects.iteritems():
+                    for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS):
                         if props['index'] < w_error['index']:
                             instance = props['obj']
                             if instance.id is None:
@@ -271,14 +313,15 @@ class Document(BaseDocument):
                 message = u'Could not perform bulk operation (%s)' % err.message
                 raise OperationError(message)
         finally:
-            cls._bulk_op = None
-            cls._bulk_ops = None
-            cls._bulk_save_objects = None
+            cls.clear_bulk_attr(cls.BULK_OP)
+            cls.clear_bulk_attr(cls.PROXY_BULK_OP)
+            cls.clear_bulk_attr(cls.BULK_INDEX)
+            cls.clear_bulk_attr(cls.BULK_SAVE_OBJECTS)
 
     @classmethod
     def bulk_update(cls, spec, document, upsert=False, multi=True, **kwargs):
-        if cls._bulk_op is None and cls._bulk_ops is None:
-            raise RuntimeError('Cannot bulk update outside of bulk operation')
+        if cls.get_bulk_attr(cls.BULK_OP) is None and cls.get_bulk_attr(cls.PROXY_BULK_OP) is None:
+            raise RuntimeError('Cannot do bulk operation outside of bulk context')
 
         document = cls._transform_value(document, cls, op='$set')
         spec = cls._transform_value(spec, cls)
@@ -295,33 +338,35 @@ class Document(BaseDocument):
             'document': document
         }
 
+        bulk_op = cls.get_bulk_attr(cls.BULK_OP)
+        proxy_bulk_op = cls.get_bulk_attr(cls.PROXY_BULK_OP)
         # pymongo's bulk operation support is based on chaining
         if upsert:
-            if cls._bulk_op is not None:
-                op = cls._bulk_op.find(spec).upsert()
+            if bulk_op is not None:
+                op = bulk_op.find(spec).upsert()
             bulk_step['op'] = 'upsert'
         else:
             if multi:
                 bulk_step['op'] = 'update_all'
             else:
                 bulk_step['op'] = 'update'
-            if cls._bulk_op is not None:
-                op = cls._bulk_op.find(spec)
+            if bulk_op is not None:
+                op = bulk_op.find(spec)
 
-        if cls._bulk_op is not None:
+        if bulk_op is not None:
             if multi:
                 op.update(document)
             else:
                 op.update_one(document)
 
-            cls._bulk_index += 1
+            cls.get_bulk_attr(cls.BULK_INDEX).inc()
         else:
-            cls._bulk_ops.append(bulk_step)
+            proxy_bulk_op.append(bulk_step)
 
     @classmethod
     def bulk_remove(cls, spec, multi=True, **kwargs):
-        if cls._bulk_op is None and cls._bulk_ops is None:
-            raise RuntimeError('Cannot bulk remove outside of bulk operation')
+        if cls.get_bulk_attr(cls.BULK_OP) is None and cls.get_bulk_attr(cls.PROXY_BULK_OP) is None:
+            raise RuntimeError('Cannot do bulk operation outside of bulk context')
 
         spec = cls._transform_value(spec, cls)
 
@@ -330,33 +375,35 @@ class Document(BaseDocument):
 
         spec = cls._update_spec(spec, **kwargs)
 
+        bulk_op = cls.get_bulk_attr(cls.BULK_OP)
+        proxy_bulk_op = cls.get_bulk_attr(cls.PROXY_BULK_OP)
 
-        if cls._bulk_op is not None:
-            op = cls._bulk_op.find(spec)
+        if bulk_op is not None:
+            op = bulk_op.find(spec)
         if multi:
-            if cls._bulk_op is not None:
+            if bulk_op is not None:
                 op.remove()
             else:
-                cls._bulk_ops.append({
+                proxy_bulk_op.append({
                     'op': 'remove_all',
                     'filter': spec
                 })
         else:
-            if cls._bulk_op is not None:
+            if bulk_op is not None:
                 op.remove_one()
             else:
-                cls._bulk_ops.append({
+                proxy_bulk_op.append({
                     'op': 'remove',
                     'filter': spec
                 })
 
-        if cls._bulk_op is not None:
-            cls._bulk_index += 1
+        if bulk_op is not None:
+            cls.get_bulk_attr(cls.BULK_INDEX).inc()
 
     def bulk_save(self, validate=True):
         cls = self.__class__
-        if cls._bulk_op is None and cls._bulk_ops is None:
-            raise RuntimeError('Cannot bulk save outside of bulk operation')
+        if cls.get_bulk_attr(cls.BULK_OP) is None and cls.get_bulk_attr(cls.PROXY_BULK_OP) is None:
+            raise RuntimeError('Cannot do bulk operation outside of bulk context')
 
         if validate:
             self.validate()
@@ -364,6 +411,9 @@ class Document(BaseDocument):
 
         id_field = cls.pk_field()
         id_name = id_field.name or 'id'
+
+        bulk_op = cls.get_bulk_attr(cls.BULK_OP)
+        proxy_bulk_op = cls.get_bulk_attr(cls.PROXY_BULK_OP)
 
         if self[id_name] is None:
             object_id = ObjectId()
@@ -382,15 +432,15 @@ class Document(BaseDocument):
             hash_field = cls._fields[cls._meta['hash_field']]
             doc[hash_field.db_field] = hash_field.to_mongo(self['shard_hash'])
 
-        if cls._bulk_op is not None:
-            cls._bulk_op.insert(doc)
-            cls._bulk_save_objects[object_id] = {
-                'index': cls._bulk_index,
+        if bulk_op is not None:
+            bulk_op.insert(doc)
+            cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS)[object_id] = {
+                'index': cls.get_bulk_attr(cls.BULK_INDEX).get(),
                 'obj': self
             }
-            cls._bulk_index += 1
+            cls.get_bulk_attr(cls.BULK_INDEX).inc()
         else:
-            cls._bulk_ops.append({
+            proxy_bulk_op.append({
                 'op': 'insert',
                 'document': doc
             })
