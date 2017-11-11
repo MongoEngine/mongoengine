@@ -1108,7 +1108,7 @@ class ReferenceField(BaseField):
         if self.document_type._meta.get('abstract') and \
                 not isinstance(value, self.document_type):
             self.error(
-                '%s is not an instance of abstract reference type %s' % (
+                '%s is not an instance of abstract reference type %s' % (value,
                     self.document_type._class_name)
             )
 
