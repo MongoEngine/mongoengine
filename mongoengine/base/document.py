@@ -827,7 +827,12 @@ class BaseDocument(object):
     def _build_history_indices(cls):
         if not cls.__name__.startswith("Historical"):
             return []
-        return [{ 'fields': [('_auto_id_0', 1)], 'args': { 'noCompanyPrefix': True } }]
+        autoIdIndex = {'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}}
+        historyTTL = cls.instance_type._meta.get('historyTTL')
+        if historyTTL:
+            historyTTLIndex = {'fields': ['history_date'], 'expireAfterSeconds': historyTTL}
+            return [historyTTLIndex, autoIdIndex]
+        return [autoIdIndex]
         
     @classmethod
     def _rippling_process_index_spec(cls, spec):
