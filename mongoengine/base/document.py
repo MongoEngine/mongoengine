@@ -830,7 +830,7 @@ class BaseDocument(object):
         autoIdIndex = {'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}}
         historyTTL = cls.instance_type._meta.get('historyTTL')
         if historyTTL:
-            historyTTLIndex = {'fields': ['history_date'], 'expireAfterSeconds': historyTTL}
+            historyTTLIndex = {'fields': [('history_date', 1)], 'expireAfterSeconds': historyTTL}
             return [historyTTLIndex, autoIdIndex]
         return [autoIdIndex]
         
