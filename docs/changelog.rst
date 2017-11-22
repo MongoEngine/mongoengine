@@ -5,7 +5,7 @@ Changelog
 Changes in 0.15.0
 =================
 - Add LazyReferenceField and GenericLazyReferenceField to address #1230
-- Fix validation error for invalid embedded document instance #1067
+- Fix validation error instance in GenericEmbeddedDocumentField #1067
 
 Changes in 0.14.1
 =================
