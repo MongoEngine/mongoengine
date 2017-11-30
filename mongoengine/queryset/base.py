@@ -470,7 +470,7 @@ class BaseQuerySet(object):
                     write_concern=write_concern,
                     **{'pull_all__%s' % field_name: self})
 
-        result = queryset._collection.remove(queryset._query, **write_concern)
+        result = queryset._collection.delete_many(queryset._query, **write_concern)
         if result:
             return result.get('n')
 
