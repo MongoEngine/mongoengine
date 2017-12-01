@@ -2,6 +2,7 @@
 Changelog
 =========
 
+<<<<<<< HEAD
 dev
 ===
 -  Subfield resolve error in generic_emdedded_document query #1651 #1652
