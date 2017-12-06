@@ -827,13 +827,20 @@ class BaseDocument(object):
     def _build_history_indices(cls):
         if not cls.__name__.startswith("Historical"):
             return []
+        indexes = []
         autoIdIndex = {'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}}
+        indexes.append(autoIdIndex)
+
         historyTTL = cls.instance_type._meta.get('historyTTL')
         if historyTTL:
-            historyTTLIndex = {'fields': [('history_date', 1)], 'expireAfterSeconds': historyTTL,
+            historyTTLIndex = {'fields': [('history_date', -1)], 'expireAfterSeconds': historyTTL,
                                'args': {'noCompanyPrefix': True}}
-            return [historyTTLIndex, autoIdIndex]
-        return [autoIdIndex]
+            indexes.append(historyTTLIndex)
+        else:
+            # append an index on history_date,
+            # _rippling_process_index_spec will take care of adding company prefix if needed
+            indexes.append({'fields': [('history_date', -1)]})
+        return indexes
         
     @classmethod
     def _rippling_process_index_spec(cls, spec):
