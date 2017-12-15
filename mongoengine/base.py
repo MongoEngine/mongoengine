@@ -403,7 +403,7 @@ class DocumentMetaclass(type):
                     if base in _embedded_doc_registry:
                         _embedded_doc_registry[base].update(new_class._fields)
                     else:
-                        _embedded_doc_registry[base] = new_class._fields
+                        _embedded_doc_registry[base] = copy.copy(new_class._fields)
 
         module = attrs.get('__module__')
 
