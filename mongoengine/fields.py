@@ -1256,7 +1256,11 @@ class CachedReferenceField(BaseField):
             if value.pk is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
-            return {'_id': value.pk}
+            value_dict = {'_id': value.pk}
+            for field in self.fields:
+                value_dict.update({field: value[field]})
+
+            return value_dict
 
         raise NotImplementedError
 

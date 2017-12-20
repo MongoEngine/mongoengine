@@ -4379,6 +4379,51 @@ class CachedReferenceFieldTest(MongoDBTestCase):
         self.assertEqual(SocialData.objects(person__group=g2).count(), 1)
         self.assertEqual(SocialData.objects(person__group=g2).first(), s2)
 
+    def test_cached_reference_field_push_with_fields(self):
+        class Product(Document):
+            name = StringField()
+
+        Product.drop_collection()
+
+        class Basket(Document):
+            products = ListField(CachedReferenceField(Product, fields=['name']))
+
+        Basket.drop_collection()
+        product1 = Product(name='abc').save()
+        product2 = Product(name='def').save()
+        basket = Basket(products=[product1]).save()
+        self.assertEqual(
+            Basket.objects._collection.find_one(),
+            {
+                '_id': basket.pk,
+                'products': [
+                    {
+                        '_id': product1.pk,
+                        'name': product1.name
+                    }
+                ]
+            }
+        )
+        # push to list
+        basket.update(push__products=product2)
+        basket.reload()
+        self.assertEqual(
+            Basket.objects._collection.find_one(),
+            {
+                '_id': basket.pk,
+                'products': [
+                    {
+                        '_id': product1.pk,
+                        'name': product1.name
+                    },
+                    {
+                        '_id': product2.pk,
+                        'name': product2.name
+                    }
+                ]
+            }
+        )
+
     def test_cached_reference_field_update_all(self):
         class Person(Document):
             TYPES = (
