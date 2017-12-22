@@ -429,10 +429,6 @@ class GeoQueriesTest(MongoDBTestCase):
         roads = Road.objects.filter(line__geo_within=polygon).count()
         self.assertEqual(1, roads)
 
-        sphere = [[-1, 42,], 2]
-        roads = Road.objects.filter(line__geo_within_sphere=sphere).count()
-        self.assertEqual(0, roads)
-
         roads = Road.objects.filter(line__geo_within={"$geometry": polygon}).count()
         self.assertEqual(1, roads)
 

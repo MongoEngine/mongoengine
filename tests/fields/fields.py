@@ -312,27 +312,6 @@ class FieldTest(MongoDBTestCase):
 
         self.assertEqual(1, TestDocument.objects(long_fld__ne=None).count())
 
-    def test_callable_validation(self):
-        """Ensure that callable validation works"""
-        def check_even(value):
-            return value % 2 == 0
-
-        class Order(Document):
-            number = IntField(validation=check_even)
-
-        Order.drop_collection()
-
-        order = Order(number=3)
-        self.assertRaises(ValidationError, order.validate)
-
-        class User(Document):
-            name = StringField(validation=1)
-
-        User.drop_collection()
-
-        user = User(name='test')
-        self.assertRaises(ValidationError, user.validate)
-
     def test_object_id_validation(self):
         """Ensure that invalid values cannot be assigned to an
         ObjectIdField.
@@ -355,7 +334,7 @@ class FieldTest(MongoDBTestCase):
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields."""
         class Person(Document):
-            name = StringField(max_length=20, min_length=5)
+            name = StringField(max_length=20)
             userid = StringField(r'[0-9a-z_]+$')
 
         person = Person(name=34)
@@ -371,10 +350,6 @@ class FieldTest(MongoDBTestCase):
 
         # Test max length validation on name
         person = Person(name='Name that is more than twenty characters')
-        self.assertRaises(ValidationError, person.validate)
-
-        # Test max length validation on name
-        person = Person(name='aa')
         self.assertRaises(ValidationError, person.validate)
 
         person.name = 'Shorter name'
@@ -462,10 +437,6 @@ class FieldTest(MongoDBTestCase):
         doc.age = 'ten'
         self.assertRaises(ValidationError, doc.validate)
 
-        # Test max_value validation
-        doc.value = 200
-        self.assertRaises(ValidationError, doc.validate)
-
     def test_float_validation(self):
         """Ensure that invalid values cannot be assigned to float fields.
         """
@@ -547,11 +518,6 @@ class FieldTest(MongoDBTestCase):
         with self.assertRaises(ValueError):
             class User(Document):
                 name = StringField(db_field='name\0')
-
-        # db field should be a string
-        with self.assertRaises(TypeError):
-            class User(Document):
-                name = StringField(db_field=1)
 
     def test_decimal_comparison(self):
         class Person(Document):
