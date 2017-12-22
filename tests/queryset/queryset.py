@@ -1861,10 +1861,6 @@ class QuerySetTest(unittest.TestCase):
         post = BlogPost(name="Test Post", hits=5, tags=['test'])
         post.save()
 
-        BlogPost.objects.update(hits=11)
-        post.reload()
-        self.assertEqual(post.hits, 11)
-
         BlogPost.objects.update(set__hits=10)
         post.reload()
         self.assertEqual(post.hits, 10)
@@ -1885,12 +1881,6 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.objects.update(push__tags='mongo')
         post.reload()
         self.assertTrue('mongo' in post.tags)
-
-        # Push with arrays
-        BlogPost.objects.update(push__tags=['python', 'scala'])
-        post.reload()
-        self.assertTrue('python' in post.tags)
-        self.assertTrue('scala' in post.tags)
 
         BlogPost.objects.update_one(push_all__tags=['db', 'nosql'])
         post.reload()
