@@ -153,7 +153,7 @@ post. This works, but there is no real reason to be storing the comments
 separately from their associated posts, other than to work around the
 relational model. Using MongoDB we can store the comments as a list of
 *embedded documents* directly on a post document. An embedded document should
-be treated no differently that a regular document; it just doesn't have its own
+be treated no differently than a regular document; it just doesn't have its own
 collection in the database. Using MongoEngine, we can define the structure of
 embedded documents, along with utility methods, in exactly the same way we do
 with regular documents::

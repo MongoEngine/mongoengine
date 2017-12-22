@@ -689,6 +689,11 @@ class GenericEmbeddedDocumentField(BaseField):
         return value
 
     def validate(self, value, clean=True):
+        if self.choices and isinstance(value, SON):
+            for choice in self.choices:
+                if value['_cls'] == choice._class_name:
+                    return True
+
         if not isinstance(value, EmbeddedDocument):
             self.error('Invalid embedded document instance provided to an '
                        'GenericEmbeddedDocumentField')
@@ -706,7 +711,6 @@ class GenericEmbeddedDocumentField(BaseField):
     def to_mongo(self, document, use_db_field=True, fields=None):
         if document is None:
             return None
-
         data = document.to_mongo(use_db_field, fields)
         if '_cls' not in data:
             data['_cls'] = document._class_name

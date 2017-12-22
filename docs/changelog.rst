@@ -7,8 +7,8 @@ dev
 -  Subfield resolve error in generic_emdedded_document query #1651 #1652
 -  use each modifier only with $position #1673 #1675
 -  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704
+-  Fix validation error instance in GenericEmbeddedDocumentField #1067
 -  Update cached fields when fields argument is given #1712
-
 
 Changes in 0.15.0
 =================

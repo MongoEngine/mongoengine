@@ -2086,6 +2086,23 @@ class QuerySetTest(unittest.TestCase):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__helpful__user=['Ross'])
 
+    def test_pull_in_genericembedded_field(self):
+
+        class Foo(EmbeddedDocument):
+            name = StringField()
+
+        class Bar(Document):
+            foos = ListField(GenericEmbeddedDocumentField(
+                choices=[Foo, ]))
+
+        Bar.drop_collection()
+
+        foo = Foo(name="bar")
+        bar = Bar(foos=[foo]).save()
+        Bar.objects(id=bar.id).update(pull__foos=foo)
+        bar.reload()
+        self.assertEqual(len(bar.foos), 0)
+
     def test_update_one_pop_generic_reference(self):
 
         class BlogTag(Document):
@@ -2178,6 +2195,24 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(message.authors[0].name, "Harry")
         self.assertEqual(message.authors[1].name, "Ross")
         self.assertEqual(message.authors[2].name, "Adam")
+
+    def test_set_generic_embedded_documents(self):
+
+        class Bar(EmbeddedDocument):
+            name = StringField()
+
+        class User(Document):
+            username = StringField()
+            bar = GenericEmbeddedDocumentField(choices=[Bar,])
+
+        User.drop_collection()
+
+        User(username='abc').save()
+        User.objects(username='abc').update(
+            set__bar=Bar(name='test'), upsert=True)
+
+        user = User.objects(username='abc').first()
+        self.assertEqual(user.bar.name, "test")
 
     def test_reload_embedded_docs_instance(self):
 
