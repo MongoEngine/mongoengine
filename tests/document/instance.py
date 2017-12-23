@@ -1884,6 +1884,25 @@ class InstanceTest(unittest.TestCase):
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
 
+    def test_reverse_delete_rule_pull(self):
+        """Ensure that a referenced document is also deleted with
+        pull.
+        """
+        class Record(Document):
+            name = StringField()
+            children = ListField(ReferenceField('self', reverse_delete_rule=PULL))
+
+        Record.drop_collection()
+
+        parent_record = Record(name='parent').save()
+        child_record = Record(name='child').save()
+        parent_record.children.append(child_record)
+        parent_record.save()
+
+        child_record.delete()
+        self.assertEqual(Record.objects(name='parent').get().children, [])
+
+
     def test_reverse_delete_rule_with_custom_id_field(self):
         """Ensure that a referenced document with custom primary key
         is also deleted upon deletion.
