@@ -357,6 +357,7 @@ class Document(BaseDocument):
             self[id_field] = self._fields[id_field].to_python(object_id)
 
         changed_fields = list(set([f.split('.')[0] for f in getattr(self, '_changed_fields', [])]))
+        changed_fields = [self._reverse_db_field_map.get(changed_field, changed_field) for changed_field in changed_fields]
         original_values = getattr(self, '_original_values', {})
         self._clear_changed_fields()
         self._created = False
