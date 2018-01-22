@@ -71,7 +71,9 @@ class BaseQuerySet(object):
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
-        if document._meta.get('allow_inheritance') is True:
+        # This is disabled when index_cls is set to False explicitly.
+        if document._meta.get('allow_inheritance') is True and \
+           document._meta.get('index_cls', True) is True:
             if len(self._document._subclasses) == 1:
                 self._initial_query = {'_cls': self._document._subclasses[0]}
             else:
