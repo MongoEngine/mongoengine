@@ -147,6 +147,7 @@ class BaseDocument(object):
 
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class('DynamicField')
+                field = DynamicField(db_field=name,null=True)
                 field = DynamicField(db_field=name)
                 field.name = name
                 self._dynamic_fields[name] = field
@@ -337,10 +338,11 @@ class BaseDocument(object):
                 value = field.generate()
                 self._data[field_name] = value
 
-            if use_db_field:
-                data[field.db_field] = value
-            else:
-                data[field.name] = value
+            if (value is not None) or (field.null):
+                if use_db_field:
+                    data[field.db_field] = value
+                else:
+                    data[field.name] = value
 
         # Only add _cls if allow_inheritance is True
         if not self._meta.get('allow_inheritance'):
