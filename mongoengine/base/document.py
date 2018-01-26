@@ -337,11 +337,10 @@ class BaseDocument(object):
                 value = field.generate()
                 self._data[field_name] = value
 
-            if value is not None:
-                if use_db_field:
-                    data[field.db_field] = value
-                else:
-                    data[field.name] = value
+            if use_db_field:
+                data[field.db_field] = value
+            else:
+                data[field.name] = value
 
         # Only add _cls if allow_inheritance is True
         if not self._meta.get('allow_inheritance'):
