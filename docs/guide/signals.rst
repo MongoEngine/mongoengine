@@ -43,10 +43,10 @@ Available signals include:
   has taken place but before saving.
 
 `post_save`
-  Called within :meth:`~mongoengine.Document.save` after all actions
-  (validation, insert/update, cascades, clearing dirty flags) have completed
-  successfully.  Passed the additional boolean keyword argument `created` to
-  indicate if the save was an insert or an update.
+  Called within :meth:`~mongoengine.Document.save` after most actions
+  (validation, insert/update, and cascades, but not clearing dirty flags) have 
+  completed successfully.  Passed the additional boolean keyword argument 
+  `created` to indicate if the save was an insert or an update.
 
 `pre_delete`
   Called within :meth:`~mongoengine.Document.delete` prior to
