@@ -9,6 +9,7 @@ dev
 -  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704
 -  Fix validation error instance in GenericEmbeddedDocumentField #1067
 -  Update cached fields when fields argument is given #1712
+-  Add a db parameter to register_connection for compatibility with connect
 
 Changes in 0.15.0
 =================
