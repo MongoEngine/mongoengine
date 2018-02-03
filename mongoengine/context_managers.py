@@ -221,6 +221,6 @@ class query_counter(object):
 
 @contextmanager
 def set_write_concern(collection, write_concerns):
-    yield collection.with_options(write_concern=WriteConcern(
-        **dict(collection.write_concern.document.items()),
-        **write_concerns))
+    old_concerns = dict(collection.write_concern.document.items())
+    combined_concerns = old_concerns.update(write_concerns)
+    yield collection.with_options(write_concern=WriteConcern(**combined_concerns))
