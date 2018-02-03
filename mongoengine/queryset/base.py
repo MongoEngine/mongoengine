@@ -18,7 +18,7 @@ from mongoengine import signals
 from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
-from mongoengine.context_managers import switch_db
+from mongoengine.context_managers import switch_db, set_write_concern
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -510,12 +510,15 @@ class BaseQuerySet(object):
             else:
                 update['$set'] = {'_cls': queryset._document._class_name}
         try:
-            result = queryset._collection.update(query, update, multi=multi,
-                                                 upsert=upsert, **write_concern)
+            with set_write_concern(queryset._collection, write_concern) as collection:
+                update_func = collection.update_one
+                if multi:
+                    update_func = collection.update_many
+                result = update_func(query, update, upsert=upsert)
             if full_result:
                 return result
-            elif result:
-                return result['n']
+            elif result.raw_result:
+                return result.raw_result['n']
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u'Update failed (%s)' % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
@@ -544,10 +547,10 @@ class BaseQuerySet(object):
                                     write_concern=write_concern,
                                     full_result=True, **update)
 
-        if atomic_update['updatedExisting']:
+        if atomic_update.raw_result['updatedExisting']:
             document = self.get()
         else:
-            document = self._document.objects.with_id(atomic_update['upserted'])
+            document = self._document.objects.with_id(atomic_update.upserted_id)
         return document
 
     def update_one(self, upsert=False, write_concern=None, **update):
