@@ -147,7 +147,6 @@ class BaseDocument(object):
 
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class('DynamicField')
-                field = DynamicField(db_field=name, null=True)
                 field = DynamicField(db_field=name)
                 field.name = name
                 self._dynamic_fields[name] = field
