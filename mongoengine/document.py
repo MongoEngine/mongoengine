@@ -280,6 +280,9 @@ class Document(BaseDocument):
         elif query[id_field] != self.pk:
             raise InvalidQueryError('Invalid document modify query: it must modify only this document.')
 
+        # Need to add shard key to query, or you get an error
+        query.update(self._object_key)
+
         updated = self._qs(**query).modify(new=True, **update)
         if updated is None:
             return False
