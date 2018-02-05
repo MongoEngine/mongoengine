@@ -1010,7 +1010,6 @@ class DynamicDocument(Document):
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
-            self._dynamic_fields[field_name].null = False
         else:
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 
