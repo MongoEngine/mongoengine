@@ -33,6 +33,7 @@ class BaseDocument(object):
     _dynamic = False
     _dynamic_lock = True
     STRICT = False
+    ENCRYPT_KEY = ''
 
     def __init__(self, *args, **values):
         """

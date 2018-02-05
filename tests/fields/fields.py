@@ -35,6 +35,48 @@ __all__ = ("FieldTest", "EmbeddedDocumentListFieldTestCase")
 
 class FieldTest(MongoDBTestCase):
 
+    def test_encryption(self):
+        """Ensure fields marked as encrypted are encrypting/decrypting correctly
+        """
+
+        from cryptography.fernet import Fernet
+
+        class Person(Document):
+
+            ENCRYPT_KEY = Fernet.generate_key()
+
+            name = StringField()
+            age = IntField(default=30, required=False)
+            userid = StringField(default=lambda: 'test', required=True, encrypt=True)
+            created = DateTimeField(default=datetime.datetime.utcnow)
+
+        person = Person(name="Ross")
+
+        person.save()
+
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(data_to_be_saved,
+                         ['age', 'created', 'name', 'userid']
+                         )
+
+        self.assertTrue(person.validate() is None)
+
+        self.assertEqual(person.name, person.name)
+        self.assertEqual(person.age, person.age)
+        self.assertEqual(person.userid, person.userid)
+        self.assertEqual(person.created, person.created)
+
+        self.assertEqual(person._data['name'], person.name)
+        self.assertEqual(person._data['age'], person.age)
+        self.assertEqual(person._data['userid'], person.userid)
+        self.assertEqual(person._data['created'], person.created)
+
+        # Confirm introspection changes nothing
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        self.assertEqual(
+            data_to_be_saved, ['_id', 'age', 'created', 'name', 'userid'])
+
     def test_datetime_from_empty_string(self):
         """
         Ensure an exception is raised when trying to

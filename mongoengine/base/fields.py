@@ -5,6 +5,7 @@ import weakref
 from bson import DBRef, ObjectId, SON
 import pymongo
 import six
+from cryptography.fernet import Fernet
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (BaseDict, BaseList,
@@ -36,7 +37,7 @@ class BaseField(object):
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
-                 validation=None, choices=None, null=False, sparse=False,
+                 validation=None, choices=None, null=False, sparse=False, encrypt=False,
                  **kwargs):
         """
         :param db_field: The database field to store this field in
@@ -79,6 +80,7 @@ class BaseField(object):
         self.choices = choices
         self.null = null
         self.sparse = sparse
+        self.encrypt = encrypt
         self._owner_document = None
 
         # Make sure db_field is a string (if it's explicitly defined).
@@ -123,9 +125,9 @@ class BaseField(object):
         if instance is None:
             # Document class being used rather than a document object
             return self
-
         # Get value from document instance if available
-        return instance._data.get(self.name)
+        value = instance._data.get(self.name)
+        return value
 
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
@@ -167,10 +169,17 @@ class BaseField(object):
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type."""
+        if self.encrypt and value:
+            f = Fernet(self.owner_document.ENCRYPT_KEY)
+            value = f.decrypt(value.decode())
         return value
 
     def to_mongo(self, value):
         """Convert a Python type to a MongoDB-compatible type."""
+        if self.encrypt:
+            f = Fernet(self.owner_document.ENCRYPT_KEY)
+            value = f.encrypt(value.encode())
+            return value
         return self.to_python(value)
 
     def _to_mongo_safe_call(self, value, use_db_field=True, fields=None):
