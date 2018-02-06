@@ -198,6 +198,36 @@ class FieldTest(MongoDBTestCase):
         data_to_be_saved = sorted(person.to_mongo().keys())
         self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
+    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(self):
+        '''List field with default can be set to the empty list (strict)'''
+        # Issue #1733
+        class Doc(Document):
+            x = ListField(IntField(), default=lambda: [42])
+
+        doc = Doc()
+        doc.x = [1]
+        doc.save()
+        doc.x = []
+        doc.y = 2
+        doc.save()
+        reloaded = Doc.objects.get(id=doc.id)
+        self.assertEqual(reloaded.x, [])
+
+    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(self):
+        '''List field with default can be set to the empty list (dynamic)'''
+        # Issue #1733
+        class Doc(DynamicDocument):
+            x = ListField(IntField(), default=lambda: [42])
+
+        doc = Doc()
+        doc.x = [1]
+        doc.save()
+        doc.x = []
+        doc.y = 2
+        doc.save()
+        reloaded = Doc.objects.get(id=doc.id)
+        self.assertEqual(reloaded.x, [])
+
     def test_required_values(self):
         """Ensure that required field constraints are enforced."""
         class Person(Document):
@@ -5181,7 +5211,6 @@ class GenericLazyReferenceFieldTest(MongoDBTestCase):
         occ.in_embedded.direct = animal1_ref
         occ.in_embedded.in_list = [animal1_ref, animal2_ref]
         check_fields_type(occ)
-
 
 if __name__ == '__main__':
     unittest.main()
