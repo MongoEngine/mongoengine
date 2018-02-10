@@ -86,7 +86,7 @@ of them stand out as particularly intuitive solutions.
 Posts
 ^^^^^
 
-Happily mongoDB *isn't* a relational database, so we're not going to do it that
+Happily MongoDB *isn't* a relational database, so we're not going to do it that
 way. As it turns out, we can use MongoDB's schemaless nature to provide us with
 a much nicer solution. We will store all of the posts in *one collection* and
 each post type will only store the fields it needs. If we later want to add
