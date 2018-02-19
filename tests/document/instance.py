@@ -1341,6 +1341,23 @@ class InstanceTest(unittest.TestCase):
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
 
+    def test_update_list_field(self):
+        """Test update on `ListField` with $pull + $in.
+        """
+        class Doc(Document):
+            foo = ListField(StringField())
+
+        Doc.drop_collection()
+        doc = Doc(foo=['a', 'b', 'c'])
+        doc.save()
+
+        # Update
+        doc = Doc.objects.first()
+        doc.update(pull__foo__in=['a', 'c'])
+
+        doc = Doc.objects.first()
+        self.assertEqual(doc.foo, ['b'])
+
     def test_embedded_update_db_field(self):
         """Test update on `EmbeddedDocumentField` fields when db_field
         is other than default.
