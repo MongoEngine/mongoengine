@@ -44,7 +44,7 @@ except ImportError:
 __all__ = (
     'StringField', 'URLField', 'EmailField', 'IntField', 'LongField',
     'FloatField', 'DecimalField', 'BooleanField', 'DateTimeField',
-    'ComplexDateTimeField', 'EmbeddedDocumentField', 'ObjectIdField',
+    'ComplexDateTimeField', 'EmbeddedDocumentField', 'EncryptedStringField', 'ObjectIdField',
     'GenericEmbeddedDocumentField', 'DynamicField', 'ListField',
     'SortedListField', 'EmbeddedDocumentListField', 'DictField',
     'MapField', 'ReferenceField', 'CachedReferenceField',
@@ -256,6 +256,40 @@ class EmailField(StringField):
                 if not self.validate_domain_part(domain_part):
                     self.error(self.error_msg % value)
 
+class EncryptedStringField(StringField):
+    """
+    A field which, given an encryption hook, will automatically encrypt/decrypt sensitive data
+    to avoid needing to do this before passing in. In order to avoid adding crypto dependencies to the project,
+    the calling user needs to provide an instance of an encyption class with encrypt/decrypt methods.
+
+    The decrypt function currently gets called sometimes when the data within isn't actually encrypted yet (the to_python
+    function is called extensively, not just when converting data from mongo-> python). To handle this for now, we're
+    requiring the encrypt function to return bytes rather than a string value, so we can tell when data is encrypted or not
+
+    """
+
+    def __init__(self, encryption_hook, *args, **kwargs):
+        """Initialize the EncryptedStringField.
+
+        Args:
+            encryption_hook (object) - an instance of a class which implements two functions,
+                                      def encrypt(self, value):
+                                         returns: bytes
+                                         returns encrypted_value
+
+                                      def decrypt(self, value):
+                                          returns: str
+                                         returns decrypted_value
+        """
+        self.encryption_hook  = encryption_hook
+        super(EncryptedStringField, self).__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        value = self.encryption_hook.decrypt(value)
+        return super(EncryptedStringField, self).to_python(value)
+    
+    def to_mongo(self, value):
+        return self.encryption_hook.encrypt(value)
 
 class IntField(BaseField):
     """32-bit integer field."""
@@ -434,6 +468,8 @@ class DecimalField(BaseField):
 
     def prepare_query_value(self, op, value):
         return super(DecimalField, self).prepare_query_value(op, self.to_mongo(value))
+
+
 
 
 class BooleanField(BaseField):

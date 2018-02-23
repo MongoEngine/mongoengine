@@ -104,6 +104,7 @@ class BaseDocument(object):
                     dynamic_data[key] = value
         else:
             FileField = _import_class('FileField')
+            EncryptedStringField = _import_class('EncryptedStringField')
             for key, value in values.iteritems():
                 if key == '__auto_convert':
                     continue
@@ -111,7 +112,10 @@ class BaseDocument(object):
                 if key in self._fields or key in ('id', 'pk', '_cls'):
                     if __auto_convert and value is not None:
                         field = self._fields.get(key)
-                        if field and not isinstance(field, FileField):
+                        if field and not isinstance(field, (FileField, EncryptedStringField)):
+                            # during the initial init, we don't want the encryptedstringfield
+                            # to have the to_python func called, as this will try and decrypt it before
+                            # it's ever been set
                             value = field.to_python(value)
                     setattr(self, key, value)
                 else:

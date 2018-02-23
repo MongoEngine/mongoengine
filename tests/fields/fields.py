@@ -3521,6 +3521,39 @@ class FieldTest(MongoDBTestCase):
         user = User(email=123)
         self.assertRaises(ValidationError, user.validate)
 
+    def test_encrypted_string_field(self):
+        """Ensure encrypted strings correct encrypt/decrypt"""
+        class Base64EncryptionHook(object):
+
+            def encrypt(self, value):
+                import base64
+                return base64.b64encode(value.encode())
+
+            def decrypt(self, value):
+                import base64
+                return base64.b64decode(value).decode('utf-8')
+
+        class User(Document):
+            user_id = IntField()
+            sensitive_data = EncryptedStringField(encryption_hook=Base64EncryptionHook())
+            other_data = StringField()
+            another_sensitive_field = EncryptedStringField(encryption_hook=Base64EncryptionHook())
+
+        user = User(user_id=2, sensitive_data='this is a secret!', other_data='this is not')
+        user.save()
+        user.another_sensitive_field = 'some further highly secret information'
+
+        obj = User.objects(user_id=2).first()
+
+        # specifically want to assert vs the stored object, to make sure the data was actually decrypted properly.
+        self.assertEqual(obj.sensitive_data, 'this is a secret!')
+        self.assertEqual(obj.other_data, 'this is not')
+
+        db = get_db()
+
+        raw_obj = db.user.find({'user_id': 2})[0]
+        self.assertIsInstance(raw_obj['sensitive_data'], bytes)
+
     def test_email_field_unicode_user(self):
         # Don't run this test on pypy3, which doesn't support unicode regex:
         # https://bitbucket.org/pypy/pypy/issues/1821/regular-expression-doesnt-find-unicode
