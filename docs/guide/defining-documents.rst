@@ -22,7 +22,7 @@ objects** as class attributes to the document class::
 
     class Page(Document):
         title = StringField(max_length=200, required=True)
-        date_modified = DateTimeField(default=datetime.datetime.now)
+        date_modified = DateTimeField(default=datetime.datetime.utcnow)
 
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
@@ -224,7 +224,7 @@ store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate
         user = ReferenceField(User)
         answers = DictField()
 
-    survey_response = SurveyResponse(date=datetime.now(), user=request.user)
+    survey_response = SurveyResponse(date=datetime.utcnow(), user=request.user)
     response_form = ResponseForm(request.POST)
     survey_response.answers = response_form.cleaned_data()
     survey_response.save()
@@ -618,7 +618,7 @@ collection after a given period. See the official
 documentation for more information.  A common usecase might be session data::
 
     class Session(Document):
-        created = DateTimeField(default=datetime.now)
+        created = DateTimeField(default=datetime.utcnow)
         meta = {
             'indexes': [
                 {'fields': ['created'], 'expireAfterSeconds': 3600}
