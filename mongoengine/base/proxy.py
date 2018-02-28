@@ -8,6 +8,7 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     collection = None
     wrapped = None
     _instance = None
+    
     def __init__(self, wrapped, id, collection, instance=None):
         super(DocumentProxy, self).__init__(wrapped)
         self.id = id
@@ -26,3 +27,6 @@ class DocumentProxy(lazy_object_proxy.Proxy):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __nonzero__(self):
+        return self.id is not None
