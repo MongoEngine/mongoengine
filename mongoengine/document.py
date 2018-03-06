@@ -867,6 +867,29 @@ class Document(BaseDocument):
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
 
     @classmethod
+    def explain(cls, spec, fields=None, skip=0, limit=0, sort=None,
+             slave_ok=True, excluded_fields=None, max_time_ms=None,
+             timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
+        # If the client has been initialized, use the proxy
+        proxy_client = cls._get_proxy_client()
+        if proxy_client:
+            if cls._get_read_decider():
+                if 'comment' not in kwargs or kwargs['comment'] is None:
+                    kwargs['comment'] = MongoComment.get_comment()
+                is_scatter_gather = cls.is_scatter_gather(spec)
+                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
+                try:
+                    return proxy_client.instance().explain(
+                        cls, spec, fields=fields, skip=skip,
+                        limit=limit, sort=sort, slave_ok=slave_ok,
+                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                        timeout_value=timeout_value, **kwargs
+                    )
+                finally:
+                    cls.cleanup_trace(set_comment)
+        raise Exception("Explain not supported")
+
+    @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=True, excluded_fields=None, max_time_ms=None,
              timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
