@@ -10,6 +10,7 @@ dev
 -  Fix validation error instance in GenericEmbeddedDocumentField #1067
 -  Update cached fields when fields argument is given #1712
 -  Add a db parameter to register_connection for compatibility with connect
+-  Add ObjectIdMapField for flexible indexing into maps with ObjectId keys.
 
 Changes in 0.15.0
 =================

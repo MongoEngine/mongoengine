@@ -1,6 +1,38 @@
 import unittest
 
-from mongoengine.base.datastructures import StrictDict
+from bson import ObjectId
+
+from mongoengine.base.datastructures import ObjectIdDict, StrictDict
+
+
+class TestObjectIdDict(unittest.TestCase):
+
+    def test_good_sets(self):
+        # Some good sets.
+        d = ObjectIdDict({'01234567890123456789abcd': 'hello'}, None, None)
+        d['abcdefabcdefabcdefabcdef'] = 'world'
+        d[ObjectId('01234567890123456789abcd')] = 'changed'
+        d.update({'12345678901234567890abcd': 'updated'})
+
+        want = {
+            ObjectId('abcdefabcdefabcdefabcdef'): 'world',
+            ObjectId('01234567890123456789abcd'): 'changed',
+            ObjectId('12345678901234567890abcd'): 'updated',
+        }
+        self.assertDictEqual(d, want)
+
+    def test_good_gets(self):
+        d = ObjectIdDict({'abcdefabcdefabcdefabcdef': 'hey'}, None, None)
+        self.assertEqual(d['abcdefabcdefabcdefabcdef'], 'hey')
+        self.assertEqual(d[ObjectId('abcdefabcdefabcdefabcdef')], 'hey')
+
+    def test_raises(self):
+        d = ObjectIdDict({}, None, None)
+        self.assertRaises(ValueError, d.__setitem__, 'bad!', 'hey')
+        self.assertRaises(ValueError, d.__getitem__, 'bad!')
+        self.assertRaises(KeyError, d.__getitem__, ObjectId('0'*24))
+
+        self.assertDictEqual(d, ObjectIdDict({}, None, None))
 
 
 class TestStrictDict(unittest.TestCase):

@@ -86,6 +86,7 @@ are as follows:
 * :class:`~mongoengine.fields.ListField`
 * :class:`~mongoengine.fields.MapField`
 * :class:`~mongoengine.fields.ObjectIdField`
+* :class:`~mongoengine.fields.ObjectIdMapField`
 * :class:`~mongoengine.fields.ReferenceField`
 * :class:`~mongoengine.fields.SequenceField`
 * :class:`~mongoengine.fields.SortedListField`

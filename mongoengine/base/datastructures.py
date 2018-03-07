@@ -1,13 +1,14 @@
-import itertools
 import weakref
 
-from bson import DBRef
+import bson.errors
+from bson import DBRef, ObjectId
 import six
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
-__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList', 'LazyReference')
+__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList', 'ObjectIdDict',
+           'LazyReference')
 
 
 class BaseDict(dict):
@@ -78,6 +79,10 @@ class BaseDict(dict):
     def popitem(self, *args, **kwargs):
         self._mark_as_changed()
         return super(BaseDict, self).popitem()
+
+    def iteritems(self):
+        for key in self:
+            yield key, self[key]
 
     def setdefault(self, *args, **kwargs):
         self._mark_as_changed()
@@ -369,6 +374,41 @@ class EmbeddedDocumentList(BaseList):
                 setattr(item, k, v)
 
         return len(values)
+
+
+class ObjectIdDict(BaseDict):
+    """A dict for mapping either ObjectIds and strs to items.
+
+    Users of ObjectIdDict can get and set items using any ObjectId-like object
+    as the key, namely: ObjectId, str, bytes.
+
+    Internally, the keys are stored as ObjectIds.
+    """
+
+    @staticmethod
+    def _key(key):
+        try:
+            return ObjectId(key)
+        except bson.errors.InvalidId as e:
+            raise ValueError(e)
+
+    def __init__(self, dict_items, instance, name):
+        super(ObjectIdDict, self).__init__(dict_items, instance, name)
+        self.clear()
+        self.update(dict_items)
+
+    def __getitem__(self, key, *args, **kwargs):
+        return super(ObjectIdDict, self).__getitem__(self._key(key))
+
+    def __setitem__(self, key, value, *args, **kwargs):
+        super(ObjectIdDict, self).__setitem__(self._key(key), value)
+
+    def get(self, key, default=None):
+        return super(ObjectIdDict, self).get(self._key(key), default)
+
+    def update(self, *args, **kwargs):
+        for k, v in dict(*args, **kwargs).items():
+            self[k] = v
 
 
 class StrictDict(object):

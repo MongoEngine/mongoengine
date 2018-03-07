@@ -26,7 +26,7 @@ except ImportError:
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
-                              _document_registry, LazyReference)
+                              LazyReference, ObjectIdDict, _document_registry)
 
 from tests.utils import MongoDBTestCase
 
@@ -5181,6 +5181,31 @@ class GenericLazyReferenceFieldTest(MongoDBTestCase):
         occ.in_embedded.direct = animal1_ref
         occ.in_embedded.in_list = [animal1_ref, animal2_ref]
         check_fields_type(occ)
+
+
+class ObjectIdMapFieldTest(MongoDBTestCase):
+
+    def test_simple(self):
+        class ObjectIdMapFieldTestDocs(Document):
+            m = ObjectIdMapField(field=StringField())
+
+        doc_cls = ObjectIdMapFieldTestDocs
+        doc_cls.drop_collection()
+
+        d = doc_cls()
+        self.assertEqual(type(d.m), ObjectIdDict)
+
+        d.m['12345678901234567890abcd'] = 'foo'
+        d.m[ObjectId('abcdefabcdefabcdefabcdef')] = 'bar'
+
+        self.assertEqual(type(d.m), ObjectIdDict)
+
+        m = d.to_mongo()
+        want = {
+            '12345678901234567890abcd': 'foo',
+            'abcdefabcdefabcdefabcdef': 'bar'
+        }
+        self.assertDictEqual(m, want)
 
 
 if __name__ == '__main__':

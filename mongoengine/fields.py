@@ -26,8 +26,8 @@ except ImportError:
     Int64 = long
 
 from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
-                              GeoJsonBaseField, LazyReference, ObjectIdField,
-                              get_document)
+                              GeoJsonBaseField, LazyReference, ObjectIdDict,
+                              ObjectIdField, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
@@ -47,7 +47,7 @@ __all__ = (
     'ComplexDateTimeField', 'EmbeddedDocumentField', 'ObjectIdField',
     'GenericEmbeddedDocumentField', 'DynamicField', 'ListField',
     'SortedListField', 'EmbeddedDocumentListField', 'DictField',
-    'MapField', 'ReferenceField', 'CachedReferenceField',
+    'MapField', 'ObjectIdMapField', 'ReferenceField', 'CachedReferenceField',
     'LazyReferenceField', 'GenericLazyReferenceField',
     'GenericReferenceField', 'BinaryField', 'GridFSError', 'GridFSProxy',
     'FileField', 'ImageGridFsProxy', 'ImproperlyConfigured', 'ImageField',
@@ -973,6 +973,31 @@ class MapField(DictField):
             self.error('Argument to MapField constructor must be a valid '
                        'field')
         super(MapField, self).__init__(field=field, *args, **kwargs)
+
+
+class ObjectIdMapField(MapField):
+    """Like a MapField, but uses ObjectIds instead of strings for keys.
+
+    Indexing into the map is flexible, allowing any ObjectId-like object to be
+    used for the key: ObjectId, bytes, strs.
+
+    """
+    _dict_cls = ObjectIdDict
+
+    def __init__(self, field, *args, **kwargs):
+        if not isinstance(field, BaseField):
+            self.error('Argument to ObjectIdMapField constructor must be a '
+                       'valid field')
+        super(ObjectIdMapField, self).__init__(field=field, *args, **kwargs)
+
+    def to_python(self, value):
+        self.field._auto_dereference = self._auto_dereference
+        return ObjectIdDict(
+            {k: self.field.to_python(v) for k, v in value.iteritems()})
+
+    def to_mongo(self, value, use_db_field=True, fields=None):
+        return {str(k): self.field._to_mongo_safe_call(value, use_db_field, fields)
+                for k, v in value.iteritems()}
 
 
 class ReferenceField(BaseField):

@@ -255,6 +255,7 @@ class ComplexBaseField(BaseField):
     """
 
     field = None
+    _dict_cls = BaseDict
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
@@ -288,12 +289,12 @@ class ComplexBaseField(BaseField):
             elif not isinstance(value, BaseList):
                 value = BaseList(value, instance, self.name)
             instance._data[self.name] = value
-        elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, instance, self.name)
+        elif isinstance(value, dict) and not isinstance(value, self._dict_cls):
+            value = self._dict_cls(value, instance, self.name)
             instance._data[self.name] = value
 
         if (self._auto_dereference and instance._initialised and
-                isinstance(value, (BaseList, BaseDict)) and
+                isinstance(value, (BaseList, self._dict_cls)) and
                 not value._dereferenced):
             value = _dereference(
                 value, max_depth=1, instance=instance, name=self.name
