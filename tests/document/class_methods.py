@@ -187,6 +187,19 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(BlogPostWithTags.compare_indexes(), { 'missing': [], 'extra': [] })
         self.assertEqual(BlogPostWithCustomField.compare_indexes(), { 'missing': [], 'extra': [] })
 
+    def test_compare_indexes_for_text_indexes(self):
+        """ Ensure that compare_indexes behaves correctly for text indexes """
+
+        class Doc(Document):
+            a = StringField()
+            meta = { 'indexes': ['$a']}
+
+        Doc.drop_collection()
+        Doc.ensure_indexes()
+        actual = Doc.compare_indexes()
+        expected = {'missing': [], 'extra': []}
+        self.assertEqual(actual, expected)
+
     def test_list_indexes_inheritance(self):
         """ ensure that all of the indexes are listed regardless of the super-
         or sub-class that we call it from
