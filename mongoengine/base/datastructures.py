@@ -351,7 +351,8 @@ class EmbeddedDocumentList(BaseList):
 
     def update(self, **update):
         """
-        Updates the embedded documents with the given update values.
+        Updates the embedded documents with the given replacement values. This
+        function does not support mongoDB update operators such as ``inc__``.
 
         .. note::
             The embedded document changes are not automatically saved
