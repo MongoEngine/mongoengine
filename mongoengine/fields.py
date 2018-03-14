@@ -1108,6 +1108,10 @@ class CachedReferenceField(BaseField):
             if update_kwargs:
                 filter_kwargs = {}
                 filter_kwargs[self.name] = document
+                # Optimize query for documents sharded by company
+                company = 'company'
+                if hasattr(document, company) and company in self.owner_document._fields:
+                    filter_kwargs[company] = getattr(document, company)
 
                 self.owner_document.objects(
                     **filter_kwargs).update(**update_kwargs)
