@@ -1221,14 +1221,19 @@ class CachedReferenceField(BaseField):
         Sync all cached fields on demand.
         Caution: this operation may be slower.
         """
-        update_key = 'set__%s' % self.name
-
         for doc in self.document_type.objects:
             filter_kwargs = {}
             filter_kwargs[self.name] = doc
 
-            update_kwargs = {}
-            update_kwargs[update_key] = doc
+
+            update_kwargs = dict(
+                ('set__%s__%s' % (self.name, k), doc[k])
+                for k in self.fields)
+
+            # Optimize query for documents sharded by company
+            company = 'company'
+            if hasattr(doc, company) and company in self.owner_document._fields:
+                filter_kwargs[company] = getattr(doc, company)
 
             self.owner_document.objects(
                 **filter_kwargs).update(**update_kwargs)
