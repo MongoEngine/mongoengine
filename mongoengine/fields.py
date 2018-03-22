@@ -944,7 +944,7 @@ def key_has_dot_or_dollar(d):
     dictionary contains a dot or a dollar sign.
     """
     for k, v in d.items():
-        if ('.' in k or '$' in k) or (isinstance(v, dict) and key_has_dot_or_dollar(v)):
+        if ('.' in k or k.startswith('$')) or (isinstance(v, dict) and key_has_dot_or_dollar(v)):
             return True
 
 
@@ -977,7 +977,7 @@ class DictField(ComplexBaseField):
             self.error(msg)
         if key_has_dot_or_dollar(value):
             self.error('Invalid dictionary key name - keys may not contain "."'
-                       ' or "$" characters')
+                       ' or startswith "$" characters')
         super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
