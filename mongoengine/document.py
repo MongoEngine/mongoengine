@@ -738,7 +738,7 @@ class Document(BaseDocument):
                                         **index_opts)
 
     @classmethod
-    def list_indexes(cls):
+    def _list_indexes(cls):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
@@ -780,8 +780,7 @@ class Document(BaseDocument):
                 index_spec = cls._meta['index_specs']
                 for spec in index_spec:
                     spec = spec.copy()
-                    fields = spec.pop('fields')
-                    indexes.append(fields)
+                    indexes.append(spec)
             return indexes
 
         indexes = []
@@ -791,35 +790,45 @@ class Document(BaseDocument):
                     indexes.append(index)
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
-        if [(u'_id', 1)] not in indexes:
-            indexes.append([(u'_id', 1)])
+        if [(u'_id', 1)] not in [index.get('fields') for index in indexes]:
+            indexes.append({'fields': [(u'_id', 1)]})
         if (cls._meta.get('index_cls', True) and
                 cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-            indexes.append([(u'_cls', 1)])
+            indexes.append({'fields': [(u'_cls', 1)]})
 
         return indexes
+
+    @classmethod
+    def list_indexes(cls):
+        return [index.get('field') for index in cls._list_indexes()]
 
     @classmethod
     def compare_indexes(cls):
         """ Compares the indexes defined in MongoEngine with the ones existing
         in the database. Returns any missing/extra indexes.
         """
+        def create_mongoengine_index_spec(info):
+            index = {'fields': info['key']}
+            for key in ('unique', 'partialFilterExpression'):
+                if key in info:
+                    index[key] = info[key]
+            return index
 
-        required = cls.list_indexes()
-        existing = [info['key']
+        required = cls._list_indexes()
+        existing = [create_mongoengine_index_spec(info)
                     for info in connection_manager.get_collection(cls).index_information().values()]
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
         # if { _cls: 1 } is missing, make sure it's *really* necessary
-        if [(u'_cls', 1)] in missing:
+        if [(u'_cls', 1)] in [i['fields'] for i in missing]:
             cls_obsolete = False
             for index in existing:
                 if includes_cls(index) and index not in extra:
                     cls_obsolete = True
                     break
             if cls_obsolete:
-                missing.remove([(u'_cls', 1)])
+                missing = [index for index in missing if index['fields'] != [(u'_cls', 1)]]
 
         return {'missing': missing, 'extra': extra}
 
