@@ -488,7 +488,7 @@ class BaseQuerySet(object):
             will force an fsync on the primary server.
         :param full_result: Return the full result dictionary rather than just the number
             updated, e.g. return
-            `{u'n': 2, u'nModified': 2, u'ok': 1.0, 'updatedExisting': True}`.
+            ``{'n': 2, 'nModified': 2, 'ok': 1.0, 'updatedExisting': True}``.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
