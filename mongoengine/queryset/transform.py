@@ -314,11 +314,17 @@ def update(_doc_cls=None, **update):
             field_classes = [c.__class__ for c in cleaned_fields]
             field_classes.reverse()
             ListField = _import_class('ListField')
-            if ListField in field_classes:
-                # Join all fields via dot notation to the last ListField
+            EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
+            if ListField in field_classes or EmbeddedDocumentListField in field_classes:
+                # Join all fields via dot notation to the last ListField or EmbeddedDocumentListField
                 # Then process as normal
+                if ListField in field_classes:
+                    _check_field = ListField
+                else:
+                    _check_field = EmbeddedDocumentListField
+
                 last_listField = len(
-                    cleaned_fields) - field_classes.index(ListField)
+                    cleaned_fields) - field_classes.index(_check_field)
                 key = '.'.join(parts[:last_listField])
                 parts = parts[last_listField:]
                 parts.insert(0, key)
