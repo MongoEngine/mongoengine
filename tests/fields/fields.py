@@ -1119,6 +1119,220 @@ class FieldTest(MongoDBTestCase):
         post.save()
         self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
 
+    def test_list_field_null_support(self):
+        """Ensure that ListField supports None and 'null' entries.
+        """
+        class Comment(EmbeddedDocument):
+            author = StringField()
+
+        class BlogPost(Document):
+            variable_list = ListField()
+            dynamic_list = ListField(DynamicField())
+            embedded_list = EmbeddedDocumentListField(Comment)
+            string_list = ListField(StringField())
+            url_list = ListField(URLField())
+            email_list = ListField(EmailField())
+            int_list = ListField(IntField())
+            long_list = ListField(LongField())
+            float_list = ListField(FloatField())
+            decimal_list = ListField(DecimalField())
+            boolean_list = ListField(BooleanField())
+            datetime_list = ListField(DateTimeField())
+            complexdatetime_list = ListField(ComplexDateTimeField())
+            sorted_list = SortedListField(StringField())
+            dict_list = ListField(DictField())
+            map_list = ListField(MapField(StringField()))
+            binary_list = ListField(BinaryField())
+            oid_list = ListField(ObjectIdField())
+
+        # not covered:
+        #   ReferenceField
+        #   GenericReferenceField
+        #   CachedReferenceField
+        #   FileField
+        #   ImageField
+        #   SequenceField
+        #   GeoPointField
+        #   PointField
+        #   LineStringField
+        #   PolygonField
+        #   MultiPointField
+        #   MultiLineStringField
+        #   MultiPolygonField
+
+        BlogPost.drop_collection()
+
+        post = BlogPost()
+        post.save()
+
+
+
+
+        #
+        # variable list: ListField()
+        #
+        post.variable_list = [1, "two", None, 4.5]
+        post.dynamic_list = [1, "two", None, 4.5]
+        self.assertEqual(post.variable_list, [1, "two", None, 4.5])
+        self.assertEqual(post.dynamic_list, [1, "two", None, 4.5])
+        post.save()
+        post.reload()
+        self.assertEqual(post.variable_list, [1, "two", None, 4.5])
+        self.assertEqual(post.dynamic_list, [1, "two", None, 4.5])
+
+        #
+        # embedded document list: EmbeddedDocumentListField()
+        #
+        comment_one = Comment()
+        comment_one.author = "Joe"
+        comment_two = Comment()
+        comment_two.author = "Larry"
+        post.embedded_list = [comment_one, None, comment_two]
+        self.assertEqual(post.embedded_list, [comment_one, None, comment_two])
+        post.save()
+        post.reload()
+        self.assertEqual(post.embedded_list, [comment_one, None, comment_two])
+
+        #
+        # string list: ListField(StringField())
+        #
+        post.string_list = ["one", "two", None, "four"]
+        self.assertEqual(post.string_list, ["one", "two", None, "four"])
+        post.save()
+        post.reload()
+        self.assertEqual(post.string_list, ["one", "two", None, "four"])
+
+        #
+        # URL list: ListField(URLField())
+        #
+        post.url_list = [None, "https://www.google.com"]
+        self.assertEqual(post.url_list, [None, "https://www.google.com"])
+        post.save()
+        post.reload()
+        self.assertEqual(post.url_list, [None, "https://www.google.com"])
+
+        #
+        # email list: ListField(EmailField())
+        #
+        post.email_list = [None, "jerry@example.com"]
+        self.assertEqual(post.email_list, [None, "jerry@example.com"])
+        post.save()
+        post.reload()
+        self.assertEqual(post.email_list, [None, "jerry@example.com"])
+
+        #
+        # integer list: ListField(IntField())
+        #
+        post.int_list = [4, None, -500]
+        self.assertEqual(post.x_list, [4, None, -500])
+        post.save()
+        post.reload()
+        self.assertEqual(post.x_list, [4, None, -500])
+
+        #
+        # long integer list: ListField(ListField())
+        #
+        post.long_list = [4, None, 999999999]
+        self.assertEqual(post.long_list, [4, None, 999999999])
+        post.save()
+        post.reload()
+        self.assertEqual(post.long_list, [4, None, 999999999])
+
+        #
+        # floating point number list: ListField(FloatField())
+        #
+        post.float_list = [4.25, None, -0.005]
+        self.assertEqual(post.float_list, [4.25, None, -0.005])
+        post.save()
+        post.reload()
+        self.assertEqual(post.float_list, [4.25, None, -0.005])
+
+        #
+        # decimal list: ListField(DecimalField())
+        # TODO:  check 'force_string' variant also
+        #
+        post.decimal_list = [Decimal("4.25"), None, Decimal("-0.005")]
+        self.assertEqual(post.decimal_list, [Decimal("4.25"), None, Decimal("-0.005")])
+        post.save()
+        post.reload()
+        self.assertEqual(post.decimal_list, [Decimal("4.25"), None, Decimal("-0.005")])
+
+        #
+        # boolean list: ListField(BooleanField())
+        #
+        post.boolean_list = [True, None, False]
+        self.assertEqual(post.boolean_list, [True, None, False])
+        post.save()
+        post.reload()
+        self.assertEqual(post.boolean_list, [True, None, False])
+
+        #
+        # datetime list: ListField(DateTimeField())
+        #
+        moment = datetime.datetime.now()
+        post.datetime_list = [None, moment]
+        self.assertEqual(post.datetime_list, [None, moment])
+        post.save()
+        post.reload()
+        self.assertEqual(post.datetime_list, [None, moment])
+
+        #
+        # complex datetime list: ListField(ComplexDateTimeField())
+        #
+        post.complex_datetime_list = [None, "2017,03,15,03,44,55,999001"]
+        self.assertEqual(post.complex_datetime_list, [None, "2017,03,15,03,44,55,999001"])
+        post.save()
+        post.reload()
+        self.assertEqual(post.complex_datetime_list, [None, "2017,03,15,03,44,55,999001"])
+
+        #
+        # sorted list: SortedListField(<any field>)
+        #
+        post.sorted_list = [6, 3, None, 2, 4]
+        self.assertEqual(post.sorted_list, [6, 3, None, 2, 4])
+        post.save()
+        post.reload()
+        self.assertEqual(post.sorted_list, [2, 3, 4, 6, None])
+
+        #
+        # dictionary list: ListField(DictField())
+        #
+        post.dict_list = [None, {"x": 3}]
+        self.assertEqual(post.dict_list, [None, {"x": 3}])
+        post.save()
+        post.reload()
+        self.assertEqual(post.dict_list, [None, {"x": 3}])
+
+        #
+        # map list: ListField(MapField(<any field>))
+        #
+        post.map_list = [None, {"x": "a", "y": "b"}]
+        self.assertEqual(post.map_list, [None, {"x": "a", "y": "b"}])
+        post.save()
+        post.reload()
+        self.assertEqual(post.map_list, [None, {"x": "a", "y": "b"}])
+
+        #
+        # binary number list: ListField(BinaryField())
+        #
+        BLOB = six.b('\xe6\x00\xc4\xff\x07')
+        post.binary_list = [None, BLOB]
+        self.assertEqual(post.binary_list, [None, BLOB])
+        post.save()
+        post.reload()
+        self.assertEqual(post.binary_list, [None, BLOB])
+
+        #
+        # Object Id list: ListField(ObjectIdField())
+        #
+        oid = ObjectId()
+        post.oid_list = [None, oid]
+        self.assertEqual(post.oid_list, [None, oid])
+        post.save()
+        post.reload()
+        self.assertEqual(post.oid_list, [None, oid])
+
+  
     def test_list_field_manipulative_operators(self):
         """Ensure that ListField works with standard list operators that manipulate the list.
         """

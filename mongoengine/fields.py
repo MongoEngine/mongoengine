@@ -635,6 +635,8 @@ class EmbeddedDocumentField(BaseField):
         return self.document_type_obj
 
     def to_python(self, value):
+        if value is None:
+            return value
         if not isinstance(value, self.document_type):
             return self.document_type._from_son(value, _auto_dereference=self._auto_dereference)
         return value
@@ -648,10 +650,16 @@ class EmbeddedDocumentField(BaseField):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
+        # handle "None" first (None = no data to post; in a list this creates a null)
+        if value is None:
+            if self.required:
+                raise ValidationError('Field is required', field_name=self.name)
+            return
+        # otherwise, it should be an embedded document
         # Using isinstance also works for subclasses of self.document
         if not isinstance(value, self.document_type):
             self.error('Invalid embedded document instance provided to an '
-                       'EmbeddedDocumentField')
+                           'EmbeddedDocumentField')
         self.document_type.validate(value, clean)
 
     def lookup_member(self, member_name):
