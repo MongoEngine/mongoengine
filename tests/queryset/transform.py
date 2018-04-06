@@ -248,6 +248,12 @@ class TransformTest(unittest.TestCase):
         with self.assertRaises(InvalidQueryError):
             events.count()
 
+    def test_and_filtering_with_same_key_and_regex(self):
+        class Doc(Document):
+            value = StringField()
+
+        Doc.objects.filter(Q(value__startswith="test")&Q(value__not__startswith="test2")).count()
+
 
 if __name__ == '__main__':
     unittest.main()
