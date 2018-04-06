@@ -1,3 +1,5 @@
+import re
+
 from collections import defaultdict
 
 from bson import ObjectId, SON
@@ -147,7 +149,7 @@ def query(_doc_cls=None, **kwargs):
         if op is None or key not in mongo_query:
             mongo_query[key] = value
         elif key in mongo_query:
-            if isinstance(mongo_query[key], dict):
+            if isinstance(mongo_query[key], dict) and not isinstance(value, re._pattern_type):
                 mongo_query[key].update(value)
                 # $max/minDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
