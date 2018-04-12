@@ -80,6 +80,7 @@ are as follows:
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
 * :class:`~mongoengine.fields.GenericReferenceField`
+* :class:`~mongoengine.fields.GenericLazyReferenceField`
 * :class:`~mongoengine.fields.GeoPointField`
 * :class:`~mongoengine.fields.ImageField`
 * :class:`~mongoengine.fields.IntField`
@@ -87,6 +88,7 @@ are as follows:
 * :class:`~mongoengine.fields.MapField`
 * :class:`~mongoengine.fields.ObjectIdField`
 * :class:`~mongoengine.fields.ReferenceField`
+* :class:`~mongoengine.fields.LazyReferenceField`
 * :class:`~mongoengine.fields.SequenceField`
 * :class:`~mongoengine.fields.SortedListField`
 * :class:`~mongoengine.fields.StringField`

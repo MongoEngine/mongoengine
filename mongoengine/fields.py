@@ -2204,8 +2204,11 @@ class MultiPolygonField(GeoJsonBaseField):
 
 class LazyReferenceField(BaseField):
     """A really lazy reference to a document.
-    Unlike the :class:`~mongoengine.fields.ReferenceField` it must be manually
-    dereferenced using it ``fetch()`` method.
+    Unlike the :class:`~mongoengine.fields.ReferenceField` it will
+    **not** be automatically (lazily) dereferenced on access.
+    Instead, access will return a :class:`~mongoengine.base.LazyReference` class
+    instance, allowing access to `pk` or manual dereference by using
+    ``fetch()`` method.
 
     .. versionadded:: 0.15
     """
@@ -2331,10 +2334,12 @@ class LazyReferenceField(BaseField):
 
 
 class GenericLazyReferenceField(GenericReferenceField):
-    """A reference to *any* :class:`~mongoengine.document.Document` subclass
-    that will be automatically dereferenced on access (lazily).
-    Unlike the :class:`~mongoengine.fields.GenericReferenceField` it must be
-    manually dereferenced using it ``fetch()`` method.
+    """A reference to *any* :class:`~mongoengine.document.Document` subclass.
+    Unlike the :class:`~mongoengine.fields.GenericReferenceField` it will
+    **not** be automatically (lazily) dereferenced on access.
+    Instead, access will return a :class:`~mongoengine.base.LazyReference` class
+    instance, allowing access to `pk` or manual dereference by using
+    ``fetch()`` method.
 
     .. note ::
         * Any documents used as a generic reference must be registered in the
