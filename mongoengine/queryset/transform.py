@@ -225,6 +225,8 @@ def update(_doc_cls=None, **update):
                 op = 'addToSet'
             elif op == 'set_on_insert':
                 op = 'setOnInsert'
+            elif op == 'current_date':
+                op = 'currentDate'
 
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
@@ -289,6 +291,14 @@ def update(_doc_cls=None, **update):
                     value = [field.prepare_query_value(op, v) for v in value]
                 elif field.required or value is not None:
                     value = field.prepare_query_value(op, value)
+            elif op == 'currentDate':
+                if value is True:
+                    value = 'date'
+                elif value not in ('date', 'timestamp'):
+                    raise InvalidQueryError(
+                        'currentDate operations only support types "date" '
+                        'or "timestamp" e.g. current_date__FIELD="date"')
+                value = {'$type': value}
             elif op == 'unset':
                 value = 1
 
