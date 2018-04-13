@@ -292,9 +292,7 @@ def update(_doc_cls=None, **update):
                 elif field.required or value is not None:
                     value = field.prepare_query_value(op, value)
             elif op == 'currentDate':
-                if value is True:
-                    value = 'date'
-                elif value not in ('date', 'timestamp'):
+                if value not in ('date', 'timestamp'):
                     raise InvalidQueryError(
                         'currentDate operations only support types "date" '
                         'or "timestamp" e.g. current_date__FIELD="date"')
