@@ -1996,6 +1996,21 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual([parent_1, parent_2], item.parents)
 
+    def test_update_current_date(self):
+        """Ensure that the 'currentDate' update operation works correctly.
+        """
+        class BlogPost(Document):
+            updated_at = DateTimeField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(updated_at=None)
+        post.save()
+
+        BlogPost.objects.filter(id=post.id).update(current_date__updated_at="date")
+        post.reload()
+        self.assertIsNotNone(post.updated_at)
+
     def test_pull_nested(self):
 
         class Collaborator(EmbeddedDocument):

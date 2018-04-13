@@ -521,6 +521,8 @@ There are several different "modifiers" that you may use with these methods:
 * ``pull`` -- remove a value from a list
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
+* ``current_date`` -- set the value of a field to the current date either as a
+date or timestamp data type
 
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
 
