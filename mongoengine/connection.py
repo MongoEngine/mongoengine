@@ -83,6 +83,12 @@ def register_connection(alias, name=None, host=None, port=None,
             # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
             resolved_hosts.append(entity.replace('mongomock://', 'mongodb://', 1))
 
+        # Handle tinymongo
+        elif entity.startswith('file://'):
+            conn_settings['is_file'] = True
+            # `is_file://` is not a valid url prefix and must be replaced by `mongodb://`
+            resolved_hosts.append(entity.replace('file://', 'mongodb://', 1))
+
         # Handle URI style connections, only updating connection params which
         # were explicitly specified in the URI.
         elif '://' in entity:
@@ -163,6 +169,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
     # Determine if we should use PyMongo's or mongomock's MongoClient.
     is_mock = conn_settings.pop('is_mock', False)
+    is_file = conn_settings.pop('is_file', False)
     if is_mock:
         try:
             import mongomock
@@ -170,6 +177,13 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise RuntimeError('You need mongomock installed to mock '
                                'MongoEngine.')
         connection_class = mongomock.MongoClient
+    elif is_file:
+        try:
+            import tinymongo
+        except ImportError:
+            raise RuntimeError('You need tinymongo installed to use file protocol '
+                               'MongoEngine.')
+        connection_class = tinymongo.TinyMongoClient
     else:
         connection_class = MongoClient
 
