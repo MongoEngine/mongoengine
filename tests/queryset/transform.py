@@ -28,12 +28,16 @@ class TransformTest(unittest.TestCase):
                          {'name': {'$exists': True}})
 
     def test_transform_update(self):
+        class LisDoc(Document):
+            foo = ListField(StringField())
+
         class DicDoc(Document):
             dictField = DictField()
 
         class Doc(Document):
             pass
 
+        LisDoc.drop_collection()
         DicDoc.drop_collection()
         Doc.drop_collection()
 
@@ -50,6 +54,9 @@ class TransformTest(unittest.TestCase):
 
         update = transform.update(DicDoc, pull__dictField__test=doc)
         self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
+        
+        update = transform.update(LisDoc, pull__foo__in=['a'])
+        self.assertEqual(update, {'$pull': {'foo': {'$in': ['a']}}})
 
     def test_transform_update_push(self):
         """Ensure the differences in behvaior between 'push' and 'push_all'"""

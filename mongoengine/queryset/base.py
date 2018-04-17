@@ -486,8 +486,9 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-        :param full_result: Return the full result rather than just the number
-            updated.
+        :param full_result: Return the full result dictionary rather than just the number
+            updated, e.g. return
+            ``{'n': 2, 'nModified': 2, 'ok': 1.0, 'updatedExisting': True}``.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
