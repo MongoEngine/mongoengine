@@ -328,7 +328,7 @@ def update(_doc_cls=None, **update):
                 value = {key: value}
         elif op == 'addToSet' and isinstance(value, list):
             value = {key: {'$each': value}}
-        elif op == 'push':
+        elif op in ('push', 'pushAll'):
             if parts[-1].isdigit():
                 key = parts[0]
                 position = int(parts[-1])
@@ -338,7 +338,13 @@ def update(_doc_cls=None, **update):
                     value = [value]
                 value = {key: {'$each': value, '$position': position}}
             else:
-                value = {key: value}
+                if op == 'pushAll':
+                    op = 'push'  # convert to non-deprecated keyword
+                    if not isinstance(value, (set, tuple, list)):
+                        value = [value]
+                    value = {key: {'$each': value}}
+                else:
+                    value = {key: value}
         else:
             value = {key: value}
         key = '$' + op

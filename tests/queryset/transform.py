@@ -54,9 +54,20 @@ class TransformTest(unittest.TestCase):
 
         update = transform.update(DicDoc, pull__dictField__test=doc)
         self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
-
+        
         update = transform.update(LisDoc, pull__foo__in=['a'])
         self.assertEqual(update, {'$pull': {'foo': {'$in': ['a']}}})
+
+    def test_transform_update_push(self):
+        """Ensure the differences in behvaior between 'push' and 'push_all'"""
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        update = transform.update(BlogPost, push__tags=['mongo', 'db'])
+        self.assertEqual(update, {'$push': {'tags': ['mongo', 'db']}})
+
+        update = transform.update(BlogPost, push_all__tags=['mongo', 'db'])
+        self.assertEqual(update, {'$push': {'tags': {'$each': ['mongo', 'db']}}})
 
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.
