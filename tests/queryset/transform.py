@@ -1,5 +1,7 @@
 import unittest
 
+from bson.son import SON
+
 from mongoengine import *
 from mongoengine.queryset import Q, transform
 
