@@ -1,5 +1,7 @@
 import unittest
 
+from bson.son import SON
+
 from mongoengine import *
 from mongoengine.queryset import Q, transform
 
@@ -258,7 +260,31 @@ class TransformTest(unittest.TestCase):
         events = Event.objects(location__within=box)
         with self.assertRaises(InvalidQueryError):
             events.count()
+    
+    def test_update_pull_for_list_fields(self):
+        """ 
+        Test added to check pull operation in update for 
+        EmbeddedDocumentListField which is inside a EmbeddedDocumentField
+        """
+        class Word(EmbeddedDocument):
+            word = StringField()
+            index = IntField()
+        
+        class SubDoc(EmbeddedDocument):
+            heading = ListField(StringField())
+            text = EmbeddedDocumentListField(Word)
+        
+        class MainDoc(Document):
+            title = StringField()
+            content = EmbeddedDocumentField(SubDoc)
+        
+        word = Word(word='abc', index=1)
+        update = transform.update(MainDoc, pull__content__text=word)
+        self.assertEqual(update, {'$pull': {'content.text': SON([('word', u'abc'), ('index', 1)])}})
 
-
+        update = transform.update(MainDoc, pull__content__heading='xyz')
+        self.assertEqual(update, {'$pull': {'content.heading': 'xyz'}})
+        
+        
 if __name__ == '__main__':
     unittest.main()
