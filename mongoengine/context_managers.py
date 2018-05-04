@@ -31,7 +31,10 @@ class switch_db(object):
         :param db_alias: the name of the specific database to use
         """
         self.cls = cls
-        self.collection = cls._get_collection()
+        if hasattr(cls, '_collection') and cls._collection is not None:
+            self.collection = cls._get_collection()
+        else:
+            self.collection = None
         self.db_alias = db_alias
         self.ori_db_alias = cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
@@ -44,7 +47,8 @@ class switch_db(object):
     def __exit__(self, t, value, traceback):
         """Reset the db_alias and collection."""
         self.cls._meta['db_alias'] = self.ori_db_alias
-        self.cls._collection = self.collection
+        if self.collection is not None:
+            self.cls._collection = self.collection
 
 
 class switch_collection(object):
