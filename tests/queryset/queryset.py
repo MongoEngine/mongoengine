@@ -2383,14 +2383,19 @@ class QuerySetTest(unittest.TestCase):
             age = IntField()
 
         with db_ops_tracker() as q:
-            adult = (User.objects.filter(age__gte=18)
+            adult1 = (User.objects.filter(age__gte=18)
                 .comment('looking for an adult')
                 .first())
+
+            adult2 = (User.objects.comment('looking for an adult')
+                .filter(age__gte=18)
+                .first())
+
             ops = q.get_ops()
-            self.assertEqual(len(ops), 1)
-            op = ops[0]
-            self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
-            self.assertEqual(op['query']['$comment'], 'looking for an adult')
+            self.assertEqual(len(ops), 2)
+            for op in ops:
+                self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
+                self.assertEqual(op['query']['$comment'], 'looking for an adult')
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
