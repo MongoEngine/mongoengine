@@ -717,13 +717,13 @@ class ListField(ComplexBaseField):
         to_mongo = getattr(self.field, 'to_mongo', None)
         return [to_mongo(v) for v in val] if to_mongo else val
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that a list of valid fields is being used.
         """
         if (not isinstance(value, (list, tuple, QuerySet)) or
                 isinstance(value, basestring)):
             self.error('Only lists and tuples may be used in a list field')
-        super(ListField, self).validate(value)
+        super(ListField, self).validate(value, clean=clean)
 
     def prepare_query_value(self, op, value):
         if self.field:
@@ -831,7 +831,7 @@ class DictField(ComplexBaseField):
         kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that a list of valid fields is being used.
         """
         if not isinstance(value, dict):
@@ -844,7 +844,7 @@ class DictField(ComplexBaseField):
         if key_has_dot_or_dollar(value):
             self.error('Invalid dictionary key name - keys may not contain "."'
                        ' or "$" characters')
-        super(DictField, self).validate(value)
+        super(DictField, self).validate(value, clean=clean)
 
     def lookup_member(self, member_name):
         return DictField(basecls=self.basecls, db_field=member_name)

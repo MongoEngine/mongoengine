@@ -408,12 +408,14 @@ class BaseDocument(object):
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class(
             "GenericEmbeddedDocumentField")
+        ComplexBaseField = _import_class("ComplexBaseField")
 
         for field, value in fields:
             if value is not None:
                 try:
                     if isinstance(field, (EmbeddedDocumentField,
-                                          GenericEmbeddedDocumentField)):
+                                          GenericEmbeddedDocumentField,
+                                          ComplexBaseField)):
                         field._validate(value, clean=clean)
                     else:
                         field._validate(value)
