@@ -375,18 +375,27 @@ class ComplexBaseField(BaseField):
                                          key=operator.itemgetter(0))]
         return value_dict
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """If field is provided ensure the value is valid.
         """
         errors = {}
+
         if self.field:
             if hasattr(value, 'iteritems') or hasattr(value, 'items'):
                 sequence = value.iteritems()
             else:
                 sequence = enumerate(value)
+
+            EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+            GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
+
             for k, v in sequence:
                 try:
-                    self.field._validate(v)
+                    if isinstance(self.field, (EmbeddedDocumentField,
+                                               GenericEmbeddedDocumentField)):
+                        self.field._validate(v, clean=clean)
+                    else:
+                        self.field._validate(v)
                 except ValidationError, error:
                     errors[k] = error.errors or error
                 except (ValueError, AssertionError), error:
