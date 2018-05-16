@@ -579,7 +579,7 @@ class Document(BaseDocument):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
