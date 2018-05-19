@@ -48,4 +48,4 @@ Ordering by text score
 
 ::
 
-  objects = News.objects.search('mongo').order_by('$text_score')
+  objects = News.objects.search_text('mongo').order_by('$text_score')
