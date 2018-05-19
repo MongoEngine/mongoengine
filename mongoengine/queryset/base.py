@@ -1579,6 +1579,9 @@ class BaseQuerySet(object):
         if self._batch_size is not None:
             self._cursor_obj.batch_size(self._batch_size)
 
+        if self._comment is not None:
+            self._cursor_obj.comment(self._comment)
+
         return self._cursor_obj
 
     def __deepcopy__(self, memo):
