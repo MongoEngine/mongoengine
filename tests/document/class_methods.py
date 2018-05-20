@@ -192,7 +192,13 @@ class ClassMethodsTest(unittest.TestCase):
 
         class Doc(Document):
             a = StringField()
-            meta = { 'indexes': ['$a']}
+            b = StringField()
+            meta = {'indexes': [
+                {'fields': ['$a', "$b"],
+                 'default_language': 'english',
+                 'weights': {'a': 10, 'b': 2}
+                }
+            ]}
 
         Doc.drop_collection()
         Doc.ensure_indexes()
