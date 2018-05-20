@@ -19,8 +19,6 @@ python:
 - pypy
 
 env:
-- MONGODB=2.6 PYMONGO=2.7
-- MONGODB=2.6 PYMONGO=2.8
 - MONGODB=2.6 PYMONGO=3.x
 
 matrix:
@@ -29,13 +27,9 @@ matrix:
 
   include:
   - python: 2.7
-    env: MONGODB=2.4 PYMONGO=2.7
-  - python: 2.7
     env: MONGODB=2.4 PYMONGO=3.5
   - python: 2.7
     env: MONGODB=3.0 PYMONGO=3.x
-  - python: 3.5
-    env: MONGODB=2.4 PYMONGO=2.7
   - python: 3.5
     env: MONGODB=2.4 PYMONGO=3.5
   - python: 3.5
