@@ -10,7 +10,9 @@ dev
 -  Fix validation error instance in GenericEmbeddedDocumentField #1067
 -  Update cached fields when fields argument is given #1712
 -  Add a db parameter to register_connection for compatibility with connect
+-  Use insert_one, insert_many in Document.insert #1491
 -  Use new update_one, update_many on document/queryset update #1491
+-  Use insert_one, insert_many in Document.insert #1491
 
 Changes in 0.15.0
 =================

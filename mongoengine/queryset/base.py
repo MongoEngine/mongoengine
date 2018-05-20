@@ -350,10 +350,23 @@ class BaseQuerySet(object):
                                      documents=docs, **signal_kwargs)
 
         raw = [doc.to_mongo() for doc in docs]
+
+        with set_write_concern(self._collection, write_concern) as collection:
+            insert_func = collection.insert_many
+            if return_one:
+                raw = raw[0]
+                insert_func = collection.insert_one
+
         try:
-            ids = self._collection.insert(raw, **write_concern)
+            inserted_result = insert_func(raw)
+            ids = return_one and [inserted_result.inserted_id] or inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
+            raise NotUniqueError(message % six.text_type(err))
+        except pymongo.errors.BulkWriteError as err:
+            # inserting documents that already have an _id field will
+            # give huge performance debt or raise
+            message = u'Document must not have _id value before bulk write (%s)'
             raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
@@ -368,7 +381,6 @@ class BaseQuerySet(object):
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
             return return_one and ids[0] or ids
-
         documents = self.in_bulk(ids)
         results = []
         for obj_id in ids:
