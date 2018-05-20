@@ -357,7 +357,8 @@ class BaseQuerySet(object):
 
         try:
             inserted_result = insert_func(raw, **write_concern)
-            ids = inserted_result.inserted_id if return_one else inserted_result.inserted_ids
+            ids = return_one and inserted_result.inserted_id or\
+                  inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % six.text_type(err))
@@ -374,7 +375,6 @@ class BaseQuerySet(object):
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
             return return_one and ids[0] or ids
-
         documents = self.in_bulk(ids)
         results = []
         for obj_id in ids:
