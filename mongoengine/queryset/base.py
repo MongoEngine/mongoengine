@@ -371,7 +371,7 @@ class BaseQuerySet(object):
                 message = u'Tried to save duplicate unique keys (%s)'
                 raise NotUniqueError(message % six.text_type(err))
             raise OperationError(message % six.text_type(err))
-        except pymongo.error.BulkWriteError as err:
+        except pymongo.errors.BulkWriteError as err:
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
             message = u'Document must not have _id value before bulk write (%s)'
