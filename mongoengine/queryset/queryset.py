@@ -92,7 +92,7 @@ class QuerySet(BaseQuerySet):
             # Raise StopIteration if we already established there were no more
             # docs in the db cursor.
             if not self._has_more:
-                raise StopIteration
+                return
 
             # Otherwise, populate more of the cache and repeat.
             if len(self._result_cache) <= pos:
