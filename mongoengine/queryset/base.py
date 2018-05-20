@@ -356,7 +356,7 @@ class BaseQuerySet(object):
             insert_func = self._collection.insert_one
 
         try:
-            inserted_result = insert_func(raw, **write_concern)
+            inserted_result = insert_func(raw, set_write_concern(write_concern))
             ids = return_one and [inserted_result.inserted_id] or inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
