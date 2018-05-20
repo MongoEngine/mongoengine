@@ -1,7 +1,7 @@
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from pymongo.write_concern import WriteConcern
 from contextlib import contextmanager
+from pymongo.write_concern import WriteConcern
+from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 
 
 __all__ = ('switch_db', 'switch_collection', 'no_dereference',
