@@ -350,8 +350,14 @@ class BaseQuerySet(object):
                                      documents=docs, **signal_kwargs)
 
         raw = [doc.to_mongo() for doc in docs]
+        insert_func = self._collection.insert_many
+        if return_one:
+            raw = raw[0]
+            insert_func = self._collection.insert_one
+
         try:
-            ids = self._collection.insert(raw, **write_concern)
+            inserted_result = insert_func(raw, **write_concern)
+            ids = inserted_result.inserted_id if return_one else inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % six.text_type(err))
