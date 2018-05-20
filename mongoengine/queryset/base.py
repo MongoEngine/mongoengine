@@ -357,8 +357,7 @@ class BaseQuerySet(object):
 
         try:
             inserted_result = insert_func(raw, **write_concern)
-            ids = return_one and inserted_result.inserted_id or\
-                  inserted_result.inserted_ids
+            ids = return_one and [inserted_result.inserted_id] or inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % six.text_type(err))
