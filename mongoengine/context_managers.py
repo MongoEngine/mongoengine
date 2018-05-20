@@ -1,6 +1,6 @@
-from mongoengine.common import _import_class
 from contextlib import contextmanager
 from pymongo.write_concern import WriteConcern
+from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 
 
