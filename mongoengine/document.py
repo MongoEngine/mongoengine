@@ -967,8 +967,16 @@ class Document(BaseDocument):
         """
 
         required = cls.list_indexes()
-        existing = [info['key']
-                    for info in cls._get_collection().index_information().values()]
+
+        existing = []
+        for info in cls._get_collection().index_information().values():
+            if '_fts' in info['key'][0]:
+                index_type = info['key'][0][1]
+                text_index_fields = info.get('weights').keys()
+                existing.append(
+                    [(key, index_type) for key in text_index_fields])
+            else:
+                existing.append(info['key'])
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
