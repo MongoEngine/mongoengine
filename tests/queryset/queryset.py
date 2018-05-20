@@ -927,9 +927,6 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Blog.objects.count(), 2)
 
-        Blog.objects.insert([blog2, blog3], write_concern={"w": 0})
-        self.assertEqual(Blog.objects.count(), 3)
-
     def test_get_changed_fields_query_count(self):
         """Make sure we don't perform unnecessary db operations when
         none of document's fields were updated.
