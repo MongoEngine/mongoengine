@@ -375,7 +375,7 @@ class BaseQuerySet(object):
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
             message = u'Document must not have _id value before bulk write (%s)'
-            raise NotUniqueError(message % sx.text_type(err))
+            raise NotUniqueError(message % six.text_type(err))
 
         if not load_bulk:
             signals.post_bulk_insert.send(
