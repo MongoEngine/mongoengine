@@ -967,6 +967,11 @@ class QuerySetTest(unittest.TestCase):
             org.save()
             self.assertEqual(q, 0)
 
+        # get MongoDB version info
+        connection = get_connection()
+        info = connection.test.command('buildInfo')
+        mongodb_version = tuple([int(i) for i in info['version'].split('.')])
+
         org = Organization.objects.get(id=o1.id)
         with query_counter() as q:
             org.save(cascade=False)
