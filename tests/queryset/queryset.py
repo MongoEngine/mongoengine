@@ -845,11 +845,8 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            if mongodb_version < (2, 6):
-                self.assertEqual(q, 1)
-            else:
-                # profiling logs each doc now in the bulk op
-                self.assertEqual(q, 99)
+            # profiling logs each doc now in the bulk op
+            self.assertEqual(q, 99)
 
         Blog.drop_collection()
         Blog.ensure_indexes()
@@ -858,11 +855,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            if mongodb_version < (2, 6):
-                self.assertEqual(q, 2)  # 1 for insert, and 1 for in bulk fetch
-            else:
-                # 99 for insert, and 1 for in bulk fetch
-                self.assertEqual(q, 100)
+            self.assertEqual(q, 100) # 99 for insert 1 for fetch
 
         Blog.drop_collection()
 
