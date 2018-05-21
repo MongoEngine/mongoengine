@@ -705,7 +705,6 @@ class Document(BaseDocument):
             obj = obj[0]
         else:
             raise self.DoesNotExist('Document does not exist')
-
         for field in obj._data:
             if not fields or field in fields:
                 try:
@@ -721,7 +720,9 @@ class Document(BaseDocument):
                         # i.e. obj.update(unset__field=1) followed by obj.reload()
                         delattr(self, field)
 
-        self._changed_fields = obj._changed_fields
+        self._changed_fields = list(
+            set(self._changed_fields) - set(fields)
+        ) if fields else obj._changed_fields
         self._created = False
         return self
 
