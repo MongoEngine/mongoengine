@@ -280,6 +280,9 @@ class Document(BaseDocument):
         elif query[id_field] != self.pk:
             raise InvalidQueryError('Invalid document modify query: it must modify only this document.')
 
+        # Need to add shard key to query, or you get an error
+        query.update(self._object_key)
+
         updated = self._qs(**query).modify(new=True, **update)
         if updated is None:
             return False
@@ -576,7 +579,7 @@ class Document(BaseDocument):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
@@ -702,7 +705,6 @@ class Document(BaseDocument):
             obj = obj[0]
         else:
             raise self.DoesNotExist('Document does not exist')
-
         for field in obj._data:
             if not fields or field in fields:
                 try:
@@ -718,7 +720,9 @@ class Document(BaseDocument):
                         # i.e. obj.update(unset__field=1) followed by obj.reload()
                         delattr(self, field)
 
-        self._changed_fields = obj._changed_fields
+        self._changed_fields = list(
+            set(self._changed_fields) - set(fields)
+        ) if fields else obj._changed_fields
         self._created = False
         return self
 
@@ -964,8 +968,16 @@ class Document(BaseDocument):
         """
 
         required = cls.list_indexes()
-        existing = [info['key']
-                    for info in cls._get_collection().index_information().values()]
+
+        existing = []
+        for info in cls._get_collection().index_information().values():
+            if '_fts' in info['key'][0]:
+                index_type = info['key'][0][1]
+                text_index_fields = info.get('weights').keys()
+                existing.append(
+                    [(key, index_type) for key in text_index_fields])
+            else:
+                existing.append(info['key'])
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
@@ -1010,6 +1022,7 @@ class DynamicDocument(Document):
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
+            self._dynamic_fields[field_name].null = False
         else:
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 

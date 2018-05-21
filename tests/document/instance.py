@@ -22,6 +22,8 @@ from mongoengine.queryset import NULLIFY, Q
 from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
 
+from tests.utils import needs_mongodb_v26
+
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
 
@@ -474,6 +476,24 @@ class InstanceTest(unittest.TestCase):
         doc.save()
         doc.reload()
 
+    def test_reload_with_changed_fields(self):
+        """Ensures reloading will not affect changed fields"""
+        class User(Document):
+            name = StringField()
+            number = IntField()
+        User.drop_collection()
+
+        user = User(name="Bob", number=1).save()
+        user.name = "John"
+        user.number = 2
+
+        self.assertEqual(user._get_changed_fields(), ['name', 'number'])
+        user.reload('number')
+        self.assertEqual(user._get_changed_fields(), ['name'])
+        user.save()
+        user.reload()
+        self.assertEqual(user.name, "John")
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly."""
         class Embedded(EmbeddedDocument):
@@ -519,7 +539,7 @@ class InstanceTest(unittest.TestCase):
         doc.save()
         doc.dict_field['extra'] = 1
         doc = doc.reload(10, 'list_field')
-        self.assertEqual(doc._get_changed_fields(), [])
+        self.assertEqual(doc._get_changed_fields(), ['dict_field.extra'])
         self.assertEqual(len(doc.list_field), 5)
         self.assertEqual(len(doc.dict_field), 3)
         self.assertEqual(len(doc.embedded_field.list_field), 4)
@@ -825,6 +845,22 @@ class InstanceTest(unittest.TestCase):
         assert doc._get_changed_fields() == []
 
         self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
+
+    @needs_mongodb_v26
+    def test_modify_with_positional_push(self):
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        post = BlogPost.objects.create(tags=['python'])
+        self.assertEqual(post.tags, ['python'])
+        post.modify(push__tags__0=['code', 'mongo'])
+        self.assertEqual(post.tags, ['code', 'mongo', 'python'])
+
+        # Assert same order of the list items is maintained in the db
+        self.assertEqual(
+            BlogPost._get_collection().find_one({'_id': post.pk})['tags'],
+            ['code', 'mongo', 'python']
+        )
 
     def test_save(self):
         """Ensure that a document may be saved in the database."""
@@ -1322,6 +1358,23 @@ class InstanceTest(unittest.TestCase):
 
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
+
+    def test_update_list_field(self):
+        """Test update on `ListField` with $pull + $in.
+        """
+        class Doc(Document):
+            foo = ListField(StringField())
+
+        Doc.drop_collection()
+        doc = Doc(foo=['a', 'b', 'c'])
+        doc.save()
+
+        # Update
+        doc = Doc.objects.first()
+        doc.update(pull__foo__in=['a', 'c'])
+
+        doc = Doc.objects.first()
+        self.assertEqual(doc.foo, ['b'])
 
     def test_embedded_update_db_field(self):
         """Test update on `EmbeddedDocumentField` fields when db_field
@@ -1865,6 +1918,25 @@ class InstanceTest(unittest.TestCase):
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
+
+    def test_reverse_delete_rule_pull(self):
+        """Ensure that a referenced document is also deleted with
+        pull.
+        """
+        class Record(Document):
+            name = StringField()
+            children = ListField(ReferenceField('self', reverse_delete_rule=PULL))
+
+        Record.drop_collection()
+
+        parent_record = Record(name='parent').save()
+        child_record = Record(name='child').save()
+        parent_record.children.append(child_record)
+        parent_record.save()
+
+        child_record.delete()
+        self.assertEqual(Record.objects(name='parent').get().children, [])
+
 
     def test_reverse_delete_rule_with_custom_id_field(self):
         """Ensure that a referenced document with custom primary key
@@ -3148,6 +3220,33 @@ class InstanceTest(unittest.TestCase):
         person.save()
 
         person.update(set__height=2.0)
+
+    @needs_mongodb_v26
+    def test_push_with_position(self):
+        """Ensure that push with position works properly for an instance."""
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        blog = BlogPost()
+        blog.slug = "ABC"
+        blog.tags = ["python"]
+        blog.save()
+
+        blog.update(push__tags__0=["mongodb", "code"])
+        blog.reload()
+        self.assertEqual(blog.tags, ['mongodb', 'code', 'python'])
+
+    def test_push_nested_list(self):
+        """Ensure that push update works in nested list"""
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField()
+
+        blog = BlogPost(slug="test").save()
+        blog.update(push__tags=["value1", 123])
+        blog.reload()
+        self.assertEqual(blog.tags, [["value1", 123]])
 
 
 if __name__ == '__main__':

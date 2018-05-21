@@ -28,7 +28,7 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name=None, host=None, port=None,
+def register_connection(alias, db=None, name=None, host=None, port=None,
                         read_preference=READ_PREFERENCE,
                         username=None, password=None,
                         authentication_source=None,
@@ -39,6 +39,7 @@ def register_connection(alias, name=None, host=None, port=None,
     :param alias: the name that will be used to refer to this connection
         throughout MongoEngine
     :param name: the name of the specific database to use
+    :param db: the name of the database to use, for compatibility with connect
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
     :param read_preference: The read preference for the collection
@@ -58,7 +59,7 @@ def register_connection(alias, name=None, host=None, port=None,
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
-        'name': name or 'test',
+        'name': name or db or 'test',
         'host': host or 'localhost',
         'port': port or 27017,
         'read_preference': read_preference,
@@ -146,13 +147,14 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         raise MongoEngineConnectionError(msg)
 
     def _clean_settings(settings_dict):
-        irrelevant_fields = set([
-            'name', 'username', 'password', 'authentication_source',
-            'authentication_mechanism'
-        ])
+        # set literal more efficient than calling set function
+        irrelevant_fields_set = {
+            'name', 'username', 'password',
+            'authentication_source', 'authentication_mechanism'
+        }
         return {
             k: v for k, v in settings_dict.items()
-            if k not in irrelevant_fields
+            if k not in irrelevant_fields_set
         }
 
     # Retrieve a copy of the connection settings associated with the requested

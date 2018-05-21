@@ -3,6 +3,7 @@ import six
 
 from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList,
                               TopLevelDocumentMetaclass, get_document)
+from mongoengine.base.datastructures import LazyReference
 from mongoengine.connection import get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.fields import DictField, ListField, MapField, ReferenceField
@@ -99,7 +100,10 @@ class DeReference(object):
             if isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in item._fields.iteritems():
                     v = item._data.get(field_name, None)
-                    if isinstance(v, DBRef):
+                    if isinstance(v, LazyReference):
+                        # LazyReference inherits DBRef but should not be dereferenced here !
+                        continue
+                    elif isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
@@ -110,6 +114,9 @@ class DeReference(object):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, set()).update(refs)
+            elif isinstance(item, LazyReference):
+                # LazyReference inherits DBRef but should not be dereferenced here !
+                continue
             elif isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and '_ref' in item:
@@ -230,7 +237,7 @@ class DeReference(object):
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name
                 data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
-            elif hasattr(v, 'id'):
+            elif isinstance(v, DBRef) and hasattr(v, 'id'):
                 data[k] = self.object_map.get((v.collection, v.id), v)
 
         if instance and name:

@@ -9,6 +9,7 @@ from nose.plugins.skip import SkipTest
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
+from pymongo.results import UpdateResult
 import six
 
 from mongoengine import *
@@ -589,6 +590,20 @@ class QuerySetTest(unittest.TestCase):
         Scores.objects(id=scores.id).update(max__high_score=500)
         self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
 
+    @needs_mongodb_v26
+    def test_update_multiple(self):
+        class Product(Document):
+            item = StringField()
+            price = FloatField()
+
+        product = Product.objects.create(item='ABC', price=10.99)
+        product = Product.objects.create(item='ABC', price=10.99)
+        Product.objects(id=product.id).update(mul__price=1.25)
+        self.assertEqual(Product.objects.get(id=product.id).price, 13.7375)
+        unknown_product = Product.objects.create(item='Unknown')
+        Product.objects(id=unknown_product.id).update(mul__price=100)
+        self.assertEqual(Product.objects.get(id=unknown_product.id).price, 0)
+
     def test_updates_can_have_match_operators(self):
 
         class Comment(EmbeddedDocument):
@@ -656,14 +671,14 @@ class QuerySetTest(unittest.TestCase):
 
         result = self.Person(name="Bob", age=25).update(
             upsert=True, full_result=True)
-        self.assertTrue(isinstance(result, dict))
-        self.assertTrue("upserted" in result)
-        self.assertFalse(result["updatedExisting"])
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertTrue("upserted" in result.raw_result)
+        self.assertFalse(result.raw_result["updatedExisting"])
 
         bob = self.Person.objects.first()
         result = bob.update(set__age=30, full_result=True)
-        self.assertTrue(isinstance(result, dict))
-        self.assertTrue(result["updatedExisting"])
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertTrue(result.raw_result["updatedExisting"])
 
         self.Person(name="Bob", age=20).save()
         result = self.Person.objects(name="Bob").update(
@@ -830,11 +845,8 @@ class QuerySetTest(unittest.TestCase):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
-            if mongodb_version < (2, 6):
-                self.assertEqual(q, 1)
-            else:
-                # profiling logs each doc now in the bulk op
-                self.assertEqual(q, 99)
+            # profiling logs each doc now in the bulk op
+            self.assertEqual(q, 99)
 
         Blog.drop_collection()
         Blog.ensure_indexes()
@@ -843,11 +855,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            if mongodb_version < (2, 6):
-                self.assertEqual(q, 2)  # 1 for insert, and 1 for in bulk fetch
-            else:
-                # 99 for insert, and 1 for in bulk fetch
-                self.assertEqual(q, 100)
+            self.assertEqual(q, 100) # 99 for insert 1 for fetch
 
         Blog.drop_collection()
 
@@ -911,10 +919,6 @@ class QuerySetTest(unittest.TestCase):
             Blog.objects.insert([blog2, blog3])
 
         self.assertEqual(Blog.objects.count(), 2)
-
-        Blog.objects.insert([blog2, blog3],
-                            write_concern={"w": 0, 'continue_on_error': True})
-        self.assertEqual(Blog.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):
         """Make sure we don't perform unnecessary db operations when
@@ -1903,6 +1907,47 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    @needs_mongodb_v26
+    def test_update_push_with_position(self):
+        """Ensure that the 'push' update with position works properly.
+        """
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost.objects.create(slug="test")
+
+        BlogPost.objects.filter(id=post.id).update(push__tags="code")
+        BlogPost.objects.filter(id=post.id).update(push__tags__0=["mongodb", "python"])
+        post.reload()
+        self.assertEqual(post.tags, ['mongodb', 'python', 'code'])
+
+        BlogPost.objects.filter(id=post.id).update(set__tags__2="java")
+        post.reload()
+        self.assertEqual(post.tags, ['mongodb', 'python', 'java'])
+
+        #test push with singular value
+        BlogPost.objects.filter(id=post.id).update(push__tags__0='scala')
+        post.reload()
+        self.assertEqual(post.tags, ['scala', 'mongodb', 'python', 'java'])
+
+    def test_update_push_list_of_list(self):
+        """Ensure that the 'push' update operation works in the list of list
+        """
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test").save()
+
+        BlogPost.objects.filter(slug="test").update(push__tags=["value1", 123])
+        post.reload()
+        self.assertEqual(post.tags, [["value1", 123]])
+
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """
@@ -2045,6 +2090,23 @@ class QuerySetTest(unittest.TestCase):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__helpful__user=['Ross'])
 
+    def test_pull_in_genericembedded_field(self):
+
+        class Foo(EmbeddedDocument):
+            name = StringField()
+
+        class Bar(Document):
+            foos = ListField(GenericEmbeddedDocumentField(
+                choices=[Foo, ]))
+
+        Bar.drop_collection()
+
+        foo = Foo(name="bar")
+        bar = Bar(foos=[foo]).save()
+        Bar.objects(id=bar.id).update(pull__foos=foo)
+        bar.reload()
+        self.assertEqual(len(bar.foos), 0)
+
     def test_update_one_pop_generic_reference(self):
 
         class BlogTag(Document):
@@ -2137,6 +2199,24 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(message.authors[0].name, "Harry")
         self.assertEqual(message.authors[1].name, "Ross")
         self.assertEqual(message.authors[2].name, "Adam")
+
+    def test_set_generic_embedded_documents(self):
+
+        class Bar(EmbeddedDocument):
+            name = StringField()
+
+        class User(Document):
+            username = StringField()
+            bar = GenericEmbeddedDocumentField(choices=[Bar,])
+
+        User.drop_collection()
+
+        User(username='abc').save()
+        User.objects(username='abc').update(
+            set__bar=Bar(name='test'), upsert=True)
+
+        user = User.objects(username='abc').first()
+        self.assertEqual(user.bar.name, "test")
 
     def test_reload_embedded_docs_instance(self):
 
@@ -2307,14 +2387,19 @@ class QuerySetTest(unittest.TestCase):
             age = IntField()
 
         with db_ops_tracker() as q:
-            adult = (User.objects.filter(age__gte=18)
+            adult1 = (User.objects.filter(age__gte=18)
                 .comment('looking for an adult')
                 .first())
+
+            adult2 = (User.objects.comment('looking for an adult')
+                .filter(age__gte=18)
+                .first())
+
             ops = q.get_ops()
-            self.assertEqual(len(ops), 1)
-            op = ops[0]
-            self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
-            self.assertEqual(op['query']['$comment'], 'looking for an adult')
+            self.assertEqual(len(ops), 2)
+            for op in ops:
+                self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
+                self.assertEqual(op['query']['$comment'], 'looking for an adult')
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
@@ -4763,6 +4848,30 @@ class QuerySetTest(unittest.TestCase):
 
         for obj in C.objects.no_sub_classes():
             self.assertEqual(obj.__class__, C)
+
+    def test_query_generic_embedded_document(self):
+        """Ensure that querying sub field on generic_embedded_field works
+        """
+        class A(EmbeddedDocument):
+            a_name = StringField()
+
+        class B(EmbeddedDocument):
+            b_name = StringField()
+
+        class Doc(Document):
+            document = GenericEmbeddedDocumentField(choices=(A, B))
+
+        Doc.drop_collection()
+        Doc(document=A(a_name='A doc')).save()
+        Doc(document=B(b_name='B doc')).save()
+
+        # Using raw in filter working fine
+        self.assertEqual(Doc.objects(
+            __raw__={'document.a_name': 'A doc'}).count(), 1)
+        self.assertEqual(Doc.objects(
+            __raw__={'document.b_name': 'B doc'}).count(), 1)
+        self.assertEqual(Doc.objects(document__a_name='A doc').count(), 1)
+        self.assertEqual(Doc.objects(document__b_name='B doc').count(), 1)
 
     def test_query_reference_to_custom_pk_doc(self):
 

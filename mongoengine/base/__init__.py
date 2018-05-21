@@ -15,7 +15,7 @@ __all__ = (
     'UPDATE_OPERATORS', '_document_registry', 'get_document',
 
     # datastructures
-    'BaseDict', 'BaseList', 'EmbeddedDocumentList',
+    'BaseDict', 'BaseList', 'EmbeddedDocumentList', 'LazyReference',
 
     # document
     'BaseDocument',

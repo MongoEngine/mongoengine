@@ -13,13 +13,14 @@ from mongoengine import signals
 from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList,
-                                             SemiStrictDict, StrictDict)
+                                             LazyReference,
+                                             StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
 
-__all__ = ('BaseDocument',)
+__all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
 
@@ -79,8 +80,7 @@ class BaseDocument(object):
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
         else:
-            self._data = SemiStrictDict.create(
-                allowed_keys=self._fields_ordered)()
+            self._data = {}
 
         self._dynamic_fields = SON()
 
@@ -147,7 +147,7 @@ class BaseDocument(object):
 
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class('DynamicField')
-                field = DynamicField(db_field=name)
+                field = DynamicField(db_field=name, null=True)
                 field.name = name
                 self._dynamic_fields[name] = field
                 self._fields_ordered += (name,)
@@ -337,7 +337,7 @@ class BaseDocument(object):
                 value = field.generate()
                 self._data[field_name] = value
 
-            if value is not None:
+            if (value is not None) or (field.null):
                 if use_db_field:
                     data[field.db_field] = value
                 else:
@@ -489,7 +489,7 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
 
-                if hasattr(data, '_changed_fields'):
+                if not isinstance(data, LazyReference) and hasattr(data, '_changed_fields'):
                     if getattr(data, '_is_document', False):
                         continue
 
