@@ -1080,5 +1080,11 @@ class BaseDocument(object):
         """Return the display value for a choice field"""
         value = getattr(self, field.name)
         if field.choices and isinstance(field.choices[0], (list, tuple)):
-            return dict(field.choices).get(value, value)
+            if value is None:
+                return None
+            sep = getattr(field, 'display_sep', ' ')
+            values = value if field.__class__.__name__ in ('ListField', 'SortedListField') else [value]
+            return sep.join([
+                dict(field.choices).get(val, val)
+                for val in values or []])
         return value

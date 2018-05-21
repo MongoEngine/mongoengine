@@ -920,6 +920,12 @@ class FieldTest(MongoDBTestCase):
 
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements."""
+        AccessLevelChoices = (
+            ('a', u'Administration'),
+            ('b', u'Manager'),
+            ('c', u'Staff'),
+        )
+
         class User(Document):
             pass
 
@@ -934,6 +940,7 @@ class FieldTest(MongoDBTestCase):
             authors_as_lazy = ListField(LazyReferenceField(User))
             generic = ListField(GenericReferenceField())
             generic_as_lazy = ListField(GenericLazyReferenceField())
+            access_list = ListField(choices=AccessLevelChoices, display_sep=', ')
 
         User.drop_collection()
         BlogPost.drop_collection()
@@ -950,6 +957,17 @@ class FieldTest(MongoDBTestCase):
         post.validate()
         post.tags = ('fun', 'leisure')
         post.validate()
+
+        post.access_list = 'a,b'
+        self.assertRaises(ValidationError, post.validate)
+
+        post.access_list = ['c', 'd']
+        self.assertRaises(ValidationError, post.validate)
+
+        post.access_list = ['a', 'b']
+        post.validate()
+
+        self.assertEqual(post.get_access_list_display(), u'Administration, Manager')
 
         post.comments = ['a']
         self.assertRaises(ValidationError, post.validate)
