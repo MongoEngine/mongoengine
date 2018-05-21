@@ -855,11 +855,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
 
             Blog.objects.insert(blogs)
-            if mongodb_version < (2, 6):
-                self.assertEqual(q, 101)  # 100 for insert, and 1 for in bulk fetch
-            else:
-                # 1 for insert, and 1 for in bulk fetch
-                self.assertEqual(q, 2)
+            self.assertEqual(q, 100) # 99 for insert 1 for fetch
 
         Blog.drop_collection()
 
