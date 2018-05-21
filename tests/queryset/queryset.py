@@ -9,6 +9,7 @@ from nose.plugins.skip import SkipTest
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
+from pymongo.results import UpdateResult
 import six
 
 from mongoengine import *
@@ -589,6 +590,20 @@ class QuerySetTest(unittest.TestCase):
         Scores.objects(id=scores.id).update(max__high_score=500)
         self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
 
+    @needs_mongodb_v26
+    def test_update_multiple(self):
+        class Product(Document):
+            item = StringField()
+            price = FloatField()
+
+        product = Product.objects.create(item='ABC', price=10.99)
+        product = Product.objects.create(item='ABC', price=10.99)
+        Product.objects(id=product.id).update(mul__price=1.25)
+        self.assertEqual(Product.objects.get(id=product.id).price, 13.7375)
+        unknown_product = Product.objects.create(item='Unknown')
+        Product.objects(id=unknown_product.id).update(mul__price=100)
+        self.assertEqual(Product.objects.get(id=unknown_product.id).price, 0)
+
     def test_updates_can_have_match_operators(self):
 
         class Comment(EmbeddedDocument):
@@ -656,14 +671,14 @@ class QuerySetTest(unittest.TestCase):
 
         result = self.Person(name="Bob", age=25).update(
             upsert=True, full_result=True)
-        self.assertTrue(isinstance(result, dict))
-        self.assertTrue("upserted" in result)
-        self.assertFalse(result["updatedExisting"])
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertTrue("upserted" in result.raw_result)
+        self.assertFalse(result.raw_result["updatedExisting"])
 
         bob = self.Person.objects.first()
         result = bob.update(set__age=30, full_result=True)
-        self.assertTrue(isinstance(result, dict))
-        self.assertTrue(result["updatedExisting"])
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertTrue(result.raw_result["updatedExisting"])
 
         self.Person(name="Bob", age=20).save()
         result = self.Person.objects(name="Bob").update(
@@ -911,10 +926,6 @@ class QuerySetTest(unittest.TestCase):
             Blog.objects.insert([blog2, blog3])
 
         self.assertEqual(Blog.objects.count(), 2)
-
-        Blog.objects.insert([blog2, blog3],
-                            write_concern={"w": 0, 'continue_on_error': True})
-        self.assertEqual(Blog.objects.count(), 3)
 
     def test_get_changed_fields_query_count(self):
         """Make sure we don't perform unnecessary db operations when
@@ -2383,14 +2394,19 @@ class QuerySetTest(unittest.TestCase):
             age = IntField()
 
         with db_ops_tracker() as q:
-            adult = (User.objects.filter(age__gte=18)
+            adult1 = (User.objects.filter(age__gte=18)
                 .comment('looking for an adult')
                 .first())
+
+            adult2 = (User.objects.comment('looking for an adult')
+                .filter(age__gte=18)
+                .first())
+
             ops = q.get_ops()
-            self.assertEqual(len(ops), 1)
-            op = ops[0]
-            self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
-            self.assertEqual(op['query']['$comment'], 'looking for an adult')
+            self.assertEqual(len(ops), 2)
+            for op in ops:
+                self.assertEqual(op['query']['$query'], {'age': {'$gte': 18}})
+                self.assertEqual(op['query']['$comment'], 'looking for an adult')
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.

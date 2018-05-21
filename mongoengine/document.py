@@ -579,7 +579,7 @@ class Document(BaseDocument):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
             will be used as options for the resultant
@@ -967,8 +967,16 @@ class Document(BaseDocument):
         """
 
         required = cls.list_indexes()
-        existing = [info['key']
-                    for info in cls._get_collection().index_information().values()]
+
+        existing = []
+        for info in cls._get_collection().index_information().values():
+            if '_fts' in info['key'][0]:
+                index_type = info['key'][0][1]
+                text_index_fields = info.get('weights').keys()
+                existing.append(
+                    [(key, index_type) for key in text_index_fields])
+            else:
+                existing.append(info['key'])
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
@@ -1013,6 +1021,7 @@ class DynamicDocument(Document):
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
+            self._dynamic_fields[field_name].null = False
         else:
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 

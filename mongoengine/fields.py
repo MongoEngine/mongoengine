@@ -614,6 +614,7 @@ class EmbeddedDocumentField(BaseField):
     """
 
     def __init__(self, document_type, **kwargs):
+        # XXX ValidationError raised outside of the "validate" method.
         if not (
             isinstance(document_type, six.string_types) or
             issubclass(document_type, EmbeddedDocument)
@@ -919,8 +920,11 @@ class DictField(ComplexBaseField):
         self.field = field
         self._auto_dereference = False
         self.basecls = basecls or BaseField
+
+        # XXX ValidationError raised outside of the "validate" method.
         if not issubclass(self.basecls, BaseField):
             self.error('DictField only accepts dict values')
+
         kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
 
@@ -969,6 +973,7 @@ class MapField(DictField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
+        # XXX ValidationError raised outside of the "validate" method.
         if not isinstance(field, BaseField):
             self.error('Argument to MapField constructor must be a valid '
                        'field')
@@ -1053,6 +1058,7 @@ class ReferenceField(BaseField):
             A reference to an abstract document type is always stored as a
             :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
+        # XXX ValidationError raised outside of the "validate" method.
         if (
             not isinstance(document_type, six.string_types) and
             not issubclass(document_type, Document)
@@ -1107,6 +1113,8 @@ class ReferenceField(BaseField):
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.pk
+
+            # XXX ValidationError raised outside of the "validate" method.
             if id_ is None:
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
@@ -1146,7 +1154,6 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value):
-
         if not isinstance(value, (self.document_type, LazyReference, DBRef, ObjectId)):
             self.error('A ReferenceField only accepts DBRef, LazyReference, ObjectId or documents')
 
@@ -1154,11 +1161,14 @@ class ReferenceField(BaseField):
             self.error('You can only reference documents once they have been '
                        'saved to the database')
 
-        if self.document_type._meta.get('abstract') and \
-                not isinstance(value, self.document_type):
+        if (
+            self.document_type._meta.get('abstract') and
+            not isinstance(value, self.document_type)
+        ):
             self.error(
                 '%s is not an instance of abstract reference type %s' % (
-                    self.document_type._class_name)
+                    self.document_type._class_name
+                )
             )
 
     def lookup_member(self, member_name):
@@ -1181,6 +1191,7 @@ class CachedReferenceField(BaseField):
         if fields is None:
             fields = []
 
+        # XXX ValidationError raised outside of the "validate" method.
         if (
             not isinstance(document_type, six.string_types) and
             not issubclass(document_type, Document)
@@ -1255,6 +1266,7 @@ class CachedReferenceField(BaseField):
         id_field_name = self.document_type._meta['id_field']
         id_field = self.document_type._fields[id_field_name]
 
+        # XXX ValidationError raised outside of the "validate" method.
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.pk
@@ -1263,7 +1275,6 @@ class CachedReferenceField(BaseField):
                            ' been saved to the database')
         else:
             self.error('Only accept a document object')
-            # TODO: should raise here or will fail next statement
 
         value = SON((
             ('_id', id_field.to_mongo(id_)),
@@ -1281,6 +1292,7 @@ class CachedReferenceField(BaseField):
         if value is None:
             return None
 
+        # XXX ValidationError raised outside of the "validate" method.
         if isinstance(value, Document):
             if value.pk is None:
                 self.error('You can only reference documents once they have'
@@ -1294,7 +1306,6 @@ class CachedReferenceField(BaseField):
         raise NotImplementedError
 
     def validate(self, value):
-
         if not isinstance(value, self.document_type):
             self.error('A CachedReferenceField only accepts documents')
 
@@ -1355,6 +1366,8 @@ class GenericReferenceField(BaseField):
                 elif isinstance(choice, type) and issubclass(choice, Document):
                     self.choices.append(choice._class_name)
                 else:
+                    # XXX ValidationError raised outside of the "validate"
+                    # method.
                     self.error('Invalid choices provided: must be a list of'
                                'Document subclasses and/or six.string_typess')
 
@@ -1418,6 +1431,7 @@ class GenericReferenceField(BaseField):
             # We need the id from the saved object to create the DBRef
             id_ = document.id
             if id_ is None:
+                # XXX ValidationError raised outside of the "validate" method.
                 self.error('You can only reference documents once they have'
                            ' been saved to the database')
         else:
@@ -2215,8 +2229,11 @@ class MultiPolygonField(GeoJsonBaseField):
 
 class LazyReferenceField(BaseField):
     """A really lazy reference to a document.
-    Unlike the :class:`~mongoengine.fields.ReferenceField` it must be manually
-    dereferenced using it ``fetch()`` method.
+    Unlike the :class:`~mongoengine.fields.ReferenceField` it will
+    **not** be automatically (lazily) dereferenced on access.
+    Instead, access will return a :class:`~mongoengine.base.LazyReference` class
+    instance, allowing access to `pk` or manual dereference by using
+    ``fetch()`` method.
 
     .. versionadded:: 0.15
     """
@@ -2234,6 +2251,7 @@ class LazyReferenceField(BaseField):
         automatically call `fetch()` and try to retrive the field on the fetched
         document. Note this only work getting field (not setting or deleting).
         """
+        # XXX ValidationError raised outside of the "validate" method.
         if (
             not isinstance(document_type, six.string_types) and
             not issubclass(document_type, Document)
@@ -2341,10 +2359,12 @@ class LazyReferenceField(BaseField):
 
 
 class GenericLazyReferenceField(GenericReferenceField):
-    """A reference to *any* :class:`~mongoengine.document.Document` subclass
-    that will be automatically dereferenced on access (lazily).
-    Unlike the :class:`~mongoengine.fields.GenericReferenceField` it must be
-    manually dereferenced using it ``fetch()`` method.
+    """A reference to *any* :class:`~mongoengine.document.Document` subclass.
+    Unlike the :class:`~mongoengine.fields.GenericReferenceField` it will
+    **not** be automatically (lazily) dereferenced on access.
+    Instead, access will return a :class:`~mongoengine.base.LazyReference` class
+    instance, allowing access to `pk` or manual dereference by using
+    ``fetch()`` method.
 
     .. note ::
         * Any documents used as a generic reference must be registered in the

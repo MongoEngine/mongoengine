@@ -314,11 +314,17 @@ def update(_doc_cls=None, **update):
             field_classes = [c.__class__ for c in cleaned_fields]
             field_classes.reverse()
             ListField = _import_class('ListField')
-            if ListField in field_classes:
-                # Join all fields via dot notation to the last ListField
+            EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
+            if ListField in field_classes or EmbeddedDocumentListField in field_classes:
+                # Join all fields via dot notation to the last ListField or EmbeddedDocumentListField
                 # Then process as normal
+                if ListField in field_classes:
+                    _check_field = ListField
+                else:
+                    _check_field = EmbeddedDocumentListField
+
                 last_listField = len(
-                    cleaned_fields) - field_classes.index(ListField)
+                    cleaned_fields) - field_classes.index(_check_field)
                 key = '.'.join(parts[:last_listField])
                 parts = parts[last_listField:]
                 parts.insert(0, key)
@@ -328,7 +334,7 @@ def update(_doc_cls=None, **update):
                 value = {key: value}
         elif op == 'addToSet' and isinstance(value, list):
             value = {key: {'$each': value}}
-        elif op == 'push':
+        elif op in ('push', 'pushAll'):
             if parts[-1].isdigit():
                 key = parts[0]
                 position = int(parts[-1])
@@ -338,7 +344,13 @@ def update(_doc_cls=None, **update):
                     value = [value]
                 value = {key: {'$each': value, '$position': position}}
             else:
-                value = {key: value}
+                if op == 'pushAll':
+                    op = 'push'  # convert to non-deprecated keyword
+                    if not isinstance(value, (set, tuple, list)):
+                        value = [value]
+                    value = {key: {'$each': value}}
+                else:
+                    value = {key: value}
         else:
             value = {key: value}
         key = '$' + op
