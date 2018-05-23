@@ -14,6 +14,7 @@ dev
 -  Use new update_one, update_many on document/queryset update #1491
 -  Use insert_one, insert_many in Document.insert #1491
 -  Fix reload(fields) affect changed fields #1371
+-  Fix Read-only access to database fails when trying to create indexes #1338
 
 Changes in 0.15.0
 =================
