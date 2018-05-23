@@ -196,6 +196,7 @@ class Document(BaseDocument):
             # Ensure indexes on the collection unless auto_create_index was
             # set to False.
             # Also there is no need to ensure indexes on slave.
+            db = cls._get_db()
             if cls._meta.get('auto_create_index', True) and\
                     db.client.is_primary:
                 cls.ensure_indexes()
