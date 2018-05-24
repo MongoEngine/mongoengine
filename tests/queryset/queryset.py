@@ -4438,6 +4438,26 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(bars._cursor._Cursor__read_preference,
                          ReadPreference.SECONDARY_PREFERRED)
 
+    @needs_mongodb_v26
+    def test_read_preference_aggregation_framework(self):
+        class Bar(Document):
+            txt = StringField()
+
+            meta = {
+                'indexes': ['txt']
+            }
+        # Aggregates with read_preference
+        bars = Bar.objects \
+                    .read_preference(ReadPreference.SECONDARY_PREFERRED) \
+                    .aggregate()
+        if IS_PYMONGO_3:
+            self.assertEqual(bars._CommandCursor__collection.read_preference,
+                             ReadPreference.SECONDARY_PREFERRED)
+        else:
+            self.assertNotEqual(bars._CommandCursor__collection.read_preference,
+                             ReadPreference.SECONDARY_PREFERRED)
+
+
     def test_json_simple(self):
 
         class Embedded(EmbeddedDocument):

@@ -1198,6 +1198,10 @@ class BaseQuerySet(object):
 
         pipeline = initial_pipeline + list(pipeline)
 
+        if IS_PYMONGO_3 and self._read_preference is not None:
+            return self._collection.with_options(read_preference=self._read_preference) \
+                       .aggregate(pipeline, cursor={}, **kwargs)
+
         return self._collection.aggregate(pipeline, cursor={}, **kwargs)
 
     # JS functionality
