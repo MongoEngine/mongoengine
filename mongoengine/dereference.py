@@ -104,12 +104,10 @@ class DeReference(object):
                         # LazyReference inherits DBRef but should not be dereferenced here !
                         continue
                     elif isinstance(v, DBRef):
-                        # Honor the DBRef cls field if present for abstract documents
                         if hasattr(v, 'cls'):
                             reference_map.setdefault(get_document(v.cls), set()).add(v.id)
                         else:
                             reference_map.setdefault(field.document_type, set()).add(v.id)
-                        reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
