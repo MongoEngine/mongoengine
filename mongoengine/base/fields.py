@@ -115,6 +115,12 @@ class BaseField(object):
         # Get value from document instance if available
         return instance._data.get(self.name)
 
+    def _should_mark_as_changed(self, instance, value):
+        if self.name not in instance._data:
+            # New value should not be None
+            return value is not None
+        return instance._data[self.name] != value
+
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
@@ -131,8 +137,7 @@ class BaseField(object):
 
         if instance._initialised:
             try:
-                if (self.name not in instance._data or
-                        instance._data[self.name] != value):
+                if self._should_mark_as_changed(instance, value):
                     instance._mark_as_changed(self.name)
             except Exception:
                 # Values cant be compared eg: naive and tz datetimes
