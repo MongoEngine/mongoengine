@@ -221,9 +221,9 @@ class EmailField(StringField):
 
         # Validate IPv4/IPv6, e.g. user@[192.168.0.1]
         if (
-            self.allow_ip_domain and
-            domain_part[0] == '[' and
-            domain_part[-1] == ']'
+                        self.allow_ip_domain and
+                            domain_part[0] == '[' and
+                        domain_part[-1] == ']'
         ):
             for addr_family in (socket.AF_INET, socket.AF_INET6):
                 try:
@@ -616,8 +616,8 @@ class EmbeddedDocumentField(BaseField):
     def __init__(self, document_type, **kwargs):
         # XXX ValidationError raised outside of the "validate" method.
         if not (
-            isinstance(document_type, six.string_types) or
-            issubclass(document_type, EmbeddedDocument)
+                    isinstance(document_type, six.string_types) or
+                    issubclass(document_type, EmbeddedDocument)
         ):
             self.error('Invalid embedded document class provided to an '
                        'EmbeddedDocumentField')
@@ -819,10 +819,10 @@ class ListField(ComplexBaseField):
             # If the value is iterable and it's not a string nor a
             # BaseDocument, call prepare_query_value for each of its items.
             if (
-                op in ('set', 'unset', None) and
-                hasattr(value, '__iter__') and
-                not isinstance(value, six.string_types) and
-                not isinstance(value, BaseDocument)
+                                    op in ('set', 'unset', None) and
+                                hasattr(value, '__iter__') and
+                            not isinstance(value, six.string_types) and
+                        not isinstance(value, BaseDocument)
             ):
                 return [self.field.prepare_query_value(op, v) for v in value]
 
@@ -1035,8 +1035,8 @@ class ReferenceField(BaseField):
         """
         # XXX ValidationError raised outside of the "validate" method.
         if (
-            not isinstance(document_type, six.string_types) and
-            not issubclass(document_type, Document)
+                    not isinstance(document_type, six.string_types) and
+                    not issubclass(document_type, Document)
         ):
             self.error('Argument to ReferenceField constructor must be a '
                        'document class or a string')
@@ -1137,8 +1137,8 @@ class ReferenceField(BaseField):
                        'saved to the database')
 
         if (
-            self.document_type._meta.get('abstract') and
-            not isinstance(value, self.document_type)
+                    self.document_type._meta.get('abstract') and
+                    not isinstance(value, self.document_type)
         ):
             self.error(
                 '%s is not an instance of abstract reference type %s' % (
@@ -1168,8 +1168,8 @@ class CachedReferenceField(BaseField):
 
         # XXX ValidationError raised outside of the "validate" method.
         if (
-            not isinstance(document_type, six.string_types) and
-            not issubclass(document_type, Document)
+                    not isinstance(document_type, six.string_types) and
+                    not issubclass(document_type, Document)
         ):
             self.error('Argument to CachedReferenceField constructor must be a'
                        ' document class or a string')
@@ -1640,8 +1640,8 @@ class FileField(BaseField):
     def __set__(self, instance, value):
         key = self.name
         if (
-            (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or
-            isinstance(value, (six.binary_type, six.string_types))
+                    (hasattr(value, 'read') and not isinstance(value, GridFSProxy)) or
+                    isinstance(value, (six.binary_type, six.string_types))
         ):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
@@ -1720,13 +1720,13 @@ class ImageGridFsProxy(GridFSProxy):
 
         if (kwargs.get('progressive') and
                 isinstance(kwargs.get('progressive'), bool) and
-                img_format == 'JPEG'):
+                    img_format == 'JPEG'):
             progressive = True
         else:
             progressive = False
 
         if (field.size and (img.size[0] > field.size['width'] or
-                            img.size[1] > field.size['height'])):
+                                    img.size[1] > field.size['height'])):
             size = field.size
 
             if size['force']:
@@ -2069,7 +2069,7 @@ class GeoPointField(BaseField):
             self.error('Value (%s) must be a two-dimensional point' %
                        repr(value))
         elif (not isinstance(value[0], (float, int)) or
-              not isinstance(value[1], (float, int))):
+                  not isinstance(value[1], (float, int))):
             self.error(
                 'Both values (%s) in point must be float or int' % repr(value))
 
@@ -2228,8 +2228,8 @@ class LazyReferenceField(BaseField):
         """
         # XXX ValidationError raised outside of the "validate" method.
         if (
-            not isinstance(document_type, six.string_types) and
-            not issubclass(document_type, Document)
+                    not isinstance(document_type, six.string_types) and
+                    not issubclass(document_type, Document)
         ):
             self.error('Argument to LazyReferenceField constructor must be a '
                        'document class or a string')
@@ -2257,7 +2257,11 @@ class LazyReferenceField(BaseField):
             if isinstance(value, self.document_type):
                 value = LazyReference(self.document_type, value.pk, passthrough=self.passthrough)
             elif isinstance(value, DBRef):
-                value = LazyReference(self.document_type, value.id, passthrough=self.passthrough)
+                # Honor cls field on DBRef for Abstract Documents
+                if hasattr(value, 'cls'):
+                    value = LazyReference(get_document(value.cls), value.id, passthrough=self.passthrough)
+                else:
+                    LazyReference(self.document_type, value.id, passthrough=self.passthrough)
             else:
                 # value is the primary key of the referenced document
                 value = LazyReference(self.document_type, value, passthrough=self.passthrough)
@@ -2302,7 +2306,10 @@ class LazyReferenceField(BaseField):
             pk = value.pk
         elif isinstance(value, DBRef):
             # TODO: check collection ?
-            collection = self.document_type._get_collection_name()
+            if hasattr(value, 'cls'):
+                collection = get_document(value.cls)._get_collection_name()
+            else:
+                collection = self.document_type._get_collection_name()
             if value.collection != collection:
                 self.error("DBRef on bad collection (must be on `%s`)" % collection)
             pk = value.id
