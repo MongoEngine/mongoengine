@@ -40,7 +40,8 @@ class BaseDict(dict):
         return value
 
     def __setitem__(self, key, value, *args, **kwargs):
-        self._mark_as_changed(key)
+        if key not in self or self[key] != value:
+            self._mark_as_changed(key)
         return super(BaseDict, self).__setitem__(key, value)
 
     def __delete__(self, *args, **kwargs):
