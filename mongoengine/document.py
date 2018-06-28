@@ -715,7 +715,7 @@ class Document(BaseDocument):
                 except (KeyError, AttributeError):
                     try:
                         # If field is a special field, e.g. items is stored as _reserved_items,
-                        # an KeyError is thrown. So try to retrieve the field from _data
+                        # a KeyError is thrown. So try to retrieve the field from _data
                         setattr(self, field, self._reload(field, obj._data.get(field)))
                     except KeyError:
                         # If field is removed from the database while the object
