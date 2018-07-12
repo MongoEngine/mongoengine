@@ -88,11 +88,16 @@ class BaseDict(dict):
         return super(BaseDict, self).update(*args, **kwargs)
 
     def _mark_as_changed(self, key=None):
-        if hasattr(self._instance, '_mark_as_changed'):
-            if key:
-                self._instance._mark_as_changed('%s.%s' % (self._name, key))
-            else:
-                self._instance._mark_as_changed(self._name)
+        try:
+            if hasattr(self._instance, '_mark_as_changed'):
+                if key:
+                    self._instance._mark_as_changed(
+                        '%s.%s' % (self._name, key % len(self))
+                    )
+                else:
+                    self._instance._mark_as_changed(self._name)
+        except ReferenceError:
+            pass
 
 
 class BaseList(list):
