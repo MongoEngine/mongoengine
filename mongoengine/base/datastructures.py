@@ -96,7 +96,7 @@ class BaseDict(dict):
                     )
                 else:
                     self._instance._mark_as_changed(self._name)
-        except ReferenceError:
+        except (ReferenceError, TypeError):
             pass
 
 
