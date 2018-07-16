@@ -2,8 +2,8 @@
 Changelog
 =========
 
-dev
-===
+Changes in 0.15.3
+=================
 -  Subfield resolve error in generic_emdedded_document query #1651 #1652
 -  use each modifier only with $position #1673 #1675
 -  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704
