@@ -7,11 +7,14 @@ import urllib2
 import uuid
 from operator import itemgetter
 
+import pytz
 import re
 import six
 import warnings
 from bson import Decimal128
 from mongoengine.base.proxy import DocumentProxy
+
+PST_TIMEZONE = pytz.timezone("US/Pacific")
 
 try:
     import dateutil
@@ -413,7 +416,8 @@ class DateTimeField(BaseField):
         if isinstance(value, datetime.datetime):
             return value
         if isinstance(value, datetime.date):
-            return datetime.datetime(value.year, value.month, value.day)
+            return PST_TIMEZONE.localize(datetime.datetime(
+                value.year, value.month, value.day, hour=0, minute=0, second=0, microsecond=0))
         if callable(value):
             return value()
 
