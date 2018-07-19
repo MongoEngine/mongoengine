@@ -38,6 +38,9 @@ high_offset_logger = logging.getLogger('sweeper.prod.mongodb_high_offset')
 execution_timeout_logger = logging.getLogger('sweeper.prod.mongodb_execution_timeout')
 notimeout_cursor_logger = logging.getLogger('sweeper.prod.mongodb_notimeout')
 
+class CLSContext(object):
+    pass
+
 class BulkOperationError(OperationError):
     pass
 
@@ -1588,15 +1591,17 @@ class Document(BaseDocument):
             return transformed_value
         # else, validate & return
         else:
+            if isinstance(context, CLSContext):
+                return value
             op_type = None
             # there's a special case here, since some ops on lists
             # behaves like a LIST_VALIDATE_OP (i.e. it has "x in list" instead
             # of "x = list" semantics or x not in list, etc).
             if op in LIST_VALIDATE_ALL_OPS or \
-                        (op is None and
-                         context._in_list and
-                         (isinstance(value, list) or
-                          isinstance(value, tuple))):
+                    (op is None and
+                     context._in_list and
+                     (isinstance(value, list) or
+                      isinstance(value, tuple))):
                 op_type = 'list_all'
             elif op in LIST_VALIDATE_OPS or \
                    (op in SINGLE_LIST_OPS and isinstance(context, ListField)):
@@ -1840,6 +1845,8 @@ class Document(BaseDocument):
                 potential_fields = get_embedded_doc_fields(context.document_type)
                 if first_part in potential_fields:
                     return ".".join([prefix,potential_fields[first_part].db_field]), potential_fields[first_part]
+                if first_part == '_cls':
+                    return ".".join([prefix,'_cls']), CLSContext()
             raise ValueError("Can't find field %s" % first_part)
 
         # another unfortunate hack... in find queries "list.field_name" means
