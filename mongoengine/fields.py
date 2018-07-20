@@ -43,7 +43,7 @@ except ImportError:
 
 __all__ = (
     'StringField', 'URLField', 'EmailField', 'IntField', 'LongField',
-    'FloatField', 'DecimalField', 'BooleanField', 'DateTimeField',
+    'FloatField', 'DecimalField', 'BooleanField', 'DateTimeField', 'DateField',
     'ComplexDateTimeField', 'EmbeddedDocumentField', 'ObjectIdField',
     'GenericEmbeddedDocumentField', 'DynamicField', 'ListField',
     'SortedListField', 'EmbeddedDocumentListField', 'DictField',
