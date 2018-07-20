@@ -525,6 +525,22 @@ class DateTimeField(BaseField):
         return super(DateTimeField, self).prepare_query_value(op, self.to_mongo(value))
 
 
+class DateField(DateTimeField):
+    def to_mongo(self, value):
+        value = super(DateField, self).to_mongo(value)
+        # drop hours, minutes, seconds
+        if isinstance(value, datetime.datetime):
+            value = datetime.datetime(value.year, value.month, value.day)
+        return value
+
+    def to_python(self, value):
+        value = super(DateField, self).to_python(value)
+        # convert datetime to date
+        if isinstance(value, datetime.datetime):
+            value = datetime.date(value.year, value.month, value.day)
+        return value
+
+
 class ComplexDateTimeField(StringField):
     """
     ComplexDateTimeField handles microseconds exactly instead of rounding
