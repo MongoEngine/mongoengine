@@ -1085,6 +1085,6 @@ class BaseDocument(object):
             sep = getattr(field, 'display_sep', ' ')
             values = value if field.__class__.__name__ in ('ListField', 'SortedListField') else [value]
             return sep.join([
-                dict(field.choices).get(val, val)
+                str(dict(field.choices).get(val, val))
                 for val in values or []])
         return value
