@@ -2,6 +2,10 @@
 Changelog
 =========
 
+Changes in 0.15.4
+=================
+- Added `DateField` #513
+
 Changes in 0.15.3
 =================
 -  Subfield resolve error in generic_emdedded_document query #1651 #1652
