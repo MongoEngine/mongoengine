@@ -880,7 +880,7 @@ class InstanceTest(unittest.TestCase):
         class Recipient(Document):
             email = EmailField(required=True)
 
-        recipient = Recipient(email='not-an-email')
+        recipient = Recipient(email='root@localhost')
         self.assertRaises(ValidationError, recipient.save)
         recipient.save(validate=False)
 
