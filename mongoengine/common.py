@@ -56,4 +56,3 @@ def _import_class(cls_name):
         _class_registry_cache[cls] = getattr(module, cls)
 
     return _class_registry_cache.get(cls_name)
-
