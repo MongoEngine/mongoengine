@@ -18,10 +18,10 @@ provide the :attr:`host` and :attr:`port` arguments to
 
     connect('project1', host='192.168.1.35', port=12345)
 
-If the database requires authentication, :attr:`username` and :attr:`password`
-arguments should be provided::
+If the database requires authentication, :attr:`username`, :attr:`password`
+and :attr:`authentication_source` arguments should be provided::
 
-    connect('project1', username='webapp', password='pwd123')
+    connect('project1', username='webapp', password='pwd123', authentication_source='admin')
 
 URI style connections are also supported -- just supply the URI as
 the :attr:`host` to
