@@ -131,6 +131,10 @@ class QCombination(QNode):
             else:
                 self.children.append(node)
 
+    def __repr__(self):
+        op = ' & ' if self.operation is self.AND else ' | '
+        return '(%s)' % op.join([repr(node) for node in self.children])
+
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -150,6 +154,9 @@ class Q(QNode):
 
     def __init__(self, **query):
         self.query = query
+
+    def __repr__(self):
+        return 'Q(**%s)' % repr(self.query)
 
     def accept(self, visitor):
         return visitor.visit_query(self)
