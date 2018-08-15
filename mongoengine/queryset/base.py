@@ -83,6 +83,9 @@ class BaseQuerySet(object):
         self.only_fields = []
         self._max_time_ms = None
         self._comment = None
+        self._cursor_type = None
+        if IS_PYMONGO_3:
+            self._cursor_type = pymongo.cursor.CursorType.NON_TAILABLE
 
     def __call__(self, q_obj=None, class_check=True, read_preference=None,
                  **query):
@@ -743,7 +746,7 @@ class BaseQuerySet(object):
                       '_read_preference', '_iter', '_scalar', '_as_pymongo',
                       '_limit', '_skip', '_hint', '_auto_dereference',
                       '_search_text', 'only_fields', '_max_time_ms',
-                      '_comment')
+                      '_comment', '_cursor_type')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -1084,6 +1087,15 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._timeout = enabled
+        return queryset
+
+    def cursor_type(self, cursor_type):
+        """Set the type of cursor requested.
+
+        :param cursor_type: one of the options in pymongo.cursor.CursorType
+        """
+        queryset = self.clone()
+        queryset._cursor_type = cursor_type
         return queryset
 
     # DEPRECATED. Has no more impact on PyMongo 3+
@@ -1531,7 +1543,8 @@ class BaseQuerySet(object):
                 msg = 'The snapshot option is not anymore available with PyMongo 3+'
                 warnings.warn(msg, DeprecationWarning)
             cursor_args = {
-                'no_cursor_timeout': not self._timeout
+                'no_cursor_timeout': not self._timeout,
+                'cursor_type': self._cursor_type
             }
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
