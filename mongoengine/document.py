@@ -361,16 +361,13 @@ class Document(BaseDocument):
         original_values = getattr(self, '_original_values', {})
         self._clear_changed_fields()
         self._created = False
-        signals.pre_post_save_signal.send(self.__class__, document=self,
-                               created=created,
-                               _changed_fields=changed_fields,
-                               _original_values=original_values,
-                               **signal_kwargs)
-        signals.post_save.send(self.__class__, document=self,
-                               created=created, 
-                               _changed_fields=changed_fields,
-                               _original_values=original_values,
-                               **signal_kwargs)
+        for signal in [signals.pre_post_save_signal, signals.post_save]:
+            signal.send(self.__class__, document=self,
+                        created=created,
+                        _changed_fields=changed_fields,
+                        _original_values=original_values,
+                        **signal_kwargs)
+
         return self
 
     def cascade_save(self, *args, **kwargs):
