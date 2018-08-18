@@ -1460,10 +1460,10 @@ class BinaryField(BaseField):
         return Binary(value)
 
     def validate(self, value):
-        if not isinstance(value, (six.binary_type, six.text_type, Binary)):
+        if not isinstance(value, (six.binary_type, Binary)):
             self.error('BinaryField only accepts instances of '
                        '(%s, %s, Binary)' % (
-                           six.binary_type.__name__, six.text_type.__name__))
+                           six.binary_type.__name__, Binary.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
