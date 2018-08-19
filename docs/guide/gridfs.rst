@@ -53,7 +53,8 @@ Deletion
 
 Deleting stored files is achieved with the :func:`delete` method::
 
-    marmot.photo.delete()
+    marmot.photo.delete()    # Deletes the GridFS document
+    marmot.save()            # Saves the GridFS reference (being None) contained in the marmot instance
 
 .. warning::
 
@@ -71,4 +72,5 @@ Files can be replaced with the :func:`replace` method. This works just like
 the :func:`put` method so even metadata can (and should) be replaced::
 
     another_marmot = open('another_marmot.png', 'rb')
-    marmot.photo.replace(another_marmot, content_type='image/png')
+    marmot.photo.replace(another_marmot, content_type='image/png')  # Replaces the GridFS document
+    marmot.save()                                                   # Replaces the GridFS reference contained in marmot instance

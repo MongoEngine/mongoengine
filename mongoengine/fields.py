@@ -1528,9 +1528,9 @@ class GridFSProxy(object):
         return '<%s: %s>' % (self.__class__.__name__, self.grid_id)
 
     def __str__(self):
-        name = getattr(
-            self.get(), 'filename', self.grid_id) if self.get() else '(no file)'
-        return '<%s: %s>' % (self.__class__.__name__, name)
+        gridout = self.get()
+        filename = getattr(gridout, 'filename') if gridout else '<no file>'
+        return '<%s: %s (%s)>' % (self.__class__.__name__, filename, self.grid_id)
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
