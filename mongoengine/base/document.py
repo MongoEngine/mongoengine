@@ -100,13 +100,11 @@ class BaseDocument(object):
             for key, value in values.iteritems():
                 if key in self._fields or key == '_id':
                     setattr(self, key, value)
-                elif self._dynamic:
+                else:
                     dynamic_data[key] = value
         else:
             FileField = _import_class('FileField')
             for key, value in values.iteritems():
-                if key == '__auto_convert':
-                    continue
                 key = self._reverse_db_field_map.get(key, key)
                 if key in self._fields or key in ('id', 'pk', '_cls'):
                     if __auto_convert and value is not None:

@@ -1000,7 +1000,7 @@ class Document(BaseDocument):
 class DynamicDocument(Document):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
-    way as an ordinary document but has expando style properties.  Any data
+    way as an ordinary document but has expanded style properties.  Any data
     passed or set against the :class:`~mongoengine.DynamicDocument` that is
     not a field is automatically converted into a
     :class:`~mongoengine.fields.DynamicField` and data can be attributed to that
