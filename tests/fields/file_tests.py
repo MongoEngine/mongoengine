@@ -54,7 +54,7 @@ class FileTest(MongoDBTestCase):
 
         result = PutFile.objects.first()
         self.assertTrue(putfile == result)
-        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello>")
+        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello (%s)>" % result.the_file.grid_id)
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()  # Remove file from GridFS
