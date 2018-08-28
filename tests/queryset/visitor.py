@@ -296,6 +296,18 @@ class QTest(unittest.TestCase):
         obj = self.Person.objects(Q(name__not=re.compile('^Gui'))).first()
         self.assertEqual(obj, None)
 
+    def test_q_repr(self):
+        self.assertEqual(repr(Q()), 'Q(**{})')
+        self.assertEqual(repr(Q(name='test')), "Q(**{'name': 'test'})")
+
+        self.assertEqual(
+            repr(Q(name='test') & Q(age__gte=18)),
+            "(Q(**{'name': 'test'}) & Q(**{'age__gte': 18}))")
+
+        self.assertEqual(
+            repr(Q(name='test') | Q(age__gte=18)),
+            "(Q(**{'name': 'test'}) | Q(**{'age__gte': 18}))")
+
     def test_q_lists(self):
         """Ensure that Q objects query ListFields correctly.
         """
