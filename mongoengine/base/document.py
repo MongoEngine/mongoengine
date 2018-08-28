@@ -404,7 +404,15 @@ class BaseDocument(object):
 
     @classmethod
     def from_json(cls, json_data, created=False):
-        """Converts json data to an unsaved document instance"""
+        """Converts json data to a Document instance
+
+        :param json_data: The json data to load into the Document
+        :param created: If True, the document will be considered as a brand new document
+                        If False and an id is provided, it will consider that the data being
+                        loaded corresponds to what's already in the database (This has an impact of subsequent call to .save())
+                        If False and no id is provided, it will consider the data as a new document
+                        (default ``False``)
+        """
         return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):

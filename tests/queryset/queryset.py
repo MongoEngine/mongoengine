@@ -4457,7 +4457,6 @@ class QuerySetTest(unittest.TestCase):
             self.assertNotEqual(bars._CommandCursor__collection.read_preference,
                              ReadPreference.SECONDARY_PREFERRED)
 
-
     def test_json_simple(self):
 
         class Embedded(EmbeddedDocument):
