@@ -5,7 +5,6 @@ import re
 import socket
 import time
 import uuid
-import warnings
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
@@ -28,6 +27,7 @@ except ImportError:
 from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
                               GeoJsonBaseField, LazyReference, ObjectIdField,
                               get_document)
+from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
@@ -123,7 +123,7 @@ class URLField(StringField):
     .. versionadded:: 0.3
     """
 
-    _URL_REGEX = re.compile(
+    _URL_REGEX = LazyRegexCompiler(
         r'^(?:[a-z0-9\.\-]*)://'  # scheme is validated separately
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}(?<!-)\.?)|'  # domain...
         r'localhost|'  # localhost...
@@ -157,7 +157,7 @@ class EmailField(StringField):
 
     .. versionadded:: 0.4
     """
-    USER_REGEX = re.compile(
+    USER_REGEX = LazyRegexCompiler(
         # `dot-atom` defined in RFC 5322 Section 3.2.3.
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*\Z"
         # `quoted-string` defined in RFC 5322 Section 3.2.4.
@@ -165,7 +165,7 @@ class EmailField(StringField):
         re.IGNORECASE
     )
 
-    UTF8_USER_REGEX = re.compile(
+    UTF8_USER_REGEX = LazyRegexCompiler(
         six.u(
             # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to
             # include `UTF8-non-ascii`.
@@ -175,7 +175,7 @@ class EmailField(StringField):
         ), re.IGNORECASE | re.UNICODE
     )
 
-    DOMAIN_REGEX = re.compile(
+    DOMAIN_REGEX = LazyRegexCompiler(
         r'((?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+)(?:[A-Z0-9-]{2,63}(?<!-))\Z',
         re.IGNORECASE
     )
