@@ -8,9 +8,12 @@ import weakref
 
 from datetime import datetime
 from bson import DBRef, ObjectId
+from pymongo.errors import DuplicateKeyError
+
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
+from tests.utils import MongoDBTestCase
 
 from mongoengine import *
 from mongoengine.base import get_document, _document_registry
@@ -30,12 +33,9 @@ TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
 __all__ = ("InstanceTest",)
 
 
-class InstanceTest(unittest.TestCase):
+class InstanceTest(MongoDBTestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
-
         class Job(EmbeddedDocument):
             name = StringField()
             years = IntField()
@@ -3299,6 +3299,23 @@ class InstanceTest(unittest.TestCase):
         blog.update(push__tags=["value1", 123])
         blog.reload()
         self.assertEqual(blog.tags, [["value1", 123]])
+
+    def test_accessing_objects_with_indexes_error(self):
+        insert_result = self.db.company.insert_many([{'name': 'Foo'},
+                                                     {'name': 'Foo'}])  # Force 2 doc with same name
+        REF_OID = insert_result.inserted_ids[0]
+        self.db.user.insert_one({'company': REF_OID})   # Force 2 doc with same name
+
+        class Company(Document):
+            name = StringField(unique=True)
+
+        class User(Document):
+            company = ReferenceField(Company)
+
+
+        # Ensure index creation exception aren't swallowed (#1688)
+        with self.assertRaises(DuplicateKeyError):
+            User.objects().select_related()
 
 
 if __name__ == '__main__':
