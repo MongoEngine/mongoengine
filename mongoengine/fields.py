@@ -364,7 +364,8 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-    """Fixed-point decimal number field.
+    """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
+    If using floats, beware of Decimal to float conversion (potential precision loss)
 
     .. versionchanged:: 0.8
     .. versionadded:: 0.3
@@ -375,7 +376,9 @@ class DecimalField(BaseField):
         """
         :param min_value: Validation rule for the minimum acceptable value.
         :param max_value: Validation rule for the maximum acceptable value.
-        :param force_string: Store as a string.
+        :param force_string: Store the value as a string (instead of a float).
+         Be aware that this affects query sorting and operation like lte, gte (as string comparison is applied)
+         and some query operator won't work (e.g: inc, dec)
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal library:
 
