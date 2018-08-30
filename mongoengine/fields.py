@@ -645,9 +645,17 @@ class EmbeddedDocumentField(BaseField):
     def document_type(self):
         if isinstance(self.document_type_obj, six.string_types):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
-                self.document_type_obj = self.owner_document
+                resolved_document_type = self.owner_document
             else:
-                self.document_type_obj = get_document(self.document_type_obj)
+                resolved_document_type = get_document(self.document_type_obj)
+
+            if not issubclass(resolved_document_type, EmbeddedDocument):
+                # Due to the late resolution of the document_type
+                # There is a chance that it won't be an EmbeddedDocument (#1661)
+                self.error('Invalid embedded document class provided to an '
+                           'EmbeddedDocumentField')
+            self.document_type_obj = resolved_document_type
+
         return self.document_type_obj
 
     def to_python(self, value):
