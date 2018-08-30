@@ -462,6 +462,8 @@ class DateTimeField(BaseField):
     installed you can utilise it to convert varying types of date formats into valid
     python datetime objects.
 
+    Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
+
     Note: Microseconds are rounded to the nearest millisecond.
       Pre UTC microsecond support is effectively broken.
       Use :class:`~mongoengine.fields.ComplexDateTimeField` if you
