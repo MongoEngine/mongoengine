@@ -68,6 +68,11 @@ class TestBaseDict(unittest.TestCase):
         self.assertEqual(base_dict._instance._changed_fields, ['my_name.k'])
         self.assertEqual(base_dict, {})
 
+    def test___getitem____KeyError(self):
+        base_dict = self._get_basedict({})
+        with self.assertRaises(KeyError):
+            base_dict['new']
+
     def test___getitem____simple_value(self):
         base_dict = self._get_basedict({'k': 'v'})
         base_dict['k'] = 'v'
@@ -97,6 +102,24 @@ class TestBaseDict(unittest.TestCase):
         # Challenge mark_as_changed from subdict
         sub_dict['subk'] = None
         self.assertEqual(base_dict._instance._changed_fields, ['my_name.k.subk'])
+
+    def test_get_sublist_gets_converted_to_BaseList_just_like__getitem__(self):
+        base_dict = self._get_basedict({'k': [0, 1, 2]})
+        sub_list = base_dict.get('k')
+        self.assertEqual(sub_list, [0, 1, 2])
+        self.assertIsInstance(sub_list, BaseList)
+
+    def test_get_returns_the_same_as___getitem__(self):
+        base_dict = self._get_basedict({'k': [0, 1, 2]})
+        get_ = base_dict.get('k')
+        getitem_ = base_dict['k']
+        self.assertEqual(get_, getitem_)
+
+    def test_get_default(self):
+        base_dict = self._get_basedict({})
+        sentinel = object()
+        self.assertEqual(base_dict.get('new'), None)
+        self.assertIs(base_dict.get('new', sentinel), sentinel)
 
     def test___setitem___calls_mark_as_changed(self):
         base_dict = self._get_basedict({})
@@ -244,10 +267,9 @@ class TestBaseList(unittest.TestCase):
 
     def test_remove_not_mark_as_changed_when_it_fails(self):
         base_list = self._get_baselist([True])
-        try:
+        with self.assertRaises(ValueError):
             base_list.remove(False)
-        except ValueError:
-            self.assertFalse(base_list._instance._changed_fields)
+        self.assertFalse(base_list._instance._changed_fields)
 
     def test_pop_calls_mark_as_changed(self):
         base_list = self._get_baselist([True])
@@ -311,24 +333,18 @@ class TestBaseList(unittest.TestCase):
         base_list += [False]
         self.assertEqual(base_list._instance._changed_fields, ['my_name'])
 
-    def test___iadd___not_mark_as_changed_when_it_fails(self):
-        base_list = self._get_baselist([True])
-        try:
-            base_list += None
-        except TypeError:
-            self.assertFalse(base_list._instance._changed_fields)
-
     def test___imul___calls_mark_as_changed(self):
         base_list = self._get_baselist([True])
+        self.assertEqual(base_list._instance._changed_fields, [])
         base_list *= 2
         self.assertEqual(base_list._instance._changed_fields, ['my_name'])
 
-    def test___imul___not_mark_as_changed_when_it_fails(self):
+    def test_sort_calls_not_marked_as_changed_when_it_fails(self):
         base_list = self._get_baselist([True])
-        try:
-            base_list *= None
-        except TypeError:
-            self.assertFalse(base_list._instance._changed_fields)
+        with self.assertRaises(TypeError):
+            base_list.sort(key=1)
+
+        self.assertEqual(base_list._instance._changed_fields, [])
 
     def test_sort_calls_mark_as_changed(self):
         base_list = self._get_baselist([True, False])

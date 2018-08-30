@@ -43,7 +43,14 @@ class BaseDict(dict):
         self._name = name
         super(BaseDict, self).__init__(dict_items)
 
-    def __getitem__(self, key, *args, **kwargs):
+    def get(self, key, default=None):
+        # get does not use __getitem__ by default so we must override it as well
+        try:
+            return self.__getitem__(key)
+        except KeyError:
+            return default
+
+    def __getitem__(self, key):
         value = super(BaseDict, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
