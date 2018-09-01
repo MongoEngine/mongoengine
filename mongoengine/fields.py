@@ -1160,8 +1160,7 @@ class ReferenceField(BaseField):
         ):
             self.error(
                 '%s is not an instance of abstract reference type %s' % (
-                    self.document_type._class_name
-                )
+                    value, self.document_type._class_name)
             )
 
     def lookup_member(self, member_name):
