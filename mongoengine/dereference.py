@@ -115,7 +115,8 @@ class DeReference(object):
                         references = self._find_references(v, depth)
                         for key, refs in references.iteritems():
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
-                                key = field_cls
+                                if not field_cls._meta.get('abstract', False):
+                                    key = field_cls
                             reference_map.setdefault(key, set()).update(refs)
             elif isinstance(item, LazyReference):
                 # LazyReference inherits DBRef but should not be dereferenced here !
