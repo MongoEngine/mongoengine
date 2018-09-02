@@ -22,7 +22,7 @@ objects** as class attributes to the document class::
 
     class Page(Document):
         title = StringField(max_length=200, required=True)
-        date_modified = DateTimeField(default=datetime.datetime.now)
+        date_modified = DateTimeField(default=datetime.datetime.utcnow)
 
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
@@ -80,6 +80,7 @@ are as follows:
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
 * :class:`~mongoengine.fields.GenericReferenceField`
+* :class:`~mongoengine.fields.GenericLazyReferenceField`
 * :class:`~mongoengine.fields.GeoPointField`
 * :class:`~mongoengine.fields.ImageField`
 * :class:`~mongoengine.fields.IntField`
@@ -87,6 +88,7 @@ are as follows:
 * :class:`~mongoengine.fields.MapField`
 * :class:`~mongoengine.fields.ObjectIdField`
 * :class:`~mongoengine.fields.ReferenceField`
+* :class:`~mongoengine.fields.LazyReferenceField`
 * :class:`~mongoengine.fields.SequenceField`
 * :class:`~mongoengine.fields.SortedListField`
 * :class:`~mongoengine.fields.StringField`
@@ -224,7 +226,7 @@ store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate
         user = ReferenceField(User)
         answers = DictField()
 
-    survey_response = SurveyResponse(date=datetime.now(), user=request.user)
+    survey_response = SurveyResponse(date=datetime.utcnow(), user=request.user)
     response_form = ResponseForm(request.POST)
     survey_response.answers = response_form.cleaned_data()
     survey_response.save()
@@ -526,8 +528,9 @@ There are a few top level defaults for all indexes that can be set::
         meta = {
             'index_options': {},
             'index_background': True,
+            'index_cls': False,
+            'auto_create_index': True,
             'index_drop_dups': True,
-            'index_cls': False
         }
 
 
@@ -539,6 +542,12 @@ There are a few top level defaults for all indexes that can be set::
 
 :attr:`index_cls` (Optional)
     A way to turn off a specific index for _cls.
+
+:attr:`auto_create_index` (Optional)
+    When this is True (default), MongoEngine will ensure that the correct
+    indexes exist in MongoDB each time a command is run. This can be disabled
+    in systems where indexes are managed separately. Disabling this will improve
+    performance.
 
 :attr:`index_drop_dups` (Optional)
     Set the default value for if an index should drop duplicates
@@ -618,7 +627,7 @@ collection after a given period. See the official
 documentation for more information.  A common usecase might be session data::
 
     class Session(Document):
-        created = DateTimeField(default=datetime.now)
+        created = DateTimeField(default=datetime.utcnow)
         meta = {
             'indexes': [
                 {'fields': ['created'], 'expireAfterSeconds': 3600}

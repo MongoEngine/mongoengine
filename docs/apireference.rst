@@ -87,7 +87,9 @@ Fields
 .. autoclass:: mongoengine.fields.DictField
 .. autoclass:: mongoengine.fields.MapField
 .. autoclass:: mongoengine.fields.ReferenceField
+.. autoclass:: mongoengine.fields.LazyReferenceField
 .. autoclass:: mongoengine.fields.GenericReferenceField
+.. autoclass:: mongoengine.fields.GenericLazyReferenceField
 .. autoclass:: mongoengine.fields.CachedReferenceField
 .. autoclass:: mongoengine.fields.BinaryField
 .. autoclass:: mongoengine.fields.FileField

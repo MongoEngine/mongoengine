@@ -1,12 +1,13 @@
 import itertools
 import weakref
 
+from bson import DBRef
 import six
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
-__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList')
+__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList', 'LazyReference')
 
 
 class BaseDict(dict):
@@ -127,8 +128,8 @@ class BaseList(list):
         return value
 
     def __iter__(self):
-        for i in xrange(self.__len__()):
-            yield self[i]
+        for v in super(BaseList, self).__iter__():
+            yield v
 
     def __setitem__(self, key, value, *args, **kwargs):
         if isinstance(key, slice):
@@ -137,7 +138,7 @@ class BaseList(list):
             self._mark_as_changed(key)
         return super(BaseList, self).__setitem__(key, value)
 
-    def __delitem__(self, key, *args, **kwargs):
+    def __delitem__(self, key):
         self._mark_as_changed()
         return super(BaseList, self).__delitem__(key)
 
@@ -186,7 +187,7 @@ class BaseList(list):
         self._mark_as_changed()
         return super(BaseList, self).remove(*args, **kwargs)
 
-    def reverse(self, *args, **kwargs):
+    def reverse(self):
         self._mark_as_changed()
         return super(BaseList, self).reverse()
 
@@ -232,6 +233,9 @@ class EmbeddedDocumentList(BaseList):
         """
         Filters the list by only including embedded documents with the
         given keyword arguments.
+
+        This method only supports simple comparison (e.g: .filter(name='John Doe'))
+        and does not support operators like __gte, __lte, __icontains like queryset.filter does
 
         :param kwargs: The keyword arguments corresponding to the fields to
          filter on. *Multiple arguments are treated as if they are ANDed
@@ -350,7 +354,8 @@ class EmbeddedDocumentList(BaseList):
 
     def update(self, **update):
         """
-        Updates the embedded documents with the given update values.
+        Updates the embedded documents with the given replacement values. This
+        function does not support mongoDB update operators such as ``inc__``.
 
         .. note::
             The embedded document changes are not automatically saved
@@ -447,40 +452,40 @@ class StrictDict(object):
         return cls._classes[allowed_keys]
 
 
-class SemiStrictDict(StrictDict):
-    __slots__ = ('_extras', )
-    _classes = {}
+class LazyReference(DBRef):
+    __slots__ = ('_cached_doc', 'passthrough', 'document_type')
 
-    def __getattr__(self, attr):
-        try:
-            super(SemiStrictDict, self).__getattr__(attr)
-        except AttributeError:
-            try:
-                return self.__getattribute__('_extras')[attr]
-            except KeyError as e:
-                raise AttributeError(e)
+    def fetch(self, force=False):
+        if not self._cached_doc or force:
+            self._cached_doc = self.document_type.objects.get(pk=self.pk)
+            if not self._cached_doc:
+                raise DoesNotExist('Trying to dereference unknown document %s' % (self))
+        return self._cached_doc
 
-    def __setattr__(self, attr, value):
-        try:
-            super(SemiStrictDict, self).__setattr__(attr, value)
-        except AttributeError:
-            try:
-                self._extras[attr] = value
-            except AttributeError:
-                self._extras = {attr: value}
+    @property
+    def pk(self):
+        return self.id
 
-    def __delattr__(self, attr):
-        try:
-            super(SemiStrictDict, self).__delattr__(attr)
-        except AttributeError:
-            try:
-                del self._extras[attr]
-            except KeyError as e:
-                raise AttributeError(e)
+    def __init__(self, document_type, pk, cached_doc=None, passthrough=False):
+        self.document_type = document_type
+        self._cached_doc = cached_doc
+        self.passthrough = passthrough
+        super(LazyReference, self).__init__(self.document_type._get_collection_name(), pk)
 
-    def __iter__(self):
+    def __getitem__(self, name):
+        if not self.passthrough:
+            raise KeyError()
+        document = self.fetch()
+        return document[name]
+
+    def __getattr__(self, name):
+        if not object.__getattribute__(self, 'passthrough'):
+            raise AttributeError()
+        document = self.fetch()
         try:
-            extras_iter = iter(self.__getattribute__('_extras'))
-        except AttributeError:
-            extras_iter = ()
-        return itertools.chain(super(SemiStrictDict, self).__iter__(), extras_iter)
+            return document[name]
+        except KeyError:
+            raise AttributeError()
+
+    def __repr__(self):
+        return "<LazyReference(%s, %r)>" % (self.document_type, self.pk)
