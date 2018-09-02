@@ -18,7 +18,7 @@ from mongoengine import signals
 from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
-from mongoengine.context_managers import switch_db
+from mongoengine.context_managers import set_write_concern, switch_db
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -350,10 +350,23 @@ class BaseQuerySet(object):
                                      documents=docs, **signal_kwargs)
 
         raw = [doc.to_mongo() for doc in docs]
+
+        with set_write_concern(self._collection, write_concern) as collection:
+            insert_func = collection.insert_many
+            if return_one:
+                raw = raw[0]
+                insert_func = collection.insert_one
+
         try:
-            ids = self._collection.insert(raw, **write_concern)
+            inserted_result = insert_func(raw)
+            ids = return_one and [inserted_result.inserted_id] or inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
+            raise NotUniqueError(message % six.text_type(err))
+        except pymongo.errors.BulkWriteError as err:
+            # inserting documents that already have an _id field will
+            # give huge performance debt or raise
+            message = u'Document must not have _id value before bulk write (%s)'
             raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
@@ -368,7 +381,6 @@ class BaseQuerySet(object):
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
             return return_one and ids[0] or ids
-
         documents = self.in_bulk(ids)
         results = []
         for obj_id in ids:
@@ -486,8 +498,9 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-        :param full_result: Return the full result rather than just the number
-            updated.
+        :param full_result: Return the full result dictionary rather than just the number
+            updated, e.g. return
+            ``{'n': 2, 'nModified': 2, 'ok': 1.0, 'updatedExisting': True}``.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
@@ -510,12 +523,15 @@ class BaseQuerySet(object):
             else:
                 update['$set'] = {'_cls': queryset._document._class_name}
         try:
-            result = queryset._collection.update(query, update, multi=multi,
-                                                 upsert=upsert, **write_concern)
+            with set_write_concern(queryset._collection, write_concern) as collection:
+                update_func = collection.update_one
+                if multi:
+                    update_func = collection.update_many
+                result = update_func(query, update, upsert=upsert)
             if full_result:
                 return result
-            elif result:
-                return result['n']
+            elif result.raw_result:
+                return result.raw_result['n']
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u'Update failed (%s)' % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
@@ -544,10 +560,10 @@ class BaseQuerySet(object):
                                     write_concern=write_concern,
                                     full_result=True, **update)
 
-        if atomic_update['updatedExisting']:
+        if atomic_update.raw_result['updatedExisting']:
             document = self.get()
         else:
-            document = self._document.objects.with_id(atomic_update['upserted'])
+            document = self._document.objects.with_id(atomic_update.upserted_id)
         return document
 
     def update_one(self, upsert=False, write_concern=None, **update):
@@ -1182,6 +1198,10 @@ class BaseQuerySet(object):
 
         pipeline = initial_pipeline + list(pipeline)
 
+        if IS_PYMONGO_3 and self._read_preference is not None:
+            return self._collection.with_options(read_preference=self._read_preference) \
+                       .aggregate(pipeline, cursor={}, **kwargs)
+
         return self._collection.aggregate(pipeline, cursor={}, **kwargs)
 
     # JS functionality
@@ -1577,6 +1597,9 @@ class BaseQuerySet(object):
 
         if self._batch_size is not None:
             self._cursor_obj.batch_size(self._batch_size)
+
+        if self._comment is not None:
+            self._cursor_obj.comment(self._comment)
 
         return self._cursor_obj
 

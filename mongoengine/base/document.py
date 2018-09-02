@@ -13,6 +13,7 @@ from mongoengine import signals
 from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList,
+                                             LazyReference,
                                              StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
@@ -99,13 +100,11 @@ class BaseDocument(object):
             for key, value in values.iteritems():
                 if key in self._fields or key == '_id':
                     setattr(self, key, value)
-                elif self._dynamic:
+                else:
                     dynamic_data[key] = value
         else:
             FileField = _import_class('FileField')
             for key, value in values.iteritems():
-                if key == '__auto_convert':
-                    continue
                 key = self._reverse_db_field_map.get(key, key)
                 if key in self._fields or key in ('id', 'pk', '_cls'):
                     if __auto_convert and value is not None:
@@ -146,7 +145,7 @@ class BaseDocument(object):
 
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class('DynamicField')
-                field = DynamicField(db_field=name)
+                field = DynamicField(db_field=name, null=True)
                 field.name = name
                 self._dynamic_fields[name] = field
                 self._fields_ordered += (name,)
@@ -336,7 +335,7 @@ class BaseDocument(object):
                 value = field.generate()
                 self._data[field_name] = value
 
-            if value is not None:
+            if (value is not None) or (field.null):
                 if use_db_field:
                     data[field.db_field] = value
                 else:
@@ -405,7 +404,15 @@ class BaseDocument(object):
 
     @classmethod
     def from_json(cls, json_data, created=False):
-        """Converts json data to an unsaved document instance"""
+        """Converts json data to a Document instance
+
+        :param json_data: The json data to load into the Document
+        :param created: If True, the document will be considered as a brand new document
+                        If False and an id is provided, it will consider that the data being
+                        loaded corresponds to what's already in the database (This has an impact of subsequent call to .save())
+                        If False and no id is provided, it will consider the data as a new document
+                        (default ``False``)
+        """
         return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):
@@ -488,7 +495,7 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
 
-                if hasattr(data, '_changed_fields'):
+                if not isinstance(data, LazyReference) and hasattr(data, '_changed_fields'):
                     if getattr(data, '_is_document', False):
                         continue
 
@@ -1079,5 +1086,11 @@ class BaseDocument(object):
         """Return the display value for a choice field"""
         value = getattr(self, field.name)
         if field.choices and isinstance(field.choices[0], (list, tuple)):
-            return dict(field.choices).get(value, value)
+            if value is None:
+                return None
+            sep = getattr(field, 'display_sep', ' ')
+            values = value if field.__class__.__name__ in ('ListField', 'SortedListField') else [value]
+            return sep.join([
+                dict(field.choices).get(val, val)
+                for val in values or []])
         return value

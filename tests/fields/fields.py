@@ -26,7 +26,7 @@ except ImportError:
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
-                              _document_registry)
+                              _document_registry, LazyReference)
 
 from tests.utils import MongoDBTestCase
 
@@ -46,6 +46,17 @@ class FieldTest(MongoDBTestCase):
         md = MyDoc(dt='')
         self.assertRaises(ValidationError, md.save)
 
+    def test_date_from_empty_string(self):
+        """
+        Ensure an exception is raised when trying to
+        cast an empty string to datetime.
+        """
+        class MyDoc(Document):
+            dt = DateField()
+
+        md = MyDoc(dt='')
+        self.assertRaises(ValidationError, md.save)
+
     def test_datetime_from_whitespace_string(self):
         """
         Ensure an exception is raised when trying to
@@ -53,6 +64,17 @@ class FieldTest(MongoDBTestCase):
         """
         class MyDoc(Document):
             dt = DateTimeField()
+
+        md = MyDoc(dt='   ')
+        self.assertRaises(ValidationError, md.save)
+
+    def test_date_from_whitespace_string(self):
+        """
+        Ensure an exception is raised when trying to
+        cast a whitespace-only string to datetime.
+        """
+        class MyDoc(Document):
+            dt = DateField()
 
         md = MyDoc(dt='   ')
         self.assertRaises(ValidationError, md.save)
@@ -66,13 +88,14 @@ class FieldTest(MongoDBTestCase):
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: 'test', required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
+            day = DateField(default=datetime.date.today)
 
         person = Person(name="Ross")
 
         # Confirm saving now would store values
         data_to_be_saved = sorted(person.to_mongo().keys())
         self.assertEqual(data_to_be_saved,
-            ['age', 'created', 'name', 'userid']
+            ['age', 'created', 'day', 'name', 'userid']
         )
 
         self.assertTrue(person.validate() is None)
@@ -81,16 +104,18 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(person.age, person.age)
         self.assertEqual(person.userid, person.userid)
         self.assertEqual(person.created, person.created)
+        self.assertEqual(person.day, person.day)
 
         self.assertEqual(person._data['name'], person.name)
         self.assertEqual(person._data['age'], person.age)
         self.assertEqual(person._data['userid'], person.userid)
         self.assertEqual(person._data['created'], person.created)
+        self.assertEqual(person._data['day'], person.day)
 
         # Confirm introspection changes nothing
         data_to_be_saved = sorted(person.to_mongo().keys())
         self.assertEqual(
-            data_to_be_saved, ['age', 'created', 'name', 'userid'])
+            data_to_be_saved, ['age', 'created', 'day', 'name', 'userid'])
 
     def test_default_values_set_to_None(self):
         """Ensure that default field values are used even when
@@ -662,6 +687,32 @@ class FieldTest(MongoDBTestCase):
         log.time = 'ABC'
         self.assertRaises(ValidationError, log.validate)
 
+    def test_date_validation(self):
+        """Ensure that invalid values cannot be assigned to datetime
+        fields.
+        """
+        class LogEntry(Document):
+            time = DateField()
+
+        log = LogEntry()
+        log.time = datetime.datetime.now()
+        log.validate()
+
+        log.time = datetime.date.today()
+        log.validate()
+
+        log.time = datetime.datetime.now().isoformat(' ')
+        log.validate()
+
+        if dateutil:
+            log.time = datetime.datetime.now().isoformat('T')
+            log.validate()
+
+        log.time = -1
+        self.assertRaises(ValidationError, log.validate)
+        log.time = 'ABC'
+        self.assertRaises(ValidationError, log.validate)
+
     def test_datetime_tz_aware_mark_as_changed(self):
         from mongoengine import connection
 
@@ -733,6 +784,51 @@ class FieldTest(MongoDBTestCase):
             self.assertNotEqual(log.date, d1)
             self.assertEqual(log.date, d2)
 
+    def test_date(self):
+        """Tests showing pymongo date fields
+
+        See: http://api.mongodb.org/python/current/api/bson/son.html#dt
+        """
+        class LogEntry(Document):
+            date = DateField()
+
+        LogEntry.drop_collection()
+
+        # Test can save dates
+        log = LogEntry()
+        log.date = datetime.date.today()
+        log.save()
+        log.reload()
+        self.assertEqual(log.date, datetime.date.today())
+
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999)
+        d2 = datetime.datetime(1970, 1, 1, 0, 0, 1)
+        log = LogEntry()
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEqual(log.date, d1.date())
+        self.assertEqual(log.date, d2.date())
+
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999)
+        d2 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9000)
+        log.date = d1
+        log.save()
+        log.reload()
+        self.assertEqual(log.date, d1.date())
+        self.assertEqual(log.date, d2.date())
+
+        if not six.PY3:
+            # Pre UTC dates microseconds below 1000 are dropped
+            # This does not seem to be true in PY3
+            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
+            d2 = datetime.datetime(1969, 12, 31, 23, 59, 59)
+            log.date = d1
+            log.save()
+            log.reload()
+            self.assertEqual(log.date, d1.date())
+            self.assertEqual(log.date, d2.date())
+
     def test_datetime_usage(self):
         """Tests for regular datetime fields"""
         class LogEntry(Document):
@@ -786,6 +882,51 @@ class FieldTest(MongoDBTestCase):
             date__gte=datetime.datetime(1975, 1, 1),
         )
         self.assertEqual(logs.count(), 5)
+
+    def test_date_usage(self):
+        """Tests for regular datetime fields"""
+        class LogEntry(Document):
+            date = DateField()
+
+        LogEntry.drop_collection()
+
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1)
+        log = LogEntry()
+        log.date = d1
+        log.validate()
+        log.save()
+
+        for query in (d1, d1.isoformat(' ')):
+            log1 = LogEntry.objects.get(date=query)
+            self.assertEqual(log, log1)
+
+        if dateutil:
+            log1 = LogEntry.objects.get(date=d1.isoformat('T'))
+            self.assertEqual(log, log1)
+
+        # create additional 19 log entries for a total of 20
+        for i in range(1971, 1990):
+            d = datetime.datetime(i, 1, 1, 0, 0, 1)
+            LogEntry(date=d).save()
+
+        self.assertEqual(LogEntry.objects.count(), 20)
+
+        # Test ordering
+        logs = LogEntry.objects.order_by("date")
+        i = 0
+        while i < 19:
+            self.assertTrue(logs[i].date <= logs[i + 1].date)
+            i += 1
+
+        logs = LogEntry.objects.order_by("-date")
+        i = 0
+        while i < 19:
+            self.assertTrue(logs[i].date >= logs[i + 1].date)
+            i += 1
+
+        # Test searching
+        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
+        self.assertEqual(logs.count(), 10)
 
     def test_complexdatetime_storage(self):
         """Tests for complex datetime fields - which can handle
@@ -920,6 +1061,12 @@ class FieldTest(MongoDBTestCase):
 
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements."""
+        AccessLevelChoices = (
+            ('a', u'Administration'),
+            ('b', u'Manager'),
+            ('c', u'Staff'),
+        )
+
         class User(Document):
             pass
 
@@ -931,7 +1078,10 @@ class FieldTest(MongoDBTestCase):
             comments = ListField(EmbeddedDocumentField(Comment))
             tags = ListField(StringField())
             authors = ListField(ReferenceField(User))
+            authors_as_lazy = ListField(LazyReferenceField(User))
             generic = ListField(GenericReferenceField())
+            generic_as_lazy = ListField(GenericLazyReferenceField())
+            access_list = ListField(choices=AccessLevelChoices, display_sep=', ')
 
         User.drop_collection()
         BlogPost.drop_collection()
@@ -948,6 +1098,17 @@ class FieldTest(MongoDBTestCase):
         post.validate()
         post.tags = ('fun', 'leisure')
         post.validate()
+
+        post.access_list = 'a,b'
+        self.assertRaises(ValidationError, post.validate)
+
+        post.access_list = ['c', 'd']
+        self.assertRaises(ValidationError, post.validate)
+
+        post.access_list = ['a', 'b']
+        post.validate()
+
+        self.assertEqual(post.get_access_list_display(), u'Administration, Manager')
 
         post.comments = ['a']
         self.assertRaises(ValidationError, post.validate)
@@ -969,6 +1130,15 @@ class FieldTest(MongoDBTestCase):
         post.authors = [user]
         post.validate()
 
+        post.authors_as_lazy = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.authors_as_lazy = [User()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.authors_as_lazy = [user]
+        post.validate()
+
         post.generic = [1, 2]
         self.assertRaises(ValidationError, post.validate)
 
@@ -979,6 +1149,18 @@ class FieldTest(MongoDBTestCase):
         self.assertRaises(ValidationError, post.validate)
 
         post.generic = [user]
+        post.validate()
+
+        post.generic_as_lazy = [1, 2]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.generic_as_lazy = [User(), Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.generic_as_lazy = [Comment()]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.generic_as_lazy = [user]
         post.validate()
 
     def test_sorted_list_sorting(self):
@@ -4356,6 +4538,51 @@ class CachedReferenceFieldTest(MongoDBTestCase):
         self.assertEqual(SocialData.objects(person__group=g2).count(), 1)
         self.assertEqual(SocialData.objects(person__group=g2).first(), s2)
 
+    def test_cached_reference_field_push_with_fields(self):
+        class Product(Document):
+            name = StringField()
+
+        Product.drop_collection()
+
+        class Basket(Document):
+            products = ListField(CachedReferenceField(Product, fields=['name']))
+
+        Basket.drop_collection()
+        product1 = Product(name='abc').save()
+        product2 = Product(name='def').save()
+        basket = Basket(products=[product1]).save()
+        self.assertEqual(
+            Basket.objects._collection.find_one(),
+            {
+                '_id': basket.pk,
+                'products': [
+                    {
+                        '_id': product1.pk,
+                        'name': product1.name
+                    }
+                ]
+            }
+        )
+        # push to list
+        basket.update(push__products=product2)
+        basket.reload()
+        self.assertEqual(
+            Basket.objects._collection.find_one(),
+            {
+                '_id': basket.pk,
+                'products': [
+                    {
+                        '_id': product1.pk,
+                        'name': product1.name
+                    },
+                    {
+                        '_id': product2.pk,
+                        'name': product2.name
+                    }
+                ]
+            }
+        )
+
     def test_cached_reference_field_update_all(self):
         class Person(Document):
             TYPES = (
@@ -4596,6 +4823,523 @@ class CachedReferenceFieldTest(MongoDBTestCase):
             animal__owner__tags='cool').first()
         self.assertEqual(ocorrence.person, "teste 2")
         self.assertTrue(isinstance(ocorrence.animal, Animal))
+
+
+class LazyReferenceFieldTest(MongoDBTestCase):
+    def test_lazy_reference_config(self):
+        # Make sure ReferenceField only accepts a document class or a string
+        # with a document class name.
+        self.assertRaises(ValidationError, LazyReferenceField, EmbeddedDocument)
+
+    def test_lazy_reference_simple(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        Ocurrence(person="test", animal=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertIsInstance(p.animal, LazyReference)
+        fetched_animal = p.animal.fetch()
+        self.assertEqual(fetched_animal, animal)
+        # `fetch` keep cache on referenced document by default...
+        animal.tag = "not so heavy"
+        animal.save()
+        double_fetch = p.animal.fetch()
+        self.assertIs(fetched_animal, double_fetch)
+        self.assertEqual(double_fetch.tag, "heavy")
+        # ...unless specified otherwise
+        fetch_force = p.animal.fetch(force=True)
+        self.assertIsNot(fetch_force, fetched_animal)
+        self.assertEqual(fetch_force.tag, "not so heavy")
+
+    def test_lazy_reference_fetch_invalid_ref(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        Ocurrence(person="test", animal=animal).save()
+        animal.delete()
+        p = Ocurrence.objects.get()
+        self.assertIsInstance(p.animal, LazyReference)
+        with self.assertRaises(DoesNotExist):
+            p.animal.fetch()
+
+    def test_lazy_reference_set(self):
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
+
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        class SubAnimal(Animal):
+            nick = StringField()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        sub_animal = SubAnimal(nick='doggo', name='dog').save()
+        for ref in (
+                animal,
+                animal.pk,
+                DBRef(animal._get_collection_name(), animal.pk),
+                LazyReference(Animal, animal.pk),
+
+                sub_animal,
+                sub_animal.pk,
+                DBRef(sub_animal._get_collection_name(), sub_animal.pk),
+                LazyReference(SubAnimal, sub_animal.pk),
+                ):
+            p = Ocurrence(person="test", animal=ref).save()
+            p.reload()
+            self.assertIsInstance(p.animal, LazyReference)
+            p.animal.fetch()
+
+    def test_lazy_reference_bad_set(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        class BadDoc(Document):
+            pass
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        baddoc = BadDoc().save()
+        for bad in (
+                42,
+                'foo',
+                baddoc,
+                DBRef(baddoc._get_collection_name(), animal.pk),
+                LazyReference(BadDoc, animal.pk)
+                ):
+            with self.assertRaises(ValidationError):
+                p = Ocurrence(person="test", animal=bad).save()
+
+    def test_lazy_reference_query_conversion(self):
+        """Ensure that LazyReferenceFields can be queried using objects and values
+        of the type of the primary key of the referenced object.
+        """
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = LazyReferenceField(Member, dbref=False)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2).first()
+        self.assertEqual(post.id, post2.id)
+
+        # Same thing by passing a LazyReference instance
+        post = BlogPost.objects(author=LazyReference(Member, m2.pk)).first()
+        self.assertEqual(post.id, post2.id)
+
+    def test_lazy_reference_query_conversion_dbref(self):
+        """Ensure that LazyReferenceFields can be queried using objects and values
+        of the type of the primary key of the referenced object.
+        """
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = LazyReferenceField(Member, dbref=True)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2).first()
+        self.assertEqual(post.id, post2.id)
+
+        # Same thing by passing a LazyReference instance
+        post = BlogPost.objects(author=LazyReference(Member, m2.pk)).first()
+        self.assertEqual(post.id, post2.id)
+
+    def test_lazy_reference_passthrough(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            animal = LazyReferenceField(Animal, passthrough=False)
+            animal_passthrough = LazyReferenceField(Animal, passthrough=True)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        Ocurrence(animal=animal, animal_passthrough=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertIsInstance(p.animal, LazyReference)
+        with self.assertRaises(KeyError):
+            p.animal['name']
+        with self.assertRaises(AttributeError):
+            p.animal.name
+        self.assertEqual(p.animal.pk, animal.pk)
+
+        self.assertEqual(p.animal_passthrough.name, "Leopard")
+        self.assertEqual(p.animal_passthrough['name'], "Leopard")
+
+        # Should not be able to access referenced document's methods
+        with self.assertRaises(AttributeError):
+            p.animal.save
+        with self.assertRaises(KeyError):
+            p.animal['save']
+
+    def test_lazy_reference_not_set(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        Ocurrence(person='foo').save()
+        p = Ocurrence.objects.get()
+        self.assertIs(p.animal, None)
+
+    def test_lazy_reference_equality(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        Animal.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        animalref = LazyReference(Animal, animal.pk)
+        self.assertEqual(animal, animalref)
+        self.assertEqual(animalref, animal)
+
+        other_animalref = LazyReference(Animal, ObjectId("54495ad94c934721ede76f90"))
+        self.assertNotEqual(animal, other_animalref)
+        self.assertNotEqual(other_animalref, animal)
+
+    def test_lazy_reference_embedded(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class EmbeddedOcurrence(EmbeddedDocument):
+            in_list = ListField(LazyReferenceField(Animal))
+            direct = LazyReferenceField(Animal)
+
+        class Ocurrence(Document):
+            in_list = ListField(LazyReferenceField(Animal))
+            in_embedded = EmbeddedDocumentField(EmbeddedOcurrence)
+            direct = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal1 = Animal('doggo').save()
+        animal2 = Animal('cheeta').save()
+
+        def check_fields_type(occ):
+            self.assertIsInstance(occ.direct, LazyReference)
+            for elem in occ.in_list:
+                self.assertIsInstance(elem, LazyReference)
+            self.assertIsInstance(occ.in_embedded.direct, LazyReference)
+            for elem in occ.in_embedded.in_list:
+                self.assertIsInstance(elem, LazyReference)
+
+        occ = Ocurrence(
+            in_list=[animal1, animal2],
+            in_embedded={'in_list': [animal1, animal2], 'direct': animal1},
+            direct=animal1
+        ).save()
+        check_fields_type(occ)
+        occ.reload()
+        check_fields_type(occ)
+        occ.direct = animal1.id
+        occ.in_list = [animal1.id, animal2.id]
+        occ.in_embedded.direct = animal1.id
+        occ.in_embedded.in_list = [animal1.id, animal2.id]
+        check_fields_type(occ)
+
+
+class GenericLazyReferenceFieldTest(MongoDBTestCase):
+    def test_generic_lazy_reference_simple(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        Ocurrence(person="test", animal=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertIsInstance(p.animal, LazyReference)
+        fetched_animal = p.animal.fetch()
+        self.assertEqual(fetched_animal, animal)
+        # `fetch` keep cache on referenced document by default...
+        animal.tag = "not so heavy"
+        animal.save()
+        double_fetch = p.animal.fetch()
+        self.assertIs(fetched_animal, double_fetch)
+        self.assertEqual(double_fetch.tag, "heavy")
+        # ...unless specified otherwise
+        fetch_force = p.animal.fetch(force=True)
+        self.assertIsNot(fetch_force, fetched_animal)
+        self.assertEqual(fetch_force.tag, "not so heavy")
+
+    def test_generic_lazy_reference_choices(self):
+        class Animal(Document):
+            name = StringField()
+
+        class Vegetal(Document):
+            name = StringField()
+
+        class Mineral(Document):
+            name = StringField()
+
+        class Ocurrence(Document):
+            living_thing = GenericLazyReferenceField(choices=[Animal, Vegetal])
+            thing = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Vegetal.drop_collection()
+        Mineral.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard").save()
+        vegetal = Vegetal(name="Oak").save()
+        mineral = Mineral(name="Granite").save()
+
+        occ_animal = Ocurrence(living_thing=animal, thing=animal).save()
+        occ_vegetal = Ocurrence(living_thing=vegetal, thing=vegetal).save()
+        with self.assertRaises(ValidationError):
+            Ocurrence(living_thing=mineral).save()
+
+        occ = Ocurrence.objects.get(living_thing=animal)
+        self.assertEqual(occ, occ_animal)
+        self.assertIsInstance(occ.thing, LazyReference)
+        self.assertIsInstance(occ.living_thing, LazyReference)
+
+        occ.thing = vegetal
+        occ.living_thing = vegetal
+        occ.save()
+
+        occ.thing = mineral
+        occ.living_thing = mineral
+        with self.assertRaises(ValidationError):
+            occ.save()
+
+    def test_generic_lazy_reference_set(self):
+        class Animal(Document):
+            meta = {'allow_inheritance': True}
+
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        class SubAnimal(Animal):
+            nick = StringField()
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        sub_animal = SubAnimal(nick='doggo', name='dog').save()
+        for ref in (
+                animal,
+                LazyReference(Animal, animal.pk),
+                {'_cls': 'Animal', '_ref': DBRef(animal._get_collection_name(), animal.pk)},
+
+                sub_animal,
+                LazyReference(SubAnimal, sub_animal.pk),
+                {'_cls': 'SubAnimal', '_ref': DBRef(sub_animal._get_collection_name(), sub_animal.pk)},
+                ):
+            p = Ocurrence(person="test", animal=ref).save()
+            p.reload()
+            self.assertIsInstance(p.animal, (LazyReference, Document))
+            p.animal.fetch()
+
+    def test_generic_lazy_reference_bad_set(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField(choices=['Animal'])
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        class BadDoc(Document):
+            pass
+
+        animal = Animal(name="Leopard", tag="heavy").save()
+        baddoc = BadDoc().save()
+        for bad in (
+                42,
+                'foo',
+                baddoc,
+                LazyReference(BadDoc, animal.pk)
+                ):
+            with self.assertRaises(ValidationError):
+                p = Ocurrence(person="test", animal=bad).save()
+
+    def test_generic_lazy_reference_query_conversion(self):
+        class Member(Document):
+            user_num = IntField(primary_key=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            author = GenericLazyReferenceField()
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects(author=m1).first()
+        self.assertEqual(post.id, post1.id)
+
+        post = BlogPost.objects(author=m2).first()
+        self.assertEqual(post.id, post2.id)
+
+        # Same thing by passing a LazyReference instance
+        post = BlogPost.objects(author=LazyReference(Member, m2.pk)).first()
+        self.assertEqual(post.id, post2.id)
+
+    def test_generic_lazy_reference_not_set(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        Ocurrence(person='foo').save()
+        p = Ocurrence.objects.get()
+        self.assertIs(p.animal, None)
+
+    def test_generic_lazy_reference_embedded(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class EmbeddedOcurrence(EmbeddedDocument):
+            in_list = ListField(GenericLazyReferenceField())
+            direct = GenericLazyReferenceField()
+
+        class Ocurrence(Document):
+            in_list = ListField(GenericLazyReferenceField())
+            in_embedded = EmbeddedDocumentField(EmbeddedOcurrence)
+            direct = GenericLazyReferenceField()
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal1 = Animal('doggo').save()
+        animal2 = Animal('cheeta').save()
+
+        def check_fields_type(occ):
+            self.assertIsInstance(occ.direct, LazyReference)
+            for elem in occ.in_list:
+                self.assertIsInstance(elem, LazyReference)
+            self.assertIsInstance(occ.in_embedded.direct, LazyReference)
+            for elem in occ.in_embedded.in_list:
+                self.assertIsInstance(elem, LazyReference)
+
+        occ = Ocurrence(
+            in_list=[animal1, animal2],
+            in_embedded={'in_list': [animal1, animal2], 'direct': animal1},
+            direct=animal1
+        ).save()
+        check_fields_type(occ)
+        occ.reload()
+        check_fields_type(occ)
+        animal1_ref = {'_cls': 'Animal', '_ref': DBRef(animal1._get_collection_name(), animal1.pk)}
+        animal2_ref = {'_cls': 'Animal', '_ref': DBRef(animal2._get_collection_name(), animal2.pk)}
+        occ.direct = animal1_ref
+        occ.in_list = [animal1_ref, animal2_ref]
+        occ.in_embedded.direct = animal1_ref
+        occ.in_embedded.in_list = [animal1_ref, animal2_ref]
+        check_fields_type(occ)
 
 
 if __name__ == '__main__':

@@ -101,21 +101,8 @@ def query(_doc_cls=None, **kwargs):
                         value = value['_id']
 
             elif op in ('in', 'nin', 'all', 'near') and not isinstance(value, dict):
-                # Raise an error if the in/nin/all/near param is not iterable. We need a
-                # special check for BaseDocument, because - although it's iterable - using
-                # it as such in the context of this method is most definitely a mistake.
-                BaseDocument = _import_class('BaseDocument')
-                if isinstance(value, BaseDocument):
-                    raise TypeError("When using the `in`, `nin`, `all`, or "
-                                    "`near`-operators you can\'t use a "
-                                    "`Document`, you must wrap your object "
-                                    "in a list (object -> [object]).")
-                elif not hasattr(value, '__iter__'):
-                    raise TypeError("The `in`, `nin`, `all`, or "
-                                    "`near`-operators must be applied to an "
-                                    "iterable (e.g. a list).")
-                else:
-                    value = [field.prepare_query_value(op, v) for v in value]
+                # Raise an error if the in/nin/all/near param is not iterable.
+                value = _prepare_query_for_iterable(field, op, value)
 
             # If we're querying a GenericReferenceField, we need to alter the
             # key depending on the value:
@@ -284,9 +271,15 @@ def update(_doc_cls=None, **update):
             if isinstance(field, GeoJsonBaseField):
                 value = field.to_mongo(value)
 
-            if op == 'push' and isinstance(value, (list, tuple, set)):
+            if op == 'pull':
+                if field.required or value is not None:
+                    if match == 'in' and not isinstance(value, dict):
+                        value = _prepare_query_for_iterable(field, op, value)
+                    else:
+                        value = field.prepare_query_value(op, value)
+            elif op == 'push' and isinstance(value, (list, tuple, set)):
                 value = [field.prepare_query_value(op, v) for v in value]
-            elif op in (None, 'set', 'push', 'pull'):
+            elif op in (None, 'set', 'push'):
                 if field.required or value is not None:
                     value = field.prepare_query_value(op, value)
             elif op in ('pushAll', 'pullAll'):
@@ -321,11 +314,17 @@ def update(_doc_cls=None, **update):
             field_classes = [c.__class__ for c in cleaned_fields]
             field_classes.reverse()
             ListField = _import_class('ListField')
-            if ListField in field_classes:
-                # Join all fields via dot notation to the last ListField
+            EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
+            if ListField in field_classes or EmbeddedDocumentListField in field_classes:
+                # Join all fields via dot notation to the last ListField or EmbeddedDocumentListField
                 # Then process as normal
+                if ListField in field_classes:
+                    _check_field = ListField
+                else:
+                    _check_field = EmbeddedDocumentListField
+
                 last_listField = len(
-                    cleaned_fields) - field_classes.index(ListField)
+                    cleaned_fields) - field_classes.index(_check_field)
                 key = '.'.join(parts[:last_listField])
                 parts = parts[last_listField:]
                 parts.insert(0, key)
@@ -335,7 +334,7 @@ def update(_doc_cls=None, **update):
                 value = {key: value}
         elif op == 'addToSet' and isinstance(value, list):
             value = {key: {'$each': value}}
-        elif op == 'push':
+        elif op in ('push', 'pushAll'):
             if parts[-1].isdigit():
                 key = parts[0]
                 position = int(parts[-1])
@@ -344,10 +343,14 @@ def update(_doc_cls=None, **update):
                 if not isinstance(value, (set, tuple, list)):
                     value = [value]
                 value = {key: {'$each': value, '$position': position}}
-            elif isinstance(value, list):
-                value = {key: {'$each': value}}
             else:
-                value = {key: value}
+                if op == 'pushAll':
+                    op = 'push'  # convert to non-deprecated keyword
+                    if not isinstance(value, (set, tuple, list)):
+                        value = [value]
+                    value = {key: {'$each': value}}
+                else:
+                    value = {key: value}
         else:
             value = {key: value}
         key = '$' + op
@@ -439,3 +442,22 @@ def _infer_geometry(value):
 
     raise InvalidQueryError('Invalid $geometry data. Can be either a '
                             'dictionary or (nested) lists of coordinate(s)')
+
+
+def _prepare_query_for_iterable(field, op, value):
+    # We need a special check for BaseDocument, because - although it's iterable - using
+    # it as such in the context of this method is most definitely a mistake.
+    BaseDocument = _import_class('BaseDocument')
+
+    if isinstance(value, BaseDocument):
+        raise TypeError("When using the `in`, `nin`, `all`, or "
+                        "`near`-operators you can\'t use a "
+                        "`Document`, you must wrap your object "
+                        "in a list (object -> [object]).")
+
+    if not hasattr(value, '__iter__'):
+        raise TypeError("The `in`, `nin`, `all`, or "
+                        "`near`-operators must be applied to an "
+                        "iterable (e.g. a list).")
+
+    return [field.prepare_query_value(op, v) for v in value]
