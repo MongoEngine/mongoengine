@@ -8,9 +8,12 @@ import weakref
 
 from datetime import datetime
 from bson import DBRef, ObjectId
+from pymongo.errors import DuplicateKeyError
+
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
+from tests.utils import MongoDBTestCase
 
 from mongoengine import *
 from mongoengine.base import get_document, _document_registry
@@ -30,12 +33,9 @@ TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
 __all__ = ("InstanceTest",)
 
 
-class InstanceTest(unittest.TestCase):
+class InstanceTest(MongoDBTestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
-
         class Job(EmbeddedDocument):
             name = StringField()
             years = IntField()
@@ -550,21 +550,14 @@ class InstanceTest(unittest.TestCase):
             pass
 
         f = Foo()
-        try:
+        with self.assertRaises(Foo.DoesNotExist):
             f.reload()
-        except Foo.DoesNotExist:
-            pass
-        except Exception:
-            self.assertFalse("Threw wrong exception")
 
         f.save()
         f.delete()
-        try:
+
+        with self.assertRaises(Foo.DoesNotExist):
             f.reload()
-        except Foo.DoesNotExist:
-            pass
-        except Exception:
-            self.assertFalse("Threw wrong exception")
 
     def test_reload_of_non_strict_with_special_field_name(self):
         """Ensures reloading works for documents with meta strict == False."""
@@ -734,12 +727,12 @@ class InstanceTest(unittest.TestCase):
 
         t = TestDocument(status="draft", pub_date=datetime.now())
 
-        try:
+        with self.assertRaises(ValidationError) as cm:
             t.save()
-        except ValidationError as e:
-            expect_msg = "Draft entries may not have a publication date."
-            self.assertTrue(expect_msg in e.message)
-            self.assertEqual(e.to_dict(), {'__all__': expect_msg})
+
+        expected_msg = "Draft entries may not have a publication date."
+        self.assertIn(expected_msg, cm.exception.message)
+        self.assertEqual(cm.exception.to_dict(), {'__all__': expected_msg})
 
         t = TestDocument(status="published")
         t.save(clean=False)
@@ -773,12 +766,13 @@ class InstanceTest(unittest.TestCase):
         TestDocument.drop_collection()
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
-        try:
+
+        with self.assertRaises(ValidationError) as cm:
             t.save()
-        except ValidationError as e:
-            expect_msg = "Value of z != x + y"
-            self.assertTrue(expect_msg in e.message)
-            self.assertEqual(e.to_dict(), {'doc': {'__all__': expect_msg}})
+
+        expected_msg = "Value of z != x + y"
+        self.assertIn(expected_msg, cm.exception.message)
+        self.assertEqual(cm.exception.to_dict(), {'doc': {'__all__': expected_msg}})
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25)).save()
         self.assertEqual(t.doc.z, 35)
@@ -3148,6 +3142,64 @@ class InstanceTest(unittest.TestCase):
         self.assertEquals(p.id, None)
         p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
 
+    def test_from_son_created_False_without_id(self):
+        class MyPerson(Document):
+            name = StringField()
+
+        MyPerson.objects.delete()
+
+        p = MyPerson.from_json('{"name": "a_fancy_name"}', created=False)
+        self.assertFalse(p._created)
+        self.assertIsNone(p.id)
+        p.save()
+        self.assertIsNotNone(p.id)
+        saved_p = MyPerson.objects.get(id=p.id)
+        self.assertEqual(saved_p.name, 'a_fancy_name')
+
+    def test_from_son_created_False_with_id(self):
+        # 1854
+        class MyPerson(Document):
+            name = StringField()
+
+        MyPerson.objects.delete()
+
+        p = MyPerson.from_json('{"_id": "5b85a8b04ec5dc2da388296e", "name": "a_fancy_name"}', created=False)
+        self.assertFalse(p._created)
+        self.assertEqual(p._changed_fields, [])
+        self.assertEqual(p.name, 'a_fancy_name')
+        self.assertEqual(p.id, ObjectId('5b85a8b04ec5dc2da388296e'))
+        p.save()
+
+        with self.assertRaises(DoesNotExist):
+            # Since created=False and we gave an id in the json and _changed_fields is empty
+            # mongoengine assumes that the document exits with that structure already
+            # and calling .save() didn't save anything
+            MyPerson.objects.get(id=p.id)
+
+        self.assertFalse(p._created)
+        p.name = 'a new fancy name'
+        self.assertEqual(p._changed_fields, ['name'])
+        p.save()
+        saved_p = MyPerson.objects.get(id=p.id)
+        self.assertEqual(saved_p.name, p.name)
+
+    def test_from_son_created_True_with_an_id(self):
+        class MyPerson(Document):
+            name = StringField()
+
+        MyPerson.objects.delete()
+
+        p = MyPerson.from_json('{"_id": "5b85a8b04ec5dc2da388296e", "name": "a_fancy_name"}', created=True)
+        self.assertTrue(p._created)
+        self.assertEqual(p._changed_fields, [])
+        self.assertEqual(p.name, 'a_fancy_name')
+        self.assertEqual(p.id, ObjectId('5b85a8b04ec5dc2da388296e'))
+        p.save()
+
+        saved_p = MyPerson.objects.get(id=p.id)
+        self.assertEqual(saved_p, p)
+        self.assertEqual(p.name, 'a_fancy_name')
+
     def test_null_field(self):
         # 734
         class User(Document):
@@ -3247,6 +3299,23 @@ class InstanceTest(unittest.TestCase):
         blog.update(push__tags=["value1", 123])
         blog.reload()
         self.assertEqual(blog.tags, [["value1", 123]])
+
+    def test_accessing_objects_with_indexes_error(self):
+        insert_result = self.db.company.insert_many([{'name': 'Foo'},
+                                                     {'name': 'Foo'}])  # Force 2 doc with same name
+        REF_OID = insert_result.inserted_ids[0]
+        self.db.user.insert_one({'company': REF_OID})   # Force 2 doc with same name
+
+        class Company(Document):
+            name = StringField(unique=True)
+
+        class User(Document):
+            company = ReferenceField(Company)
+
+
+        # Ensure index creation exception aren't swallowed (#1688)
+        with self.assertRaises(DuplicateKeyError):
+            User.objects().select_related()
 
 
 if __name__ == '__main__':

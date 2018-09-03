@@ -91,11 +91,11 @@ deploy:
   distributions: "sdist bdist_wheel"
 
   # only deploy on tagged commits (aka GitHub releases) and only for the
-  # parent repo's builds running Python 2.7 along with PyMongo v3.0 (we run
+  # parent repo's builds running Python 2.7 along with PyMongo v3.x (we run
   # Travis against many different Python and PyMongo versions and we don't
   # want the deploy to occur multiple times).
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: "$PYMONGO = 3.0"
+    condition: "$PYMONGO = 3.x"
     python: 2.7

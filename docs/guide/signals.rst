@@ -113,6 +113,10 @@ handlers within your subclass::
     signals.pre_save.connect(Author.pre_save, sender=Author)
     signals.post_save.connect(Author.post_save, sender=Author)
 
+.. warning::
+
+    Note that EmbeddedDocument only supports pre/post_init signals. pre/post_save, etc should be attached to Document's class only. Attaching pre_save to an EmbeddedDocument is ignored silently.
+
 Finally, you can also use this small decorator to quickly create a number of
 signals and attach them to your :class:`~mongoengine.Document` or
 :class:`~mongoengine.EmbeddedDocument` subclasses as class decorators::

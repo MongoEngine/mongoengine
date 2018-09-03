@@ -133,7 +133,12 @@ class DeReference(object):
         """
         object_map = {}
         for collection, dbrefs in self.reference_map.iteritems():
-            if hasattr(collection, 'objects'):  # We have a document class for the refs
+
+            # we use getattr instead of hasattr because as hasattr swallows any exception under python2
+            # so it could hide nasty things without raising exceptions (cfr bug #1688))
+            ref_document_cls_exists = (getattr(collection, 'objects', None) is not None)
+
+            if ref_document_cls_exists:
                 col_name = collection._get_collection_name()
                 refs = [dbref for dbref in dbrefs
                         if (col_name, dbref) not in object_map]

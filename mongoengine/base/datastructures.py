@@ -128,8 +128,8 @@ class BaseList(list):
         return value
 
     def __iter__(self):
-        for i in six.moves.range(self.__len__()):
-            yield self[i]
+        for v in super(BaseList, self).__iter__():
+            yield v
 
     def __setitem__(self, key, value, *args, **kwargs):
         if isinstance(key, slice):
@@ -138,7 +138,7 @@ class BaseList(list):
             self._mark_as_changed(key)
         return super(BaseList, self).__setitem__(key, value)
 
-    def __delitem__(self, key, *args, **kwargs):
+    def __delitem__(self, key):
         self._mark_as_changed()
         return super(BaseList, self).__delitem__(key)
 
@@ -187,7 +187,7 @@ class BaseList(list):
         self._mark_as_changed()
         return super(BaseList, self).remove(*args, **kwargs)
 
-    def reverse(self, *args, **kwargs):
+    def reverse(self):
         self._mark_as_changed()
         return super(BaseList, self).reverse()
 
@@ -233,6 +233,9 @@ class EmbeddedDocumentList(BaseList):
         """
         Filters the list by only including embedded documents with the
         given keyword arguments.
+
+        This method only supports simple comparison (e.g: .filter(name='John Doe'))
+        and does not support operators like __gte, __lte, __icontains like queryset.filter does
 
         :param kwargs: The keyword arguments corresponding to the fields to
          filter on. *Multiple arguments are treated as if they are ANDed

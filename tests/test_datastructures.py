@@ -1,6 +1,21 @@
 import unittest
 
-from mongoengine.base.datastructures import StrictDict
+from mongoengine.base.datastructures import StrictDict, BaseList
+
+
+class TestBaseList(unittest.TestCase):
+
+    def test_iter_simple(self):
+        values = [True, False, True, False]
+        base_list = BaseList(values, instance=None, name='my_name')
+        self.assertEqual(values, list(base_list))
+
+    def test_iter_allow_modification_while_iterating_withou_error(self):
+        # regular list allows for this, thus this subclass must comply to that
+        base_list = BaseList([True, False, True, False], instance=None, name='my_name')
+        for idx, val in enumerate(base_list):
+            if val:
+                base_list.pop(idx)
 
 
 class TestStrictDict(unittest.TestCase):

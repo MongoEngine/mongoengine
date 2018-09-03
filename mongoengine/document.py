@@ -585,9 +585,8 @@ class Document(BaseDocument):
         :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
-            will be used as options for the resultant
-            ``getLastError`` command.  For example,
-            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            will be used as options for the resultant ``getLastError`` command.
+            For example, ``save(..., w: 2, fsync: True)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
 
@@ -715,7 +714,7 @@ class Document(BaseDocument):
                 except (KeyError, AttributeError):
                     try:
                         # If field is a special field, e.g. items is stored as _reserved_items,
-                        # an KeyError is thrown. So try to retrieve the field from _data
+                        # a KeyError is thrown. So try to retrieve the field from _data
                         setattr(self, field, self._reload(field, obj._data.get(field)))
                     except KeyError:
                         # If field is removed from the database while the object
@@ -1000,7 +999,7 @@ class Document(BaseDocument):
 class DynamicDocument(Document):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
-    way as an ordinary document but has expando style properties.  Any data
+    way as an ordinary document but has expanded style properties.  Any data
     passed or set against the :class:`~mongoengine.DynamicDocument` that is
     not a field is automatically converted into a
     :class:`~mongoengine.fields.DynamicField` and data can be attributed to that

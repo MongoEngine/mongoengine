@@ -513,6 +513,9 @@ If a dictionary is passed then the following options are available:
     Allows you to automatically expire data from a collection by setting the
     time in seconds to expire the a field.
 
+:attr:`name` (Optional)
+    Allows you to specify a name for the index
+
 .. note::
 
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
