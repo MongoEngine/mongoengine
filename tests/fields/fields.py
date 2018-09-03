@@ -2147,6 +2147,15 @@ class FieldTest(MongoDBTestCase):
         ]))
         self.assertEqual(a.b.c.txt, 'hi')
 
+    def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(self):
+        raise SkipTest("Using a string reference in an EmbeddedDocumentField does not work if the class isnt registerd yet")
+
+        class MyDoc2(Document):
+            emb = EmbeddedDocumentField('MyDoc')
+
+        class MyDoc(EmbeddedDocument):
+            name = StringField()
+
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.
@@ -4387,6 +4396,44 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
 
+
+class TestEmbeddedDocumentField(MongoDBTestCase):
+    def test___init___(self):
+        class MyDoc(EmbeddedDocument):
+            name = StringField()
+
+        field = EmbeddedDocumentField(MyDoc)
+        self.assertEqual(field.document_type_obj, MyDoc)
+
+        field2 = EmbeddedDocumentField('MyDoc')
+        self.assertEqual(field2.document_type_obj, 'MyDoc')
+
+    def test___init___throw_error_if_document_type_is_not_EmbeddedDocument(self):
+        with self.assertRaises(ValidationError):
+            EmbeddedDocumentField(dict)
+
+    def test_document_type_throw_error_if_not_EmbeddedDocument_subclass(self):
+
+        class MyDoc(Document):
+            name = StringField()
+
+        emb = EmbeddedDocumentField('MyDoc')
+        with self.assertRaises(ValidationError) as ctx:
+            emb.document_type
+        self.assertIn('Invalid embedded document class provided to an EmbeddedDocumentField', str(ctx.exception))
+
+    def test_embedded_document_field_only_allow_subclasses_of_embedded_document(self):
+        # Relates to #1661
+        class MyDoc(Document):
+            name = StringField()
+
+        with self.assertRaises(ValidationError):
+            class MyFailingDoc(Document):
+                emb = EmbeddedDocumentField(MyDoc)
+
+        with self.assertRaises(ValidationError):
+            class MyFailingdoc2(Document):
+                emb = EmbeddedDocumentField('MyDoc')
 
 class CachedReferenceFieldTest(MongoDBTestCase):
 
