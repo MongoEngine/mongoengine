@@ -1203,6 +1203,14 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         Blog.drop_collection()
 
+    def test_filter_chaining_with_regex(self):
+        person = self.Person(name='Guido van Rossum')
+        person.save()
+
+        people = self.Person.objects
+        people = people.filter(name__startswith='Gui').filter(name__not__endswith='tum')
+        self.assertEqual(people.count(), 1)
+
     def assertSequence(self, qs, expected):
         qs = list(qs)
         expected = list(expected)
