@@ -104,6 +104,18 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
+            if IS_PYMONGO_3 and 'readpreference' in uri_options:
+                read_preferences = (
+                    ReadPreference.NEAREST,
+                    ReadPreference.PRIMARY,
+                    ReadPreference.PRIMARY_PREFERRED,
+                    ReadPreference.SECONDARY,
+                    ReadPreference.SECONDARY_PREFERRED)
+                read_pf_mode = uri_options['readpreference'].lower()
+                for preference in read_preferences:
+                    if preference.name.lower() == read_pf_mode:
+                        conn_settings['read_preference'] = preference
+                        break
         else:
             resolved_hosts.append(entity)
     conn_settings['host'] = resolved_hosts
