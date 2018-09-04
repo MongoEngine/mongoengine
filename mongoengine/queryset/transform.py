@@ -147,7 +147,7 @@ def query(_doc_cls=None, **kwargs):
         if op is None or key not in mongo_query:
             mongo_query[key] = value
         elif key in mongo_query:
-            if isinstance(mongo_query[key], dict):
+            if isinstance(mongo_query[key], dict) and isinstance(value, dict):
                 mongo_query[key].update(value)
                 # $max/minDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
@@ -201,30 +201,37 @@ def update(_doc_cls=None, **update):
     format.
     """
     mongo_update = {}
+
     for key, value in update.items():
         if key == '__raw__':
             mongo_update.update(value)
             continue
+
         parts = key.split('__')
+
         # if there is no operator, default to 'set'
         if len(parts) < 3 and parts[0] not in UPDATE_OPERATORS:
             parts.insert(0, 'set')
+
         # Check for an operator and transform to mongo-style if there is
         op = None
         if parts[0] in UPDATE_OPERATORS:
             op = parts.pop(0)
             # Convert Pythonic names to Mongo equivalents
-            if op in ('push_all', 'pull_all'):
-                op = op.replace('_all', 'All')
-            elif op == 'dec':
+            operator_map = {
+                'push_all': 'pushAll',
+                'pull_all': 'pullAll',
+                'dec': 'inc',
+                'add_to_set': 'addToSet',
+                'set_on_insert': 'setOnInsert'
+            }
+            if op == 'dec':
                 # Support decrement by flipping a positive value's sign
                 # and using 'inc'
-                op = 'inc'
                 value = -value
-            elif op == 'add_to_set':
-                op = 'addToSet'
-            elif op == 'set_on_insert':
-                op = 'setOnInsert'
+            # If the operator doesn't found from operator map, the op value
+            # will stay unchanged
+            op = operator_map.get(op, op)
 
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
@@ -291,6 +298,8 @@ def update(_doc_cls=None, **update):
                     value = field.prepare_query_value(op, value)
             elif op == 'unset':
                 value = 1
+            elif op == 'inc':
+                value = field.prepare_query_value(op, value)
 
         if match:
             match = '$' + match

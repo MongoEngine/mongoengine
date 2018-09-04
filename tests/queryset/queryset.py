@@ -3,6 +3,7 @@
 import datetime
 import unittest
 import uuid
+from decimal import Decimal
 
 from bson import DBRef, ObjectId
 from nose.plugins.skip import SkipTest
@@ -1202,6 +1203,14 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         Blog.drop_collection()
 
+    def test_filter_chaining_with_regex(self):
+        person = self.Person(name='Guido van Rossum')
+        person.save()
+
+        people = self.Person.objects
+        people = people.filter(name__startswith='Gui').filter(name__not__endswith='tum')
+        self.assertEqual(people.count(), 1)
+
     def assertSequence(self, qs, expected):
         qs = list(qs)
         expected = list(expected)
@@ -1851,21 +1860,16 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(
             1, BlogPost.objects(author__in=["%s" % me.pk]).count())
 
-    def test_update(self):
-        """Ensure that atomic updates work properly.
-        """
+    def test_update_intfield_operator(self):
         class BlogPost(Document):
-            name = StringField()
-            title = StringField()
             hits = IntField()
-            tags = ListField(StringField())
 
         BlogPost.drop_collection()
 
-        post = BlogPost(name="Test Post", hits=5, tags=['test'])
+        post = BlogPost(hits=5)
         post.save()
 
-        BlogPost.objects.update(set__hits=10)
+        BlogPost.objects.update_one(set__hits=10)
         post.reload()
         self.assertEqual(post.hits, 10)
 
@@ -1882,6 +1886,55 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.hits, 11)
 
+    def test_update_decimalfield_operator(self):
+        class BlogPost(Document):
+            review = DecimalField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(review=3.5)
+        post.save()
+
+        BlogPost.objects.update_one(inc__review=0.1)             # test with floats
+        post.reload()
+        self.assertEqual(float(post.review), 3.6)
+
+        BlogPost.objects.update_one(dec__review=0.1)
+        post.reload()
+        self.assertEqual(float(post.review), 3.5)
+
+        BlogPost.objects.update_one(inc__review=Decimal(0.12))   # test with Decimal
+        post.reload()
+        self.assertEqual(float(post.review), 3.62)
+
+        BlogPost.objects.update_one(dec__review=Decimal(0.12))
+        post.reload()
+        self.assertEqual(float(post.review), 3.5)
+
+    def test_update_decimalfield_operator_not_working_with_force_string(self):
+        class BlogPost(Document):
+            review = DecimalField(force_string=True)
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(review=3.5)
+        post.save()
+
+        with self.assertRaises(OperationError):
+            BlogPost.objects.update_one(inc__review=0.1)             # test with floats
+
+    def test_update_listfield_operator(self):
+        """Ensure that atomic updates work properly.
+        """
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(tags=['test'])
+        post.save()
+
+        # ListField operator
         BlogPost.objects.update(push__tags='mongo')
         post.reload()
         self.assertTrue('mongo' in post.tags)
@@ -1900,12 +1953,22 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags.count('unique'), 1)
 
-        self.assertNotEqual(post.hits, None)
-        BlogPost.objects.update_one(unset__hits=1)
-        post.reload()
-        self.assertEqual(post.hits, None)
+        BlogPost.drop_collection()
+
+    def test_update_unset(self):
+        class BlogPost(Document):
+            title = StringField()
 
         BlogPost.drop_collection()
+
+        post = BlogPost(title='garbage').save()
+
+        self.assertNotEqual(post.title, None)
+        BlogPost.objects.update_one(unset__title=1)
+        post.reload()
+        self.assertEqual(post.title, None)
+        pymongo_doc = BlogPost.objects.as_pymongo().first()
+        self.assertNotIn('title', pymongo_doc)
 
     @needs_mongodb_v26
     def test_update_push_with_position(self):

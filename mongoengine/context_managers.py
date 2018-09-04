@@ -145,18 +145,17 @@ class no_sub_classes(object):
         :param cls: the class to turn querying sub classes on
         """
         self.cls = cls
+        self.cls_initial_subclasses = None
 
     def __enter__(self):
         """Change the objects default and _auto_dereference values."""
-        self.cls._all_subclasses = self.cls._subclasses
-        self.cls._subclasses = (self.cls,)
+        self.cls_initial_subclasses = self.cls._subclasses
+        self.cls._subclasses = (self.cls._class_name,)
         return self.cls
 
     def __exit__(self, t, value, traceback):
         """Reset the default and _auto_dereference values."""
-        self.cls._subclasses = self.cls._all_subclasses
-        delattr(self.cls, '_all_subclasses')
-        return self.cls
+        self.cls._subclasses = self.cls_initial_subclasses
 
 
 class query_counter(object):
@@ -215,7 +214,7 @@ class query_counter(object):
         """Get the number of queries."""
         ignore_query = {'ns': {'$ne': '%s.system.indexes' % self.db.name}}
         count = self.db.system.profile.find(ignore_query).count() - self.counter
-        self.counter += 1
+        self.counter += 1       # Account for the query we just fired
         return count
 
 
