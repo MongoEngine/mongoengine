@@ -945,14 +945,9 @@ class DictField(ComplexBaseField):
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
     """
 
-    def __init__(self, basecls=None, field=None, *args, **kwargs):
+    def __init__(self, field=None, *args, **kwargs):
         self.field = field
         self._auto_dereference = False
-        self.basecls = basecls or BaseField
-
-        # XXX ValidationError raised outside of the "validate" method.
-        if not issubclass(self.basecls, BaseField):
-            self.error('DictField only accepts dict values')
 
         kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
@@ -972,7 +967,7 @@ class DictField(ComplexBaseField):
         super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
-        return DictField(basecls=self.basecls, db_field=member_name)
+        return DictField(db_field=member_name)
 
     def prepare_query_value(self, op, value):
         match_operators = ['contains', 'icontains', 'startswith',

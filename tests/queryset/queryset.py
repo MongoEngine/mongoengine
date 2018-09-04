@@ -3618,33 +3618,6 @@ class QuerySetTest(unittest.TestCase):
 
         Group.drop_collection()
 
-    def test_dict_with_custom_baseclass(self):
-        """Ensure DictField working with custom base clases.
-        """
-        class Test(Document):
-            testdict = DictField()
-
-        Test.drop_collection()
-
-        t = Test(testdict={'f': 'Value'})
-        t.save()
-
-        self.assertEqual(
-            Test.objects(testdict__f__startswith='Val').count(), 1)
-        self.assertEqual(Test.objects(testdict__f='Value').count(), 1)
-        Test.drop_collection()
-
-        class Test(Document):
-            testdict = DictField(basecls=StringField)
-
-        t = Test(testdict={'f': 'Value'})
-        t.save()
-
-        self.assertEqual(Test.objects(testdict__f='Value').count(), 1)
-        self.assertEqual(
-            Test.objects(testdict__f__startswith='Val').count(), 1)
-        Test.drop_collection()
-
     def test_bulk(self):
         """Ensure bulk querying by object id returns a proper dict.
         """
