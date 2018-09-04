@@ -225,8 +225,8 @@ def update(_doc_cls=None, **update):
                 # Support decrement by flipping a positive value's sign
                 # and using 'inc'
                 value = -value
-            # If operator doesn't found from operator map, op value will stay
-            # unchanged
+            # If the operator doesn't found from operator map, the op value
+            # will stay unchanged
             op = operator_map.get(op, op)
 
         match = None
