@@ -214,17 +214,20 @@ def update(_doc_cls=None, **update):
         if parts[0] in UPDATE_OPERATORS:
             op = parts.pop(0)
             # Convert Pythonic names to Mongo equivalents
-            if op in ('push_all', 'pull_all'):
-                op = op.replace('_all', 'All')
-            elif op == 'dec':
+            operator_map = {
+                'push_all': 'pushAll',
+                'pull_all': 'pullAll',
+                'dec': 'inc',
+                'add_to_set': 'addToSet',
+                'set_on_insert': 'setOnInsert'
+            }
+            # If operator doesn't found from operator map, op value will stay
+            # unchanged
+            op = operator_map.get(op, op)
+            if op == 'dec':
                 # Support decrement by flipping a positive value's sign
                 # and using 'inc'
-                op = 'inc'
                 value = -value
-            elif op == 'add_to_set':
-                op = 'addToSet'
-            elif op == 'set_on_insert':
-                op = 'setOnInsert'
 
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
