@@ -221,13 +221,13 @@ def update(_doc_cls=None, **update):
                 'add_to_set': 'addToSet',
                 'set_on_insert': 'setOnInsert'
             }
-            # If operator doesn't found from operator map, op value will stay
-            # unchanged
-            op = operator_map.get(op, op)
             if op == 'dec':
                 # Support decrement by flipping a positive value's sign
                 # and using 'inc'
                 value = -value
+            # If operator doesn't found from operator map, op value will stay
+            # unchanged
+            op = operator_map.get(op, op)
 
         match = None
         if parts[-1] in COMPARISON_OPERATORS:
