@@ -7,12 +7,12 @@ from mongoengine.connection import get_db, get_connection
 from mongoengine.python_support import IS_PYMONGO_3
 
 
-MONGO_TEST_DB = 'mongoenginetest'
+MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database
 
 
 class MongoDBTestCase(unittest.TestCase):
     """Base class for tests that need a mongodb connection
-    db is being dropped automatically
+    It ensures that the db is clean at the beginning and dropped at the end automatically
     """
 
     @classmethod
@@ -32,6 +32,7 @@ def get_mongodb_version():
     """
     return tuple(get_connection().server_info()['versionArray'])
 
+
 def _decorated_with_ver_requirement(func, ver_tuple):
     """Return a given function decorated with the version requirement
     for a particular MongoDB version tuple.
@@ -50,17 +51,20 @@ def _decorated_with_ver_requirement(func, ver_tuple):
 
     return _inner
 
+
 def needs_mongodb_v26(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v2.6.
     """
     return _decorated_with_ver_requirement(func, (2, 6))
 
+
 def needs_mongodb_v3(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v3.0.
     """
     return _decorated_with_ver_requirement(func, (3, 0))
+
 
 def skip_pymongo3(f):
     """Raise a SkipTest exception if we're running a test against

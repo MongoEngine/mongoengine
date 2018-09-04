@@ -1,9 +1,11 @@
+from contextlib import contextmanager
+from pymongo.write_concern import WriteConcern
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 
 
 __all__ = ('switch_db', 'switch_collection', 'no_dereference',
-           'no_sub_classes', 'query_counter')
+           'no_sub_classes', 'query_counter', 'set_write_concern')
 
 
 class switch_db(object):
@@ -143,18 +145,17 @@ class no_sub_classes(object):
         :param cls: the class to turn querying sub classes on
         """
         self.cls = cls
+        self.cls_initial_subclasses = None
 
     def __enter__(self):
         """Change the objects default and _auto_dereference values."""
-        self.cls._all_subclasses = self.cls._subclasses
-        self.cls._subclasses = (self.cls,)
+        self.cls_initial_subclasses = self.cls._subclasses
+        self.cls._subclasses = (self.cls._class_name,)
         return self.cls
 
     def __exit__(self, t, value, traceback):
         """Reset the default and _auto_dereference values."""
-        self.cls._subclasses = self.cls._all_subclasses
-        delattr(self.cls, '_all_subclasses')
-        return self.cls
+        self.cls._subclasses = self.cls_initial_subclasses
 
 
 class query_counter(object):
@@ -213,5 +214,12 @@ class query_counter(object):
         """Get the number of queries."""
         ignore_query = {'ns': {'$ne': '%s.system.indexes' % self.db.name}}
         count = self.db.system.profile.find(ignore_query).count() - self.counter
-        self.counter += 1
+        self.counter += 1       # Account for the query we just fired
         return count
+
+
+@contextmanager
+def set_write_concern(collection, write_concerns):
+    combined_concerns = dict(collection.write_concern.document.items())
+    combined_concerns.update(write_concerns)
+    yield collection.with_options(write_concern=WriteConcern(**combined_concerns))

@@ -3,9 +3,10 @@ from mongoengine.errors import NotRegistered
 __all__ = ('UPDATE_OPERATORS', 'get_document', '_document_registry')
 
 
-UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set',
-                        'set_on_insert', 'min', 'max', 'rename'])
+UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'mul',
+                        'pop', 'push', 'push_all', 'pull',
+                        'pull_all', 'add_to_set', 'set_on_insert',
+                        'min', 'max', 'rename'])
 
 
 _document_registry = {}
