@@ -55,7 +55,7 @@ class BaseField(object):
             field.  Generally this is deprecated in favour of the
             `FIELD.validate` method
         :param choices: (optional) The valid choices
-        :param null: (optional) Is the field value can be null. If no and there is a default value
+        :param null: (optional) If the field value can be null. If no and there is a default value
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
@@ -130,7 +130,6 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-
         # If setting to None and there is a default
         # Then set the value to the default value
         if value is None:
