@@ -89,7 +89,7 @@ class QuerySet(BaseQuerySet):
                 yield self._result_cache[pos]
                 pos += 1
 
-            # Raise StopIteration if we already established there were no more
+            # return if we already established there were no more
             # docs in the db cursor.
             if not self._has_more:
                 return
