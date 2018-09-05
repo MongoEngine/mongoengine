@@ -562,11 +562,15 @@ class ComplexDateTimeField(StringField):
     The `,` as the separator can be easily modified by passing the `separator`
     keyword when initializing the field.
 
+    Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
+
     .. versionadded:: 0.5
     """
 
     def __init__(self, separator=',', **kwargs):
-        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second', 'microsecond']
+        """
+        :param separator: Allows to customize the separator used for storage (default ``,``)
+        """
         self.separator = separator
         self.format = separator.join(['%Y', '%m', '%d', '%H', '%M', '%S', '%f'])
         super(ComplexDateTimeField, self).__init__(**kwargs)
@@ -597,16 +601,20 @@ class ComplexDateTimeField(StringField):
         return datetime.datetime(*values)
 
     def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
-        if data is None:
-            return None if self.null else datetime.datetime.now()
-        if isinstance(data, datetime.datetime):
+
+        if isinstance(data, datetime.datetime) or data is None:
             return data
         return self._convert_from_string(data)
 
     def __set__(self, instance, value):
-        value = self._convert_from_datetime(value) if value else value
-        return super(ComplexDateTimeField, self).__set__(instance, value)
+        super(ComplexDateTimeField, self).__set__(instance, value)
+        value = instance._data[self.name]
+        if value is not None:
+            instance._data[self.name] = self._convert_from_datetime(value)
 
     def validate(self, value):
         value = self.to_python(value)
