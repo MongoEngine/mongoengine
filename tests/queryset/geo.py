@@ -95,9 +95,9 @@ class GeoQueriesTest(MongoDBTestCase):
             location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 2)
         events = list(events)
-        self.assertTrue(event2 not in events)
-        self.assertTrue(event1 in events)
-        self.assertTrue(event3 in events)
+        self.assertNotIn(event2, events)
+        self.assertIn(event1, events)
+        self.assertIn(event3, events)
 
         # find events within 10 degrees of san francisco
         point_and_distance = [[-122.415579, 37.7566023], 10]
@@ -285,9 +285,9 @@ class GeoQueriesTest(MongoDBTestCase):
             location__geo_within_center=point_and_distance)
         self.assertEqual(events.count(), 2)
         events = list(events)
-        self.assertTrue(event2 not in events)
-        self.assertTrue(event1 in events)
-        self.assertTrue(event3 in events)
+        self.assertNotIn(event2, events)
+        self.assertIn(event1, events)
+        self.assertIn(event3, events)
 
     def _test_embedded(self, point_field_class):
         """Helper test method ensuring given point field class works

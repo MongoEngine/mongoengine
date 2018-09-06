@@ -298,9 +298,9 @@ class GeoFieldTest(unittest.TestCase):
             polygon = PolygonField()
 
         geo_indicies = Event._geo_indices()
-        self.assertTrue({'fields': [('line', '2dsphere')]} in geo_indicies)
-        self.assertTrue({'fields': [('polygon', '2dsphere')]} in geo_indicies)
-        self.assertTrue({'fields': [('point', '2dsphere')]} in geo_indicies)
+        self.assertIn({'fields': [('line', '2dsphere')]}, geo_indicies)
+        self.assertIn({'fields': [('polygon', '2dsphere')]}, geo_indicies)
+        self.assertIn({'fields': [('point', '2dsphere')]}, geo_indicies)
 
     def test_indexes_2dsphere_embedded(self):
         """Ensure that indexes are created automatically for GeoPointFields.
@@ -316,9 +316,9 @@ class GeoFieldTest(unittest.TestCase):
             venue = EmbeddedDocumentField(Venue)
 
         geo_indicies = Event._geo_indices()
-        self.assertTrue({'fields': [('venue.line', '2dsphere')]} in geo_indicies)
-        self.assertTrue({'fields': [('venue.polygon', '2dsphere')]} in geo_indicies)
-        self.assertTrue({'fields': [('venue.point', '2dsphere')]} in geo_indicies)
+        self.assertIn({'fields': [('venue.line', '2dsphere')]}, geo_indicies)
+        self.assertIn({'fields': [('venue.polygon', '2dsphere')]}, geo_indicies)
+        self.assertIn({'fields': [('venue.point', '2dsphere')]}, geo_indicies)
 
     def test_geo_indexes_recursion(self):
 
@@ -335,9 +335,9 @@ class GeoFieldTest(unittest.TestCase):
 
         Parent(name='Berlin').save()
         info = Parent._get_collection().index_information()
-        self.assertFalse('location_2d' in info)
+        self.assertNotIn('location_2d', info)
         info = Location._get_collection().index_information()
-        self.assertTrue('location_2d' in info)
+        self.assertIn('location_2d', info)
 
         self.assertEqual(len(Parent._geo_indices()), 0)
         self.assertEqual(len(Location._geo_indices()), 1)

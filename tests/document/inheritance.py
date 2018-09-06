@@ -268,7 +268,7 @@ class InheritanceTest(unittest.TestCase):
 
         collection = self.db[Animal._get_collection_name()]
         obj = collection.find_one()
-        self.assertFalse('_cls' in obj)
+        self.assertNotIn('_cls', obj)
 
     def test_cant_turn_off_inheritance_on_subclass(self):
         """Ensure if inheritance is on in a subclass you cant turn it off.
@@ -298,7 +298,7 @@ class InheritanceTest(unittest.TestCase):
 
         # Check that _cls isn't present in simple documents
         doc = Animal(name='dog')
-        self.assertFalse('_cls' in doc.to_mongo())
+        self.assertNotIn('_cls', doc.to_mongo())
 
     def test_abstract_handle_ids_in_metaclass_properly(self):
 
@@ -374,14 +374,14 @@ class InheritanceTest(unittest.TestCase):
                 pass
 
         doc = Comment(content='test')
-        self.assertFalse('_cls' in doc.to_mongo())
+        self.assertNotIn('_cls', doc.to_mongo())
 
         class Comment(EmbeddedDocument):
             content = StringField()
             meta = {'allow_inheritance': True}
 
         doc = Comment(content='test')
-        self.assertTrue('_cls' in doc.to_mongo())
+        self.assertIn('_cls', doc.to_mongo())
 
     def test_document_inheritance(self):
         """Ensure mutliple inheritance of abstract documents
@@ -434,8 +434,8 @@ class InheritanceTest(unittest.TestCase):
             for cls in [Animal, Fish, Guppy]:
                 self.assertEqual(cls._meta[k], v)
 
-        self.assertFalse('collection' in Animal._meta)
-        self.assertFalse('collection' in Mammal._meta)
+        self.assertNotIn('collection', Animal._meta)
+        self.assertNotIn('collection', Mammal._meta)
 
         self.assertEqual(Animal._get_collection_name(), None)
         self.assertEqual(Mammal._get_collection_name(), None)

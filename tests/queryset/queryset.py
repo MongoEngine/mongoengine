@@ -59,11 +59,10 @@ class QuerySetTest(unittest.TestCase):
     def test_initialisation(self):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager.
         """
-        self.assertTrue(isinstance(self.Person.objects, QuerySet))
+        self.assertIsInstance(self.Person.objects, QuerySet)
         self.assertEqual(self.Person.objects._collection.name,
                          self.Person._get_collection_name())
-        self.assertTrue(isinstance(self.Person.objects._collection,
-                                   pymongo.collection.Collection))
+        self.assertIsInstance(self.Person.objects._collection, pymongo.collection.Collection)
 
     def test_cannot_perform_joins_references(self):
 
@@ -89,8 +88,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(people.count(), 2)
         results = list(people)
 
-        self.assertTrue(isinstance(results[0], self.Person))
-        self.assertTrue(isinstance(results[0].id, (ObjectId, str, unicode)))
+        self.assertIsInstance(results[0], self.Person)
+        self.assertIsInstance(results[0].id, (ObjectId, str, unicode))
 
         self.assertEqual(results[0], user_a)
         self.assertEqual(results[0].name, 'User A')
@@ -225,7 +224,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         person = self.Person.objects.first()
-        self.assertTrue(isinstance(person, self.Person))
+        self.assertIsInstance(person, self.Person)
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
@@ -672,13 +671,13 @@ class QuerySetTest(unittest.TestCase):
 
         result = self.Person(name="Bob", age=25).update(
             upsert=True, full_result=True)
-        self.assertTrue(isinstance(result, UpdateResult))
-        self.assertTrue("upserted" in result.raw_result)
+        self.assertIsInstance(result, UpdateResult)
+        self.assertIn("upserted", result.raw_result)
         self.assertFalse(result.raw_result["updatedExisting"])
 
         bob = self.Person.objects.first()
         result = bob.update(set__age=30, full_result=True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertTrue(result.raw_result["updatedExisting"])
 
         self.Person(name="Bob", age=20).save()
@@ -994,7 +993,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         person = self.Person.objects.slave_okay(True).first()
-        self.assertTrue(isinstance(person, self.Person))
+        self.assertIsInstance(person, self.Person)
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
@@ -1061,10 +1060,10 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(docs.count(), 1000)
 
         docs_string = "%s" % docs
-        self.assertTrue("Doc: 0" in docs_string)
+        self.assertIn("Doc: 0", docs_string)
 
         self.assertEqual(docs.count(), 1000)
-        self.assertTrue('(remaining elements truncated)' in "%s" % docs)
+        self.assertIn('(remaining elements truncated)', "%s" % docs)
 
         # Limit and skip
         docs = docs[1:4]
@@ -1281,7 +1280,7 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+            self.assertNotIn('$orderby', q.get_ops()[0]['query'])
 
         # calling an explicit order_by should use a specified sort
         with db_ops_tracker() as q:
@@ -1297,7 +1296,7 @@ class QuerySetTest(unittest.TestCase):
             qs = BlogPost.objects.filter(title='whatever').order_by('published_date')
             qs.order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+            self.assertNotIn('$orderby', q.get_ops()[0]['query'])
 
     def test_no_ordering_for_get(self):
         """ Ensure that Doc.objects.get doesn't use any ordering.
@@ -1316,13 +1315,13 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.get(title='whatever')
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+            self.assertNotIn('$orderby', q.get_ops()[0]['query'])
 
         # Ordering should be ignored for .get even if we set it explicitly
         with db_ops_tracker() as q:
             BlogPost.objects.order_by('-title').get(title='whatever')
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertFalse('$orderby' in q.get_ops()[0]['query'])
+            self.assertNotIn('$orderby', q.get_ops()[0]['query'])
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from
@@ -1344,15 +1343,15 @@ class QuerySetTest(unittest.TestCase):
         )
 
         result = BlogPost.objects.first()
-        self.assertTrue(isinstance(result.author, User))
+        self.assertIsInstance(result.author, User)
         self.assertEqual(result.author.name, 'Test User')
 
         result = BlogPost.objects.get(author__name=user.name)
-        self.assertTrue(isinstance(result.author, User))
+        self.assertIsInstance(result.author, User)
         self.assertEqual(result.author.name, 'Test User')
 
         result = BlogPost.objects.get(author={'name': user.name})
-        self.assertTrue(isinstance(result.author, User))
+        self.assertIsInstance(result.author, User)
         self.assertEqual(result.author.name, 'Test User')
 
         # Fails, since the string is not a type that is able to represent the
@@ -1470,7 +1469,7 @@ class QuerySetTest(unittest.TestCase):
         code_chunks = ['doc["cmnts"];', 'doc["doc-name"],',
                        'doc["cmnts"][i]["body"]']
         for chunk in code_chunks:
-            self.assertTrue(chunk in sub_code)
+            self.assertIn(chunk, sub_code)
 
         results = BlogPost.objects.exec_js(code)
         expected_results = [
@@ -1937,11 +1936,12 @@ class QuerySetTest(unittest.TestCase):
         # ListField operator
         BlogPost.objects.update(push__tags='mongo')
         post.reload()
-        self.assertTrue('mongo' in post.tags)
+        self.assertIn('mongo', post.tags)
 
         BlogPost.objects.update_one(push_all__tags=['db', 'nosql'])
         post.reload()
-        self.assertTrue('db' in post.tags and 'nosql' in post.tags)
+        self.assertIn('db', post.tags)
+        self.assertIn('nosql', post.tags)
 
         tags = post.tags[:-1]
         BlogPost.objects.update(pop__tags=1)
@@ -3274,8 +3274,8 @@ class QuerySetTest(unittest.TestCase):
 
         News.drop_collection()
         info = News.objects._collection.index_information()
-        self.assertTrue('title_text_content_text' in info)
-        self.assertTrue('textIndexVersion' in info['title_text_content_text'])
+        self.assertIn('title_text_content_text', info)
+        self.assertIn('textIndexVersion', info['title_text_content_text'])
 
         News(title="Neymar quebrou a vertebra",
              content="O Brasil sofre com a perda de Neymar").save()
@@ -3309,15 +3309,15 @@ class QuerySetTest(unittest.TestCase):
                 '$search': 'dilma', '$language': 'pt'},
                 'is_active': False})
 
-        self.assertEqual(new.is_active, False)
-        self.assertTrue('dilma' in new.content)
-        self.assertTrue('planejamento' in new.title)
+        self.assertFalse(new.is_active)
+        self.assertIn('dilma', new.content)
+        self.assertIn('planejamento', new.title)
 
         query = News.objects.search_text("candidata")
         self.assertEqual(query._search_text, "candidata")
         new = query.first()
 
-        self.assertTrue(isinstance(new.get_text_score(), float))
+        self.assertIsInstance(new.get_text_score(), float)
 
         # count
         query = News.objects.search_text('brasil').order_by('$text_score')
@@ -3612,7 +3612,7 @@ class QuerySetTest(unittest.TestCase):
         Group.objects(id=group.id).update(set__members=[user1, user2])
         group.reload()
 
-        self.assertTrue(len(group.members) == 2)
+        self.assertEqual(len(group.members), 2)
         self.assertEqual(group.members[0].name, user1.name)
         self.assertEqual(group.members[1].name, user2.name)
 
@@ -3643,13 +3643,13 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(len(objects), 3)
 
-        self.assertTrue(post_1.id in objects)
-        self.assertTrue(post_2.id in objects)
-        self.assertTrue(post_5.id in objects)
+        self.assertIn(post_1.id, objects)
+        self.assertIn(post_2.id, objects)
+        self.assertIn(post_5.id, objects)
 
-        self.assertTrue(objects[post_1.id].title == post_1.title)
-        self.assertTrue(objects[post_2.id].title == post_2.title)
-        self.assertTrue(objects[post_5.id].title == post_5.title)
+        self.assertEqual(objects[post_1.id].title, post_1.title)
+        self.assertEqual(objects[post_2.id].title, post_2.title)
+        self.assertEqual(objects[post_5.id].title, post_5.title)
 
         BlogPost.drop_collection()
 
@@ -3669,7 +3669,7 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertIsInstance(Post.objects, CustomQuerySet)
         self.assertFalse(Post.objects.not_empty())
 
         Post().save()
@@ -3694,7 +3694,7 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertIsInstance(Post.objects, CustomQuerySet)
         self.assertFalse(Post.objects.not_empty())
 
         Post().save()
@@ -3741,7 +3741,7 @@ class QuerySetTest(unittest.TestCase):
             pass
 
         Post.drop_collection()
-        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertIsInstance(Post.objects, CustomQuerySet)
         self.assertFalse(Post.objects.not_empty())
 
         Post().save()
@@ -3769,7 +3769,7 @@ class QuerySetTest(unittest.TestCase):
             pass
 
         Post.drop_collection()
-        self.assertTrue(isinstance(Post.objects, CustomQuerySet))
+        self.assertIsInstance(Post.objects, CustomQuerySet)
         self.assertFalse(Post.objects.not_empty())
 
         Post().save()
@@ -3860,17 +3860,17 @@ class QuerySetTest(unittest.TestCase):
 
         test = Number.objects
         test2 = test.clone()
-        self.assertFalse(test == test2)
+        self.assertNotEqual(test, test2)
         self.assertEqual(test.count(), test2.count())
 
         test = test.filter(n__gt=11)
         test2 = test.clone()
-        self.assertFalse(test == test2)
+        self.assertNotEqual(test, test2)
         self.assertEqual(test.count(), test2.count())
 
         test = test.limit(10)
         test2 = test.clone()
-        self.assertFalse(test == test2)
+        self.assertNotEqual(test, test2)
         self.assertEqual(test.count(), test2.count())
 
         Number.drop_collection()
@@ -3960,7 +3960,7 @@ class QuerySetTest(unittest.TestCase):
                  value.get('unique', False),
                  value.get('sparse', False))
                 for key, value in info.iteritems()]
-        self.assertTrue(([('_cls', 1), ('message', 1)], False, False) in info)
+        self.assertIn(([('_cls', 1), ('message', 1)], False, False), info)
 
     def test_where(self):
         """Ensure that where clauses work.
@@ -3984,13 +3984,13 @@ class QuerySetTest(unittest.TestCase):
             'this["fielda"] >= this["fieldb"]', query._where_clause)
         results = list(query)
         self.assertEqual(2, len(results))
-        self.assertTrue(a in results)
-        self.assertTrue(c in results)
+        self.assertIn(a, results)
+        self.assertIn(c, results)
 
         query = IntPair.objects.where('this[~fielda] == this[~fieldb]')
         results = list(query)
         self.assertEqual(1, len(results))
-        self.assertTrue(a in results)
+        self.assertIn(a, results)
 
         query = IntPair.objects.where(
             'function() { return this[~fielda] >= this[~fieldb] }')
@@ -3998,8 +3998,8 @@ class QuerySetTest(unittest.TestCase):
             'function() { return this["fielda"] >= this["fieldb"] }', query._where_clause)
         results = list(query)
         self.assertEqual(2, len(results))
-        self.assertTrue(a in results)
-        self.assertTrue(c in results)
+        self.assertIn(a, results)
+        self.assertIn(c, results)
 
         with self.assertRaises(TypeError):
             list(IntPair.objects.where(fielda__gte=3))
@@ -4381,7 +4381,7 @@ class QuerySetTest(unittest.TestCase):
 
         Test.drop_collection()
         Test.objects(test='foo').update_one(upsert=True, set__test='foo')
-        self.assertFalse('_cls' in Test._collection.find_one())
+        self.assertNotIn('_cls', Test._collection.find_one())
 
         class Test(Document):
             meta = {'allow_inheritance': True}
@@ -4390,7 +4390,7 @@ class QuerySetTest(unittest.TestCase):
         Test.drop_collection()
 
         Test.objects(test='foo').update_one(upsert=True, set__test='foo')
-        self.assertTrue('_cls' in Test._collection.find_one())
+        self.assertIn('_cls', Test._collection.find_one())
 
     def test_update_upsert_looks_like_a_digit(self):
         class MyDoc(DynamicDocument):
@@ -4602,8 +4602,8 @@ class QuerySetTest(unittest.TestCase):
 
         users = User.objects.only('name', 'price').as_pymongo()
         results = list(users)
-        self.assertTrue(isinstance(results[0], dict))
-        self.assertTrue(isinstance(results[1], dict))
+        self.assertIsInstance(results[0], dict)
+        self.assertIsInstance(results[1], dict)
         self.assertEqual(results[0]['name'], 'Bob Dole')
         self.assertEqual(results[0]['price'], 1.11)
         self.assertEqual(results[1]['name'], 'Barack Obama')
@@ -4611,8 +4611,8 @@ class QuerySetTest(unittest.TestCase):
 
         users = User.objects.only('name', 'last_login').as_pymongo()
         results = list(users)
-        self.assertTrue(isinstance(results[0], dict))
-        self.assertTrue(isinstance(results[1], dict))
+        self.assertIsInstance(results[0], dict)
+        self.assertIsInstance(results[1], dict)
         self.assertEqual(results[0], {
             'name': 'Bob Dole'
         })
@@ -4669,12 +4669,10 @@ class QuerySetTest(unittest.TestCase):
         User(name="Bob Dole", organization=whitehouse).save()
 
         qs = User.objects()
-        self.assertTrue(isinstance(qs.first().organization, Organization))
-        self.assertFalse(isinstance(qs.no_dereference().first().organization,
-                                    Organization))
-        self.assertFalse(isinstance(qs.no_dereference().get().organization,
-                                    Organization))
-        self.assertTrue(isinstance(qs.first().organization, Organization))
+        self.assertIsInstance(qs.first().organization, Organization)
+        self.assertNotIsInstance(qs.no_dereference().first().organization, Organization)
+        self.assertNotIsInstance(qs.no_dereference().get().organization, Organization)
+        self.assertIsInstance(qs.first().organization, Organization)
 
     def test_no_dereference_embedded_doc(self):
 
@@ -4707,9 +4705,9 @@ class QuerySetTest(unittest.TestCase):
 
         result = Organization.objects().no_dereference().first()
 
-        self.assertTrue(isinstance(result.admin[0], (DBRef, ObjectId)))
-        self.assertTrue(isinstance(result.member.user, (DBRef, ObjectId)))
-        self.assertTrue(isinstance(result.members[0].user, (DBRef, ObjectId)))
+        self.assertIsInstance(result.admin[0], (DBRef, ObjectId))
+        self.assertIsInstance(result.member.user, (DBRef, ObjectId))
+        self.assertIsInstance(result.members[0].user, (DBRef, ObjectId))
 
     def test_cached_queryset(self):
         class Person(Document):
@@ -5052,7 +5050,7 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertFalse('$orderby' in op['query'],
+            self.assertNotIn('$orderby', op['query'],
                              'BaseQuerySet cannot use orderby in if stmt')
 
         with query_counter() as p:
@@ -5063,8 +5061,7 @@ class QuerySetTest(unittest.TestCase):
             op = p.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertTrue('$orderby' in op['query'],
-                            'BaseQuerySet cannot remove orderby in for loop')
+            self.assertIn('$orderby', op['query'], 'BaseQuerySet cannot remove orderby in for loop')
 
     def test_bool_with_ordering_from_meta_dict(self):
 
@@ -5088,7 +5085,7 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertFalse('$orderby' in op['query'],
+            self.assertNotIn('$orderby', op['query'],
                              'BaseQuerySet must remove orderby from meta in boolen test')
 
             self.assertEqual(Person.objects.first().name, 'A')

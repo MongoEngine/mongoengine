@@ -357,7 +357,7 @@ class InstanceTest(MongoDBTestCase):
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'test')
-        self.assertTrue('username' not in user_son['_id'])
+        self.assertNotIn('username', user_son['_id'])
 
         User.drop_collection()
 
@@ -370,7 +370,7 @@ class InstanceTest(MongoDBTestCase):
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'mongo')
-        self.assertTrue('username' not in user_son['_id'])
+        self.assertNotIn('username', user_son['_id'])
 
     def test_document_not_registered(self):
         class Place(Document):
@@ -594,10 +594,10 @@ class InstanceTest(MongoDBTestCase):
         # Length = length(assigned fields + id)
         self.assertEqual(len(person), 5)
 
-        self.assertTrue('age' in person)
+        self.assertIn('age', person)
         person.age = None
-        self.assertFalse('age' in person)
-        self.assertFalse('nationality' in person)
+        self.assertNotIn('age', person)
+        self.assertNotIn('nationality', person)
 
     def test_embedded_document_to_mongo(self):
         class Person(EmbeddedDocument):
@@ -627,8 +627,8 @@ class InstanceTest(MongoDBTestCase):
         class Comment(EmbeddedDocument):
             content = StringField()
 
-        self.assertTrue('content' in Comment._fields)
-        self.assertFalse('id' in Comment._fields)
+        self.assertIn('content', Comment._fields)
+        self.assertNotIn('id', Comment._fields)
 
     def test_embedded_document_instance(self):
         """Ensure that embedded documents can reference parent instance."""
@@ -1455,9 +1455,9 @@ class InstanceTest(MongoDBTestCase):
         user = User.objects.first()
         # Even if stored as ObjectId's internally mongoengine uses DBRefs
         # As ObjectId's aren't automatically derefenced
-        self.assertTrue(isinstance(user._data['orgs'][0], DBRef))
-        self.assertTrue(isinstance(user.orgs[0], Organization))
-        self.assertTrue(isinstance(user._data['orgs'][0], Organization))
+        self.assertIsInstance(user._data['orgs'][0], DBRef)
+        self.assertIsInstance(user.orgs[0], Organization)
+        self.assertIsInstance(user._data['orgs'][0], Organization)
 
         # Changing a value
         with query_counter() as q:
@@ -1837,9 +1837,8 @@ class InstanceTest(MongoDBTestCase):
         post_obj = BlogPost.objects.first()
 
         # Test laziness
-        self.assertTrue(isinstance(post_obj._data['author'],
-                                   bson.DBRef))
-        self.assertTrue(isinstance(post_obj.author, self.Person))
+        self.assertIsInstance(post_obj._data['author'], bson.DBRef)
+        self.assertIsInstance(post_obj.author, self.Person)
         self.assertEqual(post_obj.author.name, 'Test User')
 
         # Ensure that the dereferenced object may be changed and saved
@@ -2245,12 +2244,12 @@ class InstanceTest(MongoDBTestCase):
         # Make sure docs are properly identified in a list (__eq__ is used
         # for the comparison).
         all_user_list = list(User.objects.all())
-        self.assertTrue(u1 in all_user_list)
-        self.assertTrue(u2 in all_user_list)
-        self.assertTrue(u3 in all_user_list)
-        self.assertTrue(u4 not in all_user_list)  # New object
-        self.assertTrue(b1 not in all_user_list)  # Other object
-        self.assertTrue(b2 not in all_user_list)  # Other object
+        self.assertIn(u1, all_user_list)
+        self.assertIn(u2, all_user_list)
+        self.assertIn(u3, all_user_list)
+        self.assertNotIn(u4, all_user_list)  # New object
+        self.assertNotIn(b1, all_user_list)  # Other object
+        self.assertNotIn(b2, all_user_list)  # Other object
 
         # Make sure docs can be used as keys in a dict (__hash__ is used
         # for hashing the docs).
@@ -2268,10 +2267,10 @@ class InstanceTest(MongoDBTestCase):
         # Make sure docs are properly identified in a set (__hash__ is used
         # for hashing the docs).
         all_user_set = set(User.objects.all())
-        self.assertTrue(u1 in all_user_set)
-        self.assertTrue(u4 not in all_user_set)
-        self.assertTrue(b1 not in all_user_list)
-        self.assertTrue(b2 not in all_user_list)
+        self.assertIn(u1, all_user_set)
+        self.assertNotIn(u4, all_user_set)
+        self.assertNotIn(b1, all_user_list)
+        self.assertNotIn(b2, all_user_list)
 
         # Make sure duplicate docs aren't accepted in the set
         self.assertEqual(len(all_user_set), 3)
@@ -2972,7 +2971,7 @@ class InstanceTest(MongoDBTestCase):
         Person(name="Harry Potter").save()
 
         person = Person.objects.first()
-        self.assertTrue('id' in person._data.keys())
+        self.assertIn('id', person._data.keys())
         self.assertEqual(person._data.get('id'), person.id)
 
     def test_complex_nesting_document_and_embedded_document(self):
@@ -3064,36 +3063,36 @@ class InstanceTest(MongoDBTestCase):
 
         dbref2 = f._data['test2']
         obj2 = f.test2
-        self.assertTrue(isinstance(dbref2, DBRef))
-        self.assertTrue(isinstance(obj2, Test2))
-        self.assertTrue(obj2.id == dbref2.id)
-        self.assertTrue(obj2 == dbref2)
-        self.assertTrue(dbref2 == obj2)
+        self.assertIsInstance(dbref2, DBRef)
+        self.assertIsInstance(obj2, Test2)
+        self.assertEqual(obj2.id, dbref2.id)
+        self.assertEqual(obj2, dbref2)
+        self.assertEqual(dbref2, obj2)
 
         dbref3 = f._data['test3']
         obj3 = f.test3
-        self.assertTrue(isinstance(dbref3, DBRef))
-        self.assertTrue(isinstance(obj3, Test3))
-        self.assertTrue(obj3.id == dbref3.id)
-        self.assertTrue(obj3 == dbref3)
-        self.assertTrue(dbref3 == obj3)
+        self.assertIsInstance(dbref3, DBRef)
+        self.assertIsInstance(obj3, Test3)
+        self.assertEqual(obj3.id, dbref3.id)
+        self.assertEqual(obj3, dbref3)
+        self.assertEqual(dbref3, obj3)
 
-        self.assertTrue(obj2.id == obj3.id)
-        self.assertTrue(dbref2.id == dbref3.id)
-        self.assertFalse(dbref2 == dbref3)
-        self.assertFalse(dbref3 == dbref2)
-        self.assertTrue(dbref2 != dbref3)
-        self.assertTrue(dbref3 != dbref2)
+        self.assertEqual(obj2.id, obj3.id)
+        self.assertEqual(dbref2.id, dbref3.id)
+        self.assertNotEqual(dbref2, dbref3)
+        self.assertNotEqual(dbref3, dbref2)
+        self.assertNotEqual(dbref2, dbref3)
+        self.assertNotEqual(dbref3, dbref2)
 
-        self.assertFalse(obj2 == dbref3)
-        self.assertFalse(dbref3 == obj2)
-        self.assertTrue(obj2 != dbref3)
-        self.assertTrue(dbref3 != obj2)
+        self.assertNotEqual(obj2, dbref3)
+        self.assertNotEqual(dbref3, obj2)
+        self.assertNotEqual(obj2, dbref3)
+        self.assertNotEqual(dbref3, obj2)
 
-        self.assertFalse(obj3 == dbref2)
-        self.assertFalse(dbref2 == obj3)
-        self.assertTrue(obj3 != dbref2)
-        self.assertTrue(dbref2 != obj3)
+        self.assertNotEqual(obj3, dbref2)
+        self.assertNotEqual(dbref2, obj3)
+        self.assertNotEqual(obj3, dbref2)
+        self.assertNotEqual(dbref2, obj3)
 
     def test_default_values(self):
         class Person(Document):

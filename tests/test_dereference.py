@@ -200,8 +200,8 @@ class FieldTest(unittest.TestCase):
         group = Group(author=user, members=[user]).save()
 
         raw_data = Group._get_collection().find_one()
-        self.assertTrue(isinstance(raw_data['author'], DBRef))
-        self.assertTrue(isinstance(raw_data['members'][0], DBRef))
+        self.assertIsInstance(raw_data['author'], DBRef)
+        self.assertIsInstance(raw_data['members'][0], DBRef)
         group = Group.objects.first()
 
         self.assertEqual(group.author, user)
@@ -224,8 +224,8 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(group.members, [user])
 
         raw_data = Group._get_collection().find_one()
-        self.assertTrue(isinstance(raw_data['author'], ObjectId))
-        self.assertTrue(isinstance(raw_data['members'][0], ObjectId))
+        self.assertIsInstance(raw_data['author'], ObjectId)
+        self.assertIsInstance(raw_data['members'][0], ObjectId)
 
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
@@ -469,7 +469,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for m in group_obj.members:
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Document select_related
         with query_counter() as q:
@@ -485,7 +485,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for m in group_obj.members:
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Queryset select_related
         with query_counter() as q:
@@ -502,7 +502,7 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(q, 4)
 
                 for m in group_obj.members:
-                    self.assertTrue('User' in m.__class__.__name__)
+                    self.assertIn('User', m.__class__.__name__)
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -560,7 +560,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for m in group_obj.members:
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Document select_related
         with query_counter() as q:
@@ -576,7 +576,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for m in group_obj.members:
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Queryset select_related
         with query_counter() as q:
@@ -593,7 +593,7 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(q, 4)
 
                 for m in group_obj.members:
-                    self.assertTrue('User' in m.__class__.__name__)
+                    self.assertIn('User', m.__class__.__name__)
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -633,7 +633,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 2)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue(isinstance(m, User))
+                self.assertIsInstance(m, User)
 
         # Document select_related
         with query_counter() as q:
@@ -646,7 +646,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 2)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue(isinstance(m, User))
+                self.assertIsInstance(m, User)
 
        # Queryset select_related
         with query_counter() as q:
@@ -660,7 +660,7 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(q, 2)
 
                 for k, m in group_obj.members.iteritems():
-                    self.assertTrue(isinstance(m, User))
+                    self.assertIsInstance(m, User)
 
         User.drop_collection()
         Group.drop_collection()
@@ -715,7 +715,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Document select_related
         with query_counter() as q:
@@ -731,7 +731,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Queryset select_related
         with query_counter() as q:
@@ -748,7 +748,7 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(q, 4)
 
                 for k, m in group_obj.members.iteritems():
-                    self.assertTrue('User' in m.__class__.__name__)
+                    self.assertIn('User', m.__class__.__name__)
 
         Group.objects.delete()
         Group().save()
@@ -806,7 +806,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 2)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue(isinstance(m, UserA))
+                self.assertIsInstance(m, UserA)
 
         # Document select_related
         with query_counter() as q:
@@ -822,7 +822,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 2)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue(isinstance(m, UserA))
+                self.assertIsInstance(m, UserA)
 
         # Queryset select_related
         with query_counter() as q:
@@ -839,7 +839,7 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(q, 2)
 
                 for k, m in group_obj.members.iteritems():
-                    self.assertTrue(isinstance(m, UserA))
+                    self.assertIsInstance(m, UserA)
 
         UserA.drop_collection()
         Group.drop_collection()
@@ -894,7 +894,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Document select_related
         with query_counter() as q:
@@ -910,7 +910,7 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(q, 4)
 
             for k, m in group_obj.members.iteritems():
-                self.assertTrue('User' in m.__class__.__name__)
+                self.assertIn('User', m.__class__.__name__)
 
         # Queryset select_related
         with query_counter() as q:
@@ -927,7 +927,7 @@ class FieldTest(unittest.TestCase):
                 self.assertEqual(q, 4)
 
                 for k, m in group_obj.members.iteritems():
-                    self.assertTrue('User' in m.__class__.__name__)
+                    self.assertIn('User', m.__class__.__name__)
 
         Group.objects.delete()
         Group().save()
@@ -1209,10 +1209,10 @@ class FieldTest(unittest.TestCase):
 
         # Can't use query_counter across databases - so test the _data object
         book = Book.objects.first()
-        self.assertFalse(isinstance(book._data['author'], User))
+        self.assertNotIsInstance(book._data['author'], User)
 
         book.select_related()
-        self.assertTrue(isinstance(book._data['author'], User))
+        self.assertIsInstance(book._data['author'], User)
 
     def test_non_ascii_pk(self):
         """

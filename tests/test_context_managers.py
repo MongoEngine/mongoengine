@@ -89,15 +89,15 @@ class ContextManagersTest(unittest.TestCase):
 
         with no_dereference(Group) as Group:
             group = Group.objects.first()
-            self.assertTrue(all([not isinstance(m, User)
-                                for m in group.members]))
-            self.assertFalse(isinstance(group.ref, User))
-            self.assertFalse(isinstance(group.generic, User))
+            for m in group.members:
+                self.assertNotIsInstance(m, User)
+            self.assertNotIsInstance(group.ref, User)
+            self.assertNotIsInstance(group.generic, User)
 
-        self.assertTrue(all([isinstance(m, User)
-                             for m in group.members]))
-        self.assertTrue(isinstance(group.ref, User))
-        self.assertTrue(isinstance(group.generic, User))
+        for m in group.members:
+            self.assertIsInstance(m, User)
+        self.assertIsInstance(group.ref, User)
+        self.assertIsInstance(group.generic, User)
 
     def test_no_dereference_context_manager_dbref(self):
         """Ensure that DBRef items in ListFields aren't dereferenced.
@@ -129,13 +129,13 @@ class ContextManagersTest(unittest.TestCase):
             group = Group.objects.first()
             self.assertTrue(all([not isinstance(m, User)
                                 for m in group.members]))
-            self.assertFalse(isinstance(group.ref, User))
-            self.assertFalse(isinstance(group.generic, User))
+            self.assertNotIsInstance(group.ref, User)
+            self.assertNotIsInstance(group.generic, User)
 
         self.assertTrue(all([isinstance(m, User)
                              for m in group.members]))
-        self.assertTrue(isinstance(group.ref, User))
-        self.assertTrue(isinstance(group.generic, User))
+        self.assertIsInstance(group.ref, User)
+        self.assertIsInstance(group.generic, User)
 
     def test_no_sub_classes(self):
         class A(Document):
