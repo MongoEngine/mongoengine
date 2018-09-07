@@ -83,7 +83,7 @@ class BaseQuerySet(object):
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
         self.only_fields = []
-        self._max_time_ms = None
+        self._max_time_ms = 10 * 1000
 
     def __call__(self, q_obj=None, class_check=True, read_preference=None,
                  **query):
