@@ -775,7 +775,7 @@ class BaseQuerySet(object):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
 
-        :param n: the maximum number of objects to return if n is greater than 0. 
+        :param n: the maximum number of objects to return if n is greater than 0.
         When 0 is passed, returns all the documents in the cursor
         """
         queryset = self.clone()
