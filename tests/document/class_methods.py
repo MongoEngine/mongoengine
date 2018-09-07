@@ -66,10 +66,10 @@ class ClassMethodsTest(unittest.TestCase):
         """
         collection_name = 'person'
         self.Person(name='Test').save()
-        self.assertTrue(collection_name in self.db.collection_names())
+        self.assertIn(collection_name,  self.db.collection_names())
 
         self.Person.drop_collection()
-        self.assertFalse(collection_name in self.db.collection_names())
+        self.assertNotIn(collection_name, self.db.collection_names())
 
     def test_register_delete_rule(self):
         """Ensure that register delete rule adds a delete rule to the document
@@ -340,7 +340,7 @@ class ClassMethodsTest(unittest.TestCase):
             meta = {'collection': collection_name}
 
         Person(name="Test User").save()
-        self.assertTrue(collection_name in self.db.collection_names())
+        self.assertIn(collection_name, self.db.collection_names())
 
         user_obj = self.db[collection_name].find_one()
         self.assertEqual(user_obj['name'], "Test User")
@@ -349,7 +349,7 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(user_obj.name, "Test User")
 
         Person.drop_collection()
-        self.assertFalse(collection_name in self.db.collection_names())
+        self.assertNotIn(collection_name, self.db.collection_names())
 
     def test_collection_name_and_primary(self):
         """Ensure that a collection with a specified name may be used.

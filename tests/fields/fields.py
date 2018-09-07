@@ -175,7 +175,7 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, 30)
         self.assertEqual(person.userid, 'test')
-        self.assertTrue(isinstance(person.created, datetime.datetime))
+        self.assertIsInstance(person.created, datetime.datetime)
 
         self.assertEqual(person._data['name'], person.name)
         self.assertEqual(person._data['age'], person.age)
@@ -211,7 +211,7 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, 30)
         self.assertEqual(person.userid, 'test')
-        self.assertTrue(isinstance(person.created, datetime.datetime))
+        self.assertIsInstance(person.created, datetime.datetime)
         self.assertNotEqual(person.created, datetime.datetime(2014, 6, 12))
 
         self.assertEqual(person._data['name'], person.name)
@@ -1602,8 +1602,8 @@ class FieldTest(MongoDBTestCase):
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
-        self.assertTrue(isinstance(e2.mapping[0], StringSetting))
-        self.assertTrue(isinstance(e2.mapping[1], IntegerSetting))
+        self.assertIsInstance(e2.mapping[0], StringSetting)
+        self.assertIsInstance(e2.mapping[1], IntegerSetting)
 
         # Test querying
         self.assertEqual(
@@ -1772,8 +1772,8 @@ class FieldTest(MongoDBTestCase):
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
-        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
-        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+        self.assertIsInstance(e2.mapping['somestring'], StringSetting)
+        self.assertIsInstance(e2.mapping['someint'], IntegerSetting)
 
         # Test querying
         self.assertEqual(
@@ -1857,8 +1857,8 @@ class FieldTest(MongoDBTestCase):
         e.save()
 
         e2 = Extensible.objects.get(id=e.id)
-        self.assertTrue(isinstance(e2.mapping['somestring'], StringSetting))
-        self.assertTrue(isinstance(e2.mapping['someint'], IntegerSetting))
+        self.assertIsInstance(e2.mapping['somestring'], StringSetting)
+        self.assertIsInstance(e2.mapping['someint'], IntegerSetting)
 
         with self.assertRaises(ValidationError):
             e.mapping['someint'] = 123
@@ -2563,7 +2563,7 @@ class FieldTest(MongoDBTestCase):
         bm = Bookmark.objects(bookmark_object=post_1).first()
 
         self.assertEqual(bm.bookmark_object, post_1)
-        self.assertTrue(isinstance(bm.bookmark_object, Post))
+        self.assertIsInstance(bm.bookmark_object, Post)
 
         bm.bookmark_object = link_1
         bm.save()
@@ -2571,7 +2571,7 @@ class FieldTest(MongoDBTestCase):
         bm = Bookmark.objects(bookmark_object=link_1).first()
 
         self.assertEqual(bm.bookmark_object, link_1)
-        self.assertTrue(isinstance(bm.bookmark_object, Link))
+        self.assertIsInstance(bm.bookmark_object, Link)
 
     def test_generic_reference_list(self):
         """Ensure that a ListField properly dereferences generic references.
@@ -2818,7 +2818,7 @@ class FieldTest(MongoDBTestCase):
         doc1 = Doc.objects.create()
         doc2 = Doc.objects.create(ref=doc1)
 
-        self.assertTrue(isinstance(doc1.pk, ObjectId))
+        self.assertIsInstance(doc1.pk, ObjectId)
 
         doc = Doc.objects.get(ref=doc1.pk)
         self.assertEqual(doc, doc2)
@@ -3421,13 +3421,13 @@ class FieldTest(MongoDBTestCase):
         person.save()
 
         person = Person.objects.first()
-        self.assertTrue(isinstance(person.like, Car))
+        self.assertIsInstance(person.like, Car)
 
         person.like = Dish(food="arroz", number=15)
         person.save()
 
         person = Person.objects.first()
-        self.assertTrue(isinstance(person.like, Dish))
+        self.assertIsInstance(person.like, Dish)
 
     def test_generic_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices."""
@@ -3452,7 +3452,7 @@ class FieldTest(MongoDBTestCase):
         person.save()
 
         person = Person.objects.first()
-        self.assertTrue(isinstance(person.like, Dish))
+        self.assertIsInstance(person.like, Dish)
 
     def test_generic_list_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices inside
@@ -3479,7 +3479,7 @@ class FieldTest(MongoDBTestCase):
         person.save()
 
         person = Person.objects.first()
-        self.assertTrue(isinstance(person.likes[0], Dish))
+        self.assertIsInstance(person.likes[0], Dish)
 
     def test_recursive_validation(self):
         """Ensure that a validation result to_dict is available."""
@@ -3505,18 +3505,17 @@ class FieldTest(MongoDBTestCase):
         except ValidationError as error:
             # ValidationError.errors property
             self.assertTrue(hasattr(error, 'errors'))
-            self.assertTrue(isinstance(error.errors, dict))
-            self.assertTrue('comments' in error.errors)
-            self.assertTrue(1 in error.errors['comments'])
-            self.assertTrue(isinstance(error.errors['comments'][1]['content'],
-                                       ValidationError))
+            self.assertIsInstance(error.errors, dict)
+            self.assertIn('comments', error.errors)
+            self.assertIn(1, error.errors['comments'])
+            self.assertIsInstance(error.errors['comments'][1]['content'], ValidationError)
 
             # ValidationError.schema property
             error_dict = error.to_dict()
-            self.assertTrue(isinstance(error_dict, dict))
-            self.assertTrue('comments' in error_dict)
-            self.assertTrue(1 in error_dict['comments'])
-            self.assertTrue('content' in error_dict['comments'][1])
+            self.assertIsInstance(error_dict, dict)
+            self.assertIn('comments', error_dict)
+            self.assertIn(1, error_dict['comments'])
+            self.assertIn('content', error_dict['comments'][1])
             self.assertEqual(error_dict['comments'][1]['content'],
                              u'Field is required')
 
@@ -3632,7 +3631,7 @@ class FieldTest(MongoDBTestCase):
 
         # Passes regex validation
         user = User(email='me@example.com')
-        self.assertTrue(user.validate() is None)
+        self.assertIsNone(user.validate())
 
     def test_tuples_as_tuples(self):
         """Ensure that tuples remain tuples when they are inside
@@ -3659,10 +3658,10 @@ class FieldTest(MongoDBTestCase):
         doc.items = tuples
         doc.save()
         x = TestDoc.objects().get()
-        self.assertTrue(x is not None)
-        self.assertTrue(len(x.items) == 1)
-        self.assertTrue(tuple(x.items[0]) in tuples)
-        self.assertTrue(x.items[0] in tuples)
+        self.assertIsNotNone(x)
+        self.assertEqual(len(x.items), 1)
+        self.assertIn(tuple(x.items[0]), tuples)
+        self.assertIn(x.items[0], tuples)
 
     def test_dynamic_fields_class(self):
         class Doc2(Document):
@@ -3812,8 +3811,8 @@ class FieldTest(MongoDBTestCase):
 
         doc = TestLongFieldConsideredAsInt64(some_long=42).save()
         db = get_db()
-        self.assertTrue(isinstance(db.test_long_field_considered_as_int64.find()[0]['some_long'], Int64))
-        self.assertTrue(isinstance(doc.some_long, six.integer_types))
+        self.assertIsInstance(db.test_long_field_considered_as_int64.find()[0]['some_long'], Int64)
+        self.assertIsInstance(doc.some_long, six.integer_types)
 
 
 class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
@@ -4364,7 +4363,7 @@ class CachedReferenceFieldTest(MongoDBTestCase):
 
         ocorrence = Ocorrence.objects(animal__tag='heavy').first()
         self.assertEqual(ocorrence.person, "teste")
-        self.assertTrue(isinstance(ocorrence.animal, Animal))
+        self.assertIsInstance(ocorrence.animal, Animal)
 
     def test_cached_reference_field_decimal(self):
         class PersonAuto(Document):
@@ -4681,7 +4680,7 @@ class CachedReferenceFieldTest(MongoDBTestCase):
             animal__tag='heavy',
             animal__owner__tp='u').first()
         self.assertEqual(ocorrence.person, "teste")
-        self.assertTrue(isinstance(ocorrence.animal, Animal))
+        self.assertIsInstance(ocorrence.animal, Animal)
 
     def test_cached_reference_embedded_list_fields(self):
         class Owner(EmbeddedDocument):
@@ -4735,7 +4734,7 @@ class CachedReferenceFieldTest(MongoDBTestCase):
             animal__tag='heavy',
             animal__owner__tags='cool').first()
         self.assertEqual(ocorrence.person, "teste 2")
-        self.assertTrue(isinstance(ocorrence.animal, Animal))
+        self.assertIsInstance(ocorrence.animal, Animal)
 
 
 class LazyReferenceFieldTest(MongoDBTestCase):

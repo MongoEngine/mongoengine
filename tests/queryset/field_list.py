@@ -181,7 +181,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
         employee.save()
 
         obj = self.Person.objects(id=employee.id).only('age').get()
-        self.assertTrue(isinstance(obj, Employee))
+        self.assertIsInstance(obj, Employee)
 
         # Check field names are looked up properly
         obj = Employee.objects(id=employee.id).only('salary').get()
