@@ -529,7 +529,7 @@ There are a few top level defaults for all indexes that can be set::
         title = StringField()
         rating = StringField()
         meta = {
-            'index_options': {},
+            'index_opts': {},
             'index_background': True,
             'index_cls': False,
             'auto_create_index': True,
@@ -537,8 +537,8 @@ There are a few top level defaults for all indexes that can be set::
         }
 
 
-:attr:`index_options` (Optional)
-    Set any default index options - see the `full options list <https://docs.mongodb.com/manual/reference/method/db.collection.createIndex/#ensureindex-options>`_
+:attr:`index_opts` (Optional)
+    Set any default index options - see the `full options list <http://docs.mongodb.org/manual/reference/method/db.collection.ensureIndex/#db.collection.ensureIndex>`_
 
 :attr:`index_background` (Optional)
     Set the default value for if an index should be indexed in the background
