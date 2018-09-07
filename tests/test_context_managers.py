@@ -209,18 +209,99 @@ class ContextManagersTest(unittest.TestCase):
             with no_sub_classes(User):
                 raise TypeError()
 
+    def test_query_counter_does_not_swallow_exception(self):
+
+        with self.assertRaises(TypeError):
+            with query_counter() as q:
+                raise TypeError()
+
+    def test_query_counter_temporarily_modifies_profiling_level(self):
+        connect('mongoenginetest')
+        db = get_db()
+
+        initial_profiling_level = db.profiling_level()
+
+        try:
+            NEW_LEVEL = 1
+            db.set_profiling_level(NEW_LEVEL)
+            self.assertEqual(db.profiling_level(), NEW_LEVEL)
+            with query_counter() as q:
+                self.assertEqual(db.profiling_level(), 2)
+            self.assertEqual(db.profiling_level(), NEW_LEVEL)
+        except Exception:
+            db.set_profiling_level(initial_profiling_level)    # Ensures it gets reseted no matter the outcome of the test
+            raise
+
     def test_query_counter(self):
         connect('mongoenginetest')
         db = get_db()
-        db.test.find({})
+
+        collection = db.query_counter
+        collection.drop()
+
+        def issue_1_count_query():
+            collection.find({}).count()
+
+        def issue_1_insert_query():
+            collection.insert_one({'test': 'garbage'})
+
+        def issue_1_find_query():
+            collection.find_one()
+
+        counter = 0
+        with query_counter() as q:
+            self.assertEqual(q, counter)
+            self.assertEqual(q, counter)    # Ensures previous count query did not get counted
+
+            for _ in range(10):
+                issue_1_insert_query()
+                counter += 1
+            self.assertEqual(q, counter)
+
+            for _ in range(4):
+                issue_1_find_query()
+                counter += 1
+            self.assertEqual(q, counter)
+
+            for _ in range(3):
+                issue_1_count_query()
+                counter += 1
+            self.assertEqual(q, counter)
+
+    def test_query_counter_counts_getmore_queries(self):
+        connect('mongoenginetest')
+        db = get_db()
+
+        collection = db.query_counter
+        collection.drop()
+
+        many_docs = [{'test': 'garbage %s' % i} for i in range(150)]
+        collection.insert_many(many_docs)   # first batch of documents contains 101 documents
 
         with query_counter() as q:
-            self.assertEqual(0, q)
+            self.assertEqual(q, 0)
+            list(collection.find())
+            self.assertEqual(q, 2)  # 1st select + 1 getmore
 
-            for i in range(1, 51):
-                db.test.find({}).count()
+    def test_query_counter_ignores_particular_queries(self):
+        connect('mongoenginetest')
+        db = get_db()
 
-            self.assertEqual(50, q)
+        collection = db.query_counter
+        collection.insert_many([{'test': 'garbage %s' % i} for i in range(10)])
+
+        with query_counter() as q:
+            self.assertEqual(q, 0)
+            cursor = collection.find()
+            self.assertEqual(q, 0)      # cursor wasn't opened yet
+            _ = next(cursor)            # opens the cursor and fires the find query
+            self.assertEqual(q, 1)
+
+            cursor.close()              # issues a `killcursors` query that is ignored by the context
+            self.assertEqual(q, 1)
+
+            _ = db.system.indexes.find_one()    # queries on db.system.indexes are ignored as well
+            self.assertEqual(q, 1)
 
 if __name__ == '__main__':
     unittest.main()
