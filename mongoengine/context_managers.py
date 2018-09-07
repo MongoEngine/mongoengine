@@ -159,51 +159,69 @@ class no_sub_classes(object):
 
 
 class query_counter(object):
-    """Query_counter context manager to get the number of queries."""
+    """Query_counter context manager to get the number of queries.
+    This works by updating the `profiling_level` of the database so that all queries get logged,
+    resetting the db.system.profile collection at the beginnig of the context and counting the new entries.
+
+    This was designed for debugging purpose. In fact it is a global counter so queries issued by other threads/processes
+    can interfere with it
+
+    Be aware that:
+    - Iterating over large amount of documents (>101) makes pymongo issue `getmore` queries to fetch the next batch of
+        documents (https://docs.mongodb.com/manual/tutorial/iterate-a-cursor/#cursor-batches)
+    - Some queries are ignored by default by the counter (killcursors, db.system.indexes)
+    """
 
     def __init__(self):
-        """Construct the query_counter."""
-        self.counter = 0
+        """Construct the query_counter
+        """
         self.db = get_db()
+        self.initial_profiling_level = None
+        self._ctx_query_counter = 0             # number of queries issued by the context
 
-    def __enter__(self):
-        """On every with block we need to drop the profile collection."""
+        self._ignored_query = {
+            'ns':
+                {'$ne': '%s.system.indexes' % self.db.name},
+            'op':
+                {'$ne': 'killcursors'}
+        }
+
+    def _turn_on_profiling(self):
+        self.initial_profiling_level = self.db.profiling_level()
         self.db.set_profiling_level(0)
         self.db.system.profile.drop()
         self.db.set_profiling_level(2)
+
+    def _resets_profiling(self):
+        self.db.set_profiling_level(self.initial_profiling_level)
+
+    def __enter__(self):
+        self._turn_on_profiling()
         return self
 
     def __exit__(self, t, value, traceback):
-        """Reset the profiling level."""
-        self.db.set_profiling_level(0)
+        self._resets_profiling()
 
     def __eq__(self, value):
-        """== Compare querycounter."""
         counter = self._get_count()
         return value == counter
 
     def __ne__(self, value):
-        """!= Compare querycounter."""
         return not self.__eq__(value)
 
     def __lt__(self, value):
-        """< Compare querycounter."""
         return self._get_count() < value
 
     def __le__(self, value):
-        """<= Compare querycounter."""
         return self._get_count() <= value
 
     def __gt__(self, value):
-        """> Compare querycounter."""
         return self._get_count() > value
 
     def __ge__(self, value):
-        """>= Compare querycounter."""
         return self._get_count() >= value
 
     def __int__(self):
-        """int representation."""
         return self._get_count()
 
     def __repr__(self):
@@ -211,10 +229,12 @@ class query_counter(object):
         return u"%s" % self._get_count()
 
     def _get_count(self):
-        """Get the number of queries."""
-        ignore_query = {'ns': {'$ne': '%s.system.indexes' % self.db.name}}
-        count = self.db.system.profile.find(ignore_query).count() - self.counter
-        self.counter += 1       # Account for the query we just fired
+        """Get the number of queries by counting the current number of entries in db.system.profile
+        and substracting the queries issued by this context. In fact everytime this is called, 1 query is
+        issued so we need to balance that
+        """
+        count = self.db.system.profile.find(self._ignored_query).count() - self._ctx_query_counter
+        self._ctx_query_counter += 1    # Account for the query we just issued to gather the information
         return count
 
 

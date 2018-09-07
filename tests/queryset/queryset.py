@@ -4748,18 +4748,27 @@ class QuerySetTest(unittest.TestCase):
         for i in range(100):
             Person(name="No: %s" % i).save()
 
-        with query_counter() as q:
-            self.assertEqual(q, 0)
-            people = Person.objects.no_cache()
+            with query_counter() as q:
+                try:
+                    self.assertEqual(q, 0)
+                    people = Person.objects.no_cache()
 
-            [x for x in people]
-            self.assertEqual(q, 1)
+                    [x for x in people]
+                    self.assertEqual(q, 1)
 
-            list(people)
-            self.assertEqual(q, 2)
+                    list(people)
+                    self.assertEqual(q, 2)
 
-            people.count()
-            self.assertEqual(q, 3)
+                    people.count()
+                    self.assertEqual(q, 3)
+                except AssertionError as exc:
+                    db = get_db()
+                    msg = ''
+                    for q in list(db.system.profile.find())[-50:]:
+                        msg += str([q['ts'], q['ns'], q.get('query'), q['op']])+'\n'
+                        msg += str(q)
+                    raise AssertionError(str(exc) + '\n'+msg)
+
 
     def test_cache_not_cloned(self):
 
