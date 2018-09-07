@@ -125,6 +125,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people2), 1)
         self.assertEqual(people2[0], user_a)
 
+        # Test limit with 0 as parameter
+        people = self.Person.objects.limit(0)
+        self.assertEqual(people.count(with_limit_and_skip=True), 2)
+        self.assertEqual(len(people), 2)
+
         # Test chaining of only after limit
         person = self.Person.objects().limit(1).only('name').first()
         self.assertEqual(person, user_a)
@@ -5271,6 +5276,16 @@ class QuerySetTest(unittest.TestCase):
         # Using `__in` with a `Document` (which is seemingly iterable but not
         # in a way we'd expect) should raise a TypeError, too
         self.assertRaises(TypeError, BlogPost.objects(authors__in=author).count)
+
+    def test_create_count(self):
+        self.Person.drop_collection()
+        self.Person.objects.create(name="Foo")
+        self.Person.objects.create(name="Bar")
+        self.Person.objects.create(name="Baz")
+        self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 3)
+
+        newPerson = self.Person.objects.create(name="Foo_1")
+        self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 4)
 
 
 if __name__ == '__main__':
