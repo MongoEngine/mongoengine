@@ -28,7 +28,7 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name=None, host=None, port=None,
+def register_connection(alias, db=None, name=None, host=None, port=None,
                         read_preference=READ_PREFERENCE,
                         username=None, password=None,
                         authentication_source=None,
@@ -39,6 +39,7 @@ def register_connection(alias, name=None, host=None, port=None,
     :param alias: the name that will be used to refer to this connection
         throughout MongoEngine
     :param name: the name of the specific database to use
+    :param db: the name of the database to use, for compatibility with connect
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
     :param read_preference: The read preference for the collection
@@ -58,7 +59,7 @@ def register_connection(alias, name=None, host=None, port=None,
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
-        'name': name or 'test',
+        'name': name or db or 'test',
         'host': host or 'localhost',
         'port': port or 27017,
         'read_preference': read_preference,
@@ -103,6 +104,18 @@ def register_connection(alias, name=None, host=None, port=None,
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
+            if IS_PYMONGO_3 and 'readpreference' in uri_options:
+                read_preferences = (
+                    ReadPreference.NEAREST,
+                    ReadPreference.PRIMARY,
+                    ReadPreference.PRIMARY_PREFERRED,
+                    ReadPreference.SECONDARY,
+                    ReadPreference.SECONDARY_PREFERRED)
+                read_pf_mode = uri_options['readpreference'].lower()
+                for preference in read_preferences:
+                    if preference.name.lower() == read_pf_mode:
+                        conn_settings['read_preference'] = preference
+                        break
         else:
             resolved_hosts.append(entity)
     conn_settings['host'] = resolved_hosts

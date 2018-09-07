@@ -174,8 +174,8 @@ class DynamicTest(unittest.TestCase):
 
         Employee.drop_collection()
 
-        self.assertTrue('name' in Employee._fields)
-        self.assertTrue('salary' in Employee._fields)
+        self.assertIn('name', Employee._fields)
+        self.assertIn('salary', Employee._fields)
         self.assertEqual(Employee._get_collection_name(),
                          self.Person._get_collection_name())
 
@@ -189,7 +189,7 @@ class DynamicTest(unittest.TestCase):
         self.assertEqual(1, Employee.objects(age=20).count())
 
         joe_bloggs = self.Person.objects.first()
-        self.assertTrue(isinstance(joe_bloggs, Employee))
+        self.assertIsInstance(joe_bloggs, Employee)
 
     def test_embedded_dynamic_document(self):
         """Test dynamic embedded documents"""

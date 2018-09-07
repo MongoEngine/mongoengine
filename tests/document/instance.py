@@ -8,9 +8,12 @@ import weakref
 
 from datetime import datetime
 from bson import DBRef, ObjectId
+from pymongo.errors import DuplicateKeyError
+
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
+from tests.utils import MongoDBTestCase
 
 from mongoengine import *
 from mongoengine.base import get_document, _document_registry
@@ -30,12 +33,9 @@ TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
 __all__ = ("InstanceTest",)
 
 
-class InstanceTest(unittest.TestCase):
+class InstanceTest(MongoDBTestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
-
         class Job(EmbeddedDocument):
             name = StringField()
             years = IntField()
@@ -357,7 +357,7 @@ class InstanceTest(unittest.TestCase):
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'test')
-        self.assertTrue('username' not in user_son['_id'])
+        self.assertNotIn('username', user_son['_id'])
 
         User.drop_collection()
 
@@ -370,7 +370,7 @@ class InstanceTest(unittest.TestCase):
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'mongo')
-        self.assertTrue('username' not in user_son['_id'])
+        self.assertNotIn('username', user_son['_id'])
 
     def test_document_not_registered(self):
         class Place(Document):
@@ -476,6 +476,24 @@ class InstanceTest(unittest.TestCase):
         doc.save()
         doc.reload()
 
+    def test_reload_with_changed_fields(self):
+        """Ensures reloading will not affect changed fields"""
+        class User(Document):
+            name = StringField()
+            number = IntField()
+        User.drop_collection()
+
+        user = User(name="Bob", number=1).save()
+        user.name = "John"
+        user.number = 2
+
+        self.assertEqual(user._get_changed_fields(), ['name', 'number'])
+        user.reload('number')
+        self.assertEqual(user._get_changed_fields(), ['name'])
+        user.save()
+        user.reload()
+        self.assertEqual(user.name, "John")
+
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly."""
         class Embedded(EmbeddedDocument):
@@ -521,7 +539,7 @@ class InstanceTest(unittest.TestCase):
         doc.save()
         doc.dict_field['extra'] = 1
         doc = doc.reload(10, 'list_field')
-        self.assertEqual(doc._get_changed_fields(), [])
+        self.assertEqual(doc._get_changed_fields(), ['dict_field.extra'])
         self.assertEqual(len(doc.list_field), 5)
         self.assertEqual(len(doc.dict_field), 3)
         self.assertEqual(len(doc.embedded_field.list_field), 4)
@@ -532,21 +550,14 @@ class InstanceTest(unittest.TestCase):
             pass
 
         f = Foo()
-        try:
+        with self.assertRaises(Foo.DoesNotExist):
             f.reload()
-        except Foo.DoesNotExist:
-            pass
-        except Exception:
-            self.assertFalse("Threw wrong exception")
 
         f.save()
         f.delete()
-        try:
+
+        with self.assertRaises(Foo.DoesNotExist):
             f.reload()
-        except Foo.DoesNotExist:
-            pass
-        except Exception:
-            self.assertFalse("Threw wrong exception")
 
     def test_reload_of_non_strict_with_special_field_name(self):
         """Ensures reloading works for documents with meta strict == False."""
@@ -583,10 +594,10 @@ class InstanceTest(unittest.TestCase):
         # Length = length(assigned fields + id)
         self.assertEqual(len(person), 5)
 
-        self.assertTrue('age' in person)
+        self.assertIn('age', person)
         person.age = None
-        self.assertFalse('age' in person)
-        self.assertFalse('nationality' in person)
+        self.assertNotIn('age', person)
+        self.assertNotIn('nationality', person)
 
     def test_embedded_document_to_mongo(self):
         class Person(EmbeddedDocument):
@@ -616,8 +627,8 @@ class InstanceTest(unittest.TestCase):
         class Comment(EmbeddedDocument):
             content = StringField()
 
-        self.assertTrue('content' in Comment._fields)
-        self.assertFalse('id' in Comment._fields)
+        self.assertIn('content', Comment._fields)
+        self.assertNotIn('id', Comment._fields)
 
     def test_embedded_document_instance(self):
         """Ensure that embedded documents can reference parent instance."""
@@ -716,12 +727,12 @@ class InstanceTest(unittest.TestCase):
 
         t = TestDocument(status="draft", pub_date=datetime.now())
 
-        try:
+        with self.assertRaises(ValidationError) as cm:
             t.save()
-        except ValidationError as e:
-            expect_msg = "Draft entries may not have a publication date."
-            self.assertTrue(expect_msg in e.message)
-            self.assertEqual(e.to_dict(), {'__all__': expect_msg})
+
+        expected_msg = "Draft entries may not have a publication date."
+        self.assertIn(expected_msg, cm.exception.message)
+        self.assertEqual(cm.exception.to_dict(), {'__all__': expected_msg})
 
         t = TestDocument(status="published")
         t.save(clean=False)
@@ -755,12 +766,13 @@ class InstanceTest(unittest.TestCase):
         TestDocument.drop_collection()
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
-        try:
+
+        with self.assertRaises(ValidationError) as cm:
             t.save()
-        except ValidationError as e:
-            expect_msg = "Value of z != x + y"
-            self.assertTrue(expect_msg in e.message)
-            self.assertEqual(e.to_dict(), {'doc': {'__all__': expect_msg}})
+
+        expected_msg = "Value of z != x + y"
+        self.assertIn(expected_msg, cm.exception.message)
+        self.assertEqual(cm.exception.to_dict(), {'doc': {'__all__': expected_msg}})
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25)).save()
         self.assertEqual(t.doc.z, 35)
@@ -1341,6 +1353,23 @@ class InstanceTest(unittest.TestCase):
         site = Site.objects.first()
         self.assertEqual(site.page.log_message, "Error: Dummy message")
 
+    def test_update_list_field(self):
+        """Test update on `ListField` with $pull + $in.
+        """
+        class Doc(Document):
+            foo = ListField(StringField())
+
+        Doc.drop_collection()
+        doc = Doc(foo=['a', 'b', 'c'])
+        doc.save()
+
+        # Update
+        doc = Doc.objects.first()
+        doc.update(pull__foo__in=['a', 'c'])
+
+        doc = Doc.objects.first()
+        self.assertEqual(doc.foo, ['b'])
+
     def test_embedded_update_db_field(self):
         """Test update on `EmbeddedDocumentField` fields when db_field
         is other than default.
@@ -1426,9 +1455,9 @@ class InstanceTest(unittest.TestCase):
         user = User.objects.first()
         # Even if stored as ObjectId's internally mongoengine uses DBRefs
         # As ObjectId's aren't automatically derefenced
-        self.assertTrue(isinstance(user._data['orgs'][0], DBRef))
-        self.assertTrue(isinstance(user.orgs[0], Organization))
-        self.assertTrue(isinstance(user._data['orgs'][0], Organization))
+        self.assertIsInstance(user._data['orgs'][0], DBRef)
+        self.assertIsInstance(user.orgs[0], Organization)
+        self.assertIsInstance(user._data['orgs'][0], Organization)
 
         # Changing a value
         with query_counter() as q:
@@ -1808,9 +1837,8 @@ class InstanceTest(unittest.TestCase):
         post_obj = BlogPost.objects.first()
 
         # Test laziness
-        self.assertTrue(isinstance(post_obj._data['author'],
-                                   bson.DBRef))
-        self.assertTrue(isinstance(post_obj.author, self.Person))
+        self.assertIsInstance(post_obj._data['author'], bson.DBRef)
+        self.assertIsInstance(post_obj.author, self.Person)
         self.assertEqual(post_obj.author.name, 'Test User')
 
         # Ensure that the dereferenced object may be changed and saved
@@ -1883,6 +1911,25 @@ class InstanceTest(unittest.TestCase):
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
         self.assertEqual(BlogPost.objects.count(), 0)
+
+    def test_reverse_delete_rule_pull(self):
+        """Ensure that a referenced document is also deleted with
+        pull.
+        """
+        class Record(Document):
+            name = StringField()
+            children = ListField(ReferenceField('self', reverse_delete_rule=PULL))
+
+        Record.drop_collection()
+
+        parent_record = Record(name='parent').save()
+        child_record = Record(name='child').save()
+        parent_record.children.append(child_record)
+        parent_record.save()
+
+        child_record.delete()
+        self.assertEqual(Record.objects(name='parent').get().children, [])
+
 
     def test_reverse_delete_rule_with_custom_id_field(self):
         """Ensure that a referenced document with custom primary key
@@ -2197,12 +2244,12 @@ class InstanceTest(unittest.TestCase):
         # Make sure docs are properly identified in a list (__eq__ is used
         # for the comparison).
         all_user_list = list(User.objects.all())
-        self.assertTrue(u1 in all_user_list)
-        self.assertTrue(u2 in all_user_list)
-        self.assertTrue(u3 in all_user_list)
-        self.assertTrue(u4 not in all_user_list)  # New object
-        self.assertTrue(b1 not in all_user_list)  # Other object
-        self.assertTrue(b2 not in all_user_list)  # Other object
+        self.assertIn(u1, all_user_list)
+        self.assertIn(u2, all_user_list)
+        self.assertIn(u3, all_user_list)
+        self.assertNotIn(u4, all_user_list)  # New object
+        self.assertNotIn(b1, all_user_list)  # Other object
+        self.assertNotIn(b2, all_user_list)  # Other object
 
         # Make sure docs can be used as keys in a dict (__hash__ is used
         # for hashing the docs).
@@ -2220,10 +2267,10 @@ class InstanceTest(unittest.TestCase):
         # Make sure docs are properly identified in a set (__hash__ is used
         # for hashing the docs).
         all_user_set = set(User.objects.all())
-        self.assertTrue(u1 in all_user_set)
-        self.assertTrue(u4 not in all_user_set)
-        self.assertTrue(b1 not in all_user_list)
-        self.assertTrue(b2 not in all_user_list)
+        self.assertIn(u1, all_user_set)
+        self.assertNotIn(u4, all_user_set)
+        self.assertNotIn(b1, all_user_list)
+        self.assertNotIn(b2, all_user_list)
 
         # Make sure duplicate docs aren't accepted in the set
         self.assertEqual(len(all_user_set), 3)
@@ -2924,7 +2971,7 @@ class InstanceTest(unittest.TestCase):
         Person(name="Harry Potter").save()
 
         person = Person.objects.first()
-        self.assertTrue('id' in person._data.keys())
+        self.assertIn('id', person._data.keys())
         self.assertEqual(person._data.get('id'), person.id)
 
     def test_complex_nesting_document_and_embedded_document(self):
@@ -3016,36 +3063,36 @@ class InstanceTest(unittest.TestCase):
 
         dbref2 = f._data['test2']
         obj2 = f.test2
-        self.assertTrue(isinstance(dbref2, DBRef))
-        self.assertTrue(isinstance(obj2, Test2))
-        self.assertTrue(obj2.id == dbref2.id)
-        self.assertTrue(obj2 == dbref2)
-        self.assertTrue(dbref2 == obj2)
+        self.assertIsInstance(dbref2, DBRef)
+        self.assertIsInstance(obj2, Test2)
+        self.assertEqual(obj2.id, dbref2.id)
+        self.assertEqual(obj2, dbref2)
+        self.assertEqual(dbref2, obj2)
 
         dbref3 = f._data['test3']
         obj3 = f.test3
-        self.assertTrue(isinstance(dbref3, DBRef))
-        self.assertTrue(isinstance(obj3, Test3))
-        self.assertTrue(obj3.id == dbref3.id)
-        self.assertTrue(obj3 == dbref3)
-        self.assertTrue(dbref3 == obj3)
+        self.assertIsInstance(dbref3, DBRef)
+        self.assertIsInstance(obj3, Test3)
+        self.assertEqual(obj3.id, dbref3.id)
+        self.assertEqual(obj3, dbref3)
+        self.assertEqual(dbref3, obj3)
 
-        self.assertTrue(obj2.id == obj3.id)
-        self.assertTrue(dbref2.id == dbref3.id)
-        self.assertFalse(dbref2 == dbref3)
-        self.assertFalse(dbref3 == dbref2)
-        self.assertTrue(dbref2 != dbref3)
-        self.assertTrue(dbref3 != dbref2)
+        self.assertEqual(obj2.id, obj3.id)
+        self.assertEqual(dbref2.id, dbref3.id)
+        self.assertNotEqual(dbref2, dbref3)
+        self.assertNotEqual(dbref3, dbref2)
+        self.assertNotEqual(dbref2, dbref3)
+        self.assertNotEqual(dbref3, dbref2)
 
-        self.assertFalse(obj2 == dbref3)
-        self.assertFalse(dbref3 == obj2)
-        self.assertTrue(obj2 != dbref3)
-        self.assertTrue(dbref3 != obj2)
+        self.assertNotEqual(obj2, dbref3)
+        self.assertNotEqual(dbref3, obj2)
+        self.assertNotEqual(obj2, dbref3)
+        self.assertNotEqual(dbref3, obj2)
 
-        self.assertFalse(obj3 == dbref2)
-        self.assertFalse(dbref2 == obj3)
-        self.assertTrue(obj3 != dbref2)
-        self.assertTrue(dbref2 != obj3)
+        self.assertNotEqual(obj3, dbref2)
+        self.assertNotEqual(dbref2, obj3)
+        self.assertNotEqual(obj3, dbref2)
+        self.assertNotEqual(dbref2, obj3)
 
     def test_default_values(self):
         class Person(Document):
@@ -3093,6 +3140,64 @@ class InstanceTest(unittest.TestCase):
         p = MyPerson._from_son({"name": "name", "age": 27}, created=True)
         self.assertEquals(p.id, None)
         p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
+
+    def test_from_son_created_False_without_id(self):
+        class MyPerson(Document):
+            name = StringField()
+
+        MyPerson.objects.delete()
+
+        p = MyPerson.from_json('{"name": "a_fancy_name"}', created=False)
+        self.assertFalse(p._created)
+        self.assertIsNone(p.id)
+        p.save()
+        self.assertIsNotNone(p.id)
+        saved_p = MyPerson.objects.get(id=p.id)
+        self.assertEqual(saved_p.name, 'a_fancy_name')
+
+    def test_from_son_created_False_with_id(self):
+        # 1854
+        class MyPerson(Document):
+            name = StringField()
+
+        MyPerson.objects.delete()
+
+        p = MyPerson.from_json('{"_id": "5b85a8b04ec5dc2da388296e", "name": "a_fancy_name"}', created=False)
+        self.assertFalse(p._created)
+        self.assertEqual(p._changed_fields, [])
+        self.assertEqual(p.name, 'a_fancy_name')
+        self.assertEqual(p.id, ObjectId('5b85a8b04ec5dc2da388296e'))
+        p.save()
+
+        with self.assertRaises(DoesNotExist):
+            # Since created=False and we gave an id in the json and _changed_fields is empty
+            # mongoengine assumes that the document exits with that structure already
+            # and calling .save() didn't save anything
+            MyPerson.objects.get(id=p.id)
+
+        self.assertFalse(p._created)
+        p.name = 'a new fancy name'
+        self.assertEqual(p._changed_fields, ['name'])
+        p.save()
+        saved_p = MyPerson.objects.get(id=p.id)
+        self.assertEqual(saved_p.name, p.name)
+
+    def test_from_son_created_True_with_an_id(self):
+        class MyPerson(Document):
+            name = StringField()
+
+        MyPerson.objects.delete()
+
+        p = MyPerson.from_json('{"_id": "5b85a8b04ec5dc2da388296e", "name": "a_fancy_name"}', created=True)
+        self.assertTrue(p._created)
+        self.assertEqual(p._changed_fields, [])
+        self.assertEqual(p.name, 'a_fancy_name')
+        self.assertEqual(p.id, ObjectId('5b85a8b04ec5dc2da388296e'))
+        p.save()
+
+        saved_p = MyPerson.objects.get(id=p.id)
+        self.assertEqual(saved_p, p)
+        self.assertEqual(p.name, 'a_fancy_name')
 
     def test_null_field(self):
         # 734
@@ -3182,6 +3287,34 @@ class InstanceTest(unittest.TestCase):
         blog.update(push__tags__0=["mongodb", "code"])
         blog.reload()
         self.assertEqual(blog.tags, ['mongodb', 'code', 'python'])
+
+    def test_push_nested_list(self):
+        """Ensure that push update works in nested list"""
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField()
+
+        blog = BlogPost(slug="test").save()
+        blog.update(push__tags=["value1", 123])
+        blog.reload()
+        self.assertEqual(blog.tags, [["value1", 123]])
+
+    def test_accessing_objects_with_indexes_error(self):
+        insert_result = self.db.company.insert_many([{'name': 'Foo'},
+                                                     {'name': 'Foo'}])  # Force 2 doc with same name
+        REF_OID = insert_result.inserted_ids[0]
+        self.db.user.insert_one({'company': REF_OID})   # Force 2 doc with same name
+
+        class Company(Document):
+            name = StringField(unique=True)
+
+        class User(Document):
+            company = ReferenceField(Company)
+
+
+        # Ensure index creation exception aren't swallowed (#1688)
+        with self.assertRaises(DuplicateKeyError):
+            User.objects().select_related()
 
 
 if __name__ == '__main__':

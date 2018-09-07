@@ -95,9 +95,9 @@ class GeoQueriesTest(MongoDBTestCase):
             location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 2)
         events = list(events)
-        self.assertTrue(event2 not in events)
-        self.assertTrue(event1 in events)
-        self.assertTrue(event3 in events)
+        self.assertNotIn(event2, events)
+        self.assertIn(event1, events)
+        self.assertIn(event3, events)
 
         # find events within 10 degrees of san francisco
         point_and_distance = [[-122.415579, 37.7566023], 10]
@@ -285,9 +285,9 @@ class GeoQueriesTest(MongoDBTestCase):
             location__geo_within_center=point_and_distance)
         self.assertEqual(events.count(), 2)
         events = list(events)
-        self.assertTrue(event2 not in events)
-        self.assertTrue(event1 in events)
-        self.assertTrue(event3 in events)
+        self.assertNotIn(event2, events)
+        self.assertIn(event1, events)
+        self.assertIn(event3, events)
 
     def _test_embedded(self, point_field_class):
         """Helper test method ensuring given point field class works
@@ -509,6 +509,24 @@ class GeoQueriesTest(MongoDBTestCase):
 
         roads = Road.objects.filter(poly__geo_intersects={"$geometry": polygon}).count()
         self.assertEqual(1, roads)
+
+    def test_aspymongo_with_only(self):
+        """Ensure as_pymongo works with only"""
+        class Place(Document):
+            location = PointField()
+
+        Place.drop_collection()
+        p = Place(location=[24.946861267089844, 60.16311983618494])
+        p.save()
+        qs = Place.objects().only('location')
+        self.assertDictEqual(
+            qs.as_pymongo()[0]['location'],
+            {u'type': u'Point',
+             u'coordinates': [
+                24.946861267089844,
+                60.16311983618494]
+            }
+        )
 
     def test_2dsphere_point_sets_correctly(self):
         class Location(Document):

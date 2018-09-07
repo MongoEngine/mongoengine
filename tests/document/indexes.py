@@ -70,7 +70,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(len(info), 4)
         info = [value['key'] for key, value in info.iteritems()]
         for expected in expected_specs:
-            self.assertTrue(expected['fields'] in info)
+            self.assertIn(expected['fields'], info)
 
     def _index_test_inheritance(self, InheritFrom):
 
@@ -102,7 +102,7 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(len(info), 4)
         info = [value['key'] for key, value in info.iteritems()]
         for expected in expected_specs:
-            self.assertTrue(expected['fields'] in info)
+            self.assertIn(expected['fields'], info)
 
         class ExtendedBlogPost(BlogPost):
             title = StringField()
@@ -117,7 +117,7 @@ class IndexesTest(unittest.TestCase):
         info = ExtendedBlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         for expected in expected_specs:
-            self.assertTrue(expected['fields'] in info)
+            self.assertIn(expected['fields'], info)
 
     def test_indexes_document_inheritance(self):
         """Ensure that indexes are used when meta[indexes] is specified for
@@ -226,7 +226,7 @@ class IndexesTest(unittest.TestCase):
         list(Person.objects)
         info = Person.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('rank.title', 1)] in info)
+        self.assertIn([('rank.title', 1)], info)
 
     def test_explicit_geo2d_index(self):
         """Ensure that geo2d indexes work when created via meta[indexes]
@@ -246,7 +246,7 @@ class IndexesTest(unittest.TestCase):
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('location.point', '2d')] in info)
+        self.assertIn([('location.point', '2d')], info)
 
     def test_explicit_geo2d_index_embedded(self):
         """Ensure that geo2d indexes work when created via meta[indexes]
@@ -269,7 +269,7 @@ class IndexesTest(unittest.TestCase):
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('current.location.point', '2d')] in info)
+        self.assertIn([('current.location.point', '2d')], info)
 
     def test_explicit_geosphere_index(self):
         """Ensure that geosphere indexes work when created via meta[indexes]
@@ -289,7 +289,7 @@ class IndexesTest(unittest.TestCase):
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('location.point', '2dsphere')] in info)
+        self.assertIn([('location.point', '2dsphere')], info)
 
     def test_explicit_geohaystack_index(self):
         """Ensure that geohaystack indexes work when created via meta[indexes]
@@ -311,7 +311,7 @@ class IndexesTest(unittest.TestCase):
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('location.point', 'geoHaystack')] in info)
+        self.assertIn([('location.point', 'geoHaystack')], info)
 
     def test_create_geohaystack_index(self):
         """Ensure that geohaystack indexes can be created
@@ -323,7 +323,7 @@ class IndexesTest(unittest.TestCase):
         Place.create_index({'fields': (')location.point', 'name')}, bucketSize=10)
         info = Place._get_collection().index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('location.point', 'geoHaystack'), ('name', 1)] in info)
+        self.assertIn([('location.point', 'geoHaystack'), ('name', 1)], info)
 
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
@@ -356,7 +356,7 @@ class IndexesTest(unittest.TestCase):
                  value.get('unique', False),
                  value.get('sparse', False))
                 for key, value in info.iteritems()]
-        self.assertTrue(([('addDate', -1)], True, True) in info)
+        self.assertIn(([('addDate', -1)], True, True), info)
 
         BlogPost.drop_collection()
 
@@ -803,7 +803,7 @@ class IndexesTest(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
         index_item = [('_id', 1), ('comments.comment_id', 1)]
-        self.assertTrue(index_item in info)
+        self.assertIn(index_item, info)
 
     def test_compound_key_embedded(self):
 
@@ -850,8 +850,8 @@ class IndexesTest(unittest.TestCase):
 
         info = MyDoc.objects._collection.index_information()
         info = [value['key'] for key, value in info.iteritems()]
-        self.assertTrue([('provider_ids.foo', 1)] in info)
-        self.assertTrue([('provider_ids.bar', 1)] in info)
+        self.assertIn([('provider_ids.foo', 1)], info)
+        self.assertIn([('provider_ids.bar', 1)], info)
 
     def test_sparse_compound_indexes(self):
 
@@ -876,9 +876,9 @@ class IndexesTest(unittest.TestCase):
             }
 
         indexes = Book.objects._collection.index_information()
-        self.assertTrue("title_text" in indexes)
+        self.assertIn("title_text", indexes)
         key = indexes["title_text"]["key"]
-        self.assertTrue(('_fts', 'text') in key)
+        self.assertIn(('_fts', 'text'), key)
 
     def test_hashed_indexes(self):
 
@@ -889,8 +889,8 @@ class IndexesTest(unittest.TestCase):
             }
 
         indexes = Book.objects._collection.index_information()
-        self.assertTrue("ref_id_hashed" in indexes)
-        self.assertTrue(('ref_id', 'hashed') in indexes["ref_id_hashed"]["key"])
+        self.assertIn("ref_id_hashed", indexes)
+        self.assertIn(('ref_id', 'hashed'), indexes["ref_id_hashed"]["key"])
 
     def test_indexes_after_database_drop(self):
         """
@@ -1013,7 +1013,7 @@ class IndexesTest(unittest.TestCase):
         TestDoc.ensure_indexes()
 
         index_info = TestDoc._get_collection().index_information()
-        self.assertTrue('shard_1_1__cls_1_txt_1_1' in index_info)
+        self.assertIn('shard_1_1__cls_1_txt_1_1', index_info)
 
 
 if __name__ == '__main__':

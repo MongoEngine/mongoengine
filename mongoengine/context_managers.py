@@ -1,9 +1,11 @@
+from contextlib import contextmanager
+from pymongo.write_concern import WriteConcern
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 
 
 __all__ = ('switch_db', 'switch_collection', 'no_dereference',
-           'no_sub_classes', 'query_counter')
+           'no_sub_classes', 'query_counter', 'set_write_concern')
 
 
 class switch_db(object):
@@ -143,66 +145,83 @@ class no_sub_classes(object):
         :param cls: the class to turn querying sub classes on
         """
         self.cls = cls
+        self.cls_initial_subclasses = None
 
     def __enter__(self):
         """Change the objects default and _auto_dereference values."""
-        self.cls._all_subclasses = self.cls._subclasses
-        self.cls._subclasses = (self.cls,)
+        self.cls_initial_subclasses = self.cls._subclasses
+        self.cls._subclasses = (self.cls._class_name,)
         return self.cls
 
     def __exit__(self, t, value, traceback):
         """Reset the default and _auto_dereference values."""
-        self.cls._subclasses = self.cls._all_subclasses
-        delattr(self.cls, '_all_subclasses')
-        return self.cls
+        self.cls._subclasses = self.cls_initial_subclasses
 
 
 class query_counter(object):
-    """Query_counter context manager to get the number of queries."""
+    """Query_counter context manager to get the number of queries.
+    This works by updating the `profiling_level` of the database so that all queries get logged,
+    resetting the db.system.profile collection at the beginnig of the context and counting the new entries.
+
+    This was designed for debugging purpose. In fact it is a global counter so queries issued by other threads/processes
+    can interfere with it
+
+    Be aware that:
+    - Iterating over large amount of documents (>101) makes pymongo issue `getmore` queries to fetch the next batch of
+        documents (https://docs.mongodb.com/manual/tutorial/iterate-a-cursor/#cursor-batches)
+    - Some queries are ignored by default by the counter (killcursors, db.system.indexes)
+    """
 
     def __init__(self):
-        """Construct the query_counter."""
-        self.counter = 0
+        """Construct the query_counter
+        """
         self.db = get_db()
+        self.initial_profiling_level = None
+        self._ctx_query_counter = 0             # number of queries issued by the context
 
-    def __enter__(self):
-        """On every with block we need to drop the profile collection."""
+        self._ignored_query = {
+            'ns':
+                {'$ne': '%s.system.indexes' % self.db.name},
+            'op':
+                {'$ne': 'killcursors'}
+        }
+
+    def _turn_on_profiling(self):
+        self.initial_profiling_level = self.db.profiling_level()
         self.db.set_profiling_level(0)
         self.db.system.profile.drop()
         self.db.set_profiling_level(2)
+
+    def _resets_profiling(self):
+        self.db.set_profiling_level(self.initial_profiling_level)
+
+    def __enter__(self):
+        self._turn_on_profiling()
         return self
 
     def __exit__(self, t, value, traceback):
-        """Reset the profiling level."""
-        self.db.set_profiling_level(0)
+        self._resets_profiling()
 
     def __eq__(self, value):
-        """== Compare querycounter."""
         counter = self._get_count()
         return value == counter
 
     def __ne__(self, value):
-        """!= Compare querycounter."""
         return not self.__eq__(value)
 
     def __lt__(self, value):
-        """< Compare querycounter."""
         return self._get_count() < value
 
     def __le__(self, value):
-        """<= Compare querycounter."""
         return self._get_count() <= value
 
     def __gt__(self, value):
-        """> Compare querycounter."""
         return self._get_count() > value
 
     def __ge__(self, value):
-        """>= Compare querycounter."""
         return self._get_count() >= value
 
     def __int__(self):
-        """int representation."""
         return self._get_count()
 
     def __repr__(self):
@@ -210,8 +229,17 @@ class query_counter(object):
         return u"%s" % self._get_count()
 
     def _get_count(self):
-        """Get the number of queries."""
-        ignore_query = {'ns': {'$ne': '%s.system.indexes' % self.db.name}}
-        count = self.db.system.profile.find(ignore_query).count() - self.counter
-        self.counter += 1
+        """Get the number of queries by counting the current number of entries in db.system.profile
+        and substracting the queries issued by this context. In fact everytime this is called, 1 query is
+        issued so we need to balance that
+        """
+        count = self.db.system.profile.find(self._ignored_query).count() - self._ctx_query_counter
+        self._ctx_query_counter += 1    # Account for the query we just issued to gather the information
         return count
+
+
+@contextmanager
+def set_write_concern(collection, write_concerns):
+    combined_concerns = dict(collection.write_concern.document.items())
+    combined_concerns.update(write_concerns)
+    yield collection.with_options(write_concern=WriteConcern(**combined_concerns))

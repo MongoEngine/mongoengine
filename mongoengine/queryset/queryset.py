@@ -1,3 +1,5 @@
+import six
+
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (BaseQuerySet, CASCADE, DENY, DO_NOTHING,
                                        NULLIFY, PULL)
@@ -87,10 +89,10 @@ class QuerySet(BaseQuerySet):
                 yield self._result_cache[pos]
                 pos += 1
 
-            # Raise StopIteration if we already established there were no more
+            # return if we already established there were no more
             # docs in the db cursor.
             if not self._has_more:
-                raise StopIteration
+                return
 
             # Otherwise, populate more of the cache and repeat.
             if len(self._result_cache) <= pos:
@@ -112,7 +114,7 @@ class QuerySet(BaseQuerySet):
         # Pull in ITER_CHUNK_SIZE docs from the database and store them in
         # the result cache.
         try:
-            for _ in xrange(ITER_CHUNK_SIZE):
+            for _ in six.moves.range(ITER_CHUNK_SIZE):
                 self._result_cache.append(self.next())
         except StopIteration:
             # Getting this exception means there are no more docs in the
@@ -166,7 +168,7 @@ class QuerySetNoCache(BaseQuerySet):
             return '.. queryset mid-iteration ..'
 
         data = []
-        for _ in xrange(REPR_OUTPUT_SIZE + 1):
+        for _ in six.moves.range(REPR_OUTPUT_SIZE + 1):
             try:
                 data.append(self.next())
             except StopIteration:

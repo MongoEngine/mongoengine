@@ -6,6 +6,36 @@ Development
 ===========
 - QuerySet limit function behaviour: Passing 0 as parameter will return all the documents in the cursor #1611
 - (Fill this out as you fix issues and develop your features).
+=======
+Changes in 0.15.4
+=================
+- Added `DateField` #513
+
+Changes in 0.15.3
+=================
+-  Subfield resolve error in generic_emdedded_document query #1651 #1652
+-  use each modifier only with $position #1673 #1675
+-  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704
+-  Fix validation error instance in GenericEmbeddedDocumentField #1067
+-  Update cached fields when fields argument is given #1712
+-  Add a db parameter to register_connection for compatibility with connect
+-  Use insert_one, insert_many in Document.insert #1491
+-  Use new update_one, update_many on document/queryset update #1491
+-  Use insert_one, insert_many in Document.insert #1491
+-  Fix reload(fields) affect changed fields #1371
+-  Fix Read-only access to database fails when trying to create indexes #1338
+
+Changes in 0.15.0
+=================
+- Add LazyReferenceField and GenericLazyReferenceField to address #1230
+
+Changes in 0.14.1
+=================
+- Removed SemiStrictDict and started using a regular dict for `BaseDocument._data` #1630
+- Added support for the `$position` param in the `$push` operator #1566
+- Fixed `DateTimeField` interpreting an empty string as today #1533
+- Added a missing `__ne__` method to the `GridFSProxy` class #1632
+- Fixed `BaseQuerySet._fields_to_db_fields` #1553
 
 Changes in 0.14.0
 =================
