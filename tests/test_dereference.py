@@ -1029,7 +1029,6 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(type(foo.bar), Bar)
         self.assertEqual(type(foo.baz), Baz)
 
-
     def test_document_reload_reference_integrity(self):
         """
         Ensure reloading a document with multiple similar id
