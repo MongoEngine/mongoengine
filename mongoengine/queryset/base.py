@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import copy
 import itertools
-import operator
 import pprint
 import re
 import warnings
@@ -209,13 +208,11 @@ class BaseQuerySet(object):
         queryset = self.order_by()
         return False if queryset.first() is None else True
 
-    def __nonzero__(self):
-        """Avoid to open all records in an if stmt in Py2."""
-        return self._has_data()
-
     def __bool__(self):
         """Avoid to open all records in an if stmt in Py3."""
         return self._has_data()
+
+    __nonzero__ = __bool__  # For Py2 support
 
     # Core functions
 
@@ -269,13 +266,13 @@ class BaseQuerySet(object):
         queryset = queryset.filter(*q_objs, **query)
 
         try:
-            result = queryset.next()
+            result = six.next(queryset)
         except StopIteration:
             msg = ('%s matching query does not exist.'
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
         try:
-            queryset.next()
+            six.next(queryset)
         except StopIteration:
             return result
 
@@ -1478,13 +1475,13 @@ class BaseQuerySet(object):
 
     # Iterator helpers
 
-    def next(self):
+    def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
         if self._limit == 0 or self._none:
             raise StopIteration
 
-        raw_doc = self._cursor.next()
+        raw_doc = six.next(self._cursor)
 
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
@@ -1497,6 +1494,8 @@ class BaseQuerySet(object):
             return self._get_scalar(doc)
 
         return doc
+
+    next = __next__     # For Python2 support
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.

@@ -24,6 +24,7 @@ try:
 except ImportError:
     Int64 = long
 
+
 from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
                               GeoJsonBaseField, LazyReference, ObjectIdField,
                               get_document)
@@ -40,6 +41,12 @@ try:
 except ImportError:
     Image = None
     ImageOps = None
+
+if six.PY3:
+    # Useless as long as 2to3 gets executed
+    # as it turns `long` into `int` blindly
+    long = int
+
 
 __all__ = (
     'StringField', 'URLField', 'EmailField', 'IntField', 'LongField',
@@ -597,7 +604,7 @@ class ComplexDateTimeField(StringField):
         >>> ComplexDateTimeField()._convert_from_string(a)
         datetime.datetime(2011, 6, 8, 20, 26, 24, 92284)
         """
-        values = map(int, data.split(self.separator))
+        values = [int(d) for d in data.split(self.separator)]
         return datetime.datetime(*values)
 
     def __get__(self, instance, owner):
@@ -1525,8 +1532,10 @@ class GridFSProxy(object):
     def __get__(self, instance, value):
         return self
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.grid_id)
+
+    __nonzero__ = __bool__  # For Py2 support
 
     def __getstate__(self):
         self_dict = self.__dict__

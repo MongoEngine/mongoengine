@@ -115,7 +115,7 @@ class QuerySet(BaseQuerySet):
         # the result cache.
         try:
             for _ in six.moves.range(ITER_CHUNK_SIZE):
-                self._result_cache.append(self.next())
+                self._result_cache.append(six.next(self))
         except StopIteration:
             # Getting this exception means there are no more docs in the
             # db cursor. Set _has_more to False so that we can use that
@@ -170,7 +170,7 @@ class QuerySetNoCache(BaseQuerySet):
         data = []
         for _ in six.moves.range(REPR_OUTPUT_SIZE + 1):
             try:
-                data.append(self.next())
+                data.append(six.next(self))
             except StopIteration:
                 break
 

@@ -39,7 +39,7 @@ class InvalidCollectionError(Exception):
     pass
 
 
-class EmbeddedDocument(BaseDocument):
+class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -58,7 +58,6 @@ class EmbeddedDocument(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     # A generic embedded document doesn't have any immutable properties
     # that describe it uniquely, hence it shouldn't be hashable. You can
@@ -95,7 +94,7 @@ class EmbeddedDocument(BaseDocument):
         self._instance.reload(*args, **kwargs)
 
 
-class Document(BaseDocument):
+class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -150,7 +149,6 @@ class Document(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     __slots__ = ('__objects',)
 
@@ -996,7 +994,7 @@ class Document(BaseDocument):
         return {'missing': missing, 'extra': extra}
 
 
-class DynamicDocument(Document):
+class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expanded style properties.  Any data
@@ -1013,7 +1011,6 @@ class DynamicDocument(Document):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
 
@@ -1029,7 +1026,7 @@ class DynamicDocument(Document):
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 
 
-class DynamicEmbeddedDocument(EmbeddedDocument):
+class DynamicEmbeddedDocument(six.with_metaclass(DocumentMetaclass, EmbeddedDocument)):
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -1038,7 +1035,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     _dynamic = True
 

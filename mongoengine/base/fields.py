@@ -501,7 +501,7 @@ class GeoJsonBaseField(BaseField):
     def validate(self, value):
         """Validate the GeoJson object based on its type."""
         if isinstance(value, dict):
-            if set(value.keys()) == set(['type', 'coordinates']):
+            if set(value.keys()) == {'type', 'coordinates'}:
                 if value['type'] != self._type:
                     self.error('%s type must be "%s"' %
                                (self._name, self._type))

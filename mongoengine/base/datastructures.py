@@ -377,7 +377,7 @@ class EmbeddedDocumentList(BaseList):
 
 class StrictDict(object):
     __slots__ = ()
-    _special_fields = set(['get', 'pop', 'iteritems', 'items', 'keys', 'create'])
+    _special_fields = {'get', 'pop', 'iteritems', 'items', 'keys', 'create'}
     _classes = {}
 
     def __init__(self, **kwargs):
