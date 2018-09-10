@@ -736,6 +736,9 @@ document.::
 
 .. note:: From 0.8 onwards :attr:`allow_inheritance` defaults
           to False, meaning you must set it to True to use inheritance.
+          
+          Setting :attr:`allow_inheritance` to True should also be used in
+          :class:`~mongoengine.EmbeddedDocument` class in case you need to subclass it
 
 Working with existing data
 --------------------------
