@@ -196,7 +196,7 @@ class QTest(unittest.TestCase):
 
         test2 = test.clone()
         self.assertEqual(test2.count(), 3)
-        self.assertFalse(test2 == test)
+        self.assertNotEqual(test2, test)
 
         test3 = test2.filter(x=6)
         self.assertEqual(test3.count(), 1)

@@ -48,15 +48,15 @@ class TransformTest(unittest.TestCase):
 
         for k, v in (("set", "$set"), ("set_on_insert", "$setOnInsert"), ("push", "$push")):
             update = transform.update(DicDoc, **{"%s__dictField__test" % k: doc})
-            self.assertTrue(isinstance(update[v]["dictField.test"], dict))
+            self.assertIsInstance(update[v]["dictField.test"], dict)
 
         # Update special cases
         update = transform.update(DicDoc, unset__dictField__test=doc)
         self.assertEqual(update["$unset"]["dictField.test"], 1)
 
         update = transform.update(DicDoc, pull__dictField__test=doc)
-        self.assertTrue(isinstance(update["$pull"]["dictField"]["test"], dict))
-        
+        self.assertIsInstance(update["$pull"]["dictField"]["test"], dict)
+
         update = transform.update(LisDoc, pull__foo__in=['a'])
         self.assertEqual(update, {'$pull': {'foo': {'$in': ['a']}}})
 
@@ -88,17 +88,15 @@ class TransformTest(unittest.TestCase):
         post = BlogPost(**data)
         post.save()
 
-        self.assertTrue('postTitle' in
-                        BlogPost.objects(title=data['title'])._query)
+        self.assertIn('postTitle', BlogPost.objects(title=data['title'])._query)
         self.assertFalse('title' in
                          BlogPost.objects(title=data['title'])._query)
         self.assertEqual(BlogPost.objects(title=data['title']).count(), 1)
 
-        self.assertTrue('_id' in BlogPost.objects(pk=post.id)._query)
+        self.assertIn('_id', BlogPost.objects(pk=post.id)._query)
         self.assertEqual(BlogPost.objects(pk=post.id).count(), 1)
 
-        self.assertTrue('postComments.commentContent' in
-                        BlogPost.objects(comments__content='test')._query)
+        self.assertIn('postComments.commentContent', BlogPost.objects(comments__content='test')._query)
         self.assertEqual(BlogPost.objects(comments__content='test').count(), 1)
 
         BlogPost.drop_collection()
@@ -116,8 +114,8 @@ class TransformTest(unittest.TestCase):
         post = BlogPost(**data)
         post.save()
 
-        self.assertTrue('_id' in BlogPost.objects(pk=data['title'])._query)
-        self.assertTrue('_id' in BlogPost.objects(title=data['title'])._query)
+        self.assertIn('_id', BlogPost.objects(pk=data['title'])._query)
+        self.assertIn('_id', BlogPost.objects(title=data['title'])._query)
         self.assertEqual(BlogPost.objects(pk=data['title']).count(), 1)
 
         BlogPost.drop_collection()
@@ -260,31 +258,31 @@ class TransformTest(unittest.TestCase):
         events = Event.objects(location__within=box)
         with self.assertRaises(InvalidQueryError):
             events.count()
-    
+
     def test_update_pull_for_list_fields(self):
-        """ 
-        Test added to check pull operation in update for 
+        """
+        Test added to check pull operation in update for
         EmbeddedDocumentListField which is inside a EmbeddedDocumentField
         """
         class Word(EmbeddedDocument):
             word = StringField()
             index = IntField()
-        
+
         class SubDoc(EmbeddedDocument):
             heading = ListField(StringField())
             text = EmbeddedDocumentListField(Word)
-        
+
         class MainDoc(Document):
             title = StringField()
             content = EmbeddedDocumentField(SubDoc)
-        
+
         word = Word(word='abc', index=1)
         update = transform.update(MainDoc, pull__content__text=word)
         self.assertEqual(update, {'$pull': {'content.text': SON([('word', u'abc'), ('index', 1)])}})
 
         update = transform.update(MainDoc, pull__content__heading='xyz')
         self.assertEqual(update, {'$pull': {'content.heading': 'xyz'}})
-        
-        
+
+
 if __name__ == '__main__':
     unittest.main()

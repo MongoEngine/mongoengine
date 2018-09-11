@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Development
+===========
+- QuerySet limit function behaviour: Passing 0 as parameter will return all the documents in the cursor #1611
+- (Fill this out as you fix issues and develop your features).
+=======
 Changes in 0.15.4
 =================
 - Added `DateField` #513
