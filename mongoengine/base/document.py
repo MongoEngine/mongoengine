@@ -302,7 +302,7 @@ class BaseDocument(object):
         data['_cls'] = self._class_name
 
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
-        root_fields = set([f.split('.')[0] for f in fields])
+        root_fields = {f.split('.')[0] for f in fields}
 
         for field_name in self:
             if root_fields and field_name not in root_fields:
@@ -567,7 +567,7 @@ class BaseDocument(object):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed
-                    if any(map(lambda d: field._ordering in d._changed_fields, data)):
+                    if any(field._ordering in d._changed_fields for d in data):
                         changed_fields.append(db_field_name)
                         continue
 

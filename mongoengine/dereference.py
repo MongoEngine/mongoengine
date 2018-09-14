@@ -146,7 +146,7 @@ class DeReference(object):
                 for key, doc in references.iteritems():
                     object_map[(col_name, key)] = doc
             else:  # Generic reference: use the refs data to convert to document
-                if isinstance(doc_type, (ListField, DictField, MapField,)):
+                if isinstance(doc_type, (ListField, DictField, MapField)):
                     continue
 
                 refs = [dbref for dbref in dbrefs
