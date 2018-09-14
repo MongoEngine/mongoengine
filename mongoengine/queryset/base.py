@@ -1406,6 +1406,7 @@ class BaseQuerySet(object):
             cursor_args = {
                 'no_cursor_timeout': not self._timeout
             }
+            cursor_args['max_time_ms'] = self._max_time_ms
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
 
