@@ -18,15 +18,13 @@ try:
 except ImportError:
     HAS_PIL = False
 
+from tests.utils import MongoDBTestCase
+
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
 
 
-class FileTest(unittest.TestCase):
-
-    def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+class FileTest(MongoDBTestCase):
 
     def tearDown(self):
         self.db.drop_collection('fs.files')
@@ -55,8 +53,8 @@ class FileTest(unittest.TestCase):
         putfile.save()
 
         result = PutFile.objects.first()
-        self.assertTrue(putfile == result)
-        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello>")
+        self.assertEqual(putfile, result)
+        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello (%s)>" % result.the_file.grid_id)
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()  # Remove file from GridFS
@@ -73,7 +71,7 @@ class FileTest(unittest.TestCase):
         putfile.save()
 
         result = PutFile.objects.first()
-        self.assertTrue(putfile == result)
+        self.assertEqual(putfile, result)
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()
@@ -98,7 +96,7 @@ class FileTest(unittest.TestCase):
         streamfile.save()
 
         result = StreamFile.objects.first()
-        self.assertTrue(streamfile == result)
+        self.assertEqual(streamfile, result)
         self.assertEqual(result.the_file.read(), text + more_text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.seek(0)
@@ -134,7 +132,7 @@ class FileTest(unittest.TestCase):
         streamfile.save()
 
         result = StreamFile.objects.first()
-        self.assertTrue(streamfile == result)
+        self.assertEqual(streamfile, result)
         self.assertEqual(result.the_file.read(), text + more_text)
         # self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.seek(0)
@@ -163,7 +161,7 @@ class FileTest(unittest.TestCase):
         setfile.save()
 
         result = SetFile.objects.first()
-        self.assertTrue(setfile == result)
+        self.assertEqual(setfile, result)
         self.assertEqual(result.the_file.read(), text)
 
         # Try replacing file with new one
@@ -171,7 +169,7 @@ class FileTest(unittest.TestCase):
         result.save()
 
         result = SetFile.objects.first()
-        self.assertTrue(setfile == result)
+        self.assertEqual(setfile, result)
         self.assertEqual(result.the_file.read(), more_text)
         result.the_file.delete()
 
@@ -233,8 +231,8 @@ class FileTest(unittest.TestCase):
         test_file_dupe = TestFile()
         data = test_file_dupe.the_file.read()  # Should be None
 
-        self.assertTrue(test_file.name != test_file_dupe.name)
-        self.assertTrue(test_file.the_file.read() != data)
+        self.assertNotEqual(test_file.name, test_file_dupe.name)
+        self.assertNotEqual(test_file.the_file.read(), data)
 
         TestFile.drop_collection()
 
@@ -293,7 +291,7 @@ class FileTest(unittest.TestCase):
             the_file = FileField()
 
         test_file = TestFile()
-        self.assertFalse(test_file.the_file in [{"test": 1}])
+        self.assertNotIn(test_file.the_file, [{"test": 1}])
 
     def test_file_disk_space(self):
         """ Test disk space usage when we delete/replace a file """

@@ -50,8 +50,8 @@ class FieldDoesNotExist(Exception):
     or an :class:`~mongoengine.EmbeddedDocument`.
 
     To avoid this behavior on data loading,
-    you should the :attr:`strict` to ``False``
-    in the :attr:`meta` dictionnary.
+    you should set the :attr:`strict` to ``False``
+    in the :attr:`meta` dictionary.
     """
 
 

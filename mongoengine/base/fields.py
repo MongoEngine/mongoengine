@@ -41,7 +41,7 @@ class BaseField(object):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
-        :param name: Depreciated - use db_field
+        :param name: Deprecated - use db_field
         :param required: If the field is required. Whether it has to have a
             value or not. Defaults to False.
         :param default: (optional) The default value for this field if no value
@@ -55,7 +55,7 @@ class BaseField(object):
             field.  Generally this is deprecated in favour of the
             `FIELD.validate` method
         :param choices: (optional) The valid choices
-        :param null: (optional) Is the field value can be null. If no and there is a default value
+        :param null: (optional) If the field value can be null. If no and there is a default value
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
@@ -80,6 +80,24 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
+
+        # Make sure db_field is a string (if it's explicitly defined).
+        if (
+            self.db_field is not None and
+            not isinstance(self.db_field, six.string_types)
+        ):
+            raise TypeError('db_field should be a string.')
+
+        # Make sure db_field doesn't contain any forbidden characters.
+        if isinstance(self.db_field, six.string_types) and (
+            '.' in self.db_field or
+            '\0' in self.db_field or
+            self.db_field.startswith('$')
+        ):
+            raise ValueError(
+                'field names cannot contain dots (".") or null characters '
+                '("\\0"), and they must not start with a dollar sign ("$").'
+            )
 
         # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)) & set(kwargs)
@@ -112,7 +130,6 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-
         # If setting to None and there is a default
         # Then set the value to the default value
         if value is None:
@@ -182,7 +199,8 @@ class BaseField(object):
         EmbeddedDocument = _import_class('EmbeddedDocument')
 
         choice_list = self.choices
-        if isinstance(choice_list[0], (list, tuple)):
+        if isinstance(next(iter(choice_list)), (list, tuple)):
+            # next(iter) is useful for sets
             choice_list = [k for k, _ in choice_list]
 
         # Choices which are other types of Documents
@@ -194,8 +212,10 @@ class BaseField(object):
                     )
                 )
         # Choices which are types other than Documents
-        elif value not in choice_list:
-            self.error('Value must be one of %s' % six.text_type(choice_list))
+        else:
+            values = value if isinstance(value, (list, tuple)) else [value]
+            if len(set(values) - set(choice_list)):
+                self.error('Value must be one of %s' % six.text_type(choice_list))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -481,7 +501,7 @@ class GeoJsonBaseField(BaseField):
     def validate(self, value):
         """Validate the GeoJson object based on its type."""
         if isinstance(value, dict):
-            if set(value.keys()) == set(['type', 'coordinates']):
+            if set(value.keys()) == {'type', 'coordinates'}:
                 if value['type'] != self._type:
                     self.error('%s type must be "%s"' %
                                (self._name, self._type))

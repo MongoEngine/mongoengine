@@ -4,13 +4,72 @@ Changelog
 
 Development
 ===========
-- (Fill this out as you fix issues and develop you features).
+- QuerySet limit function behaviour: Passing 0 as parameter will return all the documents in the cursor #1611
+- (Fill this out as you fix issues and develop your features).
+=======
+Changes in 0.15.4
+=================
+- Added `DateField` #513
+
+Changes in 0.15.3
+=================
+-  Subfield resolve error in generic_emdedded_document query #1651 #1652
+-  use each modifier only with $position #1673 #1675
+-  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704
+-  Fix validation error instance in GenericEmbeddedDocumentField #1067
+-  Update cached fields when fields argument is given #1712
+-  Add a db parameter to register_connection for compatibility with connect
+-  Use insert_one, insert_many in Document.insert #1491
+-  Use new update_one, update_many on document/queryset update #1491
+-  Use insert_one, insert_many in Document.insert #1491
+-  Fix reload(fields) affect changed fields #1371
+-  Fix Read-only access to database fails when trying to create indexes #1338
+
+Changes in 0.15.0
+=================
+- Add LazyReferenceField and GenericLazyReferenceField to address #1230
+
+Changes in 0.14.1
+=================
+- Removed SemiStrictDict and started using a regular dict for `BaseDocument._data` #1630
+- Added support for the `$position` param in the `$push` operator #1566
+- Fixed `DateTimeField` interpreting an empty string as today #1533
+- Added a missing `__ne__` method to the `GridFSProxy` class #1632
+- Fixed `BaseQuerySet._fields_to_db_fields` #1553
+
+Changes in 0.14.0
+=================
+- BREAKING CHANGE: Removed the `coerce_types` param from `QuerySet.as_pymongo` #1549
+- POTENTIAL BREAKING CHANGE: Made EmbeddedDocument not hashable by default #1528
+- Improved code quality #1531, #1540, #1541, #1547
+
+Changes in 0.13.0
+=================
+- POTENTIAL BREAKING CHANGE: Added Unicode support to the `EmailField`, see
+  docs/upgrade.rst for details.
+
+Changes in 0.12.0
+=================
+- POTENTIAL BREAKING CHANGE: Fixed limit/skip/hint/batch_size chaining #1476
+- POTENTIAL BREAKING CHANGE: Changed a public `QuerySet.clone_into` method to a private `QuerySet._clone_into` #1476
+- Fixed the way `Document.objects.create` works with duplicate IDs #1485
+- Fixed connecting to a replica set with PyMongo 2.x #1436
+- Fixed using sets in field choices #1481
+- Fixed deleting items from a `ListField` #1318
+- Fixed an obscure error message when filtering by `field__in=non_iterable`. #1237
+- Fixed behavior of a `dec` update operator #1450
+- Added a `rename` update operator #1454
+- Added validation for the `db_field` parameter #1448
+- Fixed the error message displayed when querying an `EmbeddedDocumentField` by an invalid value #1440
+- Fixed the error message displayed when validating unicode URLs #1486
+- Raise an error when trying to save an abstract document #1449
 
 Changes in 0.11.0
 =================
 - BREAKING CHANGE: Renamed `ConnectionError` to `MongoEngineConnectionError` since the former is a built-in exception name in Python v3.x. #1428
 - BREAKING CHANGE: Dropped Python 2.6 support. #1428
 - BREAKING CHANGE: `from mongoengine.base import ErrorClass` won't work anymore for any error from `mongoengine.errors` (e.g. `ValidationError`). Use `from mongoengine.errors import ErrorClass instead`. #1428
+- BREAKING CHANGE: Accessing a broken reference will raise a `DoesNotExist` error. In the past it used to return `None`. #1334
 - Fixed absent rounding for DecimalField when `force_string` is set. #1103
 
 Changes in 0.10.8

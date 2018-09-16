@@ -2,6 +2,46 @@
 Upgrading
 #########
 
+Development
+***********
+(Fill this out whenever you introduce breaking changes to MongoEngine)
+
+0.14.0
+******
+This release includes a few bug fixes and a significant code cleanup. The most
+important change is that `QuerySet.as_pymongo` no longer supports a
+`coerce_types` mode. If you used it in the past, a) please let us know of your
+use case, b) you'll need to override `as_pymongo` to get the desired outcome.
+
+This release also makes the EmbeddedDocument not hashable by default. If you
+use embedded documents in sets or dictionaries, you might have to override
+`__hash__` and implement a hashing logic specific to your use case. See #1528
+for the reason behind this change.
+
+0.13.0
+******
+This release adds Unicode support to the `EmailField` and changes its
+structure significantly. Previously, email addresses containing Unicode
+characters didn't work at all. Starting with v0.13.0, domains with Unicode
+characters are supported out of the box, meaning some emails that previously
+didn't pass validation now do. Make sure the rest of your application can
+accept such email addresses. Additionally, if you subclassed the `EmailField`
+in your application and overrode `EmailField.EMAIL_REGEX`, you will have to
+adjust your code to override `EmailField.USER_REGEX`, `EmailField.DOMAIN_REGEX`,
+and potentially `EmailField.UTF8_USER_REGEX`.
+
+0.12.0
+******
+This release includes various fixes for the `BaseQuerySet` methods and how they
+are chained together. Since version 0.10.1 applying limit/skip/hint/batch_size
+to an already-existing queryset wouldn't modify the underlying PyMongo cursor.
+This has been fixed now, so you'll need to make sure that your code didn't rely
+on the broken implementation.
+
+Additionally, a public `BaseQuerySet.clone_into` has been renamed to a private
+`_clone_into`. If you directly used that method in your code, you'll need to
+rename its occurrences.
+
 0.11.0
 ******
 This release includes a major rehaul of MongoEngine's code quality and

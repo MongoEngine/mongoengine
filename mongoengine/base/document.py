@@ -13,13 +13,14 @@ from mongoengine import signals
 from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList,
-                                             SemiStrictDict, StrictDict)
+                                             LazyReference,
+                                             StrictDict)
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
 
-__all__ = ('BaseDocument',)
+__all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
 NON_FIELD_ERRORS = '__all__'
 
@@ -79,8 +80,7 @@ class BaseDocument(object):
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
         else:
-            self._data = SemiStrictDict.create(
-                allowed_keys=self._fields_ordered)()
+            self._data = {}
 
         self._dynamic_fields = SON()
 
@@ -100,13 +100,11 @@ class BaseDocument(object):
             for key, value in values.iteritems():
                 if key in self._fields or key == '_id':
                     setattr(self, key, value)
-                elif self._dynamic:
+                else:
                     dynamic_data[key] = value
         else:
             FileField = _import_class('FileField')
             for key, value in values.iteritems():
-                if key == '__auto_convert':
-                    continue
                 key = self._reverse_db_field_map.get(key, key)
                 if key in self._fields or key in ('id', 'pk', '_cls'):
                     if __auto_convert and value is not None:
@@ -147,7 +145,7 @@ class BaseDocument(object):
 
             if not hasattr(self, name) and not name.startswith('_'):
                 DynamicField = _import_class('DynamicField')
-                field = DynamicField(db_field=name)
+                field = DynamicField(db_field=name, null=True)
                 field.name = name
                 self._dynamic_fields[name] = field
                 self._fields_ordered += (name,)
@@ -272,13 +270,6 @@ class BaseDocument(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __hash__(self):
-        if getattr(self, 'pk', None) is None:
-            # For new object
-            return super(BaseDocument, self).__hash__()
-        else:
-            return hash(self.pk)
-
     def clean(self):
         """
         Hook for doing document level data cleaning before validation is run.
@@ -311,7 +302,7 @@ class BaseDocument(object):
         data['_cls'] = self._class_name
 
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
-        root_fields = set([f.split('.')[0] for f in fields])
+        root_fields = {f.split('.')[0] for f in fields}
 
         for field_name in self:
             if root_fields and field_name not in root_fields:
@@ -344,7 +335,7 @@ class BaseDocument(object):
                 value = field.generate()
                 self._data[field_name] = value
 
-            if value is not None:
+            if (value is not None) or (field.null):
                 if use_db_field:
                     data[field.db_field] = value
                 else:
@@ -402,16 +393,26 @@ class BaseDocument(object):
             raise ValidationError(message, errors=errors)
 
     def to_json(self, *args, **kwargs):
-        """Converts a document to JSON.
-        :param use_db_field: Set to True by default but enables the output of the json structure with the field names
-            and not the mongodb store db_names in case of set to False
+        """Convert this document to JSON.
+
+        :param use_db_field: Serialize field names as they appear in
+            MongoDB (as opposed to attribute names on this document).
+            Defaults to True.
         """
         use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
     def from_json(cls, json_data, created=False):
-        """Converts json data to an unsaved document instance"""
+        """Converts json data to a Document instance
+
+        :param json_data: The json data to load into the Document
+        :param created: If True, the document will be considered as a brand new document
+                        If False and an id is provided, it will consider that the data being
+                        loaded corresponds to what's already in the database (This has an impact of subsequent call to .save())
+                        If False and no id is provided, it will consider the data as a new document
+                        (default ``False``)
+        """
         return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):
@@ -494,7 +495,7 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
 
-                if hasattr(data, '_changed_fields'):
+                if not isinstance(data, LazyReference) and hasattr(data, '_changed_fields'):
                     if getattr(data, '_is_document', False):
                         continue
 
@@ -566,7 +567,7 @@ class BaseDocument(object):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed
-                    if any(map(lambda d: field._ordering in d._changed_fields, data)):
+                    if any(field._ordering in d._changed_fields for d in data):
                         changed_fields.append(db_field_name)
                         continue
 
@@ -675,12 +676,20 @@ class BaseDocument(object):
         if not only_fields:
             only_fields = []
 
+        if son and not isinstance(son, dict):
+            raise ValueError("The source SON object needs to be of type 'dict'")
+
         # Get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
 
-        # Convert SON to a dict, making sure each key is a string
-        data = {str(key): value for key, value in son.iteritems()}
+        # Convert SON to a data dict, making sure each key is a string and
+        # corresponds to the right db field.
+        data = {}
+        for key, value in son.iteritems():
+            key = str(key)
+            key = cls._db_field_map.get(key, key)
+            data[key] = value
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
@@ -1077,5 +1086,11 @@ class BaseDocument(object):
         """Return the display value for a choice field"""
         value = getattr(self, field.name)
         if field.choices and isinstance(field.choices[0], (list, tuple)):
-            return dict(field.choices).get(value, value)
+            if value is None:
+                return None
+            sep = getattr(field, 'display_sep', ' ')
+            values = value if field.__class__.__name__ in ('ListField', 'SortedListField') else [value]
+            return sep.join([
+                six.text_type(dict(field.choices).get(val, val))
+                for val in values or []])
         return value

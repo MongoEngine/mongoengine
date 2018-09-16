@@ -5,6 +5,7 @@ from mongoengine import *
 
 from mongoengine.queryset import NULLIFY, PULL
 from mongoengine.connection import get_db
+from tests.utils import needs_mongodb_v26
 
 __all__ = ("ClassMethodsTest", )
 
@@ -65,10 +66,10 @@ class ClassMethodsTest(unittest.TestCase):
         """
         collection_name = 'person'
         self.Person(name='Test').save()
-        self.assertTrue(collection_name in self.db.collection_names())
+        self.assertIn(collection_name,  self.db.collection_names())
 
         self.Person.drop_collection()
-        self.assertFalse(collection_name in self.db.collection_names())
+        self.assertNotIn(collection_name, self.db.collection_names())
 
     def test_register_delete_rule(self):
         """Ensure that register delete rule adds a delete rule to the document
@@ -186,6 +187,26 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(BlogPost.compare_indexes(), { 'missing': [], 'extra': [] })
         self.assertEqual(BlogPostWithTags.compare_indexes(), { 'missing': [], 'extra': [] })
         self.assertEqual(BlogPostWithCustomField.compare_indexes(), { 'missing': [], 'extra': [] })
+
+    @needs_mongodb_v26
+    def test_compare_indexes_for_text_indexes(self):
+        """ Ensure that compare_indexes behaves correctly for text indexes """
+
+        class Doc(Document):
+            a = StringField()
+            b = StringField()
+            meta = {'indexes': [
+                {'fields': ['$a', "$b"],
+                 'default_language': 'english',
+                 'weights': {'a': 10, 'b': 2}
+                }
+            ]}
+
+        Doc.drop_collection()
+        Doc.ensure_indexes()
+        actual = Doc.compare_indexes()
+        expected = {'missing': [], 'extra': []}
+        self.assertEqual(actual, expected)
 
     def test_list_indexes_inheritance(self):
         """ ensure that all of the indexes are listed regardless of the super-
@@ -319,7 +340,7 @@ class ClassMethodsTest(unittest.TestCase):
             meta = {'collection': collection_name}
 
         Person(name="Test User").save()
-        self.assertTrue(collection_name in self.db.collection_names())
+        self.assertIn(collection_name, self.db.collection_names())
 
         user_obj = self.db[collection_name].find_one()
         self.assertEqual(user_obj['name'], "Test User")
@@ -328,7 +349,7 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(user_obj.name, "Test User")
 
         Person.drop_collection()
-        self.assertFalse(collection_name in self.db.collection_names())
+        self.assertNotIn(collection_name, self.db.collection_names())
 
     def test_collection_name_and_primary(self):
         """Ensure that a collection with a specified name may be used.

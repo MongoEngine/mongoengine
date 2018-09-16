@@ -19,32 +19,42 @@ MongoEngine
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
-Documentation available at https://mongoengine-odm.readthedocs.io - there is currently
-a `tutorial <https://mongoengine-odm.readthedocs.io/tutorial.html>`_, a `user guide
-<https://mongoengine-odm.readthedocs.io/guide/index.html>`_ and an `API reference
-<https://mongoengine-odm.readthedocs.io/apireference.html>`_.
+Documentation is available at https://mongoengine-odm.readthedocs.io - there
+is currently a `tutorial <https://mongoengine-odm.readthedocs.io/tutorial.html>`_,
+a `user guide <https://mongoengine-odm.readthedocs.io/guide/index.html>`_, and
+an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
+
+Supported MongoDB Versions
+==========================
+MongoEngine is currently tested against MongoDB v2.4, v2.6, and v3.0. Future
+versions should be supported as well, but aren't actively tested at the moment.
+Make sure to open an issue or submit a pull request if you experience any
+problems with MongoDB v3.2+.
 
 Installation
 ============
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
 `pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
-You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_ and thus
-you can use ``easy_install -U mongoengine``. Otherwise, you can download the
+You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
+and thus you can use ``easy_install -U mongoengine``. Otherwise, you can download the
 source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and run ``python
 setup.py install``.
 
 Dependencies
 ============
-- pymongo>=2.7.1
-- sphinx (optional - for documentation generation)
+All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
+At the very least, you'll need these two packages to use MongoEngine:
 
-Optional Dependencies
----------------------
-- **Image Fields**: Pillow>=2.0.0
+- pymongo>=2.7.1
+- six>=1.10.0
+
+If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
+
 - dateutil>=2.1.0
 
-.. note
-   MongoEngine always runs it's test suite against the latest patch version of each dependecy. e.g.: PyMongo 3.0.1
+If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
+
+- Pillow>=2.0.0
 
 Examples
 ========
@@ -57,7 +67,7 @@ Some simple examples of what MongoEngine code looks like:
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
-        posted = DateTimeField(default=datetime.datetime.now)
+        posted = DateTimeField(default=datetime.datetime.utcnow)
         tags = ListField(StringField(max_length=50))
         meta = {'allow_inheritance': True}
 
@@ -87,27 +97,28 @@ Some simple examples of what MongoEngine code looks like:
     ...     print
     ...
 
-    >>> len(BlogPost.objects)
+    # Count all blog posts and its subtypes
+    >>> BlogPost.objects.count()
     2
-    >>> len(TextPost.objects)
+    >>> TextPost.objects.count()
     1
-    >>> len(LinkPost.objects)
+    >>> LinkPost.objects.count()
     1
 
-    # Find tagged posts
-    >>> len(BlogPost.objects(tags='mongoengine'))
+    # Count tagged posts
+    >>> BlogPost.objects(tags='mongoengine').count()
     2
-    >>> len(BlogPost.objects(tags='mongodb'))
+    >>> BlogPost.objects(tags='mongodb').count()
     1
 
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port and have ``nose`` installed. Then, run: ``python setup.py nosetests``.
+the standard port and have ``nose`` installed. Then, run ``python setup.py nosetests``.
 
-To run the test suite on every supported Python version and every supported PyMongo version,
-you can use ``tox``.
-tox and each supported Python version should be installed in your environment:
+To run the test suite on every supported Python and PyMongo version, you can
+use ``tox``. You'll need to make sure you have each supported Python version
+installed in your environment and then:
 
 .. code-block:: shell
 
@@ -116,13 +127,16 @@ tox and each supported Python version should be installed in your environment:
     # Run the test suites
     $ tox
 
-If you wish to run one single or selected tests, use the nosetest convention. It will find the folder,
-eventually the file, go to the TestClass specified after the colon and eventually right to the single test.
-Also use the -s argument if you want to print out whatever or access pdb while testing.
+If you wish to run a subset of tests, use the nosetests convention:
 
 .. code-block:: shell
 
-    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest.test_cls_field -s
+    # Run all the tests in a particular test file
+    $ python setup.py nosetests --tests tests/fields/fields.py
+    # Run only particular test class in that file
+    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest
+    # Use the -s option if you want to print some debug statements or use pdb
+    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest -s
 
 Community
 =========
@@ -130,8 +144,7 @@ Community
   <http://groups.google.com/group/mongoengine-users>`_
 - `MongoEngine Developers mailing list
   <http://groups.google.com/group/mongoengine-dev>`_
-- `#mongoengine IRC channel <http://webchat.freenode.net/?channels=mongoengine>`_
 
 Contributing
 ============
-We welcome contributions! see  the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
+We welcome contributions! See the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_

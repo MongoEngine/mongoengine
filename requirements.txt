@@ -3,3 +3,5 @@ pymongo>=2.7.1
 six==1.10.0
 flake8
 flake8-import-order
+Sphinx==1.5.5
+sphinx-rtd-theme==0.2.4

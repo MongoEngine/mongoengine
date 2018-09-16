@@ -17,3 +17,4 @@ tests/test_bugfix.py
 htmlcov/
 venv
 venv3
+scratchpad

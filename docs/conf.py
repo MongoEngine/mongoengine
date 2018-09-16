@@ -13,6 +13,10 @@
 
 import sys, os
 
+import sphinx_rtd_theme
+
+import mongoengine
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -44,7 +48,6 @@ copyright = u'2009, MongoEngine Authors'
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-import mongoengine
 # The short X.Y version.
 version = mongoengine.get_version()
 # The full version, including alpha/beta/rc tags.
@@ -97,10 +100,12 @@ html_theme = 'sphinx_rtd_theme'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    'canonical_url': 'http://docs.mongoengine.org/en/latest/'
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = ['_themes']
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -199,7 +204,3 @@ latex_documents = [
 #latex_use_modindex = True
 
 autoclass_content = 'both'
-
-html_theme_options = dict(
-    canonical_url='http://docs.mongoengine.org/en/latest/'
-)

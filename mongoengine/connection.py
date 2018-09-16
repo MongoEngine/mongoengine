@@ -28,7 +28,7 @@ _connections = {}
 _dbs = {}
 
 
-def register_connection(alias, name=None, host=None, port=None,
+def register_connection(alias, db=None, name=None, host=None, port=None,
                         read_preference=READ_PREFERENCE,
                         username=None, password=None,
                         authentication_source=None,
@@ -39,6 +39,7 @@ def register_connection(alias, name=None, host=None, port=None,
     :param alias: the name that will be used to refer to this connection
         throughout MongoEngine
     :param name: the name of the specific database to use
+    :param db: the name of the database to use, for compatibility with connect
     :param host: the host name of the :program:`mongod` instance to connect to
     :param port: the port that the :program:`mongod` instance is running on
     :param read_preference: The read preference for the collection
@@ -51,12 +52,14 @@ def register_connection(alias, name=None, host=None, port=None,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
     :param is_mock: explicitly use mongomock for this connection
         (can also be done by using `mongomock://` as db host prefix)
-    :param kwargs: allow ad-hoc parameters to be passed into the pymongo driver
+    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+        for example maxpoolsize, tz_aware, etc. See the documentation
+        for pymongo's `MongoClient` for a full list.
 
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
-        'name': name or 'test',
+        'name': name or db or 'test',
         'host': host or 'localhost',
         'port': port or 27017,
         'read_preference': read_preference,
@@ -66,9 +69,9 @@ def register_connection(alias, name=None, host=None, port=None,
         'authentication_mechanism': authentication_mechanism
     }
 
-    # Handle uri style connections
     conn_host = conn_settings['host']
-    # host can be a list or a string, so if string, force to a list
+
+    # Host can be a list or a string, so if string, force to a list.
     if isinstance(conn_host, six.string_types):
         conn_host = [conn_host]
 
@@ -96,11 +99,23 @@ def register_connection(alias, name=None, host=None, port=None,
 
             uri_options = uri_dict['options']
             if 'replicaset' in uri_options:
-                conn_settings['replicaSet'] = True
+                conn_settings['replicaSet'] = uri_options['replicaset']
             if 'authsource' in uri_options:
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
+            if IS_PYMONGO_3 and 'readpreference' in uri_options:
+                read_preferences = (
+                    ReadPreference.NEAREST,
+                    ReadPreference.PRIMARY,
+                    ReadPreference.PRIMARY_PREFERRED,
+                    ReadPreference.SECONDARY,
+                    ReadPreference.SECONDARY_PREFERRED)
+                read_pf_mode = uri_options['readpreference'].lower()
+                for preference in read_preferences:
+                    if preference.name.lower() == read_pf_mode:
+                        conn_settings['read_preference'] = preference
+                        break
         else:
             resolved_hosts.append(entity)
     conn_settings['host'] = resolved_hosts
@@ -144,13 +159,14 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         raise MongoEngineConnectionError(msg)
 
     def _clean_settings(settings_dict):
-        irrelevant_fields = set([
-            'name', 'username', 'password', 'authentication_source',
-            'authentication_mechanism'
-        ])
+        # set literal more efficient than calling set function
+        irrelevant_fields_set = {
+            'name', 'username', 'password',
+            'authentication_source', 'authentication_mechanism'
+        }
         return {
             k: v for k, v in settings_dict.items()
-            if k not in irrelevant_fields
+            if k not in irrelevant_fields_set
         }
 
     # Retrieve a copy of the connection settings associated with the requested
@@ -170,22 +186,21 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     else:
         connection_class = MongoClient
 
-        # Handle replica set connections
-        if 'replicaSet' in conn_settings:
+        # For replica set connections with PyMongo 2.x, use
+        # MongoReplicaSetClient.
+        # TODO remove this once we stop supporting PyMongo 2.x.
+        if 'replicaSet' in conn_settings and not IS_PYMONGO_3:
+            connection_class = MongoReplicaSetClient
+            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
+
+            # hosts_or_uri has to be a string, so if 'host' was provided
+            # as a list, join its parts and separate them by ','
+            if isinstance(conn_settings['hosts_or_uri'], list):
+                conn_settings['hosts_or_uri'] = ','.join(
+                    conn_settings['hosts_or_uri'])
 
             # Discard port since it can't be used on MongoReplicaSetClient
             conn_settings.pop('port', None)
-
-            # Discard replicaSet if it's not a string
-            if not isinstance(conn_settings['replicaSet'], six.string_types):
-                del conn_settings['replicaSet']
-
-            # For replica set connections with PyMongo 2.x, use
-            # MongoReplicaSetClient.
-            # TODO remove this once we stop supporting PyMongo 2.x.
-            if not IS_PYMONGO_3:
-                connection_class = MongoReplicaSetClient
-                conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
 
     # Iterate over all of the connection settings and if a connection with
     # the same parameters is already established, use it instead of creating
@@ -242,8 +257,11 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     running on the default port on localhost. If authentication is needed,
     provide username and password arguments as well.
 
-    Multiple databases are supported by using aliases.  Provide a separate
+    Multiple databases are supported by using aliases. Provide a separate
     `alias` to connect to a different instance of :program:`mongod`.
+
+    See the docstring for `register_connection` for more details about all
+    supported kwargs.
 
     .. versionchanged:: 0.6 - added multiple database support.
     """

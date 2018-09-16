@@ -141,6 +141,16 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(qs._loaded_fields.as_dict(),
                          {'b': {'$slice': 5}})
 
+    def test_mix_slice_with_other_fields(self):
+        class MyDoc(Document):
+            a = ListField()
+            b = ListField()
+            c = ListField()
+
+        qs = MyDoc.objects.fields(a=1, b=0, slice__c=2)
+        self.assertEqual(qs._loaded_fields.as_dict(),
+                         {'c': {'$slice': 2}, 'a': 1})
+
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
         """
@@ -171,7 +181,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
         employee.save()
 
         obj = self.Person.objects(id=employee.id).only('age').get()
-        self.assertTrue(isinstance(obj, Employee))
+        self.assertIsInstance(obj, Employee)
 
         # Check field names are looked up properly
         obj = Employee.objects(id=employee.id).only('salary').get()
@@ -187,14 +197,18 @@ class OnlyExcludeAllTest(unittest.TestCase):
             title = StringField()
             text = StringField()
 
+        class VariousData(EmbeddedDocument):
+            some = BooleanField()
+
         class BlogPost(Document):
             content = StringField()
             author = EmbeddedDocumentField(User)
             comments = ListField(EmbeddedDocumentField(Comment))
+            various = MapField(field=EmbeddedDocumentField(VariousData))
 
         BlogPost.drop_collection()
 
-        post = BlogPost(content='Had a good coffee today...')
+        post = BlogPost(content='Had a good coffee today...', various={'test_dynamic':{'some': True}})
         post.author = User(name='Test User')
         post.comments = [Comment(title='I aggree', text='Great post!'), Comment(title='Coffee', text='I hate coffee')]
         post.save()
@@ -204,6 +218,9 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(obj.author.email, None)
         self.assertEqual(obj.author.name, 'Test User')
         self.assertEqual(obj.comments, [])
+
+        obj = BlogPost.objects.only('various.test_dynamic.some').get()
+        self.assertEqual(obj.various["test_dynamic"].some, True)
 
         obj = BlogPost.objects.only('content', 'comments.title',).get()
         self.assertEqual(obj.content, 'Had a good coffee today...')
