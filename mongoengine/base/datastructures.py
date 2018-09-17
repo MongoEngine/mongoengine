@@ -116,17 +116,18 @@ class BaseList(list):
         if 'DocumentProxy' in str(type(value)):
             return value
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
-        if isinstance(value, EmbeddedDocument) and value._instance is None:
-            value._instance = self._instance
-        elif not isinstance(value, BaseDict) and isinstance(value, dict):
-            value = BaseDict(value, None, '%s.%s' % (self._name, key))
-            super(BaseList, self).__setitem__(key, value)
-            value._instance = self._instance
-        elif not isinstance(value, BaseList) and isinstance(value, list):
-            value = BaseList(value, None, '%s.%s' % (self._name, key))
-            super(BaseList, self).__setitem__(key, value)
-            value._instance = self._instance
+        if hasattr(self, '_instance'):
+            EmbeddedDocument = _import_class('EmbeddedDocument')
+            if isinstance(value, EmbeddedDocument) and getattr(value, '_instance', None) is None:
+                value._instance = self._instance
+            elif not isinstance(value, BaseDict) and isinstance(value, dict):
+                value = BaseDict(value, None, '%s.%s' % (self._name, key))
+                super(BaseList, self).__setitem__(key, value)
+                value._instance = self._instance
+            elif not isinstance(value, BaseList) and isinstance(value, list):
+                value = BaseList(value, None, '%s.%s' % (self._name, key))
+                super(BaseList, self).__setitem__(key, value)
+                value._instance = self._instance
         return value
 
     def __iter__(self):
