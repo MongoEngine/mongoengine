@@ -134,6 +134,9 @@ class BaseField(object):
                 value = self.default
                 if callable(value):
                     value = value()
+            elif not self.required and self.name not in instance._data:
+                # If the field is optional and the value is None, we don't need to do anything
+                return
 
         if instance._initialised:
             try:
