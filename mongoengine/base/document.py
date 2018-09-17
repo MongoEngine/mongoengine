@@ -516,7 +516,13 @@ class BaseDocument(object):
             else:
                 self._changed_fields.append(key)
                 if (key not in self._original_values) and ("." not in key):
-                    self._original_values[key] = self[key]
+                    # deepcopy for lists, embedded docs etc. This should not be a costly operation since we are doing
+                    # this only when the field changes. This is useful to kill on_changes when
+                    # Orignal value of self.field was ['x'], and there were multiple assignments
+                    # self.field = []
+                    # self.field.append('x')
+                    # The on_change should not be fired even in this case.
+                    self._original_values[key] = copy.deepcopy(self[key])
 
                 # remove lower level changed fields
                 level = '.'.join(levels[:idx]) + '.'
