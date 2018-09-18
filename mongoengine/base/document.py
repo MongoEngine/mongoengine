@@ -847,18 +847,19 @@ class BaseDocument(object):
 
         historyTTL = cls.instance_type._meta.get('historyTTL')
         if historyTTL:
-            delete_only_non_user_entries = False
+            delete_only_eta_created_entries = False
             if isinstance(historyTTL, int):
                 ttl = historyTTL
             else:
                 ttl = historyTTL.get('ttl')
-                delete_only_non_user_entries = historyTTL.get('deleteOnlyNonUserEntries', False)
+                delete_only_eta_created_entries = historyTTL.get('deleteOnlyEtaCreatedEntries', False)
 
             historyTTLIndex = {'fields': [('history_date', -1)], 'expireAfterSeconds': ttl,
                                'args': {'noCompanyPrefix': True}}
-            if delete_only_non_user_entries:
+            if delete_only_eta_created_entries:
+                # partial filter expressions only support True conditions
                 historyTTLIndex['partialFilterExpression'] = {
-                    'history_user': {'$exists': False}
+                    'eta_id': {'$exists': True}
                 }
 
             indexes.append(historyTTLIndex)
