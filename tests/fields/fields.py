@@ -425,6 +425,16 @@ class FieldTest(MongoDBTestCase):
         scheme_link.url = 'ws://google.com'
         scheme_link.validate()
 
+    def test_url_allowed_domains(self):
+        """Allow underscore in domain names.
+        """
+        class Link(Document):
+            url = URLField()
+
+        link = Link()
+        link.url = 'https://san_leandro-ca.geebo.com'
+        link.validate()
+
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
