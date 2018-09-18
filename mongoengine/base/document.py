@@ -700,7 +700,7 @@ class BaseDocument(object):
 
         fields = cls._fields
         if not _auto_dereference:
-            fields = copy.copy(fields)
+            fields = copy.deepcopy(fields)
 
         for field_name, field in fields.iteritems():
             field._auto_dereference = _auto_dereference

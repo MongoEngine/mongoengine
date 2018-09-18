@@ -1104,9 +1104,9 @@ class ReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
+        auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
-        if self._auto_dereference and isinstance(value, DBRef):
+        if auto_dereference and isinstance(value, DBRef):
             if hasattr(value, 'cls'):
                 # Dereference using the class type specified in the reference
                 cls = get_document(value.cls)
@@ -1267,6 +1267,7 @@ class CachedReferenceField(BaseField):
         # Get value from document instance if available
         value = instance._data.get(self.name)
         self._auto_dereference = instance._fields[self.name]._auto_dereference
+
         # Dereference DBRefs
         if self._auto_dereference and isinstance(value, DBRef):
             dereferenced = self.document_type._get_db().dereference(value)

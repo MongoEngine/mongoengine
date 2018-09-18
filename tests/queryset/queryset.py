@@ -4674,10 +4674,68 @@ class QuerySetTest(unittest.TestCase):
         User(name="Bob Dole", organization=whitehouse).save()
 
         qs = User.objects()
+        qs_user = qs.first()
+
         self.assertIsInstance(qs.first().organization, Organization)
-        self.assertNotIsInstance(qs.no_dereference().first().organization, Organization)
-        self.assertNotIsInstance(qs.no_dereference().get().organization, Organization)
+
+        self.assertIsInstance(qs.no_dereference().first().organization, DBRef)
+
+        self.assertIsInstance(qs_user.organization, Organization)
         self.assertIsInstance(qs.first().organization, Organization)
+
+    def test_no_dereference_internals(self):
+        # Test the internals on which queryset.no_dereference relies on
+        class Organization(Document):
+            name = StringField()
+
+        class User(Document):
+            organization = ReferenceField(Organization)
+
+        User.drop_collection()
+        Organization.drop_collection()
+
+        cls_organization_field = User.organization
+        self.assertTrue(cls_organization_field._auto_dereference, True)  # default
+
+        org = Organization(name="whatever").save()
+        User(organization=org).save()
+
+        qs_no_deref = User.objects().no_dereference()
+        user_no_deref = qs_no_deref.first()
+        self.assertFalse(qs_no_deref._auto_dereference)
+
+        # Make sure the instance field is different from the class field
+        instance_org_field = user_no_deref._fields['organization']
+        self.assertIsNot(instance_org_field, cls_organization_field)
+        self.assertFalse(instance_org_field._auto_dereference)
+
+        self.assertIsInstance(user_no_deref.organization, DBRef)
+        self.assertTrue(cls_organization_field._auto_dereference, True)  # Make sure the class Field wasn't altered
+
+    def test_no_dereference_no_side_effect_on_existing_instance(self):
+        # Relates to issue #1677 - ensures no regression of the bug
+
+        class Organization(Document):
+            name = StringField()
+
+        class User(Document):
+            organization = ReferenceField(Organization)
+
+        User.drop_collection()
+        Organization.drop_collection()
+
+        org = Organization(name="whatever").save()
+        User(organization=org).save()
+
+        qs = User.objects()
+        user = qs.first()
+
+        qs_no_deref = User.objects().no_dereference()
+        user_no_deref = qs_no_deref.first()
+
+        no_derf_org = user_no_deref.organization    # was triggering the bug
+        self.assertIsInstance(no_derf_org, DBRef)
+        self.assertIsInstance(user.organization, Organization)
 
     def test_no_dereference_embedded_doc(self):
 
@@ -4693,7 +4751,7 @@ class QuerySetTest(unittest.TestCase):
             members = ListField(EmbeddedDocumentField(Member))
             ceo = ReferenceField(User)
             member = EmbeddedDocumentField(Member)
-            admin = ListField(ReferenceField(User))
+            admins = ListField(ReferenceField(User))
 
         Organization.drop_collection()
         User.drop_collection()
@@ -4703,16 +4761,22 @@ class QuerySetTest(unittest.TestCase):
 
         member = Member(name="Flash", user=user)
 
-        company = Organization(name="Mongo Inc", ceo=user, member=member)
-        company.admin.append(user)
-        company.members.append(member)
+        company = Organization(name="Mongo Inc",
+                               ceo=user,
+                               member=member,
+                               admins=[user],
+                               members=[member])
         company.save()
 
-        result = Organization.objects().no_dereference().first()
+        org = Organization.objects().no_dereference().first()
 
-        self.assertIsInstance(result.admin[0], (DBRef, ObjectId))
-        self.assertIsInstance(result.member.user, (DBRef, ObjectId))
-        self.assertIsInstance(result.members[0].user, (DBRef, ObjectId))
+        self.assertNotEqual(id(org._fields['admins']), id(Organization.admins))
+        self.assertFalse(org._fields['admins']._auto_dereference)
+
+        admin = org.admins[0]
+        self.assertIsInstance(admin, DBRef)
+        self.assertIsInstance(org.member.user, DBRef)
+        self.assertIsInstance(org.members[0].user, DBRef)
 
     def test_cached_queryset(self):
         class Person(Document):
