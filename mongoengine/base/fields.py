@@ -314,11 +314,16 @@ class ComplexBaseField(BaseField):
         if hasattr(value, 'to_python'):
             return value.to_python()
 
+        BaseDocument = _import_class('BaseDocument')
+        if isinstance(value, BaseDocument):
+            # Something is wrong, return the value as it is
+            return value
+
         is_list = False
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = {k: v for k, v in enumerate(value)}
+                value = {idx: v for idx, v in enumerate(value)}
             except TypeError:  # Not iterable return the value
                 return value
 

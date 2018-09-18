@@ -3743,7 +3743,7 @@ class FieldTest(MongoDBTestCase):
         assert isinstance(doc.field, ToEmbedChild)
         assert doc.field == to_embed_child
 
-    def test_invalid_dict_value(self):
+    def test_dict_field_invalid_dict_value(self):
         class DictFieldTest(Document):
             dictionary = DictField(required=True)
 
@@ -3756,6 +3756,22 @@ class FieldTest(MongoDBTestCase):
         test = DictFieldTest(dictionary=False)
         test.dictionary  # Just access to test getter
         self.assertRaises(ValidationError, test.validate)
+
+    def test_dict_field_raises_validation_error_if_wrongly_assign_embedded_doc(self):
+        class DictFieldTest(Document):
+            dictionary = DictField(required=True)
+
+        DictFieldTest.drop_collection()
+
+        class Embedded(EmbeddedDocument):
+            name = StringField()
+
+        embed = Embedded(name='garbage')
+        doc = DictFieldTest(dictionary=embed)
+        with self.assertRaises(ValidationError) as ctx_err:
+            doc.validate()
+        self.assertIn("'dictionary'", str(ctx_err.exception))
+        self.assertIn('Only dictionaries may be used in a DictField', str(ctx_err.exception))
 
     def test_cls_field(self):
         class Animal(Document):
@@ -3854,6 +3870,28 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
             self.Comments(author='user2', message='message3'),
             self.Comments(author='user3', message='message1')
         ]).save()
+
+    def test_fails_upon_validate_if_provide_a_doc_instead_of_a_list_of_doc(self):
+        # Relates to Issue #1464
+        comment = self.Comments(author='John')
+
+        class Title(Document):
+            content = StringField()
+
+        # Test with an embeddedDocument instead of a list(embeddedDocument)
+        # It's an edge case but it used to fail with a vague error, making it difficult to troubleshoot it
+        post = self.BlogPost(comments=comment)
+        with self.assertRaises(ValidationError) as ctx_err:
+            post.validate()
+        self.assertIn("'comments'", str(ctx_err.exception))
+        self.assertIn('Only lists and tuples may be used in a list field', str(ctx_err.exception))
+
+        # Test with a Document
+        post = self.BlogPost(comments=Title(content='garbage'))
+        with self.assertRaises(ValidationError) as e:
+            post.validate()
+        self.assertIn("'comments'", str(ctx_err.exception))
+        self.assertIn('Only lists and tuples may be used in a list field', str(ctx_err.exception))
 
     def test_no_keyword_filter(self):
         """
