@@ -693,7 +693,7 @@ class Document(BaseDocument):
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
         """
-        background = cls._meta.get('index_background', False)
+        background = cls._meta.get('index_background', True)
         drop_dups = cls._meta.get('index_drop_dups', False)
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
