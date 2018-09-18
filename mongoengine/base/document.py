@@ -34,7 +34,8 @@ NON_FIELD_ERRORS = '__all__'
 
 class BaseDocument(object):
     __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
-                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '__weakref__')
+                 '_dynamic_fields', '_auto_id_field', '_db_field_map', '__weakref__',
+                 '_force_changed_fields')
 
     _dynamic = False
     _dynamic_lock = True
@@ -488,6 +489,11 @@ class BaseDocument(object):
 
         return value
 
+    def force_mark_as_changed(self, key):
+        self._mark_as_changed(key)
+        self._force_changed_fields = getattr(self, '_force_changed_fields', set())
+        self._force_changed_fields.add(key)
+
     def _mark_as_changed(self, key):
         """Marks a key as explicitly changed by the user
         """
@@ -516,7 +522,13 @@ class BaseDocument(object):
             else:
                 self._changed_fields.append(key)
                 if (key not in self._original_values) and ("." not in key):
-                    self._original_values[key] = self[key]
+                    # deepcopy for lists, embedded docs etc. This should not be a costly operation since we are doing
+                    # this only when the field changes. This is useful to kill on_changes when
+                    # Orignal value of self.field was ['x'], and there were multiple assignments
+                    # self.field = []
+                    # self.field.append('x')
+                    # The on_change should not be fired even in this case.
+                    self._original_values[key] = copy.deepcopy(self[key])
 
                 # remove lower level changed fields
                 level = '.'.join(levels[:idx]) + '.'
