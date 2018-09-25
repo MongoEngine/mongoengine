@@ -4720,12 +4720,14 @@ class QuerySetTest(unittest.TestCase):
 
         class User(Document):
             organization = ReferenceField(Organization)
+            organization_gen = GenericReferenceField()
 
         User.drop_collection()
         Organization.drop_collection()
 
         org = Organization(name="whatever").save()
-        User(organization=org).save()
+        User(organization=org,
+             organization_gen=org).save()
 
         qs = User.objects()
         user = qs.first()
@@ -4733,9 +4735,15 @@ class QuerySetTest(unittest.TestCase):
         qs_no_deref = User.objects().no_dereference()
         user_no_deref = qs_no_deref.first()
 
+        # ReferenceField
         no_derf_org = user_no_deref.organization    # was triggering the bug
         self.assertIsInstance(no_derf_org, DBRef)
         self.assertIsInstance(user.organization, Organization)
+
+        # GenericReferenceField
+        no_derf_org_gen = user_no_deref.organization_gen
+        self.assertIsInstance(no_derf_org_gen, dict)
+        self.assertIsInstance(user.organization_gen, Organization)
 
     def test_no_dereference_embedded_doc(self):
 
