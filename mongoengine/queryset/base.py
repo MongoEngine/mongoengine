@@ -414,7 +414,8 @@ class BaseQuerySet(object):
         if call_document_delete:
             cnt = 0
             for doc in queryset:
-                doc.delete(**write_concern)
+                delete_fn = getattr(doc, 'really_hard_delete', doc.delete)
+                delete_fn(**write_concern)
                 cnt += 1
             return cnt
 
