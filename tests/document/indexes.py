@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 import unittest
-import sys
+from datetime import datetime
 
 from nose.plugins.skip import SkipTest
-from datetime import datetime
+from pymongo.errors import OperationFailure
 import pymongo
 
 from mongoengine import *
 from mongoengine.connection import get_db
-
-from tests.utils import get_mongodb_version, needs_mongodb_v26
+from tests.utils import get_mongodb_version, needs_mongodb_v26, MONGODB_32, MONGODB_3
 
 __all__ = ("IndexesTest", )
 
@@ -19,6 +18,7 @@ class IndexesTest(unittest.TestCase):
     def setUp(self):
         self.connection = connect(db='mongoenginetest')
         self.db = get_db()
+        self.mongodb_version = get_mongodb_version()
 
         class Person(Document):
             name = StringField()
@@ -491,7 +491,7 @@ class IndexesTest(unittest.TestCase):
         obj = Test(a=1)
         obj.save()
 
-        IS_MONGODB_3 = get_mongodb_version()[0] >= 3
+        IS_MONGODB_3 = get_mongodb_version() >= MONGODB_3
 
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
@@ -541,19 +541,24 @@ class IndexesTest(unittest.TestCase):
                                  [('categories', 1), ('_id', 1)])
 
     def test_hint(self):
+        MONGO_VER = self.mongodb_version
 
+        TAGS_INDEX_NAME = 'tags_1'
         class BlogPost(Document):
             tags = ListField(StringField())
             meta = {
                 'indexes': [
-                    'tags',
+                    {
+                        'fields': ['tags'],
+                        'name': TAGS_INDEX_NAME
+                    }
                 ],
             }
 
         BlogPost.drop_collection()
 
-        for i in range(0, 10):
-            tags = [("tag %i" % n) for n in range(0, i % 2)]
+        for i in range(10):
+            tags = [("tag %i" % n) for n in range(i % 2)]
             BlogPost(tags=tags).save()
 
         self.assertEqual(BlogPost.objects.count(), 10)
@@ -563,18 +568,18 @@ class IndexesTest(unittest.TestCase):
         if pymongo.version != '3.0':
             self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
 
+        if MONGO_VER == MONGODB_32:
+            # Mongo32 throws an error if an index exists (i.e `tags` in our case)
+            # and you use hint on an index name that does not exist
+            with self.assertRaises(OperationFailure):
+                BlogPost.objects.hint([('ZZ', 1)]).count()
+        else:
             self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
 
-        if pymongo.version >= '2.8':
-            self.assertEqual(BlogPost.objects.hint('tags').count(), 10)
-        else:
-            def invalid_index():
-                BlogPost.objects.hint('tags').next()
-            self.assertRaises(TypeError, invalid_index)
+        self.assertEqual(BlogPost.objects.hint(TAGS_INDEX_NAME ).count(), 10)
 
-        def invalid_index_2():
-            return BlogPost.objects.hint(('tags', 1)).next()
-        self.assertRaises(Exception, invalid_index_2)
+        with self.assertRaises(Exception):
+            BlogPost.objects.hint(('tags', 1)).next()
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.

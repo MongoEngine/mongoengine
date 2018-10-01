@@ -18,6 +18,12 @@ elif [ "$MONGODB" = "3.0" ]; then
     sudo apt-get update
     sudo apt-get install mongodb-org-server=3.0.14
     # service should be started automatically
+elif [ "$MONGODB" = "3.2" ]; then
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv EA312927
+    echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
+    sudo apt-get update
+    sudo apt-get install mongodb-org-server=3.2.20
+    # service should be started automatically
 else
     echo "Invalid MongoDB version, expected 2.4, 2.6, or 3.0."
     exit 1

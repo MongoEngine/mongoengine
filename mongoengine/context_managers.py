@@ -182,8 +182,10 @@ class query_counter(object):
         self._ignored_query = {
             'ns':
                 {'$ne': '%s.system.indexes' % self.db.name},
-            'op':
-                {'$ne': 'killcursors'}
+            'op':                       # MONGODB < 3.2
+                {'$ne': 'killcursors'},
+            'command.killCursors':      # MONGODB >= 3.2
+                {'$exists': False}
         }
 
     def _turn_on_profiling(self):

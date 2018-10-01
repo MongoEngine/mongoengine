@@ -299,7 +299,6 @@ class ContextManagersTest(unittest.TestCase):
 
             cursor.close()              # issues a `killcursors` query that is ignored by the context
             self.assertEqual(q, 1)
-
             _ = db.system.indexes.find_one()    # queries on db.system.indexes are ignored as well
             self.assertEqual(q, 1)
 
