@@ -9,7 +9,8 @@ from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from tests.utils import get_mongodb_version, requires_mongodb_gte_26, MONGODB_32, MONGODB_3
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_3
+from tests.utils import requires_mongodb_gte_26, requires_mongodb_lte_32, requires_mongodb_gte_34
 
 __all__ = ("IndexesTest", )
 
@@ -477,6 +478,7 @@ class IndexesTest(unittest.TestCase):
     def test_covered_index(self):
         """Ensure that covered indexes can be used
         """
+        IS_MONGODB_3 = get_mongodb_version() >= MONGODB_3
 
         class Test(Document):
             a = IntField()
@@ -491,8 +493,6 @@ class IndexesTest(unittest.TestCase):
 
         obj = Test(a=1)
         obj.save()
-
-        IS_MONGODB_3 = get_mongodb_version() >= MONGODB_3
 
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
@@ -569,7 +569,7 @@ class IndexesTest(unittest.TestCase):
         if pymongo.version != '3.0':
             self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
 
-        if MONGO_VER == MONGODB_32:
+        if MONGO_VER >= MONGODB_32:
             # Mongo32 throws an error if an index exists (i.e `tags` in our case)
             # and you use hint on an index name that does not exist
             with self.assertRaises(OperationFailure):
@@ -600,6 +600,22 @@ class IndexesTest(unittest.TestCase):
 
         # Ensure backwards compatibilty for errors
         self.assertRaises(OperationError, post2.save)
+
+    @requires_mongodb_gte_34
+    def test_primary_key_unique_not_working_under_mongo_34(self):
+        class Blog(Document):
+            id = StringField(primary_key=True, unique=True)
+
+        with self.assertRaises(OperationFailure) as ctx_err:
+            Blog(id='garbage').save()
+        self.assertIn("The field 'unique' is not valid for an _id index specification", str(ctx_err.exception))
+
+    @requires_mongodb_lte_32
+    def test_primary_key_unique_working_under_mongo_32(self):
+        class Blog(Document):
+            id = StringField(primary_key=True, unique=True)
+
+        Blog(id='garbage').save()
 
     def test_unique_with(self):
         """Ensure that unique_with constraints are applied to fields.
@@ -760,7 +776,7 @@ class IndexesTest(unittest.TestCase):
         You won't create a duplicate but you will update an existing document.
         """
         class User(Document):
-            name = StringField(primary_key=True, unique=True)
+            name = StringField(primary_key=True)
             password = StringField()
 
         User.drop_collection()

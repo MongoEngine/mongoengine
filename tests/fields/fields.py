@@ -2113,7 +2113,7 @@ class FieldTest(MongoDBTestCase):
             field_1 = StringField(db_field='f')
 
         class Doc(Document):
-            my_id = IntField(required=True, unique=True, primary_key=True)
+            my_id = IntField(primary_key=True)
             embed_me = DynamicField(db_field='e')
             field_x = StringField(db_field='x')
 
@@ -2135,7 +2135,7 @@ class FieldTest(MongoDBTestCase):
             field_1 = StringField(db_field='f')
 
         class Doc(Document):
-            my_id = IntField(required=True, unique=True, primary_key=True)
+            my_id = IntField(primary_key=True)
             embed_me = DynamicField(db_field='e')
             field_x = StringField(db_field='x')
 
