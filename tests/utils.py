@@ -61,14 +61,14 @@ def _decorated_with_ver_requirement(func, version):
     return _inner
 
 
-def needs_mongodb_v26(func):
+def requires_mongodb_gte_26(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v2.6.
     """
     return _decorated_with_ver_requirement(func, MONGODB_26)
 
 
-def needs_mongodb_v3(func):
+def requires_mongodb_gte_3(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v3.0.
     """

@@ -8,7 +8,7 @@ import pymongo
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from tests.utils import get_mongodb_version, needs_mongodb_v26, MONGODB_32, MONGODB_3
+from tests.utils import get_mongodb_version, requires_mongodb_gte_26, MONGODB_32, MONGODB_3
 
 __all__ = ("IndexesTest", )
 
@@ -754,7 +754,7 @@ class IndexesTest(unittest.TestCase):
         except NotUniqueError:
             pass
 
-    def test_unique_and_primary(self):
+    def test_primary_save_duplicate_update_existing_object(self):
         """If you set a field as primary, then unexpected behaviour can occur.
         You won't create a duplicate but you will update an existing document.
         """
@@ -872,7 +872,7 @@ class IndexesTest(unittest.TestCase):
                          info['provider_ids.foo_1_provider_ids.bar_1']['key'])
         self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_text_indexes(self):
         class Book(Document):
             title = DictField()
