@@ -34,7 +34,8 @@ from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
 from mongoengine.python_support import StringIO
-from mongoengine.queryset import DO_NOTHING, QuerySet
+from mongoengine.queryset import DO_NOTHING
+from mongoengine.queryset.base import BaseQuerySet
 
 try:
     from PIL import Image, ImageOps
@@ -851,7 +852,7 @@ class ListField(ComplexBaseField):
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""
-        if not isinstance(value, (list, tuple, QuerySet)):
+        if not isinstance(value, (list, tuple, BaseQuerySet)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
