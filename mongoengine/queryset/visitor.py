@@ -59,7 +59,9 @@ class SimplificationVisitor(QNodeVisitor):
             
             # Convert DocumentProxy to ids.
             for op in ops:
-                if 'DocumentProxy' in str(type(query[op])):
+                from mongoengine import Document
+                from mongoengine.base.proxy import DocumentProxy
+                if type(query[op]) is DocumentProxy or isinstance(query[op], Document):
                     query[op] = query[op].id
             
             combined_query.update(copy.deepcopy(query))
