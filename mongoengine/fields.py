@@ -140,8 +140,7 @@ class URLField(StringField):
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
     _URL_SCHEMES = ['http', 'https', 'ftp', 'ftps']
 
-    def __init__(self, verify_exists=False, url_regex=None, schemes=None, **kwargs):
-        self.verify_exists = verify_exists
+    def __init__(self, url_regex=None, schemes=None, **kwargs):
         self.url_regex = url_regex or self._URL_REGEX
         self.schemes = schemes or self._URL_SCHEMES
         super(URLField, self).__init__(**kwargs)
@@ -274,14 +273,14 @@ class IntField(BaseField):
     def to_python(self, value):
         try:
             value = int(value)
-        except ValueError:
+        except (TypeError, ValueError):
             pass
         return value
 
     def validate(self, value):
         try:
             value = int(value)
-        except Exception:
+        except (TypeError, ValueError):
             self.error('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -307,7 +306,7 @@ class LongField(BaseField):
     def to_python(self, value):
         try:
             value = long(value)
-        except ValueError:
+        except (TypeError, ValueError):
             pass
         return value
 
@@ -317,7 +316,7 @@ class LongField(BaseField):
     def validate(self, value):
         try:
             value = long(value)
-        except Exception:
+        except (TypeError, ValueError):
             self.error('%s could not be converted to long' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -416,7 +415,7 @@ class DecimalField(BaseField):
         # Convert to string for python 2.6 before casting to Decimal
         try:
             value = decimal.Decimal('%s' % value)
-        except decimal.InvalidOperation:
+        except (TypeError, ValueError, decimal.InvalidOperation):
             return value
         return value.quantize(decimal.Decimal('.%s' % ('0' * self.precision)), rounding=self.rounding)
 
@@ -433,7 +432,7 @@ class DecimalField(BaseField):
                 value = six.text_type(value)
             try:
                 value = decimal.Decimal(value)
-            except Exception as exc:
+            except (TypeError, ValueError, decimal.InvalidOperation) as exc:
                 self.error('Could not convert value to decimal: %s' % exc)
 
         if self.min_value is not None and value < self.min_value:
@@ -852,8 +851,7 @@ class ListField(ComplexBaseField):
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""
-        if (not isinstance(value, (list, tuple, QuerySet)) or
-                isinstance(value, six.string_types)):
+        if not isinstance(value, (list, tuple, QuerySet)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
@@ -1953,8 +1951,7 @@ class SequenceField(BaseField):
         self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
-        self.value_decorator = (callable(value_decorator) and
-                                value_decorator or self.VALUE_DECORATOR)
+        self.value_decorator = value_decorator if callable(value_decorator) else self.VALUE_DECORATOR
         super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate(self):
@@ -2063,7 +2060,7 @@ class UUIDField(BaseField):
                 if not isinstance(value, six.string_types):
                     value = six.text_type(value)
                 return uuid.UUID(value)
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 return original_value
         return value
 
@@ -2085,7 +2082,7 @@ class UUIDField(BaseField):
                 value = str(value)
             try:
                 uuid.UUID(value)
-            except Exception as exc:
+            except (ValueError, TypeError, AttributeError) as exc:
                 self.error('Could not convert to UUID: %s' % exc)
 
 

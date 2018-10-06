@@ -15,7 +15,7 @@ class LazyRegexCompiler(object):
             self._compiled_regex = re.compile(self._pattern, self._flags)
         return self._compiled_regex
 
-    def __get__(self, obj, objtype):
+    def __get__(self, instance, owner):
         return self.compiled_regex
 
     def __set__(self, instance, value):

@@ -38,8 +38,6 @@ CASCADE = 2
 DENY = 3
 PULL = 4
 
-RE_TYPE = type(re.compile(''))
-
 
 class BaseQuerySet(object):
     """A set of results returned from a query. Wraps a MongoDB cursor,
@@ -356,7 +354,7 @@ class BaseQuerySet(object):
 
         try:
             inserted_result = insert_func(raw)
-            ids = return_one and [inserted_result.inserted_id] or inserted_result.inserted_ids
+            ids = [inserted_result.inserted_id] if return_one else inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % six.text_type(err))
@@ -377,14 +375,14 @@ class BaseQuerySet(object):
         if not load_bulk:
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
-            return return_one and ids[0] or ids
+            return ids[0] if return_one else ids
         documents = self.in_bulk(ids)
         results = []
         for obj_id in ids:
             results.append(documents.get(obj_id))
         signals.post_bulk_insert.send(
             self._document, documents=results, loaded=True, **signal_kwargs)
-        return return_one and results[0] or results
+        return results[0] if return_one else results
 
     def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
@@ -974,11 +972,10 @@ class BaseQuerySet(object):
         # explicitly included, and then more complicated operators such as
         # $slice.
         def _sort_key(field_tuple):
-            key, value = field_tuple
-            if isinstance(value, (int)):
+            _, value = field_tuple
+            if isinstance(value, int):
                 return value  # 0 for exclusion, 1 for inclusion
-            else:
-                return 2  # so that complex values appear last
+            return 2  # so that complex values appear last
 
         fields = sorted(cleaned_fields, key=_sort_key)
 
