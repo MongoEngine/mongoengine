@@ -1,6 +1,5 @@
 import copy
 import numbers
-from collections import Hashable
 from functools import partial
 
 from bson import ObjectId, json_util
@@ -19,6 +18,7 @@ from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
+from mongoengine.python_support import Hashable
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 

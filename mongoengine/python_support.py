@@ -19,3 +19,10 @@ if not six.PY3:
         pass
     else:
         StringIO = cStringIO.StringIO
+
+
+if six.PY3:
+    from collections.abc import Hashable
+else:
+    # raises DeprecationWarnings in Python >=3.7
+    from collections import Hashable
