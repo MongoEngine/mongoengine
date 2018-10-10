@@ -258,9 +258,10 @@ class InheritanceTest(unittest.TestCase):
             name = StringField()
 
         # can't inherit because Animal didn't explicitly allow inheritance
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as cm:
             class Dog(Animal):
                 pass
+        self.assertIn("Document Animal may not be subclassed", str(cm.exception))
 
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name='dog').save()
@@ -277,9 +278,10 @@ class InheritanceTest(unittest.TestCase):
             name = StringField()
             meta = {'allow_inheritance': True}
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as cm:
             class Mammal(Animal):
                 meta = {'allow_inheritance': False}
+        self.assertEqual(str(cm.exception), 'Only direct subclasses of Document may set "allow_inheritance" to False')
 
     def test_allow_inheritance_abstract_document(self):
         """Ensure that abstract documents can set inheritance rules and that
@@ -292,7 +294,7 @@ class InheritanceTest(unittest.TestCase):
         class Animal(FinalDocument):
             name = StringField()
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as cm:
             class Mammal(Animal):
                 pass
 

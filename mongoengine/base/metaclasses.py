@@ -121,7 +121,8 @@ class DocumentMetaclass(type):
                 # inheritance of classes where inheritance is set to False
                 allow_inheritance = base._meta.get('allow_inheritance')
                 if not allow_inheritance and not base._meta.get('abstract'):
-                    raise ValueError('Document %s may not be subclassed' %
+                    raise ValueError('Document %s may not be subclassed. '
+                                     'To enable inheritance, use the "allow_inheritance" meta attribute.' %
                                      base.__name__)
 
         # Get superclasses from last base superclass
