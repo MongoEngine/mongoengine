@@ -3,7 +3,7 @@ import copy
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
 
-__all__ = ('Q',)
+__all__ = ('Q', 'QNode')
 
 
 class QNodeVisitor(object):

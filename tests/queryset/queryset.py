@@ -21,7 +21,7 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
-from tests.utils import needs_mongodb_v26, skip_pymongo3, get_mongodb_version, MONGODB_32
+from tests.utils import requires_mongodb_gte_26, skip_pymongo3, get_mongodb_version, MONGODB_32
 
 __all__ = ("QuerySetTest",)
 
@@ -576,7 +576,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_update_min_max(self):
         class Scores(Document):
             high_score = IntField()
@@ -594,7 +594,7 @@ class QuerySetTest(unittest.TestCase):
         Scores.objects(id=scores.id).update(max__high_score=500)
         self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_update_multiple(self):
         class Product(Document):
             item = StringField()
@@ -1007,7 +1007,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     @skip_pymongo3
     def test_cursor_args(self):
         """Ensures the cursor args can be set as expected
@@ -1986,7 +1986,7 @@ class QuerySetTest(unittest.TestCase):
         pymongo_doc = BlogPost.objects.as_pymongo().first()
         self.assertNotIn('title', pymongo_doc)
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_update_push_with_position(self):
         """Ensure that the 'push' update with position works properly.
         """
@@ -3278,7 +3278,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -3365,7 +3365,7 @@ class QuerySetTest(unittest.TestCase):
             'brasil').order_by('$text_score').first()
         self.assertEqual(item.get_text_score(), max_text_score)
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_distinct_handles_references_to_alias(self):
         register_connection('testdb', 'mongoenginetest2')
 
@@ -4494,7 +4494,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(bars._cursor._Cursor__read_preference,
                          ReadPreference.SECONDARY_PREFERRED)
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_read_preference_aggregation_framework(self):
         class Bar(Document):
             txt = StringField()
@@ -5188,7 +5188,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_queryset_aggregation_framework(self):
         class Person(Document):
             name = StringField()

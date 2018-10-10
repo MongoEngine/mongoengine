@@ -2,12 +2,10 @@
 # PyMongo combinations. However, that would result in an overly long build
 # with a very large number of jobs, hence we only test a subset of all the
 # combinations:
-# * MongoDB v2.4 & v3.0 are only tested against Python v2.7 & v3.5.
-# * MongoDB v2.4 is tested against PyMongo v2.7 & v3.x.
-# * MongoDB v3.0 is tested against PyMongo v3.x.
 # * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
-#   v3.5, PyPy & PyPy3, and PyMongo v2.7, v2.8 & v3.x.
-#
+#   v3.5, v3.6, PyPy, and PyMongo v3.x.
+# * MongoDB v3.0 & v3.2 are tested against Python v2.7, v3.5 & v3.6
+#   and Pymongo v3.5 & v3.x
 # Reminder: Update README.rst if you change MongoDB versions we test.
 
 language: python
