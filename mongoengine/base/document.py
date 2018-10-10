@@ -91,9 +91,6 @@ class BaseDocument(object):
             value = getattr(self, key, None)
             setattr(self, key, value)
 
-        if '_cls' not in values:
-            self._cls = self._class_name
-
         # Set passed values after initialisation
         if self._dynamic:
             dynamic_data = {}

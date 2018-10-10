@@ -429,7 +429,6 @@ def _infer_geometry(value):
                                 'type and coordinates keys')
     elif isinstance(value, (list, set)):
         # TODO: shouldn't we test value[0][0][0][0] to see if it is MultiPolygon?
-        # TODO: should both TypeError and IndexError be alike interpreted?
 
         try:
             value[0][0][0]

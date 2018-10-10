@@ -18,14 +18,14 @@ class DocumentMetaclass(type):
     """Metaclass for all documents."""
 
     # TODO lower complexity of this method
-    def __new__(cls, name, bases, attrs):
-        flattened_bases = cls._get_bases(bases)
-        super_new = super(DocumentMetaclass, cls).__new__
+    def __new__(mcs, name, bases, attrs):
+        flattened_bases = mcs._get_bases(bases)
+        super_new = super(DocumentMetaclass, mcs).__new__
 
         # If a base class just call super
         metaclass = attrs.get('my_metaclass')
         if metaclass and issubclass(metaclass, DocumentMetaclass):
-            return super_new(cls, name, bases, attrs)
+            return super_new(mcs, name, bases, attrs)
 
         attrs['_is_document'] = attrs.get('_is_document', False)
         attrs['_cached_reference_fields'] = []
@@ -138,7 +138,7 @@ class DocumentMetaclass(type):
         attrs['_types'] = attrs['_subclasses']  # TODO depreciate _types
 
         # Create the new_class
-        new_class = super_new(cls, name, bases, attrs)
+        new_class = super_new(mcs, name, bases, attrs)
 
         # Set _subclasses
         for base in document_bases:
@@ -147,7 +147,7 @@ class DocumentMetaclass(type):
             base._types = base._subclasses  # TODO depreciate _types
 
         (Document, EmbeddedDocument, DictField,
-         CachedReferenceField) = cls._import_classes()
+         CachedReferenceField) = mcs._import_classes()
 
         if issubclass(new_class, Document):
             new_class._collection = None
@@ -219,29 +219,26 @@ class DocumentMetaclass(type):
 
         return new_class
 
-    def add_to_class(self, name, value):
-        setattr(self, name, value)
-
     @classmethod
-    def _get_bases(cls, bases):
+    def _get_bases(mcs, bases):
         if isinstance(bases, BasesTuple):
             return bases
         seen = []
-        bases = cls.__get_bases(bases)
+        bases = mcs.__get_bases(bases)
         unique_bases = (b for b in bases if not (b in seen or seen.append(b)))
         return BasesTuple(unique_bases)
 
     @classmethod
-    def __get_bases(cls, bases):
+    def __get_bases(mcs, bases):
         for base in bases:
             if base is object:
                 continue
             yield base
-            for child_base in cls.__get_bases(base.__bases__):
+            for child_base in mcs.__get_bases(base.__bases__):
                 yield child_base
 
     @classmethod
-    def _import_classes(cls):
+    def _import_classes(mcs):
         Document = _import_class('Document')
         EmbeddedDocument = _import_class('EmbeddedDocument')
         DictField = _import_class('DictField')
@@ -254,9 +251,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     collection in the database.
     """
 
-    def __new__(cls, name, bases, attrs):
-        flattened_bases = cls._get_bases(bases)
-        super_new = super(TopLevelDocumentMetaclass, cls).__new__
+    def __new__(mcs, name, bases, attrs):
+        flattened_bases = mcs._get_bases(bases)
+        super_new = super(TopLevelDocumentMetaclass, mcs).__new__
 
         # Set default _meta data if base class, otherwise get user defined meta
         if attrs.get('my_metaclass') == TopLevelDocumentMetaclass:
@@ -319,7 +316,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     not parent_doc_cls._meta.get('abstract', False)):
                 msg = 'Abstract document cannot have non-abstract base'
                 raise ValueError(msg)
-            return super_new(cls, name, bases, attrs)
+            return super_new(mcs, name, bases, attrs)
 
         # Merge base class metas.
         # Uses a special MetaDict that handles various merging rules
@@ -360,7 +357,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         attrs['_meta'] = meta
 
         # Call super and get the new class
-        new_class = super_new(cls, name, bases, attrs)
+        new_class = super_new(mcs, name, bases, attrs)
 
         meta = new_class._meta
 
@@ -394,7 +391,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                                            '_auto_id_field', False)
         if not new_class._meta.get('id_field'):
             # After 0.10, find not existing names, instead of overwriting
-            id_name, id_db_name = cls.get_auto_id_names(new_class)
+            id_name, id_db_name = mcs.get_auto_id_names(new_class)
             new_class._auto_id_field = True
             new_class._meta['id_field'] = id_name
             new_class._fields[id_name] = ObjectIdField(db_field=id_db_name)
@@ -419,7 +416,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         return new_class
 
     @classmethod
-    def get_auto_id_names(cls, new_class):
+    def get_auto_id_names(mcs, new_class):
         id_name, id_db_name = ('id', '_id')
         if id_name not in new_class._fields and \
                 id_db_name not in (v.db_field for v in new_class._fields.values()):

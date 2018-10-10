@@ -170,8 +170,8 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         """
         if self.pk is None:
             return super(BaseDocument, self).__hash__()
-        else:
-            return hash(self.pk)
+
+        return hash(self.pk)
 
     @classmethod
     def _get_db(cls):
