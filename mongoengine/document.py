@@ -368,6 +368,8 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)
+        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+        doc = self.to_mongo()
 
         if self._meta.get('auto_create_index', True):
             self.ensure_indexes()
