@@ -2,14 +2,11 @@
 import unittest
 import warnings
 
-from datetime import datetime
-
 from tests.fixtures import Base
 
-from mongoengine import Document, EmbeddedDocument, connect
+from mongoengine import Document, EmbeddedDocument, connect, ReferenceField,\
+    BooleanField, GenericReferenceField, IntField, StringField
 from mongoengine.connection import get_db
-from mongoengine.fields import (BooleanField, GenericReferenceField,
-                                IntField, StringField)
 
 __all__ = ('InheritanceTest', )
 
@@ -302,6 +299,41 @@ class InheritanceTest(unittest.TestCase):
         doc = Animal(name='dog')
         self.assertNotIn('_cls', doc.to_mongo())
 
+    def test_using_abstract_class_in_reference_field(self):
+        # Ensures no regression of #1920
+        class AbstractHuman(Document):
+            meta = {'abstract': True}
+
+        class Dad(AbstractHuman):
+            name = StringField()
+
+        class Home(Document):
+            dad = ReferenceField(AbstractHuman)  # Referencing the abstract class
+            address = StringField()
+
+        dad = Dad(name='5').save()
+        Home(dad=dad, address='street').save()
+
+        home = Home.objects.first()
+        home.address = 'garbage'
+        home.save()     # Was failing with ValidationError
+
+    def test_abstract_class_referencing_self(self):
+        # Ensures no regression of #1920
+        class Human(Document):
+            meta = {'abstract': True}
+            creator = ReferenceField('self', dbref=True)
+
+        class User(Human):
+            name = StringField()
+
+        user = User(name='John').save()
+        user2 = User(name='Foo', creator=user).save()
+
+        user2 = User.objects.with_id(user2.id)
+        user2.name = 'Bar'
+        user2.save()    # Was failing with ValidationError
+
     def test_abstract_handle_ids_in_metaclass_properly(self):
 
         class City(Document):
@@ -360,11 +392,11 @@ class InheritanceTest(unittest.TestCase):
             meta = {'abstract': True,
                     'allow_inheritance': False}
 
-        bkk = City(continent='asia')
-        self.assertEqual(None, bkk.pk)
+        city = City(continent='asia')
+        self.assertEqual(None, city.pk)
         # TODO: expected error? Shouldn't we create a new error type?
         with self.assertRaises(KeyError):
-            setattr(bkk, 'pk', 1)
+            setattr(city, 'pk', 1)
 
     def test_allow_inheritance_embedded_document(self):
         """Ensure embedded documents respect inheritance."""
