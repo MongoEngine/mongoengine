@@ -884,9 +884,16 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(Blog.objects.count(), 2)
 
         # test inserting an existing document (shouldn't be allowed)
-        with self.assertRaises(OperationError):
+        with self.assertRaises(OperationError) as cm:
             blog = Blog.objects.first()
             Blog.objects.insert(blog)
+        self.assertEqual(str(cm.exception), 'Some documents have ObjectIds use doc.update() instead')
+
+        # test inserting a query set
+        with self.assertRaises(OperationError) as cm:
+            blogs_qs = Blog.objects
+            Blog.objects.insert(blogs_qs)
+        self.assertEqual(str(cm.exception), 'Some documents have ObjectIds use doc.update() instead')
 
         # insert 1 new doc
         new_post = Blog(title="code123", id=ObjectId())
@@ -938,12 +945,6 @@ class QuerySetTest(unittest.TestCase):
 
         with self.assertRaises(OperationError):
             Blog.objects.insert({'name': 'garbage'})
-
-        # test inserting a query set
-        with self.assertRaises(OperationError) as cm:
-            blogs_qs = Blog.objects
-            Blog.objects.insert(blogs_qs)
-        self.assertEqual(cm.exception.message, 'Some documents have ObjectIds use doc.update() instead')
 
     def test_bulk_insert_update_input_document_ids(self):
         class Comment(Document):
