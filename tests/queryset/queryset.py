@@ -2328,7 +2328,7 @@ class QuerySetTest(unittest.TestCase):
 
         class User(Document):
             username = StringField()
-            bar = GenericEmbeddedDocumentField(choices=[Bar, ])
+            bar = GenericEmbeddedDocumentField(choices=[Bar])
 
         User.drop_collection()
 
