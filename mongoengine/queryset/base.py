@@ -372,14 +372,17 @@ class BaseQuerySet(object):
                 raise NotUniqueError(message % six.text_type(err))
             raise OperationError(message % six.text_type(err))
 
+        # Apply inserted_ids to documents
+        for doc, doc_id in zip(docs, ids):
+            doc.pk = doc_id
+
         if not load_bulk:
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
             return ids[0] if return_one else ids
+
         documents = self.in_bulk(ids)
-        results = []
-        for obj_id in ids:
-            results.append(documents.get(obj_id))
+        results = [documents.get(obj_id) for obj_id in ids]
         signals.post_bulk_insert.send(
             self._document, documents=results, loaded=True, **signal_kwargs)
         return results[0] if return_one else results
