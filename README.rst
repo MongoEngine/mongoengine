@@ -36,9 +36,11 @@ Installation
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
 `pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
 You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
-and thus you can use ``easy_install -U mongoengine``. Otherwise, you can download the
-source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and run ``python
-setup.py install``.
+and thus you can use ``easy_install -U mongoengine``. Another option is 
+`pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
+to both create the virtual environment and install the package. Otherwise, you can
+download the source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
+run ``python setup.py install``.
 
 Dependencies
 ============
