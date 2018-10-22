@@ -492,7 +492,9 @@ the field name with a **#**::
             ]
         }
 
-If a dictionary is passed then the following options are available:
+If a dictionary is passed then additional options become available. Valid options include,
+but are not limited to:
+
 
 :attr:`fields` (Default: None)
     The fields to index. Specified in the same format as described above.
@@ -516,8 +518,12 @@ If a dictionary is passed then the following options are available:
 :attr:`name` (Optional)
     Allows you to specify a name for the index
 
+:attr:`collation` (Optional)
+    Allows to create case insensitive indexes (MongoDB v3.4+ only)
+
 .. note::
 
+    Additional options are forwarded as **kwargs to pymongo's create_index method.
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
 
 Global index default options
@@ -736,7 +742,7 @@ document.::
 
 .. note:: From 0.8 onwards :attr:`allow_inheritance` defaults
           to False, meaning you must set it to True to use inheritance.
-          
+
           Setting :attr:`allow_inheritance` to True should also be used in
           :class:`~mongoengine.EmbeddedDocument` class in case you need to subclass it
 
