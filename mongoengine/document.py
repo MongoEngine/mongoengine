@@ -777,7 +777,7 @@ class Document(BaseDocument):
                     classes.append(base_cls)
                     get_classes(base_cls)
             for subclass in cls.__subclasses__():
-                if (isinstance(base_cls, TopLevelDocumentMetaclass) and
+                if (isinstance(subclass, TopLevelDocumentMetaclass) and
                         connection_manager.get_collection(subclass).full_name == connection_manager.get_collection(cls).full_name and
                         subclass not in classes):
                     classes.append(subclass)
