@@ -544,7 +544,7 @@ There are a few top level defaults for all indexes that can be set::
 
 
 :attr:`index_opts` (Optional)
-    Set any default index options - see the `full options list <http://docs.mongodb.org/manual/reference/method/db.collection.ensureIndex/#db.collection.ensureIndex>`_
+    Set any default index options - see the `full options list <https://docs.mongodb.com/manual/reference/method/db.collection.createIndex/#db.collection.createIndex>`_
 
 :attr:`index_background` (Optional)
     Set the default value for if an index should be indexed in the background
@@ -560,8 +560,7 @@ There are a few top level defaults for all indexes that can be set::
 
 :attr:`index_drop_dups` (Optional)
     Set the default value for if an index should drop duplicates
-
-.. note:: Since MongoDB 3.0 drop_dups is not supported anymore. Raises a Warning
+    Since MongoDB 3.0 drop_dups is not supported anymore. Raises a Warning
     and has no effect
 
 
