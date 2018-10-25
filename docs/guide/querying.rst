@@ -456,14 +456,14 @@ data. To turn off dereferencing of the results of a query use
 :func:`~mongoengine.queryset.QuerySet.no_dereference` on the queryset like so::
 
     post = Post.objects.no_dereference().first()
-    assert(isinstance(post.author, ObjectId))
+    assert(isinstance(post.author, DBRef))
 
 You can also turn off all dereferencing for a fixed period by using the
 :class:`~mongoengine.context_managers.no_dereference` context manager::
 
     with no_dereference(Post) as Post:
         post = Post.objects.first()
-        assert(isinstance(post.author, ObjectId))
+        assert(isinstance(post.author, DBRef))
 
     # Outside the context manager dereferencing occurs.
     assert(isinstance(post.author, User))
