@@ -2877,37 +2877,34 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(MIME_TYPE, attachment_1.content_type)
         self.assertEqual(BLOB, six.binary_type(attachment_1.blob))
 
-    def test_binary_validation(self):
-        """Ensure that invalid values cannot be assigned to binary fields.
+    def test_binary_validation_succeeds(self):
+        """Ensure that valid values can be assigned to binary fields.
         """
-        class Attachment(Document):
-            blob = BinaryField()
-
         class AttachmentRequired(Document):
             blob = BinaryField(required=True)
 
         class AttachmentSizeLimit(Document):
             blob = BinaryField(max_bytes=4)
 
-        Attachment.drop_collection()
-        AttachmentRequired.drop_collection()
-        AttachmentSizeLimit.drop_collection()
-
-        attachment = Attachment()
-        attachment.validate()
-        attachment.blob = 2
-        self.assertRaises(ValidationError, attachment.validate)
-
         attachment_required = AttachmentRequired()
         self.assertRaises(ValidationError, attachment_required.validate)
         attachment_required.blob = Binary(six.b('\xe6\x00\xc4\xff\x07'))
         attachment_required.validate()
 
-        attachment_size_limit = AttachmentSizeLimit(
-            blob=six.b('\xe6\x00\xc4\xff\x07'))
-        self.assertRaises(ValidationError, attachment_size_limit.validate)
-        attachment_size_limit.blob = six.b('\xe6\x00\xc4\xff')
-        attachment_size_limit.validate()
+        _5_BYTES = six.b('\xe6\x00\xc4\xff\x07')
+        _4_BYTES = six.b('\xe6\x00\xc4\xff')
+        self.assertRaises(ValidationError, AttachmentSizeLimit(blob=_5_BYTES).validate)
+        AttachmentSizeLimit(blob=_4_BYTES).validate()
+
+    def test_binary_validation_fails(self):
+        """Ensure that invalid values cannot be assigned to binary fields."""
+
+        class Attachment(Document):
+            blob = BinaryField()
+
+        for invalid_data in (2, u'Im_a_unicode', ['some_str']):
+            self.assertRaises(ValidationError, Attachment(blob=invalid_data).validate)
+
 
     def test_binary_field_primary(self):
         class Attachment(Document):
