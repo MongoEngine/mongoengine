@@ -6,6 +6,8 @@ Development
 ===========
 - QuerySet limit function behaviour: Passing 0 as parameter will return all the documents in the cursor #1611
 - bulk insert updates the ids of the input documents #1919
+- Fix an harmless bug related to GenericReferenceField where modifications in the generic-referenced document
+    were tracked in the parent (#1934)
 - (Fill this out as you fix issues and develop your features).
 =======
 Changes in 0.15.4
