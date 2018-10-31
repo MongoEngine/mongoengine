@@ -528,6 +528,7 @@ class BaseDocument(object):
         EmbeddedDocument = _import_class('EmbeddedDocument')
         DynamicEmbeddedDocument = _import_class('DynamicEmbeddedDocument')
         ReferenceField = _import_class('ReferenceField')
+        GenericReferenceField = _import_class('GenericReferenceField')
         SortedListField = _import_class('SortedListField')
 
         changed_fields = []
@@ -560,7 +561,7 @@ class BaseDocument(object):
             elif (isinstance(data, (list, tuple, dict)) and
                     db_field_name not in changed_fields):
                 if (hasattr(field, 'field') and
-                        isinstance(field.field, ReferenceField)):
+                        isinstance(field.field, (ReferenceField, GenericReferenceField))):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed

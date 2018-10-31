@@ -1872,8 +1872,8 @@ class BaseQuerySet(object):
             # Substitute the correct name for the field into the javascript
             return '.'.join([f.db_field for f in fields])
 
-        code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
-        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
+        code = re.sub(r'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+        code = re.sub(r'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
                       code)
         return code
 

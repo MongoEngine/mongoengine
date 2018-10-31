@@ -1187,7 +1187,7 @@ class FieldTest(MongoDBTestCase):
         # aka 'del list[index]'
         # aka 'operator.delitem(list, index)'
         reset_post()
-        del post.info[2] # del from middle ('2')
+        del post.info[2]  # del from middle ('2')
         self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
         post.save()
         post.reload()
@@ -1197,7 +1197,7 @@ class FieldTest(MongoDBTestCase):
         # aka 'del list[i:j]'
         # aka 'operator.delitem(list, slice(i,j))'
         reset_post()
-        del post.info[1:3] # removes '1', '2'
+        del post.info[1:3]  # removes '1', '2'
         self.assertEqual(post.info, ['0', '3', '4', '5'])
         post.save()
         post.reload()
@@ -2816,7 +2816,32 @@ class FieldTest(MongoDBTestCase):
         doc = Doc.objects.get(ref=DBRef('doc', doc1.pk))
         self.assertEqual(doc, doc2)
 
-    def test_generic_reference_filter_by_objectid(self):
+    def test_generic_reference_is_not_tracked_in_parent_doc(self):
+        """Ensure that modifications of related documents (through generic reference) don't influence
+        the owner changed fields (#1934)
+        """
+        class Doc1(Document):
+            name = StringField()
+
+        class Doc2(Document):
+            ref = GenericReferenceField()
+            refs = ListField(GenericReferenceField())
+
+        Doc1.drop_collection()
+        Doc2.drop_collection()
+
+        doc1 = Doc1(name='garbage1').save()
+        doc11 = Doc1(name='garbage11').save()
+        doc2 = Doc2(ref=doc1, refs=[doc11]).save()
+
+        doc2.ref.name = 'garbage2'
+        self.assertEqual(doc2._get_changed_fields(), [])
+
+        doc2.refs[0].name = 'garbage3'
+        self.assertEqual(doc2._get_changed_fields(), [])
+        self.assertEqual(doc2._delta(), ({}, {}))
+
+    def test_generic_reference_field(self):
         """Ensure we can search for a specific generic reference by
         providing its DBRef.
         """
@@ -4344,6 +4369,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         with self.assertRaises(ValidationError):
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField('MyDoc')
+
 
 class CachedReferenceFieldTest(MongoDBTestCase):
 
