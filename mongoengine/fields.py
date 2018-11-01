@@ -991,7 +991,7 @@ class DictField(ComplexBaseField):
         if op in match_operators and isinstance(value, six.string_types):
             return StringField().prepare_query_value(op, value)
 
-        if hasattr(self.field, 'field'):
+        if hasattr(self.field, 'field'):    # Used for instance when using DictField(ListField(IntField()))
             if op in ('set', 'unset') and isinstance(value, dict):
                 return {
                     k: self.field.prepare_query_value(op, v)
