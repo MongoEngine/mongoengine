@@ -1422,6 +1422,60 @@ class InstanceTest(MongoDBTestCase):
         self.assertEqual(person.age, 21)
         self.assertEqual(person.active, False)
 
+    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop(self):
+        # Refers to Issue #1685
+        class EmbeddedChildModel(EmbeddedDocument):
+            id = DictField(primary_key=True)
+
+        class ParentModel(Document):
+            child = EmbeddedDocumentField(
+                EmbeddedChildModel)
+
+        emb = EmbeddedChildModel(id={'1': [1]})
+        ParentModel(children=emb)._get_changed_fields()
+
+    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop(self):
+        class User(Document):
+            id = IntField(primary_key=True)
+            name = StringField()
+
+        class Message(Document):
+            id = IntField(primary_key=True)
+            author = ReferenceField(User)
+
+        Message.drop_collection()
+
+        # All objects share the same id, but each in a different collection
+        user = User(id=1, name='user-name').save()
+        message = Message(id=1, author=user).save()
+
+        message.author.name = 'tutu'
+        self.assertEqual(message._get_changed_fields(), [])
+        self.assertEqual(user._get_changed_fields(), ['name'])
+
+    def test__get_changed_fields_same_ids_embedded(self):
+        # Refers to Issue #1768
+        class User(EmbeddedDocument):
+            id = IntField()
+            name = StringField()
+
+        class Message(Document):
+            id = IntField(primary_key=True)
+            author = EmbeddedDocumentField(User)
+
+        Message.drop_collection()
+
+        # All objects share the same id, but each in a different collection
+        user = User(id=1, name='user-name')#.save()
+        message = Message(id=1, author=user).save()
+
+        message.author.name = 'tutu'
+        self.assertEqual(message._get_changed_fields(), ['author.name'])
+        message.save()
+
+        message_fetched = Message.objects.with_id(message.id)
+        self.assertEqual(message_fetched.author.name, 'tutu')
+
     def test_query_count_when_saving(self):
         """Ensure references don't cause extra fetches when saving"""
         class Organization(Document):

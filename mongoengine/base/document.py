@@ -500,7 +500,13 @@ class BaseDocument(object):
 
         self._changed_fields = []
 
-    def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
+    def _nestable_types_changed_fields(self, changed_fields, base_key, data):
+        """Inspect nested data for changed fields
+
+        :param changed_fields: Previously collected changed fields
+        :param base_key: The base key that must be used to prepend changes to this data
+        :param data: data to inspect for changes
+        """
         # Loop list / dict fields as they contain documents
         # Determine the iterator to use
         if not hasattr(data, 'items'):
@@ -508,25 +514,24 @@ class BaseDocument(object):
         else:
             iterator = data.iteritems()
 
-        for index, value in iterator:
-            list_key = '%s%s.' % (key, index)
+        for index_or_key, value in iterator:
+            item_key = '%s%s.' % (base_key, index_or_key)
             # don't check anything lower if this key is already marked
             # as changed.
-            if list_key[:-1] in changed_fields:
+            if item_key[:-1] in changed_fields:
                 continue
+
             if hasattr(value, '_get_changed_fields'):
-                changed = value._get_changed_fields(inspected)
-                changed_fields += ['%s%s' % (list_key, k)
-                                   for k in changed if k]
+                changed = value._get_changed_fields()
+                changed_fields += ['%s%s' % (item_key, k) for k in changed if k]
             elif isinstance(value, (list, tuple, dict)):
                 self._nestable_types_changed_fields(
-                    changed_fields, list_key, value, inspected)
+                    changed_fields, item_key, value)
 
-    def _get_changed_fields(self, inspected=None):
+    def _get_changed_fields(self):
         """Return a list of all fields that have explicitly been changed.
         """
         EmbeddedDocument = _import_class('EmbeddedDocument')
-        DynamicEmbeddedDocument = _import_class('DynamicEmbeddedDocument')
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
         SortedListField = _import_class('SortedListField')
@@ -534,32 +539,24 @@ class BaseDocument(object):
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
 
-        inspected = inspected or set()
-        if hasattr(self, 'id') and isinstance(self.id, Hashable):
-            if self.id in inspected:
-                return changed_fields
-            inspected.add(self.id)
-
         for field_name in self._fields_ordered:
             db_field_name = self._db_field_map.get(field_name, field_name)
             key = '%s.' % db_field_name
             data = self._data.get(field_name, None)
             field = self._fields.get(field_name)
 
-            if hasattr(data, 'id'):
-                if data.id in inspected:
-                    continue
-            if isinstance(field, ReferenceField):
+            if db_field_name in changed_fields:
+                # Whole field already marked as changed, no need to go further
                 continue
-            elif (
-                isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)) and
-                db_field_name not in changed_fields
-            ):
+
+            if isinstance(field, ReferenceField):   # Don't follow referenced documents
+                continue
+
+            if isinstance(data, EmbeddedDocument):
                 # Find all embedded fields that have been changed
-                changed = data._get_changed_fields(inspected)
+                changed = data._get_changed_fields()
                 changed_fields += ['%s%s' % (key, k) for k in changed if k]
-            elif (isinstance(data, (list, tuple, dict)) and
-                    db_field_name not in changed_fields):
+            elif isinstance(data, (list, tuple, dict)):
                 if (hasattr(field, 'field') and
                         isinstance(field.field, (ReferenceField, GenericReferenceField))):
                     continue
@@ -570,7 +567,7 @@ class BaseDocument(object):
                         continue
 
                 self._nestable_types_changed_fields(
-                    changed_fields, key, data, inspected)
+                    changed_fields, key, data)
         return changed_fields
 
     def _delta(self):
