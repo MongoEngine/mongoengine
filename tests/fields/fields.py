@@ -618,6 +618,8 @@ class FieldTest(MongoDBTestCase):
         self.assertRaises(ValidationError, person.validate)
         person.admin = 'Yes'
         self.assertRaises(ValidationError, person.validate)
+        person.admin = 'False'
+        self.assertRaises(ValidationError, person.validate)
 
     def test_uuid_field_string(self):
         """Test UUID fields storing as String
@@ -2904,7 +2906,6 @@ class FieldTest(MongoDBTestCase):
 
         for invalid_data in (2, u'Im_a_unicode', ['some_str']):
             self.assertRaises(ValidationError, Attachment(blob=invalid_data).validate)
-
 
     def test_binary_field_primary(self):
         class Attachment(Document):

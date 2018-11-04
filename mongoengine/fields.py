@@ -1867,12 +1867,9 @@ class ImageField(FileField):
     """
     A Image File storage field.
 
-    @size (width, height, force):
-        max size to store images, if larger will be automatically resized
-        ex: size=(800, 600, True)
-
-    @thumbnail (width, height, force):
-        size to generate a thumbnail
+    :param size: max size to store images, provided as (width, height, force)
+        if larger, it will be automatically resized (ex: size=(800, 600, True))
+    :param thumbnail_size: size to generate a thumbnail, provided as (width, height, force)
 
     .. versionadded:: 0.6
     """
