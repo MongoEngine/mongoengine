@@ -1,23 +1,23 @@
 import re
 import warnings
 
-from bson.dbref import DBRef
 import pymongo
-from pymongo.read_preferences import ReadPreference
 import six
-
+from bson.dbref import DBRef
 from mongoengine import signals
 from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               DocumentMetaclass, EmbeddedDocumentList,
                               TopLevelDocumentMetaclass, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import switch_collection, switch_db
+from mongoengine.context_managers import (set_write_concern, switch_collection,
+                                          switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
-from mongoengine.queryset import (NotUniqueError, OperationError,
-                                  QuerySet, transform)
+from mongoengine.queryset import (NotUniqueError, OperationError, QuerySet,
+                                  transform)
+from pymongo.read_preferences import ReadPreference
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
@@ -430,10 +430,15 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         """
         collection = self._get_collection()
 
-        if force_insert:
-            return collection.insert(doc, **write_concern)
+        with set_write_concern(collection, write_concern) as wc_collection:
+            if force_insert:
+                return wc_collection.insert_one(doc).inserted_id
 
-        object_id = collection.insert(doc, **write_concern)
+            if '_id' in doc:
+                object_id = wc_collection.replace_one(
+                    {"_id": doc['_id']}, doc).upserted_id
+            else:
+                object_id = wc_collection.insert_one(doc).inserted_id
 
         # In PyMongo 3.0, the save() call calls internally the _update() call
         # but they forget to return the _id value passed back, therefore getting it back here
