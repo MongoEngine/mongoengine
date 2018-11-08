@@ -12,7 +12,11 @@ from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               TopLevelDocumentMetaclass, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import switch_collection, switch_db
+from mongoengine.context_managers import (
+    set_write_concern,
+    switch_collection,
+    switch_db
+)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -429,11 +433,11 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         Helper method, should only be used inside save().
         """
         collection = self._get_collection()
+        with set_write_concern(collection, write_concern) as wc_collection:
+            if force_insert:
+                return wc_collection.insert_one(doc).inserted_id
 
-        if force_insert:
-            return collection.insert(doc, **write_concern)
-
-        object_id = collection.save(doc, **write_concern)
+            object_id = wc_collection.insert_one(doc).inserted_id
 
         # In PyMongo 3.0, the save() call calls internally the _update() call
         # but they forget to return the _id value passed back, therefore getting it back here
