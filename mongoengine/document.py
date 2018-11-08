@@ -433,7 +433,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         if force_insert:
             return collection.insert(doc, **write_concern)
 
-        object_id = collection.save(doc, **write_concern)
+        object_id = collection.insert(doc, **write_concern)
 
         # In PyMongo 3.0, the save() call calls internally the _update() call
         # but they forget to return the _id value passed back, therefore getting it back here

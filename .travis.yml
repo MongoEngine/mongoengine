@@ -36,6 +36,8 @@ matrix:
     env: MONGODB=3.0 PYMONGO=3.5
   - python: 3.6
     env: MONGODB=3.2 PYMONGO=3.x
+  - python: 3.7
+    env: MONGODB=3.2 PYMONGO=3.x
 
 before_install:
 - bash .install_mongodb_on_travis.sh
