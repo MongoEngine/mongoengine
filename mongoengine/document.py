@@ -436,6 +436,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         with set_write_concern(collection, write_concern) as wc_collection:
             if force_insert:
                 return wc_collection.insert_one(doc).inserted_id
+            # insert_one will provoke UniqueError alongside save does not
+            # therefore, it need to catch and call replace_one.
+            if '_id' in doc:
+                raw_object = wc_collection.find_one_and_replace(
+                    {'_id': doc['_id']}, doc)
+                if raw_object:
+                    return doc['_id']
 
             object_id = wc_collection.insert_one(doc).inserted_id
 
