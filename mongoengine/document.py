@@ -1,9 +1,10 @@
 import re
 import warnings
 
-import pymongo
-import six
 from bson.dbref import DBRef
+import pymongo
+from pymongo.read_preferences import ReadPreference
+import six
 from mongoengine import signals
 from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               DocumentMetaclass, EmbeddedDocumentList,
@@ -17,7 +18,6 @@ from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
 from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import (NotUniqueError, OperationError, QuerySet,
                                   transform)
-from pymongo.read_preferences import ReadPreference
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
