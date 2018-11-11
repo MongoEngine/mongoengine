@@ -579,7 +579,6 @@ class BaseDocument(object):
 
         set_fields = self._get_changed_fields()
         unset_data = {}
-        parts = []
         if hasattr(self, '_changed_fields'):
             set_data = {}
             # Fetch each set item from its path
@@ -589,15 +588,13 @@ class BaseDocument(object):
                 new_path = []
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
+                        # Don't dig in the references
                         break
-                    elif isinstance(d, list) and p.lstrip('-').isdigit():
-                        if p[0] == '-':
-                            p = str(len(d) + int(p))
-                        try:
-                            d = d[int(p)]
-                        except IndexError:
-                            d = None
+                    elif isinstance(d, list) and p.isdigit():
+                        # An item of a list (identified by its index) is updated
+                        d = d[int(p)]
                     elif hasattr(d, 'get'):
+                        # dict-like (dict, embedded document)
                         d = d.get(p)
                     new_path.append(p)
                 path = '.'.join(new_path)
@@ -609,26 +606,26 @@ class BaseDocument(object):
 
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
-            if value or isinstance(value, (numbers.Number, bool)):
+            if value or isinstance(value, (numbers.Number, bool)):  # Account for 0 and True that are truthy
                 continue
 
-            # If we've set a value that ain't the default value don't unset it.
-            default = None
+            parts = path.split('.')
+
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
                 del set_data[path]
                 unset_data[path] = 1
                 continue
-            elif path in self._fields:
+
+            # If we've set a value that ain't the default value don't unset it.
+            default = None
+            if path in self._fields:
                 default = self._fields[path].default
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
-                parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if isinstance(d, list) and p.lstrip('-').isdigit():
-                        if p[0] == '-':
-                            p = str(len(d) + int(p))
+                    if isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
@@ -646,10 +643,9 @@ class BaseDocument(object):
                         default = None
 
             if default is not None:
-                if callable(default):
-                    default = default()
+                default = default() if callable(default) else default
 
-            if default != value:
+            if value != default:
                 continue
 
             del set_data[path]
