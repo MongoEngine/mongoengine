@@ -12,11 +12,9 @@ from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               TopLevelDocumentMetaclass, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import (
-    set_write_concern,
-    switch_collection,
-    switch_db
-)
+from mongoengine.context_managers import (set_write_concern,
+                                          switch_collection,
+                                          switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
