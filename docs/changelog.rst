@@ -5,6 +5,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix `_cls` that is not set properly in Document constructor (regression) #1950
 - Remove deprecated `save()` method and used `insert_one()` #1899
 
 =================
