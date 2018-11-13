@@ -186,6 +186,31 @@ class FieldTest(MongoDBTestCase):
         data_to_be_saved = sorted(person.to_mongo().keys())
         self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
 
+    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(self):
+        """List field with default can be set to the empty list (strict)"""
+        # Issue #1733
+        class Doc(Document):
+            x = ListField(IntField(), default=lambda: [42])
+
+        doc = Doc(x=[1]).save()
+        doc.x = []
+        doc.save()
+        reloaded = Doc.objects.get(id=doc.id)
+        self.assertEqual(reloaded.x, [])
+
+    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(self):
+        """List field with default can be set to the empty list (dynamic)"""
+        # Issue #1733
+        class Doc(DynamicDocument):
+            x = ListField(IntField(), default=lambda: [42])
+
+        doc = Doc(x=[1]).save()
+        doc.x = []
+        doc.y = 2   # Was triggering the bug
+        doc.save()
+        reloaded = Doc.objects.get(id=doc.id)
+        self.assertEqual(reloaded.x, [])
+
     def test_default_values_when_deleting_value(self):
         """Ensure that default field values are used after non-default
         values are explicitly deleted.
