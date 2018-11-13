@@ -5,7 +5,9 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-=======
+- Remove deprecated `save()` method and used `insert_one()` #1899
+
+=================
 Changes in 0.16.0
 =================
 - Various improvements to the doc
