@@ -5,6 +5,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix bug in _delta method - Update of a ListField depends on an unrelated dynamic field update #1733
 - Remove deprecated `save()` method and used `insert_one()` #1899
 
 =================
