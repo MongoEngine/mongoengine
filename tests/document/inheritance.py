@@ -2,11 +2,11 @@
 import unittest
 import warnings
 
-from tests.fixtures import Base
-
-from mongoengine import Document, EmbeddedDocument, connect, ReferenceField,\
-    BooleanField, GenericReferenceField, IntField, StringField
+from mongoengine import (BooleanField, Document, EmbeddedDocument,
+                         EmbeddedDocumentField, GenericReferenceField,
+                         IntField, ReferenceField, StringField, connect)
 from mongoengine.connection import get_db
+from tests.fixtures import Base
 
 __all__ = ('InheritanceTest', )
 
@@ -22,6 +22,27 @@ class InheritanceTest(unittest.TestCase):
             if 'system.' in collection:
                 continue
             self.db.drop_collection(collection)
+
+    def test_constructor_cls(self):
+        # Ensures _cls is properly set during construction
+        # and when object gets reloaded (prevent regression of #1950)
+        class EmbedData(EmbeddedDocument):
+            data = StringField()
+            meta = {'allow_inheritance': True}
+
+        class DataDoc(Document):
+            name = StringField()
+            embed = EmbeddedDocumentField(EmbedData)
+            meta = {'allow_inheritance': True}
+
+        test_doc = DataDoc(name='test', embed=EmbedData(data='data'))
+        assert test_doc._cls == 'DataDoc'
+        assert test_doc.embed._cls == 'EmbedData'
+        test_doc.save()
+        saved_doc = DataDoc.objects.with_id(test_doc.id)
+        assert test_doc._cls == saved_doc._cls
+        assert test_doc.embed._cls == saved_doc.embed._cls
+        test_doc.delete()
 
     def test_superclasses(self):
         """Ensure that the correct list of superclasses is assembled.
