@@ -23,7 +23,7 @@ __all__ = (list(document.__all__) + list(fields.__all__) +
            list(signals.__all__) + list(errors.__all__))
 
 
-VERSION = (0, 16, 0)
+VERSION = (0, 16, 1)
 
 
 def get_version():
