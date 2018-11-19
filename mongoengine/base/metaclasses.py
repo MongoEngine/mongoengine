@@ -267,7 +267,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 'ordering': [],  # default ordering applied at runtime
                 'indexes': [],  # indexes to be ensured at runtime
                 'id_field': None,
-                'index_background': False,
+                'index_background': True,
                 'index_drop_dups': False,
                 'index_opts': None,
                 'delete_rules': None,

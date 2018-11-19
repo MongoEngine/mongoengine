@@ -805,8 +805,7 @@ class BaseDocument(object):
         """
         geo_indices = cls._geo_indices()
         unique_indices = cls._unique_with_indexes()
-        base_index_specs = [cls._build_index_spec(spec)
-                       for spec in meta_indexes]
+        base_index_specs = [cls._build_index_spec(spec) for spec in meta_indexes]
         reference_indices = cls._build_reference_indices()
         history_indices = cls._build_history_indices()
         
