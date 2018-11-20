@@ -299,7 +299,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return True
 
     def save(self, force_insert=False, validate=True, clean=True,
-             write_concern={'w': 1}, cascade=None, cascade_kwargs=None,
+             write_concern=None, cascade=None, cascade_kwargs=None,
              _refs=None, save_condition=None, signal_kwargs=None, **kwargs):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -360,6 +360,9 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         if validate:
             self.validate(clean=clean)
+
+        if write_concern is None:
+            write_concern = {'w': 1}
 
         doc = self.to_mongo()
 

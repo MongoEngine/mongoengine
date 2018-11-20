@@ -400,13 +400,17 @@ class QuerySetTest(unittest.TestCase):
         self.Person.drop_collection()
 
         write_concern = {"fsync": True}
-
         author = self.Person.objects.create(name='Test User')
         author.save(write_concern=write_concern)
 
+        # Ensure no regression of #1958
+        author = self.Person(name='Test User2')
+        author.save(write_concern=None)  # will default to {w: 1}
+
         result = self.Person.objects.update(
             set__name='Ross', write_concern={"w": 1})
-        self.assertEqual(result, 1)
+
+        self.assertEqual(result, 2)
         result = self.Person.objects.update(
             set__name='Ross', write_concern={"w": 0})
         self.assertEqual(result, None)
