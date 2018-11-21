@@ -7,6 +7,11 @@ Development
 - (Fill this out as you fix issues and develop your features).
 
 =================
+Changes in 0.16.2
+=================
+- Fix .save() that fails when called with write_concern=None (regression of 0.16.1) #1958
+
+=================
 Changes in 0.16.1
 =================
 - Fix `_cls` that is not set properly in Document constructor (regression) #1950
