@@ -345,7 +345,7 @@ def update(_doc_cls=None, **update):
             value = {key: {'$each': value}}
         elif op in ('push', 'pushAll'):
             if parts[-1].isdigit():
-                key = parts[0]
+                key = '.'.join(parts[0:-1])
                 position = int(parts[-1])
                 # $position expects an iterable. If pushing a single value,
                 # wrap it in a list.

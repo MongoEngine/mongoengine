@@ -842,10 +842,16 @@ class InstanceTest(MongoDBTestCase):
 
     @requires_mongodb_gte_26
     def test_modify_with_positional_push(self):
+        class Content(EmbeddedDocument):
+            keywords = ListField(StringField())
+
         class BlogPost(Document):
             tags = ListField(StringField())
+            content = EmbeddedDocumentField(Content)
 
-        post = BlogPost.objects.create(tags=['python'])
+        post = BlogPost.objects.create(
+            tags=['python'], content=Content(keywords=['ipsum']))
+
         self.assertEqual(post.tags, ['python'])
         post.modify(push__tags__0=['code', 'mongo'])
         self.assertEqual(post.tags, ['code', 'mongo', 'python'])
@@ -854,6 +860,16 @@ class InstanceTest(MongoDBTestCase):
         self.assertEqual(
             BlogPost._get_collection().find_one({'_id': post.pk})['tags'],
             ['code', 'mongo', 'python']
+        )
+
+        self.assertEqual(post.content.keywords, ['ipsum'])
+        post.modify(push__content__keywords__0=['lorem'])
+        self.assertEqual(post.content.keywords, ['lorem', 'ipsum'])
+
+        # Assert same order of the list items is maintained in the db
+        self.assertEqual(
+            BlogPost._get_collection().find_one({'_id': post.pk})['content']['keywords'],
+            ['lorem', 'ipsum']
         )
 
     def test_save(self):

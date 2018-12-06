@@ -7,6 +7,11 @@ Development
 - (Fill this out as you fix issues and develop your features).
 
 =================
+Changes in 0.16.3
+=================
+- Fix $push with $position operator not working with lists in embedded document #1965
+
+=================
 Changes in 0.16.2
 =================
 - Fix .save() that fails when called with write_concern=None (regression of 0.16.1) #1958
