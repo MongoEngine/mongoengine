@@ -396,7 +396,9 @@ class BaseQuerySet(object):
         """
         if self._limit == 0 and with_limit_and_skip is False or self._none:
             return 0
-        return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        self._cursor_obj = None
+        return count
 
     def delete(self, write_concern=None, _from_doc_delete=False,
                cascade_refs=None):
