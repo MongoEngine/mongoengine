@@ -155,7 +155,7 @@ arguments can be set on all fields:
     An iterable (e.g. list, tuple or set) of choices to which the value of this
     field should be limited.
 
-    Can be either be a nested tuples of value (stored in mongo) and a
+    Can either be nested tuples of value (stored in mongo) and a
     human readable key ::
 
         SIZE = (('S', 'Small'),
