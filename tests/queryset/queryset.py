@@ -4720,6 +4720,28 @@ class QuerySetTest(unittest.TestCase):
             'password_salt').only('email').to_json()
         self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
 
+    def test_only_after_count(self):
+        """Test that only() works after count()"""
+
+        class User(Document):
+            name = StringField()
+            age = IntField()
+            address = StringField()
+        User.drop_collection()
+        User(name="User", age=50,
+             address="Moscow, Russia").save()
+
+        user_queryset = User.objects(age=50)
+
+        result = user_queryset.only("name", "age").as_pymongo().first()
+        self.assertEqual(result, {"name": "User", "age": 50})
+
+        result = user_queryset.count()
+        self.assertEqual(result, 1)
+
+        result = user_queryset.only("name", "age").as_pymongo().first()
+        self.assertEqual(result, {"name": "User", "age": 50})
+
     def test_no_dereference(self):
 
         class Organization(Document):

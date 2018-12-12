@@ -5,6 +5,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix .only() working improperly after using .count() of the same instance of QuerySet
 
 =================
 Changes in 0.16.3
