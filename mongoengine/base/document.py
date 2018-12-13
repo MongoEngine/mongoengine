@@ -2,9 +2,7 @@ import copy
 import numbers
 from functools import partial
 
-from bson import ObjectId, json_util
-from bson.dbref import DBRef
-from bson.son import SON
+from bson import DBRef, ObjectId, SON, json_util
 import pymongo
 import six
 

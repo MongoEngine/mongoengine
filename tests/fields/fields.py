@@ -1853,6 +1853,48 @@ class FieldTest(MongoDBTestCase):
         with self.assertRaises(ValueError):
             e.update(set__mapping={"somestrings": ["foo", "bar", ]})
 
+    def test_dictfield_with_referencefield_complex_nesting_cases(self):
+        """Ensure complex nesting inside DictField handles dereferencing of ReferenceField(dbref=True | False)"""
+        # Relates to Issue #1453
+        class Doc(Document):
+            s = StringField()
+
+        class Simple(Document):
+            mapping0 = DictField(ReferenceField(Doc, dbref=True))
+            mapping1 = DictField(ReferenceField(Doc, dbref=False))
+            mapping2 = DictField(ListField(ReferenceField(Doc, dbref=True)))
+            mapping3 = DictField(ListField(ReferenceField(Doc, dbref=False)))
+            mapping4 = DictField(DictField(field=ReferenceField(Doc, dbref=True)))
+            mapping5 = DictField(DictField(field=ReferenceField(Doc, dbref=False)))
+            mapping6 = DictField(ListField(DictField(ReferenceField(Doc, dbref=True))))
+            mapping7 = DictField(ListField(DictField(ReferenceField(Doc, dbref=False))))
+            mapping8 = DictField(ListField(DictField(ListField(ReferenceField(Doc, dbref=True)))))
+            mapping9 = DictField(ListField(DictField(ListField(ReferenceField(Doc, dbref=False)))))
+
+        Doc.drop_collection()
+        Simple.drop_collection()
+
+        d = Doc(s='aa').save()
+        e = Simple()
+        e.mapping0['someint'] = e.mapping1['someint'] = d
+        e.mapping2['someint'] = e.mapping3['someint'] = [d]
+        e.mapping4['someint'] = e.mapping5['someint'] = {'d': d}
+        e.mapping6['someint'] = e.mapping7['someint'] = [{'d': d}]
+        e.mapping8['someint'] = e.mapping9['someint'] = [{'d': [d]}]
+        e.save()
+
+        s = Simple.objects.first()
+        self.assertIsInstance(s.mapping0['someint'], Doc)
+        self.assertIsInstance(s.mapping1['someint'], Doc)
+        self.assertIsInstance(s.mapping2['someint'][0], Doc)
+        self.assertIsInstance(s.mapping3['someint'][0], Doc)
+        self.assertIsInstance(s.mapping4['someint']['d'], Doc)
+        self.assertIsInstance(s.mapping5['someint']['d'], Doc)
+        self.assertIsInstance(s.mapping6['someint'][0]['d'], Doc)
+        self.assertIsInstance(s.mapping7['someint'][0]['d'], Doc)
+        self.assertIsInstance(s.mapping8['someint'][0]['d'][0], Doc)
+        self.assertIsInstance(s.mapping9['someint'][0]['d'][0], Doc)
+
     def test_mapfield(self):
         """Ensure that the MapField handles the declared type."""
         class Simple(Document):

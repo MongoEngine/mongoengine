@@ -52,26 +52,40 @@ class DeReference(object):
                         [i.__class__ == doc_type for i in items.values()]):
                     return items
                 elif not field.dbref:
+                    # We must turn the ObjectIds into DBRefs
+
+                    # Recursively dig into the sub items of a list/dict
+                    # to turn the ObjectIds into DBRefs
+                    def _get_items_from_list(items):
+                        new_items = []
+                        for v in items:
+                            value = v
+                            if isinstance(v, dict):
+                                value = _get_items_from_dict(v)
+                            elif isinstance(v, list):
+                                value = _get_items_from_list(v)
+                            elif not isinstance(v, (DBRef, Document)):
+                                value = field.to_python(v)
+                            new_items.append(value)
+                        return new_items
+
+                    def _get_items_from_dict(items):
+                        new_items = {}
+                        for k, v in items.iteritems():
+                            value = v
+                            if isinstance(v, list):
+                                value = _get_items_from_list(v)
+                            elif isinstance(v, dict):
+                                value = _get_items_from_dict(v)
+                            elif not isinstance(v, (DBRef, Document)):
+                                value = field.to_python(v)
+                            new_items[k] = value
+                        return new_items
+
                     if not hasattr(items, 'items'):
-
-                        def _get_items(items):
-                            new_items = []
-                            for v in items:
-                                if isinstance(v, list):
-                                    new_items.append(_get_items(v))
-                                elif not isinstance(v, (DBRef, Document)):
-                                    new_items.append(field.to_python(v))
-                                else:
-                                    new_items.append(v)
-                            return new_items
-
-                        items = _get_items(items)
+                        items = _get_items_from_list(items)
                     else:
-                        items = {
-                            k: (v if isinstance(v, (DBRef, Document))
-                                else field.to_python(v))
-                            for k, v in items.iteritems()
-                        }
+                        items = _get_items_from_dict(items)
 
         self.reference_map = self._find_references(items)
         self.object_map = self._fetch_objects(doc_type=doc_type)
