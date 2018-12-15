@@ -12,7 +12,9 @@ from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               TopLevelDocumentMetaclass, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import switch_collection, switch_db
+from mongoengine.context_managers import (set_write_concern,
+                                          switch_collection,
+                                          switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -39,7 +41,7 @@ class InvalidCollectionError(Exception):
     pass
 
 
-class EmbeddedDocument(BaseDocument):
+class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -58,7 +60,6 @@ class EmbeddedDocument(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     # A generic embedded document doesn't have any immutable properties
     # that describe it uniquely, hence it shouldn't be hashable. You can
@@ -95,7 +96,7 @@ class EmbeddedDocument(BaseDocument):
         self._instance.reload(*args, **kwargs)
 
 
-class Document(BaseDocument):
+class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -150,7 +151,6 @@ class Document(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     __slots__ = ('__objects',)
 
@@ -172,8 +172,8 @@ class Document(BaseDocument):
         """
         if self.pk is None:
             return super(BaseDocument, self).__hash__()
-        else:
-            return hash(self.pk)
+
+        return hash(self.pk)
 
     @classmethod
     def _get_db(cls):
@@ -370,6 +370,8 @@ class Document(BaseDocument):
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)
+        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+        doc = self.to_mongo()
 
         if self._meta.get('auto_create_index', True):
             self.ensure_indexes()
@@ -429,11 +431,18 @@ class Document(BaseDocument):
         Helper method, should only be used inside save().
         """
         collection = self._get_collection()
+        with set_write_concern(collection, write_concern) as wc_collection:
+            if force_insert:
+                return wc_collection.insert_one(doc).inserted_id
+            # insert_one will provoke UniqueError alongside save does not
+            # therefore, it need to catch and call replace_one.
+            if '_id' in doc:
+                raw_object = wc_collection.find_one_and_replace(
+                    {'_id': doc['_id']}, doc)
+                if raw_object:
+                    return doc['_id']
 
-        if force_insert:
-            return collection.insert(doc, **write_concern)
-
-        object_id = collection.save(doc, **write_concern)
+            object_id = wc_collection.insert_one(doc).inserted_id
 
         # In PyMongo 3.0, the save() call calls internally the _update() call
         # but they forget to return the _id value passed back, therefore getting it back here
@@ -585,9 +594,8 @@ class Document(BaseDocument):
         :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
-            will be used as options for the resultant
-            ``getLastError`` command.  For example,
-            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            will be used as options for the resultant ``getLastError`` command.
+            For example, ``save(..., w: 2, fsync: True)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
 
@@ -997,7 +1005,7 @@ class Document(BaseDocument):
         return {'missing': missing, 'extra': extra}
 
 
-class DynamicDocument(Document):
+class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expanded style properties.  Any data
@@ -1014,7 +1022,6 @@ class DynamicDocument(Document):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
 
@@ -1030,7 +1037,7 @@ class DynamicDocument(Document):
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 
 
-class DynamicEmbeddedDocument(EmbeddedDocument):
+class DynamicEmbeddedDocument(six.with_metaclass(DocumentMetaclass, EmbeddedDocument)):
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -1039,7 +1046,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     _dynamic = True
 

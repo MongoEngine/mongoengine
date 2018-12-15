@@ -71,6 +71,7 @@ class ValidationError(AssertionError):
     _message = None
 
     def __init__(self, message='', **kwargs):
+        super(ValidationError, self).__init__(message)
         self.errors = kwargs.get('errors', {})
         self.field_name = kwargs.get('field_name')
         self.message = message

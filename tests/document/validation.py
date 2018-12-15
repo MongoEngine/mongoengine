@@ -20,16 +20,16 @@ class ValidatorErrorTest(unittest.TestCase):
 
         # 1st level error schema
         error.errors = {'1st': ValidationError('bad 1st'), }
-        self.assertTrue('1st' in error.to_dict())
+        self.assertIn('1st', error.to_dict())
         self.assertEqual(error.to_dict()['1st'], 'bad 1st')
 
         # 2nd level error schema
         error.errors = {'1st': ValidationError('bad 1st', errors={
             '2nd': ValidationError('bad 2nd'),
         })}
-        self.assertTrue('1st' in error.to_dict())
-        self.assertTrue(isinstance(error.to_dict()['1st'], dict))
-        self.assertTrue('2nd' in error.to_dict()['1st'])
+        self.assertIn('1st', error.to_dict())
+        self.assertIsInstance(error.to_dict()['1st'], dict)
+        self.assertIn('2nd', error.to_dict()['1st'])
         self.assertEqual(error.to_dict()['1st']['2nd'], 'bad 2nd')
 
         # moar levels
@@ -40,10 +40,10 @@ class ValidatorErrorTest(unittest.TestCase):
                 }),
             }),
         })}
-        self.assertTrue('1st' in error.to_dict())
-        self.assertTrue('2nd' in error.to_dict()['1st'])
-        self.assertTrue('3rd' in error.to_dict()['1st']['2nd'])
-        self.assertTrue('4th' in error.to_dict()['1st']['2nd']['3rd'])
+        self.assertIn('1st', error.to_dict())
+        self.assertIn('2nd', error.to_dict()['1st'])
+        self.assertIn('3rd', error.to_dict()['1st']['2nd'])
+        self.assertIn('4th', error.to_dict()['1st']['2nd']['3rd'])
         self.assertEqual(error.to_dict()['1st']['2nd']['3rd']['4th'],
                          'Inception')
 
@@ -58,7 +58,7 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             User().validate()
         except ValidationError as e:
-            self.assertTrue("User:None" in e.message)
+            self.assertIn("User:None", e.message)
             self.assertEqual(e.to_dict(), {
                 'username': 'Field is required',
                 'name': 'Field is required'})
@@ -68,7 +68,7 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             user.save()
         except ValidationError as e:
-            self.assertTrue("User:RossC0" in e.message)
+            self.assertIn("User:RossC0", e.message)
             self.assertEqual(e.to_dict(), {
                 'name': 'Field is required'})
 
@@ -116,7 +116,7 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             Doc(id="bad").validate()
         except ValidationError as e:
-            self.assertTrue("SubDoc:None" in e.message)
+            self.assertIn("SubDoc:None", e.message)
             self.assertEqual(e.to_dict(), {
                 "e": {'val': 'OK could not be converted to int'}})
 
@@ -127,14 +127,14 @@ class ValidatorErrorTest(unittest.TestCase):
         doc = Doc.objects.first()
         keys = doc._data.keys()
         self.assertEqual(2, len(keys))
-        self.assertTrue('e' in keys)
-        self.assertTrue('id' in keys)
+        self.assertIn('e', keys)
+        self.assertIn('id', keys)
 
         doc.e.val = "OK"
         try:
             doc.save()
         except ValidationError as e:
-            self.assertTrue("Doc:test" in e.message)
+            self.assertIn("Doc:test", e.message)
             self.assertEqual(e.to_dict(), {
                 "e": {'val': 'OK could not be converted to int'}})
 

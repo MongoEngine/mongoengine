@@ -2,14 +2,11 @@
 import unittest
 import warnings
 
-from datetime import datetime
-
-from tests.fixtures import Base
-
-from mongoengine import Document, EmbeddedDocument, connect
+from mongoengine import (BooleanField, Document, EmbeddedDocument,
+                         EmbeddedDocumentField, GenericReferenceField,
+                         IntField, ReferenceField, StringField, connect)
 from mongoengine.connection import get_db
-from mongoengine.fields import (BooleanField, GenericReferenceField,
-                                IntField, StringField)
+from tests.fixtures import Base
 
 __all__ = ('InheritanceTest', )
 
@@ -25,6 +22,27 @@ class InheritanceTest(unittest.TestCase):
             if 'system.' in collection:
                 continue
             self.db.drop_collection(collection)
+
+    def test_constructor_cls(self):
+        # Ensures _cls is properly set during construction
+        # and when object gets reloaded (prevent regression of #1950)
+        class EmbedData(EmbeddedDocument):
+            data = StringField()
+            meta = {'allow_inheritance': True}
+
+        class DataDoc(Document):
+            name = StringField()
+            embed = EmbeddedDocumentField(EmbedData)
+            meta = {'allow_inheritance': True}
+
+        test_doc = DataDoc(name='test', embed=EmbedData(data='data'))
+        assert test_doc._cls == 'DataDoc'
+        assert test_doc.embed._cls == 'EmbedData'
+        test_doc.save()
+        saved_doc = DataDoc.objects.with_id(test_doc.id)
+        assert test_doc._cls == saved_doc._cls
+        assert test_doc.embed._cls == saved_doc.embed._cls
+        test_doc.delete()
 
     def test_superclasses(self):
         """Ensure that the correct list of superclasses is assembled.
@@ -258,9 +276,10 @@ class InheritanceTest(unittest.TestCase):
             name = StringField()
 
         # can't inherit because Animal didn't explicitly allow inheritance
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as cm:
             class Dog(Animal):
                 pass
+        self.assertIn("Document Animal may not be subclassed", str(cm.exception))
 
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name='dog').save()
@@ -268,7 +287,7 @@ class InheritanceTest(unittest.TestCase):
 
         collection = self.db[Animal._get_collection_name()]
         obj = collection.find_one()
-        self.assertFalse('_cls' in obj)
+        self.assertNotIn('_cls', obj)
 
     def test_cant_turn_off_inheritance_on_subclass(self):
         """Ensure if inheritance is on in a subclass you cant turn it off.
@@ -277,9 +296,10 @@ class InheritanceTest(unittest.TestCase):
             name = StringField()
             meta = {'allow_inheritance': True}
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as cm:
             class Mammal(Animal):
                 meta = {'allow_inheritance': False}
+        self.assertEqual(str(cm.exception), 'Only direct subclasses of Document may set "allow_inheritance" to False')
 
     def test_allow_inheritance_abstract_document(self):
         """Ensure that abstract documents can set inheritance rules and that
@@ -292,13 +312,48 @@ class InheritanceTest(unittest.TestCase):
         class Animal(FinalDocument):
             name = StringField()
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as cm:
             class Mammal(Animal):
                 pass
 
         # Check that _cls isn't present in simple documents
         doc = Animal(name='dog')
-        self.assertFalse('_cls' in doc.to_mongo())
+        self.assertNotIn('_cls', doc.to_mongo())
+
+    def test_using_abstract_class_in_reference_field(self):
+        # Ensures no regression of #1920
+        class AbstractHuman(Document):
+            meta = {'abstract': True}
+
+        class Dad(AbstractHuman):
+            name = StringField()
+
+        class Home(Document):
+            dad = ReferenceField(AbstractHuman)  # Referencing the abstract class
+            address = StringField()
+
+        dad = Dad(name='5').save()
+        Home(dad=dad, address='street').save()
+
+        home = Home.objects.first()
+        home.address = 'garbage'
+        home.save()     # Was failing with ValidationError
+
+    def test_abstract_class_referencing_self(self):
+        # Ensures no regression of #1920
+        class Human(Document):
+            meta = {'abstract': True}
+            creator = ReferenceField('self', dbref=True)
+
+        class User(Human):
+            name = StringField()
+
+        user = User(name='John').save()
+        user2 = User(name='Foo', creator=user).save()
+
+        user2 = User.objects.with_id(user2.id)
+        user2.name = 'Bar'
+        user2.save()    # Was failing with ValidationError
 
     def test_abstract_handle_ids_in_metaclass_properly(self):
 
@@ -358,11 +413,11 @@ class InheritanceTest(unittest.TestCase):
             meta = {'abstract': True,
                     'allow_inheritance': False}
 
-        bkk = City(continent='asia')
-        self.assertEqual(None, bkk.pk)
+        city = City(continent='asia')
+        self.assertEqual(None, city.pk)
         # TODO: expected error? Shouldn't we create a new error type?
         with self.assertRaises(KeyError):
-            setattr(bkk, 'pk', 1)
+            setattr(city, 'pk', 1)
 
     def test_allow_inheritance_embedded_document(self):
         """Ensure embedded documents respect inheritance."""
@@ -374,14 +429,14 @@ class InheritanceTest(unittest.TestCase):
                 pass
 
         doc = Comment(content='test')
-        self.assertFalse('_cls' in doc.to_mongo())
+        self.assertNotIn('_cls', doc.to_mongo())
 
         class Comment(EmbeddedDocument):
             content = StringField()
             meta = {'allow_inheritance': True}
 
         doc = Comment(content='test')
-        self.assertTrue('_cls' in doc.to_mongo())
+        self.assertIn('_cls', doc.to_mongo())
 
     def test_document_inheritance(self):
         """Ensure mutliple inheritance of abstract documents
@@ -434,8 +489,8 @@ class InheritanceTest(unittest.TestCase):
             for cls in [Animal, Fish, Guppy]:
                 self.assertEqual(cls._meta[k], v)
 
-        self.assertFalse('collection' in Animal._meta)
-        self.assertFalse('collection' in Mammal._meta)
+        self.assertNotIn('collection', Animal._meta)
+        self.assertNotIn('collection', Mammal._meta)
 
         self.assertEqual(Animal._get_collection_name(), None)
         self.assertEqual(Mammal._get_collection_name(), None)

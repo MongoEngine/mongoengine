@@ -52,26 +52,40 @@ class DeReference(object):
                         [i.__class__ == doc_type for i in items.values()]):
                     return items
                 elif not field.dbref:
+                    # We must turn the ObjectIds into DBRefs
+
+                    # Recursively dig into the sub items of a list/dict
+                    # to turn the ObjectIds into DBRefs
+                    def _get_items_from_list(items):
+                        new_items = []
+                        for v in items:
+                            value = v
+                            if isinstance(v, dict):
+                                value = _get_items_from_dict(v)
+                            elif isinstance(v, list):
+                                value = _get_items_from_list(v)
+                            elif not isinstance(v, (DBRef, Document)):
+                                value = field.to_python(v)
+                            new_items.append(value)
+                        return new_items
+
+                    def _get_items_from_dict(items):
+                        new_items = {}
+                        for k, v in items.iteritems():
+                            value = v
+                            if isinstance(v, list):
+                                value = _get_items_from_list(v)
+                            elif isinstance(v, dict):
+                                value = _get_items_from_dict(v)
+                            elif not isinstance(v, (DBRef, Document)):
+                                value = field.to_python(v)
+                            new_items[k] = value
+                        return new_items
+
                     if not hasattr(items, 'items'):
-
-                        def _get_items(items):
-                            new_items = []
-                            for v in items:
-                                if isinstance(v, list):
-                                    new_items.append(_get_items(v))
-                                elif not isinstance(v, (DBRef, Document)):
-                                    new_items.append(field.to_python(v))
-                                else:
-                                    new_items.append(v)
-                            return new_items
-
-                        items = _get_items(items)
+                        items = _get_items_from_list(items)
                     else:
-                        items = {
-                            k: (v if isinstance(v, (DBRef, Document))
-                                else field.to_python(v))
-                            for k, v in items.iteritems()
-                        }
+                        items = _get_items_from_dict(items)
 
         self.reference_map = self._find_references(items)
         self.object_map = self._fetch_objects(doc_type=doc_type)
@@ -133,7 +147,12 @@ class DeReference(object):
         """
         object_map = {}
         for collection, dbrefs in self.reference_map.iteritems():
-            if hasattr(collection, 'objects'):  # We have a document class for the refs
+
+            # we use getattr instead of hasattr because hasattr swallows any exception under python2
+            # so it could hide nasty things without raising exceptions (cfr bug #1688))
+            ref_document_cls_exists = (getattr(collection, 'objects', None) is not None)
+
+            if ref_document_cls_exists:
                 col_name = collection._get_collection_name()
                 refs = [dbref for dbref in dbrefs
                         if (col_name, dbref) not in object_map]
@@ -141,7 +160,7 @@ class DeReference(object):
                 for key, doc in references.iteritems():
                     object_map[(col_name, key)] = doc
             else:  # Generic reference: use the refs data to convert to document
-                if isinstance(doc_type, (ListField, DictField, MapField,)):
+                if isinstance(doc_type, (ListField, DictField, MapField)):
                     continue
 
                 refs = [dbref for dbref in dbrefs

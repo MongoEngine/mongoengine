@@ -89,7 +89,7 @@ class QuerySet(BaseQuerySet):
                 yield self._result_cache[pos]
                 pos += 1
 
-            # Raise StopIteration if we already established there were no more
+            # return if we already established there were no more
             # docs in the db cursor.
             if not self._has_more:
                 return
@@ -115,7 +115,7 @@ class QuerySet(BaseQuerySet):
         # the result cache.
         try:
             for _ in six.moves.range(ITER_CHUNK_SIZE):
-                self._result_cache.append(self.next())
+                self._result_cache.append(six.next(self))
         except StopIteration:
             # Getting this exception means there are no more docs in the
             # db cursor. Set _has_more to False so that we can use that
@@ -170,7 +170,7 @@ class QuerySetNoCache(BaseQuerySet):
         data = []
         for _ in six.moves.range(REPR_OUTPUT_SIZE + 1):
             try:
-                data.append(self.next())
+                data.append(six.next(self))
             except StopIteration:
                 break
 
@@ -186,10 +186,3 @@ class QuerySetNoCache(BaseQuerySet):
             queryset = self.clone()
         queryset.rewind()
         return queryset
-
-
-class QuerySetNoDeRef(QuerySet):
-    """Special no_dereference QuerySet"""
-
-    def __dereference(items, max_depth=1, instance=None, name=None):
-        return items

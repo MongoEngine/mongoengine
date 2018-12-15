@@ -2,7 +2,7 @@ import unittest
 
 from mongoengine import connect, Document, IntField, StringField, ListField
 
-from tests.utils import needs_mongodb_v26
+from tests.utils import requires_mongodb_gte_26
 
 __all__ = ("FindAndModifyTest",)
 
@@ -96,7 +96,7 @@ class FindAndModifyTest(unittest.TestCase):
         self.assertEqual(old_doc.to_mongo(), {"_id": 1})
         self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
 
-    @needs_mongodb_v26
+    @requires_mongodb_gte_26
     def test_modify_with_push(self):
         class BlogPost(Document):
             tags = ListField(StringField())

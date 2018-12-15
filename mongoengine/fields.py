@@ -5,7 +5,6 @@ import re
 import socket
 import time
 import uuid
-import warnings
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
@@ -25,21 +24,30 @@ try:
 except ImportError:
     Int64 = long
 
+
 from mongoengine.base import (BaseDocument, BaseField, ComplexBaseField,
                               GeoJsonBaseField, LazyReference, ObjectIdField,
                               get_document)
+from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
 from mongoengine.python_support import StringIO
-from mongoengine.queryset import DO_NOTHING, QuerySet
+from mongoengine.queryset import DO_NOTHING
+from mongoengine.queryset.base import BaseQuerySet
 
 try:
     from PIL import Image, ImageOps
 except ImportError:
     Image = None
     ImageOps = None
+
+if six.PY3:
+    # Useless as long as 2to3 gets executed
+    # as it turns `long` into `int` blindly
+    long = int
+
 
 __all__ = (
     'StringField', 'URLField', 'EmailField', 'IntField', 'LongField',
@@ -123,9 +131,9 @@ class URLField(StringField):
     .. versionadded:: 0.3
     """
 
-    _URL_REGEX = re.compile(
+    _URL_REGEX = LazyRegexCompiler(
         r'^(?:[a-z0-9\.\-]*)://'  # scheme is validated separately
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}(?<!-)\.?)|'  # domain...
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-_]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}(?<!-)\.?)|'  # domain...
         r'localhost|'  # localhost...
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # ...or ipv4
         r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # ...or ipv6
@@ -133,8 +141,7 @@ class URLField(StringField):
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
     _URL_SCHEMES = ['http', 'https', 'ftp', 'ftps']
 
-    def __init__(self, verify_exists=False, url_regex=None, schemes=None, **kwargs):
-        self.verify_exists = verify_exists
+    def __init__(self, url_regex=None, schemes=None, **kwargs):
         self.url_regex = url_regex or self._URL_REGEX
         self.schemes = schemes or self._URL_SCHEMES
         super(URLField, self).__init__(**kwargs)
@@ -157,7 +164,7 @@ class EmailField(StringField):
 
     .. versionadded:: 0.4
     """
-    USER_REGEX = re.compile(
+    USER_REGEX = LazyRegexCompiler(
         # `dot-atom` defined in RFC 5322 Section 3.2.3.
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*\Z"
         # `quoted-string` defined in RFC 5322 Section 3.2.4.
@@ -165,7 +172,7 @@ class EmailField(StringField):
         re.IGNORECASE
     )
 
-    UTF8_USER_REGEX = re.compile(
+    UTF8_USER_REGEX = LazyRegexCompiler(
         six.u(
             # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to
             # include `UTF8-non-ascii`.
@@ -175,7 +182,7 @@ class EmailField(StringField):
         ), re.IGNORECASE | re.UNICODE
     )
 
-    DOMAIN_REGEX = re.compile(
+    DOMAIN_REGEX = LazyRegexCompiler(
         r'((?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+)(?:[A-Z0-9-]{2,63}(?<!-))\Z',
         re.IGNORECASE
     )
@@ -267,14 +274,14 @@ class IntField(BaseField):
     def to_python(self, value):
         try:
             value = int(value)
-        except ValueError:
+        except (TypeError, ValueError):
             pass
         return value
 
     def validate(self, value):
         try:
             value = int(value)
-        except Exception:
+        except (TypeError, ValueError):
             self.error('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -300,7 +307,7 @@ class LongField(BaseField):
     def to_python(self, value):
         try:
             value = long(value)
-        except ValueError:
+        except (TypeError, ValueError):
             pass
         return value
 
@@ -310,7 +317,7 @@ class LongField(BaseField):
     def validate(self, value):
         try:
             value = long(value)
-        except Exception:
+        except (TypeError, ValueError):
             self.error('%s could not be converted to long' % value)
 
         if self.min_value is not None and value < self.min_value:
@@ -364,7 +371,8 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-    """Fixed-point decimal number field.
+    """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
+    If using floats, beware of Decimal to float conversion (potential precision loss)
 
     .. versionchanged:: 0.8
     .. versionadded:: 0.3
@@ -375,7 +383,9 @@ class DecimalField(BaseField):
         """
         :param min_value: Validation rule for the minimum acceptable value.
         :param max_value: Validation rule for the maximum acceptable value.
-        :param force_string: Store as a string.
+        :param force_string: Store the value as a string (instead of a float).
+         Be aware that this affects query sorting and operation like lte, gte (as string comparison is applied)
+         and some query operator won't work (e.g: inc, dec)
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal library:
 
@@ -406,7 +416,7 @@ class DecimalField(BaseField):
         # Convert to string for python 2.6 before casting to Decimal
         try:
             value = decimal.Decimal('%s' % value)
-        except decimal.InvalidOperation:
+        except (TypeError, ValueError, decimal.InvalidOperation):
             return value
         return value.quantize(decimal.Decimal('.%s' % ('0' * self.precision)), rounding=self.rounding)
 
@@ -423,7 +433,7 @@ class DecimalField(BaseField):
                 value = six.text_type(value)
             try:
                 value = decimal.Decimal(value)
-            except Exception as exc:
+            except (TypeError, ValueError, decimal.InvalidOperation) as exc:
                 self.error('Could not convert value to decimal: %s' % exc)
 
         if self.min_value is not None and value < self.min_value:
@@ -461,6 +471,8 @@ class DateTimeField(BaseField):
     to parse the dates.  Note: python-dateutil's parser is fully featured and when
     installed you can utilise it to convert varying types of date formats into valid
     python datetime objects.
+
+    Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
 
     Note: Microseconds are rounded to the nearest millisecond.
       Pre UTC microsecond support is effectively broken.
@@ -557,11 +569,15 @@ class ComplexDateTimeField(StringField):
     The `,` as the separator can be easily modified by passing the `separator`
     keyword when initializing the field.
 
+    Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
+
     .. versionadded:: 0.5
     """
 
     def __init__(self, separator=',', **kwargs):
-        self.names = ['year', 'month', 'day', 'hour', 'minute', 'second', 'microsecond']
+        """
+        :param separator: Allows to customize the separator used for storage (default ``,``)
+        """
         self.separator = separator
         self.format = separator.join(['%Y', '%m', '%d', '%H', '%M', '%S', '%f'])
         super(ComplexDateTimeField, self).__init__(**kwargs)
@@ -588,20 +604,24 @@ class ComplexDateTimeField(StringField):
         >>> ComplexDateTimeField()._convert_from_string(a)
         datetime.datetime(2011, 6, 8, 20, 26, 24, 92284)
         """
-        values = map(int, data.split(self.separator))
+        values = [int(d) for d in data.split(self.separator)]
         return datetime.datetime(*values)
 
     def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
         data = super(ComplexDateTimeField, self).__get__(instance, owner)
-        if data is None:
-            return None if self.null else datetime.datetime.now()
-        if isinstance(data, datetime.datetime):
+
+        if isinstance(data, datetime.datetime) or data is None:
             return data
         return self._convert_from_string(data)
 
     def __set__(self, instance, value):
-        value = self._convert_from_datetime(value) if value else value
-        return super(ComplexDateTimeField, self).__set__(instance, value)
+        super(ComplexDateTimeField, self).__set__(instance, value)
+        value = instance._data[self.name]
+        if value is not None:
+            instance._data[self.name] = self._convert_from_datetime(value)
 
     def validate(self, value):
         value = self.to_python(value)
@@ -645,9 +665,17 @@ class EmbeddedDocumentField(BaseField):
     def document_type(self):
         if isinstance(self.document_type_obj, six.string_types):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
-                self.document_type_obj = self.owner_document
+                resolved_document_type = self.owner_document
             else:
-                self.document_type_obj = get_document(self.document_type_obj)
+                resolved_document_type = get_document(self.document_type_obj)
+
+            if not issubclass(resolved_document_type, EmbeddedDocument):
+                # Due to the late resolution of the document_type
+                # There is a chance that it won't be an EmbeddedDocument (#1661)
+                self.error('Invalid embedded document class provided to an '
+                           'EmbeddedDocumentField')
+            self.document_type_obj = resolved_document_type
+
         return self.document_type_obj
 
     def to_python(self, value):
@@ -824,8 +852,7 @@ class ListField(ComplexBaseField):
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""
-        if (not isinstance(value, (list, tuple, QuerySet)) or
-                isinstance(value, six.string_types)):
+        if not isinstance(value, (list, tuple, BaseQuerySet)):
             self.error('Only lists and tuples may be used in a list field')
         super(ListField, self).validate(value)
 
@@ -932,14 +959,9 @@ class DictField(ComplexBaseField):
     .. versionchanged:: 0.5 - Can now handle complex / varying types of data
     """
 
-    def __init__(self, basecls=None, field=None, *args, **kwargs):
+    def __init__(self, field=None, *args, **kwargs):
         self.field = field
         self._auto_dereference = False
-        self.basecls = basecls or BaseField
-
-        # XXX ValidationError raised outside of the "validate" method.
-        if not issubclass(self.basecls, BaseField):
-            self.error('DictField only accepts dict values')
 
         kwargs.setdefault('default', lambda: {})
         super(DictField, self).__init__(*args, **kwargs)
@@ -959,7 +981,7 @@ class DictField(ComplexBaseField):
         super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
-        return DictField(basecls=self.basecls, db_field=member_name)
+        return DictField(db_field=member_name)
 
     def prepare_query_value(self, op, value):
         match_operators = ['contains', 'icontains', 'startswith',
@@ -969,7 +991,7 @@ class DictField(ComplexBaseField):
         if op in match_operators and isinstance(value, six.string_types):
             return StringField().prepare_query_value(op, value)
 
-        if hasattr(self.field, 'field'):
+        if hasattr(self.field, 'field'):    # Used for instance when using DictField(ListField(IntField()))
             if op in ('set', 'unset') and isinstance(value, dict):
                 return {
                     k: self.field.prepare_query_value(op, v)
@@ -1027,11 +1049,13 @@ class ReferenceField(BaseField):
 
     .. code-block:: python
 
-        class Bar(Document):
-            content = StringField()
-            foo = ReferenceField('Foo')
+        class Org(Document):
+            owner = ReferenceField('User')
 
-        Foo.register_delete_rule(Bar, 'foo', NULLIFY)
+        class User(Document):
+            org = ReferenceField('Org', reverse_delete_rule=CASCADE)
+
+        User.register_delete_rule(Org, 'owner', DENY)
 
     .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
@@ -1079,9 +1103,9 @@ class ReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
+        auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
-        if self._auto_dereference and isinstance(value, DBRef):
+        if auto_dereference and isinstance(value, DBRef):
             if hasattr(value, 'cls'):
                 # Dereference using the class type specified in the reference
                 cls = get_document(value.cls)
@@ -1151,16 +1175,6 @@ class ReferenceField(BaseField):
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
                        'saved to the database')
-
-        if (
-            self.document_type._meta.get('abstract') and
-            not isinstance(value, self.document_type)
-        ):
-            self.error(
-                '%s is not an instance of abstract reference type %s' % (
-                    self.document_type._class_name
-                )
-            )
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -1242,9 +1256,10 @@ class CachedReferenceField(BaseField):
 
         # Get value from document instance if available
         value = instance._data.get(self.name)
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
+        auto_dereference = instance._fields[self.name]._auto_dereference
+
         # Dereference DBRefs
-        if self._auto_dereference and isinstance(value, DBRef):
+        if auto_dereference and isinstance(value, DBRef):
             dereferenced = self.document_type._get_db().dereference(value)
             if dereferenced is None:
                 raise DoesNotExist('Trying to dereference unknown document %s' % value)
@@ -1377,8 +1392,8 @@ class GenericReferenceField(BaseField):
 
         value = instance._data.get(self.name)
 
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
-        if self._auto_dereference and isinstance(value, (dict, SON)):
+        auto_dereference = instance._fields[self.name]._auto_dereference
+        if auto_dereference and isinstance(value, (dict, SON)):
             dereferenced = self.dereference(value)
             if dereferenced is None:
                 raise DoesNotExist('Trying to dereference unknown document %s' % value)
@@ -1460,10 +1475,10 @@ class BinaryField(BaseField):
         return Binary(value)
 
     def validate(self, value):
-        if not isinstance(value, (six.binary_type, six.text_type, Binary)):
+        if not isinstance(value, (six.binary_type, Binary)):
             self.error('BinaryField only accepts instances of '
                        '(%s, %s, Binary)' % (
-                           six.binary_type.__name__, six.text_type.__name__))
+                           six.binary_type.__name__, Binary.__name__))
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
@@ -1508,8 +1523,10 @@ class GridFSProxy(object):
     def __get__(self, instance, value):
         return self
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.grid_id)
+
+    __nonzero__ = __bool__  # For Py2 support
 
     def __getstate__(self):
         self_dict = self.__dict__
@@ -1850,12 +1867,9 @@ class ImageField(FileField):
     """
     A Image File storage field.
 
-    @size (width, height, force):
-        max size to store images, if larger will be automatically resized
-        ex: size=(800, 600, True)
-
-    @thumbnail (width, height, force):
-        size to generate a thumbnail
+    :param size: max size to store images, provided as (width, height, force)
+        if larger, it will be automatically resized (ex: size=(800, 600, True))
+    :param thumbnail_size: size to generate a thumbnail, provided as (width, height, force)
 
     .. versionadded:: 0.6
     """
@@ -1926,8 +1940,7 @@ class SequenceField(BaseField):
         self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
         self.sequence_name = sequence_name
-        self.value_decorator = (callable(value_decorator) and
-                                value_decorator or self.VALUE_DECORATOR)
+        self.value_decorator = value_decorator if callable(value_decorator) else self.VALUE_DECORATOR
         super(SequenceField, self).__init__(*args, **kwargs)
 
     def generate(self):
@@ -2036,7 +2049,7 @@ class UUIDField(BaseField):
                 if not isinstance(value, six.string_types):
                     value = six.text_type(value)
                 return uuid.UUID(value)
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 return original_value
         return value
 
@@ -2058,7 +2071,7 @@ class UUIDField(BaseField):
                 value = str(value)
             try:
                 uuid.UUID(value)
-            except Exception as exc:
+            except (ValueError, TypeError, AttributeError) as exc:
                 self.error('Could not convert to UUID: %s' % exc)
 
 

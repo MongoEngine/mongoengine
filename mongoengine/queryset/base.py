@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import copy
 import itertools
-import operator
 import pprint
 import re
 import warnings
@@ -38,8 +37,6 @@ NULLIFY = 1
 CASCADE = 2
 DENY = 3
 PULL = 4
-
-RE_TYPE = type(re.compile(''))
 
 
 class BaseQuerySet(object):
@@ -209,13 +206,11 @@ class BaseQuerySet(object):
         queryset = self.order_by()
         return False if queryset.first() is None else True
 
-    def __nonzero__(self):
-        """Avoid to open all records in an if stmt in Py2."""
-        return self._has_data()
-
     def __bool__(self):
         """Avoid to open all records in an if stmt in Py3."""
         return self._has_data()
+
+    __nonzero__ = __bool__  # For Py2 support
 
     # Core functions
 
@@ -269,13 +264,13 @@ class BaseQuerySet(object):
         queryset = queryset.filter(*q_objs, **query)
 
         try:
-            result = queryset.next()
+            result = six.next(queryset)
         except StopIteration:
             msg = ('%s matching query does not exist.'
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
         try:
-            queryset.next()
+            six.next(queryset)
         except StopIteration:
             return result
 
@@ -359,7 +354,7 @@ class BaseQuerySet(object):
 
         try:
             inserted_result = insert_func(raw)
-            ids = return_one and [inserted_result.inserted_id] or inserted_result.inserted_ids
+            ids = [inserted_result.inserted_id] if return_one else inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
             raise NotUniqueError(message % six.text_type(err))
@@ -377,17 +372,20 @@ class BaseQuerySet(object):
                 raise NotUniqueError(message % six.text_type(err))
             raise OperationError(message % six.text_type(err))
 
+        # Apply inserted_ids to documents
+        for doc, doc_id in zip(docs, ids):
+            doc.pk = doc_id
+
         if not load_bulk:
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
-            return return_one and ids[0] or ids
+            return ids[0] if return_one else ids
+
         documents = self.in_bulk(ids)
-        results = []
-        for obj_id in ids:
-            results.append(documents.get(obj_id))
+        results = [documents.get(obj_id) for obj_id in ids]
         signals.post_bulk_insert.send(
             self._document, documents=results, loaded=True, **signal_kwargs)
-        return return_one and results[0] or results
+        return results[0] if return_one else results
 
     def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
@@ -396,9 +394,11 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0 and with_limit_and_skip or self._none:
+        if self._limit == 0 and with_limit_and_skip is False or self._none:
             return 0
-        return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        self._cursor_obj = None
+        return count
 
     def delete(self, write_concern=None, _from_doc_delete=False,
                cascade_refs=None):
@@ -775,10 +775,11 @@ class BaseQuerySet(object):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
 
-        :param n: the maximum number of objects to return
+        :param n: the maximum number of objects to return if n is greater than 0.
+        When 0 is passed, returns all the documents in the cursor
         """
         queryset = self.clone()
-        queryset._limit = n if n != 0 else 1
+        queryset._limit = n
 
         # If a cursor object has already been created, apply the limit to it.
         if queryset._cursor_obj:
@@ -976,11 +977,10 @@ class BaseQuerySet(object):
         # explicitly included, and then more complicated operators such as
         # $slice.
         def _sort_key(field_tuple):
-            key, value = field_tuple
-            if isinstance(value, (int)):
+            _, value = field_tuple
+            if isinstance(value, int):
                 return value  # 0 for exclusion, 1 for inclusion
-            else:
-                return 2  # so that complex values appear last
+            return 2  # so that complex values appear last
 
         fields = sorted(cleaned_fields, key=_sort_key)
 
@@ -1477,13 +1477,13 @@ class BaseQuerySet(object):
 
     # Iterator helpers
 
-    def next(self):
+    def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
         if self._limit == 0 or self._none:
             raise StopIteration
 
-        raw_doc = self._cursor.next()
+        raw_doc = six.next(self._cursor)
 
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
@@ -1496,6 +1496,8 @@ class BaseQuerySet(object):
             return self._get_scalar(doc)
 
         return doc
+
+    next = __next__     # For Python2 support
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
@@ -1872,8 +1874,8 @@ class BaseQuerySet(object):
             # Substitute the correct name for the field into the javascript
             return '.'.join([f.db_field for f in fields])
 
-        code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
-        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
+        code = re.sub(r'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+        code = re.sub(r'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
                       code)
         return code
 

@@ -35,10 +35,9 @@ class BaseDict(dict):
     _name = None
 
     def __init__(self, dict_items, instance, name):
-        Document = _import_class('Document')
-        EmbeddedDocument = _import_class('EmbeddedDocument')
+        BaseDocument = _import_class('BaseDocument')
 
-        if isinstance(instance, (Document, EmbeddedDocument)):
+        if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
         self._name = name
         super(BaseDict, self).__init__(dict_items)
@@ -56,11 +55,11 @@ class BaseDict(dict):
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
-        elif not isinstance(value, BaseDict) and isinstance(value, dict):
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, None, '%s.%s' % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
-        elif not isinstance(value, BaseList) and isinstance(value, list):
+        elif isinstance(value, list) and not isinstance(value, BaseList):
             value = BaseList(value, None, '%s.%s' % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
@@ -100,10 +99,9 @@ class BaseList(list):
     _name = None
 
     def __init__(self, list_items, instance, name):
-        Document = _import_class('Document')
-        EmbeddedDocument = _import_class('EmbeddedDocument')
+        BaseDocument = _import_class('BaseDocument')
 
-        if isinstance(instance, (Document, EmbeddedDocument)):
+        if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
         self._name = name
         super(BaseList, self).__init__(list_items)
@@ -119,12 +117,12 @@ class BaseList(list):
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
-        elif not isinstance(value, BaseDict) and isinstance(value, dict):
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
             # Replace dict by BaseDict
             value = BaseDict(value, None, '%s.%s' % (self._name, key))
             super(BaseList, self).__setitem__(key, value)
             value._instance = self._instance
-        elif not isinstance(value, BaseList) and isinstance(value, list):
+        elif isinstance(value, list) and not isinstance(value, BaseList):
             # Replace list by BaseList
             value = BaseList(value, None, '%s.%s' % (self._name, key))
             super(BaseList, self).__setitem__(key, value)
@@ -217,6 +215,9 @@ class EmbeddedDocumentList(BaseList):
         """
         Filters the list by only including embedded documents with the
         given keyword arguments.
+
+        This method only supports simple comparison (e.g: .filter(name='John Doe'))
+        and does not support operators like __gte, __lte, __icontains like queryset.filter does
 
         :param kwargs: The keyword arguments corresponding to the fields to
          filter on. *Multiple arguments are treated as if they are ANDed
@@ -358,7 +359,7 @@ class EmbeddedDocumentList(BaseList):
 
 class StrictDict(object):
     __slots__ = ()
-    _special_fields = set(['get', 'pop', 'iteritems', 'items', 'keys', 'create'])
+    _special_fields = {'get', 'pop', 'iteritems', 'items', 'keys', 'create'}
     _classes = {}
 
     def __init__(self, **kwargs):

@@ -2,9 +2,64 @@
 Changelog
 =========
 
-Changes in 0.15.4
+Development
+===========
+- (Fill this out as you fix issues and develop your features).
+- Fix .only() working improperly after using .count() of the same instance of QuerySet
+
 =================
-- Added `DateField` #513
+Changes in 0.16.3
+=================
+- Fix $push with $position operator not working with lists in embedded document #1965
+
+=================
+Changes in 0.16.2
+=================
+- Fix .save() that fails when called with write_concern=None (regression of 0.16.1) #1958
+
+=================
+Changes in 0.16.1
+=================
+- Fix `_cls` that is not set properly in Document constructor (regression) #1950
+- Fix bug in _delta method - Update of a ListField depends on an unrelated dynamic field update #1733
+- Remove deprecated `save()` method and used `insert_one()` #1899
+
+=================
+Changes in 0.16.0
+=================
+- Various improvements to the doc
+- Improvement to code quality
+- POTENTIAL BREAKING CHANGES:
+    - EmbeddedDocumentField will no longer accept references to Document classes in its constructor #1661
+    - Get rid of the `basecls` parameter from the DictField constructor (dead code) #1876
+    - default value of ComplexDateTime is now None (and no longer the current datetime) #1368
+- Fix unhashable TypeError when referencing a Document with a compound key in an EmbeddedDocument #1685
+- Fix bug where an EmbeddedDocument with the same id as its parent would not be tracked for changes #1768
+- Fix the fact that bulk `insert()` was not setting primary keys of inserted documents instances #1919
+- Fix bug when referencing the abstract class in a ReferenceField #1920
+- Allow modification to the document made in pre_save_post_validation to be taken into account #1202
+- Replaced MongoDB 2.4 tests in CI by MongoDB 3.2 #1903
+- Fix side effects of using queryset.`no_dereference` on other documents #1677
+- Fix TypeError when using lazy django translation objects as translated choices #1879
+- Improve 2-3 codebase compatibility #1889
+- Fix the support for changing the default value of ComplexDateTime #1368
+- Improves error message in case an EmbeddedDocumentListField receives an EmbeddedDocument instance
+    instead of a list #1877
+- Fix the Decimal operator inc/dec #1517 #1320
+- Ignore killcursors queries in `query_counter` context manager #1869
+- Fix the fact that `query_counter` was modifying the initial profiling_level in case it was != 0 #1870
+- Repaired the `no_sub_classes` context manager + fix the fact that it was swallowing exceptions #1865
+- Fix index creation error that was swallowed by hasattr under python2 #1688
+- QuerySet limit function behaviour: Passing 0 as parameter will return all the documents in the cursor #1611
+- bulk insert updates the ids of the input documents instances #1919
+- Fix an harmless bug related to GenericReferenceField where modifications in the generic-referenced document
+    were tracked in the parent #1934
+- Improve validator of BinaryField #273
+- Implemented lazy regex compiling in Field classes to improve 'import mongoengine' performance #1806
+- Updated GridFSProxy.__str__  so that it would always print both the filename and grid_id #710
+- Add __repr__ to Q and QCombination #1843
+- fix bug in BaseList.__iter__ operator (was occuring when modifying a BaseList while iterating over it) #1676
+- Added field `DateField`#513
 
 Changes in 0.15.3
 =================

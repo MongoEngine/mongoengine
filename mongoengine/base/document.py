@@ -1,11 +1,8 @@
 import copy
 import numbers
-from collections import Hashable
 from functools import partial
 
-from bson import ObjectId, json_util
-from bson.dbref import DBRef
-from bson.son import SON
+from bson import DBRef, ObjectId, SON, json_util
 import pymongo
 import six
 
@@ -19,6 +16,7 @@ from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError,
                                 LookUpError, OperationError, ValidationError)
+from mongoengine.python_support import Hashable
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -302,7 +300,7 @@ class BaseDocument(object):
         data['_cls'] = self._class_name
 
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
-        root_fields = set([f.split('.')[0] for f in fields])
+        root_fields = {f.split('.')[0] for f in fields}
 
         for field_name in self:
             if root_fields and field_name not in root_fields:
@@ -404,7 +402,15 @@ class BaseDocument(object):
 
     @classmethod
     def from_json(cls, json_data, created=False):
-        """Converts json data to an unsaved document instance"""
+        """Converts json data to a Document instance
+
+        :param json_data: The json data to load into the Document
+        :param created: If True, the document will be considered as a brand new document
+                        If False and an id is provided, it will consider that the data being
+                        loaded corresponds to what's already in the database (This has an impact of subsequent call to .save())
+                        If False and no id is provided, it will consider the data as a new document
+                        (default ``False``)
+        """
         return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):
@@ -495,7 +501,13 @@ class BaseDocument(object):
 
         self._changed_fields = []
 
-    def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
+    def _nestable_types_changed_fields(self, changed_fields, base_key, data):
+        """Inspect nested data for changed fields
+
+        :param changed_fields: Previously collected changed fields
+        :param base_key: The base key that must be used to prepend changes to this data
+        :param data: data to inspect for changes
+        """
         # Loop list / dict fields as they contain documents
         # Determine the iterator to use
         if not hasattr(data, 'items'):
@@ -503,36 +515,30 @@ class BaseDocument(object):
         else:
             iterator = data.iteritems()
 
-        for index, value in iterator:
-            list_key = '%s%s.' % (key, index)
+        for index_or_key, value in iterator:
+            item_key = '%s%s.' % (base_key, index_or_key)
             # don't check anything lower if this key is already marked
             # as changed.
-            if list_key[:-1] in changed_fields:
+            if item_key[:-1] in changed_fields:
                 continue
+
             if hasattr(value, '_get_changed_fields'):
-                changed = value._get_changed_fields(inspected)
-                changed_fields += ['%s%s' % (list_key, k)
-                                   for k in changed if k]
+                changed = value._get_changed_fields()
+                changed_fields += ['%s%s' % (item_key, k) for k in changed if k]
             elif isinstance(value, (list, tuple, dict)):
                 self._nestable_types_changed_fields(
-                    changed_fields, list_key, value, inspected)
+                    changed_fields, item_key, value)
 
-    def _get_changed_fields(self, inspected=None):
+    def _get_changed_fields(self):
         """Return a list of all fields that have explicitly been changed.
         """
         EmbeddedDocument = _import_class('EmbeddedDocument')
-        DynamicEmbeddedDocument = _import_class('DynamicEmbeddedDocument')
         ReferenceField = _import_class('ReferenceField')
+        GenericReferenceField = _import_class('GenericReferenceField')
         SortedListField = _import_class('SortedListField')
 
         changed_fields = []
         changed_fields += getattr(self, '_changed_fields', [])
-
-        inspected = inspected or set()
-        if hasattr(self, 'id') and isinstance(self.id, Hashable):
-            if self.id in inspected:
-                return changed_fields
-            inspected.add(self.id)
 
         for field_name in self._fields_ordered:
             db_field_name = self._db_field_map.get(field_name, field_name)
@@ -540,31 +546,29 @@ class BaseDocument(object):
             data = self._data.get(field_name, None)
             field = self._fields.get(field_name)
 
-            if hasattr(data, 'id'):
-                if data.id in inspected:
-                    continue
-            if isinstance(field, ReferenceField):
+            if db_field_name in changed_fields:
+                # Whole field already marked as changed, no need to go further
                 continue
-            elif (
-                isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)) and
-                db_field_name not in changed_fields
-            ):
+
+            if isinstance(field, ReferenceField):   # Don't follow referenced documents
+                continue
+
+            if isinstance(data, EmbeddedDocument):
                 # Find all embedded fields that have been changed
-                changed = data._get_changed_fields(inspected)
+                changed = data._get_changed_fields()
                 changed_fields += ['%s%s' % (key, k) for k in changed if k]
-            elif (isinstance(data, (list, tuple, dict)) and
-                    db_field_name not in changed_fields):
+            elif isinstance(data, (list, tuple, dict)):
                 if (hasattr(field, 'field') and
-                        isinstance(field.field, ReferenceField)):
+                        isinstance(field.field, (ReferenceField, GenericReferenceField))):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed
-                    if any(map(lambda d: field._ordering in d._changed_fields, data)):
+                    if any(field._ordering in d._changed_fields for d in data):
                         changed_fields.append(db_field_name)
                         continue
 
                 self._nestable_types_changed_fields(
-                    changed_fields, key, data, inspected)
+                    changed_fields, key, data)
         return changed_fields
 
     def _delta(self):
@@ -576,7 +580,6 @@ class BaseDocument(object):
 
         set_fields = self._get_changed_fields()
         unset_data = {}
-        parts = []
         if hasattr(self, '_changed_fields'):
             set_data = {}
             # Fetch each set item from its path
@@ -586,15 +589,13 @@ class BaseDocument(object):
                 new_path = []
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
+                        # Don't dig in the references
                         break
-                    elif isinstance(d, list) and p.lstrip('-').isdigit():
-                        if p[0] == '-':
-                            p = str(len(d) + int(p))
-                        try:
-                            d = d[int(p)]
-                        except IndexError:
-                            d = None
+                    elif isinstance(d, list) and p.isdigit():
+                        # An item of a list (identified by its index) is updated
+                        d = d[int(p)]
                     elif hasattr(d, 'get'):
+                        # dict-like (dict, embedded document)
                         d = d.get(p)
                     new_path.append(p)
                 path = '.'.join(new_path)
@@ -606,26 +607,26 @@ class BaseDocument(object):
 
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
-            if value or isinstance(value, (numbers.Number, bool)):
+            if value or isinstance(value, (numbers.Number, bool)):  # Account for 0 and True that are truthy
                 continue
 
-            # If we've set a value that ain't the default value don't unset it.
-            default = None
+            parts = path.split('.')
+
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
                 del set_data[path]
                 unset_data[path] = 1
                 continue
-            elif path in self._fields:
+
+            # If we've set a value that ain't the default value don't unset it.
+            default = None
+            if path in self._fields:
                 default = self._fields[path].default
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
-                parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
-                    if isinstance(d, list) and p.lstrip('-').isdigit():
-                        if p[0] == '-':
-                            p = str(len(d) + int(p))
+                    if isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
@@ -643,10 +644,9 @@ class BaseDocument(object):
                         default = None
 
             if default is not None:
-                if callable(default):
-                    default = default()
+                default = default() if callable(default) else default
 
-            if default != value:
+            if value != default:
                 continue
 
             del set_data[path]
@@ -692,7 +692,7 @@ class BaseDocument(object):
 
         fields = cls._fields
         if not _auto_dereference:
-            fields = copy.copy(fields)
+            fields = copy.deepcopy(fields)
 
         for field_name, field in fields.iteritems():
             field._auto_dereference = _auto_dereference
@@ -1083,6 +1083,6 @@ class BaseDocument(object):
             sep = getattr(field, 'display_sep', ' ')
             values = value if field.__class__.__name__ in ('ListField', 'SortedListField') else [value]
             return sep.join([
-                dict(field.choices).get(val, val)
+                six.text_type(dict(field.choices).get(val, val))
                 for val in values or []])
         return value
