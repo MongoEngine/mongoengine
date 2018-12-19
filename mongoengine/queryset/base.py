@@ -1837,10 +1837,6 @@ class BaseQuerySet(object):
         """Clean up a PyMongo doc, removing fields that were only fetched
         for the sake of MongoEngine's implementation, and return it.
         """
-        # Always remove _cls as a MongoEngine's implementation detail.
-        if '_cls' in doc:
-            del doc['_cls']
-
         # If the _id was not included in a .only or was excluded in a .exclude,
         # remove it from the doc (we always fetch it so that we can properly
         # construct documents).
