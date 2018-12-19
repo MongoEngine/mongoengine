@@ -4704,8 +4704,8 @@ class QuerySetTest(unittest.TestCase):
                 db_field='password_salt', required=True)
 
         User.drop_collection()
-        user = User(email="ross@example.com", password_salt="SomeSalt",
-                    password_hash="SomeHash").save()
+        User(email="ross@example.com", password_salt="SomeSalt",
+             password_hash="SomeHash").save()
 
         serialized_user = User.objects.exclude(
             'password_salt', 'password_hash').as_pymongo()[0]
@@ -4724,8 +4724,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(set(['email']), set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
-            'password_salt').only('email').to_json()
-        self.assertEqual('[{"_id": {"$oid": "%s"}, "email": "ross@example.com"}]' % user.id,
+            'password_salt', 'id').only('email').to_json()
+        self.assertEqual('[{"email": "ross@example.com"}]',
                          serialized_user)
 
     def test_only_after_count(self):
