@@ -1845,10 +1845,7 @@ class BaseQuerySet(object):
         # remove it from the doc (we always fetch it so that we can properly
         # construct documents).
         fields = self._loaded_fields
-        if fields and '_id' in doc and (
-            (fields.value == QueryFieldList.ONLY and '_id' not in fields.fields) or
-            (fields.value == QueryFieldList.EXCLUDE and '_id' in fields.fields)
-        ):
+        if fields and '_id' in doc and fields.value == QueryFieldList.EXCLUDE and '_id' in fields.fields:
             del doc['_id']
 
         return doc
