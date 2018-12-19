@@ -4736,19 +4736,19 @@ class QuerySetTest(unittest.TestCase):
             age = IntField()
             address = StringField()
         User.drop_collection()
-        User(name="User", age=50,
-             address="Moscow, Russia").save()
+        user = User(name="User", age=50,
+                    address="Moscow, Russia").save()
 
         user_queryset = User.objects(age=50)
 
         result = user_queryset.only("name", "age").as_pymongo().first()
-        self.assertEqual(result, {"name": "User", "age": 50})
+        self.assertEqual(result, {"_id": user.id, "name": "User", "age": 50})
 
         result = user_queryset.count()
         self.assertEqual(result, 1)
 
         result = user_queryset.only("name", "age").as_pymongo().first()
-        self.assertEqual(result, {"name": "User", "age": 50})
+        self.assertEqual(result, {"_id": user.id, "name": "User", "age": 50})
 
     def test_no_dereference(self):
 
