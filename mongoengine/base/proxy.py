@@ -1,6 +1,8 @@
 import weakref
 
+import copy
 import lazy_object_proxy
+from contextlib2 import contextmanager
 
 
 class DocumentProxy(lazy_object_proxy.Proxy):
@@ -30,3 +32,18 @@ class DocumentProxy(lazy_object_proxy.Proxy):
 
     def __nonzero__(self):
         return self.id is not None
+
+    def __deepcopy__(self, memo):
+        if getattr(DocumentProxy, 'ingore_deep_copy', False):
+            return self
+        return copy.deepcopy(self.__wrapped__, memo)
+
+    @staticmethod
+    @contextmanager
+    def ignore_deep_copy():
+        """
+        Ignore deep copy for DocumentProxy for performance reasons where needed.
+        """
+        DocumentProxy.ingore_deep_copy = True
+        yield
+        DocumentProxy.ingore_deep_copy = False
