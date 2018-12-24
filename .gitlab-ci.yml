@@ -24,6 +24,7 @@ upload_egg:
     - name_origin=$(sed -n "/.*\(name\).*=.*\'.*/p" setup.py | sed "/.*\'\(.*\)\'.*/ s//\1/g")
     - name_cl="name=\'$name_origin-$BRANCH_NAME\'"
     - sed -i "s/name.*=.*\'mongoengine\'/$name_cl/g" setup.py
+    - cat setup.py
 
     # Install
     - pip install .
