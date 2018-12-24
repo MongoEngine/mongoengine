@@ -29,10 +29,10 @@ upload_egg:
     - pip install .
     - pip show $name_origin-$BRANCH_NAME
 
-  #   # Upload to Wish Pypi
-  #   - devpi use $PYPI_SERVER
-  #   - devpi login $USERNAME --password=$PASSWORD
-  #   - devpi use $INDEX
-  #   - devpi upload
-  # only:
-  #   - $BRANCH_NAME
+    # Upload to Wish Pypi
+    - devpi use $PYPI_SERVER
+    - devpi login $USERNAME --password=$PASSWORD
+    - devpi use $INDEX
+    - devpi upload
+  only:
+    - $BRANCH_NAME
