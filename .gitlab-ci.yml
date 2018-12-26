@@ -35,4 +35,4 @@ upload_egg:
     - devpi use $INDEX
     - devpi upload
   only:
-    - $BRANCH_NAME
+    - cl_1.1.1
