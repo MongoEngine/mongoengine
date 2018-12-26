@@ -215,7 +215,7 @@ class BaseQuerySet(object):
     # Core functions
 
     def all(self):
-        """Returns all documents."""
+        """Returns a copy of the current QuerySet."""
         return self.__call__()
 
     def filter(self, *q_objs, **query):
