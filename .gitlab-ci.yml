@@ -1,0 +1,38 @@
+variables:
+  BRANCH_NAME: cl_1.1.1
+
+image: ubuntu:14.04
+
+upload_egg:
+  script:
+    # add git as part of the egg upload
+    - apt-get update -y && apt-get install -y git
+    # Check if the package is actually installable
+    - apt-get install -y python curl
+    - apt-get install -y python-dev libffi-dev
+    - curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+    - python get-pip.py
+    - pip install pyOpenSSL ndg-httpsclient pyasn1
+    - pip install -U devpi-client
+
+    # make sure there's only 1 "version=" line in setup.py file
+    - (if [ "$(sed -n "/.*\(return version\).*/p" setup.py | wc -l)" == "1" ]; then echo "Found the version number"; else echo "Fail"; exit 33; fi);
+    # update version to put custom ContextLogic version
+    - version_cl="return version + '+cl$CI_PIPELINE_ID'"
+    - sed -i "s/return version/$version_cl/g" setup.py
+    # update name to put the branch name in it
+    - name_origin=$(sed -n "/.*\(name\).*=.*'.*/p" setup.py | sed "/.*'\(.*\)'.*/ s//\1/g")
+    - name_cl="name='$name_origin-$BRANCH_NAME'"
+    - sed -i "s/name.*=.*'mongoengine'/$name_cl/g" setup.py
+
+    # Install
+    - pip install .
+    - pip show $name_origin-$BRANCH_NAME
+
+    # Upload to Wish Pypi
+    - devpi use $PYPI_SERVER
+    - devpi login $USERNAME --password=$PASSWORD
+    - devpi use $INDEX
+    - devpi upload
+  only:
+    - cl_1.1.1
