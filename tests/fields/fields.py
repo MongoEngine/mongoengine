@@ -1699,6 +1699,10 @@ class FieldTest(MongoDBTestCase):
         post.save()
 
         post = BlogPost()
+        post.info = {'title' : 'dollar_sign', 'details' : {'te$t' : 'test'} }
+        post.save()
+
+        post = BlogPost()
         post.info = {'details': {'test': 'test'}}
         post.save()
 
@@ -1706,12 +1710,15 @@ class FieldTest(MongoDBTestCase):
         post.info = {'details': {'test': 3}}
         post.save()
 
-        self.assertEqual(BlogPost.objects.count(), 3)
+        self.assertEqual(BlogPost.objects.count(), 4)
         self.assertEqual(
             BlogPost.objects.filter(info__title__exact='test').count(), 1)
         self.assertEqual(
             BlogPost.objects.filter(info__details__test__exact='test').count(), 1)
 
+        post = BlogPost.objects.filter(info__title__exact='dollar_sign').first()
+        self.assertIn('te$t', post['info']['details'])
+         
         # Confirm handles non strings or non existing keys
         self.assertEqual(
             BlogPost.objects.filter(info__details__test__exact=5).count(), 0)
