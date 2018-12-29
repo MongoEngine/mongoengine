@@ -85,6 +85,7 @@ are as follows:
 * :class:`~mongoengine.fields.ImageField`
 * :class:`~mongoengine.fields.IntField`
 * :class:`~mongoengine.fields.ListField`
+* :class:`~mongoengine.fields.LongField`
 * :class:`~mongoengine.fields.MapField`
 * :class:`~mongoengine.fields.ObjectIdField`
 * :class:`~mongoengine.fields.ReferenceField`
