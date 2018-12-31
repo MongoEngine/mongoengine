@@ -333,13 +333,17 @@ class DecimalField(BaseField):
 
         super(DecimalField, self).__init__(**kwargs)
 
+    def __set__(self, instance, value):
+        value = self.to_python(value)
+        return super(DecimalField, self).__set__(instance, value)
+
     def to_python(self, value):
         if value is None:
             return value
 
         if isinstance(value, Decimal128):
             value = value.to_decimal()
-        else:
+        elif not isinstance(value, decimal.Decimal):
             # Convert to string for python 2.6 before casting to Decimal
             try:
                 value = decimal.Decimal("%s" % value)
