@@ -70,56 +70,36 @@ class BaseDocument(object):
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
-        if self.STRICT and not self._dynamic:
-            self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
-        else:
-            self._data = {}
-
-        self._dynamic_fields = SON()
+        self._data = {}
 
         if "_cls" not in values:
             self._cls = self._class_name
         
         # Set passed values after initialisation
-        if self._dynamic:
-            dynamic_data = {}
-            for key, value in values.iteritems():
-                if key in self._fields or key == '_id':
-                    setattr(self, key, value)
-                elif self._dynamic:
-                    dynamic_data[key] = value
-        else:
-            FileField = _import_class('FileField')
-            for key, value in values.iteritems():
-                if key == '__auto_convert':
-                    continue
-                key = self._reverse_db_field_map.get(key, key)
-                if key in self._fields or key in ('id', 'pk', '_cls'):
-                    if __auto_convert and value is not None:
-                        field = self._fields.get(key)
-                        if field and not isinstance(field, FileField):
-                            value = field.to_python(value)
-                    self.setattr_quick(key, value)
-                    # setattr(self, key, value)
-                else:
-                    self._data[key] = value
+        FileField = _import_class('FileField')
+        for key, value in values.iteritems():
+            if key == '__auto_convert':
+                continue
+            key = self._reverse_db_field_map.get(key, key)
+            if key in self._fields or key in ('id', 'pk', '_cls'):
+                if __auto_convert and value is not None:
+                    field = self._fields.get(key)
+                    if field and not isinstance(field, FileField):
+                        value = field.to_python(value)
+                self.setattr_quick(key, value)
+            else:
+                self._data[key] = value
                     
-        if True:
-            for key, field in self._fields.iteritems():
-                if key in self._data or field.default is None:
-                    continue
-                if self._db_field_map.get(key, key) in __only_fields:
-                    continue
-                value = getattr(self, key, None)
-                setattr(self, key, value)
+        for key, field in self._fields.iteritems():
+            if key in self._data or field.default is None:
+                continue
+            if self._db_field_map.get(key, key) in __only_fields:
+                continue
+            value = getattr(self, key, None)
+            setattr(self, key, value)
 
         # Set any get_fieldname_display methods
         self.__set_field_display()
-
-        if self._dynamic:
-            self._dynamic_lock = False
-            for key, value in dynamic_data.iteritems():
-                setattr(self, key, value)
 
         # Flag initialised
         self._initialised = True
