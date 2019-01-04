@@ -70,36 +70,12 @@ class BaseDocument(object):
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
-        # Check if there are undefined fields supplied to the constructor,
-        # if so raise an Exception.
-        
-        # Commenting out the missing fields check. [Prasanna]
-        #if not self._dynamic and (self._meta.get('strict', True) or _created):
-        if False:
-            for var in values.keys():
-                if var not in self._fields.keys() + ['id', 'pk', '_cls', '_text_score']:
-                    msg = (
-                        "The field '{0}' does not exist on the document '{1}'"
-                    ).format(var, self._class_name)
-                    raise FieldDoesNotExist(msg)
-
         if self.STRICT and not self._dynamic:
             self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
         else:
-            # self._data = SemiStrictDict.create(
-            #     allowed_keys=self._fields_ordered)()
-            # Based on https://github.com/MongoEngine/mongoengine/issues/1230#issuecomment-316308308 [Saurav]
             self._data = {}
 
         self._dynamic_fields = SON()
-
-        # Assign default values to instance
-        if False:
-            for key, field in self._fields.iteritems():
-                if self._db_field_map.get(key, key) in __only_fields:
-                    continue
-                value = getattr(self, key, None)
-                setattr(self, key, value)
 
         if "_cls" not in values:
             self._cls = self._class_name
@@ -148,6 +124,7 @@ class BaseDocument(object):
         # Flag initialised
         self._initialised = True
         self._created = _created
+        self._python_data = {}
         signals.post_init.send(self.__class__, document=self)
 
     def __delattr__(self, *args, **kwargs):
