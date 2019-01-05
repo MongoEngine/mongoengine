@@ -21,6 +21,7 @@ UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
                         'push_all', 'pull', 'pull_all', 'add_to_set',
                         'set_on_insert', 'min', 'max'])
 
+V2_OPTIMIZED_FIELDS = set(["DecimalField"])
 
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
@@ -112,8 +113,23 @@ class BaseField(object):
             # Document class being used rather than a document object
             return self
 
+        if self.is_v2_field():
+            return self.v2_get(instance)
+            
         # Get value from document instance if available
         return instance._data.get(self.name)
+
+    def v2_get(self, instance):
+        pd = instance._python_data
+        if self.name in pd:
+            return pd[self.name]
+        value = instance._data.get(self.name)
+        value = self.to_python(value)
+        pd[self.name] = value
+        return value
+        
+    def is_v2_field(self):
+        return self.__class__.__name__ in V2_OPTIMIZED_FIELDS
 
     def _should_mark_as_changed(self, instance, value):
         if self.name not in instance._data:
@@ -158,7 +174,11 @@ class BaseField(object):
         else:
             # Set this for DocumentProxy as well
             value._instance = weakref.proxy(instance)
+        
         instance._data[self.name] = value
+        
+        if self.is_v2_field():
+            instance._python_data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.
