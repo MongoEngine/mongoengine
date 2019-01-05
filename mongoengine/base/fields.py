@@ -120,13 +120,8 @@ class BaseField(object):
         return instance._data.get(self.name)
 
     def v2_get(self, instance):
-        pd = instance._python_data
-        if self.name in pd:
-            return pd[self.name]
-        value = instance._data.get(self.name)
-        value = self.to_python(value)
-        pd[self.name] = value
-        return value
+        return instance.v2_get(self)
+        
         
     def is_v2_field(self):
         return self.__class__.__name__ in V2_OPTIMIZED_FIELDS
@@ -175,10 +170,10 @@ class BaseField(object):
             # Set this for DocumentProxy as well
             value._instance = weakref.proxy(instance)
         
-        instance._data[self.name] = value
-        
         if self.is_v2_field():
-            instance._python_data[self.name] = value
+            instance.v2_set(self, value)
+        else:
+            instance._data[self.name] = value
 
     def error(self, message="", errors=None, field_name=None):
         """Raises a ValidationError.

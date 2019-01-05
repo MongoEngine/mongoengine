@@ -104,11 +104,28 @@ class BaseDocument(object):
         # Flag initialised
         self._initialised = True
         self._created = _created
-        self._python_data = {}
         signals.post_init.send(self.__class__, document=self)
         
         # Unused:
         self._dynamic_fields = SON()
+
+    def get_python_data(self):
+        if "_python_data" not in self.__dict__:
+            self._python_data = {}
+        return self._python_data
+        
+    def v2_get(self, field):
+        pd = self.get_python_data()
+        if field.name in pd:
+            return pd[field.name]
+        value = self._data.get(field.name)
+        value = field.to_python(value)
+        pd[field.name] = value
+        return value
+
+    def v2_set(self, field, value):
+        pd = self.get_python_data()
+        self._data[field.name] = pd[field.name] = value
 
     def __delattr__(self, *args, **kwargs):
         """Handle deletions of fields"""
@@ -169,7 +186,7 @@ class BaseDocument(object):
     def __getstate__(self):
         data = {}
         for k in ('_changed_fields', '_initialised', '_created',
-                  '_dynamic_fields', '_fields_ordered', '_python_data'):
+                  '_dynamic_fields', '_fields_ordered'):
             if hasattr(self, k):
                 data[k] = getattr(self, k)
         data['_data'] = self.to_mongo()
@@ -179,7 +196,7 @@ class BaseDocument(object):
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in ('_changed_fields', '_initialised', '_created', '_data',
-                  '_dynamic_fields', '_python_data'):
+                  '_dynamic_fields'):
             if k in data:
                 setattr(self, k, data[k])
         if '_fields_ordered' in data:
