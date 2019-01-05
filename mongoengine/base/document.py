@@ -106,6 +106,9 @@ class BaseDocument(object):
         self._created = _created
         self._python_data = {}
         signals.post_init.send(self.__class__, document=self)
+        
+        # Unused:
+        self._dynamic_fields = SON()
 
     def __delattr__(self, *args, **kwargs):
         """Handle deletions of fields"""
