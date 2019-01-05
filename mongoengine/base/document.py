@@ -169,7 +169,7 @@ class BaseDocument(object):
     def __getstate__(self):
         data = {}
         for k in ('_changed_fields', '_initialised', '_created',
-                  '_dynamic_fields', '_fields_ordered'):
+                  '_dynamic_fields', '_fields_ordered', '_python_data'):
             if hasattr(self, k):
                 data[k] = getattr(self, k)
         data['_data'] = self.to_mongo()
@@ -179,7 +179,7 @@ class BaseDocument(object):
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in ('_changed_fields', '_initialised', '_created', '_data',
-                  '_dynamic_fields'):
+                  '_dynamic_fields', '_python_data'):
             if k in data:
                 setattr(self, k, data[k])
         if '_fields_ordered' in data:
