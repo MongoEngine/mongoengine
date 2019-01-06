@@ -37,7 +37,7 @@ class BaseDocument(object):
     _dynamic_lock = True
     STRICT = False
 
-    def __init__(self, kwargs_passed=None, *args, **values):
+    def __init__(self, *args, **values):
         """
         Initialise a document or embedded document
 
@@ -48,6 +48,7 @@ class BaseDocument(object):
         self._initialised = False
         self._created = True
         
+        kwargs_passed = values.pop("kwargs_passed", None)
         if kwargs_passed is not None:
             values.update(kwargs_passed)
             
