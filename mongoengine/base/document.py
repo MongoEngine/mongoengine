@@ -189,6 +189,8 @@ class BaseDocument(object):
 
         super(BaseDocument, self).__setattr__(name, value)
         
+    
+    
     def setattr_quick(self, name, value):
         super(BaseDocument, self).__setattr__(name, value)
 
@@ -325,11 +327,12 @@ class BaseDocument(object):
             if root_fields and field_name not in root_fields:
                 continue
 
-            value = self._data.get(field_name, None)
             field = self._fields.get(field_name)
-
-            if field is None and self._dynamic:
-                field = self._dynamic_fields.get(field_name)
+            
+            if field and field.is_v2_field():
+                value = self.v2_get(field)
+            else:
+                value = self._data.get(field_name, None)
 
             if value is not None:
 
@@ -384,16 +387,17 @@ class BaseDocument(object):
             except ValidationError, error:
                 errors[NON_FIELD_ERRORS] = error
 
-        # Get a list of tuples of field names and their current values
-        fields = [(self._fields.get(name, self._dynamic_fields.get(name)),
-                   self._data.get(name)) for name in self._fields_ordered]
-
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         GenericEmbeddedDocumentField = _import_class(
             "GenericEmbeddedDocumentField")
         ComplexBaseField = _import_class("ComplexBaseField")
 
-        for field, value in fields:
+        for field_name in self._fields_ordered:
+            field = self._fields.get(field_name, None)
+            if field and field.is_v2_field():
+                value = self.v2_get(field)
+            else:
+                value = self._data.get(field_name)
             if value is not None:
                 try:
                     if isinstance(field, (EmbeddedDocumentField,
