@@ -21,7 +21,7 @@ UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
                         'push_all', 'pull', 'pull_all', 'add_to_set',
                         'set_on_insert', 'min', 'max'])
 
-V2_OPTIMIZED_FIELDS = set(["DecimalField", "DateTimeField", "DateField"])
+V2_OPTIMIZED_FIELDS = set(["DecimalField"])
 
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
