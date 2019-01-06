@@ -334,6 +334,7 @@ class DecimalField(BaseField):
         super(DecimalField, self).__init__(**kwargs)
 
     def __set__(self, instance, value):
+        value = self.to_python(value)
         return super(DecimalField, self).__set__(instance, value)
 
     def to_python(self, value):
