@@ -127,7 +127,10 @@ class BaseField(object):
         return self.__class__.__name__ in V2_OPTIMIZED_FIELDS
 
     def _should_mark_as_changed(self, instance, value):
-        old_value = self.v2_get(instance)
+        if self.is_v2_field():
+            old_value = self.v2_get(instance)
+        else:
+            old_value = self._data.get(self.name)
         return old_value != value
 
     def __set__(self, instance, value):
