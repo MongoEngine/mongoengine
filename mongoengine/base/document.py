@@ -741,8 +741,10 @@ class BaseDocument(object):
             if field.db_field in data:
                 value = data[field.db_field]
                 try:
-                    data[field_name] = (value if value is None
-                                        else field.to_python(value))
+                    if value is not None:
+                        if not field.is_v2_field():
+                            value = field.to_python(value)
+                    data[field_name] = value
                     if field_name != field.db_field:
                         del data[field.db_field]
                 except (AttributeError, ValueError), e:
