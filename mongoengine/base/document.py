@@ -37,7 +37,7 @@ class BaseDocument(object):
     _dynamic_lock = True
     STRICT = False
 
-    def __init__(self, *args, **values):
+    def __init__(self, kwargs_passed=None, *args, **values):
         """
         Initialise a document or embedded document
 
@@ -47,6 +47,10 @@ class BaseDocument(object):
         super(BaseDocument, self).__init__()
         self._initialised = False
         self._created = True
+        
+        if kwargs_passed is not None:
+            values.update(kwargs_passed)
+            
         if args:
             # Combine positional arguments with named arguments.
             # We only want named arguments.
@@ -772,7 +776,7 @@ class BaseDocument(object):
         if cls.STRICT:
             data = dict((k, v)
                         for k, v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
+        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, kwargs_passed=data)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
             obj._fields = fields
