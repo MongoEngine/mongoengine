@@ -82,11 +82,15 @@ class BaseDocument(object):
                 continue
             key = self._reverse_db_field_map.get(key, key)
             if key in self._fields or key in ('id', 'pk', '_cls'):
+                field = self._fields.get(key)
+                is_v2 = field and field.is_v2_field()
                 if __auto_convert and value is not None:
-                    field = self._fields.get(key)
-                    if field and not isinstance(field, FileField) and not field.is_v2_field():
+                    if field and not isinstance(field, FileField) and not is_v2:
                         value = field.to_python(value)
-                self.setattr_quick(key, value)
+                if is_v2:
+                    self._data[key] = value
+                else:
+                    self.setattr_quick(key, value)
             else:
                 self._data[key] = value
                     
