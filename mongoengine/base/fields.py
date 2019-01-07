@@ -127,13 +127,12 @@ class BaseField(object):
         return self.__class__.__name__ in V2_OPTIMIZED_FIELDS
 
     def _should_mark_as_changed(self, instance, value):
-        if self.name not in self._data:
+        if self.name not in instance._data:
+            # New value should not be None
             return value is not None
         if self.is_v2_field():
-            old_value = self.v2_get(instance)
-        else:
-            old_value = self._data.get(self.name)
-        return old_value != value
+            self.v2_get(instance) != value
+        return instance._data[self.name] != value
 
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
