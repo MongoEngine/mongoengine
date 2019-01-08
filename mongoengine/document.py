@@ -73,7 +73,13 @@ class EmbeddedDocument(BaseDocument):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self._data == other._data
+            if self._data == other._data:
+                return True
+            # Handle None values -- the same as not present in the dict.
+            for key in set(self._data.keys() + other._data.keys()):
+                if self._data.get(key) != other._data.get(key):
+                    return False
+            return True
         return False
 
     def __ne__(self, other):
