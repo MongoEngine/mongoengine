@@ -122,7 +122,6 @@ class BaseField(object):
     def v2_get(self, instance):
         return instance.v2_get(self)
         
-        
     def is_v2_field(self):
         return self.__class__.__name__ in V2_OPTIMIZED_FIELDS
 
