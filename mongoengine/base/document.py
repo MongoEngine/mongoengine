@@ -133,7 +133,7 @@ class BaseDocument(object):
         return value
         
     def v2_get_by_name(self, name):
-        return self._meta.get_field(name)
+        return self.v2_get(self._meta.get_field(name))
 
     def v2_set(self, field, value):
         pd = self.get_python_data()
