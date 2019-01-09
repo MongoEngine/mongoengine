@@ -1130,11 +1130,12 @@ class CachedReferenceField(BaseField):
         if type(value) is DocumentProxy:
             return value
         
-        if not self.reload_reference:
-            return self.document_type._from_son(value, only_fields=self.fields)
-        else:
-            collection = self.document_type._get_collection_name()
-            value = DBRef(collection, self.document_type.id.to_python(value['_id']))
+        if isinstance(value, dict):
+            if not self.reload_reference:
+                return self.document_type._from_son(value, only_fields=self.fields)
+            else:
+                collection = self.document_type._get_collection_name()
+                value = DBRef(collection, self.document_type.id.to_python(value['_id']))
         
         if isinstance(value, DBRef):
             value = DocumentProxy(
