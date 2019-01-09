@@ -69,8 +69,11 @@ class BaseDocument(object):
         __auto_convert = values.pop("__auto_convert", True)
 
         # 399: set default values only to fields loaded from DB
-        __only_fields = set(values.pop("__only_fields", values))
+        __only_fields = values.pop("__only_fields", None)
         self._only_fields = __only_fields
+        if self._only_fields:
+            self._only_fields = set(self._only_fields)
+            self._only_fields.add("_id")
 
         _created = values.pop("_created", True)
 
@@ -100,10 +103,15 @@ class BaseDocument(object):
             else:
                 self._data[key] = value
                     
+        # Set the default values.
         for key, field in self._fields.iteritems():
             if key in self._data or field.default is None:
+                # If the data exists or no defaults exist
+                # We don't need to set the defaults.
                 continue
-            if self._db_field_map.get(key, key) in __only_fields:
+            if __only_fields and self._db_field_map.get(key, key) not in __only_fields:
+                # If only certain fields were loaded, we do not set the defaults for the 
+                # fields that aren't loaded.
                 continue
             value = getattr(self, key, None)
             setattr(self, key, value)
