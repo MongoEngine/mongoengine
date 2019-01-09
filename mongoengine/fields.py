@@ -1084,11 +1084,12 @@ class CachedReferenceField(BaseField):
     .. versionadded:: 0.9
     """
 
-    def __init__(self, document_type, fields=[], auto_sync=True, **kwargs):
+    def __init__(self, document_type, fields=[], auto_sync=True, reload_reference=False, **kwargs):
         """Initialises the Cached Reference Field.
 
         :param fields:  A list of fields to be cached in document
         :param auto_sync: if True documents are auto updated.
+        :param reload_reference: if True, we load the full object.
         """
         if not isinstance(document_type, basestring) and \
                 not issubclass(document_type, (Document, basestring)):
@@ -1096,6 +1097,7 @@ class CachedReferenceField(BaseField):
                        ' document class or a string')
 
         self.auto_sync = auto_sync
+        self.reload_reference = reload_reference
         self.document_type_obj = document_type
         self.fields = fields
         super(CachedReferenceField, self).__init__(**kwargs)
@@ -1127,12 +1129,13 @@ class CachedReferenceField(BaseField):
     def to_python(self, value):
         if type(value) is DocumentProxy:
             return value
-        if isinstance(value, dict):
+        
+        if not self.reload_reference:
+            return self.document_type._from_son(value, only_fields=self.fields)
+        else:
             collection = self.document_type._get_collection_name()
-            value = DBRef(
-                collection, self.document_type.id.to_python(value['_id']))
-            # return self.document_type._from_son(self.document_type._get_db().dereference(value))
-
+            value = DBRef(collection, self.document_type.id.to_python(value['_id']))
+        
         if isinstance(value, DBRef):
             value = DocumentProxy(
                 functools.partial(dereference_dbref, value=value, document_type=self.document_type),

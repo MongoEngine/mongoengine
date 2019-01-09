@@ -70,6 +70,7 @@ class BaseDocument(object):
 
         # 399: set default values only to fields loaded from DB
         __only_fields = set(values.pop("__only_fields", values))
+        self._only_fields = __only_fields
 
         _created = values.pop("_created", True)
 
