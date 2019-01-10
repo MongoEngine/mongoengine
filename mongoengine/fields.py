@@ -1122,9 +1122,14 @@ class CachedReferenceField(BaseField):
                 company = 'company'
                 if hasattr(document, company) and company in self.owner_document._fields:
                     filter_kwargs[company] = getattr(document, company)
+                
+                documents = [self.owner_document]
+                
+                if self.owner_document._meta['abstract']:
+                    documents = self.owner_document.__subclasses__()
 
-                self.owner_document.objects(
-                    **filter_kwargs).update(**update_kwargs)
+                for document in documents:
+                    document.objects(**filter_kwargs).update(**update_kwargs)
 
     def to_python(self, value):
         if type(value) is DocumentProxy:
