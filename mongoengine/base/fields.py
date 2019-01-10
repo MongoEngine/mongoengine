@@ -112,10 +112,13 @@ class BaseField(object):
         if instance is None:
             # Document class being used rather than a document object
             return self
-            
-        if instance._only_fields and (self.db_field or self.name) not in instance._only_fields:
-            instance._only_fields = None
-            instance.reload()
+        
+        try:
+            if instance._only_fields and (self.db_field or self.name) not in instance._only_fields:
+                instance._only_fields = None
+                instance.reload()
+        except AttributeError:
+            pass
 
         if self.is_v2_field():
             return self.v2_get(instance)
