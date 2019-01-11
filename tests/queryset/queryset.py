@@ -4709,19 +4709,22 @@ class QuerySetTest(unittest.TestCase):
 
         serialized_user = User.objects.exclude(
             'password_salt', 'password_hash').as_pymongo()[0]
-        self.assertEqual(set(['_id', 'email']), set(serialized_user.keys()))
+        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
             'id', 'password_salt', 'password_hash').to_json()
         self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
 
+        serialized_user = User.objects.only('email').as_pymongo()[0]
+        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
+
         serialized_user = User.objects.exclude(
             'password_salt').only('email').as_pymongo()[0]
-        self.assertEqual(set(['_id', 'email']), set(serialized_user.keys()))
+        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
             'password_salt', 'id').only('email').as_pymongo()[0]
-        self.assertEqual(set(['email']), set(serialized_user.keys()))
+        self.assertEqual({'email'}, set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
             'password_salt', 'id').only('email').to_json()
