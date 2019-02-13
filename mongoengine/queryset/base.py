@@ -188,7 +188,7 @@ class BaseQuerySet(object):
                 )
 
             if queryset._as_pymongo:
-                return queryset._get_as_pymongo(queryset._cursor[key])
+                return queryset._cursor[key]
 
             return queryset._document._from_son(
                 queryset._cursor[key],
@@ -690,7 +690,7 @@ class BaseQuerySet(object):
                     self._document._from_son(doc, only_fields=self.only_fields))
         elif self._as_pymongo:
             for doc in docs:
-                doc_map[doc['_id']] = self._get_as_pymongo(doc)
+                doc_map[doc['_id']] = doc
         else:
             for doc in docs:
                 doc_map[doc['_id']] = self._document._from_son(
@@ -1486,7 +1486,7 @@ class BaseQuerySet(object):
         raw_doc = six.next(self._cursor)
 
         if self._as_pymongo:
-            return self._get_as_pymongo(raw_doc)
+            return raw_doc
 
         doc = self._document._from_son(
             raw_doc, _auto_dereference=self._auto_dereference,
@@ -1832,26 +1832,6 @@ class BaseQuerySet(object):
             return data[0]
 
         return tuple(data)
-
-    def _get_as_pymongo(self, doc):
-        """Clean up a PyMongo doc, removing fields that were only fetched
-        for the sake of MongoEngine's implementation, and return it.
-        """
-        # Always remove _cls as a MongoEngine's implementation detail.
-        if '_cls' in doc:
-            del doc['_cls']
-
-        # If the _id was not included in a .only or was excluded in a .exclude,
-        # remove it from the doc (we always fetch it so that we can properly
-        # construct documents).
-        fields = self._loaded_fields
-        if fields and '_id' in doc and (
-            (fields.value == QueryFieldList.ONLY and '_id' not in fields.fields) or
-            (fields.value == QueryFieldList.EXCLUDE and '_id' in fields.fields)
-        ):
-            del doc['_id']
-
-        return doc
 
     def _sub_js_fields(self, code):
         """When fields are specified with [~fieldname] syntax, where

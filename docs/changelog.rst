@@ -6,6 +6,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix .only() working improperly after using .count() of the same instance of QuerySet
+- POTENTIAL BREAKING CHANGE: All result fields are now passed, including internal fields (_cls, _id) when using `QuerySet.as_pymongo` #1976
 
 =================
 Changes in 0.16.3

@@ -4635,7 +4635,7 @@ class QuerySetTest(unittest.TestCase):
             ip = StringField()
 
         class User(Document):
-            id = ObjectIdField('_id')
+            id = StringField(primary_key=True)
             name = StringField()
             age = IntField()
             price = DecimalField()
@@ -4643,9 +4643,10 @@ class QuerySetTest(unittest.TestCase):
 
         User.drop_collection()
 
-        User.objects.create(name="Bob Dole", age=89, price=Decimal('1.11'))
+        User.objects.create(id='Bob', name="Bob Dole", age=89, price=Decimal('1.11'))
         User.objects.create(
-            name="Barack Obama",
+            id='Barak',
+            name="Barak Obama",
             age=51,
             price=Decimal('2.22'),
             last_login=LastLogin(
@@ -4673,7 +4674,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertIsInstance(results[1], dict)
         self.assertEqual(results[0]['name'], 'Bob Dole')
         self.assertEqual(results[0]['price'], 1.11)
-        self.assertEqual(results[1]['name'], 'Barack Obama')
+        self.assertEqual(results[1]['name'], 'Barak Obama')
         self.assertEqual(results[1]['price'], 2.22)
 
         users = User.objects.only('name', 'last_login').as_pymongo()
@@ -4681,10 +4682,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertIsInstance(results[0], dict)
         self.assertIsInstance(results[1], dict)
         self.assertEqual(results[0], {
+            '_id': 'Bob',
             'name': 'Bob Dole'
         })
         self.assertEqual(results[1], {
-            'name': 'Barack Obama',
+            '_id': 'Barak',
+            'name': 'Barak Obama',
             'last_login': {
                 'location': 'White House',
                 'ip': '104.107.108.116'
@@ -4706,19 +4709,27 @@ class QuerySetTest(unittest.TestCase):
 
         serialized_user = User.objects.exclude(
             'password_salt', 'password_hash').as_pymongo()[0]
-        self.assertEqual(set(['_id', 'email']), set(serialized_user.keys()))
+        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
             'id', 'password_salt', 'password_hash').to_json()
         self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
 
-        serialized_user = User.objects.exclude(
-            'password_salt').only('email').as_pymongo()[0]
-        self.assertEqual(set(['email']), set(serialized_user.keys()))
+        serialized_user = User.objects.only('email').as_pymongo()[0]
+        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
-            'password_salt').only('email').to_json()
-        self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
+            'password_salt').only('email').as_pymongo()[0]
+        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
+
+        serialized_user = User.objects.exclude(
+            'password_salt', 'id').only('email').as_pymongo()[0]
+        self.assertEqual({'email'}, set(serialized_user.keys()))
+
+        serialized_user = User.objects.exclude(
+            'password_salt', 'id').only('email').to_json()
+        self.assertEqual('[{"email": "ross@example.com"}]',
+                         serialized_user)
 
     def test_only_after_count(self):
         """Test that only() works after count()"""
@@ -4728,19 +4739,19 @@ class QuerySetTest(unittest.TestCase):
             age = IntField()
             address = StringField()
         User.drop_collection()
-        User(name="User", age=50,
-             address="Moscow, Russia").save()
+        user = User(name="User", age=50,
+                    address="Moscow, Russia").save()
 
         user_queryset = User.objects(age=50)
 
         result = user_queryset.only("name", "age").as_pymongo().first()
-        self.assertEqual(result, {"name": "User", "age": 50})
+        self.assertEqual(result, {"_id": user.id, "name": "User", "age": 50})
 
         result = user_queryset.count()
         self.assertEqual(result, 1)
 
         result = user_queryset.only("name", "age").as_pymongo().first()
-        self.assertEqual(result, {"name": "User", "age": 50})
+        self.assertEqual(result, {"_id": user.id, "name": "User", "age": 50})
 
     def test_no_dereference(self):
 
