@@ -2251,9 +2251,9 @@ class LazyReferenceField(BaseField):
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
         :param passthrough: When trying to access unknown fields, the
-        :class:`~mongoengine.base.datastructure.LazyReference` instance will
-        automatically call `fetch()` and try to retrive the field on the fetched
-        document. Note this only work getting field (not setting or deleting).
+          :class:`~mongoengine.base.datastructure.LazyReference` instance will
+          automatically call `fetch()` and try to retrive the field on the fetched
+          document. Note this only work getting field (not setting or deleting).
         """
         # XXX ValidationError raised outside of the "validate" method.
         if (
