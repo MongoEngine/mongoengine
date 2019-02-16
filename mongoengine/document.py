@@ -1016,7 +1016,7 @@ class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
 
     .. note::
 
-        There is one caveat on Dynamic Documents: fields cannot start with `_`
+        There is one caveat on Dynamic Documents: undeclared fields cannot start with `_`
     """
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
