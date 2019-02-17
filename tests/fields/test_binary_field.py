@@ -1,29 +1,15 @@
 # -*- coding: utf-8 -*-
-import datetime
-import unittest
 import uuid
-import math
-import itertools
-import re
-import sys
 
 from nose.plugins.skip import SkipTest
 import six
 
-try:
-    import dateutil
-except ImportError:
-    dateutil = None
-
 from bson import Binary
-
-try:
-    from bson.int64 import Int64
-except ImportError:
-    Int64 = long
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase
+
+BIN_VALUE = six.b('\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde\xe6\x87\xb1\x7f\xc6\xe6\xd9r\x18\xf5')
 
 
 class TestBinaryField(MongoDBTestCase):
@@ -46,7 +32,7 @@ class TestBinaryField(MongoDBTestCase):
         self.assertEqual(MIME_TYPE, attachment_1.content_type)
         self.assertEqual(BLOB, six.binary_type(attachment_1.blob))
 
-    def test_binary_validation_succeeds(self):
+    def test_validation_succeeds(self):
         """Ensure that valid values can be assigned to binary fields.
         """
         class AttachmentRequired(Document):
@@ -65,7 +51,7 @@ class TestBinaryField(MongoDBTestCase):
         self.assertRaises(ValidationError, AttachmentSizeLimit(blob=_5_BYTES).validate)
         AttachmentSizeLimit(blob=_4_BYTES).validate()
 
-    def test_binary_validation_fails(self):
+    def test_validation_fails(self):
         """Ensure that invalid values cannot be assigned to binary fields."""
 
         class Attachment(Document):
@@ -74,7 +60,7 @@ class TestBinaryField(MongoDBTestCase):
         for invalid_data in (2, u'Im_a_unicode', ['some_str']):
             self.assertRaises(ValidationError, Attachment(blob=invalid_data).validate)
 
-    def test_binary_field_primary(self):
+    def test__primary(self):
         class Attachment(Document):
             id = BinaryField(primary_key=True)
 
@@ -86,7 +72,7 @@ class TestBinaryField(MongoDBTestCase):
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
 
-    def test_binary_field_primary_filter_by_binary_pk_as_str(self):
+    def test_primary_filter_by_binary_pk_as_str(self):
         raise SkipTest("Querying by id as string is not currently supported")
 
         class Attachment(Document):
@@ -98,3 +84,54 @@ class TestBinaryField(MongoDBTestCase):
         self.assertEqual(1, Attachment.objects.filter(id=binary_id).count())
         att.delete()
         self.assertEqual(0, Attachment.objects.count())
+
+    def test_match_querying_with_bytes(self):
+        class MyDocument(Document):
+            bin_field = BinaryField()
+
+        MyDocument.drop_collection()
+
+        doc = MyDocument(bin_field=BIN_VALUE).save()
+        matched_doc = MyDocument.objects(bin_field=BIN_VALUE).first()
+        self.assertEqual(matched_doc.id, doc.id)
+
+    def test_match_querying_with_binary(self):
+        class MyDocument(Document):
+            bin_field = BinaryField()
+
+        MyDocument.drop_collection()
+
+        doc = MyDocument(bin_field=BIN_VALUE).save()
+
+        matched_doc = MyDocument.objects(bin_field=Binary(BIN_VALUE)).first()
+        self.assertEqual(matched_doc.id, doc.id)
+
+    def test_modify_operation__set(self):
+        """Ensures no regression of bug #1127"""
+        class MyDocument(Document):
+            some_field = StringField()
+            bin_field = BinaryField()
+
+        MyDocument.drop_collection()
+
+        doc = MyDocument.objects(some_field='test').modify(
+            upsert=True, new=True,
+            set__bin_field=BIN_VALUE
+        )
+        self.assertEqual(doc.some_field, 'test')
+        self.assertEqual(doc.bin_field, Binary(BIN_VALUE))
+
+    def test_update_one(self):
+        """Ensures no regression of bug #1127"""
+        class MyDocument(Document):
+            bin_field = BinaryField()
+
+        MyDocument.drop_collection()
+
+        bin_data = six.b('\xe6\x00\xc4\xff\x07')
+        doc = MyDocument(bin_field=bin_data).save()
+
+        n_updated = MyDocument.objects(bin_field=bin_data).update_one(bin_field=BIN_VALUE)
+        self.assertEqual(n_updated, 1)
+        fetched = MyDocument.objects.with_id(doc.id)
+        self.assertEqual(fetched.bin_field, Binary(BIN_VALUE))
