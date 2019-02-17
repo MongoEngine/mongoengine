@@ -55,7 +55,7 @@ class BaseField(object):
             field.  Generally this is deprecated in favour of the
             `FIELD.validate` method
         :param choices: (optional) The valid choices
-        :param null: (optional) Is the field value can be null. If no and there is a default value
+        :param null: (optional) If the field value can be null. If no and there is a default value
             then the default value is set
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values
@@ -130,7 +130,6 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-
         # If setting to None and there is a default
         # Then set the value to the default value
         if value is None:
@@ -213,8 +212,10 @@ class BaseField(object):
                     )
                 )
         # Choices which are types other than Documents
-        elif value not in choice_list:
-            self.error('Value must be one of %s' % six.text_type(choice_list))
+        else:
+            values = value if isinstance(value, (list, tuple)) else [value]
+            if len(set(values) - set(choice_list)):
+                self.error('Value must be one of %s' % six.text_type(choice_list))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -265,13 +266,15 @@ class ComplexBaseField(BaseField):
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
         EmbeddedDocumentListField = _import_class('EmbeddedDocumentListField')
-        dereference = (self._auto_dereference and
+
+        auto_dereference = instance._fields[self.name]._auto_dereference
+
+        dereference = (auto_dereference and
                        (self.field is None or isinstance(self.field,
                                                          (GenericReferenceField, ReferenceField))))
 
         _dereference = _import_class('DeReference')()
 
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
         if instance._initialised and dereference and instance._data.get(self.name):
             instance._data[self.name] = _dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
@@ -292,7 +295,7 @@ class ComplexBaseField(BaseField):
             value = BaseDict(value, instance, self.name)
             instance._data[self.name] = value
 
-        if (self._auto_dereference and instance._initialised and
+        if (auto_dereference and instance._initialised and
                 isinstance(value, (BaseList, BaseDict)) and
                 not value._dereferenced):
             value = _dereference(
@@ -311,11 +314,16 @@ class ComplexBaseField(BaseField):
         if hasattr(value, 'to_python'):
             return value.to_python()
 
+        BaseDocument = _import_class('BaseDocument')
+        if isinstance(value, BaseDocument):
+            # Something is wrong, return the value as it is
+            return value
+
         is_list = False
         if not hasattr(value, 'items'):
             try:
                 is_list = True
-                value = {k: v for k, v in enumerate(value)}
+                value = {idx: v for idx, v in enumerate(value)}
             except TypeError:  # Not iterable return the value
                 return value
 
@@ -500,7 +508,7 @@ class GeoJsonBaseField(BaseField):
     def validate(self, value):
         """Validate the GeoJson object based on its type."""
         if isinstance(value, dict):
-            if set(value.keys()) == set(['type', 'coordinates']):
+            if set(value.keys()) == {'type', 'coordinates'}:
                 if value['type'] != self._type:
                     self.error('%s type must be "%s"' %
                                (self._name, self._type))

@@ -6,11 +6,7 @@ import pymongo
 import six
 
 
-if pymongo.version_tuple[0] < 3:
-    IS_PYMONGO_3 = False
-else:
-    IS_PYMONGO_3 = True
-
+IS_PYMONGO_3 = pymongo.version_tuple[0] >= 3
 
 # six.BytesIO resolves to StringIO.StringIO in Py2 and io.BytesIO in Py3.
 StringIO = six.BytesIO
@@ -23,3 +19,10 @@ if not six.PY3:
         pass
     else:
         StringIO = cStringIO.StringIO
+
+
+if six.PY3:
+    from collections.abc import Hashable
+else:
+    # raises DeprecationWarnings in Python >=3.7
+    from collections import Hashable

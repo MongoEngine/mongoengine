@@ -86,7 +86,7 @@ of them stand out as particularly intuitive solutions.
 Posts
 ^^^^^
 
-Happily mongoDB *isn't* a relational database, so we're not going to do it that
+Happily MongoDB *isn't* a relational database, so we're not going to do it that
 way. As it turns out, we can use MongoDB's schemaless nature to provide us with
 a much nicer solution. We will store all of the posts in *one collection* and
 each post type will only store the fields it needs. If we later want to add
@@ -153,7 +153,7 @@ post. This works, but there is no real reason to be storing the comments
 separately from their associated posts, other than to work around the
 relational model. Using MongoDB we can store the comments as a list of
 *embedded documents* directly on a post document. An embedded document should
-be treated no differently that a regular document; it just doesn't have its own
+be treated no differently than a regular document; it just doesn't have its own
 collection in the database. Using MongoEngine, we can define the structure of
 embedded documents, along with utility methods, in exactly the same way we do
 with regular documents::

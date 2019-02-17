@@ -12,7 +12,9 @@ from mongoengine.base import (BaseDict, BaseDocument, BaseList,
                               TopLevelDocumentMetaclass, get_document)
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import switch_collection, switch_db
+from mongoengine.context_managers import (set_write_concern,
+                                          switch_collection,
+                                          switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -39,7 +41,7 @@ class InvalidCollectionError(Exception):
     pass
 
 
-class EmbeddedDocument(BaseDocument):
+class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -58,7 +60,6 @@ class EmbeddedDocument(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     # A generic embedded document doesn't have any immutable properties
     # that describe it uniquely, hence it shouldn't be hashable. You can
@@ -95,7 +96,7 @@ class EmbeddedDocument(BaseDocument):
         self._instance.reload(*args, **kwargs)
 
 
-class Document(BaseDocument):
+class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -150,7 +151,6 @@ class Document(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     __slots__ = ('__objects',)
 
@@ -172,8 +172,8 @@ class Document(BaseDocument):
         """
         if self.pk is None:
             return super(BaseDocument, self).__hash__()
-        else:
-            return hash(self.pk)
+
+        return hash(self.pk)
 
     @classmethod
     def _get_db(cls):
@@ -195,7 +195,10 @@ class Document(BaseDocument):
 
             # Ensure indexes on the collection unless auto_create_index was
             # set to False.
-            if cls._meta.get('auto_create_index', True):
+            # Also there is no need to ensure indexes on slave.
+            db = cls._get_db()
+            if cls._meta.get('auto_create_index', True) and\
+                    db.client.is_primary:
                 cls.ensure_indexes()
 
         return cls._collection
@@ -279,6 +282,9 @@ class Document(BaseDocument):
             query[id_field] = self.pk
         elif query[id_field] != self.pk:
             raise InvalidQueryError('Invalid document modify query: it must modify only this document.')
+
+        # Need to add shard key to query, or you get an error
+        query.update(self._object_key)
 
         updated = self._qs(**query).modify(new=True, **update)
         if updated is None:
@@ -364,6 +370,8 @@ class Document(BaseDocument):
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)
+        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+        doc = self.to_mongo()
 
         if self._meta.get('auto_create_index', True):
             self.ensure_indexes()
@@ -423,11 +431,18 @@ class Document(BaseDocument):
         Helper method, should only be used inside save().
         """
         collection = self._get_collection()
+        with set_write_concern(collection, write_concern) as wc_collection:
+            if force_insert:
+                return wc_collection.insert_one(doc).inserted_id
+            # insert_one will provoke UniqueError alongside save does not
+            # therefore, it need to catch and call replace_one.
+            if '_id' in doc:
+                raw_object = wc_collection.find_one_and_replace(
+                    {'_id': doc['_id']}, doc)
+                if raw_object:
+                    return doc['_id']
 
-        if force_insert:
-            return collection.insert(doc, **write_concern)
-
-        object_id = collection.save(doc, **write_concern)
+            object_id = wc_collection.insert_one(doc).inserted_id
 
         # In PyMongo 3.0, the save() call calls internally the _update() call
         # but they forget to return the _id value passed back, therefore getting it back here
@@ -576,12 +591,11 @@ class Document(BaseDocument):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
         :param write_concern: Extra keyword arguments are passed down which
-            will be used as options for the resultant
-            ``getLastError`` command.  For example,
-            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            will be used as options for the resultant ``getLastError`` command.
+            For example, ``save(..., w: 2, fsync: True)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
 
@@ -702,7 +716,6 @@ class Document(BaseDocument):
             obj = obj[0]
         else:
             raise self.DoesNotExist('Document does not exist')
-
         for field in obj._data:
             if not fields or field in fields:
                 try:
@@ -710,7 +723,7 @@ class Document(BaseDocument):
                 except (KeyError, AttributeError):
                     try:
                         # If field is a special field, e.g. items is stored as _reserved_items,
-                        # an KeyError is thrown. So try to retrieve the field from _data
+                        # a KeyError is thrown. So try to retrieve the field from _data
                         setattr(self, field, self._reload(field, obj._data.get(field)))
                     except KeyError:
                         # If field is removed from the database while the object
@@ -718,7 +731,9 @@ class Document(BaseDocument):
                         # i.e. obj.update(unset__field=1) followed by obj.reload()
                         delattr(self, field)
 
-        self._changed_fields = obj._changed_fields
+        self._changed_fields = list(
+            set(self._changed_fields) - set(fields)
+        ) if fields else obj._changed_fields
         self._created = False
         return self
 
@@ -964,8 +979,16 @@ class Document(BaseDocument):
         """
 
         required = cls.list_indexes()
-        existing = [info['key']
-                    for info in cls._get_collection().index_information().values()]
+
+        existing = []
+        for info in cls._get_collection().index_information().values():
+            if '_fts' in info['key'][0]:
+                index_type = info['key'][0][1]
+                text_index_fields = info.get('weights').keys()
+                existing.append(
+                    [(key, index_type) for key in text_index_fields])
+            else:
+                existing.append(info['key'])
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
@@ -982,10 +1005,10 @@ class Document(BaseDocument):
         return {'missing': missing, 'extra': extra}
 
 
-class DynamicDocument(Document):
+class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
-    way as an ordinary document but has expando style properties.  Any data
+    way as an ordinary document but has expanded style properties.  Any data
     passed or set against the :class:`~mongoengine.DynamicDocument` that is
     not a field is automatically converted into a
     :class:`~mongoengine.fields.DynamicField` and data can be attributed to that
@@ -999,7 +1022,6 @@ class DynamicDocument(Document):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
 
@@ -1010,11 +1032,12 @@ class DynamicDocument(Document):
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
+            self._dynamic_fields[field_name].null = False
         else:
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 
 
-class DynamicEmbeddedDocument(EmbeddedDocument):
+class DynamicEmbeddedDocument(six.with_metaclass(DocumentMetaclass, EmbeddedDocument)):
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -1023,7 +1046,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     _dynamic = True
 

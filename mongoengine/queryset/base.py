@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import copy
 import itertools
-import operator
 import pprint
 import re
 import warnings
@@ -18,7 +17,7 @@ from mongoengine import signals
 from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
-from mongoengine.context_managers import switch_db
+from mongoengine.context_managers import set_write_concern, switch_db
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
 from mongoengine.python_support import IS_PYMONGO_3
@@ -38,8 +37,6 @@ NULLIFY = 1
 CASCADE = 2
 DENY = 3
 PULL = 4
-
-RE_TYPE = type(re.compile(''))
 
 
 class BaseQuerySet(object):
@@ -191,7 +188,7 @@ class BaseQuerySet(object):
                 )
 
             if queryset._as_pymongo:
-                return queryset._get_as_pymongo(queryset._cursor[key])
+                return queryset._cursor[key]
 
             return queryset._document._from_son(
                 queryset._cursor[key],
@@ -209,18 +206,16 @@ class BaseQuerySet(object):
         queryset = self.order_by()
         return False if queryset.first() is None else True
 
-    def __nonzero__(self):
-        """Avoid to open all records in an if stmt in Py2."""
-        return self._has_data()
-
     def __bool__(self):
         """Avoid to open all records in an if stmt in Py3."""
         return self._has_data()
 
+    __nonzero__ = __bool__  # For Py2 support
+
     # Core functions
 
     def all(self):
-        """Returns all documents."""
+        """Returns a copy of the current QuerySet."""
         return self.__call__()
 
     def filter(self, *q_objs, **query):
@@ -269,13 +264,13 @@ class BaseQuerySet(object):
         queryset = queryset.filter(*q_objs, **query)
 
         try:
-            result = queryset.next()
+            result = six.next(queryset)
         except StopIteration:
             msg = ('%s matching query does not exist.'
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
         try:
-            queryset.next()
+            six.next(queryset)
         except StopIteration:
             return result
 
@@ -350,10 +345,23 @@ class BaseQuerySet(object):
                                      documents=docs, **signal_kwargs)
 
         raw = [doc.to_mongo() for doc in docs]
+
+        with set_write_concern(self._collection, write_concern) as collection:
+            insert_func = collection.insert_many
+            if return_one:
+                raw = raw[0]
+                insert_func = collection.insert_one
+
         try:
-            ids = self._collection.insert(raw, **write_concern)
+            inserted_result = insert_func(raw)
+            ids = [inserted_result.inserted_id] if return_one else inserted_result.inserted_ids
         except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
+            raise NotUniqueError(message % six.text_type(err))
+        except pymongo.errors.BulkWriteError as err:
+            # inserting documents that already have an _id field will
+            # give huge performance debt or raise
+            message = u'Document must not have _id value before bulk write (%s)'
             raise NotUniqueError(message % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
@@ -364,18 +372,20 @@ class BaseQuerySet(object):
                 raise NotUniqueError(message % six.text_type(err))
             raise OperationError(message % six.text_type(err))
 
+        # Apply inserted_ids to documents
+        for doc, doc_id in zip(docs, ids):
+            doc.pk = doc_id
+
         if not load_bulk:
             signals.post_bulk_insert.send(
                 self._document, documents=docs, loaded=False, **signal_kwargs)
-            return return_one and ids[0] or ids
+            return ids[0] if return_one else ids
 
         documents = self.in_bulk(ids)
-        results = []
-        for obj_id in ids:
-            results.append(documents.get(obj_id))
+        results = [documents.get(obj_id) for obj_id in ids]
         signals.post_bulk_insert.send(
             self._document, documents=results, loaded=True, **signal_kwargs)
-        return return_one and results[0] or results
+        return results[0] if return_one else results
 
     def count(self, with_limit_and_skip=False):
         """Count the selected elements in the query.
@@ -384,9 +394,11 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0 and with_limit_and_skip or self._none:
+        if self._limit == 0 and with_limit_and_skip is False or self._none:
             return 0
-        return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        self._cursor_obj = None
+        return count
 
     def delete(self, write_concern=None, _from_doc_delete=False,
                cascade_refs=None):
@@ -486,8 +498,9 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-        :param full_result: Return the full result rather than just the number
-            updated.
+        :param full_result: Return the full result dictionary rather than just the number
+            updated, e.g. return
+            ``{'n': 2, 'nModified': 2, 'ok': 1.0, 'updatedExisting': True}``.
         :param update: Django-style update keyword arguments
 
         .. versionadded:: 0.2
@@ -510,12 +523,15 @@ class BaseQuerySet(object):
             else:
                 update['$set'] = {'_cls': queryset._document._class_name}
         try:
-            result = queryset._collection.update(query, update, multi=multi,
-                                                 upsert=upsert, **write_concern)
+            with set_write_concern(queryset._collection, write_concern) as collection:
+                update_func = collection.update_one
+                if multi:
+                    update_func = collection.update_many
+                result = update_func(query, update, upsert=upsert)
             if full_result:
                 return result
-            elif result:
-                return result['n']
+            elif result.raw_result:
+                return result.raw_result['n']
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u'Update failed (%s)' % six.text_type(err))
         except pymongo.errors.OperationFailure as err:
@@ -544,10 +560,10 @@ class BaseQuerySet(object):
                                     write_concern=write_concern,
                                     full_result=True, **update)
 
-        if atomic_update['updatedExisting']:
+        if atomic_update.raw_result['updatedExisting']:
             document = self.get()
         else:
-            document = self._document.objects.with_id(atomic_update['upserted'])
+            document = self._document.objects.with_id(atomic_update.upserted_id)
         return document
 
     def update_one(self, upsert=False, write_concern=None, **update):
@@ -674,7 +690,7 @@ class BaseQuerySet(object):
                     self._document._from_son(doc, only_fields=self.only_fields))
         elif self._as_pymongo:
             for doc in docs:
-                doc_map[doc['_id']] = self._get_as_pymongo(doc)
+                doc_map[doc['_id']] = doc
         else:
             for doc in docs:
                 doc_map[doc['_id']] = self._document._from_son(
@@ -759,10 +775,11 @@ class BaseQuerySet(object):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
 
-        :param n: the maximum number of objects to return
+        :param n: the maximum number of objects to return if n is greater than 0.
+        When 0 is passed, returns all the documents in the cursor
         """
         queryset = self.clone()
-        queryset._limit = n if n != 0 else 1
+        queryset._limit = n
 
         # If a cursor object has already been created, apply the limit to it.
         if queryset._cursor_obj:
@@ -960,11 +977,10 @@ class BaseQuerySet(object):
         # explicitly included, and then more complicated operators such as
         # $slice.
         def _sort_key(field_tuple):
-            key, value = field_tuple
-            if isinstance(value, (int)):
+            _, value = field_tuple
+            if isinstance(value, int):
                 return value  # 0 for exclusion, 1 for inclusion
-            else:
-                return 2  # so that complex values appear last
+            return 2  # so that complex values appear last
 
         fields = sorted(cleaned_fields, key=_sort_key)
 
@@ -1181,6 +1197,10 @@ class BaseQuerySet(object):
             initial_pipeline.append({'$skip': self._skip})
 
         pipeline = initial_pipeline + list(pipeline)
+
+        if IS_PYMONGO_3 and self._read_preference is not None:
+            return self._collection.with_options(read_preference=self._read_preference) \
+                       .aggregate(pipeline, cursor={}, **kwargs)
 
         return self._collection.aggregate(pipeline, cursor={}, **kwargs)
 
@@ -1457,16 +1477,16 @@ class BaseQuerySet(object):
 
     # Iterator helpers
 
-    def next(self):
+    def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
         if self._limit == 0 or self._none:
             raise StopIteration
 
-        raw_doc = self._cursor.next()
+        raw_doc = six.next(self._cursor)
 
         if self._as_pymongo:
-            return self._get_as_pymongo(raw_doc)
+            return raw_doc
 
         doc = self._document._from_son(
             raw_doc, _auto_dereference=self._auto_dereference,
@@ -1476,6 +1496,8 @@ class BaseQuerySet(object):
             return self._get_scalar(doc)
 
         return doc
+
+    next = __next__     # For Python2 support
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
@@ -1577,6 +1599,9 @@ class BaseQuerySet(object):
 
         if self._batch_size is not None:
             self._cursor_obj.batch_size(self._batch_size)
+
+        if self._comment is not None:
+            self._cursor_obj.comment(self._comment)
 
         return self._cursor_obj
 
@@ -1722,25 +1747,33 @@ class BaseQuerySet(object):
         return frequencies
 
     def _fields_to_dbfields(self, fields):
-        """Translate fields paths to its db equivalents"""
-        ret = []
+        """Translate fields' paths to their db equivalents."""
         subclasses = []
-        document = self._document
-        if document._meta['allow_inheritance']:
+        if self._document._meta['allow_inheritance']:
             subclasses = [get_document(x)
-                          for x in document._subclasses][1:]
+                          for x in self._document._subclasses][1:]
+
+        db_field_paths = []
         for field in fields:
+            field_parts = field.split('.')
             try:
-                field = '.'.join(f.db_field for f in
-                                 document._lookup_field(field.split('.')))
-                ret.append(field)
+                field = '.'.join(
+                    f if isinstance(f, six.string_types) else f.db_field
+                    for f in self._document._lookup_field(field_parts)
+                )
+                db_field_paths.append(field)
             except LookUpError as err:
                 found = False
+
+                # If a field path wasn't found on the main document, go
+                # through its subclasses and see if it exists on any of them.
                 for subdoc in subclasses:
                     try:
-                        subfield = '.'.join(f.db_field for f in
-                                            subdoc._lookup_field(field.split('.')))
-                        ret.append(subfield)
+                        subfield = '.'.join(
+                            f if isinstance(f, six.string_types) else f.db_field
+                            for f in subdoc._lookup_field(field_parts)
+                        )
+                        db_field_paths.append(subfield)
                         found = True
                         break
                     except LookUpError:
@@ -1748,7 +1781,8 @@ class BaseQuerySet(object):
 
                 if not found:
                     raise err
-        return ret
+
+        return db_field_paths
 
     def _get_order_by(self, keys):
         """Given a list of MongoEngine-style sort keys, return a list
@@ -1799,26 +1833,6 @@ class BaseQuerySet(object):
 
         return tuple(data)
 
-    def _get_as_pymongo(self, doc):
-        """Clean up a PyMongo doc, removing fields that were only fetched
-        for the sake of MongoEngine's implementation, and return it.
-        """
-        # Always remove _cls as a MongoEngine's implementation detail.
-        if '_cls' in doc:
-            del doc['_cls']
-
-        # If the _id was not included in a .only or was excluded in a .exclude,
-        # remove it from the doc (we always fetch it so that we can properly
-        # construct documents).
-        fields = self._loaded_fields
-        if fields and '_id' in doc and (
-            (fields.value == QueryFieldList.ONLY and '_id' not in fields.fields) or
-            (fields.value == QueryFieldList.EXCLUDE and '_id' in fields.fields)
-        ):
-            del doc['_id']
-
-        return doc
-
     def _sub_js_fields(self, code):
         """When fields are specified with [~fieldname] syntax, where
         *fieldname* is the Python name of a field, *fieldname* will be
@@ -1840,8 +1854,8 @@ class BaseQuerySet(object):
             # Substitute the correct name for the field into the javascript
             return '.'.join([f.db_field for f in fields])
 
-        code = re.sub(u'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
-        code = re.sub(u'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
+        code = re.sub(r'\[\s*~([A-z_][A-z_0-9.]+?)\s*\]', field_sub, code)
+        code = re.sub(r'\{\{\s*~([A-z_][A-z_0-9.]+?)\s*\}\}', field_path_sub,
                       code)
         return code
 
