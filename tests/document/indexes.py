@@ -5,6 +5,7 @@ from datetime import datetime
 from nose.plugins.skip import SkipTest
 from pymongo.errors import OperationFailure
 import pymongo
+from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -68,7 +69,7 @@ class IndexesTest(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         self.assertEqual(len(info), 4)
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         for expected in expected_specs:
             self.assertIn(expected['fields'], info)
 
@@ -100,7 +101,7 @@ class IndexesTest(unittest.TestCase):
         # the indices on -date and tags will both contain
         # _cls as first element in the key
         self.assertEqual(len(info), 4)
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         for expected in expected_specs:
             self.assertIn(expected['fields'], info)
 
@@ -115,7 +116,7 @@ class IndexesTest(unittest.TestCase):
 
         ExtendedBlogPost.ensure_indexes()
         info = ExtendedBlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         for expected in expected_specs:
             self.assertIn(expected['fields'], info)
 
@@ -225,7 +226,7 @@ class IndexesTest(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(Person.objects)
         info = Person.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('rank.title', 1)], info)
 
     def test_explicit_geo2d_index(self):
@@ -245,7 +246,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('location.point', '2d')], info)
 
     def test_explicit_geo2d_index_embedded(self):
@@ -268,7 +269,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('current.location.point', '2d')], info)
 
     def test_explicit_geosphere_index(self):
@@ -288,7 +289,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('location.point', '2dsphere')], info)
 
     def test_explicit_geohaystack_index(self):
@@ -310,7 +311,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('location.point', 'geoHaystack')], info)
 
     def test_create_geohaystack_index(self):
@@ -322,7 +323,7 @@ class IndexesTest(unittest.TestCase):
 
         Place.create_index({'fields': (')location.point', 'name')}, bucketSize=10)
         info = Place._get_collection().index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('location.point', 'geoHaystack'), ('name', 1)], info)
 
     def test_dictionary_indexes(self):
@@ -355,7 +356,7 @@ class IndexesTest(unittest.TestCase):
         info = [(value['key'],
                  value.get('unique', False),
                  value.get('sparse', False))
-                for key, value in info.iteritems()]
+                for key, value in iteritems(info)]
         self.assertIn(([('addDate', -1)], True, True), info)
 
         BlogPost.drop_collection()
@@ -576,7 +577,7 @@ class IndexesTest(unittest.TestCase):
         else:
             self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
 
-        self.assertEqual(BlogPost.objects.hint(TAGS_INDEX_NAME ).count(), 10)
+        self.assertEqual(BlogPost.objects.hint(TAGS_INDEX_NAME).count(), 10)
 
         with self.assertRaises(Exception):
             BlogPost.objects.hint(('tags', 1)).next()
@@ -806,7 +807,7 @@ class IndexesTest(unittest.TestCase):
             self.fail('Unbound local error at index + pk definition')
 
         info = BlogPost.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         index_item = [('_id', 1), ('comments.comment_id', 1)]
         self.assertIn(index_item, info)
 
@@ -854,7 +855,7 @@ class IndexesTest(unittest.TestCase):
             }
 
         info = MyDoc.objects._collection.index_information()
-        info = [value['key'] for key, value in info.iteritems()]
+        info = [value['key'] for key, value in iteritems(info)]
         self.assertIn([('provider_ids.foo', 1)], info)
         self.assertIn([('provider_ids.bar', 1)], info)
 
@@ -935,7 +936,6 @@ class IndexesTest(unittest.TestCase):
         finally:
             # Drop the temporary database at the end
             connection.drop_database('tempdatabase')
-
 
     def test_index_dont_send_cls_option(self):
         """

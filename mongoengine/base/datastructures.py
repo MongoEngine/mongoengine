@@ -2,6 +2,7 @@ import weakref
 
 from bson import DBRef
 import six
+from six import iteritems
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
@@ -363,7 +364,7 @@ class StrictDict(object):
     _classes = {}
 
     def __init__(self, **kwargs):
-        for k, v in kwargs.iteritems():
+        for k, v in iteritems(kwargs):
             setattr(self, k, v)
 
     def __getitem__(self, key):
@@ -411,7 +412,7 @@ class StrictDict(object):
         return (key for key in self.__slots__ if hasattr(self, key))
 
     def __len__(self):
-        return len(list(self.iteritems()))
+        return len(list(iteritems(self)))
 
     def __eq__(self, other):
         return self.items() == other.items()

@@ -2,6 +2,8 @@
 import unittest
 import warnings
 
+from six import iteritems
+
 from mongoengine import (BooleanField, Document, EmbeddedDocument,
                          EmbeddedDocumentField, GenericReferenceField,
                          IntField, ReferenceField, StringField, connect)
@@ -485,7 +487,7 @@ class InheritanceTest(unittest.TestCase):
             meta = {'abstract': True}
         class Human(Mammal): pass
 
-        for k, v in defaults.iteritems():
+        for k, v in iteritems(defaults):
             for cls in [Animal, Fish, Guppy]:
                 self.assertEqual(cls._meta[k], v)
 

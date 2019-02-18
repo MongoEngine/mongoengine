@@ -9,6 +9,7 @@ import weakref
 from datetime import datetime
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
+from six import iteritems
 
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
@@ -1482,7 +1483,7 @@ class InstanceTest(MongoDBTestCase):
         Message.drop_collection()
 
         # All objects share the same id, but each in a different collection
-        user = User(id=1, name='user-name')#.save()
+        user = User(id=1, name='user-name')  # .save()
         message = Message(id=1, author=user).save()
 
         message.author.name = 'tutu'
@@ -1999,7 +2000,6 @@ class InstanceTest(MongoDBTestCase):
 
         child_record.delete()
         self.assertEqual(Record.objects(name='parent').get().children, [])
-
 
     def test_reverse_delete_rule_with_custom_id_field(self):
         """Ensure that a referenced document with custom primary key
@@ -3059,7 +3059,7 @@ class InstanceTest(MongoDBTestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in self.parameters.iteritems():
+                for parameter_name, parameter in iteritems(self.parameters):
                     parameter.expand()
 
         class NodesSystem(Document):
@@ -3067,7 +3067,7 @@ class InstanceTest(MongoDBTestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in self.nodes.iteritems():
+                for node_name, node in iteritems(self.nodes):
                     node.expand()
                     node.save(*args, **kwargs)
                 super(NodesSystem, self).save(*args, **kwargs)
@@ -3380,7 +3380,6 @@ class InstanceTest(MongoDBTestCase):
 
         class User(Document):
             company = ReferenceField(Company)
-
 
         # Ensure index creation exception aren't swallowed (#1688)
         with self.assertRaises(DuplicateKeyError):

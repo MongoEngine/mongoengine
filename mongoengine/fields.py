@@ -11,6 +11,7 @@ from bson import Binary, DBRef, ObjectId, SON
 import gridfs
 import pymongo
 import six
+from six import iteritems
 
 try:
     import dateutil
@@ -794,12 +795,12 @@ class DynamicField(BaseField):
             value = {k: v for k, v in enumerate(value)}
 
         data = {}
-        for k, v in value.iteritems():
+        for k, v in iteritems(value):
             data[k] = self.to_mongo(v, use_db_field, fields)
 
         value = data
         if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
+            value = [v for k, v in sorted(iteritems(data), key=itemgetter(0))]
         return value
 
     def to_python(self, value):

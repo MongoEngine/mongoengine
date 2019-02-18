@@ -5,6 +5,7 @@ import weakref
 from bson import DBRef, ObjectId, SON
 import pymongo
 import six
+from six import iteritems
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (BaseDict, BaseList,
@@ -382,11 +383,11 @@ class ComplexBaseField(BaseField):
         if self.field:
             value_dict = {
                 key: self.field._to_mongo_safe_call(item, use_db_field, fields)
-                for key, item in value.iteritems()
+                for key, item in iteritems(value)
             }
         else:
             value_dict = {}
-            for k, v in value.iteritems():
+            for k, v in iteritems(value):
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -423,7 +424,7 @@ class ComplexBaseField(BaseField):
         errors = {}
         if self.field:
             if hasattr(value, 'iteritems') or hasattr(value, 'items'):
-                sequence = value.iteritems()
+                sequence = iteritems(value)
             else:
                 sequence = enumerate(value)
             for k, v in sequence:
