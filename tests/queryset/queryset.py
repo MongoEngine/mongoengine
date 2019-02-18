@@ -4641,8 +4641,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))
 
     def test_as_pymongo(self):
-        from decimal import Decimal
-
         class LastLogin(EmbeddedDocument):
             location = StringField()
             ip = StringField()
@@ -4706,6 +4704,24 @@ class QuerySetTest(unittest.TestCase):
                 'ip': '104.107.108.116'
             }
         })
+
+    def test_as_pymongo_returns_cls_attribute_when_using_inheritance(self):
+        class User(Document):
+            name = StringField()
+            meta = {'allow_inheritance': True}
+
+        User.drop_collection()
+
+        user = User(name="Bob Dole").save()
+        result = User.objects.as_pymongo().first()
+        self.assertEqual(
+            result,
+            {
+                '_cls': 'User',
+                '_id': user.id,
+                'name': 'Bob Dole'
+            }
+        )
 
     def test_as_pymongo_json_limit_fields(self):
 

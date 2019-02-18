@@ -1483,6 +1483,12 @@ class BinaryField(BaseField):
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error('Binary value is too long')
 
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        return super(BinaryField, self).prepare_query_value(
+            op, self.to_mongo(value))
+
 
 class GridFSError(Exception):
     pass
