@@ -5,8 +5,8 @@ import pickle
 import unittest
 import uuid
 import weakref
-
 from datetime import datetime
+
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 from six import iteritems
