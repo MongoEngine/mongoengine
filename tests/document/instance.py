@@ -7,6 +7,8 @@ import uuid
 import weakref
 
 from datetime import datetime
+
+import warnings
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 
@@ -1482,7 +1484,7 @@ class InstanceTest(MongoDBTestCase):
         Message.drop_collection()
 
         # All objects share the same id, but each in a different collection
-        user = User(id=1, name='user-name')#.save()
+        user = User(id=1, name='user-name')  # .save()
         message = Message(id=1, author=user).save()
 
         message.author.name = 'tutu'
@@ -1999,7 +2001,6 @@ class InstanceTest(MongoDBTestCase):
 
         child_record.delete()
         self.assertEqual(Record.objects(name='parent').get().children, [])
-
 
     def test_reverse_delete_rule_with_custom_id_field(self):
         """Ensure that a referenced document with custom primary key
@@ -3086,6 +3087,24 @@ class InstanceTest(MongoDBTestCase):
             "UNDEFINED",
             system.nodes["node"].parameters["param"].macros["test"].value)
 
+    def test_embedded_document_save_reload_warning(self):
+        """Relates to #1570"""
+        class Embedded(EmbeddedDocument):
+            pass
+
+        class Doc(Document):
+            emb = EmbeddedDocumentField(Embedded)
+
+        doc = Doc(emb=Embedded()).save()
+        doc.emb.save()  # Make sure its still working
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            with self.assertRaises(DeprecationWarning):
+                doc.emb.save()
+
+            with self.assertRaises(DeprecationWarning):
+                doc.emb.reload()
+
     def test_embedded_document_equality(self):
         class Test(Document):
             field = StringField(required=True)
@@ -3380,7 +3399,6 @@ class InstanceTest(MongoDBTestCase):
 
         class User(Document):
             company = ReferenceField(Company)
-
 
         # Ensure index creation exception aren't swallowed (#1688)
         with self.assertRaises(DuplicateKeyError):
