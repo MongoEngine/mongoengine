@@ -1,16 +1,15 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.connection import get_db
+from tests.utils import MongoDBTestCase
 
-__all__ = ("DynamicTest", )
+__all__ = ("TestDynamicDocument", )
 
 
-class DynamicTest(unittest.TestCase):
+class TestDynamicDocument(MongoDBTestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+        super(TestDynamicDocument, self).setUp()
 
         class Person(DynamicDocument):
             name = StringField()
@@ -98,6 +97,72 @@ class DynamicTest(unittest.TestCase):
         self.assertEqual(len(p._data), 4)
         self.assertEqual(sorted(p._data.keys()), ['_cls', 'age', 'id', 'name'])
 
+    def test_fields_without_underscore(self):
+        """Ensure we can query dynamic fields"""
+        Person = self.Person
+
+        p = self.Person(name='Dean')
+        p.save()
+
+        raw_p = Person.objects.as_pymongo().get(id=p.id)
+        self.assertEqual(
+            raw_p,
+            {
+                '_cls': u'Person',
+                '_id': p.id,
+                'name': u'Dean'
+             }
+        )
+
+        p.name = 'OldDean'
+        p.newattr = 'garbage'
+        p.save()
+        raw_p = Person.objects.as_pymongo().get(id=p.id)
+        self.assertEqual(
+            raw_p,
+            {
+                '_cls': u'Person',
+                '_id': p.id,
+                'name': 'OldDean',
+                'newattr': u'garbage'
+            }
+        )
+
+    def test_fields_containing_underscore(self):
+        """Ensure we can query dynamic fields"""
+        class WeirdPerson(DynamicDocument):
+            name = StringField()
+            _name = StringField()
+
+        WeirdPerson.drop_collection()
+
+        p = WeirdPerson(name='Dean', _name='Dean')
+        p.save()
+
+        raw_p = WeirdPerson.objects.as_pymongo().get(id=p.id)
+        self.assertEqual(
+            raw_p,
+            {
+                '_id': p.id,
+                '_name': u'Dean',
+                'name': u'Dean'
+            }
+        )
+
+        p.name = 'OldDean'
+        p._name = 'NewDean'
+        p._newattr1 = 'garbage'    # Unknown fields won't be added
+        p.save()
+        raw_p = WeirdPerson.objects.as_pymongo().get(id=p.id)
+        self.assertEqual(
+            raw_p,
+            {
+                '_id': p.id,
+                '_name': u'NewDean',
+                'name': u'OldDean',
+            }
+        )
+
     def test_dynamic_document_queries(self):
         """Ensure we can query dynamic fields"""
         p = self.Person()
@@ -174,8 +239,8 @@ class DynamicTest(unittest.TestCase):
 
         Employee.drop_collection()
 
-        self.assertTrue('name' in Employee._fields)
-        self.assertTrue('salary' in Employee._fields)
+        self.assertIn('name', Employee._fields)
+        self.assertIn('salary', Employee._fields)
         self.assertEqual(Employee._get_collection_name(),
                          self.Person._get_collection_name())
 
@@ -189,7 +254,7 @@ class DynamicTest(unittest.TestCase):
         self.assertEqual(1, Employee.objects(age=20).count())
 
         joe_bloggs = self.Person.objects.first()
-        self.assertTrue(isinstance(joe_bloggs, Employee))
+        self.assertIsInstance(joe_bloggs, Employee)
 
     def test_embedded_dynamic_document(self):
         """Test dynamic embedded documents"""
@@ -368,6 +433,7 @@ class DynamicTest(unittest.TestCase):
         person["age"] = 35
         person.save()
         self.assertEqual(Person.objects.first().age, 35)
+
 
 if __name__ == '__main__':
     unittest.main()

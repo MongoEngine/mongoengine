@@ -456,14 +456,14 @@ data. To turn off dereferencing of the results of a query use
 :func:`~mongoengine.queryset.QuerySet.no_dereference` on the queryset like so::
 
     post = Post.objects.no_dereference().first()
-    assert(isinstance(post.author, ObjectId))
+    assert(isinstance(post.author, DBRef))
 
 You can also turn off all dereferencing for a fixed period by using the
 :class:`~mongoengine.context_managers.no_dereference` context manager::
 
     with no_dereference(Post) as Post:
         post = Post.objects.first()
-        assert(isinstance(post.author, ObjectId))
+        assert(isinstance(post.author, DBRef))
 
     # Outside the context manager dereferencing occurs.
     assert(isinstance(post.author, User))
@@ -564,6 +564,15 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     >>> post.reload()
     >>> post.tags
     ['database', 'mongodb']
+
+From MongoDB version 2.6, push operator supports $position value which allows
+to push values with index.
+    >>> post = BlogPost(title="Test", tags=["mongo"])
+    >>> post.save()
+    >>> post.update(push__tags__0=["database", "code"])
+    >>> post.reload()
+    >>> post.tags
+    ['database', 'code', 'mongo']
 
 .. note::
     Currently only top level lists are handled, future versions of mongodb /

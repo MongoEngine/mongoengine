@@ -39,15 +39,15 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest')
 
         conn = get_connection()
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
         db = get_db()
-        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'mongoenginetest')
 
         connect('mongoenginetest2', alias='testdb')
         conn = get_connection('testdb')
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
     def test_connect_in_mocking(self):
         """Ensure that the connect() method works properly in mocking.
@@ -59,31 +59,31 @@ class ConnectionTest(unittest.TestCase):
 
         connect('mongoenginetest', host='mongomock://localhost')
         conn = get_connection()
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect('mongoenginetest2', host='mongomock://localhost', alias='testdb2')
         conn = get_connection('testdb2')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect('mongoenginetest3', host='mongodb://localhost', is_mock=True, alias='testdb3')
         conn = get_connection('testdb3')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect('mongoenginetest4', is_mock=True, alias='testdb4')
         conn = get_connection('testdb4')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host='mongodb://localhost:27017/mongoenginetest5', is_mock=True, alias='testdb5')
         conn = get_connection('testdb5')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host='mongomock://localhost:27017/mongoenginetest6', alias='testdb6')
         conn = get_connection('testdb6')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host='mongomock://localhost:27017/mongoenginetest7', is_mock=True, alias='testdb7')
         conn = get_connection('testdb7')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
     def test_connect_with_host_list(self):
         """Ensure that the connect() method works when host is a list
@@ -97,27 +97,27 @@ class ConnectionTest(unittest.TestCase):
 
         connect(host=['mongomock://localhost'])
         conn = get_connection()
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host=['mongodb://localhost'], is_mock=True,  alias='testdb2')
         conn = get_connection('testdb2')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host=['localhost'], is_mock=True,  alias='testdb3')
         conn = get_connection('testdb3')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host=['mongomock://localhost:27017', 'mongomock://localhost:27018'], alias='testdb4')
         conn = get_connection('testdb4')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host=['mongodb://localhost:27017', 'mongodb://localhost:27018'], is_mock=True,  alias='testdb5')
         conn = get_connection('testdb5')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
         connect(host=['localhost:27017', 'localhost:27018'], is_mock=True,  alias='testdb6')
         conn = get_connection('testdb6')
-        self.assertTrue(isinstance(conn, mongomock.MongoClient))
+        self.assertIsInstance(conn, mongomock.MongoClient)
 
     def test_disconnect(self):
         """Ensure that the disconnect() method works properly
@@ -163,10 +163,10 @@ class ConnectionTest(unittest.TestCase):
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
 
         conn = get_connection()
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
         db = get_db()
-        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'mongoenginetest')
 
         c.admin.system.users.remove({})
@@ -179,10 +179,10 @@ class ConnectionTest(unittest.TestCase):
         connect("mongoenginetest", host='mongodb://localhost/')
 
         conn = get_connection()
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
         db = get_db()
-        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'mongoenginetest')
 
     def test_connect_uri_default_db(self):
@@ -192,10 +192,10 @@ class ConnectionTest(unittest.TestCase):
         connect(host='mongodb://localhost/')
 
         conn = get_connection()
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
         db = get_db()
-        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'test')
 
     def test_uri_without_credentials_doesnt_override_conn_settings(self):
@@ -242,7 +242,7 @@ class ConnectionTest(unittest.TestCase):
                   'mongoenginetest?authSource=admin')
         )
         db = get_db('test2')
-        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'mongoenginetest')
 
         # Clear all users
@@ -255,10 +255,10 @@ class ConnectionTest(unittest.TestCase):
 
         self.assertRaises(MongoEngineConnectionError, get_connection)
         conn = get_connection('testdb')
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
         db = get_db('testdb')
-        self.assertTrue(isinstance(db, pymongo.database.Database))
+        self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'mongoenginetest2')
 
     def test_register_connection_defaults(self):
@@ -267,7 +267,7 @@ class ConnectionTest(unittest.TestCase):
         register_connection('testdb', 'mongoenginetest', host=None, port=None)
 
         conn = get_connection('testdb')
-        self.assertTrue(isinstance(conn, pymongo.mongo_client.MongoClient))
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
     def test_connection_kwargs(self):
         """Ensure that connection kwargs get passed to pymongo."""
@@ -326,7 +326,7 @@ class ConnectionTest(unittest.TestCase):
         if IS_PYMONGO_3:
             c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
             db = get_db()
-            self.assertTrue(isinstance(db, pymongo.database.Database))
+            self.assertIsInstance(db, pymongo.database.Database)
             self.assertEqual(db.name, 'test')
         else:
             # PyMongo < v3.x raises an exception:
@@ -343,7 +343,7 @@ class ConnectionTest(unittest.TestCase):
             self.assertEqual(c._MongoClient__options.replica_set_name,
                              'local-rs')
             db = get_db()
-            self.assertTrue(isinstance(db, pymongo.database.Database))
+            self.assertIsInstance(db, pymongo.database.Database)
             self.assertEqual(db.name, 'test')
         else:
             # PyMongo < v3.x raises an exception:
@@ -364,6 +364,12 @@ class ConnectionTest(unittest.TestCase):
         date_doc = DateDoc.objects.first()
         self.assertEqual(d, date_doc.the_date)
 
+    def test_read_preference_from_parse(self):
+        if IS_PYMONGO_3:
+            from pymongo import ReadPreference
+            conn = connect(host="mongodb://a1.vpc,a2.vpc,a3.vpc/prod?readPreference=secondaryPreferred")
+            self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_PREFERRED)
+
     def test_multiple_connection_settings(self):
         connect('mongoenginetest', alias='t1', host="localhost")
 
@@ -371,8 +377,8 @@ class ConnectionTest(unittest.TestCase):
 
         mongo_connections = mongoengine.connection._connections
         self.assertEqual(len(mongo_connections.items()), 2)
-        self.assertTrue('t1' in mongo_connections.keys())
-        self.assertTrue('t2' in mongo_connections.keys())
+        self.assertIn('t1', mongo_connections.keys())
+        self.assertIn('t2', mongo_connections.keys())
         if not IS_PYMONGO_3:
             self.assertEqual(mongo_connections['t1'].host, 'localhost')
             self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')

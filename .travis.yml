@@ -2,12 +2,10 @@
 # PyMongo combinations. However, that would result in an overly long build
 # with a very large number of jobs, hence we only test a subset of all the
 # combinations:
-# * MongoDB v2.4 & v3.0 are only tested against Python v2.7 & v3.5.
-# * MongoDB v2.4 is tested against PyMongo v2.7 & v3.x.
-# * MongoDB v3.0 is tested against PyMongo v3.x.
 # * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
-#   v3.5, PyPy & PyPy3, and PyMongo v2.7, v2.8 & v3.x.
-#
+#   v3.5, v3.6, PyPy, and PyMongo v3.x.
+# * MongoDB v3.0 & v3.2 are tested against Python v2.7, v3.5 & v3.6
+#   and Pymongo v3.5 & v3.x
 # Reminder: Update README.rst if you change MongoDB versions we test.
 
 language: python
@@ -15,12 +13,11 @@ language: python
 python:
 - 2.7
 - 3.5
+- 3.6
 - pypy
 
 env:
-- MONGODB=2.6 PYMONGO=2.7
-- MONGODB=2.6 PYMONGO=2.8
-- MONGODB=2.6 PYMONGO=3.0
+- MONGODB=2.6 PYMONGO=3.x
 
 matrix:
   # Finish the build as soon as one job fails
@@ -28,20 +25,22 @@ matrix:
 
   include:
   - python: 2.7
-    env: MONGODB=2.4 PYMONGO=2.7
+    env: MONGODB=3.0 PYMONGO=3.5
   - python: 2.7
-    env: MONGODB=2.4 PYMONGO=3.0
-  - python: 2.7
-    env: MONGODB=3.0 PYMONGO=3.0
+    env: MONGODB=3.2 PYMONGO=3.x
   - python: 3.5
-    env: MONGODB=2.4 PYMONGO=2.7
+    env: MONGODB=3.0 PYMONGO=3.5
   - python: 3.5
-    env: MONGODB=2.4 PYMONGO=3.0
-  - python: 3.5
-    env: MONGODB=3.0 PYMONGO=3.0
+    env: MONGODB=3.2 PYMONGO=3.x
+  - python: 3.6
+    env: MONGODB=3.0 PYMONGO=3.5
+  - python: 3.6
+    env: MONGODB=3.2 PYMONGO=3.x
 
 before_install:
 - bash .install_mongodb_on_travis.sh
+- sleep 15  # https://docs.travis-ci.com/user/database-setup/#MongoDB-does-not-immediately-accept-connections
+- mongo --eval 'db.version();'
 
 install:
 - sudo apt-get install python-dev python3-dev libopenjpeg-dev zlib1g-dev libjpeg-turbo8-dev
@@ -90,11 +89,11 @@ deploy:
   distributions: "sdist bdist_wheel"
 
   # only deploy on tagged commits (aka GitHub releases) and only for the
-  # parent repo's builds running Python 2.7 along with dev PyMongo (we run
+  # parent repo's builds running Python 2.7 along with PyMongo v3.x (we run
   # Travis against many different Python and PyMongo versions and we don't
   # want the deploy to occur multiple times).
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: "$PYMONGO = 3.0"
+    condition: "$PYMONGO = 3.x"
     python: 2.7

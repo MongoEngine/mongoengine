@@ -196,7 +196,7 @@ class QTest(unittest.TestCase):
 
         test2 = test.clone()
         self.assertEqual(test2.count(), 3)
-        self.assertFalse(test2 == test)
+        self.assertNotEqual(test2, test)
 
         test3 = test2.filter(x=6)
         self.assertEqual(test3.count(), 1)
@@ -295,6 +295,18 @@ class QTest(unittest.TestCase):
 
         obj = self.Person.objects(Q(name__not=re.compile('^Gui'))).first()
         self.assertEqual(obj, None)
+
+    def test_q_repr(self):
+        self.assertEqual(repr(Q()), 'Q(**{})')
+        self.assertEqual(repr(Q(name='test')), "Q(**{'name': 'test'})")
+
+        self.assertEqual(
+            repr(Q(name='test') & Q(age__gte=18)),
+            "(Q(**{'name': 'test'}) & Q(**{'age__gte': 18}))")
+
+        self.assertEqual(
+            repr(Q(name='test') | Q(age__gte=18)),
+            "(Q(**{'name': 'test'}) | Q(**{'age__gte': 18}))")
 
     def test_q_lists(self):
         """Ensure that Q objects query ListFields correctly.

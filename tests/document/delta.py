@@ -694,7 +694,7 @@ class DeltaTest(unittest.TestCase):
         organization.employees.append(person)
         updates, removals = organization._delta()
         self.assertEqual({}, removals)
-        self.assertTrue('employees' in updates)
+        self.assertIn('employees', updates)
 
     def test_delta_with_dbref_false(self):
         person, organization, employee = self.circular_reference_deltas_2(Document, Document, False)
@@ -709,7 +709,7 @@ class DeltaTest(unittest.TestCase):
         organization.employees.append(person)
         updates, removals = organization._delta()
         self.assertEqual({}, removals)
-        self.assertTrue('employees' in updates)
+        self.assertIn('employees', updates)
 
     def test_nested_nested_fields_mark_as_changed(self):
         class EmbeddedDoc(EmbeddedDocument):

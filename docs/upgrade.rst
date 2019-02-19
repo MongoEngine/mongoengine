@@ -6,6 +6,11 @@ Development
 ***********
 (Fill this out whenever you introduce breaking changes to MongoEngine)
 
+URLField's constructor no longer takes `verify_exists`
+
+0.15.0
+******
+
 0.14.0
 ******
 This release includes a few bug fixes and a significant code cleanup. The most

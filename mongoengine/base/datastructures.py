@@ -1,12 +1,30 @@
-import itertools
 import weakref
 
+from bson import DBRef
 import six
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
-__all__ = ('BaseDict', 'BaseList', 'EmbeddedDocumentList')
+__all__ = ('BaseDict', 'StrictDict', 'BaseList', 'EmbeddedDocumentList', 'LazyReference')
+
+
+def mark_as_changed_wrapper(parent_method):
+    """Decorators that ensures _mark_as_changed method gets called"""
+    def wrapper(self, *args, **kwargs):
+        result = parent_method(self, *args, **kwargs)   # Can't use super() in the decorator
+        self._mark_as_changed()
+        return result
+    return wrapper
+
+
+def mark_key_as_changed_wrapper(parent_method):
+    """Decorators that ensures _mark_as_changed method gets called with the key argument"""
+    def wrapper(self, key, *args, **kwargs):
+        result = parent_method(self, key, *args, **kwargs)   # Can't use super() in the decorator
+        self._mark_as_changed(key)
+        return result
+    return wrapper
 
 
 class BaseDict(dict):
@@ -17,45 +35,35 @@ class BaseDict(dict):
     _name = None
 
     def __init__(self, dict_items, instance, name):
-        Document = _import_class('Document')
-        EmbeddedDocument = _import_class('EmbeddedDocument')
+        BaseDocument = _import_class('BaseDocument')
 
-        if isinstance(instance, (Document, EmbeddedDocument)):
+        if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
         self._name = name
         super(BaseDict, self).__init__(dict_items)
 
-    def __getitem__(self, key, *args, **kwargs):
+    def get(self, key, default=None):
+        # get does not use __getitem__ by default so we must override it as well
+        try:
+            return self.__getitem__(key)
+        except KeyError:
+            return default
+
+    def __getitem__(self, key):
         value = super(BaseDict, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
-        elif not isinstance(value, BaseDict) and isinstance(value, dict):
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, None, '%s.%s' % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
-        elif not isinstance(value, BaseList) and isinstance(value, list):
+        elif isinstance(value, list) and not isinstance(value, BaseList):
             value = BaseList(value, None, '%s.%s' % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
         return value
-
-    def __setitem__(self, key, value, *args, **kwargs):
-        self._mark_as_changed(key)
-        return super(BaseDict, self).__setitem__(key, value)
-
-    def __delete__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).__delete__(*args, **kwargs)
-
-    def __delitem__(self, key, *args, **kwargs):
-        self._mark_as_changed(key)
-        return super(BaseDict, self).__delitem__(key)
-
-    def __delattr__(self, key, *args, **kwargs):
-        self._mark_as_changed(key)
-        return super(BaseDict, self).__delattr__(key)
 
     def __getstate__(self):
         self.instance = None
@@ -66,25 +74,14 @@ class BaseDict(dict):
         self = state
         return self
 
-    def clear(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).clear()
-
-    def pop(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).pop(*args, **kwargs)
-
-    def popitem(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).popitem()
-
-    def setdefault(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).setdefault(*args, **kwargs)
-
-    def update(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseDict, self).update(*args, **kwargs)
+    __setitem__ = mark_key_as_changed_wrapper(dict.__setitem__)
+    __delattr__ = mark_key_as_changed_wrapper(dict.__delattr__)
+    __delitem__ = mark_key_as_changed_wrapper(dict.__delitem__)
+    pop = mark_as_changed_wrapper(dict.pop)
+    clear = mark_as_changed_wrapper(dict.clear)
+    update = mark_as_changed_wrapper(dict.update)
+    popitem = mark_as_changed_wrapper(dict.popitem)
+    setdefault = mark_as_changed_wrapper(dict.setdefault)
 
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
@@ -102,52 +99,39 @@ class BaseList(list):
     _name = None
 
     def __init__(self, list_items, instance, name):
-        Document = _import_class('Document')
-        EmbeddedDocument = _import_class('EmbeddedDocument')
+        BaseDocument = _import_class('BaseDocument')
 
-        if isinstance(instance, (Document, EmbeddedDocument)):
+        if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
         self._name = name
         super(BaseList, self).__init__(list_items)
 
-    def __getitem__(self, key, *args, **kwargs):
+    def __getitem__(self, key):
         value = super(BaseList, self).__getitem__(key)
+
+        if isinstance(key, slice):
+            # When receiving a slice operator, we don't convert the structure and bind
+            # to parent's instance. This is buggy for now but would require more work to be handled properly
+            return value
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
-        elif not isinstance(value, BaseDict) and isinstance(value, dict):
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
+            # Replace dict by BaseDict
             value = BaseDict(value, None, '%s.%s' % (self._name, key))
             super(BaseList, self).__setitem__(key, value)
             value._instance = self._instance
-        elif not isinstance(value, BaseList) and isinstance(value, list):
+        elif isinstance(value, list) and not isinstance(value, BaseList):
+            # Replace list by BaseList
             value = BaseList(value, None, '%s.%s' % (self._name, key))
             super(BaseList, self).__setitem__(key, value)
             value._instance = self._instance
         return value
 
     def __iter__(self):
-        for i in xrange(self.__len__()):
-            yield self[i]
-
-    def __setitem__(self, key, value, *args, **kwargs):
-        if isinstance(key, slice):
-            self._mark_as_changed()
-        else:
-            self._mark_as_changed(key)
-        return super(BaseList, self).__setitem__(key, value)
-
-    def __delitem__(self, key, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).__delitem__(key)
-
-    def __setslice__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).__setslice__(*args, **kwargs)
-
-    def __delslice__(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).__delslice__(*args, **kwargs)
+        for v in super(BaseList, self).__iter__():
+            yield v
 
     def __getstate__(self):
         self.instance = None
@@ -158,41 +142,40 @@ class BaseList(list):
         self = state
         return self
 
-    def __iadd__(self, other):
-        self._mark_as_changed()
-        return super(BaseList, self).__iadd__(other)
+    def __setitem__(self, key, value):
+        changed_key = key
+        if isinstance(key, slice):
+            # In case of slice, we don't bother to identify the exact elements being updated
+            # instead, we simply marks the whole list as changed
+            changed_key = None
 
-    def __imul__(self, other):
-        self._mark_as_changed()
-        return super(BaseList, self).__imul__(other)
+        result = super(BaseList, self).__setitem__(key, value)
+        self._mark_as_changed(changed_key)
+        return result
 
-    def append(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).append(*args, **kwargs)
+    append = mark_as_changed_wrapper(list.append)
+    extend = mark_as_changed_wrapper(list.extend)
+    insert = mark_as_changed_wrapper(list.insert)
+    pop = mark_as_changed_wrapper(list.pop)
+    remove = mark_as_changed_wrapper(list.remove)
+    reverse = mark_as_changed_wrapper(list.reverse)
+    sort = mark_as_changed_wrapper(list.sort)
+    __delitem__ = mark_as_changed_wrapper(list.__delitem__)
+    __iadd__ = mark_as_changed_wrapper(list.__iadd__)
+    __imul__ = mark_as_changed_wrapper(list.__imul__)
 
-    def extend(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).extend(*args, **kwargs)
+    if six.PY2:
+        # Under py3 __setslice__, __delslice__ and __getslice__
+        # are replaced by __setitem__, __delitem__ and __getitem__ with a slice as parameter
+        # so we mimic this under python 2
+        def __setslice__(self, i, j, sequence):
+            return self.__setitem__(slice(i, j), sequence)
 
-    def insert(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).insert(*args, **kwargs)
+        def __delslice__(self, i, j):
+            return self.__delitem__(slice(i, j))
 
-    def pop(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).pop(*args, **kwargs)
-
-    def remove(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).remove(*args, **kwargs)
-
-    def reverse(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).reverse()
-
-    def sort(self, *args, **kwargs):
-        self._mark_as_changed()
-        return super(BaseList, self).sort(*args, **kwargs)
+        def __getslice__(self, i, j):
+            return self.__getitem__(slice(i, j))
 
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
@@ -205,6 +188,10 @@ class BaseList(list):
 
 
 class EmbeddedDocumentList(BaseList):
+
+    def __init__(self, list_items, instance, name):
+        super(EmbeddedDocumentList, self).__init__(list_items, instance, name)
+        self._instance = instance
 
     @classmethod
     def __match_all(cls, embedded_doc, kwargs):
@@ -224,14 +211,13 @@ class EmbeddedDocumentList(BaseList):
             return embedded_docs
         return [doc for doc in embedded_docs if cls.__match_all(doc, kwargs)]
 
-    def __init__(self, list_items, instance, name):
-        super(EmbeddedDocumentList, self).__init__(list_items, instance, name)
-        self._instance = instance
-
     def filter(self, **kwargs):
         """
         Filters the list by only including embedded documents with the
         given keyword arguments.
+
+        This method only supports simple comparison (e.g: .filter(name='John Doe'))
+        and does not support operators like __gte, __lte, __icontains like queryset.filter does
 
         :param kwargs: The keyword arguments corresponding to the fields to
          filter on. *Multiple arguments are treated as if they are ANDed
@@ -350,7 +336,8 @@ class EmbeddedDocumentList(BaseList):
 
     def update(self, **update):
         """
-        Updates the embedded documents with the given update values.
+        Updates the embedded documents with the given replacement values. This
+        function does not support mongoDB update operators such as ``inc__``.
 
         .. note::
             The embedded document changes are not automatically saved
@@ -372,7 +359,7 @@ class EmbeddedDocumentList(BaseList):
 
 class StrictDict(object):
     __slots__ = ()
-    _special_fields = set(['get', 'pop', 'iteritems', 'items', 'keys', 'create'])
+    _special_fields = {'get', 'pop', 'iteritems', 'items', 'keys', 'create'}
     _classes = {}
 
     def __init__(self, **kwargs):
@@ -447,40 +434,40 @@ class StrictDict(object):
         return cls._classes[allowed_keys]
 
 
-class SemiStrictDict(StrictDict):
-    __slots__ = ('_extras', )
-    _classes = {}
+class LazyReference(DBRef):
+    __slots__ = ('_cached_doc', 'passthrough', 'document_type')
 
-    def __getattr__(self, attr):
-        try:
-            super(SemiStrictDict, self).__getattr__(attr)
-        except AttributeError:
-            try:
-                return self.__getattribute__('_extras')[attr]
-            except KeyError as e:
-                raise AttributeError(e)
+    def fetch(self, force=False):
+        if not self._cached_doc or force:
+            self._cached_doc = self.document_type.objects.get(pk=self.pk)
+            if not self._cached_doc:
+                raise DoesNotExist('Trying to dereference unknown document %s' % (self))
+        return self._cached_doc
 
-    def __setattr__(self, attr, value):
-        try:
-            super(SemiStrictDict, self).__setattr__(attr, value)
-        except AttributeError:
-            try:
-                self._extras[attr] = value
-            except AttributeError:
-                self._extras = {attr: value}
+    @property
+    def pk(self):
+        return self.id
 
-    def __delattr__(self, attr):
-        try:
-            super(SemiStrictDict, self).__delattr__(attr)
-        except AttributeError:
-            try:
-                del self._extras[attr]
-            except KeyError as e:
-                raise AttributeError(e)
+    def __init__(self, document_type, pk, cached_doc=None, passthrough=False):
+        self.document_type = document_type
+        self._cached_doc = cached_doc
+        self.passthrough = passthrough
+        super(LazyReference, self).__init__(self.document_type._get_collection_name(), pk)
 
-    def __iter__(self):
+    def __getitem__(self, name):
+        if not self.passthrough:
+            raise KeyError()
+        document = self.fetch()
+        return document[name]
+
+    def __getattr__(self, name):
+        if not object.__getattribute__(self, 'passthrough'):
+            raise AttributeError()
+        document = self.fetch()
         try:
-            extras_iter = iter(self.__getattribute__('_extras'))
-        except AttributeError:
-            extras_iter = ()
-        return itertools.chain(super(SemiStrictDict, self).__iter__(), extras_iter)
+            return document[name]
+        except KeyError:
+            raise AttributeError()
+
+    def __repr__(self):
+        return "<LazyReference(%s, %r)>" % (self.document_type, self.pk)
