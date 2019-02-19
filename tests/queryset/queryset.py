@@ -2233,6 +2233,19 @@ class QuerySetTest(unittest.TestCase):
         bar.reload()
         self.assertEqual(len(bar.foos), 0)
 
+    def test_update_one_check_return_with_full_result(self):
+        class BlogTag(Document):
+            name = StringField(required=True)
+
+        BlogTag.drop_collection()
+
+        BlogTag(name='garbage').save()
+        default_update = BlogTag.objects.update_one(name='new')
+        self.assertEqual(default_update, 1)
+
+        full_result_update = BlogTag.objects.update_one(name='new', full_result=True)
+        self.assertIsInstance(full_result_update, UpdateResult)
+
     def test_update_one_pop_generic_reference(self):
 
         class BlogTag(Document):

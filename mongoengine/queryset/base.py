@@ -498,10 +498,11 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-        :param full_result: Return the full result dictionary rather than just the number
-            updated, e.g. return
-            ``{'n': 2, 'nModified': 2, 'ok': 1.0, 'updatedExisting': True}``.
+        :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
+            updated items
         :param update: Django-style update keyword arguments
+
+        :returns the number of updated documents (unless ``full_result`` is True)
 
         .. versionadded:: 0.2
         """
@@ -566,7 +567,7 @@ class BaseQuerySet(object):
             document = self._document.objects.with_id(atomic_update.upserted_id)
         return document
 
-    def update_one(self, upsert=False, write_concern=None, **update):
+    def update_one(self, upsert=False, write_concern=None, full_result=False, **update):
         """Perform an atomic update on the fields of the first document
         matched by the query.
 
@@ -577,12 +578,19 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
+        :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
+            updated items
         :param update: Django-style update keyword arguments
-
+            full_result
+        :returns the number of updated documents (unless ``full_result`` is True)
         .. versionadded:: 0.2
         """
         return self.update(
-            upsert=upsert, multi=False, write_concern=write_concern, **update)
+            upsert=upsert,
+            multi=False,
+            write_concern=write_concern,
+            full_result=full_result,
+            **update)
 
     def modify(self, upsert=False, full_response=False, remove=False, new=False, **update):
         """Update and return the updated document.

@@ -7,6 +7,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 - Fix .only() working improperly after using .count() of the same instance of QuerySet
 - POTENTIAL BREAKING CHANGE: All result fields are now passed, including internal fields (_cls, _id) when using `QuerySet.as_pymongo` #1976
+- Document a BREAKING CHANGE introduced in 0.15.3 and not reported at that time (#1995)
 - Fix InvalidStringData error when using modify on a BinaryField #1127
 - DEPRECATION: `EmbeddedDocument.save` & `.reload` are marked as deprecated and will be removed in a next version of mongoengine #1552
 
@@ -66,6 +67,7 @@ Changes in 0.16.0
 
 Changes in 0.15.3
 =================
+-  BREAKING CHANGES: `Queryset.update/update_one` methods now returns an UpdateResult when `full_result=True` is provided and no longer a dict (relates to #1491)
 -  Subfield resolve error in generic_emdedded_document query #1651 #1652
 -  use each modifier only with $position #1673 #1675
 -  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704
