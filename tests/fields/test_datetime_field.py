@@ -7,11 +7,6 @@ try:
 except ImportError:
     dateutil = None
 
-try:
-    from bson.int64 import Int64
-except ImportError:
-    Int64 = long
-
 from mongoengine import *
 from mongoengine import connection
 

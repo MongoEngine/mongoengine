@@ -4,7 +4,7 @@ from mongoengine import *
 from tests.utils import MongoDBTestCase
 
 
-class TestFloatField(MongoDBTestCase):
+class TestURLField(MongoDBTestCase):
 
     def test_validation(self):
         """Ensure that URLFields validate urls properly."""

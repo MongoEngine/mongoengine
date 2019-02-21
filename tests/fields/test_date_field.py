@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-import unittest
-import uuid
-import math
-import itertools
-import re
-import sys
-
-from nose.plugins.skip import SkipTest
 import six
 
 try:
@@ -15,18 +7,7 @@ try:
 except ImportError:
     dateutil = None
 
-from decimal import Decimal
-
-from bson import Binary, DBRef, ObjectId, SON
-try:
-    from bson.int64 import Int64
-except ImportError:
-    Int64 = long
-
 from mongoengine import *
-from mongoengine.connection import get_db
-from mongoengine.base import (BaseDict, BaseField, EmbeddedDocumentList,
-                              _document_registry, LazyReference)
 
 from tests.utils import MongoDBTestCase
 

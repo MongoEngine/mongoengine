@@ -13,7 +13,7 @@ MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database
 # Constant that can be used to compare the version retrieved with
 # get_mongodb_version()
 MONGODB_26 = (2, 6)
-MONGODB_3 = (3,0)
+MONGODB_3 = (3, 0)
 MONGODB_32 = (3, 2)
 
 
@@ -31,6 +31,11 @@ class MongoDBTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls._connection.drop_database(MONGO_TEST_DB)
+
+
+def get_as_pymongo(doc):
+    """Fetch the pymongo version of a certain Document"""
+    return doc.__class__.objects.as_pymongo().get(id=doc.id)
 
 
 def get_mongodb_version():
