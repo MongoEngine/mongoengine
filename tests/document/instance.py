@@ -4,6 +4,7 @@ import os
 import pickle
 import unittest
 import uuid
+import warnings
 import weakref
 from datetime import datetime
 
@@ -3085,6 +3086,24 @@ class InstanceTest(MongoDBTestCase):
         self.assertEqual(
             "UNDEFINED",
             system.nodes["node"].parameters["param"].macros["test"].value)
+
+    def test_embedded_document_save_reload_warning(self):
+        """Relates to #1570"""
+        class Embedded(EmbeddedDocument):
+            pass
+
+        class Doc(Document):
+            emb = EmbeddedDocumentField(Embedded)
+
+        doc = Doc(emb=Embedded()).save()
+        doc.emb.save()  # Make sure its still working
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            with self.assertRaises(DeprecationWarning):
+                doc.emb.save()
+
+            with self.assertRaises(DeprecationWarning):
+                doc.emb.reload()
 
     def test_embedded_document_equality(self):
         class Test(Document):
