@@ -2758,7 +2758,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'foo': 'Bar',
             'data': [1, 2, 3]
@@ -2774,7 +2774,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'foo': 'Bar',
             'data': [1, 2, 3]
@@ -2797,7 +2797,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'thing': {
                 'name': 'My thing',
@@ -2820,7 +2820,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'thing': {
                 'name': 'My thing',
@@ -2843,7 +2843,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'thing': {
                 'name': 'My thing',
