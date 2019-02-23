@@ -12,6 +12,7 @@ import pymongo
 import pymongo.errors
 from pymongo.common import validate_read_preference
 import six
+from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base import get_document
@@ -1739,13 +1740,13 @@ class BaseQuerySet(object):
             }
         """
         total, data, types = self.exec_js(freq_func, field)
-        values = {types.get(k): int(v) for k, v in data.iteritems()}
+        values = {types.get(k): int(v) for k, v in iteritems(data)}
 
         if normalize:
             values = {k: float(v) / total for k, v in values.items()}
 
         frequencies = {}
-        for k, v in values.iteritems():
+        for k, v in iteritems(values):
             if isinstance(k, float):
                 if int(k) == k:
                     k = int(k)

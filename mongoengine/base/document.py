@@ -5,6 +5,7 @@ from functools import partial
 from bson import DBRef, ObjectId, SON, json_util
 import pymongo
 import six
+from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base.common import get_document
@@ -83,7 +84,7 @@ class BaseDocument(object):
         self._dynamic_fields = SON()
 
         # Assign default values to instance
-        for key, field in self._fields.iteritems():
+        for key, field in iteritems(self._fields):
             if self._db_field_map.get(key, key) in __only_fields:
                 continue
             value = getattr(self, key, None)
@@ -95,14 +96,14 @@ class BaseDocument(object):
         # Set passed values after initialisation
         if self._dynamic:
             dynamic_data = {}
-            for key, value in values.iteritems():
+            for key, value in iteritems(values):
                 if key in self._fields or key == '_id':
                     setattr(self, key, value)
                 else:
                     dynamic_data[key] = value
         else:
             FileField = _import_class('FileField')
-            for key, value in values.iteritems():
+            for key, value in iteritems(values):
                 key = self._reverse_db_field_map.get(key, key)
                 if key in self._fields or key in ('id', 'pk', '_cls'):
                     if __auto_convert and value is not None:
@@ -118,7 +119,7 @@ class BaseDocument(object):
 
         if self._dynamic:
             self._dynamic_lock = False
-            for key, value in dynamic_data.iteritems():
+            for key, value in iteritems(dynamic_data):
                 setattr(self, key, value)
 
         # Flag initialised
@@ -513,7 +514,7 @@ class BaseDocument(object):
         if not hasattr(data, 'items'):
             iterator = enumerate(data)
         else:
-            iterator = data.iteritems()
+            iterator = iteritems(data)
 
         for index_or_key, value in iterator:
             item_key = '%s%s.' % (base_key, index_or_key)
@@ -678,7 +679,7 @@ class BaseDocument(object):
         # Convert SON to a data dict, making sure each key is a string and
         # corresponds to the right db field.
         data = {}
-        for key, value in son.iteritems():
+        for key, value in iteritems(son):
             key = str(key)
             key = cls._db_field_map.get(key, key)
             data[key] = value
@@ -694,7 +695,7 @@ class BaseDocument(object):
         if not _auto_dereference:
             fields = copy.deepcopy(fields)
 
-        for field_name, field in fields.iteritems():
+        for field_name, field in iteritems(fields):
             field._auto_dereference = _auto_dereference
             if field.db_field in data:
                 value = data[field.db_field]
@@ -715,7 +716,7 @@ class BaseDocument(object):
 
         # In STRICT documents, remove any keys that aren't in cls._fields
         if cls.STRICT:
-            data = {k: v for k, v in data.iteritems() if k in cls._fields}
+            data = {k: v for k, v in iteritems(data) if k in cls._fields}
 
         obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
         obj._changed_fields = changed_fields

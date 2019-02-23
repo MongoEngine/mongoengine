@@ -5,6 +5,7 @@ from bson.dbref import DBRef
 import pymongo
 from pymongo.read_preferences import ReadPreference
 import six
+from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base import (BaseDict, BaseDocument, BaseList,
@@ -613,7 +614,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         # Delete FileFields separately
         FileField = _import_class('FileField')
-        for name, field in self._fields.iteritems():
+        for name, field in iteritems(self._fields):
             if isinstance(field, FileField):
                 getattr(self, name).delete()
 

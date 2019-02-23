@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 import six
+from six import iteritems
 
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
            'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
@@ -113,7 +114,7 @@ class ValidationError(AssertionError):
                 return errors_dict
 
             if isinstance(source, dict):
-                for field_name, error in source.iteritems():
+                for field_name, error in iteritems(source):
                     errors_dict[field_name] = build_dict(error)
             elif isinstance(source, ValidationError) and source.errors:
                 return build_dict(source.errors)
@@ -135,12 +136,12 @@ class ValidationError(AssertionError):
                 value = ' '.join([generate_key(k) for k in value])
             elif isinstance(value, dict):
                 value = ' '.join(
-                    [generate_key(v, k) for k, v in value.iteritems()])
+                    [generate_key(v, k) for k, v in iteritems(value)])
 
             results = '%s.%s' % (prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
-        for k, v in self.to_dict().iteritems():
+        for k, v in iteritems(self.to_dict()):
             error_dict[generate_key(v)].append(k)
-        return ' '.join(['%s: %s' % (k, v) for k, v in error_dict.iteritems()])
+        return ' '.join(['%s: %s' % (k, v) for k, v in iteritems(error_dict)])

@@ -4,13 +4,13 @@ import os
 import pickle
 import unittest
 import uuid
+import warnings
 import weakref
-
 from datetime import datetime
 
-import warnings
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
+from six import iteritems
 
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
@@ -3060,7 +3060,7 @@ class InstanceTest(MongoDBTestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in self.parameters.iteritems():
+                for parameter_name, parameter in iteritems(self.parameters):
                     parameter.expand()
 
         class NodesSystem(Document):
@@ -3068,7 +3068,7 @@ class InstanceTest(MongoDBTestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in self.nodes.iteritems():
+                for node_name, node in iteritems(self.nodes):
                     node.expand()
                     node.save(*args, **kwargs)
                 super(NodesSystem, self).save(*args, **kwargs)

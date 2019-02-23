@@ -1,8 +1,10 @@
 from contextlib import contextmanager
+
 from pymongo.write_concern import WriteConcern
+from six import iteritems
+
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-
 
 __all__ = ('switch_db', 'switch_collection', 'no_dereference',
            'no_sub_classes', 'query_counter', 'set_write_concern')
@@ -112,7 +114,7 @@ class no_dereference(object):
         GenericReferenceField = _import_class('GenericReferenceField')
         ComplexBaseField = _import_class('ComplexBaseField')
 
-        self.deref_fields = [k for k, v in self.cls._fields.iteritems()
+        self.deref_fields = [k for k, v in iteritems(self.cls._fields)
                              if isinstance(v, (ReferenceField,
                                                GenericReferenceField,
                                                ComplexBaseField))]

@@ -1,6 +1,7 @@
 import warnings
 
 import six
+from six import iteritems, itervalues
 
 from mongoengine.base.common import _document_registry
 from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
@@ -62,7 +63,7 @@ class DocumentMetaclass(type):
             # Standard object mixin - merge in any Fields
             if not hasattr(base, '_meta'):
                 base_fields = {}
-                for attr_name, attr_value in base.__dict__.iteritems():
+                for attr_name, attr_value in iteritems(base.__dict__):
                     if not isinstance(attr_value, BaseField):
                         continue
                     attr_value.name = attr_name
@@ -74,7 +75,7 @@ class DocumentMetaclass(type):
 
         # Discover any document fields
         field_names = {}
-        for attr_name, attr_value in attrs.iteritems():
+        for attr_name, attr_value in iteritems(attrs):
             if not isinstance(attr_value, BaseField):
                 continue
             attr_value.name = attr_name
@@ -103,7 +104,7 @@ class DocumentMetaclass(type):
 
         attrs['_fields_ordered'] = tuple(i[1] for i in sorted(
                                          (v.creation_counter, v.name)
-                                         for v in doc_fields.itervalues()))
+                                         for v in itervalues(doc_fields)))
 
         #
         # Set document hierarchy
@@ -173,7 +174,7 @@ class DocumentMetaclass(type):
                         f.__dict__.update({'im_self': getattr(f, '__self__')})
 
         # Handle delete rules
-        for field in new_class._fields.itervalues():
+        for field in itervalues(new_class._fields):
             f = field
             if f.owner_document is None:
                 f.owner_document = new_class
@@ -375,7 +376,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class.objects = QuerySetManager()
 
         # Validate the fields and set primary key if needed
-        for field_name, field in new_class._fields.iteritems():
+        for field_name, field in iteritems(new_class._fields):
             if field.primary_key:
                 # Ensure only one primary key is set
                 current_pk = new_class._meta.get('id_field')
@@ -438,7 +439,7 @@ class MetaDict(dict):
     _merge_options = ('indexes',)
 
     def merge(self, new_options):
-        for k, v in new_options.iteritems():
+        for k, v in iteritems(new_options):
             if k in self._merge_options:
                 self[k] = self.get(k, []) + v
             else:

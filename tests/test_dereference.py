@@ -2,6 +2,7 @@
 import unittest
 
 from bson import DBRef, ObjectId
+from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -632,7 +633,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIsInstance(m, User)
 
         # Document select_related
@@ -645,7 +646,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIsInstance(m, User)
 
        # Queryset select_related
@@ -659,7 +660,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 self.assertEqual(q, 2)
 
-                for k, m in group_obj.members.iteritems():
+                for k, m in iteritems(group_obj.members):
                     self.assertIsInstance(m, User)
 
         User.drop_collection()
@@ -714,7 +715,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIn('User', m.__class__.__name__)
 
         # Document select_related
@@ -730,7 +731,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIn('User', m.__class__.__name__)
 
         # Queryset select_related
@@ -747,7 +748,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 self.assertEqual(q, 4)
 
-                for k, m in group_obj.members.iteritems():
+                for k, m in iteritems(group_obj.members):
                     self.assertIn('User', m.__class__.__name__)
 
         Group.objects.delete()
@@ -805,7 +806,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIsInstance(m, UserA)
 
         # Document select_related
@@ -821,7 +822,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 2)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIsInstance(m, UserA)
 
         # Queryset select_related
@@ -838,7 +839,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 self.assertEqual(q, 2)
 
-                for k, m in group_obj.members.iteritems():
+                for k, m in iteritems(group_obj.members):
                     self.assertIsInstance(m, UserA)
 
         UserA.drop_collection()
@@ -893,7 +894,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIn('User', m.__class__.__name__)
 
         # Document select_related
@@ -909,7 +910,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             self.assertEqual(q, 4)
 
-            for k, m in group_obj.members.iteritems():
+            for k, m in iteritems(group_obj.members):
                 self.assertIn('User', m.__class__.__name__)
 
         # Queryset select_related
@@ -926,7 +927,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 self.assertEqual(q, 4)
 
-                for k, m in group_obj.members.iteritems():
+                for k, m in iteritems(group_obj.members):
                     self.assertIn('User', m.__class__.__name__)
 
         Group.objects.delete()
@@ -1063,7 +1064,6 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(msg.topic, topic)
         self.assertEqual(msg.author, user)
         self.assertEqual(msg.author.name, 'new-name')
-
 
     def test_list_lookup_not_checked_in_map(self):
         """Ensure we dereference list data correctly
@@ -1285,6 +1285,7 @@ class FieldTest(unittest.TestCase):
             songs = [item.song for item in playlist.items]
 
             self.assertEqual(q, 2)
+
 
 if __name__ == '__main__':
     unittest.main()
