@@ -4,7 +4,7 @@
 # combinations:
 # * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
 #   v3.5, v3.6, PyPy, and PyMongo v3.x.
-# * MongoDB v3.0, v3.2 are tested against Python v2.7, v3.5 & v3.6
+# * MongoDB v3.0 & v3.2 are tested against Python v2.7, v3.5 & v3.6
 #   and Pymongo v3.5 & v3.x
 # * MongoDB v3.4 is tested against v3.6 and Pymongo v3.x
 # Reminder: Update README.rst if you change MongoDB versions we test.

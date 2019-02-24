@@ -1,5 +1,5 @@
 """
-Helper functions, constants, and types to aid with MongoDB v3.x support
+Helper functions, constants, and types to aid with MongoDB version support
 """
 from mongoengine.connection import get_connection
 

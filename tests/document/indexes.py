@@ -603,8 +603,11 @@ class IndexesTest(unittest.TestCase):
 
     @requires_mongodb_gte_34
     def test_primary_key_unique_not_working_under_mongo_34(self):
+        """Relates to  #1445"""
         class Blog(Document):
             id = StringField(primary_key=True, unique=True)
+
+        Blog.drop_collection()
 
         with self.assertRaises(OperationFailure) as ctx_err:
             Blog(id='garbage').save()
@@ -612,8 +615,11 @@ class IndexesTest(unittest.TestCase):
 
     @requires_mongodb_lte_32
     def test_primary_key_unique_working_under_mongo_32(self):
+        """Relates to  #1445"""
         class Blog(Document):
             id = StringField(primary_key=True, unique=True)
+
+        Blog.drop_collection()
 
         Blog(id='garbage').save()
 

@@ -33,12 +33,12 @@ def get_as_pymongo(doc):
     return doc.__class__.objects.as_pymongo().get(id=doc.id)
 
 
-def _decorated_with_ver_requirement(func, mongo_version_req, oper=operator.ge):
+def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     """Return a given function decorated with the version requirement
     for a particular MongoDB version tuple.
 
     :param mongo_version_req: The mongodb version requirement (tuple(int, int))
-    :param oper: The operator to apply
+    :param oper: The operator to apply (e.g: operator.ge)
     """
     def _inner(*args, **kwargs):
         mongodb_v = get_mongodb_version()
@@ -56,7 +56,7 @@ def requires_mongodb_gte_34(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v3.4
     """
-    return _decorated_with_ver_requirement(func, MONGODB_34)
+    return _decorated_with_ver_requirement(func, MONGODB_34, oper=operator.ge)
 
 
 def requires_mongodb_lte_32(func):
@@ -70,14 +70,14 @@ def requires_mongodb_gte_26(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v2.6.
     """
-    return _decorated_with_ver_requirement(func, MONGODB_26)
+    return _decorated_with_ver_requirement(func, MONGODB_26, oper=operator.ge)
 
 
 def requires_mongodb_gte_3(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v3.0.
     """
-    return _decorated_with_ver_requirement(func, MONGODB_3)
+    return _decorated_with_ver_requirement(func, MONGODB_3, oper=operator.ge)
 
 
 def skip_pymongo3(f):
