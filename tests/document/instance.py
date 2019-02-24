@@ -12,6 +12,7 @@ from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 from six import iteritems
 
+from mongoengine.pymongo_support import list_collection_names
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
@@ -55,9 +56,7 @@ class InstanceTest(MongoDBTestCase):
         self.Job = Job
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
+        for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
     def assertDbEqual(self, docs):
@@ -572,7 +571,7 @@ class InstanceTest(MongoDBTestCase):
 
         Post.drop_collection()
 
-        Post._get_collection().insert({
+        Post._get_collection().insert_one({
             "title": "Items eclipse",
             "items": ["more lorem", "even more ipsum"]
         })
@@ -3217,8 +3216,7 @@ class InstanceTest(MongoDBTestCase):
         coll = Person._get_collection()
         for person in Person.objects.as_pymongo():
             if 'height' not in person:
-                person['height'] = 189
-                coll.save(person)
+                coll.update_one({'_id': person['_id']}, {'$set': {'height': 189}})
 
         self.assertEquals(Person.objects(height=189).count(), 1)
 

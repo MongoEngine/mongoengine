@@ -1,10 +1,10 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
 import six
 
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 
 __all__ = ['MongoEngineConnectionError', 'connect', 'register_connection',
-           'DEFAULT_CONNECTION_NAME']
+           'DEFAULT_CONNECTION_NAME', 'get_db']
 
 
 DEFAULT_CONNECTION_NAME = 'default'

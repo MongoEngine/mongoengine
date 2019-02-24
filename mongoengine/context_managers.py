@@ -5,6 +5,7 @@ from six import iteritems
 
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.pymongo_support import count_documents
 
 __all__ = ('switch_db', 'switch_collection', 'no_dereference',
            'no_sub_classes', 'query_counter', 'set_write_concern')
@@ -237,7 +238,7 @@ class query_counter(object):
         and substracting the queries issued by this context. In fact everytime this is called, 1 query is
         issued so we need to balance that
         """
-        count = self.db.system.profile.find(self._ignored_query).count() - self._ctx_query_counter
+        count = count_documents(self.db.system.profile, self._ignored_query) - self._ctx_query_counter
         self._ctx_query_counter += 1    # Account for the query we just issued to gather the information
         return count
 

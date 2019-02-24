@@ -14,7 +14,7 @@ from mongoengine import (
     connect, register_connection,
     Document, DateTimeField
 )
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 import mongoengine.connection
 from mongoengine.connection import (MongoEngineConnectionError, get_db,
                                     get_connection)
@@ -147,12 +147,12 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_uri(self):
         """Ensure that the connect() method works properly with URIs."""
         c = connect(db='mongoenginetest', alias='admin')
-        c.admin.system.users.remove({})
-        c.mongoenginetest.system.users.remove({})
+        c.admin.system.users.delete_many({})
+        c.mongoenginetest.system.users.delete_many({})
 
-        c.admin.add_user("admin", "password")
+        c.admin.command("createUser", "admin", pwd="password", roles=["root"])
         c.admin.authenticate("admin", "password")
-        c.mongoenginetest.add_user("username", "password")
+        c.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
 
         if not IS_PYMONGO_3:
             self.assertRaises(
@@ -169,8 +169,8 @@ class ConnectionTest(unittest.TestCase):
         self.assertIsInstance(db, pymongo.database.Database)
         self.assertEqual(db.name, 'mongoenginetest')
 
-        c.admin.system.users.remove({})
-        c.mongoenginetest.system.users.remove({})
+        c.admin.system.users.delete_many({})
+        c.mongoenginetest.system.users.delete_many({})
 
     def test_connect_uri_without_db(self):
         """Ensure connect() method works properly if the URI doesn't
@@ -217,8 +217,9 @@ class ConnectionTest(unittest.TestCase):
         """
         # Create users
         c = connect('mongoenginetest')
-        c.admin.system.users.remove({})
-        c.admin.add_user('username2', 'password')
+
+        c.admin.system.users.delete_many({})
+        c.admin.command("createUser", "username2", pwd="password", roles=["dbOwner"])
 
         # Authentication fails without "authSource"
         if IS_PYMONGO_3:
@@ -246,7 +247,7 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(db.name, 'mongoenginetest')
 
         # Clear all users
-        authd_conn.admin.system.users.remove({})
+        authd_conn.admin.system.users.delete_many({})
 
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered.

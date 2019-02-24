@@ -18,7 +18,7 @@ from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
@@ -4051,7 +4051,7 @@ class QuerySetTest(unittest.TestCase):
             fielda = IntField()
             fieldb = IntField()
 
-        IntPair.objects._collection.remove()
+        IntPair.drop_collection()
 
         a = IntPair(fielda=1, fieldb=1)
         b = IntPair(fielda=1, fieldb=2)
@@ -5386,7 +5386,7 @@ class QuerySetTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        Person._get_collection().insert({'name': 'a', 'id': ''})
+        Person._get_collection().insert_one({'name': 'a', 'id': ''})
         for p in Person.objects():
             self.assertEqual(p.name, 'a')
 
