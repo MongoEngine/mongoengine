@@ -38,12 +38,12 @@ class InheritanceTest(unittest.TestCase):
             meta = {'allow_inheritance': True}
 
         test_doc = DataDoc(name='test', embed=EmbedData(data='data'))
-        assert test_doc._cls == 'DataDoc'
-        assert test_doc.embed._cls == 'EmbedData'
+        self.assertEqual(test_doc._cls, 'DataDoc')
+        self.assertEqual(test_doc.embed._cls, 'EmbedData')
         test_doc.save()
         saved_doc = DataDoc.objects.with_id(test_doc.id)
-        assert test_doc._cls == saved_doc._cls
-        assert test_doc.embed._cls == saved_doc.embed._cls
+        self.assertEqual(test_doc._cls, saved_doc._cls)
+        self.assertEqual(test_doc.embed._cls, saved_doc.embed._cls)
         test_doc.delete()
 
     def test_superclasses(self):

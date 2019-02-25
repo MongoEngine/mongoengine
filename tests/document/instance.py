@@ -806,7 +806,8 @@ class InstanceTest(MongoDBTestCase):
         doc2 = self.Person(name="jim", age=20).save()
         docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
 
-        assert not doc1.modify({'name': doc2.name}, set__age=100)
+        n_modified = doc1.modify({'name': doc2.name}, set__age=100)
+        self.assertEqual(n_modified, 0)
 
         self.assertDbEqual(docs)
 
@@ -815,7 +816,8 @@ class InstanceTest(MongoDBTestCase):
         doc2 = self.Person(id=ObjectId(), name="jim", age=20)
         docs = [dict(doc1.to_mongo())]
 
-        assert not doc2.modify({'name': doc2.name}, set__age=100)
+        n_modified = doc2.modify({'name': doc2.name}, set__age=100)
+        self.assertEqual(n_modified, 0)
 
         self.assertDbEqual(docs)
 
@@ -831,14 +833,15 @@ class InstanceTest(MongoDBTestCase):
         doc.job.name = "Google"
         doc.job.years = 3
 
-        assert doc.modify(
+        n_modified = doc.modify(
             set__age=21, set__job__name="MongoDB", unset__job__years=True)
+        self.assertEqual(n_modified, 1)
         doc_copy.age = 21
         doc_copy.job.name = "MongoDB"
         del doc_copy.job.years
 
-        assert doc.to_json() == doc_copy.to_json()
-        assert doc._get_changed_fields() == []
+        self.assertEqual(doc.to_json(), doc_copy.to_json())
+        self.assertEqual(doc._get_changed_fields(), [])
 
         self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 

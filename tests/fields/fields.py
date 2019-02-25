@@ -2168,15 +2168,15 @@ class FieldTest(MongoDBTestCase):
         to_embed = ToEmbed(id=2, recursive=to_embed_recursive).save()
         doc = Doc(field=to_embed)
         doc.save()
-        assert isinstance(doc.field, ToEmbed)
-        assert doc.field == to_embed
+        self.assertIsInstance(doc.field, ToEmbed)
+        self.assertEqual(doc.field, to_embed)
         # Same thing with a Document with a _cls field
         to_embed_recursive = ToEmbedChild(id=1).save()
         to_embed_child = ToEmbedChild(id=2, recursive=to_embed_recursive).save()
         doc = Doc(field=to_embed_child)
         doc.save()
-        assert isinstance(doc.field, ToEmbedChild)
-        assert doc.field == to_embed_child
+        self.assertIsInstance(doc.field, ToEmbedChild)
+        self.assertEqual(doc.field, to_embed_child)
 
     def test_cls_field(self):
         class Animal(Document):

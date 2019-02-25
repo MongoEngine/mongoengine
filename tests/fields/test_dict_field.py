@@ -116,19 +116,20 @@ class TestDictField(MongoDBTestCase):
             id=2, recursive=to_embed_recursive.to_mongo().to_dict()).save()
         doc = Doc(field=to_embed.to_mongo().to_dict())
         doc.save()
-        assert isinstance(doc.field, dict)
-        assert doc.field == {'_id': 2, 'recursive': {'_id': 1, 'recursive': {}}}
+        self.assertIsInstance(doc.field, dict)
+        self.assertEqual(doc.field, {'_id': 2, 'recursive': {'_id': 1, 'recursive': {}}})
         # Same thing with a Document with a _cls field
         to_embed_recursive = ToEmbedChild(id=1).save()
         to_embed_child = ToEmbedChild(
             id=2, recursive=to_embed_recursive.to_mongo().to_dict()).save()
         doc = Doc(field=to_embed_child.to_mongo().to_dict())
         doc.save()
-        assert isinstance(doc.field, dict)
-        assert doc.field == {
+        self.assertIsInstance(doc.field, dict)
+        expected = {
             '_id': 2, '_cls': 'ToEmbedParent.ToEmbedChild',
             'recursive': {'_id': 1, '_cls': 'ToEmbedParent.ToEmbedChild', 'recursive': {}}
         }
+        self.assertEqual(doc.field, expected)
 
     def test_dictfield_strict(self):
         """Ensure that dict field handles validation if provided a strict field type."""
