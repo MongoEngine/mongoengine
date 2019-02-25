@@ -48,6 +48,7 @@ class PickleSignalsTest(Document):
     def post_delete(self, sender, document, **kwargs):
         pickled = pickle.dumps(document)
 
+
 signals.post_save.connect(PickleSignalsTest.post_save, sender=PickleSignalsTest)
 signals.post_delete.connect(PickleSignalsTest.post_delete, sender=PickleSignalsTest)
 

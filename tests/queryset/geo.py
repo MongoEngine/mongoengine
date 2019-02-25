@@ -534,11 +534,11 @@ class GeoQueriesTest(MongoDBTestCase):
 
         Location.drop_collection()
 
-        Location(loc=[1,2]).save()
+        Location(loc=[1, 2]).save()
         loc = Location.objects.as_pymongo()[0]
         self.assertEqual(loc["loc"], {"type": "Point", "coordinates": [1, 2]})
 
-        Location.objects.update(set__loc=[2,1])
+        Location.objects.update(set__loc=[2, 1])
         loc = Location.objects.as_pymongo()[0]
         self.assertEqual(loc["loc"], {"type": "Point", "coordinates": [2, 1]})
 

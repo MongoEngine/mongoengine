@@ -302,5 +302,6 @@ class ContextManagersTest(unittest.TestCase):
             _ = db.system.indexes.find_one()    # queries on db.system.indexes are ignored as well
             self.assertEqual(q, 1)
 
+
 if __name__ == '__main__':
     unittest.main()

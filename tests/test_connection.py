@@ -99,11 +99,11 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection()
         self.assertIsInstance(conn, mongomock.MongoClient)
 
-        connect(host=['mongodb://localhost'], is_mock=True,  alias='testdb2')
+        connect(host=['mongodb://localhost'], is_mock=True, alias='testdb2')
         conn = get_connection('testdb2')
         self.assertIsInstance(conn, mongomock.MongoClient)
 
-        connect(host=['localhost'], is_mock=True,  alias='testdb3')
+        connect(host=['localhost'], is_mock=True, alias='testdb3')
         conn = get_connection('testdb3')
         self.assertIsInstance(conn, mongomock.MongoClient)
 
@@ -111,11 +111,11 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection('testdb4')
         self.assertIsInstance(conn, mongomock.MongoClient)
 
-        connect(host=['mongodb://localhost:27017', 'mongodb://localhost:27018'], is_mock=True,  alias='testdb5')
+        connect(host=['mongodb://localhost:27017', 'mongodb://localhost:27018'], is_mock=True, alias='testdb5')
         conn = get_connection('testdb5')
         self.assertIsInstance(conn, mongomock.MongoClient)
 
-        connect(host=['localhost:27017', 'localhost:27018'], is_mock=True,  alias='testdb6')
+        connect(host=['localhost:27017', 'localhost:27018'], is_mock=True, alias='testdb6')
         conn = get_connection('testdb6')
         self.assertIsInstance(conn, mongomock.MongoClient)
 

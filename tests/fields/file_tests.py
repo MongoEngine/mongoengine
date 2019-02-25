@@ -578,5 +578,6 @@ class FileTest(MongoDBTestCase):
         self.assertEqual(marmot.photos[0].foo, 'bar')
         self.assertEqual(marmot.photos[0].get().length, 8313)
 
+
 if __name__ == '__main__':
     unittest.main()

@@ -863,5 +863,6 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual('oops', delta[0]["users.007.rolist"][0]["type"])
         self.assertEqual(uinfo.id, delta[0]["users.007.info"])
 
+
 if __name__ == '__main__':
     unittest.main()
