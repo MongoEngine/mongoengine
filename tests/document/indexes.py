@@ -611,7 +611,11 @@ class IndexesTest(unittest.TestCase):
 
         with self.assertRaises(OperationFailure) as ctx_err:
             Blog(id='garbage').save()
-        self.assertIn("The field 'unique' is not valid for an _id index specification", str(ctx_err.exception))
+        try:
+            self.assertIn("The field 'unique' is not valid for an _id index specification", str(ctx_err.exception))
+        except AssertionError:
+            # error is slightly different on python 3.6
+            self.assertIn("The field 'background' is not valid for an _id index specification", str(ctx_err.exception))
 
     @requires_mongodb_lte_32
     def test_primary_key_unique_working_under_mongo_32(self):

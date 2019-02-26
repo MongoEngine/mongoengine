@@ -808,7 +808,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         db.drop_collection(col_name)
 
     @classmethod
-    def _create_index(cls, keys, background=False, **kwargs):
+    def create_index(cls, keys, background=False, **kwargs):
         """Creates the given indexes if required.
 
         :param keys: a single index key or a list of index keys (to
@@ -851,7 +851,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             warnings.warn(msg, DeprecationWarning)
         elif not IS_PYMONGO_3:
             kwargs.update({'drop_dups': drop_dups})
-        return cls._create_index(key_or_list, background=background, **kwargs)
+        return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
     def ensure_indexes(cls):
