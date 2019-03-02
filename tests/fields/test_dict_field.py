@@ -199,6 +199,26 @@ class TestDictField(MongoDBTestCase):
         self.assertEqual(
             Simple.objects.filter(mapping__nested_dict__list__1__value='Boo').count(), 1)
 
+    def test_push_dict(self):
+        class MyModel(Document):
+            events = ListField(DictField())
+
+        doc = MyModel(events=[{'a': 1}]).save()
+        raw_doc = get_as_pymongo(doc)
+        expected_raw_doc = {
+            '_id': doc.id,
+            'events': [{'a': 1}]
+        }
+        self.assertEqual(raw_doc, expected_raw_doc)
+
+        MyModel.objects(id=doc.id).update(push__events={})
+        raw_doc = get_as_pymongo(doc)
+        expected_raw_doc = {
+            '_id': doc.id,
+            'events': [{'a': 1}, {}]
+        }
+        self.assertEqual(raw_doc, expected_raw_doc)
+
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""
         class D(Document):
