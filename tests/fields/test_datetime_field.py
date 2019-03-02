@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import datetime
+import datetime as dt
 import six
 
 try:
@@ -41,13 +41,13 @@ class TestDateTimeField(MongoDBTestCase):
         a document.
         """
         class Person(Document):
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=dt.datetime.utcnow)
 
-        utcnow = datetime.datetime.utcnow()
+        utcnow = dt.datetime.utcnow()
         person = Person()
         person.validate()
         person_created_t0 = person.created
-        self.assertLess(person.created - utcnow, datetime.timedelta(seconds=1))
+        self.assertLess(person.created - utcnow, dt.timedelta(seconds=1))
         self.assertEqual(person_created_t0, person.created)  # make sure it does not change
         self.assertEqual(person._data['created'], person.created)
 
@@ -65,15 +65,15 @@ class TestDateTimeField(MongoDBTestCase):
 
         # Test can save dates
         log = LogEntry()
-        log.date = datetime.date.today()
+        log.date = dt.date.today()
         log.save()
         log.reload()
-        self.assertEqual(log.date.date(), datetime.date.today())
+        self.assertEqual(log.date.date(), dt.date.today())
 
         # Post UTC - microseconds are rounded (down) nearest millisecond and
         # dropped
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999)
-        d2 = datetime.datetime(1970, 1, 1, 0, 0, 1)
+        d1 = dt.datetime(1970, 1, 1, 0, 0, 1, 999)
+        d2 = dt.datetime(1970, 1, 1, 0, 0, 1)
         log = LogEntry()
         log.date = d1
         log.save()
@@ -82,8 +82,8 @@ class TestDateTimeField(MongoDBTestCase):
         self.assertEqual(log.date, d2)
 
         # Post UTC - microseconds are rounded (down) nearest millisecond
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999)
-        d2 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9000)
+        d1 = dt.datetime(1970, 1, 1, 0, 0, 1, 9999)
+        d2 = dt.datetime(1970, 1, 1, 0, 0, 1, 9000)
         log.date = d1
         log.save()
         log.reload()
@@ -93,8 +93,8 @@ class TestDateTimeField(MongoDBTestCase):
         if not six.PY3:
             # Pre UTC dates microseconds below 1000 are dropped
             # This does not seem to be true in PY3
-            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
-            d2 = datetime.datetime(1969, 12, 31, 23, 59, 59)
+            d1 = dt.datetime(1969, 12, 31, 23, 59, 59, 999)
+            d2 = dt.datetime(1969, 12, 31, 23, 59, 59)
             log.date = d1
             log.save()
             log.reload()
@@ -108,7 +108,7 @@ class TestDateTimeField(MongoDBTestCase):
 
         LogEntry.drop_collection()
 
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1)
+        d1 = dt.datetime(1970, 1, 1, 0, 0, 1)
         log = LogEntry()
         log.date = d1
         log.validate()
@@ -124,7 +124,7 @@ class TestDateTimeField(MongoDBTestCase):
 
         # create additional 19 log entries for a total of 20
         for i in range(1971, 1990):
-            d = datetime.datetime(i, 1, 1, 0, 0, 1)
+            d = dt.datetime(i, 1, 1, 0, 0, 1)
             LogEntry(date=d).save()
 
         self.assertEqual(LogEntry.objects.count(), 20)
@@ -143,15 +143,15 @@ class TestDateTimeField(MongoDBTestCase):
             i += 1
 
         # Test searching
-        logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
+        logs = LogEntry.objects.filter(date__gte=dt.datetime(1980, 1, 1))
         self.assertEqual(logs.count(), 10)
 
-        logs = LogEntry.objects.filter(date__lte=datetime.datetime(1980, 1, 1))
+        logs = LogEntry.objects.filter(date__lte=dt.datetime(1980, 1, 1))
         self.assertEqual(logs.count(), 10)
 
         logs = LogEntry.objects.filter(
-            date__lte=datetime.datetime(1980, 1, 1),
-            date__gte=datetime.datetime(1975, 1, 1),
+            date__lte=dt.datetime(1980, 1, 1),
+            date__gte=dt.datetime(1975, 1, 1),
         )
         self.assertEqual(logs.count(), 5)
 
@@ -163,20 +163,20 @@ class TestDateTimeField(MongoDBTestCase):
             time = DateTimeField()
 
         log = LogEntry()
-        log.time = datetime.datetime.now()
+        log.time = dt.datetime.now()
         log.validate()
 
-        log.time = datetime.date.today()
+        log.time = dt.date.today()
         log.validate()
 
-        log.time = datetime.datetime.now().isoformat(' ')
+        log.time = dt.datetime.now().isoformat(' ')
         log.validate()
 
         log.time = '2019-05-16 21:42:57.897847'
         log.validate()
 
         if dateutil:
-            log.time = datetime.datetime.now().isoformat('T')
+            log.time = dt.datetime.now().isoformat('T')
             log.validate()
 
         log.time = -1
@@ -189,6 +189,26 @@ class TestDateTimeField(MongoDBTestCase):
         self.assertRaises(ValidationError, log.validate)
         log.time = '2019-05-16 21:42:57.123.456'
         self.assertRaises(ValidationError, log.validate)
+
+    def test_parse_valid_datetime_str(self):
+        class DTDoc(Document):
+            date = DateTimeField()
+
+        # make sure that passing a parsable datetime works
+        dtd = DTDoc()
+        now = dt.datetime.utcnow()
+        dtd.date = str(now)
+        self.assertIsInstance(dtd.date, six.string_types)
+        dtd.save()
+        dtd.reload()
+
+        self.assertIsInstance(dtd.date, dt.datetime)
+
+        self.assertNotEqual(dtd.date, now)  # microseconds differ as its not stored in mongo
+        self.assertEqual(
+            dtd.date.strftime('%Y-%m-%d %H:%M:%S'),
+            now.strftime('%Y-%m-%d %H:%M:%S')
+        )
 
 
 class TestDateTimeTzAware(MongoDBTestCase):
@@ -205,8 +225,8 @@ class TestDateTimeTzAware(MongoDBTestCase):
 
         LogEntry.drop_collection()
 
-        LogEntry(time=datetime.datetime(2013, 1, 1, 0, 0, 0)).save()
+        LogEntry(time=dt.datetime(2013, 1, 1, 0, 0, 0)).save()
 
         log = LogEntry.objects.first()
-        log.time = datetime.datetime(2013, 1, 1, 0, 0, 0)
+        log.time = dt.datetime(2013, 1, 1, 0, 0, 0)
         self.assertEqual(['time'], log._changed_fields)
