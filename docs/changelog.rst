@@ -10,6 +10,7 @@ Development
 - Document a BREAKING CHANGE introduced in 0.15.3 and not reported at that time (#1995)
 - Fix InvalidStringData error when using modify on a BinaryField #1127
 - DEPRECATION: `EmbeddedDocument.save` & `.reload` are marked as deprecated and will be removed in a next version of mongoengine #1552
+- Fix test suite and CI to support MongoDB 3.4 #1445
 
 =================
 Changes in 0.16.3
