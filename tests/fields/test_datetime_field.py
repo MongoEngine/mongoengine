@@ -190,25 +190,24 @@ class TestDateTimeField(MongoDBTestCase):
         log.time = '2019-05-16 21:42:57.123.456'
         self.assertRaises(ValidationError, log.validate)
 
-    def test_parse_valid_datetime_str(self):
+    def test_parse_datetime_as_str(self):
         class DTDoc(Document):
             date = DateTimeField()
 
+        date_str = '2019-03-02 22:26:01'
+
         # make sure that passing a parsable datetime works
         dtd = DTDoc()
-        now = dt.datetime.utcnow()
-        dtd.date = str(now)
+        dtd.date = date_str
         self.assertIsInstance(dtd.date, six.string_types)
         dtd.save()
         dtd.reload()
 
         self.assertIsInstance(dtd.date, dt.datetime)
+        self.assertEqual(str(dtd.date), date_str)
 
-        self.assertNotEqual(dtd.date, now)  # microseconds differ as its not stored in mongo
-        self.assertEqual(
-            dtd.date.strftime('%Y-%m-%d %H:%M:%S'),
-            now.strftime('%Y-%m-%d %H:%M:%S')
-        )
+        dtd.date = 'January 1st, 9999999999'
+        self.assertRaises(ValidationError, dtd.validate)
 
 
 class TestDateTimeTzAware(MongoDBTestCase):

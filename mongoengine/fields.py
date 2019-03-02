@@ -497,15 +497,18 @@ class DateTimeField(BaseField):
         if not isinstance(value, six.string_types):
             return None
 
+        return self._parse_datetime(value)
+
+    def _parse_datetime(self, value):
+        # Attempt to parse a datetime from a string
         value = value.strip()
         if not value:
             return None
 
-        # Attempt to parse a datetime:
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
