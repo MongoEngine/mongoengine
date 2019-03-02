@@ -6,6 +6,7 @@
 #   v3.5, v3.6, PyPy, and PyMongo v3.x.
 # * MongoDB v3.0 & v3.2 are tested against Python v2.7, v3.5 & v3.6
 #   and Pymongo v3.5 & v3.x
+# * MongoDB v3.4 is tested against v3.6 and Pymongo v3.x
 # Reminder: Update README.rst if you change MongoDB versions we test.
 
 language: python
@@ -26,16 +27,14 @@ matrix:
   include:
   - python: 2.7
     env: MONGODB=3.0 PYMONGO=3.5
-  - python: 2.7
-    env: MONGODB=3.2 PYMONGO=3.x
-  - python: 3.5
-    env: MONGODB=3.0 PYMONGO=3.5
   - python: 3.5
     env: MONGODB=3.2 PYMONGO=3.x
   - python: 3.6
     env: MONGODB=3.0 PYMONGO=3.5
   - python: 3.6
     env: MONGODB=3.2 PYMONGO=3.x
+  - python: 3.6
+    env: MONGODB=3.4 PYMONGO=3.x
 
 before_install:
 - bash .install_mongodb_on_travis.sh

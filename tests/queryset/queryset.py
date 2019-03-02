@@ -18,13 +18,11 @@ from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32
 from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
-
-from tests.utils import requires_mongodb_gte_26, skip_pymongo3, get_mongodb_version, MONGODB_32
-
-__all__ = ("QuerySetTest",)
+from tests.utils import requires_mongodb_gte_26, skip_pymongo3
 
 
 class db_ops_tracker(query_counter):
@@ -852,8 +850,8 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
             Blog.objects.insert(blogs, load_bulk=False)
 
-            if MONGO_VER == MONGODB_32:
-                self.assertEqual(q, 1)              # 1 entry containing the list of inserts
+            if MONGO_VER >= MONGODB_32:
+                self.assertEqual(q, 1)      # 1 entry containing the list of inserts
             else:
                 self.assertEqual(q, len(blogs))     # 1 entry per doc inserted
 
@@ -869,8 +867,8 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(q, 0)
             Blog.objects.insert(blogs)
 
-            if MONGO_VER == MONGODB_32:
-                self.assertEqual(q, 2)                  # 1 for insert 1 for fetch
+            if MONGO_VER >= MONGODB_32:
+                self.assertEqual(q, 2)              # 1 for insert 1 for fetch
             else:
                 self.assertEqual(q, len(blogs)+1)       # + 1 to fetch all docs
 
@@ -1204,7 +1202,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure filters can be chained together.
         """
         class Blog(Document):
-            id = StringField(unique=True, primary_key=True)
+            id = StringField(primary_key=True)
 
         class BlogPost(Document):
             blog = ReferenceField(Blog)
@@ -1316,7 +1314,7 @@ class QuerySetTest(unittest.TestCase):
         order_by() w/o any arguments.
         """
         MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER == MONGODB_32 else '$orderby'
+        ORDER_BY_KEY = 'sort' if MONGO_VER >= MONGODB_32 else '$orderby'
 
         class BlogPost(Document):
             title = StringField()
@@ -2524,8 +2522,8 @@ class QuerySetTest(unittest.TestCase):
     def test_comment(self):
         """Make sure adding a comment to the query gets added to the query"""
         MONGO_VER = self.mongodb_version
-        QUERY_KEY = 'filter' if MONGO_VER == MONGODB_32 else '$query'
-        COMMENT_KEY = 'comment' if MONGO_VER == MONGODB_32 else '$comment'
+        QUERY_KEY = 'filter' if MONGO_VER >= MONGODB_32 else '$query'
+        COMMENT_KEY = 'comment' if MONGO_VER >= MONGODB_32 else '$comment'
 
         class User(Document):
             age = IntField()
@@ -3349,7 +3347,7 @@ class QuerySetTest(unittest.TestCase):
             meta = {'indexes': [
                 {'fields': ['$title', "$content"],
                  'default_language': 'portuguese',
-                 'weight': {'title': 10, 'content': 2}
+                 'weights': {'title': 10, 'content': 2}
                  }
             ]}
 
@@ -5131,7 +5129,7 @@ class QuerySetTest(unittest.TestCase):
     def test_query_reference_to_custom_pk_doc(self):
 
         class A(Document):
-            id = StringField(unique=True, primary_key=True)
+            id = StringField(primary_key=True)
 
         class B(Document):
             a = ReferenceField(A)
@@ -5236,7 +5234,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_bool_with_ordering(self):
         MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER == MONGODB_32 else '$orderby'
+        ORDER_BY_KEY = 'sort' if MONGO_VER >= MONGODB_32 else '$orderby'
 
         class Person(Document):
             name = StringField()
