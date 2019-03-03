@@ -18,7 +18,7 @@ from mongoengine.context_managers import (set_write_concern,
                                           switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3, list_collection_names
 from mongoengine.queryset import (NotUniqueError, OperationError,
                                   QuerySet, transform)
 
@@ -228,7 +228,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         # If the collection already exists and has different options
         # (i.e. isn't capped or has different max/size), raise an error.
-        if collection_name in db.collection_names():
+        if collection_name in list_collection_names(db, include_system_collections=True):
             collection = db[collection_name]
             options = collection.options()
             if (

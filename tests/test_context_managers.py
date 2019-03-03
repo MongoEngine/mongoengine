@@ -5,6 +5,7 @@ from mongoengine.connection import get_db
 from mongoengine.context_managers import (switch_db, switch_collection,
                                           no_sub_classes, no_dereference,
                                           query_counter)
+from mongoengine.pymongo_support import count_documents
 
 
 class ContextManagersTest(unittest.TestCase):
@@ -240,7 +241,7 @@ class ContextManagersTest(unittest.TestCase):
         collection.drop()
 
         def issue_1_count_query():
-            collection.find({}).count()
+            count_documents(collection, {})
 
         def issue_1_insert_query():
             collection.insert_one({'test': 'garbage'})

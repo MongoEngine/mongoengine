@@ -10,7 +10,7 @@ from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class
 from mongoengine.connection import get_connection
 from mongoengine.errors import InvalidQueryError
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 
 __all__ = ('query', 'update')
 

@@ -6,7 +6,7 @@ from nose.plugins.skip import SkipTest
 from mongoengine import connect
 from mongoengine.connection import get_db
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_26, MONGODB_3, MONGODB_32, MONGODB_34
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 
 
 MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database

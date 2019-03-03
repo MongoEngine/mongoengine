@@ -21,7 +21,7 @@ from mongoengine.connection import get_db
 from mongoengine.context_managers import set_write_concern, switch_db
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode

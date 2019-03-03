@@ -6,23 +6,18 @@ from six import iteritems
 
 from mongoengine import (BooleanField, Document, EmbeddedDocument,
                          EmbeddedDocumentField, GenericReferenceField,
-                         IntField, ReferenceField, StringField, connect)
-from mongoengine.connection import get_db
+                         IntField, ReferenceField, StringField)
+from mongoengine.pymongo_support import list_collection_names
+from tests.utils import MongoDBTestCase
 from tests.fixtures import Base
 
 __all__ = ('InheritanceTest', )
 
 
-class InheritanceTest(unittest.TestCase):
-
-    def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+class InheritanceTest(MongoDBTestCase):
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
+        for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
     def test_constructor_cls(self):

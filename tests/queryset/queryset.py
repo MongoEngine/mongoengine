@@ -19,13 +19,10 @@ from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
-
 from tests.utils import requires_mongodb_gte_26, skip_pymongo3
-
-__all__ = ("QuerySetTest",)
 
 
 class db_ops_tracker(query_counter):
@@ -4052,7 +4049,7 @@ class QuerySetTest(unittest.TestCase):
             fielda = IntField()
             fieldb = IntField()
 
-        IntPair.objects._collection.remove()
+        IntPair.drop_collection()
 
         a = IntPair(fielda=1, fieldb=1)
         b = IntPair(fielda=1, fieldb=2)
@@ -5387,7 +5384,7 @@ class QuerySetTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        Person._get_collection().insert({'name': 'a', 'id': ''})
+        Person._get_collection().insert_one({'name': 'a', 'id': ''})
         for p in Person.objects():
             self.assertEqual(p.name, 'a')
 
