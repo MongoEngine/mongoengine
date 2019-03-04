@@ -466,7 +466,13 @@ class InstanceTest(MongoDBTestCase):
         Animal.drop_collection()
         doc = Animal(superphylum='Deuterostomia')
         doc.save()
-        doc.reload()
+
+        with query_counter() as q:
+            doc.reload()
+            query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
+            self.assertEqual(set(query_op['query']['filter'].keys()), set(['_id', 'superphylum']))
+
+        Animal.drop_collection()
 
     def test_reload_sharded_nested(self):
         class SuperPhylum(EmbeddedDocument):
@@ -480,6 +486,29 @@ class InstanceTest(MongoDBTestCase):
         doc = Animal(superphylum=SuperPhylum(name='Deuterostomia'))
         doc.save()
         doc.reload()
+        Animal.drop_collection()
+
+    def test_update_shard_key_routing(self):
+        """Ensures updating a doc with a specified shard_key includes it in
+        the query.
+        """
+        class Animal(Document):
+            is_mammal = BooleanField()
+            name = StringField()
+            meta = {'shard_key': ('is_mammal', 'id')}
+
+        Animal.drop_collection()
+        doc = Animal(is_mammal=True, name='Dog')
+        doc.save()
+
+        with query_counter() as q:
+            doc.name = 'Cat'
+            doc.save()
+            query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
+            self.assertEqual(query_op['op'], 'update')
+            self.assertEqual(set(query_op['query'].keys()), set(['_id', 'is_mammal']))
+
+        Animal.drop_collection()
 
     def test_reload_with_changed_fields(self):
         """Ensures reloading will not affect changed fields"""
