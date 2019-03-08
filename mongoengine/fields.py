@@ -13,6 +13,8 @@ import pymongo
 import six
 from six import iteritems
 
+from mongoengine.queryset.transform import STRING_OPERATORS
+
 try:
     import dateutil
 except ImportError:
@@ -106,11 +108,11 @@ class StringField(BaseField):
         if not isinstance(op, six.string_types):
             return value
 
-        if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
-            flags = 0
-            if op.startswith('i'):
-                flags = re.IGNORECASE
-                op = op.lstrip('i')
+        if op in STRING_OPERATORS:
+            case_insensitive = op.startswith('i')
+            op = op.lstrip('i')
+
+            flags = re.IGNORECASE if case_insensitive else 0
 
             regex = r'%s'
             if op == 'startswith':
