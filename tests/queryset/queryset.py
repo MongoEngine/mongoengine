@@ -394,6 +394,16 @@ class QuerySetTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             list(qs)
 
+    def test_batch_size_cloned(self):
+        class A(Document):
+            s = StringField()
+
+        # test that batch size gets cloned
+        qs = A.objects.batch_size(5)
+        self.assertEqual(qs._batch_size, 5)
+        qs_clone = qs.clone()
+        self.assertEqual(qs_clone._batch_size, 5)
+
     def test_update_write_concern(self):
         """Test that passing write_concern works"""
         self.Person.drop_collection()

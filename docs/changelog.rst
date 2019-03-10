@@ -6,6 +6,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix .only() working improperly after using .count() of the same instance of QuerySet
+- Fix batch_size that was not copied when cloning a queryset object #2011
 - POTENTIAL BREAKING CHANGE: All result fields are now passed, including internal fields (_cls, _id) when using `QuerySet.as_pymongo` #1976
 - Document a BREAKING CHANGE introduced in 0.15.3 and not reported at that time (#1995)
 - Fix InvalidStringData error when using modify on a BinaryField #1127
