@@ -757,7 +757,7 @@ class BaseQuerySet(object):
                       '_read_preference', '_iter', '_scalar', '_as_pymongo',
                       '_limit', '_skip', '_hint', '_auto_dereference',
                       '_search_text', 'only_fields', '_max_time_ms',
-                      '_comment')
+                      '_comment', '_batch_size')
 
         for prop in copy_props:
             val = getattr(self, prop)
