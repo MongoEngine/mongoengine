@@ -757,7 +757,7 @@ class Document(BaseDocument):
                                         **index_opts)
 
     @classmethod
-    def list_indexes(cls):
+    def list_indexes(cls, include_partial_filter_expressions=False):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
@@ -800,7 +800,8 @@ class Document(BaseDocument):
                 for spec in index_spec:
                     spec = spec.copy()
                     fields = spec.pop('fields')
-                    indexes.append(fields)
+                    indexes.append(fields if include_partial_filter_expressions is False else
+                                   (fields, spec.get('partialFilterExpression', {})))
             return indexes
 
         indexes = []
@@ -810,11 +811,15 @@ class Document(BaseDocument):
                     indexes.append(index)
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
-        if [(u'_id', 1)] not in indexes:
-            indexes.append([(u'_id', 1)])
+
+        id_index = [(u'_id', 1)] if include_partial_filter_expressions is False else ([(u'_id', 1)], {})
+
+        if id_index not in indexes:
+            indexes.append(id_index)
+
         if (cls._meta.get('index_cls', True) and
                 cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-            indexes.append([(u'_cls', 1)])
+            indexes.append([(u'_cls', 1)] if include_partial_filter_expressions is False else ([(u'_cls', 1)], {}))
 
         return indexes
 
@@ -840,6 +845,30 @@ class Document(BaseDocument):
             if cls_obsolete:
                 missing.remove([(u'_cls', 1)])
 
+        return {'missing': missing, 'extra': extra}
+
+    @classmethod
+    def compare_indexes_including_partial_filters(cls):
+        """ Compare index method  does not consider partial filters while comparing indexes,
+        this method is writter in order to consider partial filter as well, notice the change in signature as well """
+        
+        def add_partial_filter(index,partial_filter={}):
+            return (index,partial_filter)
+        
+        required = cls.list_indexes(include_partial_filter_expressions=True)
+        existing = [(info['key'], info.get('partialFilterExpression', {}))
+                    for info in connection_manager.get_collection(cls).index_information().values()]
+        missing = [index for index in required if index not in existing]
+        extra = [index for index in existing if index not in required]
+        class_index= add_partial_filter([(u'_cls', 1)])
+        if class_index in missing:
+            cls_obsolete = False
+            for index in existing:
+                if includes_cls(index[0]) and index not in extra:
+                    cls_obsolete = True
+                    break
+            if cls_obsolete:
+                missing.remove(class_index)
         return {'missing': missing, 'extra': extra}
 
 
