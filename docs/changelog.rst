@@ -4,6 +4,7 @@ Changelog
 
 Development
 ===========
+- mongoengine now requires pymongo>=3.5 #2017
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.17.0
