@@ -451,16 +451,6 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
             object_id = wc_collection.insert_one(doc).inserted_id
 
-        # In PyMongo 3.0, the save() call calls internally the _update() call
-        # but they forget to return the _id value passed back, therefore getting it back here
-        # Correct behaviour in 2.X and in 3.0.1+ versions
-        if not object_id and pymongo.version_tuple == (3, 0):
-            pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
-            object_id = (
-                self._qs.filter(pk=pk_as_mongo_obj).first() and
-                self._qs.filter(pk=pk_as_mongo_obj).first().pk
-            )  # TODO doesn't this make 2 queries?
-
         return object_id
 
     def _get_update_doc(self):

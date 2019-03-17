@@ -61,10 +61,6 @@ class TestJson(unittest.TestCase):
         self.assertEqual(doc, Doc.from_json(doc.to_json()))
 
     def test_json_complex(self):
-
-        if pymongo.version_tuple[0] <= 2 and pymongo.version_tuple[1] <= 3:
-            raise SkipTest("Need pymongo 2.4 as has a fix for DBRefs")
-
         class EmbeddedDoc(EmbeddedDocument):
             pass
 

@@ -565,10 +565,6 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects.count(), 10)
         self.assertEqual(BlogPost.objects.hint().count(), 10)
 
-        # PyMongo 3.0 bug only, works correctly with 2.X and 3.0.1+ versions
-        if pymongo.version != '3.0':
-            self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
-
         if MONGO_VER >= MONGODB_32:
             # Mongo32 throws an error if an index exists (i.e `tags` in our case)
             # and you use hint on an index name that does not exist
