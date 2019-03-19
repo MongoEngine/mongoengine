@@ -704,6 +704,77 @@ class IndexesTest(unittest.TestCase):
 
         self.assertRaises(NotUniqueError, post2.save)
 
+    def test_unique_embedded_document_in_sorted_list(self):
+        """
+        Ensure that the uniqueness constraints are applied to fields in
+        embedded documents, even when the embedded documents in a sorted list
+        field.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField()
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            subs = SortedListField(EmbeddedDocumentField(SubDocument),
+                                   ordering='year')
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(
+            title='test1', subs=[
+                SubDocument(year=2009, slug='conflict'),
+                SubDocument(year=2009, slug='conflict')
+            ]
+        )
+        post1.save()
+
+        # confirm that the unique index is created
+        indexes = BlogPost._get_collection().index_information()
+        self.assertIn('subs.slug_1', indexes)
+        self.assertTrue(indexes['subs.slug_1']['unique'])
+
+        post2 = BlogPost(
+            title='test2', subs=[SubDocument(year=2014, slug='conflict')]
+        )
+
+        self.assertRaises(NotUniqueError, post2.save)
+
+    def test_unique_embedded_document_in_embedded_document_list(self):
+        """
+        Ensure that the uniqueness constraints are applied to fields in
+        embedded documents, even when the embedded documents in an embedded
+        list field.
+        """
+        class SubDocument(EmbeddedDocument):
+            year = IntField()
+            slug = StringField(unique=True)
+
+        class BlogPost(Document):
+            title = StringField()
+            subs = EmbeddedDocumentListField(SubDocument)
+
+        BlogPost.drop_collection()
+
+        post1 = BlogPost(
+            title='test1', subs=[
+                SubDocument(year=2009, slug='conflict'),
+                SubDocument(year=2009, slug='conflict')
+            ]
+        )
+        post1.save()
+
+        # confirm that the unique index is created
+        indexes = BlogPost._get_collection().index_information()
+        self.assertIn('subs.slug_1', indexes)
+        self.assertTrue(indexes['subs.slug_1']['unique'])
+
+        post2 = BlogPost(
+            title='test2', subs=[SubDocument(year=2014, slug='conflict')]
+        )
+
+        self.assertRaises(NotUniqueError, post2.save)
+
     def test_unique_with_embedded_document_and_embedded_unique(self):
         """Ensure that uniqueness constraints are applied to fields on
         embedded documents.  And work with unique_with as well.

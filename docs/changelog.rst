@@ -5,6 +5,7 @@ Changelog
 Development
 ===========
 - mongoengine now requires pymongo>=3.5 #2017
+- Generate Unique Indices for SortedListField and EmbeddedDocumentListFields #2020
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.17.0
