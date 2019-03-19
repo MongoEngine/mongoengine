@@ -1,5 +1,5 @@
 nose
-pymongo>=2.7.1
+pymongo>=3.5
 six==1.10.0
 flake8
 flake8-import-order
