@@ -1238,7 +1238,10 @@ class CachedReferenceField(BaseField):
         Sync all cached fields on demand.
         Caution: this operation may be slower.
         """
-        for doc in self.document_type.objects:
+        objects = self.document_type.objects
+        if hasattr(self.document_type, 'objects_across_company'):
+            objects = self.document_type.objects_across_company
+        for doc in objects:
             filter_kwargs = {}
             filter_kwargs[self.name] = doc
 
