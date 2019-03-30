@@ -539,6 +539,7 @@ class Document(BaseDocument):
                 self._reload_single_field_internal(field, obj)
                 
         self._changed_fields = obj._changed_fields
+        self._original_values = getattr(obj, '_original_values', {})
         self._created = False
         return self
         
