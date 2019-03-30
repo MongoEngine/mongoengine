@@ -276,11 +276,16 @@ class ComplexBaseField(BaseField):
 
         _dereference = _import_class('DeReference')()
 
-        if instance._initialised and dereference and instance._data.get(self.name):
+        if (instance._initialised and
+                dereference and
+                instance._data.get(self.name) and
+                not getattr(instance._data[self.name], '_dereferenced', False)):
             instance._data[self.name] = _dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
             )
+            if hasattr(instance._data[self.name], '_dereferenced'):
+                instance._data[self.name]._dereferenced = True
 
         value = super(ComplexBaseField, self).__get__(instance, owner)
 
