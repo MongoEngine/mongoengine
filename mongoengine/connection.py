@@ -1,4 +1,5 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
+from pymongo.database import _check_name
 import six
 
 from mongoengine.pymongo_support import IS_PYMONGO_3
@@ -26,6 +27,16 @@ class MongoEngineConnectionError(Exception):
 _connection_settings = {}
 _connections = {}
 _dbs = {}
+
+
+def check_db_name(name):
+    """Check if a database name is valid.
+    This functionality is copied from pymongo Database class constructor.
+    """
+    if not isinstance(name, six.string_types):
+        raise TypeError('name must be an instance of %s' % six.string_types)
+    elif name != '$external':
+        _check_name(name)
 
 
 def register_connection(alias, db=None, name=None, host=None, port=None,
@@ -69,6 +80,7 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
         'authentication_mechanism': authentication_mechanism
     }
 
+    check_db_name(conn_settings['name'])
     conn_host = conn_settings['host']
 
     # Host can be a list or a string, so if string, force to a list.

@@ -6,6 +6,7 @@ Development
 ===========
 - mongoengine now requires pymongo>=3.5 #2017
 - Generate Unique Indices for SortedListField and EmbeddedDocumentListFields #2020
+- connect() fails immediately when db name contains invalid characters (e. g. when user mistakenly puts 'mongodb://127.0.0.1:27017' as db name, happened in #1718) or is if db name is of an invalid type
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.17.0
