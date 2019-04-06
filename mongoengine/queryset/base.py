@@ -1200,7 +1200,7 @@ class BaseQuerySet(object):
             initial_pipeline.append({'$sort': dict(self._ordering)})
 
         if self._limit is not None:
-            initial_pipeline.append({'$limit': self._limit + self._skip})
+            initial_pipeline.append({'$limit': self._limit})
 
         if self._skip is not None:
             initial_pipeline.append({'$skip': self._skip})
