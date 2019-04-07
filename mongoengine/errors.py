@@ -70,10 +70,12 @@ class ValidationError(AssertionError):
     errors = {}
     field_name = None
     _message = None
+    app_name = None
 
     def __init__(self, message="", **kwargs):
         self.errors = kwargs.get('errors', {})
         self.field_name = kwargs.get('field_name')
+        self.app_name = kwargs.get('app_name')
         self.message = message
 
     def __str__(self):
