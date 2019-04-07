@@ -1200,7 +1200,11 @@ class BaseQuerySet(object):
             initial_pipeline.append({'$sort': dict(self._ordering)})
 
         if self._limit is not None:
-            initial_pipeline.append({'$limit': self._limit})
+            # As per MongoDB Documentation (https://docs.mongodb.com/manual/reference/operator/aggregation/limit/),
+            # keeping limit stage right after sort stage is more efficient. But this leads to wrong set of documents
+            # for a skip stage that might succeed these. So we need to maintain more documents in memory in such a
+            # case (https://stackoverflow.com/a/24161461).
+            initial_pipeline.append({'$limit': self._limit + (self._skip or 0)})
 
         if self._skip is not None:
             initial_pipeline.append({'$skip': self._skip})

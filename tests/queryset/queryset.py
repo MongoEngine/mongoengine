@@ -5349,6 +5349,185 @@ class QuerySetTest(unittest.TestCase):
             {'_id': None, 'avg': 29, 'total': 2}
         ])
 
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_skip(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.skip(1).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p2.pk, 'name': "WILSON JUNIOR"},
+            {'_id': p3.pk, 'name': "SANDRA MARA"}
+        ])
+
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_limit(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.limit(1).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
+        ])
+
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_sort(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.order_by('name').aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
+            {'_id': p3.pk, 'name': "SANDRA MARA"},
+            {'_id': p2.pk, 'name': "WILSON JUNIOR"}
+        ])
+
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_skip_with_limit(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.skip(1).limit(1).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p2.pk, 'name': "WILSON JUNIOR"},
+        ])
+
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_sort_with_limit(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.order_by('name').limit(2).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
+            {'_id': p3.pk, 'name': "SANDRA MARA"}
+        ])
+
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_sort_with_skip(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.order_by('name').skip(2).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p2.pk, 'name': "WILSON JUNIOR"}
+        ])
+
+    @requires_mongodb_gte_26
+    def test_queryset_aggregation_with_sort_with_skip_with_limit(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p1.save()
+
+        p2 = Person(name="Wilson Junior", age=21)
+        p2.save()
+
+        p3 = Person(name="Sandra Mara", age=37)
+        p3.save()
+
+        data = Person.objects.order_by('name').skip(1).limit(1).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p3.pk, 'name': "SANDRA MARA"}
+        ])
+
     def test_delete_count(self):
         [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
         self.assertEqual(self.Person.objects().delete(), 3)  # test ordinary QuerySey delete count
