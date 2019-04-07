@@ -5312,13 +5312,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects(age__lte=22).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
@@ -5358,13 +5354,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.skip(1).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
@@ -5384,13 +5376,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.limit(1).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
@@ -5409,13 +5397,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.order_by('name').aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
@@ -5436,21 +5420,26 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
-        data = Person.objects.skip(1).limit(1).aggregate(
+        data = list(
+            Person.objects.skip(1).limit(1).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
+            )
         )
 
         self.assertEqual(list(data), [
             {'_id': p2.pk, 'name': "WILSON JUNIOR"},
         ])
+
+        # Make sure limit/skip chaining order has no impact
+        data2 = Person.objects.limit(1).skip(1).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}}
+        )
+
+        self.assertEqual(data, list(data2))
 
     @requires_mongodb_gte_26
     def test_queryset_aggregation_with_sort_with_limit(self):
@@ -5461,13 +5450,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.order_by('name').limit(2).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
@@ -5476,6 +5461,26 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(list(data), [
             {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
             {'_id': p3.pk, 'name': "SANDRA MARA"}
+        ])
+
+        # Verify adding limit/skip steps works as expected
+        data = Person.objects.order_by('name').limit(2).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}},
+            {'$limit': 1},
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
+        ])
+
+        data = Person.objects.order_by('name').limit(2).aggregate(
+            {'$project': {'name': {'$toUpper': '$name'}}},
+            {'$skip': 1},
+            {'$limit': 1},
+        )
+
+        self.assertEqual(list(data), [
+            {'_id': p3.pk, 'name': "SANDRA MARA"},
         ])
 
     @requires_mongodb_gte_26
@@ -5487,13 +5492,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.order_by('name').skip(2).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
@@ -5512,13 +5513,9 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         p1 = Person(name="Isabella Luanna", age=16)
-        p1.save()
-
         p2 = Person(name="Wilson Junior", age=21)
-        p2.save()
-
         p3 = Person(name="Sandra Mara", age=37)
-        p3.save()
+        Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.order_by('name').skip(1).limit(1).aggregate(
             {'$project': {'name': {'$toUpper': '$name'}}}
