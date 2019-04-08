@@ -25,7 +25,7 @@ class ConnectionManager(object):
         _collection = self.connections_registry[alias].get(registry_collection_name)
         if not _collection:
             _collection = self.get_collection(doc_cls, alias, collection_name)
-            if doc_cls._meta.get('auto_create_index', True):
+            if doc_cls._meta.get('auto_create_index', False):
                 doc_cls.ensure_indexes(_collection)
             self.connections_registry[alias][registry_collection_name] = _collection
         return self.connections_registry[alias][registry_collection_name]
