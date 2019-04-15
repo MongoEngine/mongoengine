@@ -4,6 +4,11 @@ Changelog
 
 Development
 ===========
+- expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
+- POTENTIAL BREAKING CHANGE: Fixes in connect/disconnect methods
+    - calling `connect` 2 times with the same alias and different parameter will raise an error (should call disconnect first)
+    - disconnect now clears `mongoengine.connection._connection_settings`
+    - disconnect now clears the cached attribute `Document._collection`
 - POTENTIAL BREAKING CHANGE: Aggregate gives wrong results when used with a queryset having limit and skip #2029
 - mongoengine now requires pymongo>=3.5 #2017
 - Generate Unique Indices for SortedListField and EmbeddedDocumentListFields #2020

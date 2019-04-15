@@ -13,7 +13,7 @@ _document_registry = {}
 
 
 def get_document(name):
-    """Get a document class by name."""
+    """Get a registered Document class by name."""
     doc = _document_registry.get(name, None)
     if not doc:
         # Possible old style name
@@ -30,3 +30,12 @@ def get_document(name):
             been imported?
         """.strip() % name)
     return doc
+
+
+def _get_documents_by_db(connection_alias, default_connection_alias):
+    """Get all registered Documents class attached to a given database"""
+    def get_doc_alias(doc_cls):
+        return doc_cls._meta.get('db_alias', default_connection_alias)
+
+    return [doc_cls for doc_cls in _document_registry.values()
+            if get_doc_alias(doc_cls) == connection_alias]

@@ -188,10 +188,16 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return get_db(cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME))
 
     @classmethod
-    def _get_collection(cls):
-        """Return a PyMongo collection for the document."""
-        if not hasattr(cls, '_collection') or cls._collection is None:
+    def _disconnect(cls):
+        """Detach the Document class from the (cached) database collection"""
+        cls._collection = None
 
+    @classmethod
+    def _get_collection(cls):
+        """Return the corresponding PyMongo collection of this document.
+        Upon the first call, it will ensure that indexes gets created. The returned collection then gets cached
+        """
+        if not hasattr(cls, '_collection') or cls._collection is None:
             # Get the collection, either capped or regular.
             if cls._meta.get('max_size') or cls._meta.get('max_documents'):
                 cls._collection = cls._get_capped_collection()
