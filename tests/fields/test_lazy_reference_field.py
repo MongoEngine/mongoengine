@@ -299,6 +299,52 @@ class TestLazyReferenceField(MongoDBTestCase):
         occ.in_embedded.in_list = [animal1.id, animal2.id]
         check_fields_type(occ)
 
+    def test_lazy_reference_with_fields(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+            extra = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal(name="Leopard", tag="heavy", extra="Foobar").save()
+        Ocurrence(person="test", animal=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertIsInstance(p.animal, LazyReference)
+        
+        # Test fetch with fields
+        fetched_animal = p.animal.fetch(fields={"name": 1})
+        self.assertEqual(fetched_animal, animal)
+        self.assertEqual(fetched_animal.name, "Leopard")
+        self.assertIsNone(fetched_animal.tag)
+        self.assertIsNone(fetched_animal.extra)
+
+        # Test fetch with fields (cached)
+        fetched_animal = p.animal.fetch(fields={"tag": 1})
+        self.assertEqual(fetched_animal, animal)
+        self.assertEqual(fetched_animal.name, "Leopard")
+        self.assertIsNone(fetched_animal.tag)
+        self.assertIsNone(fetched_animal.extra)
+
+        # Test fetch with fields (forced)
+        fetched_animal = p.animal.fetch(fields={"tag": 1}, force=True)
+        self.assertEqual(fetched_animal, animal)
+        self.assertIsNone(fetched_animal.name)
+        self.assertEqual(fetched_animal.tag, "heavy")
+        self.assertIsNone(fetched_animal.extra)
+
+        # Test fetch with field exclusion (forced)
+        fetched_animal = p.animal.fetch(fields={"tag": 0}, force=True)
+        self.assertEqual(fetched_animal, animal)
+        self.assertEqual(fetched_animal.name, "Leopard")
+        self.assertIsNone(fetched_animal.tag)
+        self.assertEqual(fetched_animal.extra, "Foobar")
+
 
 class TestGenericLazyReferenceField(MongoDBTestCase):
     def test_generic_lazy_reference_simple(self):

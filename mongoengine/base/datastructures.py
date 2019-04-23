@@ -438,9 +438,14 @@ class StrictDict(object):
 class LazyReference(DBRef):
     __slots__ = ('_cached_doc', 'passthrough', 'document_type')
 
-    def fetch(self, force=False):
+    def fetch(self, force=False, fields=None):
         if not self._cached_doc or force:
-            self._cached_doc = self.document_type.objects.get(pk=self.pk)
+            query = self.document_type.objects
+
+            if fields:
+                query = query.fields(**fields)
+
+            self._cached_doc = query.get(pk=self.pk)
             if not self._cached_doc:
                 raise DoesNotExist('Trying to dereference unknown document %s' % (self))
         return self._cached_doc
