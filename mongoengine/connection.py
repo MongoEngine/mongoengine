@@ -318,6 +318,9 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     Multiple databases are supported by using aliases. Provide a separate
     `alias` to connect to a different instance of :program:`mongod`.
 
+    In order to replace a connection identified by a given alias, you'll
+    need to call ``disconnect`` first
+
     See the docstring for `register_connection` for more details about all
     supported kwargs.
 

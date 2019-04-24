@@ -1,4 +1,6 @@
 import datetime
+
+from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 
 try:
@@ -238,12 +240,25 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection('testdb6')
         self.assertIsInstance(conn, mongomock.MongoClient)
 
-    def test_disconnect(self):
-        """Ensure that the disconnect() method works properly"""
+    def test_disconnect_cleans_globals(self):
+        """Ensure that the disconnect() method cleans the globals objects"""
         connections = mongoengine.connection._connections
         dbs = mongoengine.connection._dbs
         connection_settings = mongoengine.connection._connection_settings
 
+        connect('mongoenginetest')
+
+        self.assertEqual(len(connections), 1)
+        self.assertEqual(len(dbs), 1)
+        self.assertEqual(len(connection_settings), 1)
+
+        disconnect()
+        self.assertEqual(len(connections), 0)
+        self.assertEqual(len(dbs), 0)
+        self.assertEqual(len(connection_settings), 0)
+
+    def test_disconnect_cleans_cached_collection_attribute_in_document(self):
+        """Ensure that the disconnect() method works properly"""
         conn1 = connect('mongoenginetest')
 
         class History(Document):
@@ -252,29 +267,50 @@ class ConnectionTest(unittest.TestCase):
         self.assertIsNone(History._collection)
 
         History.drop_collection()
+
         History.objects.first()     # will trigger the caching of _collection attribute
-
         self.assertIsNotNone(History._collection)
-
-        self.assertEqual(len(connections), 1)
-        self.assertEqual(len(dbs), 1)
-        self.assertEqual(len(connection_settings), 1)
 
         disconnect()
 
         self.assertIsNone(History._collection)
 
-        self.assertEqual(len(connections), 0)
-        self.assertEqual(len(dbs), 0)
-        self.assertEqual(len(connection_settings), 0)
-
         with self.assertRaises(MongoEngineConnectionError) as ctx_err:
             History.objects.first()
         self.assertEqual("You have not defined a default connection", str(ctx_err.exception))
 
-        conn2 = connect('mongoenginetest')
-        History.objects.first()     # Make sure its back on track
-        self.assertTrue(conn1 is not conn2)
+    def test_connect_disconnect_works_on_same_document(self):
+        """Ensure that the connect/disconnect works properly with a single Document"""
+        db1 = 'db1'
+        db2 = 'db2'
+
+        # Ensure freshness of the 2 databases through pymongo
+        client = MongoClient('localhost', 27017)
+        client.drop_database(db1)
+        client.drop_database(db2)
+
+        # Save in db1
+        connect(db1)
+
+        class User(Document):
+            name = StringField(required=True)
+
+        user1 = User(name='John is in db1').save()
+        disconnect()
+
+        # Make sure save doesnt work at this stage
+        with self.assertRaises(MongoEngineConnectionError):
+            User(name='Wont work').save()
+
+        # Save in db2
+        connect(db2)
+        user2 = User(name='Bob is in db2').save()
+        disconnect()
+
+        db1_users = list(client[db1].user.find())
+        self.assertEqual(db1_users, [{'_id': user1.id, 'name': 'John is in db1'}])
+        db2_users = list(client[db2].user.find())
+        self.assertEqual(db2_users, [{'_id': user2.id, 'name': 'Bob is in db2'}])
 
     def test_disconnect_silently_pass_if_alias_does_not_exist(self):
         connections = mongoengine.connection._connections

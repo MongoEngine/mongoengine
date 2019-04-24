@@ -795,13 +795,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionchanged:: 0.10.7
             :class:`OperationError` exception raised if no collection available
         """
-        col_name = cls._get_collection_name()
-        if not col_name:
+        coll_name = cls._get_collection_name()
+        if not coll_name:
             raise OperationError('Document %s has no collection defined '
                                  '(is it abstract ?)' % cls)
         cls._collection = None
         db = cls._get_db()
-        db.drop_collection(col_name)
+        db.drop_collection(coll_name)
 
     @classmethod
     def create_index(cls, keys, background=False, **kwargs):
