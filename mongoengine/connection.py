@@ -10,6 +10,8 @@ __all__ = ['MongoEngineConnectionError', 'connect', 'disconnect', 'disconnect_al
 
 DEFAULT_CONNECTION_NAME = 'default'
 DEFAULT_DATABASE_NAME = 'test'
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = 27017
 
 if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
@@ -61,8 +63,8 @@ def _get_connection_settings(
     """
     conn_settings = {
         'name': name or db or DEFAULT_DATABASE_NAME,
-        'host': host or 'localhost',
-        'port': port or 27017,
+        'host': host or DEFAULT_HOST,
+        'port': port or DEFAULT_PORT,
         'read_preference': read_preference,
         'username': username,
         'password': password,
@@ -172,6 +174,7 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
     """Close the connection with a given alias."""
     from mongoengine.base.common import _get_documents_by_db
+    from mongoengine import Document
 
     if alias in _connections:
         get_connection(alias=alias).close()
@@ -180,7 +183,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     if alias in _dbs:
         # Detach all cached collections in Documents
         for doc_cls in _get_documents_by_db(alias, DEFAULT_CONNECTION_NAME):
-            if hasattr(doc_cls, '_disconnect'):
+            if issubclass(doc_cls, Document):     # Skip EmbeddedDocument
                 doc_cls._disconnect()
 
         del _dbs[alias]

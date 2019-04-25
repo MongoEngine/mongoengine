@@ -5,7 +5,7 @@ Changelog
 Development
 ===========
 - expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
-- POTENTIAL BREAKING CHANGE: Fixes in connect/disconnect methods #565 #566
+- POTENTIAL BREAKING CHANGES: Fixes in connect/disconnect methods #565 #566 #605 #607 #1213 #1599
     - calling `connect` 2 times with the same alias and different parameter will raise an error (should call disconnect first)
     - disconnect now clears `mongoengine.connection._connection_settings`
     - disconnect now clears the cached attribute `Document._collection`

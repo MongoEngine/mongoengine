@@ -249,8 +249,14 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetest')
 
         self.assertEqual(len(connections), 1)
-        self.assertEqual(len(dbs), 1)
+        self.assertEqual(len(dbs), 0)
         self.assertEqual(len(connection_settings), 1)
+
+        class TestDoc(Document):
+            pass
+
+        TestDoc.drop_collection()  # triggers the db
+        self.assertEqual(len(dbs), 1)
 
         disconnect()
         self.assertEqual(len(connections), 0)
