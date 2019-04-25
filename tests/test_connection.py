@@ -1,7 +1,7 @@
 import datetime
 
 from pymongo import MongoClient
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, InvalidName
 
 try:
     import unittest2 as unittest
@@ -169,6 +169,36 @@ class ConnectionTest(unittest.TestCase):
         connect(host='mongodb://localhost:27017/mongoenginetest02', alias='test02')
         connect(host='mongodb://localhost:27017/mongoenginetest02', alias='test02')
         self.assertEqual(len(mongoengine.connection._connections), 3)
+
+    def test_connect_with_invalid_db_name(self):
+        """Ensure that connect() method fails fast if db name is invalid
+        """
+        with self.assertRaises(InvalidName):
+            connect('mongomock://localhost')
+
+    def test_connect_with_db_name_external(self):
+        """Ensure that connect() works if db name is $external
+        """
+        """Ensure that the connect() method works properly."""
+        connect('$external')
+
+        conn = get_connection()
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
+
+        db = get_db()
+        self.assertIsInstance(db, pymongo.database.Database)
+        self.assertEqual(db.name, '$external')
+
+        connect('$external', alias='testdb')
+        conn = get_connection('testdb')
+        self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
+
+    def test_connect_with_invalid_db_name_type(self):
+        """Ensure that connect() method fails fast if db name has invalid type
+        """
+        with self.assertRaises(TypeError):
+            non_string_db_name = ['e. g. list instead of a string']
+            connect(non_string_db_name)
 
     def test_connect_in_mocking(self):
         """Ensure that the connect() method works properly in mocking.

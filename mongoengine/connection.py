@@ -1,4 +1,5 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
+from pymongo.database import _check_name
 import six
 
 from mongoengine.pymongo_support import IS_PYMONGO_3
@@ -32,6 +33,16 @@ _connections = {}
 _dbs = {}
 
 
+def check_db_name(name):
+    """Check if a database name is valid.
+    This functionality is copied from pymongo Database class constructor.
+    """
+    if not isinstance(name, six.string_types):
+        raise TypeError('name must be an instance of %s' % six.string_types)
+    elif name != '$external':
+        _check_name(name)
+
+
 def _get_connection_settings(
         db=None, name=None, host=None, port=None,
         read_preference=READ_PREFERENCE,
@@ -41,21 +52,21 @@ def _get_connection_settings(
         **kwargs):
     """Get the connection settings as a dict
 
-    :param db: the name of the database to use, for compatibility with connect
-    :param name: the name of the specific database to use
-    :param host: the host name of the :program:`mongod` instance to connect to
-    :param port: the port that the :program:`mongod` instance is running on
-    :param read_preference: The read preference for the collection
+    : param db: the name of the database to use, for compatibility with connect
+    : param name: the name of the specific database to use
+    : param host: the host name of the: program: `mongod` instance to connect to
+    : param port: the port that the: program: `mongod` instance is running on
+    : param read_preference: The read preference for the collection
        ** Added pymongo 2.1
-    :param username: username to authenticate with
-    :param password: password to authenticate with
-    :param authentication_source: database to authenticate against
-    :param authentication_mechanism: database authentication mechanisms.
+    : param username: username to authenticate with
+    : param password: password to authenticate with
+    : param authentication_source: database to authenticate against
+    : param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    :param is_mock: explicitly use mongomock for this connection
-        (can also be done by using `mongomock://` as db host prefix)
-    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+    : param is_mock: explicitly use mongomock for this connection
+        (can also be done by using `mongomock: // ` as db host prefix)
+    : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
 
@@ -72,6 +83,7 @@ def _get_connection_settings(
         'authentication_mechanism': authentication_mechanism
     }
 
+    check_db_name(conn_settings['name'])
     conn_host = conn_settings['host']
 
     # Host can be a list or a string, so if string, force to a list.
@@ -139,23 +151,23 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
                         **kwargs):
     """Register the connection settings.
 
-    :param alias: the name that will be used to refer to this connection
+    : param alias: the name that will be used to refer to this connection
         throughout MongoEngine
-    :param name: the name of the specific database to use
-    :param db: the name of the database to use, for compatibility with connect
-    :param host: the host name of the :program:`mongod` instance to connect to
-    :param port: the port that the :program:`mongod` instance is running on
-    :param read_preference: The read preference for the collection
+    : param name: the name of the specific database to use
+    : param db: the name of the database to use, for compatibility with connect
+    : param host: the host name of the: program: `mongod` instance to connect to
+    : param port: the port that the: program: `mongod` instance is running on
+    : param read_preference: The read preference for the collection
        ** Added pymongo 2.1
-    :param username: username to authenticate with
-    :param password: password to authenticate with
-    :param authentication_source: database to authenticate against
-    :param authentication_mechanism: database authentication mechanisms.
+    : param username: username to authenticate with
+    : param password: password to authenticate with
+    : param authentication_source: database to authenticate against
+    : param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    :param is_mock: explicitly use mongomock for this connection
-        (can also be done by using `mongomock://` as db host prefix)
-    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+    : param is_mock: explicitly use mongomock for this connection
+        (can also be done by using `mongomock: // ` as db host prefix)
+    : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
 
@@ -319,7 +331,7 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     provide username and password arguments as well.
 
     Multiple databases are supported by using aliases. Provide a separate
-    `alias` to connect to a different instance of :program:`mongod`.
+    `alias` to connect to a different instance of: program: `mongod`.
 
     In order to replace a connection identified by a given alias, you'll
     need to call ``disconnect`` first
