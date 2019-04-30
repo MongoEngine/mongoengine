@@ -188,10 +188,16 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return get_db(cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME))
 
     @classmethod
-    def _get_collection(cls):
-        """Return a PyMongo collection for the document."""
-        if not hasattr(cls, '_collection') or cls._collection is None:
+    def _disconnect(cls):
+        """Detach the Document class from the (cached) database collection"""
+        cls._collection = None
 
+    @classmethod
+    def _get_collection(cls):
+        """Return the corresponding PyMongo collection of this document.
+        Upon the first call, it will ensure that indexes gets created. The returned collection then gets cached
+        """
+        if not hasattr(cls, '_collection') or cls._collection is None:
             # Get the collection, either capped or regular.
             if cls._meta.get('max_size') or cls._meta.get('max_documents'):
                 cls._collection = cls._get_capped_collection()
@@ -789,13 +795,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionchanged:: 0.10.7
             :class:`OperationError` exception raised if no collection available
         """
-        col_name = cls._get_collection_name()
-        if not col_name:
+        coll_name = cls._get_collection_name()
+        if not coll_name:
             raise OperationError('Document %s has no collection defined '
                                  '(is it abstract ?)' % cls)
         cls._collection = None
         db = cls._get_db()
-        db.drop_collection(col_name)
+        db.drop_collection(coll_name)
 
     @classmethod
     def create_index(cls, keys, background=False, **kwargs):

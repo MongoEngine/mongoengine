@@ -4,10 +4,17 @@ Changelog
 
 Development
 ===========
+- expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
+- Fix disconnect function #566 #1599 #605 #607 #1213 #565
+- Improve connect/disconnect documentations
+- POTENTIAL BREAKING CHANGES: (associated with connect/disconnect fixes)
+    - calling `connect` 2 times with the same alias and different parameter will raise an error (should call disconnect first)
+    - disconnect now clears `mongoengine.connection._connection_settings`
+    - disconnect now clears the cached attribute `Document._collection`
 - POTENTIAL BREAKING CHANGE: Aggregate gives wrong results when used with a queryset having limit and skip #2029
 - mongoengine now requires pymongo>=3.5 #2017
 - Generate Unique Indices for SortedListField and EmbeddedDocumentListFields #2020
-- connect() fails immediately when db name contains invalid characters (e. g. when user mistakenly puts 'mongodb://127.0.0.1:27017' as db name, happened in #1718) or is if db name is of an invalid type
+- connect() fails immediately when db name contains invalid characters #2031 #1718
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.17.0

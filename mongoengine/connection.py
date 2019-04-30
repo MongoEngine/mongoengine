@@ -4,11 +4,15 @@ import six
 
 from mongoengine.pymongo_support import IS_PYMONGO_3
 
-__all__ = ['MongoEngineConnectionError', 'connect', 'register_connection',
-           'DEFAULT_CONNECTION_NAME', 'get_db']
+__all__ = ['MongoEngineConnectionError', 'connect', 'disconnect', 'disconnect_all',
+           'register_connection', 'DEFAULT_CONNECTION_NAME', 'DEFAULT_DATABASE_NAME',
+           'get_db', 'get_connection']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
+DEFAULT_DATABASE_NAME = 'test'
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = 27017
 
 if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
@@ -39,40 +43,39 @@ def check_db_name(name):
         _check_name(name)
 
 
-def register_connection(alias, db=None, name=None, host=None, port=None,
-                        read_preference=READ_PREFERENCE,
-                        username=None, password=None,
-                        authentication_source=None,
-                        authentication_mechanism=None,
-                        **kwargs):
-    """Add a connection.
+def _get_connection_settings(
+        db=None, name=None, host=None, port=None,
+        read_preference=READ_PREFERENCE,
+        username=None, password=None,
+        authentication_source=None,
+        authentication_mechanism=None,
+        **kwargs):
+    """Get the connection settings as a dict
 
-    :param alias: the name that will be used to refer to this connection
-        throughout MongoEngine
-    :param name: the name of the specific database to use
-    :param db: the name of the database to use, for compatibility with connect
-    :param host: the host name of the :program:`mongod` instance to connect to
-    :param port: the port that the :program:`mongod` instance is running on
-    :param read_preference: The read preference for the collection
+    : param db: the name of the database to use, for compatibility with connect
+    : param name: the name of the specific database to use
+    : param host: the host name of the: program: `mongod` instance to connect to
+    : param port: the port that the: program: `mongod` instance is running on
+    : param read_preference: The read preference for the collection
        ** Added pymongo 2.1
-    :param username: username to authenticate with
-    :param password: password to authenticate with
-    :param authentication_source: database to authenticate against
-    :param authentication_mechanism: database authentication mechanisms.
+    : param username: username to authenticate with
+    : param password: password to authenticate with
+    : param authentication_source: database to authenticate against
+    : param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    :param is_mock: explicitly use mongomock for this connection
-        (can also be done by using `mongomock://` as db host prefix)
-    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+    : param is_mock: explicitly use mongomock for this connection
+        (can also be done by using `mongomock: // ` as db host prefix)
+    : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
 
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
-        'name': name or db or 'test',
-        'host': host or 'localhost',
-        'port': port or 27017,
+        'name': name or db or DEFAULT_DATABASE_NAME,
+        'host': host or DEFAULT_HOST,
+        'port': port or DEFAULT_PORT,
         'read_preference': read_preference,
         'username': username,
         'password': password,
@@ -137,16 +140,74 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
     kwargs.pop('is_slave', None)
 
     conn_settings.update(kwargs)
+    return conn_settings
+
+
+def register_connection(alias, db=None, name=None, host=None, port=None,
+                        read_preference=READ_PREFERENCE,
+                        username=None, password=None,
+                        authentication_source=None,
+                        authentication_mechanism=None,
+                        **kwargs):
+    """Register the connection settings.
+
+    : param alias: the name that will be used to refer to this connection
+        throughout MongoEngine
+    : param name: the name of the specific database to use
+    : param db: the name of the database to use, for compatibility with connect
+    : param host: the host name of the: program: `mongod` instance to connect to
+    : param port: the port that the: program: `mongod` instance is running on
+    : param read_preference: The read preference for the collection
+       ** Added pymongo 2.1
+    : param username: username to authenticate with
+    : param password: password to authenticate with
+    : param authentication_source: database to authenticate against
+    : param authentication_mechanism: database authentication mechanisms.
+        By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
+        MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
+    : param is_mock: explicitly use mongomock for this connection
+        (can also be done by using `mongomock: // ` as db host prefix)
+    : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+        for example maxpoolsize, tz_aware, etc. See the documentation
+        for pymongo's `MongoClient` for a full list.
+
+    .. versionchanged:: 0.10.6 - added mongomock support
+    """
+    conn_settings = _get_connection_settings(
+        db=db, name=name, host=host, port=port,
+        read_preference=read_preference,
+        username=username, password=password,
+        authentication_source=authentication_source,
+        authentication_mechanism=authentication_mechanism,
+        **kwargs)
     _connection_settings[alias] = conn_settings
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
     """Close the connection with a given alias."""
+    from mongoengine.base.common import _get_documents_by_db
+    from mongoengine import Document
+
     if alias in _connections:
         get_connection(alias=alias).close()
         del _connections[alias]
+
     if alias in _dbs:
+        # Detach all cached collections in Documents
+        for doc_cls in _get_documents_by_db(alias, DEFAULT_CONNECTION_NAME):
+            if issubclass(doc_cls, Document):     # Skip EmbeddedDocument
+                doc_cls._disconnect()
+
         del _dbs[alias]
+
+    if alias in _connection_settings:
+        del _connection_settings[alias]
+
+
+def disconnect_all():
+    """Close all registered database."""
+    for alias in list(_connections.keys()):
+        disconnect(alias)
 
 
 def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
@@ -270,14 +331,24 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     provide username and password arguments as well.
 
     Multiple databases are supported by using aliases. Provide a separate
-    `alias` to connect to a different instance of :program:`mongod`.
+    `alias` to connect to a different instance of: program: `mongod`.
+
+    In order to replace a connection identified by a given alias, you'll
+    need to call ``disconnect`` first
 
     See the docstring for `register_connection` for more details about all
     supported kwargs.
 
     .. versionchanged:: 0.6 - added multiple database support.
     """
-    if alias not in _connections:
+    if alias in _connections:
+        prev_conn_setting = _connection_settings[alias]
+        new_conn_settings = _get_connection_settings(db, **kwargs)
+
+        if new_conn_settings != prev_conn_setting:
+            raise MongoEngineConnectionError(
+                'A different connection with alias `%s` was already registered. Use disconnect() first' % alias)
+    else:
         register_connection(alias, db, **kwargs)
 
     return get_connection(alias)

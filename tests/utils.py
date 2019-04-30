@@ -4,7 +4,7 @@ import unittest
 from nose.plugins.skip import SkipTest
 
 from mongoengine import connect
-from mongoengine.connection import get_db
+from mongoengine.connection import get_db, disconnect_all
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_26, MONGODB_3, MONGODB_32, MONGODB_34
 from mongoengine.pymongo_support import IS_PYMONGO_3
 
@@ -19,6 +19,7 @@ class MongoDBTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        disconnect_all()
         cls._connection = connect(db=MONGO_TEST_DB)
         cls._connection.drop_database(MONGO_TEST_DB)
         cls.db = get_db()
@@ -26,6 +27,7 @@ class MongoDBTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls._connection.drop_database(MONGO_TEST_DB)
+        disconnect_all()
 
 
 def get_as_pymongo(doc):

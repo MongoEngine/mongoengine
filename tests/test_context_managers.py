@@ -37,14 +37,15 @@ class ContextManagersTest(unittest.TestCase):
 
     def test_switch_collection_context_manager(self):
         connect('mongoenginetest')
-        register_connection('testdb-1', 'mongoenginetest2')
+        register_connection(alias='testdb-1', db='mongoenginetest2')
 
         class Group(Document):
             name = StringField()
 
-        Group.drop_collection()
+        Group.drop_collection()         # drops in default
+
         with switch_collection(Group, 'group1') as Group:
-            Group.drop_collection()
+            Group.drop_collection()     # drops in group1
 
         Group(name="hello - group").save()
         self.assertEqual(1, Group.objects.count())
