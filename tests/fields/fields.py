@@ -8,11 +8,10 @@ from bson import DBRef, ObjectId, SON
 
 from mongoengine import Document, StringField, IntField, DateTimeField, DateField, ValidationError, \
     ComplexDateTimeField, FloatField, ListField, ReferenceField, DictField, EmbeddedDocument, EmbeddedDocumentField, \
-    GenericReferenceField, DoesNotExist, NotRegistered, GenericEmbeddedDocumentField, OperationError, DynamicField, \
-    FieldDoesNotExist, EmbeddedDocumentListField, MultipleObjectsReturned, NotUniqueError, BooleanField, ObjectIdField, \
-    SortedListField, GenericLazyReferenceField, LazyReferenceField, DynamicDocument
-from mongoengine.base import (BaseField, EmbeddedDocumentList,
-                              _document_registry)
+    GenericReferenceField, DoesNotExist, NotRegistered, OperationError, DynamicField, \
+    FieldDoesNotExist, EmbeddedDocumentListField, MultipleObjectsReturned, NotUniqueError, BooleanField,\
+    ObjectIdField, SortedListField, GenericLazyReferenceField, LazyReferenceField, DynamicDocument
+from mongoengine.base import (BaseField, EmbeddedDocumentList, _document_registry)
 
 from tests.utils import MongoDBTestCase
 
@@ -1769,79 +1768,6 @@ class FieldTest(MongoDBTestCase):
         with self.assertRaises(ValidationError):
             shirt.validate()
 
-    def test_choices_validation_documents(self):
-        """
-        Ensure fields with document choices validate given a valid choice.
-        """
-        class UserComments(EmbeddedDocument):
-            author = StringField()
-            message = StringField()
-
-        class BlogPost(Document):
-            comments = ListField(
-                GenericEmbeddedDocumentField(choices=(UserComments,))
-            )
-
-        # Ensure Validation Passes
-        BlogPost(comments=[
-            UserComments(author='user2', message='message2'),
-        ]).save()
-
-    def test_choices_validation_documents_invalid(self):
-        """
-        Ensure fields with document choices validate given an invalid choice.
-        This should throw a ValidationError exception.
-        """
-        class UserComments(EmbeddedDocument):
-            author = StringField()
-            message = StringField()
-
-        class ModeratorComments(EmbeddedDocument):
-            author = StringField()
-            message = StringField()
-
-        class BlogPost(Document):
-            comments = ListField(
-                GenericEmbeddedDocumentField(choices=(UserComments,))
-            )
-
-        # Single Entry Failure
-        post = BlogPost(comments=[
-            ModeratorComments(author='mod1', message='message1'),
-        ])
-        self.assertRaises(ValidationError, post.save)
-
-        # Mixed Entry Failure
-        post = BlogPost(comments=[
-            ModeratorComments(author='mod1', message='message1'),
-            UserComments(author='user2', message='message2'),
-        ])
-        self.assertRaises(ValidationError, post.save)
-
-    def test_choices_validation_documents_inheritance(self):
-        """
-        Ensure fields with document choices validate given subclass of choice.
-        """
-        class Comments(EmbeddedDocument):
-            meta = {
-                'abstract': True
-            }
-            author = StringField()
-            message = StringField()
-
-        class UserComments(Comments):
-            pass
-
-        class BlogPost(Document):
-            comments = ListField(
-                GenericEmbeddedDocumentField(choices=(Comments,))
-            )
-
-        # Save Valid EmbeddedDocument Type
-        BlogPost(comments=[
-            UserComments(author='user2', message='message2'),
-        ]).save()
-
     def test_choices_get_field_display(self):
         """Test dynamic helper for returning the display value of a choices
         field.
@@ -1957,85 +1883,6 @@ class FieldTest(MongoDBTestCase):
             error_dict = error.to_dict()
             self.assertEqual(error_dict['size'], SIZE_MESSAGE)
             self.assertEqual(error_dict['color'], COLOR_MESSAGE)
-
-    def test_generic_embedded_document(self):
-        class Car(EmbeddedDocument):
-            name = StringField()
-
-        class Dish(EmbeddedDocument):
-            food = StringField(required=True)
-            number = IntField()
-
-        class Person(Document):
-            name = StringField()
-            like = GenericEmbeddedDocumentField()
-
-        Person.drop_collection()
-
-        person = Person(name='Test User')
-        person.like = Car(name='Fiat')
-        person.save()
-
-        person = Person.objects.first()
-        self.assertIsInstance(person.like, Car)
-
-        person.like = Dish(food="arroz", number=15)
-        person.save()
-
-        person = Person.objects.first()
-        self.assertIsInstance(person.like, Dish)
-
-    def test_generic_embedded_document_choices(self):
-        """Ensure you can limit GenericEmbeddedDocument choices."""
-        class Car(EmbeddedDocument):
-            name = StringField()
-
-        class Dish(EmbeddedDocument):
-            food = StringField(required=True)
-            number = IntField()
-
-        class Person(Document):
-            name = StringField()
-            like = GenericEmbeddedDocumentField(choices=(Dish,))
-
-        Person.drop_collection()
-
-        person = Person(name='Test User')
-        person.like = Car(name='Fiat')
-        self.assertRaises(ValidationError, person.validate)
-
-        person.like = Dish(food="arroz", number=15)
-        person.save()
-
-        person = Person.objects.first()
-        self.assertIsInstance(person.like, Dish)
-
-    def test_generic_list_embedded_document_choices(self):
-        """Ensure you can limit GenericEmbeddedDocument choices inside
-        a list field.
-        """
-        class Car(EmbeddedDocument):
-            name = StringField()
-
-        class Dish(EmbeddedDocument):
-            food = StringField(required=True)
-            number = IntField()
-
-        class Person(Document):
-            name = StringField()
-            likes = ListField(GenericEmbeddedDocumentField(choices=(Dish,)))
-
-        Person.drop_collection()
-
-        person = Person(name='Test User')
-        person.likes = [Car(name='Fiat')]
-        self.assertRaises(ValidationError, person.validate)
-
-        person.likes = [Dish(food="arroz", number=15)]
-        person.save()
-
-        person = Person.objects.first()
-        self.assertIsInstance(person.likes[0], Dish)
 
     def test_recursive_validation(self):
         """Ensure that a validation result to_dict is available."""
@@ -2700,45 +2547,6 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.assertFalse(hasattr(a1.c_field, 'custom_data'))
         self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
         self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
-
-
-class TestEmbeddedDocumentField(MongoDBTestCase):
-    def test___init___(self):
-        class MyDoc(EmbeddedDocument):
-            name = StringField()
-
-        field = EmbeddedDocumentField(MyDoc)
-        self.assertEqual(field.document_type_obj, MyDoc)
-
-        field2 = EmbeddedDocumentField('MyDoc')
-        self.assertEqual(field2.document_type_obj, 'MyDoc')
-
-    def test___init___throw_error_if_document_type_is_not_EmbeddedDocument(self):
-        with self.assertRaises(ValidationError):
-            EmbeddedDocumentField(dict)
-
-    def test_document_type_throw_error_if_not_EmbeddedDocument_subclass(self):
-
-        class MyDoc(Document):
-            name = StringField()
-
-        emb = EmbeddedDocumentField('MyDoc')
-        with self.assertRaises(ValidationError) as ctx:
-            emb.document_type
-        self.assertIn('Invalid embedded document class provided to an EmbeddedDocumentField', str(ctx.exception))
-
-    def test_embedded_document_field_only_allow_subclasses_of_embedded_document(self):
-        # Relates to #1661
-        class MyDoc(Document):
-            name = StringField()
-
-        with self.assertRaises(ValidationError):
-            class MyFailingDoc(Document):
-                emb = EmbeddedDocumentField(MyDoc)
-
-        with self.assertRaises(ValidationError):
-            class MyFailingdoc2(Document):
-                emb = EmbeddedDocumentField('MyDoc')
 
 
 if __name__ == '__main__':
