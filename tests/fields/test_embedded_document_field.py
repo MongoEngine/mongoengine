@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from mongoengine import Document, StringField, ValidationError, EmbeddedDocument, EmbeddedDocumentField, \
-    InvalidQueryError, LookUpError, IntField, GenericEmbeddedDocumentField, ListField
+    InvalidQueryError, LookUpError, IntField, GenericEmbeddedDocumentField, ListField, EmbeddedDocumentListField
 
 from tests.utils import MongoDBTestCase
 
@@ -107,6 +107,22 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         only_p = Person.objects.only('settings.base_foo', 'settings._cls').first()
         self.assertEqual(only_p.settings.base_foo, 'basefoo')
         self.assertIsNone(only_p.settings.sub_foo)
+
+    def test_query_list_embedded_document_with_inheritance(self):
+        class BaseEmbeddedDoc(EmbeddedDocument):
+            s = StringField()
+            meta = {'allow_inheritance': True}
+
+        class EmbeddedDoc(BaseEmbeddedDoc):
+            s2 = StringField()
+
+        class MyDoc(Document):
+            embeds = EmbeddedDocumentListField(BaseEmbeddedDoc)
+
+        doc = MyDoc(embeds=[EmbeddedDoc(s='foo', s2='bar')]).save()
+
+        self.assertEqual(MyDoc.objects(embeds__s='foo').first(), doc)
+        self.assertEqual(MyDoc.objects(embeds__s2='bar').first(), doc)
 
 
 class TestGenericEmbeddedDocumentField(MongoDBTestCase):
