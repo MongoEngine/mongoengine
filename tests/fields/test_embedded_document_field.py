@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from mongoengine import Document, StringField, ValidationError, EmbeddedDocument, EmbeddedDocumentField, \
-    InvalidQueryError, LookUpError, IntField, GenericEmbeddedDocumentField, ListField, EmbeddedDocumentListField
+    InvalidQueryError, LookUpError, IntField, GenericEmbeddedDocumentField, ListField, EmbeddedDocumentListField, \
+    ReferenceField
 
 from tests.utils import MongoDBTestCase
 
@@ -109,20 +110,31 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         self.assertIsNone(only_p.settings.sub_foo)
 
     def test_query_list_embedded_document_with_inheritance(self):
-        class BaseEmbeddedDoc(EmbeddedDocument):
-            s = StringField()
+        class Post(EmbeddedDocument):
+            title = StringField(max_length=120, required=True)
             meta = {'allow_inheritance': True}
 
-        class EmbeddedDoc(BaseEmbeddedDoc):
-            s2 = StringField()
+        class TextPost(Post):
+            content = StringField()
 
-        class MyDoc(Document):
-            embeds = EmbeddedDocumentListField(BaseEmbeddedDoc)
+        class MoviePost(Post):
+            author = StringField()
 
-        doc = MyDoc(embeds=[EmbeddedDoc(s='foo', s2='bar')]).save()
+        class Record(Document):
+            posts = ListField(EmbeddedDocumentField(Post))
 
-        self.assertEqual(MyDoc.objects(embeds__s='foo').first(), doc)
-        self.assertEqual(MyDoc.objects(embeds__s2='bar').first(), doc)
+        record_movie = Record(posts=[MoviePost(author='John', title='foo')]).save()
+        record_text = Record(posts=[TextPost(content='a', title='foo')]).save()
+
+        records = list(Record.objects(posts__author=record_movie.posts[0].author))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].id, record_movie.id)
+
+        records = list(Record.objects(posts__content=record_text.posts[0].content))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].id, record_text.id)
+
+        self.assertEqual(Record.objects(posts__title='foo').count(), 2)
 
 
 class TestGenericEmbeddedDocumentField(MongoDBTestCase):
