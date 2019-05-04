@@ -80,7 +80,8 @@ def _get_connection_settings(
         'username': username,
         'password': password,
         'authentication_source': authentication_source,
-        'authentication_mechanism': authentication_mechanism
+        'authentication_mechanism': authentication_mechanism,
+        'connect': False
     }
 
     check_db_name(conn_settings['name'])
