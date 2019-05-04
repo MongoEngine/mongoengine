@@ -4,6 +4,8 @@ Changelog
 
 Development
 ===========
+- Fix querying on List(EmbeddedDocument) subclasses fields #1961 #1492
+- Fix querying on (Generic)EmbeddedDocument subclasses fields #475
 - expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
 - Fix disconnect function #566 #1599 #605 #607 #1213 #565
 - Improve connect/disconnect documentations
