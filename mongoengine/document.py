@@ -375,7 +375,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             self.validate(clean=clean)
 
         if write_concern is None:
-            write_concern = {'w': 1}
+            write_concern = {}
 
         doc = self.to_mongo()
 
