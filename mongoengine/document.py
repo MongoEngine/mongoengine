@@ -259,7 +259,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         data = super(Document, self).to_mongo(*args, **kwargs)
 
         # If '_id' is None, try and set it from self._data. If that
-        # doesn't exist either, remote '_id' from the SON completely.
+        # doesn't exist either, remove '_id' from the SON completely.
         if data['_id'] is None:
             if self._data.get('id') is None:
                 del data['_id']
@@ -365,10 +365,11 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionchanged:: 0.10.7
             Add signal_kwargs argument
         """
+        signal_kwargs = signal_kwargs or {}
+
         if self._meta.get('abstract'):
             raise InvalidDocumentError('Cannot save an abstract document.')
 
-        signal_kwargs = signal_kwargs or {}
         signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
         if validate:
@@ -377,9 +378,8 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         if write_concern is None:
             write_concern = {}
 
-        doc = self.to_mongo()
-
-        created = ('_id' not in doc or self._created or force_insert)
+        doc_id = self.to_mongo(fields=['id'])
+        created = ('_id' not in doc_id or self._created or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)

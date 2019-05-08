@@ -7,6 +7,7 @@ Development
 - Add support for MongoDB 3.6 and Python3.7 in travis
 - BREAKING CHANGE: Changed the custom field validator (i.e `validation` parameter of Field) so that it now requires:
     the callable to raise a ValidationError (i.o return True/False).
+- Prevent an expensive call to to_mongo in Document.save() to improve performance #?
 - Fix querying on List(EmbeddedDocument) subclasses fields #1961 #1492
 - Fix querying on (Generic)EmbeddedDocument subclasses fields #475
 - expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`

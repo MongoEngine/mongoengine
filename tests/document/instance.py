@@ -16,7 +16,7 @@ from mongoengine.pymongo_support import list_collection_names
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 from mongoengine import *
 from mongoengine.base import get_document, _document_registry
@@ -715,39 +715,74 @@ class InstanceTest(MongoDBTestCase):
         acc1 = Account.objects.first()
         self.assertHasInstance(acc1._data["emails"][0], acc1)
 
+    def test_save_checks_that_clean_is_called(self):
+        class CustomError(Exception):
+            pass
+
+        class TestDocument(Document):
+            def clean(self):
+                raise CustomError()
+
+        with self.assertRaises(CustomError):
+            TestDocument().save()
+
+        TestDocument().save(clean=False)
+
+    def test_save_signal_pre_save_post_validation_makes_change_to_doc(self):
+        class BlogPost(Document):
+            content = StringField()
+
+            @classmethod
+            def pre_save_post_validation(cls, sender, document, **kwargs):
+                document.content = 'checked'
+
+        signals.pre_save_post_validation.connect(BlogPost.pre_save_post_validation, sender=BlogPost)
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(content='unchecked').save()
+        self.assertEqual(post.content, 'checked')
+        # Make sure pre_save_post_validation changes makes it to the db
+        raw_doc = get_as_pymongo(post)
+        self.assertEqual(
+            raw_doc,
+            {
+                'content': 'checked',
+                '_id': post.id
+            })
+
     def test_document_clean(self):
         class TestDocument(Document):
             status = StringField()
-            pub_date = DateTimeField()
+            cleaned = BooleanField(default=False)
 
             def clean(self):
-                if self.status == 'draft' and self.pub_date is not None:
-                    msg = 'Draft entries may not have a publication date.'
-                    raise ValidationError(msg)
-                # Set the pub_date for published items if not set.
-                if self.status == 'published' and self.pub_date is None:
-                    self.pub_date = datetime.now()
+                self.cleaned = True
 
         TestDocument.drop_collection()
 
-        t = TestDocument(status="draft", pub_date=datetime.now())
+        t = TestDocument(status="draft")
 
-        with self.assertRaises(ValidationError) as cm:
-            t.save()
-
-        expected_msg = "Draft entries may not have a publication date."
-        self.assertIn(expected_msg, cm.exception.message)
-        self.assertEqual(cm.exception.to_dict(), {'__all__': expected_msg})
-
+        # Ensure clean=False prevent call to clean
         t = TestDocument(status="published")
         t.save(clean=False)
-
-        self.assertEqual(t.pub_date, None)
+        self.assertEqual(t.status, "published")
+        self.assertEqual(t.cleaned, False)
 
         t = TestDocument(status="published")
+        self.assertEqual(t.cleaned, False)
         t.save(clean=True)
-
-        self.assertEqual(type(t.pub_date), datetime)
+        self.assertEqual(t.status, "published")
+        self.assertEqual(t.cleaned, True)
+        raw_doc = get_as_pymongo(t)
+        # Make sure clean changes makes it to the db
+        self.assertEqual(
+            raw_doc,
+            {
+                'status': 'published',
+                'cleaned': True,
+                '_id': t.id
+            })
 
     def test_document_embedded_clean(self):
         class TestEmbeddedDocument(EmbeddedDocument):
@@ -887,19 +922,39 @@ class InstanceTest(MongoDBTestCase):
         person.save()
 
         # Ensure that the object is in the database
-        collection = self.db[self.Person._get_collection_name()]
-        person_obj = collection.find_one({'name': 'Test User'})
-        self.assertEqual(person_obj['name'], 'Test User')
-        self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(person_obj['_id'], person.id)
+        raw_doc = get_as_pymongo(person)
+        self.assertEqual(
+            raw_doc,
+            {
+                '_cls': 'Person',
+                'name': 'Test User',
+                'age': 30,
+                '_id': person.id
+            })
 
-        # Test skipping validation on save
+    def test_save_skip_validation(self):
         class Recipient(Document):
             email = EmailField(required=True)
 
         recipient = Recipient(email='not-an-email')
-        self.assertRaises(ValidationError, recipient.save)
+        with self.assertRaises(ValidationError):
+            recipient.save()
+
         recipient.save(validate=False)
+        raw_doc = get_as_pymongo(recipient)
+        self.assertEqual(
+            raw_doc,
+            {
+                'email': 'not-an-email',
+                '_id': recipient.id
+            })
+
+    def test_save_with_bad_id(self):
+        class Clown(Document):
+            id = IntField(primary_key=True)
+
+        with self.assertRaises(ValidationError):
+            Clown(id="not_an_int").save()
 
     def test_save_to_a_value_that_equates_to_false(self):
         class Thing(EmbeddedDocument):
