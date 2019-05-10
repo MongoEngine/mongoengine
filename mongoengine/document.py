@@ -89,18 +89,6 @@ class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
 
         return data
 
-    def save(self, *args, **kwargs):
-        warnings.warn("EmbeddedDocument.save is deprecated and will be removed in a next version of mongoengine."
-                      "Use the parent document's .save() or ._instance.save()",
-                      DeprecationWarning, stacklevel=2)
-        self._instance.save(*args, **kwargs)
-
-    def reload(self, *args, **kwargs):
-        warnings.warn("EmbeddedDocument.reload is deprecated and will be removed in a next version of mongoengine."
-                      "Use the parent document's .reload() or ._instance.reload()",
-                      DeprecationWarning, stacklevel=2)
-        self._instance.reload(*args, **kwargs)
-
 
 class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     """The base class used for defining the structure and properties of
