@@ -13,6 +13,35 @@ class TestLazyReferenceField(MongoDBTestCase):
         # with a document class name.
         self.assertRaises(ValidationError, LazyReferenceField, EmbeddedDocument)
 
+    def test___repr__(self):
+        class Animal(Document):
+            pass
+
+        class Ocurrence(Document):
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal()
+        oc = Ocurrence(animal=animal)
+        self.assertIn('LazyReference', repr(oc.animal))
+
+    def test___getattr___unknown_attr_raises_attribute_error(self):
+        class Animal(Document):
+            pass
+
+        class Ocurrence(Document):
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal().save()
+        oc = Ocurrence(animal=animal)
+        with self.assertRaises(AttributeError):
+            oc.animal.not_exist
+
     def test_lazy_reference_simple(self):
         class Animal(Document):
             name = StringField()
