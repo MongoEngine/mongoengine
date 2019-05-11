@@ -142,3 +142,8 @@ class ValidationError(AssertionError):
         for k, v in iteritems(self.to_dict()):
             error_dict[generate_key(v)].append(k)
         return ' '.join(['%s: %s' % (k, v) for k, v in iteritems(error_dict)])
+
+
+class DeprecatedError(Exception):
+    """Raise when a user uses a feature that has been Deprecated"""
+    pass
