@@ -152,12 +152,10 @@ class URLField(StringField):
         scheme = value.split('://')[0].lower()
         if scheme not in self.schemes:
             self.error(u'Invalid scheme {} in URL: {}'.format(scheme, value))
-            return
 
         # Then check full URL
         if not self.url_regex.match(value):
             self.error(u'Invalid URL: {}'.format(value))
-            return
 
 
 class EmailField(StringField):
@@ -259,10 +257,10 @@ class EmailField(StringField):
             try:
                 domain_part = domain_part.encode('idna').decode('ascii')
             except UnicodeError:
-                self.error(self.error_msg % value)
+                self.error("%s %s" % (self.error_msg % value, "(domain failed IDN encoding)"))
             else:
                 if not self.validate_domain_part(domain_part):
-                    self.error(self.error_msg % value)
+                    self.error("%s %s" % (self.error_msg % value, "(domain validation failed)"))
 
 
 class IntField(BaseField):
