@@ -158,6 +158,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person.name, 'User B')
         self.assertEqual(person.age, None)
 
+    def test___getitem___invalid_index(self):
+        """Ensure slicing a queryset works as expected."""
+        with self.assertRaises(TypeError):
+            self.Person.objects()['a']
+
     def test_slice(self):
         """Ensure slicing a queryset works as expected."""
         user_a = self.Person.objects.create(name='User A', age=20)
@@ -985,6 +990,29 @@ class QuerySetTest(unittest.TestCase):
         comment = Comment(idx=0)
         inserted_comment_id = Comment.objects.insert(comment, load_bulk=False)
         self.assertEqual(comment.id, inserted_comment_id)
+
+    def test_bulk_insert_accepts_doc_with_ids(self):
+        class Comment(Document):
+            id = IntField(primary_key=True)
+
+        Comment.drop_collection()
+
+        com1 = Comment(id=0)
+        com2 = Comment(id=1)
+        Comment.objects.insert([com1, com2])
+
+    def test_insert_raise_if_duplicate_in_constraint(self):
+        class Comment(Document):
+            id = IntField(primary_key=True)
+
+        Comment.drop_collection()
+
+        com1 = Comment(id=0)
+
+        Comment.objects.insert(com1)
+
+        with self.assertRaises(NotUniqueError):
+            Comment.objects.insert(com1)
 
     def test_get_changed_fields_query_count(self):
         """Make sure we don't perform unnecessary db operations when
@@ -3571,6 +3599,11 @@ class QuerySetTest(unittest.TestCase):
                 return qryset(**opts)
 
             @queryset_manager
+            def objects_1_arg(qryset):
+                opts = {"deleted": False}
+                return qryset(**opts)
+
+            @queryset_manager
             def music_posts(doc_cls, queryset, deleted=False):
                 return queryset(tags='music',
                                 deleted=deleted).order_by('date')
@@ -3583,6 +3616,8 @@ class QuerySetTest(unittest.TestCase):
         post4 = BlogPost(tags=['film', 'actors', 'music'], deleted=True).save()
 
         self.assertEqual([p.id for p in BlogPost.objects()],
+                         [post1.id, post2.id, post3.id])
+        self.assertEqual([p.id for p in BlogPost.objects_1_arg()],
                          [post1.id, post2.id, post3.id])
         self.assertEqual([p.id for p in BlogPost.music_posts()],
                          [post1.id, post2.id])
@@ -4967,6 +5002,38 @@ class QuerySetTest(unittest.TestCase):
 
             people.count()
             self.assertEqual(q, 3)
+
+    def test_no_cached_queryset__repr__(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        qs = Person.objects.no_cache()
+        self.assertEqual(repr(qs), '[]')
+
+    def test_no_cached_on_a_cached_queryset_raise_error(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name='a').save()
+        qs = Person.objects()
+        _ = list(qs)
+        with self.assertRaises(OperationError) as ctx_err:
+            qs.no_cache()
+        self.assertEqual("QuerySet already cached", str(ctx_err.exception))
+
+    def test_no_cached_queryset_no_cache_back_to_cache(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        qs = Person.objects()
+        self.assertIsInstance(qs, QuerySet)
+        qs = qs.no_cache()
+        self.assertIsInstance(qs, QuerySetNoCache)
+        qs = qs.cache()
+        self.assertIsInstance(qs, QuerySet)
 
     def test_cache_not_cloned(self):
 

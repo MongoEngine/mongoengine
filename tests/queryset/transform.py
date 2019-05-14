@@ -71,6 +71,14 @@ class TransformTest(unittest.TestCase):
         update = transform.update(BlogPost, push_all__tags=['mongo', 'db'])
         self.assertEqual(update, {'$push': {'tags': {'$each': ['mongo', 'db']}}})
 
+    def test_transform_update_no_operator_default_to_set(self):
+        """Ensure the differences in behvaior between 'push' and 'push_all'"""
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        update = transform.update(BlogPost, tags=['mongo', 'db'])
+        self.assertEqual(update, {'$set': {'tags': ['mongo', 'db']}})
+
     def test_query_field_name(self):
         """Ensure that the correct field name is used when querying.
         """

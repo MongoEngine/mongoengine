@@ -839,7 +839,6 @@ class IndexesTest(unittest.TestCase):
         Customer.drop_collection()
         Customer.objects.first()
 
-
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
         meta.indexes.
