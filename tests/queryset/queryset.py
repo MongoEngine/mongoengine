@@ -3415,10 +3415,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(query.count(), 3)
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
         cursor_args = query._cursor_args
-        if not IS_PYMONGO_3:
-            cursor_args_fields = cursor_args['fields']
-        else:
-            cursor_args_fields = cursor_args['projection']
+        cursor_args_fields = cursor_args['projection']
         self.assertEqual(
             cursor_args_fields, {'_text_score': {'$meta': 'textScore'}})
 
@@ -4511,11 +4508,7 @@ class QuerySetTest(unittest.TestCase):
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
         self.assertEqual([], bars)
 
-        if not IS_PYMONGO_3:
-            error_class = ConfigurationError
-        else:
-            error_class = TypeError
-        self.assertRaises(error_class, Bar.objects, read_preference='Primary')
+        self.assertRaises(TypeError, Bar.objects, read_preference='Primary')
 
         # read_preference as a kwarg
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)

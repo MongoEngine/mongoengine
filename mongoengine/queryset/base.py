@@ -626,7 +626,7 @@ class BaseQuerySet(object):
 
         queryset = self.clone()
         query = queryset._query
-        if not IS_PYMONGO_3 or not remove:
+        if not remove:
             update = transform.update(queryset._document, **update)
         sort = queryset._ordering
 
@@ -1090,7 +1090,7 @@ class BaseQuerySet(object):
         return queryset
 
     def timeout(self, enabled):
-        """Enable or disable the default mongod timeout when querying.
+        """Enable or disable the default mongod timeout when querying. (no_cursor_timeout option)
 
         :param enabled: whether or not the timeout is used
 
@@ -1531,26 +1531,16 @@ class BaseQuerySet(object):
 
     @property
     def _cursor_args(self):
-        if not IS_PYMONGO_3:
-            fields_name = 'fields'
-            cursor_args = {
-                'timeout': self._timeout,
-                'snapshot': self._snapshot
-            }
-            if self._read_preference is not None:
-                cursor_args['read_preference'] = self._read_preference
-            else:
-                cursor_args['slave_okay'] = self._slave_okay
-        else:
-            fields_name = 'projection'
-            # snapshot is not handled at all by PyMongo 3+
-            # TODO: evaluate similar possibilities using modifiers
-            if self._snapshot:
-                msg = 'The snapshot option is not anymore available with PyMongo 3+'
-                warnings.warn(msg, DeprecationWarning)
-            cursor_args = {
-                'no_cursor_timeout': not self._timeout
-            }
+        fields_name = 'projection'
+        # snapshot is not handled at all by PyMongo 3+
+        # TODO: evaluate similar possibilities using modifiers
+        if self._snapshot:
+            msg = 'The snapshot option is not anymore available with PyMongo 3+'
+            warnings.warn(msg, DeprecationWarning)
+        cursor_args = {
+            'no_cursor_timeout': not self._timeout
+        }
+
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
 

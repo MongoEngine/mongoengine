@@ -23,10 +23,7 @@ from mongoengine.connection import (MongoEngineConnectionError, get_db,
 
 
 def get_tz_awareness(connection):
-    if not IS_PYMONGO_3:
-        return connection.tz_aware
-    else:
-        return connection.codec_options.tz_aware
+    return connection.codec_options.tz_aware
 
 
 class ConnectionTest(unittest.TestCase):
@@ -425,12 +422,6 @@ class ConnectionTest(unittest.TestCase):
         c.admin.authenticate("admin", "password")
         c.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
 
-        if not IS_PYMONGO_3:
-            self.assertRaises(
-                MongoEngineConnectionError, connect, 'testdb_uri_bad',
-                host='mongodb://test:password@localhost'
-            )
-
         connect("testdb_uri", host='mongodb://username:password@localhost/mongoenginetest')
 
         conn = get_connection()
@@ -641,17 +632,14 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(len(mongo_connections.items()), 2)
         self.assertIn('t1', mongo_connections.keys())
         self.assertIn('t2', mongo_connections.keys())
-        if not IS_PYMONGO_3:
-            self.assertEqual(mongo_connections['t1'].host, 'localhost')
-            self.assertEqual(mongo_connections['t2'].host, '127.0.0.1')
-        else:
-            # Handle PyMongo 3+ Async Connection
-            # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
-            # Purposely not catching exception to fail test if thrown.
-            mongo_connections['t1'].server_info()
-            mongo_connections['t2'].server_info()
-            self.assertEqual(mongo_connections['t1'].address[0], 'localhost')
-            self.assertEqual(mongo_connections['t2'].address[0], '127.0.0.1')
+
+        # Handle PyMongo 3+ Async Connection
+        # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
+        # Purposely not catching exception to fail test if thrown.
+        mongo_connections['t1'].server_info()
+        mongo_connections['t2'].server_info()
+        self.assertEqual(mongo_connections['t1'].address[0], 'localhost')
+        self.assertEqual(mongo_connections['t2'].address[0], '127.0.0.1')
 
 
 if __name__ == '__main__':
