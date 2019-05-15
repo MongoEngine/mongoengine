@@ -6,7 +6,6 @@ from nose.plugins.skip import SkipTest
 from mongoengine import connect
 from mongoengine.connection import get_db, disconnect_all
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_26, MONGODB_3, MONGODB_32, MONGODB_34
-from mongoengine.pymongo_support import IS_PYMONGO_3
 
 
 MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database
@@ -80,19 +79,3 @@ def requires_mongodb_gte_3(func):
     lower than v3.0.
     """
     return _decorated_with_ver_requirement(func, MONGODB_3, oper=operator.ge)
-
-
-def skip_pymongo3(f):
-    """Raise a SkipTest exception if we're running a test against
-    PyMongo v3.x.
-    """
-    def _inner(*args, **kwargs):
-        if IS_PYMONGO_3:
-            raise SkipTest("Useless with PyMongo 3+")
-        return f(*args, **kwargs)
-
-    _inner.__name__ = f.__name__
-    _inner.__doc__ = f.__doc__
-
-    return _inner
-

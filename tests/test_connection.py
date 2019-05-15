@@ -2,6 +2,7 @@ import datetime
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure, InvalidName
+from pymongo import ReadPreference
 
 try:
     import unittest2 as unittest
@@ -16,7 +17,6 @@ from mongoengine import (
     connect, register_connection,
     Document, DateTimeField,
     disconnect_all, StringField)
-from mongoengine.pymongo_support import IS_PYMONGO_3
 import mongoengine.connection
 from mongoengine.connection import (MongoEngineConnectionError, get_db,
                                     get_connection, disconnect, DEFAULT_DATABASE_NAME)
@@ -404,11 +404,7 @@ class ConnectionTest(unittest.TestCase):
         connect('mongoenginetests', alias='testdb2')
         actual_connection = get_connection('testdb2')
 
-        # Handle PyMongo 3+ Async Connection
-        if IS_PYMONGO_3:
-            # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
-            # Purposely not catching exception to fail test if thrown.
-            expected_connection.server_info()
+        expected_connection.server_info()
 
         self.assertEqual(expected_connection, actual_connection)
 
@@ -484,19 +480,11 @@ class ConnectionTest(unittest.TestCase):
         c.admin.command("createUser", "username2", pwd="password", roles=["dbOwner"])
 
         # Authentication fails without "authSource"
-        if IS_PYMONGO_3:
-            test_conn = connect(
-                'mongoenginetest', alias='test1',
-                host='mongodb://username2:password@localhost/mongoenginetest'
-            )
-            self.assertRaises(OperationFailure, test_conn.server_info)
-        else:
-            self.assertRaises(
-                MongoEngineConnectionError,
-                connect, 'mongoenginetest', alias='test1',
-                host='mongodb://username2:password@localhost/mongoenginetest'
-            )
-            self.assertRaises(MongoEngineConnectionError, get_db, 'test1')
+        test_conn = connect(
+            'mongoenginetest', alias='test1',
+            host='mongodb://username2:password@localhost/mongoenginetest'
+        )
+        self.assertRaises(OperationFailure, test_conn.server_info)
 
         # Authentication succeeds with "authSource"
         authd_conn = connect(
@@ -565,44 +553,28 @@ class ConnectionTest(unittest.TestCase):
         """
         conn1 = connect(alias='conn1', host='mongodb://localhost/testing?w=1&j=true')
         conn2 = connect('testing', alias='conn2', w=1, j=True)
-        if IS_PYMONGO_3:
-            self.assertEqual(conn1.write_concern.document, {'w': 1, 'j': True})
-            self.assertEqual(conn2.write_concern.document, {'w': 1, 'j': True})
-        else:
-            self.assertEqual(dict(conn1.write_concern), {'w': 1, 'j': True})
-            self.assertEqual(dict(conn2.write_concern), {'w': 1, 'j': True})
+        self.assertEqual(conn1.write_concern.document, {'w': 1, 'j': True})
+        self.assertEqual(conn2.write_concern.document, {'w': 1, 'j': True})
 
     def test_connect_with_replicaset_via_uri(self):
         """Ensure connect() works when specifying a replicaSet via the
         MongoDB URI.
         """
-        if IS_PYMONGO_3:
-            c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
-            db = get_db()
-            self.assertIsInstance(db, pymongo.database.Database)
-            self.assertEqual(db.name, 'test')
-        else:
-            # PyMongo < v3.x raises an exception:
-            # "localhost:27017 is not a member of replica set local-rs"
-            with self.assertRaises(MongoEngineConnectionError):
-                c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
+        c = connect(host='mongodb://localhost/test?replicaSet=local-rs')
+        db = get_db()
+        self.assertIsInstance(db, pymongo.database.Database)
+        self.assertEqual(db.name, 'test')
 
     def test_connect_with_replicaset_via_kwargs(self):
         """Ensure connect() works when specifying a replicaSet via the
         connection kwargs
         """
-        if IS_PYMONGO_3:
-            c = connect(replicaset='local-rs')
-            self.assertEqual(c._MongoClient__options.replica_set_name,
-                             'local-rs')
-            db = get_db()
-            self.assertIsInstance(db, pymongo.database.Database)
-            self.assertEqual(db.name, 'test')
-        else:
-            # PyMongo < v3.x raises an exception:
-            # "localhost:27017 is not a member of replica set local-rs"
-            with self.assertRaises(MongoEngineConnectionError):
-                c = connect(replicaset='local-rs')
+        c = connect(replicaset='local-rs')
+        self.assertEqual(c._MongoClient__options.replica_set_name,
+                         'local-rs')
+        db = get_db()
+        self.assertIsInstance(db, pymongo.database.Database)
+        self.assertEqual(db.name, 'test')
 
     def test_connect_tz_aware(self):
         connect('mongoenginetest', tz_aware=True)
@@ -618,10 +590,8 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(d, date_doc.the_date)
 
     def test_read_preference_from_parse(self):
-        if IS_PYMONGO_3:
-            from pymongo import ReadPreference
-            conn = connect(host="mongodb://a1.vpc,a2.vpc,a3.vpc/prod?readPreference=secondaryPreferred")
-            self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_PREFERRED)
+        conn = connect(host="mongodb://a1.vpc,a2.vpc,a3.vpc/prod?readPreference=secondaryPreferred")
+        self.assertEqual(conn.read_preference, ReadPreference.SECONDARY_PREFERRED)
 
     def test_multiple_connection_settings(self):
         connect('mongoenginetest', alias='t1', host="localhost")

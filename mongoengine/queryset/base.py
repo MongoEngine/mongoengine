@@ -10,6 +10,7 @@ from bson import SON, json_util
 from bson.code import Code
 import pymongo
 import pymongo.errors
+from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
 import six
 from six import iteritems
@@ -21,13 +22,9 @@ from mongoengine.connection import get_db
 from mongoengine.context_managers import set_write_concern, switch_db
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
-from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
-
-if IS_PYMONGO_3:
-    from pymongo.collection import ReturnDocument
 
 
 __all__ = ('BaseQuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
@@ -631,26 +628,20 @@ class BaseQuerySet(object):
         sort = queryset._ordering
 
         try:
-            if IS_PYMONGO_3:
-                if full_response:
-                    msg = 'With PyMongo 3+, it is not possible anymore to get the full response.'
-                    warnings.warn(msg, DeprecationWarning)
-                if remove:
-                    result = queryset._collection.find_one_and_delete(
-                        query, sort=sort, **self._cursor_args)
-                else:
-                    if new:
-                        return_doc = ReturnDocument.AFTER
-                    else:
-                        return_doc = ReturnDocument.BEFORE
-                    result = queryset._collection.find_one_and_update(
-                        query, update, upsert=upsert, sort=sort, return_document=return_doc,
-                        **self._cursor_args)
-
+            if full_response:
+                msg = 'With PyMongo 3+, it is not possible anymore to get the full response.'
+                warnings.warn(msg, DeprecationWarning)
+            if remove:
+                result = queryset._collection.find_one_and_delete(
+                    query, sort=sort, **self._cursor_args)
             else:
-                result = queryset._collection.find_and_modify(
-                    query, update, upsert=upsert, sort=sort, remove=remove, new=new,
-                    full_response=full_response, **self._cursor_args)
+                if new:
+                    return_doc = ReturnDocument.AFTER
+                else:
+                    return_doc = ReturnDocument.BEFORE
+                result = queryset._collection.find_one_and_update(
+                    query, update, upsert=upsert, sort=sort, return_document=return_doc,
+                    **self._cursor_args)
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u'Update failed (%s)' % err)
         except pymongo.errors.OperationFailure as err:
@@ -1082,9 +1073,8 @@ class BaseQuerySet(object):
         ..versionchanged:: 0.5 - made chainable
         .. deprecated:: Ignored with PyMongo 3+
         """
-        if IS_PYMONGO_3:
-            msg = 'snapshot is deprecated as it has no impact when using PyMongo 3+.'
-            warnings.warn(msg, DeprecationWarning)
+        msg = 'snapshot is deprecated as it has no impact when using PyMongo 3+.'
+        warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._snapshot = enabled
         return queryset
@@ -1108,9 +1098,8 @@ class BaseQuerySet(object):
 
         .. deprecated:: Ignored with PyMongo 3+
         """
-        if IS_PYMONGO_3:
-            msg = 'slave_okay is deprecated as it has no impact when using PyMongo 3+.'
-            warnings.warn(msg, DeprecationWarning)
+        msg = 'slave_okay is deprecated as it has no impact when using PyMongo 3+.'
+        warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._slave_okay = enabled
         return queryset
@@ -1211,7 +1200,7 @@ class BaseQuerySet(object):
 
         pipeline = initial_pipeline + list(pipeline)
 
-        if IS_PYMONGO_3 and self._read_preference is not None:
+        if self._read_preference is not None:
             return self._collection.with_options(read_preference=self._read_preference) \
                        .aggregate(pipeline, cursor={}, **kwargs)
 
@@ -1421,11 +1410,7 @@ class BaseQuerySet(object):
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {'$unwind': '$' + field})
 
-        result = self._document._get_collection().aggregate(pipeline)
-        if IS_PYMONGO_3:
-            result = tuple(result)
-        else:
-            result = result.get('result')
+        result = tuple(self._document._get_collection().aggregate(pipeline))
 
         if result:
             return result[0]['total']
@@ -1452,11 +1437,7 @@ class BaseQuerySet(object):
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {'$unwind': '$' + field})
 
-        result = self._document._get_collection().aggregate(pipeline)
-        if IS_PYMONGO_3:
-            result = tuple(result)
-        else:
-            result = result.get('result')
+        result = tuple(self._document._get_collection().aggregate(pipeline))
         if result:
             return result[0]['total']
         return 0
@@ -1564,7 +1545,7 @@ class BaseQuerySet(object):
         # XXX In PyMongo 3+, we define the read preference on a collection
         # level, not a cursor level. Thus, we need to get a cloned collection
         # object using `with_options` first.
-        if IS_PYMONGO_3 and self._read_preference is not None:
+        if self._read_preference is not None:
             self._cursor_obj = self._collection\
                 .with_options(read_preference=self._read_preference)\
                 .find(self._query, **self._cursor_args)

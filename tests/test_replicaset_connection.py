@@ -1,21 +1,14 @@
 import unittest
 
 from pymongo import ReadPreference
-
-from mongoengine.pymongo_support import IS_PYMONGO_3
-
-if IS_PYMONGO_3:
-    from pymongo import MongoClient
-    CONN_CLASS = MongoClient
-    READ_PREF = ReadPreference.SECONDARY
-else:
-    from pymongo import ReplicaSetConnection
-    CONN_CLASS = ReplicaSetConnection
-    READ_PREF = ReadPreference.SECONDARY_ONLY
+from pymongo import MongoClient
 
 import mongoengine
-from mongoengine import *
 from mongoengine.connection import MongoEngineConnectionError
+
+
+CONN_CLASS = MongoClient
+READ_PREF = ReadPreference.SECONDARY
 
 
 class ConnectionTest(unittest.TestCase):
@@ -35,7 +28,7 @@ class ConnectionTest(unittest.TestCase):
         """
 
         try:
-            conn = connect(db='mongoenginetest',
+            conn = mongoengine.connect(db='mongoenginetest',
                            host="mongodb://localhost/mongoenginetest?replicaSet=rs",
                            read_preference=READ_PREF)
         except MongoEngineConnectionError as e:
