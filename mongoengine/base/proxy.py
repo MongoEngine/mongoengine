@@ -34,7 +34,7 @@ class DocumentProxy(lazy_object_proxy.Proxy):
         return self.id is not None
 
     def __deepcopy__(self, memo):
-        if getattr(DocumentProxy, 'ingore_deep_copy', False):
+        if getattr(DocumentProxy, 'should_ignore_deep_copy', False):
             return self
         return copy.deepcopy(self.__wrapped__, memo)
 
@@ -44,6 +44,9 @@ class DocumentProxy(lazy_object_proxy.Proxy):
         """
         Ignore deep copy for DocumentProxy for performance reasons where needed.
         """
-        DocumentProxy.ingore_deep_copy = True
+        DocumentProxy.should_ignore_deep_copy = True
         yield
-        DocumentProxy.ingore_deep_copy = False
+        DocumentProxy.should_ignore_deep_copy = False
+
+    def __hash__(self):
+        return hash(self.id) if self.id is not None else hash(self.__wrapped__)
