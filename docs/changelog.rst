@@ -14,6 +14,7 @@ Development
     - disconnect now clears `mongoengine.connection._connection_settings`
     - disconnect now clears the cached attribute `Document._collection`
 - POTENTIAL BREAKING CHANGE: Aggregate gives wrong results when used with a queryset having limit and skip #2029
+- Fix the default write concern of .save that was overwriting the connection write concern #568
 - mongoengine now requires pymongo>=3.5 #2017
 - Generate Unique Indices for SortedListField and EmbeddedDocumentListFields #2020
 - connect() fails immediately when db name contains invalid characters #2031 #1718
