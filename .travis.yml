@@ -48,8 +48,8 @@ install:
 - travis_retry pip install --upgrade pip
 - travis_retry pip install coveralls
 - travis_retry pip install flake8 flake8-import-order
-- travis_retry pip install tox>=1.9
-- travis_retry pip install "virtualenv<14.0.0"  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
+- travis_retry pip install "tox"   # tox 3.11.0 has requirement virtualenv>=14.0.0
+- travis_retry pip install "virtualenv"  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
 - travis_retry tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 
 # Cache dependencies installed via pip
