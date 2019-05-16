@@ -6,7 +6,7 @@ from six import iteritems
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
            'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
            'OperationError', 'NotUniqueError', 'FieldDoesNotExist',
-           'ValidationError', 'SaveConditionError')
+           'ValidationError', 'SaveConditionError', 'DeprecatedError')
 
 
 class NotRegistered(Exception):

@@ -11,7 +11,7 @@ from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList)
 from mongoengine.common import _import_class
-from mongoengine.errors import ValidationError, DeprecatedError
+from mongoengine.errors import DeprecatedError, ValidationError
 
 __all__ = ('BaseField', 'ComplexBaseField', 'ObjectIdField',
            'GeoJsonBaseField')
