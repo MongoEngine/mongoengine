@@ -508,6 +508,23 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         p = Ocurrence.objects.get()
         self.assertIs(p.animal, None)
 
+    def test_generic_lazy_reference_accepts_string_instead_of_class(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField('Animal')
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal().save()
+        Ocurrence(animal=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertEqual(p.animal, animal)
+
     def test_generic_lazy_reference_embedded(self):
         class Animal(Document):
             name = StringField()
