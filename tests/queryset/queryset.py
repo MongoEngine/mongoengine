@@ -6,7 +6,6 @@ import uuid
 from decimal import Decimal
 
 from bson import DBRef, ObjectId
-from nose.plugins.skip import SkipTest
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
@@ -18,7 +17,7 @@ from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_36
 from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
@@ -31,6 +30,12 @@ class db_ops_tracker(query_counter):
         ignore_query = dict(self._ignored_query)
         ignore_query['command.count'] = {'$ne': 'system.profile'}   # Ignore the query issued by query_counter
         return list(self.db.system.profile.find(ignore_query))
+
+
+def get_key_compat(mongo_ver):
+    ORDER_BY_KEY = 'sort' if mongo_ver >= MONGODB_32 else '$orderby'
+    CMD_QUERY_KEY = 'command' if mongo_ver >= MONGODB_36 else 'query'
+    return ORDER_BY_KEY, CMD_QUERY_KEY
 
 
 class QuerySetTest(unittest.TestCase):
@@ -1351,8 +1356,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that the default ordering can be cleared by calling
         order_by() w/o any arguments.
         """
-        MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER >= MONGODB_32 else '$orderby'
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class BlogPost(Document):
             title = StringField()
@@ -1369,7 +1373,7 @@ class QuerySetTest(unittest.TestCase):
             BlogPost.objects.filter(title='whatever').first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0]['query'][ORDER_BY_KEY],
+                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY],
                 {'published_date': -1}
             )
 
@@ -1377,14 +1381,14 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
         # calling an explicit order_by should use a specified sort
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by('published_date').first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0]['query'][ORDER_BY_KEY],
+                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY],
                 {'published_date': 1}
             )
 
@@ -1393,13 +1397,12 @@ class QuerySetTest(unittest.TestCase):
             qs = BlogPost.objects.filter(title='whatever').order_by('published_date')
             qs.order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
     def test_no_ordering_for_get(self):
         """ Ensure that Doc.objects.get doesn't use any ordering.
         """
-        MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER == MONGODB_32 else '$orderby'
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class BlogPost(Document):
             title = StringField()
@@ -1415,13 +1418,13 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.get(title='whatever')
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
         # Ordering should be ignored for .get even if we set it explicitly
         with db_ops_tracker() as q:
             BlogPost.objects.order_by('-title').get(title='whatever')
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from
@@ -2594,6 +2597,7 @@ class QuerySetTest(unittest.TestCase):
     def test_comment(self):
         """Make sure adding a comment to the query gets added to the query"""
         MONGO_VER = self.mongodb_version
+        _, CMD_QUERY_KEY = get_key_compat(MONGO_VER)
         QUERY_KEY = 'filter' if MONGO_VER >= MONGODB_32 else '$query'
         COMMENT_KEY = 'comment' if MONGO_VER >= MONGODB_32 else '$comment'
 
@@ -2612,8 +2616,8 @@ class QuerySetTest(unittest.TestCase):
             ops = q.get_ops()
             self.assertEqual(len(ops), 2)
             for op in ops:
-                self.assertEqual(op['query'][QUERY_KEY], {'age': {'$gte': 18}})
-                self.assertEqual(op['query'][COMMENT_KEY], 'looking for an adult')
+                self.assertEqual(op[CMD_QUERY_KEY][QUERY_KEY], {'age': {'$gte': 18}})
+                self.assertEqual(op[CMD_QUERY_KEY][COMMENT_KEY], 'looking for an adult')
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
@@ -5341,8 +5345,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(op['nreturned'], 1)
 
     def test_bool_with_ordering(self):
-        MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER >= MONGODB_32 else '$orderby'
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class Person(Document):
             name = StringField()
@@ -5361,21 +5364,22 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertNotIn(ORDER_BY_KEY, op['query'])
+            self.assertNotIn(ORDER_BY_KEY, op[CMD_QUERY_KEY])
 
         # Check that normal query uses orderby
         qs2 = Person.objects.order_by('name')
-        with query_counter() as p:
+        with query_counter() as q:
 
             for x in qs2:
                 pass
 
-            op = p.db.system.profile.find({"ns":
+            op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertIn(ORDER_BY_KEY, op['query'])
+            self.assertIn(ORDER_BY_KEY, op[CMD_QUERY_KEY])
 
     def test_bool_with_ordering_from_meta_dict(self):
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class Person(Document):
             name = StringField()
@@ -5397,7 +5401,7 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertNotIn('$orderby', op['query'],
+            self.assertNotIn('$orderby', op[CMD_QUERY_KEY],
                              'BaseQuerySet must remove orderby from meta in boolen test')
 
             self.assertEqual(Person.objects.first().name, 'A')
