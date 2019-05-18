@@ -184,9 +184,6 @@ class DocumentMetaclass(type):
                 if issubclass(new_class, EmbeddedDocument):
                     raise InvalidDocumentError('CachedReferenceFields is not '
                                                'allowed in EmbeddedDocuments')
-                if not f.document_type:
-                    raise InvalidDocumentError(
-                        'Document is not available to sync')
 
                 if f.auto_sync:
                     f.start_listener()

@@ -75,6 +75,16 @@ class TestEmailField(MongoDBTestCase):
         user = User(email='me@localhost')
         user.validate()
 
+    def test_email_domain_validation_fails_if_invalid_idn(self):
+        class User(Document):
+            email = EmailField()
+
+        invalid_idn = '.google.com'
+        user = User(email='me@%s' % invalid_idn)
+        with self.assertRaises(ValidationError) as ctx_err:
+            user.validate()
+        self.assertIn("domain failed IDN encoding", str(ctx_err.exception))
+
     def test_email_field_ip_domain(self):
         class User(Document):
             email = EmailField()

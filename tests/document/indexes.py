@@ -593,8 +593,9 @@ class IndexesTest(unittest.TestCase):
         # Two posts with the same slug is not allowed
         post2 = BlogPost(title='test2', slug='test')
         self.assertRaises(NotUniqueError, post2.save)
+        self.assertRaises(NotUniqueError, BlogPost.objects.insert, post2)
 
-        # Ensure backwards compatibilty for errors
+        # Ensure backwards compatibility for errors
         self.assertRaises(OperationError, post2.save)
 
     @requires_mongodb_gte_34
@@ -826,6 +827,18 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(3600,
                          info['created_1']['expireAfterSeconds'])
 
+    def test_index_drop_dups_silently_ignored(self):
+        class Customer(Document):
+            cust_id = IntField(unique=True, required=True)
+            meta = {
+                'indexes': ['cust_id'],
+                'index_drop_dups': True,
+                'allow_inheritance': False,
+            }
+
+        Customer.drop_collection()
+        Customer.objects.first()
+
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
         meta.indexes.
@@ -842,11 +855,16 @@ class IndexesTest(unittest.TestCase):
         cust.save()
 
         cust_dupe = Customer(cust_id=1)
-        try:
+        with self.assertRaises(NotUniqueError):
             cust_dupe.save()
-            raise AssertionError("We saved a dupe!")
-        except NotUniqueError:
-            pass
+
+        cust = Customer(cust_id=2)
+        cust.save()
+
+        # duplicate key on update
+        with self.assertRaises(NotUniqueError):
+            cust.cust_id = 1
+            cust.save()
 
     def test_primary_save_duplicate_update_existing_object(self):
         """If you set a field as primary, then unexpected behaviour can occur.

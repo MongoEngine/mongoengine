@@ -39,9 +39,9 @@ class TestLongField(MongoDBTestCase):
 
         doc.value = -1
         self.assertRaises(ValidationError, doc.validate)
-        doc.age = 120
+        doc.value = 120
         self.assertRaises(ValidationError, doc.validate)
-        doc.age = 'ten'
+        doc.value = 'ten'
         self.assertRaises(ValidationError, doc.validate)
 
     def test_long_ne_operator(self):

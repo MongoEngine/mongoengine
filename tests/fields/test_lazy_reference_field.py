@@ -13,6 +13,35 @@ class TestLazyReferenceField(MongoDBTestCase):
         # with a document class name.
         self.assertRaises(ValidationError, LazyReferenceField, EmbeddedDocument)
 
+    def test___repr__(self):
+        class Animal(Document):
+            pass
+
+        class Ocurrence(Document):
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal()
+        oc = Ocurrence(animal=animal)
+        self.assertIn('LazyReference', repr(oc.animal))
+
+    def test___getattr___unknown_attr_raises_attribute_error(self):
+        class Animal(Document):
+            pass
+
+        class Ocurrence(Document):
+            animal = LazyReferenceField(Animal)
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal().save()
+        oc = Ocurrence(animal=animal)
+        with self.assertRaises(AttributeError):
+            oc.animal.not_exist
+
     def test_lazy_reference_simple(self):
         class Animal(Document):
             name = StringField()
@@ -478,6 +507,23 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         Ocurrence(person='foo').save()
         p = Ocurrence.objects.get()
         self.assertIs(p.animal, None)
+
+    def test_generic_lazy_reference_accepts_string_instead_of_class(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            person = StringField()
+            animal = GenericLazyReferenceField('Animal')
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal = Animal().save()
+        Ocurrence(animal=animal).save()
+        p = Ocurrence.objects.get()
+        self.assertEqual(p.animal, animal)
 
     def test_generic_lazy_reference_embedded(self):
         class Animal(Document):

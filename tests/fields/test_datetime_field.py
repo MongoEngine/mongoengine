@@ -172,6 +172,9 @@ class TestDateTimeField(MongoDBTestCase):
         log.time = datetime.datetime.now().isoformat(' ')
         log.validate()
 
+        log.time = '2019-05-16 21:42:57.897847'
+        log.validate()
+
         if dateutil:
             log.time = datetime.datetime.now().isoformat('T')
             log.validate()
@@ -179,6 +182,12 @@ class TestDateTimeField(MongoDBTestCase):
         log.time = -1
         self.assertRaises(ValidationError, log.validate)
         log.time = 'ABC'
+        self.assertRaises(ValidationError, log.validate)
+        log.time = '2019-05-16 21:GARBAGE:12'
+        self.assertRaises(ValidationError, log.validate)
+        log.time = '2019-05-16 21:42:57.GARBAGE'
+        self.assertRaises(ValidationError, log.validate)
+        log.time = '2019-05-16 21:42:57.123.456'
         self.assertRaises(ValidationError, log.validate)
 
 

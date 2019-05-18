@@ -110,9 +110,6 @@ class ValidationError(AssertionError):
 
         def build_dict(source):
             errors_dict = {}
-            if not source:
-                return errors_dict
-
             if isinstance(source, dict):
                 for field_name, error in iteritems(source):
                     errors_dict[field_name] = build_dict(error)
