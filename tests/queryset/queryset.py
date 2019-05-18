@@ -2193,6 +2193,40 @@ class QuerySetTest(unittest.TestCase):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__helpful__name=['Ross'])
 
+    def test_pull_from_nested_embedded_using_in_nin(self):
+        """Ensure that the 'pull' update operation works on embedded documents using 'in' and 'nin' operators.
+        """
+        
+        class User(EmbeddedDocument):
+            name = StringField()
+
+            def __unicode__(self):
+                return '%s' % self.name
+
+        class Collaborator(EmbeddedDocument):
+            helpful = ListField(EmbeddedDocumentField(User))
+            unhelpful = ListField(EmbeddedDocumentField(User))
+
+        class Site(Document):
+            name = StringField(max_length=75, unique=True, required=True)
+            collaborators = EmbeddedDocumentField(Collaborator)
+
+        Site.drop_collection()
+
+        a = User(name='Esteban')
+        b = User(name='Frank')
+        x = User(name='Harry')
+        y = User(name='John')
+        
+        s = Site(name="test", collaborators=Collaborator(
+            helpful=[a, b], unhelpful=[x, y])).save()
+
+        Site.objects(id=s.id).update_one(pull__collaborators__helpful__name__in=['Esteban'])  # Pull a
+        self.assertEqual(Site.objects.first().collaborators['helpful'], [b])
+
+        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful__name__nin=['John'])  # Pull x
+        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [y])
+
     def test_pull_from_nested_mapfield(self):
 
         class Collaborator(EmbeddedDocument):

@@ -281,7 +281,7 @@ def update(_doc_cls=None, **update):
 
             if op == 'pull':
                 if field.required or value is not None:
-                    if match == 'in' and not isinstance(value, dict):
+                    if match in ('in', 'nin') and not isinstance(value, dict):
                         value = _prepare_query_for_iterable(field, op, value)
                     else:
                         value = field.prepare_query_value(op, value)

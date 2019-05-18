@@ -283,6 +283,11 @@ class TransformTest(unittest.TestCase):
         update = transform.update(MainDoc, pull__content__heading='xyz')
         self.assertEqual(update, {'$pull': {'content.heading': 'xyz'}})
 
+        update = transform.update(MainDoc, pull__content__text__word__in=['foo', 'bar'])
+        self.assertEqual(update, {'$pull': {'content.text': {'word': {'$in': ['foo', 'bar']}}}})
+
+        update = transform.update(MainDoc, pull__content__text__word__nin=['foo', 'bar'])
+        self.assertEqual(update, {'$pull': {'content.text': {'word': {'$nin': ['foo', 'bar']}}}})
 
 if __name__ == '__main__':
     unittest.main()
