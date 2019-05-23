@@ -5,7 +5,7 @@ from nose.plugins.skip import SkipTest
 
 from mongoengine import connect
 from mongoengine.connection import get_db, disconnect_all
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_26, MONGODB_3, MONGODB_32, MONGODB_34
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_26, MONGODB_3, MONGODB_32, MONGODB_34, MONGODB_36
 from mongoengine.pymongo_support import IS_PYMONGO_3
 
 
@@ -53,6 +53,11 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     _inner.__doc__ = func.__doc__
     return _inner
 
+def requires_mongodb_gte_36(func):
+    """Raise a SkipTest exception if we're working with MongoDB version
+    lower than v36
+    """
+    return _decorated_with_ver_requirement(func, MONGODB_36, oper=operator.ge)
 
 def requires_mongodb_gte_34(func):
     """Raise a SkipTest exception if we're working with MongoDB version
