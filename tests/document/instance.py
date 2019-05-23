@@ -20,7 +20,7 @@ from tests.utils import MongoDBTestCase
 
 from mongoengine import *
 from mongoengine.base import get_document, _document_registry
-from mongoengine.connection import get_db
+from mongoengine.connection import get_db, get_connection
 from mongoengine.errors import (NotRegistered, InvalidDocumentError,
                                 InvalidQueryError, NotUniqueError,
                                 FieldDoesNotExist, SaveConditionError)
@@ -28,7 +28,7 @@ from mongoengine.queryset import NULLIFY, Q
 from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
 
-from tests.utils import requires_mongodb_gte_26
+from tests.utils import requires_mongodb_gte_26, requires_mongodb_gte_36
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
@@ -1165,6 +1165,22 @@ class InstanceTest(MongoDBTestCase):
         w1.reload()
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
+
+    @requires_mongodb_gte_36
+    def test_save_session(self):
+        """test_save_session: Ensure that save session parameter works properly"""
+
+        # Create person object and save using the session parameter
+        person = self.Person(name='Test User', age=30)
+        with get_connection().start_session() as session:
+            person.save(session=session)
+
+        # Ensure that the object is in the database
+        collection = self.db[self.Person._get_collection_name()]
+        person_obj = collection.find_one({'name': 'Test User'})
+        self.assertEqual(person_obj['name'], 'Test User')
+        self.assertEqual(person_obj['age'], 30)
+        self.assertEqual(person_obj['_id'], person.id)
 
     def test_update(self):
         """Ensure that an existing document is updated instead of be
