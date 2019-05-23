@@ -208,10 +208,7 @@ class TestCachedReferenceField(MongoDBTestCase):
                 ('pj', "PJ")
             )
             name = StringField()
-            tp = StringField(
-                choices=TYPES
-            )
-
+            tp = StringField(choices=TYPES)
             father = CachedReferenceField('self', fields=('tp',))
 
         Person.drop_collection()
@@ -221,6 +218,9 @@ class TestCachedReferenceField(MongoDBTestCase):
 
         a2 = Person(name='Wilson Junior', tp='pf', father=a1)
         a2.save()
+
+        a2 = Person.objects.with_id(a2.id)
+        self.assertEqual(a2.father.tp, a1.tp)
 
         self.assertEqual(dict(a2.to_mongo()), {
             "_id": a2.pk,
@@ -373,6 +373,9 @@ class TestCachedReferenceField(MongoDBTestCase):
         })
         self.assertEqual(o.to_mongo()['animal']['tag'], 'heavy')
         self.assertEqual(o.to_mongo()['animal']['owner']['t'], 'u')
+
+        # Check to_mongo with fields
+        self.assertNotIn('animal', o.to_mongo(fields=['person']))
 
         # counts
         Ocorrence(person="teste 2").save()

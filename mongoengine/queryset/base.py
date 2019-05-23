@@ -194,7 +194,7 @@ class BaseQuerySet(object):
                 only_fields=self.only_fields
             )
 
-        raise AttributeError('Provide a slice or an integer index')
+        raise TypeError('Provide a slice or an integer index')
 
     def __iter__(self):
         raise NotImplementedError

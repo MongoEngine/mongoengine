@@ -270,6 +270,14 @@ class ContextManagersTest(unittest.TestCase):
                 counter += 1
             self.assertEqual(q, counter)
 
+            self.assertEqual(int(q), counter)       # test __int__
+            self.assertEqual(repr(q), str(int(q)))  # test __repr__
+            self.assertGreater(q, -1)               # test __gt__
+            self.assertGreaterEqual(q, int(q))      # test __gte__
+            self.assertNotEqual(q, -1)
+            self.assertLess(q, 1000)
+            self.assertLessEqual(q, int(q))
+
     def test_query_counter_counts_getmore_queries(self):
         connect('mongoenginetest')
         db = get_db()

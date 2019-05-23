@@ -6,7 +6,6 @@ import uuid
 from decimal import Decimal
 
 from bson import DBRef, ObjectId
-from nose.plugins.skip import SkipTest
 import pymongo
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
@@ -18,7 +17,7 @@ from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_36
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 from tests.utils import requires_mongodb_gte_26
@@ -30,6 +29,12 @@ class db_ops_tracker(query_counter):
         ignore_query = dict(self._ignored_query)
         ignore_query['command.count'] = {'$ne': 'system.profile'}   # Ignore the query issued by query_counter
         return list(self.db.system.profile.find(ignore_query))
+
+
+def get_key_compat(mongo_ver):
+    ORDER_BY_KEY = 'sort' if mongo_ver >= MONGODB_32 else '$orderby'
+    CMD_QUERY_KEY = 'command' if mongo_ver >= MONGODB_36 else 'query'
+    return ORDER_BY_KEY, CMD_QUERY_KEY
 
 
 class QuerySetTest(unittest.TestCase):
@@ -156,6 +161,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(person, user_b)
         self.assertEqual(person.name, 'User B')
         self.assertEqual(person.age, None)
+
+    def test___getitem___invalid_index(self):
+        """Ensure slicing a queryset works as expected."""
+        with self.assertRaises(TypeError):
+            self.Person.objects()['a']
 
     def test_slice(self):
         """Ensure slicing a queryset works as expected."""
@@ -985,6 +995,29 @@ class QuerySetTest(unittest.TestCase):
         inserted_comment_id = Comment.objects.insert(comment, load_bulk=False)
         self.assertEqual(comment.id, inserted_comment_id)
 
+    def test_bulk_insert_accepts_doc_with_ids(self):
+        class Comment(Document):
+            id = IntField(primary_key=True)
+
+        Comment.drop_collection()
+
+        com1 = Comment(id=0)
+        com2 = Comment(id=1)
+        Comment.objects.insert([com1, com2])
+
+    def test_insert_raise_if_duplicate_in_constraint(self):
+        class Comment(Document):
+            id = IntField(primary_key=True)
+
+        Comment.drop_collection()
+
+        com1 = Comment(id=0)
+
+        Comment.objects.insert(com1)
+
+        with self.assertRaises(NotUniqueError):
+            Comment.objects.insert(com1)
+
     def test_get_changed_fields_query_count(self):
         """Make sure we don't perform unnecessary db operations when
         none of document's fields were updated.
@@ -1280,8 +1313,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that the default ordering can be cleared by calling
         order_by() w/o any arguments.
         """
-        MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER >= MONGODB_32 else '$orderby'
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class BlogPost(Document):
             title = StringField()
@@ -1298,7 +1330,7 @@ class QuerySetTest(unittest.TestCase):
             BlogPost.objects.filter(title='whatever').first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0]['query'][ORDER_BY_KEY],
+                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY],
                 {'published_date': -1}
             )
 
@@ -1306,14 +1338,14 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
         # calling an explicit order_by should use a specified sort
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by('published_date').first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0]['query'][ORDER_BY_KEY],
+                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY],
                 {'published_date': 1}
             )
 
@@ -1322,13 +1354,12 @@ class QuerySetTest(unittest.TestCase):
             qs = BlogPost.objects.filter(title='whatever').order_by('published_date')
             qs.order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
     def test_no_ordering_for_get(self):
         """ Ensure that Doc.objects.get doesn't use any ordering.
         """
-        MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER == MONGODB_32 else '$orderby'
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class BlogPost(Document):
             title = StringField()
@@ -1344,13 +1375,13 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.get(title='whatever')
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
         # Ordering should be ignored for .get even if we set it explicitly
         with db_ops_tracker() as q:
             BlogPost.objects.order_by('-title').get(title='whatever')
             self.assertEqual(len(q.get_ops()), 1)
-            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0]['query'])
+            self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
     def test_find_embedded(self):
         """Ensure that an embedded document is properly returned from
@@ -2150,6 +2181,40 @@ class QuerySetTest(unittest.TestCase):
             Site.objects(id=s.id).update_one(
                 pull_all__collaborators__helpful__name=['Ross'])
 
+    def test_pull_from_nested_embedded_using_in_nin(self):
+        """Ensure that the 'pull' update operation works on embedded documents using 'in' and 'nin' operators.
+        """
+
+        class User(EmbeddedDocument):
+            name = StringField()
+
+            def __unicode__(self):
+                return '%s' % self.name
+
+        class Collaborator(EmbeddedDocument):
+            helpful = ListField(EmbeddedDocumentField(User))
+            unhelpful = ListField(EmbeddedDocumentField(User))
+
+        class Site(Document):
+            name = StringField(max_length=75, unique=True, required=True)
+            collaborators = EmbeddedDocumentField(Collaborator)
+
+        Site.drop_collection()
+
+        a = User(name='Esteban')
+        b = User(name='Frank')
+        x = User(name='Harry')
+        y = User(name='John')
+
+        s = Site(name="test", collaborators=Collaborator(
+            helpful=[a, b], unhelpful=[x, y])).save()
+
+        Site.objects(id=s.id).update_one(pull__collaborators__helpful__name__in=['Esteban'])  # Pull a
+        self.assertEqual(Site.objects.first().collaborators['helpful'], [b])
+
+        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful__name__nin=['John'])  # Pull x
+        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [y])
+
     def test_pull_from_nested_mapfield(self):
 
         class Collaborator(EmbeddedDocument):
@@ -2489,6 +2554,7 @@ class QuerySetTest(unittest.TestCase):
     def test_comment(self):
         """Make sure adding a comment to the query gets added to the query"""
         MONGO_VER = self.mongodb_version
+        _, CMD_QUERY_KEY = get_key_compat(MONGO_VER)
         QUERY_KEY = 'filter' if MONGO_VER >= MONGODB_32 else '$query'
         COMMENT_KEY = 'comment' if MONGO_VER >= MONGODB_32 else '$comment'
 
@@ -2507,8 +2573,8 @@ class QuerySetTest(unittest.TestCase):
             ops = q.get_ops()
             self.assertEqual(len(ops), 2)
             for op in ops:
-                self.assertEqual(op['query'][QUERY_KEY], {'age': {'$gte': 18}})
-                self.assertEqual(op['query'][COMMENT_KEY], 'looking for an adult')
+                self.assertEqual(op[CMD_QUERY_KEY][QUERY_KEY], {'age': {'$gte': 18}})
+                self.assertEqual(op[CMD_QUERY_KEY][COMMENT_KEY], 'looking for an adult')
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
@@ -3525,6 +3591,11 @@ class QuerySetTest(unittest.TestCase):
                 return qryset(**opts)
 
             @queryset_manager
+            def objects_1_arg(qryset):
+                opts = {"deleted": False}
+                return qryset(**opts)
+
+            @queryset_manager
             def music_posts(doc_cls, queryset, deleted=False):
                 return queryset(tags='music',
                                 deleted=deleted).order_by('date')
@@ -3537,6 +3608,8 @@ class QuerySetTest(unittest.TestCase):
         post4 = BlogPost(tags=['film', 'actors', 'music'], deleted=True).save()
 
         self.assertEqual([p.id for p in BlogPost.objects()],
+                         [post1.id, post2.id, post3.id])
+        self.assertEqual([p.id for p in BlogPost.objects_1_arg()],
                          [post1.id, post2.id, post3.id])
         self.assertEqual([p.id for p in BlogPost.music_posts()],
                          [post1.id, post2.id])
@@ -4914,6 +4987,38 @@ class QuerySetTest(unittest.TestCase):
             people.count()
             self.assertEqual(q, 3)
 
+    def test_no_cached_queryset__repr__(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        qs = Person.objects.no_cache()
+        self.assertEqual(repr(qs), '[]')
+
+    def test_no_cached_on_a_cached_queryset_raise_error(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name='a').save()
+        qs = Person.objects()
+        _ = list(qs)
+        with self.assertRaises(OperationError) as ctx_err:
+            qs.no_cache()
+        self.assertEqual("QuerySet already cached", str(ctx_err.exception))
+
+    def test_no_cached_queryset_no_cache_back_to_cache(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        qs = Person.objects()
+        self.assertIsInstance(qs, QuerySet)
+        qs = qs.no_cache()
+        self.assertIsInstance(qs, QuerySetNoCache)
+        qs = qs.cache()
+        self.assertIsInstance(qs, QuerySet)
+
     def test_cache_not_cloned(self):
 
         class User(Document):
@@ -5186,8 +5291,7 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(op['nreturned'], 1)
 
     def test_bool_with_ordering(self):
-        MONGO_VER = self.mongodb_version
-        ORDER_BY_KEY = 'sort' if MONGO_VER >= MONGODB_32 else '$orderby'
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class Person(Document):
             name = StringField()
@@ -5206,21 +5310,22 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertNotIn(ORDER_BY_KEY, op['query'])
+            self.assertNotIn(ORDER_BY_KEY, op[CMD_QUERY_KEY])
 
         # Check that normal query uses orderby
         qs2 = Person.objects.order_by('name')
-        with query_counter() as p:
+        with query_counter() as q:
 
             for x in qs2:
                 pass
 
-            op = p.db.system.profile.find({"ns":
+            op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertIn(ORDER_BY_KEY, op['query'])
+            self.assertIn(ORDER_BY_KEY, op[CMD_QUERY_KEY])
 
     def test_bool_with_ordering_from_meta_dict(self):
+        ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class Person(Document):
             name = StringField()
@@ -5242,7 +5347,7 @@ class QuerySetTest(unittest.TestCase):
             op = q.db.system.profile.find({"ns":
                                            {"$ne": "%s.system.indexes" % q.db.name}})[0]
 
-            self.assertNotIn('$orderby', op['query'],
+            self.assertNotIn('$orderby', op[CMD_QUERY_KEY],
                              'BaseQuerySet must remove orderby from meta in boolen test')
 
             self.assertEqual(Person.objects.first().name, 'A')

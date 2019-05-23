@@ -1,4 +1,5 @@
 import unittest
+from six import iterkeys
 
 from mongoengine import Document
 from mongoengine.base.datastructures import StrictDict, BaseList, BaseDict
@@ -367,6 +368,20 @@ class TestStrictDict(unittest.TestCase):
     def test_init(self):
         d = self.dtype(a=1, b=1, c=1)
         self.assertEqual((d.a, d.b, d.c), (1, 1, 1))
+
+    def test_iterkeys(self):
+        d = self.dtype(a=1)
+        self.assertEqual(list(iterkeys(d)), ['a'])
+
+    def test_len(self):
+        d = self.dtype(a=1)
+        self.assertEqual(len(d), 1)
+
+    def test_pop(self):
+        d = self.dtype(a=1)
+        self.assertIn('a', d)
+        d.pop('a')
+        self.assertNotIn('a', d)
 
     def test_repr(self):
         d = self.dtype(a=1, b=2, c=3)

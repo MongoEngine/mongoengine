@@ -86,18 +86,10 @@ def query(_doc_cls=None, **kwargs):
             singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte', 'not']
             singular_ops += STRING_OPERATORS
             if op in singular_ops:
-                if isinstance(field, six.string_types):
-                    if (op in STRING_OPERATORS and
-                            isinstance(value, six.string_types)):
-                        StringField = _import_class('StringField')
-                        value = StringField.prepare_query_value(op, value)
-                    else:
-                        value = field
-                else:
-                    value = field.prepare_query_value(op, value)
+                value = field.prepare_query_value(op, value)
 
-                    if isinstance(field, CachedReferenceField) and value:
-                        value = value['_id']
+                if isinstance(field, CachedReferenceField) and value:
+                    value = value['_id']
 
             elif op in ('in', 'nin', 'all', 'near') and not isinstance(value, dict):
                 # Raise an error if the in/nin/all/near param is not iterable.
@@ -277,7 +269,7 @@ def update(_doc_cls=None, **update):
 
             if op == 'pull':
                 if field.required or value is not None:
-                    if match == 'in' and not isinstance(value, dict):
+                    if match in ('in', 'nin') and not isinstance(value, dict):
                         value = _prepare_query_for_iterable(field, op, value)
                     else:
                         value = field.prepare_query_value(op, value)
@@ -303,10 +295,6 @@ def update(_doc_cls=None, **update):
             value = {match: value}
 
         key = '.'.join(parts)
-
-        if not op:
-            raise InvalidQueryError('Updates must supply an operation '
-                                    'eg: set__FIELD=value')
 
         if 'pull' in op and '.' in key:
             # Dot operators don't work on pull operations

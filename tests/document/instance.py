@@ -420,6 +420,12 @@ class InstanceTest(MongoDBTestCase):
         person.save()
         person.to_dbref()
 
+    def test_key_like_attribute_access(self):
+        person = self.Person(age=30)
+        self.assertEqual(person['age'], 30)
+        with self.assertRaises(KeyError):
+            person['unknown_attr']
+
     def test_save_abstract_document(self):
         """Saving an abstract document should fail."""
         class Doc(Document):
