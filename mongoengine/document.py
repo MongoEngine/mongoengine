@@ -18,7 +18,7 @@ from mongoengine.context_managers import (set_write_concern,
                                           switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
-from mongoengine.pymongo_support import IS_PYMONGO_3, list_collection_names
+from mongoengine.pymongo_support import list_collection_names
 from mongoengine.queryset import (NotUniqueError, OperationError,
                                   QuerySet, transform)
 
@@ -816,18 +816,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         index_spec = index_spec.copy()
         fields = index_spec.pop('fields')
         drop_dups = kwargs.get('drop_dups', False)
-        if IS_PYMONGO_3 and drop_dups:
+        if drop_dups:
             msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
-        elif not IS_PYMONGO_3:
-            index_spec['drop_dups'] = drop_dups
         index_spec['background'] = background
         index_spec.update(kwargs)
 
-        if IS_PYMONGO_3:
-            return cls._get_collection().create_index(fields, **index_spec)
-        else:
-            return cls._get_collection().ensure_index(fields, **index_spec)
+        return cls._get_collection().create_index(fields, **index_spec)
 
     @classmethod
     def ensure_index(cls, key_or_list, drop_dups=False, background=False,
@@ -842,11 +837,9 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         :param drop_dups: Was removed/ignored with MongoDB >2.7.5. The value
             will be removed if PyMongo3+ is used
         """
-        if IS_PYMONGO_3 and drop_dups:
+        if drop_dups:
             msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
-        elif not IS_PYMONGO_3:
-            kwargs.update({'drop_dups': drop_dups})
         return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
@@ -862,7 +855,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         drop_dups = cls._meta.get('index_drop_dups', False)
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
-        if IS_PYMONGO_3 and drop_dups:
+        if drop_dups:
             msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
 
@@ -893,11 +886,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 if 'cls' in opts:
                     del opts['cls']
 
-                if IS_PYMONGO_3:
-                    collection.create_index(fields, background=background, **opts)
-                else:
-                    collection.ensure_index(fields, background=background,
-                                            drop_dups=drop_dups, **opts)
+                collection.create_index(fields, background=background, **opts)
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
@@ -908,12 +897,8 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             if 'cls' in index_opts:
                 del index_opts['cls']
 
-            if IS_PYMONGO_3:
-                collection.create_index('_cls', background=background,
-                                        **index_opts)
-            else:
-                collection.ensure_index('_cls', background=background,
-                                        **index_opts)
+            collection.create_index('_cls', background=background,
+                                    **index_opts)
 
     @classmethod
     def list_indexes(cls):

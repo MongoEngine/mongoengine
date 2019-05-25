@@ -18,10 +18,9 @@ from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_36
-from mongoengine.pymongo_support import IS_PYMONGO_3
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
-from tests.utils import requires_mongodb_gte_26, skip_pymongo3
+from tests.utils import requires_mongodb_gte_26
 
 
 class db_ops_tracker(query_counter):
@@ -1079,48 +1078,6 @@ class QuerySetTest(unittest.TestCase):
             org.employees.append(p2)  # dereferences p2
             org.save()  # saves the org
             self.assertEqual(q, 2)
-
-    @skip_pymongo3
-    def test_slave_okay(self):
-        """Ensures that a query can take slave_okay syntax.
-        Useless with PyMongo 3+ as well as with MongoDB 3+.
-        """
-        person1 = self.Person(name="User A", age=20)
-        person1.save()
-        person2 = self.Person(name="User B", age=30)
-        person2.save()
-
-        # Retrieve the first person from the database
-        person = self.Person.objects.slave_okay(True).first()
-        self.assertIsInstance(person, self.Person)
-        self.assertEqual(person.name, "User A")
-        self.assertEqual(person.age, 20)
-
-    @requires_mongodb_gte_26
-    @skip_pymongo3
-    def test_cursor_args(self):
-        """Ensures the cursor args can be set as expected
-        """
-        p = self.Person.objects
-        # Check default
-        self.assertEqual(p._cursor_args,
-                         {'snapshot': False, 'slave_okay': False, 'timeout': True})
-
-        p = p.snapshot(False).slave_okay(False).timeout(False)
-        self.assertEqual(p._cursor_args,
-                         {'snapshot': False, 'slave_okay': False, 'timeout': False})
-
-        p = p.snapshot(True).slave_okay(False).timeout(False)
-        self.assertEqual(p._cursor_args,
-                         {'snapshot': True, 'slave_okay': False, 'timeout': False})
-
-        p = p.snapshot(True).slave_okay(True).timeout(False)
-        self.assertEqual(p._cursor_args,
-                         {'snapshot': True, 'slave_okay': True, 'timeout': False})
-
-        p = p.snapshot(True).slave_okay(True).timeout(True)
-        self.assertEqual(p._cursor_args,
-                         {'snapshot': True, 'slave_okay': True, 'timeout': True})
 
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
@@ -2227,7 +2184,7 @@ class QuerySetTest(unittest.TestCase):
     def test_pull_from_nested_embedded_using_in_nin(self):
         """Ensure that the 'pull' update operation works on embedded documents using 'in' and 'nin' operators.
         """
-        
+
         class User(EmbeddedDocument):
             name = StringField()
 
@@ -2248,7 +2205,7 @@ class QuerySetTest(unittest.TestCase):
         b = User(name='Frank')
         x = User(name='Harry')
         y = User(name='John')
-        
+
         s = Site(name="test", collaborators=Collaborator(
             helpful=[a, b], unhelpful=[x, y])).save()
 
@@ -3481,10 +3438,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(query.count(), 3)
         self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
         cursor_args = query._cursor_args
-        if not IS_PYMONGO_3:
-            cursor_args_fields = cursor_args['fields']
-        else:
-            cursor_args_fields = cursor_args['projection']
+        cursor_args_fields = cursor_args['projection']
         self.assertEqual(
             cursor_args_fields, {'_text_score': {'$meta': 'textScore'}})
 
@@ -4584,11 +4538,7 @@ class QuerySetTest(unittest.TestCase):
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
         self.assertEqual([], bars)
 
-        if not IS_PYMONGO_3:
-            error_class = ConfigurationError
-        else:
-            error_class = TypeError
-        self.assertRaises(error_class, Bar.objects, read_preference='Primary')
+        self.assertRaises(TypeError, Bar.objects, read_preference='Primary')
 
         # read_preference as a kwarg
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
@@ -4648,12 +4598,8 @@ class QuerySetTest(unittest.TestCase):
         bars = Bar.objects \
                     .read_preference(ReadPreference.SECONDARY_PREFERRED) \
                     .aggregate()
-        if IS_PYMONGO_3:
-            self.assertEqual(bars._CommandCursor__collection.read_preference,
-                             ReadPreference.SECONDARY_PREFERRED)
-        else:
-            self.assertNotEqual(bars._CommandCursor__collection.read_preference,
-                             ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._CommandCursor__collection.read_preference,
+                         ReadPreference.SECONDARY_PREFERRED)
 
     def test_json_simple(self):
 

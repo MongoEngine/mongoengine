@@ -2,8 +2,6 @@ from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
 import six
 
-from mongoengine.pymongo_support import IS_PYMONGO_3
-
 __all__ = ['MongoEngineConnectionError', 'connect', 'disconnect', 'disconnect_all',
            'register_connection', 'DEFAULT_CONNECTION_NAME', 'DEFAULT_DATABASE_NAME',
            'get_db', 'get_connection']
@@ -14,11 +12,11 @@ DEFAULT_DATABASE_NAME = 'test'
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = 27017
 
-if IS_PYMONGO_3:
-    READ_PREFERENCE = ReadPreference.PRIMARY
-else:
-    from pymongo import MongoReplicaSetClient
-    READ_PREFERENCE = False
+_connection_settings = {}
+_connections = {}
+_dbs = {}
+
+READ_PREFERENCE = ReadPreference.PRIMARY
 
 
 class MongoEngineConnectionError(Exception):
@@ -28,12 +26,7 @@ class MongoEngineConnectionError(Exception):
     pass
 
 
-_connection_settings = {}
-_connections = {}
-_dbs = {}
-
-
-def check_db_name(name):
+def _check_db_name(name):
     """Check if a database name is valid.
     This functionality is copied from pymongo Database class constructor.
     """
@@ -57,7 +50,6 @@ def _get_connection_settings(
     : param host: the host name of the: program: `mongod` instance to connect to
     : param port: the port that the: program: `mongod` instance is running on
     : param read_preference: The read preference for the collection
-       ** Added pymongo 2.1
     : param username: username to authenticate with
     : param password: password to authenticate with
     : param authentication_source: database to authenticate against
@@ -83,7 +75,7 @@ def _get_connection_settings(
         'authentication_mechanism': authentication_mechanism
     }
 
-    check_db_name(conn_settings['name'])
+    _check_db_name(conn_settings['name'])
     conn_host = conn_settings['host']
 
     # Host can be a list or a string, so if string, force to a list.
@@ -119,7 +111,7 @@ def _get_connection_settings(
                 conn_settings['authentication_source'] = uri_options['authsource']
             if 'authmechanism' in uri_options:
                 conn_settings['authentication_mechanism'] = uri_options['authmechanism']
-            if IS_PYMONGO_3 and 'readpreference' in uri_options:
+            if 'readpreference' in uri_options:
                 read_preferences = (
                     ReadPreference.NEAREST,
                     ReadPreference.PRIMARY,
@@ -158,7 +150,6 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
     : param host: the host name of the: program: `mongod` instance to connect to
     : param port: the port that the: program: `mongod` instance is running on
     : param read_preference: The read preference for the collection
-       ** Added pymongo 2.1
     : param username: username to authenticate with
     : param password: password to authenticate with
     : param authentication_source: database to authenticate against
@@ -258,22 +249,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         connection_class = mongomock.MongoClient
     else:
         connection_class = MongoClient
-
-        # For replica set connections with PyMongo 2.x, use
-        # MongoReplicaSetClient.
-        # TODO remove this once we stop supporting PyMongo 2.x.
-        if 'replicaSet' in conn_settings and not IS_PYMONGO_3:
-            connection_class = MongoReplicaSetClient
-            conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
-
-            # hosts_or_uri has to be a string, so if 'host' was provided
-            # as a list, join its parts and separate them by ','
-            if isinstance(conn_settings['hosts_or_uri'], list):
-                conn_settings['hosts_or_uri'] = ','.join(
-                    conn_settings['hosts_or_uri'])
-
-            # Discard port since it can't be used on MongoReplicaSetClient
-            conn_settings.pop('port', None)
 
     # Iterate over all of the connection settings and if a connection with
     # the same parameters is already established, use it instead of creating

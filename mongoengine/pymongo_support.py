@@ -7,7 +7,6 @@ _PYMONGO_37 = (3, 7)
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
-IS_PYMONGO_3 = PYMONGO_VERSION[0] >= 3
 IS_PYMONGO_GTE_37 = PYMONGO_VERSION >= _PYMONGO_37
 
 
