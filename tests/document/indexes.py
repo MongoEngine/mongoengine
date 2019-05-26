@@ -409,7 +409,7 @@ class IndexesTest(unittest.TestCase):
 
         self.assertEqual(2, User.objects.count())
         info = User.objects._collection.index_information()
-        self.assertEqual(info.keys(), ['_id_'])
+        self.assertEqual(list(info.keys()), ['_id_'])
 
         User.ensure_indexes()
         info = User.objects._collection.index_information()

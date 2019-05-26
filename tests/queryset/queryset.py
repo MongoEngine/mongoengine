@@ -91,7 +91,7 @@ class QuerySetTest(unittest.TestCase):
         results = list(people)
 
         self.assertIsInstance(results[0], self.Person)
-        self.assertIsInstance(results[0].id, (ObjectId, str, unicode))
+        self.assertIsInstance(results[0].id, ObjectId)
 
         self.assertEqual(results[0], user_a)
         self.assertEqual(results[0].name, 'User A')
@@ -5609,8 +5609,8 @@ class QuerySetTest(unittest.TestCase):
         Animal(is_mamal=False).save()
         Cat(is_mamal=True, whiskers_length=5.1).save()
         ScottishCat(is_mamal=True, folded_ears=True).save()
-        self.assertEquals(Animal.objects(folded_ears=True).count(), 1)
-        self.assertEquals(Animal.objects(whiskers_length=5.1).count(), 1)
+        self.assertEqual(Animal.objects(folded_ears=True).count(), 1)
+        self.assertEqual(Animal.objects(whiskers_length=5.1).count(), 1)
 
     def test_loop_over_invalid_id_does_not_crash(self):
         class Person(Document):
