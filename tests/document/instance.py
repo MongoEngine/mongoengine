@@ -751,6 +751,10 @@ class InstanceTest(MongoDBTestCase):
                 '_id': post.id
             })
 
+        # Important to disconnect as it could cause some assertions in test_signals
+        # to fail (due to the garbage collection timing of this signal)
+        signals.pre_save_post_validation.disconnect(BlogPost.pre_save_post_validation)
+
     def test_document_clean(self):
         class TestDocument(Document):
             status = StringField()

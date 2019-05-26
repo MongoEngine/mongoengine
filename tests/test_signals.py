@@ -227,6 +227,9 @@ class SignalTests(unittest.TestCase):
 
         self.ExplicitId.objects.delete()
 
+        # Note that there is a chance that the following assert fails in case
+        # some receivers (eventually created in other tests)
+        # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
         self.assertEqual(self.pre_signals, post_signals)
 
     def test_model_signals(self):
