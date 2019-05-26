@@ -502,8 +502,12 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         update_doc = self._get_update_doc()
         if update_doc:
             upsert = save_condition is None
-            last_error = collection.update(select_dict, update_doc,
-                                           upsert=upsert, **write_concern)
+            with set_write_concern(collection, write_concern) as wc_collection:
+                last_error = wc_collection.update_one(
+                    select_dict,
+                    update_doc,
+                    upsert=upsert
+                ).raw_result
             if not upsert and last_error['n'] == 0:
                 raise SaveConditionError('Race condition preventing'
                                          ' document update detected')
