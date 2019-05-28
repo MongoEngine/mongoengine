@@ -1311,11 +1311,8 @@ class GenericReferenceField(BaseField):
             doc_cls = get_document(value['_cls'])
             reference = value['_ref']
             return DocumentProxy(
-                functools.partial(self.dereference, doc_cls=doc_cls, reference=reference),
+                functools.partial(self.dereference, doc_cls=doc_cls, reference=reference, instance=instance),
                 reference.id, doc_cls, instance)
-
-        if self._auto_dereference and isinstance(value, (dict, SON)):
-            instance._data[self.name] = self.dereference(value)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 
@@ -1332,10 +1329,11 @@ class GenericReferenceField(BaseField):
             self.error('You can only reference documents once they have been'
                        ' saved to the database')
 
-    def dereference(self, doc_cls, reference):
+    def dereference(self, doc_cls, reference, instance):
         doc = doc_cls._get_db().dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
+        instance._data[self.name] = doc
         return doc
 
     def to_mongo(self, document, **kwargs):
