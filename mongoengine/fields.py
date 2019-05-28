@@ -1304,6 +1304,16 @@ class GenericReferenceField(BaseField):
         value = instance._data.get(self.name)
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
+
+        if type(value) is DocumentProxy:
+            return value
+        if self._auto_dereference and isinstance(value, (dict, SON)):
+            doc_cls = get_document(value['_cls'])
+            reference = value['_ref']
+            return DocumentProxy(
+                functools.partial(self.dereference, doc_cls=doc_cls, reference=reference),
+                reference.id, doc_cls, instance)
+
         if self._auto_dereference and isinstance(value, (dict, SON)):
             instance._data[self.name] = self.dereference(value)
 
@@ -1322,9 +1332,7 @@ class GenericReferenceField(BaseField):
             self.error('You can only reference documents once they have been'
                        ' saved to the database')
 
-    def dereference(self, value):
-        doc_cls = get_document(value['_cls'])
-        reference = value['_ref']
+    def dereference(self, doc_cls, reference):
         doc = doc_cls._get_db().dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
