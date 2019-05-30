@@ -597,7 +597,7 @@ class IndexesTest(unittest.TestCase):
         # Ensure backwards compatibility for errors
         self.assertRaises(OperationError, post2.save)
 
-    def test_primary_key_unique_not_working_under_mongo_34(self):
+    def test_primary_key_unique_not_working(self):
         """Relates to #1445"""
         class Blog(Document):
             id = StringField(primary_key=True, unique=True)
@@ -606,11 +606,17 @@ class IndexesTest(unittest.TestCase):
 
         with self.assertRaises(OperationFailure) as ctx_err:
             Blog(id='garbage').save()
-        try:
-            self.assertIn("The field 'unique' is not valid for an _id index specification", str(ctx_err.exception))
-        except AssertionError:
-            # error is slightly different on python 3.6
-            self.assertIn("The field 'background' is not valid for an _id index specification", str(ctx_err.exception))
+
+        # One of the errors below should happen. Which one depends on the
+        # PyMongo version and dict order.
+        err_msg = str(ctx_err.exception)
+        self.assertTrue(
+            any([
+                "The field 'unique' is not valid for an _id index specification" in err_msg,
+                "The field 'background' is not valid for an _id index specification" in err_msg,
+                "The field 'sparse' is not valid for an _id index specification" in err_msg,
+            ])
+        )
 
     def test_unique_with(self):
         """Ensure that unique_with constraints are applied to fields.
