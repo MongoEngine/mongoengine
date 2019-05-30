@@ -28,8 +28,6 @@ from mongoengine.queryset import NULLIFY, Q
 from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
 
-from tests.utils import requires_mongodb_gte_26
-
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
 
@@ -850,7 +848,6 @@ class InstanceTest(MongoDBTestCase):
 
         self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
-    @requires_mongodb_gte_26
     def test_modify_with_positional_push(self):
         class Content(EmbeddedDocument):
             keywords = ListField(StringField())
@@ -3368,7 +3365,6 @@ class InstanceTest(MongoDBTestCase):
 
         person.update(set__height=2.0)
 
-    @requires_mongodb_gte_26
     def test_push_with_position(self):
         """Ensure that push with position works properly for an instance."""
         class BlogPost(Document):

@@ -17,10 +17,9 @@ from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_36
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_36
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
-from tests.utils import requires_mongodb_gte_26
 
 
 class db_ops_tracker(query_counter):
@@ -32,7 +31,7 @@ class db_ops_tracker(query_counter):
 
 
 def get_key_compat(mongo_ver):
-    ORDER_BY_KEY = 'sort' if mongo_ver >= MONGODB_32 else '$orderby'
+    ORDER_BY_KEY = 'sort'
     CMD_QUERY_KEY = 'command' if mongo_ver >= MONGODB_36 else 'query'
     return ORDER_BY_KEY, CMD_QUERY_KEY
 
@@ -598,7 +597,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(post.comments[0].by, 'joe')
         self.assertEqual(post.comments[0].votes.score, 4)
 
-    @requires_mongodb_gte_26
     def test_update_min_max(self):
         class Scores(Document):
             high_score = IntField()
@@ -616,7 +614,6 @@ class QuerySetTest(unittest.TestCase):
         Scores.objects(id=scores.id).update(max__high_score=500)
         self.assertEqual(Scores.objects.get(id=scores.id).high_score, 1000)
 
-    @requires_mongodb_gte_26
     def test_update_multiple(self):
         class Product(Document):
             item = StringField()
@@ -868,11 +865,7 @@ class QuerySetTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(q, 0)
             Blog.objects.insert(blogs, load_bulk=False)
-
-            if MONGO_VER >= MONGODB_32:
-                self.assertEqual(q, 1)      # 1 entry containing the list of inserts
-            else:
-                self.assertEqual(q, len(blogs))     # 1 entry per doc inserted
+            self.assertEqual(q, 1)  # 1 entry containing the list of inserts
 
         self.assertEqual(Blog.objects.count(), len(blogs))
 
@@ -885,11 +878,7 @@ class QuerySetTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(q, 0)
             Blog.objects.insert(blogs)
-
-            if MONGO_VER >= MONGODB_32:
-                self.assertEqual(q, 2)              # 1 for insert 1 for fetch
-            else:
-                self.assertEqual(q, len(blogs)+1)       # + 1 to fetch all docs
+            self.assertEqual(q, 2)  # 1 for insert 1 for fetch
 
         Blog.drop_collection()
 
@@ -2030,7 +2019,6 @@ class QuerySetTest(unittest.TestCase):
         pymongo_doc = BlogPost.objects.as_pymongo().first()
         self.assertNotIn('title', pymongo_doc)
 
-    @requires_mongodb_gte_26
     def test_update_push_with_position(self):
         """Ensure that the 'push' update with position works properly.
         """
@@ -2555,8 +2543,8 @@ class QuerySetTest(unittest.TestCase):
         """Make sure adding a comment to the query gets added to the query"""
         MONGO_VER = self.mongodb_version
         _, CMD_QUERY_KEY = get_key_compat(MONGO_VER)
-        QUERY_KEY = 'filter' if MONGO_VER >= MONGODB_32 else '$query'
-        COMMENT_KEY = 'comment' if MONGO_VER >= MONGODB_32 else '$comment'
+        QUERY_KEY = 'filter'
+        COMMENT_KEY = 'comment'
 
         class User(Document):
             age = IntField()
@@ -3370,7 +3358,6 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(Foo.objects.distinct("bar"), [bar])
 
-    @requires_mongodb_gte_26
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -3454,7 +3441,6 @@ class QuerySetTest(unittest.TestCase):
             'brasil').order_by('$text_score').first()
         self.assertEqual(item.get_text_score(), max_text_score)
 
-    @requires_mongodb_gte_26
     def test_distinct_handles_references_to_alias(self):
         register_connection('testdb', 'mongoenginetest2')
 
@@ -4586,7 +4572,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(bars._cursor._Cursor__read_preference,
                          ReadPreference.SECONDARY_PREFERRED)
 
-    @requires_mongodb_gte_26
     def test_read_preference_aggregation_framework(self):
         class Bar(Document):
             txt = StringField()
@@ -5354,7 +5339,6 @@ class QuerySetTest(unittest.TestCase):
             self.assertTrue(Person.objects._has_data(),
                             'Cursor has data and returned False')
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_framework(self):
         class Person(Document):
             name = StringField()
@@ -5396,7 +5380,6 @@ class QuerySetTest(unittest.TestCase):
             {'_id': None, 'avg': 29, 'total': 2}
         ])
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_skip(self):
         class Person(Document):
             name = StringField()
@@ -5418,7 +5401,6 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p3.pk, 'name': "SANDRA MARA"}
         ])
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_limit(self):
         class Person(Document):
             name = StringField()
@@ -5439,7 +5421,6 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
         ])
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_sort(self):
         class Person(Document):
             name = StringField()
@@ -5462,7 +5443,6 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p2.pk, 'name': "WILSON JUNIOR"}
         ])
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_skip_with_limit(self):
         class Person(Document):
             name = StringField()
@@ -5492,7 +5472,6 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(data, list(data2))
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_sort_with_limit(self):
         class Person(Document):
             name = StringField()
@@ -5534,7 +5513,6 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p3.pk, 'name': "SANDRA MARA"},
         ])
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_sort_with_skip(self):
         class Person(Document):
             name = StringField()
@@ -5555,7 +5533,6 @@ class QuerySetTest(unittest.TestCase):
             {'_id': p2.pk, 'name': "WILSON JUNIOR"}
         ])
 
-    @requires_mongodb_gte_26
     def test_queryset_aggregation_with_sort_with_skip_with_limit(self):
         class Person(Document):
             name = StringField()
