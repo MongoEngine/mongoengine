@@ -60,13 +60,6 @@ def requires_mongodb_gte_34(func):
     return _decorated_with_ver_requirement(func, MONGODB_34, oper=operator.ge)
 
 
-def requires_mongodb_lte_32(func):
-    """Raise a SkipTest exception if we're working with MongoDB version
-    greater than v3.2.
-    """
-    return _decorated_with_ver_requirement(func, MONGODB_32, oper=operator.le)
-
-
 def requires_mongodb_gte_26(func):
     """Raise a SkipTest exception if we're working with MongoDB version
     lower than v2.6.

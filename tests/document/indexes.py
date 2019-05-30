@@ -10,7 +10,7 @@ from six import iteritems
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_3
-from tests.utils import requires_mongodb_gte_26, requires_mongodb_lte_32, requires_mongodb_gte_34
+from tests.utils import requires_mongodb_gte_26, requires_mongodb_gte_34
 
 __all__ = ("IndexesTest", )
 
@@ -600,7 +600,7 @@ class IndexesTest(unittest.TestCase):
 
     @requires_mongodb_gte_34
     def test_primary_key_unique_not_working_under_mongo_34(self):
-        """Relates to  #1445"""
+        """Relates to #1445"""
         class Blog(Document):
             id = StringField(primary_key=True, unique=True)
 
@@ -613,16 +613,6 @@ class IndexesTest(unittest.TestCase):
         except AssertionError:
             # error is slightly different on python 3.6
             self.assertIn("The field 'background' is not valid for an _id index specification", str(ctx_err.exception))
-
-    @requires_mongodb_lte_32
-    def test_primary_key_unique_working_under_mongo_32(self):
-        """Relates to  #1445"""
-        class Blog(Document):
-            id = StringField(primary_key=True, unique=True)
-
-        Blog.drop_collection()
-
-        Blog(id='garbage').save()
 
     def test_unique_with(self):
         """Ensure that unique_with constraints are applied to fields.
