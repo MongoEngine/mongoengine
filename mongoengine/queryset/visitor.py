@@ -158,6 +158,9 @@ class QCombination(QNode):
     def __hash__(self):
         return hash(repr(self))
 
+    def __eq__(self, other):
+        return hash(other) == hash(self)
+
 
 class Q(QNode):
     """A simple query object, used in a query tree to build up more complex
@@ -189,5 +192,8 @@ class Q(QNode):
 
     def __hash__(self):
         return hash(repr(self))
+
+    def __eq__(self, other):
+        return hash(other) == hash(self)
 
 
