@@ -151,6 +151,13 @@ class QCombination(QNode):
     def empty(self):
         return not bool(self.children)
 
+    def __repr__(self):
+        op = ' & ' if self.operation is self.AND else ' | '
+        return '(%s)' % op.join([repr(node) for node in self.children])
+
+    def __hash__(self):
+        return hash(repr(self))
+
 
 class Q(QNode):
     """A simple query object, used in a query tree to build up more complex
@@ -166,3 +173,21 @@ class Q(QNode):
     @property
     def empty(self):
         return not bool(self.query)
+
+    def __repr__(self):
+        return 'Q(**%s)' % repr(self.transform_query())
+
+    def transform_query(self):
+        def maybe_id(v):
+            from mongoengine.base.proxy import DocumentProxy
+            from mongoengine import Document
+            if type(v) is DocumentProxy or isinstance(v, Document):
+                return v.id
+            return v
+
+        return {k: maybe_id(v) for k, v in self.query.iteritems()}
+
+    def __hash__(self):
+        return hash(repr(self))
+
+
