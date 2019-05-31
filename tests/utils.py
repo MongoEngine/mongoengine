@@ -5,7 +5,7 @@ from nose.plugins.skip import SkipTest
 
 from mongoengine import connect
 from mongoengine.connection import get_db, disconnect_all
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_26, MONGODB_3, MONGODB_32, MONGODB_34
+from mongoengine.mongodb_support import get_mongodb_version
 
 
 MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database
@@ -35,8 +35,20 @@ def get_as_pymongo(doc):
 
 
 def _decorated_with_ver_requirement(func, mongo_version_req, oper):
-    """Return a given function decorated with the version requirement
-    for a particular MongoDB version tuple.
+    """Return a MongoDB version requirement decorator.
+
+    The resulting decorator will raise a SkipTest exception if the current
+    MongoDB version doesn't match the provided version/operator.
+
+    For example, if you define a decorator like so:
+
+        def requires_mongodb_gte_36(func):
+            return _decorated_with_ver_requirement(
+                func, (3.6), oper=operator.ge
+            )
+
+    Then tests decorated with @requires_mongodb_gte_36 will be skipped if
+    ran against MongoDB < v3.6.
 
     :param mongo_version_req: The mongodb version requirement (tuple(int, int))
     :param oper: The operator to apply (e.g: operator.ge)
@@ -51,31 +63,3 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     _inner.__name__ = func.__name__
     _inner.__doc__ = func.__doc__
     return _inner
-
-
-def requires_mongodb_gte_34(func):
-    """Raise a SkipTest exception if we're working with MongoDB version
-    lower than v3.4
-    """
-    return _decorated_with_ver_requirement(func, MONGODB_34, oper=operator.ge)
-
-
-def requires_mongodb_lte_32(func):
-    """Raise a SkipTest exception if we're working with MongoDB version
-    greater than v3.2.
-    """
-    return _decorated_with_ver_requirement(func, MONGODB_32, oper=operator.le)
-
-
-def requires_mongodb_gte_26(func):
-    """Raise a SkipTest exception if we're working with MongoDB version
-    lower than v2.6.
-    """
-    return _decorated_with_ver_requirement(func, MONGODB_26, oper=operator.ge)
-
-
-def requires_mongodb_gte_3(func):
-    """Raise a SkipTest exception if we're working with MongoDB version
-    lower than v3.0.
-    """
-    return _decorated_with_ver_requirement(func, MONGODB_3, oper=operator.ge)

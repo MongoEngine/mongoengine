@@ -6,7 +6,6 @@ from mongoengine.pymongo_support import list_collection_names
 
 from mongoengine.queryset import NULLIFY, PULL
 from mongoengine.connection import get_db
-from tests.utils import requires_mongodb_gte_26
 
 __all__ = ("ClassMethodsTest", )
 
@@ -187,7 +186,6 @@ class ClassMethodsTest(unittest.TestCase):
         self.assertEqual(BlogPostWithTags.compare_indexes(), {'missing': [], 'extra': []})
         self.assertEqual(BlogPostWithCustomField.compare_indexes(), {'missing': [], 'extra': []})
 
-    @requires_mongodb_gte_26
     def test_compare_indexes_for_text_indexes(self):
         """ Ensure that compare_indexes behaves correctly for text indexes """
 

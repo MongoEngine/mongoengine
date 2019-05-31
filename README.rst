@@ -26,10 +26,10 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v2.6, v3.0, v3.2, v3.4 and v3.6. Future
-versions should be supported as well, but aren't actively tested at the moment.
-Make sure to open an issue or submit a pull request if you experience any
-problems with MongoDB v3.6+.
+MongoEngine is currently tested against MongoDB v3.4 and v3.6. Future versions
+should be supported as well, but aren't actively tested at the moment. Make
+sure to open an issue or submit a pull request if you experience any problems
+with MongoDB version > 3.6.
 
 Installation
 ============

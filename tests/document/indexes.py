@@ -9,8 +9,7 @@ from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_32, MONGODB_3
-from tests.utils import requires_mongodb_gte_26, requires_mongodb_lte_32, requires_mongodb_gte_34
+from mongoengine.mongodb_support import get_mongodb_version
 
 __all__ = ("IndexesTest", )
 
@@ -478,8 +477,6 @@ class IndexesTest(unittest.TestCase):
     def test_covered_index(self):
         """Ensure that covered indexes can be used
         """
-        IS_MONGODB_3 = get_mongodb_version() >= MONGODB_3
-
         class Test(Document):
             a = IntField()
             b = IntField()
@@ -497,33 +494,38 @@ class IndexesTest(unittest.TestCase):
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
         query_plan = Test.objects(id=obj.id).exclude('a').explain()
-        if not IS_MONGODB_3:
-            self.assertFalse(query_plan['indexOnly'])
-        else:
-            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IDHACK')
+        self.assertEqual(
+            query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'),
+            'IDHACK'
+        )
 
         query_plan = Test.objects(id=obj.id).only('id').explain()
-        if not IS_MONGODB_3:
-            self.assertTrue(query_plan['indexOnly'])
-        else:
-            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IDHACK')
+        self.assertEqual(
+            query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'),
+            'IDHACK'
+        )
 
         query_plan = Test.objects(a=1).only('a').exclude('id').explain()
-        if not IS_MONGODB_3:
-            self.assertTrue(query_plan['indexOnly'])
-        else:
-            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IXSCAN')
-            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('stage'), 'PROJECTION')
+        self.assertEqual(
+            query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'),
+            'IXSCAN'
+        )
+        self.assertEqual(
+            query_plan.get('queryPlanner').get('winningPlan').get('stage'),
+            'PROJECTION'
+        )
 
         query_plan = Test.objects(a=1).explain()
-        if not IS_MONGODB_3:
-            self.assertFalse(query_plan['indexOnly'])
-        else:
-            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'), 'IXSCAN')
-            self.assertEqual(query_plan.get('queryPlanner').get('winningPlan').get('stage'), 'FETCH')
+        self.assertEqual(
+            query_plan.get('queryPlanner').get('winningPlan').get('inputStage').get('stage'),
+            'IXSCAN'
+        )
+        self.assertEqual(
+            query_plan.get('queryPlanner').get('winningPlan').get('stage'),
+            'FETCH'
+        )
 
     def test_index_on_id(self):
-
         class BlogPost(Document):
             meta = {
                 'indexes': [
@@ -565,13 +567,10 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(BlogPost.objects.count(), 10)
         self.assertEqual(BlogPost.objects.hint().count(), 10)
 
-        if MONGO_VER >= MONGODB_32:
-            # Mongo32 throws an error if an index exists (i.e `tags` in our case)
-            # and you use hint on an index name that does not exist
-            with self.assertRaises(OperationFailure):
-                BlogPost.objects.hint([('ZZ', 1)]).count()
-        else:
-            self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).count(), 10)
+        # MongoDB v3.2+ throws an error if an index exists (i.e `tags` in our
+        # case) and you use hint on an index name that does not exist.
+        with self.assertRaises(OperationFailure):
+            BlogPost.objects.hint([('ZZ', 1)]).count()
 
         self.assertEqual(BlogPost.objects.hint(TAGS_INDEX_NAME).count(), 10)
 
@@ -598,9 +597,8 @@ class IndexesTest(unittest.TestCase):
         # Ensure backwards compatibility for errors
         self.assertRaises(OperationError, post2.save)
 
-    @requires_mongodb_gte_34
-    def test_primary_key_unique_not_working_under_mongo_34(self):
-        """Relates to  #1445"""
+    def test_primary_key_unique_not_working(self):
+        """Relates to #1445"""
         class Blog(Document):
             id = StringField(primary_key=True, unique=True)
 
@@ -608,21 +606,17 @@ class IndexesTest(unittest.TestCase):
 
         with self.assertRaises(OperationFailure) as ctx_err:
             Blog(id='garbage').save()
-        try:
-            self.assertIn("The field 'unique' is not valid for an _id index specification", str(ctx_err.exception))
-        except AssertionError:
-            # error is slightly different on python 3.6
-            self.assertIn("The field 'background' is not valid for an _id index specification", str(ctx_err.exception))
 
-    @requires_mongodb_lte_32
-    def test_primary_key_unique_working_under_mongo_32(self):
-        """Relates to  #1445"""
-        class Blog(Document):
-            id = StringField(primary_key=True, unique=True)
-
-        Blog.drop_collection()
-
-        Blog(id='garbage').save()
+        # One of the errors below should happen. Which one depends on the
+        # PyMongo version and dict order.
+        err_msg = str(ctx_err.exception)
+        self.assertTrue(
+            any([
+                "The field 'unique' is not valid for an _id index specification" in err_msg,
+                "The field 'background' is not valid for an _id index specification" in err_msg,
+                "The field 'sparse' is not valid for an _id index specification" in err_msg,
+            ])
+        )
 
     def test_unique_with(self):
         """Ensure that unique_with constraints are applied to fields.
@@ -984,7 +978,6 @@ class IndexesTest(unittest.TestCase):
                          info['provider_ids.foo_1_provider_ids.bar_1']['key'])
         self.assertTrue(info['provider_ids.foo_1_provider_ids.bar_1']['sparse'])
 
-    @requires_mongodb_gte_26
     def test_text_indexes(self):
         class Book(Document):
             title = DictField()

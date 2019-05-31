@@ -2,11 +2,18 @@
 # PyMongo combinations. However, that would result in an overly long build
 # with a very large number of jobs, hence we only test a subset of all the
 # combinations:
-# * MongoDB v2.6 is currently the "main" version tested against Python v2.7,
-#   v3.5, v3.6, PyPy, and PyMongo v3.x.
-# * MongoDB v3.0 & v3.2 are tested against Python v2.7, v3.5 & v3.6
-#   and Pymongo v3.5 & v3.x
-# * MongoDB v3.4 is tested against v3.6 and Pymongo v3.x
+# * MongoDB v3.4 & the latest PyMongo v3.x is currently the "main" setup,
+#   tested against Python v2.7, v3.5, v3.6, and PyPy.
+# * Besides that, we test the lowest actively supported Python/MongoDB/PyMongo
+#   combination: MongoDB v3.4, PyMongo v3.4, Python v2.7.
+# * MongoDB v3.6 is tested against Python v3.6, and PyMongo v3.6, v3.7, v3.8.
+#
+# We should periodically check MongoDB Server versions supported by MongoDB
+# Inc., add newly released versions to the test matrix, and remove versions
+# which have reached their End of Life. See:
+# 1. https://www.mongodb.com/support-policy.
+# 2. https://docs.mongodb.com/ecosystem/drivers/driver-compatibility-reference/#python-driver-compatibility
+#
 # Reminder: Update README.rst if you change MongoDB versions we test.
 
 language: python
@@ -18,7 +25,7 @@ python:
 - pypy
 
 env:
-- MONGODB=2.6 PYMONGO=3.x
+- MONGODB=3.4 PYMONGO=3.x
 
 matrix:
   # Finish the build as soon as one job fails
@@ -26,15 +33,7 @@ matrix:
 
   include:
   - python: 2.7
-    env: MONGODB=3.0 PYMONGO=3.5
-  - python: 3.5
-    env: MONGODB=3.2 PYMONGO=3.x
-  - python: 3.6
-    env: MONGODB=3.0 PYMONGO=3.5
-  - python: 3.6
-    env: MONGODB=3.2 PYMONGO=3.x
-  - python: 3.6
-    env: MONGODB=3.4 PYMONGO=3.x
+    env: MONGODB=3.4 PYMONGO=3.4.x
   - python: 3.6
     env: MONGODB=3.6 PYMONGO=3.x
 
@@ -86,15 +85,15 @@ deploy:
   password:
     secure: QMyatmWBnC6ZN3XLW2+fTBDU4LQcp1m/LjR2/0uamyeUzWKdlOoh/Wx5elOgLwt/8N9ppdPeG83ose1jOz69l5G0MUMjv8n/RIcMFSpCT59tGYqn3kh55b0cIZXFT9ar+5cxlif6a5rS72IHm5li7QQyxexJIII6Uxp0kpvUmek=
 
-  # create a source distribution and a pure python wheel for faster installs
+  # Create a source distribution and a pure python wheel for faster installs.
   distributions: "sdist bdist_wheel"
 
-  # only deploy on tagged commits (aka GitHub releases) and only for the
-  # parent repo's builds running Python 2.7 along with PyMongo v3.x (we run
-  # Travis against many different Python and PyMongo versions and we don't
-  # want the deploy to occur multiple times).
+  # Only deploy on tagged commits (aka GitHub releases) and only for the parent
+  # repo's builds running Python v2.7 along with PyMongo v3.x and MongoDB v3.4.
+  # We run Travis against many different Python, PyMongo, and MongoDB versions
+  # and we don't want the deploy to occur multiple times).
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: "$PYMONGO = 3.x"
+    condition: ($PYMONGO = 3.x) AND ($MONGODB = 3.4)
     python: 2.7

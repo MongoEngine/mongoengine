@@ -117,10 +117,22 @@ def _get_connection_settings(
                     ReadPreference.PRIMARY,
                     ReadPreference.PRIMARY_PREFERRED,
                     ReadPreference.SECONDARY,
-                    ReadPreference.SECONDARY_PREFERRED)
-                read_pf_mode = uri_options['readpreference'].lower()
+                    ReadPreference.SECONDARY_PREFERRED,
+                )
+
+                # Starting with PyMongo v3.5, the "readpreference" option is
+                # returned as a string (e.g. "secondaryPreferred") and not an
+                # int (e.g. 3).
+                # TODO simplify the code below once we drop support for
+                # PyMongo v3.4.
+                read_pf_mode = uri_options['readpreference']
+                if isinstance(read_pf_mode, six.string_types):
+                    read_pf_mode = read_pf_mode.lower()
                 for preference in read_preferences:
-                    if preference.name.lower() == read_pf_mode:
+                    if (
+                        preference.name.lower() == read_pf_mode or
+                        preference.mode == read_pf_mode
+                    ):
                         conn_settings['read_preference'] = preference
                         break
         else:
