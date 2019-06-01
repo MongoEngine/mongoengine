@@ -12,6 +12,7 @@ from mongoengine import Document, StringField, IntField, DateTimeField, DateFiel
     FieldDoesNotExist, EmbeddedDocumentListField, MultipleObjectsReturned, NotUniqueError, BooleanField,\
     ObjectIdField, SortedListField, GenericLazyReferenceField, LazyReferenceField, DynamicDocument
 from mongoengine.base import (BaseField, EmbeddedDocumentList, _document_registry)
+from mongoengine.errors import DeprecatedError
 
 from tests.utils import MongoDBTestCase
 
@@ -55,6 +56,48 @@ class FieldTest(MongoDBTestCase):
         data_to_be_saved = sorted(person.to_mongo().keys())
         self.assertEqual(
             data_to_be_saved, ['age', 'created', 'day', 'name', 'userid'])
+
+    def test_custom_field_validation_raise_deprecated_error_when_validation_return_something(self):
+        # Covers introduction of a breaking change in the validation parameter (0.18)
+        def _not_empty(z):
+            return bool(z)
+
+        class Person(Document):
+            name = StringField(validation=_not_empty)
+
+        Person.drop_collection()
+
+        error = ("validation argument for `name` must not return anything, "
+                 "it should raise a ValidationError if validation fails")
+
+        with self.assertRaises(DeprecatedError) as ctx_err:
+            Person(name="").validate()
+        self.assertEqual(str(ctx_err.exception), error)
+
+        with self.assertRaises(DeprecatedError) as ctx_err:
+            Person(name="").save()
+        self.assertEqual(str(ctx_err.exception), error)
+
+    def test_custom_field_validation_raise_validation_error(self):
+        def _not_empty(z):
+            if not z:
+                raise ValidationError('cantbeempty')
+
+        class Person(Document):
+            name = StringField(validation=_not_empty)
+
+        Person.drop_collection()
+
+        with self.assertRaises(ValidationError) as ctx_err:
+            Person(name="").validate()
+        self.assertEqual("ValidationError (Person:None) (cantbeempty: ['name'])", str(ctx_err.exception))
+
+        with self.assertRaises(ValidationError):
+            Person(name="").save()
+        self.assertEqual("ValidationError (Person:None) (cantbeempty: ['name'])", str(ctx_err.exception))
+
+        Person(name="garbage").validate()
+        Person(name="garbage").save()
 
     def test_default_values_set_to_None(self):
         """Ensure that default field values are used even when
