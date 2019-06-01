@@ -293,8 +293,7 @@ class BaseDocument(object):
         """
         Return as SON data ready for use with MongoDB.
         """
-        if not fields:
-            fields = []
+        fields = fields or []
 
         data = SON()
         data['_id'] = None
