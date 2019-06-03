@@ -47,20 +47,17 @@ matrix:
 
 
 install:
-  - echo "INIT-"$(date)
   # Install Mongo
   - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${MONGODB}.tgz
   - tar xzf mongodb-linux-x86_64-${MONGODB}.tgz
   - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --version
   # Install python dependencies
-  - echo "INSTALL WITH PIP-"$(date)
   - pip install --upgrade pip
   - pip install coveralls
   - pip install flake8 flake8-import-order
   - pip install tox         # tox 3.11.0 has requirement virtualenv>=14.0.0
   - pip install virtualenv  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
   # Install the tox venv
-  - echo "TOX INSTALL-"$(date)
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
 
 before_script:
@@ -70,7 +67,6 @@ before_script:
   - mongo --eval 'db.version();'    # Make sure mongo is awake
 
 script:
-  - echo "TOX RUN TEST-" $(date)
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
 
 # For now only submit coveralls for Python v2.7. Python v3.x currently shows
