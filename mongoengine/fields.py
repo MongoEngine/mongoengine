@@ -13,8 +13,6 @@ import pymongo
 import six
 from six import iteritems
 
-from mongoengine.queryset.transform import STRING_OPERATORS
-
 try:
     import dateutil
 except ImportError:
@@ -39,6 +37,7 @@ from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
 from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
+from mongoengine.queryset.transform import STRING_OPERATORS
 
 try:
     from PIL import Image, ImageOps
