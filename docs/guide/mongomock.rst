@@ -19,3 +19,30 @@ or with an alias:
 
     connect('mongoenginetest', host='mongomock://localhost', alias='testdb')
     conn = get_connection('testdb')
+
+Example of test file:
+--------
+.. code-block:: python
+
+    import unittest
+    from mongoengine import connect, disconnect
+
+    class Person(Document):
+        name = StringField()
+
+    class TestPerson(unittest.TestCase):
+
+        @classmethod
+        def setUpClass(cls):
+            connect('mongoenginetest', host='mongomock://localhost')
+
+        @classmethod
+        def tearDownClass(cls):
+           disconnect()
+
+        def test_thing(self):
+            pers = Person(name='John')
+            pers.save()
+
+            fresh_pers = Person.objects().first()
+            self.assertEqual(fresh_pers.name, 'John')
