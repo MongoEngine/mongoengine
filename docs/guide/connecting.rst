@@ -78,26 +78,30 @@ store the data and you can register all aliases up front if required.
 
 Documents defined in different database
 ---------------------------------------
-Individual documents can also support multiple databases by providing a
+Individual documents can be attached to different databases by providing a
 `db_alias` in their meta data. This allows :class:`~pymongo.dbref.DBRef`
 objects to point across databases and collections. Below is an example schema,
 using 3 different databases to store data::
 
+        connect(alias='user-db-alias', db='user-db')
+        connect(alias='book-db-alias', db='book-db')
+        connect(alias='users-books-db-alias', db='users-books-db')
+        
         class User(Document):
             name = StringField()
 
-            meta = {'db_alias': 'user-db'}
+            meta = {'db_alias': 'user-db-alias'}
 
         class Book(Document):
             name = StringField()
 
-            meta = {'db_alias': 'book-db'}
+            meta = {'db_alias': 'book-db-alias'}
 
         class AuthorBooks(Document):
             author = ReferenceField(User)
             book = ReferenceField(Book)
 
-            meta = {'db_alias': 'users-books-db'}
+            meta = {'db_alias': 'users-books-db-alias'}
 
 
 Disconnecting an existing connection
