@@ -13,6 +13,7 @@ Development
 - expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
 - Fix disconnect function #566 #1599 #605 #607 #1213 #565
 - Improve connect/disconnect documentations
+- Fix issue when using multiple connections to the same mongo with different credentials #2047
 - POTENTIAL BREAKING CHANGES: (associated with connect/disconnect fixes)
     - calling `connect` 2 times with the same alias and different parameter will raise an error (should call disconnect first)
     - disconnect now clears `mongoengine.connection._connection_settings`

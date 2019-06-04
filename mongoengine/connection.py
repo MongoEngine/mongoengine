@@ -270,9 +270,9 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     if existing_connection:
         _connections[alias] = existing_connection
     else:
-        _create_connection(alias=alias,
-                           connection_class=connection_class,
-                           **conn_settings)
+        _connections[alias] = _create_connection(alias=alias,
+                                                 connection_class=connection_class,
+                                                 **conn_settings)
 
     return _connections[alias]
 
@@ -283,7 +283,7 @@ def _create_connection(alias, connection_class, **connection_settings):
     MongoEngineConnectionError if it can't be established.
     """
     try:
-        _connections[alias] = connection_class(**connection_settings)
+        return connection_class(**connection_settings)
     except Exception as e:
         raise MongoEngineConnectionError(
             'Cannot connect to database %s :\n%s' % (alias, e))
