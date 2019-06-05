@@ -12,6 +12,7 @@ from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 from six import iteritems
 
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_36, MONGODB_34
 from mongoengine.pymongo_support import list_collection_names
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
@@ -466,7 +467,16 @@ class InstanceTest(MongoDBTestCase):
         Animal.drop_collection()
         doc = Animal(superphylum='Deuterostomia')
         doc.save()
-        doc.reload()
+
+        mongo_db = get_mongodb_version()
+        CMD_QUERY_KEY = 'command' if mongo_db >= MONGODB_36 else 'query'
+
+        with query_counter() as q:
+            doc.reload()
+            query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
+            self.assertEqual(set(query_op[CMD_QUERY_KEY]['filter'].keys()), set(['_id', 'superphylum']))
+
+        Animal.drop_collection()
 
     def test_reload_sharded_nested(self):
         class SuperPhylum(EmbeddedDocument):
@@ -480,6 +490,34 @@ class InstanceTest(MongoDBTestCase):
         doc = Animal(superphylum=SuperPhylum(name='Deuterostomia'))
         doc.save()
         doc.reload()
+        Animal.drop_collection()
+
+    def test_update_shard_key_routing(self):
+        """Ensures updating a doc with a specified shard_key includes it in
+        the query.
+        """
+        class Animal(Document):
+            is_mammal = BooleanField()
+            name = StringField()
+            meta = {'shard_key': ('is_mammal', 'id')}
+
+        Animal.drop_collection()
+        doc = Animal(is_mammal=True, name='Dog')
+        doc.save()
+
+        mongo_db = get_mongodb_version()
+
+        with query_counter() as q:
+            doc.name = 'Cat'
+            doc.save()
+            query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
+            self.assertEqual(query_op['op'], 'update')
+            if mongo_db == MONGODB_34:
+                self.assertEqual(set(query_op['query'].keys()), set(['_id', 'is_mammal']))
+            else:
+                self.assertEqual(set(query_op['command']['q'].keys()), set(['_id', 'is_mammal']))
+
+        Animal.drop_collection()
 
     def test_reload_with_changed_fields(self):
         """Ensures reloading will not affect changed fields"""

@@ -37,6 +37,7 @@ from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
 from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
+from mongoengine.queryset.transform import STRING_OPERATORS
 
 try:
     from PIL import Image, ImageOps
@@ -106,11 +107,11 @@ class StringField(BaseField):
         if not isinstance(op, six.string_types):
             return value
 
-        if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
-            flags = 0
-            if op.startswith('i'):
-                flags = re.IGNORECASE
-                op = op.lstrip('i')
+        if op in STRING_OPERATORS:
+            case_insensitive = op.startswith('i')
+            op = op.lstrip('i')
+
+            flags = re.IGNORECASE if case_insensitive else 0
 
             regex = r'%s'
             if op == 'startswith':
@@ -497,15 +498,18 @@ class DateTimeField(BaseField):
         if not isinstance(value, six.string_types):
             return None
 
+        return self._parse_datetime(value)
+
+    def _parse_datetime(self, value):
+        # Attempt to parse a datetime from a string
         value = value.strip()
         if not value:
             return None
 
-        # Attempt to parse a datetime:
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
