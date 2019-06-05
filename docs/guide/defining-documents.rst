@@ -176,6 +176,21 @@ arguments can be set on all fields:
         class Shirt(Document):
             size = StringField(max_length=3, choices=SIZE)
 
+:attr:`validation` (Optional)
+    A callable to validate the value of the field.
+    The callable takes the value as parameter and should raise a ValidationError
+    if validation fails
+
+    e.g ::
+
+        def _not_empty(val):
+            if not val:
+                raise ValidationError('value can not be empty')
+
+        class Person(Document):
+            name = StringField(validation=_not_empty)
+
+
 :attr:`**kwargs` (Optional)
     You can supply additional metadata as arbitrary additional keyword
     arguments.  You can not override existing attributes, however.  Common
