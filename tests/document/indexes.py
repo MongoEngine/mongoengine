@@ -544,9 +544,8 @@ class IndexesTest(unittest.TestCase):
                                  [('categories', 1), ('_id', 1)])
 
     def test_hint(self):
-        MONGO_VER = self.mongodb_version
-
         TAGS_INDEX_NAME = 'tags_1'
+
         class BlogPost(Document):
             tags = ListField(StringField())
             meta = {
@@ -564,18 +563,27 @@ class IndexesTest(unittest.TestCase):
             tags = [("tag %i" % n) for n in range(i % 2)]
             BlogPost(tags=tags).save()
 
-        self.assertEqual(BlogPost.objects.count(), 10)
-        self.assertEqual(BlogPost.objects.hint().count(), 10)
+        # Hinting by shape should work.
+        self.assertEqual(BlogPost.objects.hint([('tags', 1)]).count(), 10)
 
-        # MongoDB v3.2+ throws an error if an index exists (i.e `tags` in our
-        # case) and you use hint on an index name that does not exist.
+        # Hinting by index name should work.
+        self.assertEqual(BlogPost.objects.hint(TAGS_INDEX_NAME).count(), 10)
+
+        # Clearing the hint should work fine.
+        self.assertEqual(BlogPost.objects.hint().count(), 10)
+        self.assertEqual(BlogPost.objects.hint([('ZZ', 1)]).hint().count(), 10)
+
+        # Hinting on a non-existent index shape should fail.
         with self.assertRaises(OperationFailure):
             BlogPost.objects.hint([('ZZ', 1)]).count()
 
-        self.assertEqual(BlogPost.objects.hint(TAGS_INDEX_NAME).count(), 10)
+        # Hinting on a non-existent index name should fail.
+        with self.assertRaises(OperationFailure):
+            BlogPost.objects.hint('Bad Name').count()
 
-        with self.assertRaises(Exception):
-            BlogPost.objects.hint(('tags', 1)).next()
+        # Invalid shape argument (missing list brackets) should fail.
+        with self.assertRaises(ValueError):
+            BlogPost.objects.hint(('tags', 1)).count()
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
