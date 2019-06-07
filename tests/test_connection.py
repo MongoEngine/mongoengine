@@ -611,6 +611,16 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(mongo_connections['t1'].address[0], 'localhost')
         self.assertEqual(mongo_connections['t2'].address[0], '127.0.0.1')
 
+    def test_connect_2_databases_uses_same_client_if_only_dbname_differs(self):
+        c1 = connect(alias='testdb1', db='testdb1')
+        c2 = connect(alias='testdb2', db='testdb2')
+        self.assertIs(c1, c2)
+
+    def test_connect_2_databases_uses_different_client_if_different_parameters(self):
+        c1 = connect(alias='testdb1', db='testdb1', username='u1')
+        c2 = connect(alias='testdb2', db='testdb2', username='u2')
+        self.assertIsNot(c1, c2)
+
 
 if __name__ == '__main__':
     unittest.main()
