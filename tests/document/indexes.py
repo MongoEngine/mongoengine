@@ -9,7 +9,6 @@ from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.mongodb_support import get_mongodb_version
 
 __all__ = ("IndexesTest", )
 
@@ -19,7 +18,6 @@ class IndexesTest(unittest.TestCase):
     def setUp(self):
         self.connection = connect(db='mongoenginetest')
         self.db = get_db()
-        self.mongodb_version = get_mongodb_version()
 
         class Person(Document):
             name = StringField()
