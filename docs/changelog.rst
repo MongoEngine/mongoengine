@@ -4,25 +4,25 @@ Changelog
 
 Development
 ===========
-- Add support for MongoDB 3.6 in travis
-- BREAKING CHANGE: Changed the custom field validator (i.e `validation` parameter of Field) so that it now requires:
-    the callable to raise a ValidationError (i.o return True/False).
-- Improve perf of .save by avoiding a call to to_mongo in Document.save() #2049
-- Fix querying on List(EmbeddedDocument) subclasses fields #1961 #1492
-- Fix querying on (Generic)EmbeddedDocument subclasses fields #475
-- expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
-- Fix disconnect function #566 #1599 #605 #607 #1213 #565
-- Improve connect/disconnect documentations
-- Fix issue when using multiple connections to the same mongo with different credentials #2047
-- POTENTIAL BREAKING CHANGES: (associated with connect/disconnect fixes)
-    - calling `connect` 2 times with the same alias and different parameter will raise an error (should call disconnect first)
-    - disconnect now clears `mongoengine.connection._connection_settings`
-    - disconnect now clears the cached attribute `Document._collection`
-- POTENTIAL BREAKING CHANGE: Aggregate gives wrong results when used with a queryset having limit and skip #2029
-- Fix the default write concern of .save that was overwriting the connection write concern #568
-- mongoengine now requires pymongo>=3.5 #2017
-- Generate Unique Indices for SortedListField and EmbeddedDocumentListFields #2020
-- connect() fails immediately when db name contains invalid characters #2031 #1718
+- Drop support for EOL'd MongoDB v2.6, v3.0, and v3.2.
+- MongoEngine now requires PyMongo >= v3.4. Travis CI now tests against MongoDB v3.4 – v3.6 and PyMongo v3.4 – v3.6 (#2017 #2066).
+- Improve performance by avoiding a call to `to_mongo` in `Document.save()` #2049
+- Connection/disconnection improvements:
+    - Expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
+    - Fix disconnecting #566 #1599 #605 #607 #1213 #565
+    - Improve documentation of `connect`/`disconnect`
+    - Fix issue when using multiple connections to the same mongo with different credentials #2047
+    - `connect` fails immediately when db name contains invalid characters #2031 #1718
+- Fix the default write concern of `Document.save` that was overwriting the connection write concern #568
+- Fix querying on `List(EmbeddedDocument)` subclasses fields #1961 #1492
+- Fix querying on `(Generic)EmbeddedDocument` subclasses fields #475
+- Generate unique indices for `SortedListField` and `EmbeddedDocumentListFields` #2020
+- BREAKING CHANGE: Changed the behavior of a custom field validator (i.e `validation` parameter of a `Field`). It is now expected to raise a `ValidationError` instead of returning True/False #2050
+- BREAKING CHANGE: `QuerySet.aggreagte` now takes limit and skip value into account #2029
+- BREAKING CHANGES (associated with connect/disconnect fixes):
+    - Calling `connect` 2 times with the same alias and different parameter will raise an error (should call `disconnect` first).
+    - `disconnect` now clears `mongoengine.connection._connection_settings`.
+    - `disconnect` now clears the cached attribute `Document._collection`.
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.17.0
