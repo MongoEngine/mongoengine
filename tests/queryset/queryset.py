@@ -18,29 +18,34 @@ from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import get_mongodb_version, MONGODB_36
-from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
-                                  QuerySet, QuerySetManager, queryset_manager)
+from mongoengine.queryset import (
+    DoesNotExist,
+    MultipleObjectsReturned,
+    QuerySet,
+    QuerySetManager,
+    queryset_manager,
+)
 
 
 class db_ops_tracker(query_counter):
-
     def get_ops(self):
         ignore_query = dict(self._ignored_query)
-        ignore_query['command.count'] = {'$ne': 'system.profile'}   # Ignore the query issued by query_counter
+        ignore_query["command.count"] = {
+            "$ne": "system.profile"
+        }  # Ignore the query issued by query_counter
         return list(self.db.system.profile.find(ignore_query))
 
 
 def get_key_compat(mongo_ver):
-    ORDER_BY_KEY = 'sort'
-    CMD_QUERY_KEY = 'command' if mongo_ver >= MONGODB_36 else 'query'
+    ORDER_BY_KEY = "sort"
+    CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
     return ORDER_BY_KEY, CMD_QUERY_KEY
 
 
 class QuerySetTest(unittest.TestCase):
-
     def setUp(self):
-        connect(db='mongoenginetest')
-        connect(db='mongoenginetest2', alias='test2')
+        connect(db="mongoenginetest")
+        connect(db="mongoenginetest2", alias="test2")
 
         class PersonMeta(EmbeddedDocument):
             weight = IntField()
@@ -49,7 +54,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
             age = IntField()
             person_meta = EmbeddedDocumentField(PersonMeta)
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         Person.drop_collection()
         self.PersonMeta = PersonMeta
@@ -61,12 +66,14 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager.
         """
         self.assertIsInstance(self.Person.objects, QuerySet)
-        self.assertEqual(self.Person.objects._collection.name,
-                         self.Person._get_collection_name())
-        self.assertIsInstance(self.Person.objects._collection, pymongo.collection.Collection)
+        self.assertEqual(
+            self.Person.objects._collection.name, self.Person._get_collection_name()
+        )
+        self.assertIsInstance(
+            self.Person.objects._collection, pymongo.collection.Collection
+        )
 
     def test_cannot_perform_joins_references(self):
-
         class BlogPost(Document):
             author = ReferenceField(self.Person)
             author2 = GenericReferenceField()
@@ -81,8 +88,8 @@ class QuerySetTest(unittest.TestCase):
 
     def test_find(self):
         """Ensure that a query returns a valid set of results."""
-        user_a = self.Person.objects.create(name='User A', age=20)
-        user_b = self.Person.objects.create(name='User B', age=30)
+        user_a = self.Person.objects.create(name="User A", age=20)
+        user_b = self.Person.objects.create(name="User B", age=30)
 
         # Find all people in the collection
         people = self.Person.objects
@@ -93,11 +100,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertIsInstance(results[0].id, ObjectId)
 
         self.assertEqual(results[0], user_a)
-        self.assertEqual(results[0].name, 'User A')
+        self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
 
         self.assertEqual(results[1], user_b)
-        self.assertEqual(results[1].name, 'User B')
+        self.assertEqual(results[1].name, "User B")
         self.assertEqual(results[1].age, 30)
 
         # Filter people by age
@@ -110,8 +117,8 @@ class QuerySetTest(unittest.TestCase):
 
     def test_limit(self):
         """Ensure that QuerySet.limit works as expected."""
-        user_a = self.Person.objects.create(name='User A', age=20)
-        user_b = self.Person.objects.create(name='User B', age=30)
+        user_a = self.Person.objects.create(name="User A", age=20)
+        user_b = self.Person.objects.create(name="User B", age=30)
 
         # Test limit on a new queryset
         people = list(self.Person.objects.limit(1))
@@ -132,15 +139,15 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(len(people), 2)
 
         # Test chaining of only after limit
-        person = self.Person.objects().limit(1).only('name').first()
+        person = self.Person.objects().limit(1).only("name").first()
         self.assertEqual(person, user_a)
-        self.assertEqual(person.name, 'User A')
+        self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, None)
 
     def test_skip(self):
         """Ensure that QuerySet.skip works as expected."""
-        user_a = self.Person.objects.create(name='User A', age=20)
-        user_b = self.Person.objects.create(name='User B', age=30)
+        user_a = self.Person.objects.create(name="User A", age=20)
+        user_b = self.Person.objects.create(name="User B", age=30)
 
         # Test skip on a new queryset
         people = list(self.Person.objects.skip(1))
@@ -156,20 +163,20 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(people2[0], user_b)
 
         # Test chaining of only after skip
-        person = self.Person.objects().skip(1).only('name').first()
+        person = self.Person.objects().skip(1).only("name").first()
         self.assertEqual(person, user_b)
-        self.assertEqual(person.name, 'User B')
+        self.assertEqual(person.name, "User B")
         self.assertEqual(person.age, None)
 
     def test___getitem___invalid_index(self):
         """Ensure slicing a queryset works as expected."""
         with self.assertRaises(TypeError):
-            self.Person.objects()['a']
+            self.Person.objects()["a"]
 
     def test_slice(self):
         """Ensure slicing a queryset works as expected."""
-        user_a = self.Person.objects.create(name='User A', age=20)
-        user_b = self.Person.objects.create(name='User B', age=30)
+        user_a = self.Person.objects.create(name="User A", age=20)
+        user_b = self.Person.objects.create(name="User B", age=30)
         user_c = self.Person.objects.create(name="User C", age=40)
 
         # Test slice limit
@@ -203,7 +210,7 @@ class QuerySetTest(unittest.TestCase):
         qs._cursor_obj = None
         people = list(qs)
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0].name, 'User B')
+        self.assertEqual(people[0].name, "User B")
 
         # Test empty slice
         people = list(self.Person.objects[1:1])
@@ -216,14 +223,18 @@ class QuerySetTest(unittest.TestCase):
         # Test larger slice __repr__
         self.Person.objects.delete()
         for i in range(55):
-            self.Person(name='A%s' % i, age=i).save()
+            self.Person(name="A%s" % i, age=i).save()
 
         self.assertEqual(self.Person.objects.count(), 55)
         self.assertEqual("Person object", "%s" % self.Person.objects[0])
-        self.assertEqual("[<Person: Person object>, <Person: Person object>]",
-                         "%s" % self.Person.objects[1:3])
-        self.assertEqual("[<Person: Person object>, <Person: Person object>]",
-                         "%s" % self.Person.objects[51:53])
+        self.assertEqual(
+            "[<Person: Person object>, <Person: Person object>]",
+            "%s" % self.Person.objects[1:3],
+        )
+        self.assertEqual(
+            "[<Person: Person object>, <Person: Person object>]",
+            "%s" % self.Person.objects[51:53],
+        )
 
     def test_find_one(self):
         """Ensure that a query using find_one returns a valid result.
@@ -277,8 +288,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Retrieve the first person from the database
         self.assertRaises(MultipleObjectsReturned, self.Person.objects.get)
-        self.assertRaises(self.Person.MultipleObjectsReturned,
-                          self.Person.objects.get)
+        self.assertRaises(self.Person.MultipleObjectsReturned, self.Person.objects.get)
 
         # Use a query to filter the people found to just person2
         person = self.Person.objects.get(age=30)
@@ -290,6 +300,7 @@ class QuerySetTest(unittest.TestCase):
     def test_find_array_position(self):
         """Ensure that query by array position works.
         """
+
         class Comment(EmbeddedDocument):
             name = StringField()
 
@@ -302,34 +313,34 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
-        Blog.objects.create(tags=['a', 'b'])
-        self.assertEqual(Blog.objects(tags__0='a').count(), 1)
-        self.assertEqual(Blog.objects(tags__0='b').count(), 0)
-        self.assertEqual(Blog.objects(tags__1='a').count(), 0)
-        self.assertEqual(Blog.objects(tags__1='b').count(), 1)
+        Blog.objects.create(tags=["a", "b"])
+        self.assertEqual(Blog.objects(tags__0="a").count(), 1)
+        self.assertEqual(Blog.objects(tags__0="b").count(), 0)
+        self.assertEqual(Blog.objects(tags__1="a").count(), 0)
+        self.assertEqual(Blog.objects(tags__1="b").count(), 1)
 
         Blog.drop_collection()
 
-        comment1 = Comment(name='testa')
-        comment2 = Comment(name='testb')
+        comment1 = Comment(name="testa")
+        comment2 = Comment(name="testb")
         post1 = Post(comments=[comment1, comment2])
         post2 = Post(comments=[comment2, comment2])
         blog1 = Blog.objects.create(posts=[post1, post2])
         blog2 = Blog.objects.create(posts=[post2, post1])
 
-        blog = Blog.objects(posts__0__comments__0__name='testa').get()
+        blog = Blog.objects(posts__0__comments__0__name="testa").get()
         self.assertEqual(blog, blog1)
 
-        blog = Blog.objects(posts__0__comments__0__name='testb').get()
+        blog = Blog.objects(posts__0__comments__0__name="testb").get()
         self.assertEqual(blog, blog2)
 
-        query = Blog.objects(posts__1__comments__1__name='testb')
+        query = Blog.objects(posts__1__comments__1__name="testb")
         self.assertEqual(query.count(), 2)
 
-        query = Blog.objects(posts__1__comments__1__name='testa')
+        query = Blog.objects(posts__1__comments__1__name="testa")
         self.assertEqual(query.count(), 0)
 
-        query = Blog.objects(posts__0__comments__1__name='testa')
+        query = Blog.objects(posts__0__comments__1__name="testa")
         self.assertEqual(query.count(), 0)
 
         Blog.drop_collection()
@@ -368,13 +379,14 @@ class QuerySetTest(unittest.TestCase):
         q2 = q2.filter(ref=a1)._query
         self.assertEqual(q1, q2)
 
-        a_objects = A.objects(s='test1')
+        a_objects = A.objects(s="test1")
         query = B.objects(ref__in=a_objects)
         query = query.filter(boolfield=True)
         self.assertEqual(query.count(), 1)
 
     def test_batch_size(self):
         """Ensure that batch_size works."""
+
         class A(Document):
             s = StringField()
 
@@ -417,33 +429,33 @@ class QuerySetTest(unittest.TestCase):
         self.Person.drop_collection()
 
         write_concern = {"fsync": True}
-        author = self.Person.objects.create(name='Test User')
+        author = self.Person.objects.create(name="Test User")
         author.save(write_concern=write_concern)
 
         # Ensure no regression of #1958
-        author = self.Person(name='Test User2')
+        author = self.Person(name="Test User2")
         author.save(write_concern=None)  # will default to {w: 1}
 
-        result = self.Person.objects.update(
-            set__name='Ross', write_concern={"w": 1})
+        result = self.Person.objects.update(set__name="Ross", write_concern={"w": 1})
 
         self.assertEqual(result, 2)
-        result = self.Person.objects.update(
-            set__name='Ross', write_concern={"w": 0})
+        result = self.Person.objects.update(set__name="Ross", write_concern={"w": 0})
         self.assertEqual(result, None)
 
         result = self.Person.objects.update_one(
-            set__name='Test User', write_concern={"w": 1})
+            set__name="Test User", write_concern={"w": 1}
+        )
         self.assertEqual(result, 1)
         result = self.Person.objects.update_one(
-            set__name='Test User', write_concern={"w": 0})
+            set__name="Test User", write_concern={"w": 0}
+        )
         self.assertEqual(result, None)
 
     def test_update_update_has_a_value(self):
         """Test to ensure that update is passed a value to update to"""
         self.Person.drop_collection()
 
-        author = self.Person.objects.create(name='Test User')
+        author = self.Person.objects.create(name="Test User")
 
         with self.assertRaises(OperationError):
             self.Person.objects(pk=author.pk).update({})
@@ -458,6 +470,7 @@ class QuerySetTest(unittest.TestCase):
             set__posts__1__comments__1__name="testc"
         Check that it only works for ListFields.
         """
+
         class Comment(EmbeddedDocument):
             name = StringField()
 
@@ -470,16 +483,16 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
-        comment1 = Comment(name='testa')
-        comment2 = Comment(name='testb')
+        comment1 = Comment(name="testa")
+        comment2 = Comment(name="testb")
         post1 = Post(comments=[comment1, comment2])
         post2 = Post(comments=[comment2, comment2])
         Blog.objects.create(posts=[post1, post2])
         Blog.objects.create(posts=[post2, post1])
 
         # Update all of the first comments of second posts of all blogs
-        Blog.objects().update(set__posts__1__comments__0__name='testc')
-        testc_blogs = Blog.objects(posts__1__comments__0__name='testc')
+        Blog.objects().update(set__posts__1__comments__0__name="testc")
+        testc_blogs = Blog.objects(posts__1__comments__0__name="testc")
         self.assertEqual(testc_blogs.count(), 2)
 
         Blog.drop_collection()
@@ -487,14 +500,13 @@ class QuerySetTest(unittest.TestCase):
         Blog.objects.create(posts=[post2, post1])
 
         # Update only the first blog returned by the query
-        Blog.objects().update_one(
-            set__posts__1__comments__1__name='testc')
-        testc_blogs = Blog.objects(posts__1__comments__1__name='testc')
+        Blog.objects().update_one(set__posts__1__comments__1__name="testc")
+        testc_blogs = Blog.objects(posts__1__comments__1__name="testc")
         self.assertEqual(testc_blogs.count(), 1)
 
         # Check that using this indexing syntax on a non-list fails
         with self.assertRaises(InvalidQueryError):
-            Blog.objects().update(set__posts__1__comments__0__name__1='asdf')
+            Blog.objects().update(set__posts__1__comments__0__name__1="asdf")
 
         Blog.drop_collection()
 
@@ -520,7 +532,7 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.objects(comments__by="jane").update(inc__comments__S__votes=1)
 
         post = BlogPost.objects.first()
-        self.assertEqual(post.comments[1].by, 'jane')
+        self.assertEqual(post.comments[1].by, "jane")
         self.assertEqual(post.comments[1].votes, 8)
 
     def test_update_using_positional_operator_matches_first(self):
@@ -564,7 +576,7 @@ class QuerySetTest(unittest.TestCase):
         # Nested updates arent supported yet..
         with self.assertRaises(OperationError):
             Simple.drop_collection()
-            Simple(x=[{'test': [1, 2, 3, 4]}]).save()
+            Simple(x=[{"test": [1, 2, 3, 4]}]).save()
             Simple.objects(x__test=2).update(set__x__S__test__S=3)
             self.assertEqual(simple.x, [1, 2, 3, 4])
 
@@ -591,10 +603,11 @@ class QuerySetTest(unittest.TestCase):
         BlogPost(title="ABC", comments=[c1, c2]).save()
 
         BlogPost.objects(comments__by="joe").update(
-            set__comments__S__votes=Vote(score=4))
+            set__comments__S__votes=Vote(score=4)
+        )
 
         post = BlogPost.objects.first()
-        self.assertEqual(post.comments[0].by, 'joe')
+        self.assertEqual(post.comments[0].by, "joe")
         self.assertEqual(post.comments[0].votes.score, 4)
 
     def test_update_min_max(self):
@@ -619,16 +632,15 @@ class QuerySetTest(unittest.TestCase):
             item = StringField()
             price = FloatField()
 
-        product = Product.objects.create(item='ABC', price=10.99)
-        product = Product.objects.create(item='ABC', price=10.99)
+        product = Product.objects.create(item="ABC", price=10.99)
+        product = Product.objects.create(item="ABC", price=10.99)
         Product.objects(id=product.id).update(mul__price=1.25)
         self.assertEqual(Product.objects.get(id=product.id).price, 13.7375)
-        unknown_product = Product.objects.create(item='Unknown')
+        unknown_product = Product.objects.create(item="Unknown")
         Product.objects(id=unknown_product.id).update(mul__price=100)
         self.assertEqual(Product.objects.get(id=unknown_product.id).price, 0)
 
     def test_updates_can_have_match_operators(self):
-
         class Comment(EmbeddedDocument):
             content = StringField()
             name = StringField(max_length=120)
@@ -644,8 +656,11 @@ class QuerySetTest(unittest.TestCase):
         comm1 = Comment(content="very funny indeed", name="John S", vote=1)
         comm2 = Comment(content="kind of funny", name="Mark P", vote=0)
 
-        Post(title='Fun with MongoEngine', tags=['mongodb', 'mongoengine'],
-             comments=[comm1, comm2]).save()
+        Post(
+            title="Fun with MongoEngine",
+            tags=["mongodb", "mongoengine"],
+            comments=[comm1, comm2],
+        ).save()
 
         Post.objects().update_one(pull__comments__vote__lt=1)
 
@@ -653,6 +668,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_mapfield_update(self):
         """Ensure that the MapField can be updated."""
+
         class Member(EmbeddedDocument):
             gender = StringField()
             age = IntField()
@@ -663,37 +679,35 @@ class QuerySetTest(unittest.TestCase):
         Club.drop_collection()
 
         club = Club()
-        club.members['John'] = Member(gender="M", age=13)
+        club.members["John"] = Member(gender="M", age=13)
         club.save()
 
-        Club.objects().update(
-            set__members={"John": Member(gender="F", age=14)})
+        Club.objects().update(set__members={"John": Member(gender="F", age=14)})
 
         club = Club.objects().first()
-        self.assertEqual(club.members['John'].gender, "F")
-        self.assertEqual(club.members['John'].age, 14)
+        self.assertEqual(club.members["John"].gender, "F")
+        self.assertEqual(club.members["John"].age, 14)
 
     def test_dictfield_update(self):
         """Ensure that the DictField can be updated."""
+
         class Club(Document):
             members = DictField()
 
         club = Club()
-        club.members['John'] = {'gender': 'M', 'age': 13}
+        club.members["John"] = {"gender": "M", "age": 13}
         club.save()
 
-        Club.objects().update(
-            set__members={"John": {'gender': 'F', 'age': 14}})
+        Club.objects().update(set__members={"John": {"gender": "F", "age": 14}})
 
         club = Club.objects().first()
-        self.assertEqual(club.members['John']['gender'], "F")
-        self.assertEqual(club.members['John']['age'], 14)
+        self.assertEqual(club.members["John"]["gender"], "F")
+        self.assertEqual(club.members["John"]["age"], 14)
 
     def test_update_results(self):
         self.Person.drop_collection()
 
-        result = self.Person(name="Bob", age=25).update(
-            upsert=True, full_result=True)
+        result = self.Person(name="Bob", age=25).update(upsert=True, full_result=True)
         self.assertIsInstance(result, UpdateResult)
         self.assertIn("upserted", result.raw_result)
         self.assertFalse(result.raw_result["updatedExisting"])
@@ -704,8 +718,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertTrue(result.raw_result["updatedExisting"])
 
         self.Person(name="Bob", age=20).save()
-        result = self.Person.objects(name="Bob").update(
-            set__name="bobby", multi=True)
+        result = self.Person.objects(name="Bob").update(set__name="bobby", multi=True)
         self.assertEqual(result, 2)
 
     def test_update_validate(self):
@@ -719,8 +732,12 @@ class QuerySetTest(unittest.TestCase):
             ed_f = EmbeddedDocumentField(EmDoc)
 
         self.assertRaises(ValidationError, Doc.objects().update, str_f=1, upsert=True)
-        self.assertRaises(ValidationError, Doc.objects().update, dt_f="datetime", upsert=True)
-        self.assertRaises(ValidationError, Doc.objects().update, ed_f__str_f=1, upsert=True)
+        self.assertRaises(
+            ValidationError, Doc.objects().update, dt_f="datetime", upsert=True
+        )
+        self.assertRaises(
+            ValidationError, Doc.objects().update, ed_f__str_f=1, upsert=True
+        )
 
     def test_update_related_models(self):
         class TestPerson(Document):
@@ -733,34 +750,33 @@ class QuerySetTest(unittest.TestCase):
         TestPerson.drop_collection()
         TestOrganization.drop_collection()
 
-        p = TestPerson(name='p1')
+        p = TestPerson(name="p1")
         p.save()
-        o = TestOrganization(name='o1')
+        o = TestOrganization(name="o1")
         o.save()
 
         o.owner = p
-        p.name = 'p2'
+        p.name = "p2"
 
-        self.assertEqual(o._get_changed_fields(), ['owner'])
-        self.assertEqual(p._get_changed_fields(), ['name'])
+        self.assertEqual(o._get_changed_fields(), ["owner"])
+        self.assertEqual(p._get_changed_fields(), ["name"])
 
         o.save()
 
         self.assertEqual(o._get_changed_fields(), [])
-        self.assertEqual(p._get_changed_fields(), ['name'])  # Fails; it's empty
+        self.assertEqual(p._get_changed_fields(), ["name"])  # Fails; it's empty
 
         # This will do NOTHING at all, even though we changed the name
         p.save()
 
         p.reload()
 
-        self.assertEqual(p.name, 'p2')  # Fails; it's still `p1`
+        self.assertEqual(p.name, "p2")  # Fails; it's still `p1`
 
     def test_upsert(self):
         self.Person.drop_collection()
 
-        self.Person.objects(
-            pk=ObjectId(), name="Bob", age=30).update(upsert=True)
+        self.Person.objects(pk=ObjectId(), name="Bob", age=30).update(upsert=True)
 
         bob = self.Person.objects.first()
         self.assertEqual("Bob", bob.name)
@@ -787,7 +803,8 @@ class QuerySetTest(unittest.TestCase):
         self.Person.drop_collection()
 
         self.Person.objects(pk=ObjectId()).update(
-            set__name='Bob', set_on_insert__age=30, upsert=True)
+            set__name="Bob", set_on_insert__age=30, upsert=True
+        )
 
         bob = self.Person.objects.first()
         self.assertEqual("Bob", bob.name)
@@ -798,7 +815,7 @@ class QuerySetTest(unittest.TestCase):
             field = IntField()
 
         class B(Document):
-            meta = {'collection': 'b'}
+            meta = {"collection": "b"}
 
             field = IntField(default=1)
             embed = EmbeddedDocumentField(Embed, default=Embed)
@@ -821,7 +838,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(record.embed.field, 2)
 
         # Request only the _id field and save
-        clone = B.objects().only('id').first()
+        clone = B.objects().only("id").first()
         clone.save()
 
         # Reload the record and see that the embed data is not lost
@@ -849,19 +866,18 @@ class QuerySetTest(unittest.TestCase):
 
         # get MongoDB version info
         connection = get_connection()
-        info = connection.test.command('buildInfo')
+        info = connection.test.command("buildInfo")
 
         # Recreates the collection
         self.assertEqual(0, Blog.objects.count())
 
-        comment1 = Comment(name='testa')
-        comment2 = Comment(name='testb')
+        comment1 = Comment(name="testa")
+        comment2 = Comment(name="testb")
         post1 = Post(comments=[comment1, comment2])
         post2 = Post(comments=[comment2, comment2])
 
         # Check bulk insert using load_bulk=False
-        blogs = [Blog(title="%s" % i, posts=[post1, post2])
-                 for i in range(99)]
+        blogs = [Blog(title="%s" % i, posts=[post1, post2]) for i in range(99)]
         with query_counter() as q:
             self.assertEqual(q, 0)
             Blog.objects.insert(blogs, load_bulk=False)
@@ -873,8 +889,7 @@ class QuerySetTest(unittest.TestCase):
         Blog.ensure_indexes()
 
         # Check bulk insert using load_bulk=True
-        blogs = [Blog(title="%s" % i, posts=[post1, post2])
-                 for i in range(99)]
+        blogs = [Blog(title="%s" % i, posts=[post1, post2]) for i in range(99)]
         with query_counter() as q:
             self.assertEqual(q, 0)
             Blog.objects.insert(blogs)
@@ -882,8 +897,8 @@ class QuerySetTest(unittest.TestCase):
 
         Blog.drop_collection()
 
-        comment1 = Comment(name='testa')
-        comment2 = Comment(name='testb')
+        comment1 = Comment(name="testa")
+        comment2 = Comment(name="testb")
         post1 = Post(comments=[comment1, comment2])
         post2 = Post(comments=[comment2, comment2])
         blog1 = Blog(title="code", posts=[post1, post2])
@@ -898,13 +913,17 @@ class QuerySetTest(unittest.TestCase):
         with self.assertRaises(OperationError) as cm:
             blog = Blog.objects.first()
             Blog.objects.insert(blog)
-        self.assertEqual(str(cm.exception), 'Some documents have ObjectIds use doc.update() instead')
+        self.assertEqual(
+            str(cm.exception), "Some documents have ObjectIds use doc.update() instead"
+        )
 
         # test inserting a query set
         with self.assertRaises(OperationError) as cm:
             blogs_qs = Blog.objects
             Blog.objects.insert(blogs_qs)
-        self.assertEqual(str(cm.exception), 'Some documents have ObjectIds use doc.update() instead')
+        self.assertEqual(
+            str(cm.exception), "Some documents have ObjectIds use doc.update() instead"
+        )
 
         # insert 1 new doc
         new_post = Blog(title="code123", id=ObjectId())
@@ -949,13 +968,13 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Blog.drop_collection()
-        Blog(name='test').save()
+        Blog(name="test").save()
 
         with self.assertRaises(OperationError):
             Blog.objects.insert("HELLO WORLD")
 
         with self.assertRaises(OperationError):
-            Blog.objects.insert({'name': 'garbage'})
+            Blog.objects.insert({"name": "garbage"})
 
     def test_bulk_insert_update_input_document_ids(self):
         class Comment(Document):
@@ -1011,10 +1030,11 @@ class QuerySetTest(unittest.TestCase):
         """Make sure we don't perform unnecessary db operations when
         none of document's fields were updated.
         """
+
         class Person(Document):
             name = StringField()
-            owns = ListField(ReferenceField('Organization'))
-            projects = ListField(ReferenceField('Project'))
+            owns = ListField(ReferenceField("Organization"))
+            projects = ListField(ReferenceField("Project"))
 
         class Organization(Document):
             name = StringField()
@@ -1071,8 +1091,8 @@ class QuerySetTest(unittest.TestCase):
     def test_repeated_iteration(self):
         """Ensure that QuerySet rewinds itself one iteration finishes.
         """
-        self.Person(name='Person 1').save()
-        self.Person(name='Person 2').save()
+        self.Person(name="Person 1").save()
+        self.Person(name="Person 2").save()
 
         queryset = self.Person.objects
         people1 = [person for person in queryset]
@@ -1100,7 +1120,7 @@ class QuerySetTest(unittest.TestCase):
         for i in range(1000):
             Doc(number=i).save()
 
-        docs = Doc.objects.order_by('number')
+        docs = Doc.objects.order_by("number")
 
         self.assertEqual(docs.count(), 1000)
 
@@ -1108,88 +1128,89 @@ class QuerySetTest(unittest.TestCase):
         self.assertIn("Doc: 0", docs_string)
 
         self.assertEqual(docs.count(), 1000)
-        self.assertIn('(remaining elements truncated)', "%s" % docs)
+        self.assertIn("(remaining elements truncated)", "%s" % docs)
 
         # Limit and skip
         docs = docs[1:4]
-        self.assertEqual('[<Doc: 1>, <Doc: 2>, <Doc: 3>]', "%s" % docs)
+        self.assertEqual("[<Doc: 1>, <Doc: 2>, <Doc: 3>]", "%s" % docs)
 
         self.assertEqual(docs.count(with_limit_and_skip=True), 3)
         for doc in docs:
-            self.assertEqual('.. queryset mid-iteration ..', repr(docs))
+            self.assertEqual(".. queryset mid-iteration ..", repr(docs))
 
     def test_regex_query_shortcuts(self):
         """Ensure that contains, startswith, endswith, etc work.
         """
-        person = self.Person(name='Guido van Rossum')
+        person = self.Person(name="Guido van Rossum")
         person.save()
 
         # Test contains
-        obj = self.Person.objects(name__contains='van').first()
+        obj = self.Person.objects(name__contains="van").first()
         self.assertEqual(obj, person)
-        obj = self.Person.objects(name__contains='Van').first()
+        obj = self.Person.objects(name__contains="Van").first()
         self.assertEqual(obj, None)
 
         # Test icontains
-        obj = self.Person.objects(name__icontains='Van').first()
+        obj = self.Person.objects(name__icontains="Van").first()
         self.assertEqual(obj, person)
 
         # Test startswith
-        obj = self.Person.objects(name__startswith='Guido').first()
+        obj = self.Person.objects(name__startswith="Guido").first()
         self.assertEqual(obj, person)
-        obj = self.Person.objects(name__startswith='guido').first()
+        obj = self.Person.objects(name__startswith="guido").first()
         self.assertEqual(obj, None)
 
         # Test istartswith
-        obj = self.Person.objects(name__istartswith='guido').first()
+        obj = self.Person.objects(name__istartswith="guido").first()
         self.assertEqual(obj, person)
 
         # Test endswith
-        obj = self.Person.objects(name__endswith='Rossum').first()
+        obj = self.Person.objects(name__endswith="Rossum").first()
         self.assertEqual(obj, person)
-        obj = self.Person.objects(name__endswith='rossuM').first()
+        obj = self.Person.objects(name__endswith="rossuM").first()
         self.assertEqual(obj, None)
 
         # Test iendswith
-        obj = self.Person.objects(name__iendswith='rossuM').first()
+        obj = self.Person.objects(name__iendswith="rossuM").first()
         self.assertEqual(obj, person)
 
         # Test exact
-        obj = self.Person.objects(name__exact='Guido van Rossum').first()
+        obj = self.Person.objects(name__exact="Guido van Rossum").first()
         self.assertEqual(obj, person)
-        obj = self.Person.objects(name__exact='Guido van rossum').first()
+        obj = self.Person.objects(name__exact="Guido van rossum").first()
         self.assertEqual(obj, None)
-        obj = self.Person.objects(name__exact='Guido van Rossu').first()
+        obj = self.Person.objects(name__exact="Guido van Rossu").first()
         self.assertEqual(obj, None)
 
         # Test iexact
-        obj = self.Person.objects(name__iexact='gUIDO VAN rOSSUM').first()
+        obj = self.Person.objects(name__iexact="gUIDO VAN rOSSUM").first()
         self.assertEqual(obj, person)
-        obj = self.Person.objects(name__iexact='gUIDO VAN rOSSU').first()
+        obj = self.Person.objects(name__iexact="gUIDO VAN rOSSU").first()
         self.assertEqual(obj, None)
 
         # Test unsafe expressions
-        person = self.Person(name='Guido van Rossum [.\'Geek\']')
+        person = self.Person(name="Guido van Rossum [.'Geek']")
         person.save()
 
-        obj = self.Person.objects(name__icontains='[.\'Geek').first()
+        obj = self.Person.objects(name__icontains="[.'Geek").first()
         self.assertEqual(obj, person)
 
     def test_not(self):
         """Ensure that the __not operator works as expected.
         """
-        alice = self.Person(name='Alice', age=25)
+        alice = self.Person(name="Alice", age=25)
         alice.save()
 
-        obj = self.Person.objects(name__iexact='alice').first()
+        obj = self.Person.objects(name__iexact="alice").first()
         self.assertEqual(obj, alice)
 
-        obj = self.Person.objects(name__not__iexact='alice').first()
+        obj = self.Person.objects(name__not__iexact="alice").first()
         self.assertEqual(obj, None)
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
         """
+
         class Blog(Document):
             id = StringField(primary_key=True)
 
@@ -1218,25 +1239,26 @@ class QuerySetTest(unittest.TestCase):
             blog=blog_1,
             title="Blog Post #1",
             is_published=True,
-            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
+            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0),
         )
         BlogPost.objects.create(
             blog=blog_2,
             title="Blog Post #2",
             is_published=True,
-            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0),
         )
         BlogPost.objects.create(
             blog=blog_3,
             title="Blog Post #3",
             is_published=True,
-            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0),
         )
 
         # find all published blog posts before 2010-01-07
         published_posts = BlogPost.published()
         published_posts = published_posts.filter(
-            published_date__lt=datetime.datetime(2010, 1, 7, 0, 0, 0))
+            published_date__lt=datetime.datetime(2010, 1, 7, 0, 0, 0)
+        )
         self.assertEqual(published_posts.count(), 2)
 
         blog_posts = BlogPost.objects
@@ -1248,11 +1270,11 @@ class QuerySetTest(unittest.TestCase):
         Blog.drop_collection()
 
     def test_filter_chaining_with_regex(self):
-        person = self.Person(name='Guido van Rossum')
+        person = self.Person(name="Guido van Rossum")
         person.save()
 
         people = self.Person.objects
-        people = people.filter(name__startswith='Gui').filter(name__not__endswith='tum')
+        people = people.filter(name__startswith="Gui").filter(name__not__endswith="tum")
         self.assertEqual(people.count(), 1)
 
     def assertSequence(self, qs, expected):
@@ -1265,27 +1287,23 @@ class QuerySetTest(unittest.TestCase):
     def test_ordering(self):
         """Ensure default ordering is applied and can be overridden.
         """
+
         class BlogPost(Document):
             title = StringField()
             published_date = DateTimeField()
 
-            meta = {
-                'ordering': ['-published_date']
-            }
+            meta = {"ordering": ["-published_date"]}
 
         BlogPost.drop_collection()
 
         blog_post_1 = BlogPost.objects.create(
-            title="Blog Post #1",
-            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
+            title="Blog Post #1", published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
         )
         blog_post_2 = BlogPost.objects.create(
-            title="Blog Post #2",
-            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+            title="Blog Post #2", published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
         )
         blog_post_3 = BlogPost.objects.create(
-            title="Blog Post #3",
-            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+            title="Blog Post #3", published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
         )
 
         # get the "first" BlogPost using default ordering
@@ -1308,39 +1326,35 @@ class QuerySetTest(unittest.TestCase):
             title = StringField()
             published_date = DateTimeField()
 
-            meta = {
-                'ordering': ['-published_date']
-            }
+            meta = {"ordering": ["-published_date"]}
 
         BlogPost.drop_collection()
 
         # default ordering should be used by default
         with db_ops_tracker() as q:
-            BlogPost.objects.filter(title='whatever').first()
+            BlogPost.objects.filter(title="whatever").first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY],
-                {'published_date': -1}
+                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY], {"published_date": -1}
             )
 
         # calling order_by() should clear the default ordering
         with db_ops_tracker() as q:
-            BlogPost.objects.filter(title='whatever').order_by().first()
+            BlogPost.objects.filter(title="whatever").order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
         # calling an explicit order_by should use a specified sort
         with db_ops_tracker() as q:
-            BlogPost.objects.filter(title='whatever').order_by('published_date').first()
+            BlogPost.objects.filter(title="whatever").order_by("published_date").first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertEqual(
-                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY],
-                {'published_date': 1}
+                q.get_ops()[0][CMD_QUERY_KEY][ORDER_BY_KEY], {"published_date": 1}
             )
 
         # calling order_by() after an explicit sort should clear it
         with db_ops_tracker() as q:
-            qs = BlogPost.objects.filter(title='whatever').order_by('published_date')
+            qs = BlogPost.objects.filter(title="whatever").order_by("published_date")
             qs.order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
             self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
@@ -1354,21 +1368,20 @@ class QuerySetTest(unittest.TestCase):
             title = StringField()
             published_date = DateTimeField()
 
-            meta = {
-                'ordering': ['-published_date']
-            }
+            meta = {"ordering": ["-published_date"]}
 
         BlogPost.objects.create(
-            title='whatever', published_date=datetime.datetime.utcnow())
+            title="whatever", published_date=datetime.datetime.utcnow()
+        )
 
         with db_ops_tracker() as q:
-            BlogPost.objects.get(title='whatever')
+            BlogPost.objects.get(title="whatever")
             self.assertEqual(len(q.get_ops()), 1)
             self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
         # Ordering should be ignored for .get even if we set it explicitly
         with db_ops_tracker() as q:
-            BlogPost.objects.order_by('-title').get(title='whatever')
+            BlogPost.objects.order_by("-title").get(title="whatever")
             self.assertEqual(len(q.get_ops()), 1)
             self.assertNotIn(ORDER_BY_KEY, q.get_ops()[0][CMD_QUERY_KEY])
 
@@ -1376,6 +1389,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that an embedded document is properly returned from
         different manners of querying.
         """
+
         class User(EmbeddedDocument):
             name = StringField()
 
@@ -1385,23 +1399,20 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        user = User(name='Test User')
-        BlogPost.objects.create(
-            author=user,
-            content='Had a good coffee today...'
-        )
+        user = User(name="Test User")
+        BlogPost.objects.create(author=user, content="Had a good coffee today...")
 
         result = BlogPost.objects.first()
         self.assertIsInstance(result.author, User)
-        self.assertEqual(result.author.name, 'Test User')
+        self.assertEqual(result.author.name, "Test User")
 
         result = BlogPost.objects.get(author__name=user.name)
         self.assertIsInstance(result.author, User)
-        self.assertEqual(result.author.name, 'Test User')
+        self.assertEqual(result.author.name, "Test User")
 
-        result = BlogPost.objects.get(author={'name': user.name})
+        result = BlogPost.objects.get(author={"name": user.name})
         self.assertIsInstance(result.author, User)
-        self.assertEqual(result.author.name, 'Test User')
+        self.assertEqual(result.author.name, "Test User")
 
         # Fails, since the string is not a type that is able to represent the
         # author's document structure (should be dict)
@@ -1410,6 +1421,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_find_empty_embedded(self):
         """Ensure that you can save and find an empty embedded document."""
+
         class User(EmbeddedDocument):
             name = StringField()
 
@@ -1419,7 +1431,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        BlogPost.objects.create(content='Anonymous post...')
+        BlogPost.objects.create(content="Anonymous post...")
 
         result = BlogPost.objects.get(author=None)
         self.assertEqual(result.author, None)
@@ -1427,15 +1439,16 @@ class QuerySetTest(unittest.TestCase):
     def test_find_dict_item(self):
         """Ensure that DictField items may be found.
         """
+
         class BlogPost(Document):
             info = DictField()
 
         BlogPost.drop_collection()
 
-        post = BlogPost(info={'title': 'test'})
+        post = BlogPost(info={"title": "test"})
         post.save()
 
-        post_obj = BlogPost.objects(info__title='test').first()
+        post_obj = BlogPost.objects(info__title="test").first()
         self.assertEqual(post_obj.id, post.id)
 
         BlogPost.drop_collection()
@@ -1443,6 +1456,7 @@ class QuerySetTest(unittest.TestCase):
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js.
         """
+
         class BlogPost(Document):
             hits = IntField()
             published = BooleanField()
@@ -1469,10 +1483,10 @@ class QuerySetTest(unittest.TestCase):
         """
 
         # Ensure that normal queries work
-        c = BlogPost.objects(published=True).exec_js(js_func, 'hits')
+        c = BlogPost.objects(published=True).exec_js(js_func, "hits")
         self.assertEqual(c, 2)
 
-        c = BlogPost.objects(published=False).exec_js(js_func, 'hits')
+        c = BlogPost.objects(published=False).exec_js(js_func, "hits")
         self.assertEqual(c, 1)
 
         BlogPost.drop_collection()
@@ -1480,22 +1494,22 @@ class QuerySetTest(unittest.TestCase):
     def test_exec_js_field_sub(self):
         """Ensure that field substitutions occur properly in exec_js functions.
         """
+
         class Comment(EmbeddedDocument):
-            content = StringField(db_field='body')
+            content = StringField(db_field="body")
 
         class BlogPost(Document):
-            name = StringField(db_field='doc-name')
-            comments = ListField(EmbeddedDocumentField(Comment),
-                                 db_field='cmnts')
+            name = StringField(db_field="doc-name")
+            comments = ListField(EmbeddedDocumentField(Comment), db_field="cmnts")
 
         BlogPost.drop_collection()
 
-        comments1 = [Comment(content='cool'), Comment(content='yay')]
-        post1 = BlogPost(name='post1', comments=comments1)
+        comments1 = [Comment(content="cool"), Comment(content="yay")]
+        post1 = BlogPost(name="post1", comments=comments1)
         post1.save()
 
-        comments2 = [Comment(content='nice stuff')]
-        post2 = BlogPost(name='post2', comments=comments2)
+        comments2 = [Comment(content="nice stuff")]
+        post2 = BlogPost(name="post2", comments=comments2)
         post2.save()
 
         code = """
@@ -1515,16 +1529,15 @@ class QuerySetTest(unittest.TestCase):
         """
 
         sub_code = BlogPost.objects._sub_js_fields(code)
-        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],',
-                       'doc["cmnts"][i]["body"]']
+        code_chunks = ['doc["cmnts"];', 'doc["doc-name"],', 'doc["cmnts"][i]["body"]']
         for chunk in code_chunks:
             self.assertIn(chunk, sub_code)
 
         results = BlogPost.objects.exec_js(code)
         expected_results = [
-            {u'comment': u'cool', u'document': u'post1'},
-            {u'comment': u'yay', u'document': u'post1'},
-            {u'comment': u'nice stuff', u'document': u'post2'},
+            {u"comment": u"cool", u"document": u"post1"},
+            {u"comment": u"yay", u"document": u"post1"},
+            {u"comment": u"nice stuff", u"document": u"post2"},
         ]
         self.assertEqual(results, expected_results)
 
@@ -1553,55 +1566,60 @@ class QuerySetTest(unittest.TestCase):
     def test_reverse_delete_rule_cascade(self):
         """Ensure cascading deletion of referring documents from the database.
         """
+
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+
         BlogPost.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
-        someoneelse = self.Person(name='Some-one Else')
+        someoneelse = self.Person(name="Some-one Else")
         someoneelse.save()
 
-        BlogPost(content='Watching TV', author=me).save()
-        BlogPost(content='Chilling out', author=me).save()
-        BlogPost(content='Pro Testing', author=someoneelse).save()
+        BlogPost(content="Watching TV", author=me).save()
+        BlogPost(content="Chilling out", author=me).save()
+        BlogPost(content="Pro Testing", author=someoneelse).save()
 
         self.assertEqual(3, BlogPost.objects.count())
-        self.Person.objects(name='Test User').delete()
+        self.Person.objects(name="Test User").delete()
         self.assertEqual(1, BlogPost.objects.count())
 
     def test_reverse_delete_rule_cascade_on_abstract_document(self):
         """Ensure cascading deletion of referring documents from the database
         does not fail on abstract document.
         """
+
         class AbstractBlogPost(Document):
-            meta = {'abstract': True}
+            meta = {"abstract": True}
             author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
 
         class BlogPost(AbstractBlogPost):
             content = StringField()
+
         BlogPost.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
-        someoneelse = self.Person(name='Some-one Else')
+        someoneelse = self.Person(name="Some-one Else")
         someoneelse.save()
 
-        BlogPost(content='Watching TV', author=me).save()
-        BlogPost(content='Chilling out', author=me).save()
-        BlogPost(content='Pro Testing', author=someoneelse).save()
+        BlogPost(content="Watching TV", author=me).save()
+        BlogPost(content="Chilling out", author=me).save()
+        BlogPost(content="Pro Testing", author=someoneelse).save()
 
         self.assertEqual(3, BlogPost.objects.count())
-        self.Person.objects(name='Test User').delete()
+        self.Person.objects(name="Test User").delete()
         self.assertEqual(1, BlogPost.objects.count())
 
     def test_reverse_delete_rule_cascade_cycle(self):
         """Ensure reference cascading doesn't loop if reference graph isn't
         a tree
         """
+
         class Dummy(Document):
-            reference = ReferenceField('self', reverse_delete_rule=CASCADE)
+            reference = ReferenceField("self", reverse_delete_rule=CASCADE)
 
         base = Dummy().save()
         other = Dummy(reference=base).save()
@@ -1617,14 +1635,15 @@ class QuerySetTest(unittest.TestCase):
         """Ensure reference cascading doesn't loop if reference graph isn't
         a tree
         """
+
         class Category(Document):
             name = StringField()
 
         class Dummy(Document):
-            reference = ReferenceField('self', reverse_delete_rule=CASCADE)
+            reference = ReferenceField("self", reverse_delete_rule=CASCADE)
             cat = ReferenceField(Category, reverse_delete_rule=CASCADE)
 
-        cat = Category(name='cat').save()
+        cat = Category(name="cat").save()
         base = Dummy(cat=cat).save()
         other = Dummy(reference=base).save()
         other2 = Dummy(reference=other).save()
@@ -1641,24 +1660,25 @@ class QuerySetTest(unittest.TestCase):
         """Ensure self-referencing CASCADE deletes do not result in infinite
         loop
         """
+
         class Category(Document):
             name = StringField()
-            parent = ReferenceField('self', reverse_delete_rule=CASCADE)
+            parent = ReferenceField("self", reverse_delete_rule=CASCADE)
 
         Category.drop_collection()
 
         num_children = 3
-        base = Category(name='Root')
+        base = Category(name="Root")
         base.save()
 
         # Create a simple parent-child tree
         for i in range(num_children):
-            child_name = 'Child-%i' % i
+            child_name = "Child-%i" % i
             child = Category(name=child_name, parent=base)
             child.save()
 
             for i in range(num_children):
-                child_child_name = 'Child-Child-%i' % i
+                child_child_name = "Child-Child-%i" % i
                 child_child = Category(name=child_child_name, parent=child)
                 child_child.save()
 
@@ -1674,6 +1694,7 @@ class QuerySetTest(unittest.TestCase):
     def test_reverse_delete_rule_nullify(self):
         """Ensure nullification of references to deleted documents.
         """
+
         class Category(Document):
             name = StringField()
 
@@ -1684,14 +1705,14 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         Category.drop_collection()
 
-        lameness = Category(name='Lameness')
+        lameness = Category(name="Lameness")
         lameness.save()
 
-        post = BlogPost(content='Watching TV', category=lameness)
+        post = BlogPost(content="Watching TV", category=lameness)
         post.save()
 
         self.assertEqual(1, BlogPost.objects.count())
-        self.assertEqual('Lameness', BlogPost.objects.first().category.name)
+        self.assertEqual("Lameness", BlogPost.objects.first().category.name)
         Category.objects.delete()
         self.assertEqual(1, BlogPost.objects.count())
         self.assertEqual(None, BlogPost.objects.first().category)
@@ -1700,24 +1721,26 @@ class QuerySetTest(unittest.TestCase):
         """Ensure nullification of references to deleted documents when
         reference is on an abstract document.
         """
+
         class AbstractBlogPost(Document):
-            meta = {'abstract': True}
+            meta = {"abstract": True}
             author = ReferenceField(self.Person, reverse_delete_rule=NULLIFY)
 
         class BlogPost(AbstractBlogPost):
             content = StringField()
+
         BlogPost.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
-        someoneelse = self.Person(name='Some-one Else')
+        someoneelse = self.Person(name="Some-one Else")
         someoneelse.save()
 
-        BlogPost(content='Watching TV', author=me).save()
+        BlogPost(content="Watching TV", author=me).save()
 
         self.assertEqual(1, BlogPost.objects.count())
         self.assertEqual(me, BlogPost.objects.first().author)
-        self.Person.objects(name='Test User').delete()
+        self.Person.objects(name="Test User").delete()
         self.assertEqual(1, BlogPost.objects.count())
         self.assertEqual(None, BlogPost.objects.first().author)
 
@@ -1725,6 +1748,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure deletion gets denied on documents that still have references
         to them.
         """
+
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(self.Person, reverse_delete_rule=DENY)
@@ -1732,10 +1756,10 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         self.Person.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
 
-        post = BlogPost(content='Watching TV', author=me)
+        post = BlogPost(content="Watching TV", author=me)
         post.save()
 
         self.assertRaises(OperationError, self.Person.objects.delete)
@@ -1744,18 +1768,20 @@ class QuerySetTest(unittest.TestCase):
         """Ensure deletion gets denied on documents that still have references
         to them, when reference is on an abstract document.
         """
+
         class AbstractBlogPost(Document):
-            meta = {'abstract': True}
+            meta = {"abstract": True}
             author = ReferenceField(self.Person, reverse_delete_rule=DENY)
 
         class BlogPost(AbstractBlogPost):
             content = StringField()
+
         BlogPost.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
 
-        BlogPost(content='Watching TV', author=me).save()
+        BlogPost(content="Watching TV", author=me).save()
 
         self.assertEqual(1, BlogPost.objects.count())
         self.assertRaises(OperationError, self.Person.objects.delete)
@@ -1763,24 +1789,24 @@ class QuerySetTest(unittest.TestCase):
     def test_reverse_delete_rule_pull(self):
         """Ensure pulling of references to deleted documents.
         """
+
         class BlogPost(Document):
             content = StringField()
-            authors = ListField(ReferenceField(self.Person,
-                                               reverse_delete_rule=PULL))
+            authors = ListField(ReferenceField(self.Person, reverse_delete_rule=PULL))
 
         BlogPost.drop_collection()
         self.Person.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
 
-        someoneelse = self.Person(name='Some-one Else')
+        someoneelse = self.Person(name="Some-one Else")
         someoneelse.save()
 
-        post = BlogPost(content='Watching TV', authors=[me, someoneelse])
+        post = BlogPost(content="Watching TV", authors=[me, someoneelse])
         post.save()
 
-        another = BlogPost(content='Chilling Out', authors=[someoneelse])
+        another = BlogPost(content="Chilling Out", authors=[someoneelse])
         another.save()
 
         someoneelse.delete()
@@ -1794,10 +1820,10 @@ class QuerySetTest(unittest.TestCase):
         """Ensure pulling of references to deleted documents when reference
         is defined on an abstract document..
         """
+
         class AbstractBlogPost(Document):
-            meta = {'abstract': True}
-            authors = ListField(ReferenceField(self.Person,
-                                               reverse_delete_rule=PULL))
+            meta = {"abstract": True}
+            authors = ListField(ReferenceField(self.Person, reverse_delete_rule=PULL))
 
         class BlogPost(AbstractBlogPost):
             content = StringField()
@@ -1805,16 +1831,16 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         self.Person.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
 
-        someoneelse = self.Person(name='Some-one Else')
+        someoneelse = self.Person(name="Some-one Else")
         someoneelse.save()
 
-        post = BlogPost(content='Watching TV', authors=[me, someoneelse])
+        post = BlogPost(content="Watching TV", authors=[me, someoneelse])
         post.save()
 
-        another = BlogPost(content='Chilling Out', authors=[someoneelse])
+        another = BlogPost(content="Chilling Out", authors=[someoneelse])
         another.save()
 
         someoneelse.delete()
@@ -1825,7 +1851,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(another.authors, [])
 
     def test_delete_with_limits(self):
-
         class Log(Document):
             pass
 
@@ -1840,19 +1865,21 @@ class QuerySetTest(unittest.TestCase):
     def test_delete_with_limit_handles_delete_rules(self):
         """Ensure cascading deletion of referring documents from the database.
         """
+
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+
         BlogPost.drop_collection()
 
-        me = self.Person(name='Test User')
+        me = self.Person(name="Test User")
         me.save()
-        someoneelse = self.Person(name='Some-one Else')
+        someoneelse = self.Person(name="Some-one Else")
         someoneelse.save()
 
-        BlogPost(content='Watching TV', author=me).save()
-        BlogPost(content='Chilling out', author=me).save()
-        BlogPost(content='Pro Testing', author=someoneelse).save()
+        BlogPost(content="Watching TV", author=me).save()
+        BlogPost(content="Chilling out", author=me).save()
+        BlogPost(content="Pro Testing", author=someoneelse).save()
 
         self.assertEqual(3, BlogPost.objects.count())
         self.Person.objects()[:1].delete()
@@ -1867,6 +1894,7 @@ class QuerySetTest(unittest.TestCase):
     def test_reference_field_find(self):
         """Ensure cascading deletion of referring documents from the database.
         """
+
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(self.Person)
@@ -1874,7 +1902,7 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         self.Person.drop_collection()
 
-        me = self.Person(name='Test User').save()
+        me = self.Person(name="Test User").save()
         BlogPost(content="test 123", author=me).save()
 
         self.assertEqual(1, BlogPost.objects(author=me).count())
@@ -1883,12 +1911,12 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, BlogPost.objects(author__in=[me]).count())
         self.assertEqual(1, BlogPost.objects(author__in=[me.pk]).count())
-        self.assertEqual(
-            1, BlogPost.objects(author__in=["%s" % me.pk]).count())
+        self.assertEqual(1, BlogPost.objects(author__in=["%s" % me.pk]).count())
 
     def test_reference_field_find_dbref(self):
         """Ensure cascading deletion of referring documents from the database.
         """
+
         class BlogPost(Document):
             content = StringField()
             author = ReferenceField(self.Person, dbref=True)
@@ -1896,7 +1924,7 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         self.Person.drop_collection()
 
-        me = self.Person(name='Test User').save()
+        me = self.Person(name="Test User").save()
         BlogPost(content="test 123", author=me).save()
 
         self.assertEqual(1, BlogPost.objects(author=me).count())
@@ -1905,8 +1933,7 @@ class QuerySetTest(unittest.TestCase):
 
         self.assertEqual(1, BlogPost.objects(author__in=[me]).count())
         self.assertEqual(1, BlogPost.objects(author__in=[me.pk]).count())
-        self.assertEqual(
-            1, BlogPost.objects(author__in=["%s" % me.pk]).count())
+        self.assertEqual(1, BlogPost.objects(author__in=["%s" % me.pk]).count())
 
     def test_update_intfield_operator(self):
         class BlogPost(Document):
@@ -1943,7 +1970,7 @@ class QuerySetTest(unittest.TestCase):
         post = BlogPost(review=3.5)
         post.save()
 
-        BlogPost.objects.update_one(inc__review=0.1)             # test with floats
+        BlogPost.objects.update_one(inc__review=0.1)  # test with floats
         post.reload()
         self.assertEqual(float(post.review), 3.6)
 
@@ -1951,7 +1978,7 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(float(post.review), 3.5)
 
-        BlogPost.objects.update_one(inc__review=Decimal(0.12))   # test with Decimal
+        BlogPost.objects.update_one(inc__review=Decimal(0.12))  # test with Decimal
         post.reload()
         self.assertEqual(float(post.review), 3.62)
 
@@ -1969,38 +1996,39 @@ class QuerySetTest(unittest.TestCase):
         post.save()
 
         with self.assertRaises(OperationError):
-            BlogPost.objects.update_one(inc__review=0.1)             # test with floats
+            BlogPost.objects.update_one(inc__review=0.1)  # test with floats
 
     def test_update_listfield_operator(self):
         """Ensure that atomic updates work properly.
         """
+
         class BlogPost(Document):
             tags = ListField(StringField())
 
         BlogPost.drop_collection()
 
-        post = BlogPost(tags=['test'])
+        post = BlogPost(tags=["test"])
         post.save()
 
         # ListField operator
-        BlogPost.objects.update(push__tags='mongo')
+        BlogPost.objects.update(push__tags="mongo")
         post.reload()
-        self.assertIn('mongo', post.tags)
+        self.assertIn("mongo", post.tags)
 
-        BlogPost.objects.update_one(push_all__tags=['db', 'nosql'])
+        BlogPost.objects.update_one(push_all__tags=["db", "nosql"])
         post.reload()
-        self.assertIn('db', post.tags)
-        self.assertIn('nosql', post.tags)
+        self.assertIn("db", post.tags)
+        self.assertIn("nosql", post.tags)
 
         tags = post.tags[:-1]
         BlogPost.objects.update(pop__tags=1)
         post.reload()
         self.assertEqual(post.tags, tags)
 
-        BlogPost.objects.update_one(add_to_set__tags='unique')
-        BlogPost.objects.update_one(add_to_set__tags='unique')
+        BlogPost.objects.update_one(add_to_set__tags="unique")
+        BlogPost.objects.update_one(add_to_set__tags="unique")
         post.reload()
-        self.assertEqual(post.tags.count('unique'), 1)
+        self.assertEqual(post.tags.count("unique"), 1)
 
         BlogPost.drop_collection()
 
@@ -2010,18 +2038,19 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post = BlogPost(title='garbage').save()
+        post = BlogPost(title="garbage").save()
 
         self.assertNotEqual(post.title, None)
         BlogPost.objects.update_one(unset__title=1)
         post.reload()
         self.assertEqual(post.title, None)
         pymongo_doc = BlogPost.objects.as_pymongo().first()
-        self.assertNotIn('title', pymongo_doc)
+        self.assertNotIn("title", pymongo_doc)
 
     def test_update_push_with_position(self):
         """Ensure that the 'push' update with position works properly.
         """
+
         class BlogPost(Document):
             slug = StringField()
             tags = ListField(StringField())
@@ -2033,20 +2062,21 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.objects.filter(id=post.id).update(push__tags="code")
         BlogPost.objects.filter(id=post.id).update(push__tags__0=["mongodb", "python"])
         post.reload()
-        self.assertEqual(post.tags, ['mongodb', 'python', 'code'])
+        self.assertEqual(post.tags, ["mongodb", "python", "code"])
 
         BlogPost.objects.filter(id=post.id).update(set__tags__2="java")
         post.reload()
-        self.assertEqual(post.tags, ['mongodb', 'python', 'java'])
+        self.assertEqual(post.tags, ["mongodb", "python", "java"])
 
         # test push with singular value
-        BlogPost.objects.filter(id=post.id).update(push__tags__0='scala')
+        BlogPost.objects.filter(id=post.id).update(push__tags__0="scala")
         post.reload()
-        self.assertEqual(post.tags, ['scala', 'mongodb', 'python', 'java'])
+        self.assertEqual(post.tags, ["scala", "mongodb", "python", "java"])
 
     def test_update_push_list_of_list(self):
         """Ensure that the 'push' update operation works in the list of list
         """
+
         class BlogPost(Document):
             slug = StringField()
             tags = ListField()
@@ -2062,6 +2092,7 @@ class QuerySetTest(unittest.TestCase):
     def test_update_push_and_pull_add_to_set(self):
         """Ensure that the 'pull' update operation works correctly.
         """
+
         class BlogPost(Document):
             slug = StringField()
             tags = ListField(StringField())
@@ -2075,8 +2106,7 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, ["code"])
 
-        BlogPost.objects.filter(id=post.id).update(
-            push_all__tags=["mongodb", "code"])
+        BlogPost.objects.filter(id=post.id).update(push_all__tags=["mongodb", "code"])
         post.reload()
         self.assertEqual(post.tags, ["code", "mongodb", "code"])
 
@@ -2084,13 +2114,13 @@ class QuerySetTest(unittest.TestCase):
         post.reload()
         self.assertEqual(post.tags, ["mongodb"])
 
-        BlogPost.objects(slug="test").update(
-            pull_all__tags=["mongodb", "code"])
+        BlogPost.objects(slug="test").update(pull_all__tags=["mongodb", "code"])
         post.reload()
         self.assertEqual(post.tags, [])
 
         BlogPost.objects(slug="test").update(
-            __raw__={"$addToSet": {"tags": {"$each": ["code", "mongodb", "code"]}}})
+            __raw__={"$addToSet": {"tags": {"$each": ["code", "mongodb", "code"]}}}
+        )
         post.reload()
         self.assertEqual(post.tags, ["code", "mongodb"])
 
@@ -2098,13 +2128,13 @@ class QuerySetTest(unittest.TestCase):
         class Item(Document):
             name = StringField(required=True)
             description = StringField(max_length=50)
-            parents = ListField(ReferenceField('self'))
+            parents = ListField(ReferenceField("self"))
 
         Item.drop_collection()
 
-        item = Item(name='test item').save()
-        parent_1 = Item(name='parent 1').save()
-        parent_2 = Item(name='parent 2').save()
+        item = Item(name="test item").save()
+        parent_1 = Item(name="parent 1").save()
+        parent_2 = Item(name="parent 2").save()
 
         item.update(add_to_set__parents=[parent_1, parent_2, parent_1])
         item.reload()
@@ -2112,12 +2142,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual([parent_1, parent_2], item.parents)
 
     def test_pull_nested(self):
-
         class Collaborator(EmbeddedDocument):
             user = StringField()
 
             def __unicode__(self):
-                return '%s' % self.user
+                return "%s" % self.user
 
         class Site(Document):
             name = StringField(max_length=75, unique=True, required=True)
@@ -2125,23 +2154,21 @@ class QuerySetTest(unittest.TestCase):
 
         Site.drop_collection()
 
-        c = Collaborator(user='Esteban')
+        c = Collaborator(user="Esteban")
         s = Site(name="test", collaborators=[c]).save()
 
-        Site.objects(id=s.id).update_one(pull__collaborators__user='Esteban')
+        Site.objects(id=s.id).update_one(pull__collaborators__user="Esteban")
         self.assertEqual(Site.objects.first().collaborators, [])
 
         with self.assertRaises(InvalidQueryError):
-            Site.objects(id=s.id).update_one(
-                pull_all__collaborators__user=['Ross'])
+            Site.objects(id=s.id).update_one(pull_all__collaborators__user=["Ross"])
 
     def test_pull_from_nested_embedded(self):
-
         class User(EmbeddedDocument):
             name = StringField()
 
             def __unicode__(self):
-                return '%s' % self.name
+                return "%s" % self.name
 
         class Collaborator(EmbeddedDocument):
             helpful = ListField(EmbeddedDocumentField(User))
@@ -2153,21 +2180,24 @@ class QuerySetTest(unittest.TestCase):
 
         Site.drop_collection()
 
-        c = User(name='Esteban')
-        f = User(name='Frank')
-        s = Site(name="test", collaborators=Collaborator(
-            helpful=[c], unhelpful=[f])).save()
+        c = User(name="Esteban")
+        f = User(name="Frank")
+        s = Site(
+            name="test", collaborators=Collaborator(helpful=[c], unhelpful=[f])
+        ).save()
 
         Site.objects(id=s.id).update_one(pull__collaborators__helpful=c)
-        self.assertEqual(Site.objects.first().collaborators['helpful'], [])
+        self.assertEqual(Site.objects.first().collaborators["helpful"], [])
 
         Site.objects(id=s.id).update_one(
-            pull__collaborators__unhelpful={'name': 'Frank'})
-        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
+            pull__collaborators__unhelpful={"name": "Frank"}
+        )
+        self.assertEqual(Site.objects.first().collaborators["unhelpful"], [])
 
         with self.assertRaises(InvalidQueryError):
             Site.objects(id=s.id).update_one(
-                pull_all__collaborators__helpful__name=['Ross'])
+                pull_all__collaborators__helpful__name=["Ross"]
+            )
 
     def test_pull_from_nested_embedded_using_in_nin(self):
         """Ensure that the 'pull' update operation works on embedded documents using 'in' and 'nin' operators.
@@ -2177,7 +2207,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
             def __unicode__(self):
-                return '%s' % self.name
+                return "%s" % self.name
 
         class Collaborator(EmbeddedDocument):
             helpful = ListField(EmbeddedDocumentField(User))
@@ -2189,60 +2219,62 @@ class QuerySetTest(unittest.TestCase):
 
         Site.drop_collection()
 
-        a = User(name='Esteban')
-        b = User(name='Frank')
-        x = User(name='Harry')
-        y = User(name='John')
+        a = User(name="Esteban")
+        b = User(name="Frank")
+        x = User(name="Harry")
+        y = User(name="John")
 
-        s = Site(name="test", collaborators=Collaborator(
-            helpful=[a, b], unhelpful=[x, y])).save()
+        s = Site(
+            name="test", collaborators=Collaborator(helpful=[a, b], unhelpful=[x, y])
+        ).save()
 
-        Site.objects(id=s.id).update_one(pull__collaborators__helpful__name__in=['Esteban'])  # Pull a
-        self.assertEqual(Site.objects.first().collaborators['helpful'], [b])
+        Site.objects(id=s.id).update_one(
+            pull__collaborators__helpful__name__in=["Esteban"]
+        )  # Pull a
+        self.assertEqual(Site.objects.first().collaborators["helpful"], [b])
 
-        Site.objects(id=s.id).update_one(pull__collaborators__unhelpful__name__nin=['John'])  # Pull x
-        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [y])
+        Site.objects(id=s.id).update_one(
+            pull__collaborators__unhelpful__name__nin=["John"]
+        )  # Pull x
+        self.assertEqual(Site.objects.first().collaborators["unhelpful"], [y])
 
     def test_pull_from_nested_mapfield(self):
-
         class Collaborator(EmbeddedDocument):
             user = StringField()
 
             def __unicode__(self):
-                return '%s' % self.user
+                return "%s" % self.user
 
         class Site(Document):
             name = StringField(max_length=75, unique=True, required=True)
-            collaborators = MapField(
-                ListField(EmbeddedDocumentField(Collaborator)))
+            collaborators = MapField(ListField(EmbeddedDocumentField(Collaborator)))
 
         Site.drop_collection()
 
-        c = Collaborator(user='Esteban')
-        f = Collaborator(user='Frank')
-        s = Site(name="test", collaborators={'helpful': [c], 'unhelpful': [f]})
+        c = Collaborator(user="Esteban")
+        f = Collaborator(user="Frank")
+        s = Site(name="test", collaborators={"helpful": [c], "unhelpful": [f]})
         s.save()
 
-        Site.objects(id=s.id).update_one(
-            pull__collaborators__helpful__user='Esteban')
-        self.assertEqual(Site.objects.first().collaborators['helpful'], [])
+        Site.objects(id=s.id).update_one(pull__collaborators__helpful__user="Esteban")
+        self.assertEqual(Site.objects.first().collaborators["helpful"], [])
 
         Site.objects(id=s.id).update_one(
-            pull__collaborators__unhelpful={'user': 'Frank'})
-        self.assertEqual(Site.objects.first().collaborators['unhelpful'], [])
+            pull__collaborators__unhelpful={"user": "Frank"}
+        )
+        self.assertEqual(Site.objects.first().collaborators["unhelpful"], [])
 
         with self.assertRaises(InvalidQueryError):
             Site.objects(id=s.id).update_one(
-                pull_all__collaborators__helpful__user=['Ross'])
+                pull_all__collaborators__helpful__user=["Ross"]
+            )
 
     def test_pull_in_genericembedded_field(self):
-
         class Foo(EmbeddedDocument):
             name = StringField()
 
         class Bar(Document):
-            foos = ListField(GenericEmbeddedDocumentField(
-                choices=[Foo, ]))
+            foos = ListField(GenericEmbeddedDocumentField(choices=[Foo]))
 
         Bar.drop_collection()
 
@@ -2258,15 +2290,14 @@ class QuerySetTest(unittest.TestCase):
 
         BlogTag.drop_collection()
 
-        BlogTag(name='garbage').save()
-        default_update = BlogTag.objects.update_one(name='new')
+        BlogTag(name="garbage").save()
+        default_update = BlogTag.objects.update_one(name="new")
         self.assertEqual(default_update, 1)
 
-        full_result_update = BlogTag.objects.update_one(name='new', full_result=True)
+        full_result_update = BlogTag.objects.update_one(name="new", full_result=True)
         self.assertIsInstance(full_result_update, UpdateResult)
 
     def test_update_one_pop_generic_reference(self):
-
         class BlogTag(Document):
             name = StringField(required=True)
 
@@ -2277,9 +2308,9 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
         BlogTag.drop_collection()
 
-        tag_1 = BlogTag(name='code')
+        tag_1 = BlogTag(name="code")
         tag_1.save()
-        tag_2 = BlogTag(name='mongodb')
+        tag_2 = BlogTag(name="mongodb")
         tag_2.save()
 
         post = BlogPost(slug="test", tags=[tag_1])
@@ -2298,7 +2329,6 @@ class QuerySetTest(unittest.TestCase):
         BlogTag.drop_collection()
 
     def test_editting_embedded_objects(self):
-
         class BlogTag(EmbeddedDocument):
             name = StringField(required=True)
 
@@ -2308,8 +2338,8 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        tag_1 = BlogTag(name='code')
-        tag_2 = BlogTag(name='mongodb')
+        tag_1 = BlogTag(name="code")
+        tag_2 = BlogTag(name="mongodb")
 
         post = BlogPost(slug="test", tags=[tag_1])
         post.save()
@@ -2320,7 +2350,7 @@ class QuerySetTest(unittest.TestCase):
 
         BlogPost.objects(slug="test-2").update_one(set__tags__0__name="python")
         post.reload()
-        self.assertEqual(post.tags[0].name, 'python')
+        self.assertEqual(post.tags[0].name, "python")
 
         BlogPost.objects(slug="test-2").update_one(pop__tags=-1)
         post.reload()
@@ -2329,13 +2359,12 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_set_list_embedded_documents(self):
-
         class Author(EmbeddedDocument):
             name = StringField()
 
         class Message(Document):
             title = StringField()
-            authors = ListField(EmbeddedDocumentField('Author'))
+            authors = ListField(EmbeddedDocumentField("Author"))
 
         Message.drop_collection()
 
@@ -2343,15 +2372,19 @@ class QuerySetTest(unittest.TestCase):
         message.save()
 
         Message.objects(authors__name="Harry").update_one(
-            set__authors__S=Author(name="Ross"))
+            set__authors__S=Author(name="Ross")
+        )
 
         message = message.reload()
         self.assertEqual(message.authors[0].name, "Ross")
 
         Message.objects(authors__name="Ross").update_one(
-            set__authors=[Author(name="Harry"),
-                          Author(name="Ross"),
-                          Author(name="Adam")])
+            set__authors=[
+                Author(name="Harry"),
+                Author(name="Ross"),
+                Author(name="Adam"),
+            ]
+        )
 
         message = message.reload()
         self.assertEqual(message.authors[0].name, "Harry")
@@ -2359,7 +2392,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(message.authors[2].name, "Adam")
 
     def test_set_generic_embedded_documents(self):
-
         class Bar(EmbeddedDocument):
             name = StringField()
 
@@ -2369,15 +2401,13 @@ class QuerySetTest(unittest.TestCase):
 
         User.drop_collection()
 
-        User(username='abc').save()
-        User.objects(username='abc').update(
-            set__bar=Bar(name='test'), upsert=True)
+        User(username="abc").save()
+        User.objects(username="abc").update(set__bar=Bar(name="test"), upsert=True)
 
-        user = User.objects(username='abc').first()
+        user = User.objects(username="abc").first()
         self.assertEqual(user.bar.name, "test")
 
     def test_reload_embedded_docs_instance(self):
-
         class SubDoc(EmbeddedDocument):
             val = IntField()
 
@@ -2390,7 +2420,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(doc.pk, doc.embedded._instance.pk)
 
     def test_reload_list_embedded_docs_instance(self):
-
         class SubDoc(EmbeddedDocument):
             val = IntField()
 
@@ -2409,16 +2438,16 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name="User A", age=20).save()
         self.Person(name="User C", age=30).save()
 
-        names = [p.name for p in self.Person.objects.order_by('-age')]
-        self.assertEqual(names, ['User B', 'User C', 'User A'])
+        names = [p.name for p in self.Person.objects.order_by("-age")]
+        self.assertEqual(names, ["User B", "User C", "User A"])
 
-        names = [p.name for p in self.Person.objects.order_by('+age')]
-        self.assertEqual(names, ['User A', 'User C', 'User B'])
+        names = [p.name for p in self.Person.objects.order_by("+age")]
+        self.assertEqual(names, ["User A", "User C", "User B"])
 
-        names = [p.name for p in self.Person.objects.order_by('age')]
-        self.assertEqual(names, ['User A', 'User C', 'User B'])
+        names = [p.name for p in self.Person.objects.order_by("age")]
+        self.assertEqual(names, ["User A", "User C", "User B"])
 
-        ages = [p.age for p in self.Person.objects.order_by('-name')]
+        ages = [p.age for p in self.Person.objects.order_by("-name")]
         self.assertEqual(ages, [30, 40, 20])
 
     def test_order_by_optional(self):
@@ -2429,31 +2458,22 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         blog_post_3 = BlogPost.objects.create(
-            title="Blog Post #3",
-            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+            title="Blog Post #3", published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
         )
         blog_post_2 = BlogPost.objects.create(
-            title="Blog Post #2",
-            published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
+            title="Blog Post #2", published_date=datetime.datetime(2010, 1, 5, 0, 0, 0)
         )
         blog_post_4 = BlogPost.objects.create(
-            title="Blog Post #4",
-            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+            title="Blog Post #4", published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
         )
-        blog_post_1 = BlogPost.objects.create(
-            title="Blog Post #1",
-            published_date=None
-        )
+        blog_post_1 = BlogPost.objects.create(title="Blog Post #1", published_date=None)
 
         expected = [blog_post_1, blog_post_2, blog_post_3, blog_post_4]
-        self.assertSequence(BlogPost.objects.order_by('published_date'),
-                            expected)
-        self.assertSequence(BlogPost.objects.order_by('+published_date'),
-                            expected)
+        self.assertSequence(BlogPost.objects.order_by("published_date"), expected)
+        self.assertSequence(BlogPost.objects.order_by("+published_date"), expected)
 
         expected.reverse()
-        self.assertSequence(BlogPost.objects.order_by('-published_date'),
-                            expected)
+        self.assertSequence(BlogPost.objects.order_by("-published_date"), expected)
 
     def test_order_by_list(self):
         class BlogPost(Document):
@@ -2463,23 +2483,20 @@ class QuerySetTest(unittest.TestCase):
         BlogPost.drop_collection()
 
         blog_post_1 = BlogPost.objects.create(
-            title="A",
-            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+            title="A", published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
         )
         blog_post_2 = BlogPost.objects.create(
-            title="B",
-            published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
+            title="B", published_date=datetime.datetime(2010, 1, 6, 0, 0, 0)
         )
         blog_post_3 = BlogPost.objects.create(
-            title="C",
-            published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
+            title="C", published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
         )
 
-        qs = BlogPost.objects.order_by('published_date', 'title')
+        qs = BlogPost.objects.order_by("published_date", "title")
         expected = [blog_post_1, blog_post_2, blog_post_3]
         self.assertSequence(qs, expected)
 
-        qs = BlogPost.objects.order_by('-published_date', '-title')
+        qs = BlogPost.objects.order_by("-published_date", "-title")
         expected.reverse()
         self.assertSequence(qs, expected)
 
@@ -2490,7 +2507,7 @@ class QuerySetTest(unittest.TestCase):
         self.Person(name="User A", age=20).save()
         self.Person(name="User C", age=30).save()
 
-        only_age = self.Person.objects.order_by('-age').only('age')
+        only_age = self.Person.objects.order_by("-age").only("age")
 
         names = [p.name for p in only_age]
         ages = [p.age for p in only_age]
@@ -2499,19 +2516,19 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(names, [None, None, None])
         self.assertEqual(ages, [40, 30, 20])
 
-        qs = self.Person.objects.all().order_by('-age')
+        qs = self.Person.objects.all().order_by("-age")
         qs = qs.limit(10)
         ages = [p.age for p in qs]
         self.assertEqual(ages, [40, 30, 20])
 
         qs = self.Person.objects.all().limit(10)
-        qs = qs.order_by('-age')
+        qs = qs.order_by("-age")
 
         ages = [p.age for p in qs]
         self.assertEqual(ages, [40, 30, 20])
 
         qs = self.Person.objects.all().skip(0)
-        qs = qs.order_by('-age')
+        qs = qs.order_by("-age")
         ages = [p.age for p in qs]
         self.assertEqual(ages, [40, 30, 20])
 
@@ -2535,47 +2552,47 @@ class QuerySetTest(unittest.TestCase):
         Author(author=person_b).save()
         Author(author=person_c).save()
 
-        names = [
-            a.author.name for a in Author.objects.order_by('-author__age')]
-        self.assertEqual(names, ['User A', 'User B', 'User C'])
+        names = [a.author.name for a in Author.objects.order_by("-author__age")]
+        self.assertEqual(names, ["User A", "User B", "User C"])
 
     def test_comment(self):
         """Make sure adding a comment to the query gets added to the query"""
         MONGO_VER = self.mongodb_version
         _, CMD_QUERY_KEY = get_key_compat(MONGO_VER)
-        QUERY_KEY = 'filter'
-        COMMENT_KEY = 'comment'
+        QUERY_KEY = "filter"
+        COMMENT_KEY = "comment"
 
         class User(Document):
             age = IntField()
 
         with db_ops_tracker() as q:
-            adult1 = (User.objects.filter(age__gte=18)
-                .comment('looking for an adult')
-                .first())
+            adult1 = (
+                User.objects.filter(age__gte=18).comment("looking for an adult").first()
+            )
 
-            adult2 = (User.objects.comment('looking for an adult')
-                .filter(age__gte=18)
-                .first())
+            adult2 = (
+                User.objects.comment("looking for an adult").filter(age__gte=18).first()
+            )
 
             ops = q.get_ops()
             self.assertEqual(len(ops), 2)
             for op in ops:
-                self.assertEqual(op[CMD_QUERY_KEY][QUERY_KEY], {'age': {'$gte': 18}})
-                self.assertEqual(op[CMD_QUERY_KEY][COMMENT_KEY], 'looking for an adult')
+                self.assertEqual(op[CMD_QUERY_KEY][QUERY_KEY], {"age": {"$gte": 18}})
+                self.assertEqual(op[CMD_QUERY_KEY][COMMENT_KEY], "looking for an adult")
 
     def test_map_reduce(self):
         """Ensure map/reduce is both mapping and reducing.
         """
+
         class BlogPost(Document):
             title = StringField()
-            tags = ListField(StringField(), db_field='post-tag-list')
+            tags = ListField(StringField(), db_field="post-tag-list")
 
         BlogPost.drop_collection()
 
-        BlogPost(title="Post #1", tags=['music', 'film', 'print']).save()
-        BlogPost(title="Post #2", tags=['music', 'film']).save()
-        BlogPost(title="Post #3", tags=['film', 'photography']).save()
+        BlogPost(title="Post #1", tags=["music", "film", "print"]).save()
+        BlogPost(title="Post #2", tags=["music", "film"]).save()
+        BlogPost(title="Post #3", tags=["film", "photography"]).save()
 
         map_f = """
             function() {
@@ -2625,8 +2642,8 @@ class QuerySetTest(unittest.TestCase):
         post2.save()
         post3.save()
 
-        self.assertEqual(BlogPost._fields['title'].db_field, '_id')
-        self.assertEqual(BlogPost._meta['id_field'], 'title')
+        self.assertEqual(BlogPost._fields["title"].db_field, "_id")
+        self.assertEqual(BlogPost._meta["id_field"], "title")
 
         map_f = """
             function() {
@@ -2658,16 +2675,14 @@ class QuerySetTest(unittest.TestCase):
         """
         Test map/reduce custom output
         """
-        register_connection('test2', 'mongoenginetest2')
+        register_connection("test2", "mongoenginetest2")
 
         class Family(Document):
-            id = IntField(
-                primary_key=True)
+            id = IntField(primary_key=True)
             log = StringField()
 
         class Person(Document):
-            id = IntField(
-                primary_key=True)
+            id = IntField(primary_key=True)
             name = StringField()
             age = IntField()
             family = ReferenceField(Family)
@@ -2742,7 +2757,8 @@ class QuerySetTest(unittest.TestCase):
         cursor = Family.objects.map_reduce(
             map_f=map_family,
             reduce_f=reduce_f,
-            output={'replace': 'family_map', 'db_alias': 'test2'})
+            output={"replace": "family_map", "db_alias": "test2"},
+        )
 
         # start a map/reduce
         cursor.next()
@@ -2750,43 +2766,56 @@ class QuerySetTest(unittest.TestCase):
         results = Person.objects.map_reduce(
             map_f=map_person,
             reduce_f=reduce_f,
-            output={'reduce': 'family_map', 'db_alias': 'test2'})
+            output={"reduce": "family_map", "db_alias": "test2"},
+        )
 
         results = list(results)
-        collection = get_db('test2').family_map
+        collection = get_db("test2").family_map
 
         self.assertEqual(
-            collection.find_one({'_id': 1}), {
-                '_id': 1,
-                'value': {
-                    'persons': [
-                        {'age': 21, 'name': u'Wilson Jr'},
-                        {'age': 45, 'name': u'Wilson Father'},
-                        {'age': 40, 'name': u'Eliana Costa'},
-                        {'age': 17, 'name': u'Tayza Mariana'}],
-                    'totalAge': 123}
-            })
+            collection.find_one({"_id": 1}),
+            {
+                "_id": 1,
+                "value": {
+                    "persons": [
+                        {"age": 21, "name": u"Wilson Jr"},
+                        {"age": 45, "name": u"Wilson Father"},
+                        {"age": 40, "name": u"Eliana Costa"},
+                        {"age": 17, "name": u"Tayza Mariana"},
+                    ],
+                    "totalAge": 123,
+                },
+            },
+        )
 
         self.assertEqual(
-            collection.find_one({'_id': 2}), {
-                '_id': 2,
-                'value': {
-                    'persons': [
-                        {'age': 16, 'name': u'Isabella Luanna'},
-                        {'age': 36, 'name': u'Sandra Mara'},
-                        {'age': 10, 'name': u'Igor Gabriel'}],
-                    'totalAge': 62}
-            })
+            collection.find_one({"_id": 2}),
+            {
+                "_id": 2,
+                "value": {
+                    "persons": [
+                        {"age": 16, "name": u"Isabella Luanna"},
+                        {"age": 36, "name": u"Sandra Mara"},
+                        {"age": 10, "name": u"Igor Gabriel"},
+                    ],
+                    "totalAge": 62,
+                },
+            },
+        )
 
         self.assertEqual(
-            collection.find_one({'_id': 3}), {
-                '_id': 3,
-                'value': {
-                    'persons': [
-                        {'age': 30, 'name': u'Arthur WA'},
-                        {'age': 25, 'name': u'Paula Leonel'}],
-                    'totalAge': 55}
-            })
+            collection.find_one({"_id": 3}),
+            {
+                "_id": 3,
+                "value": {
+                    "persons": [
+                        {"age": 30, "name": u"Arthur WA"},
+                        {"age": 25, "name": u"Paula Leonel"},
+                    ],
+                    "totalAge": 55,
+                },
+            },
+        )
 
     def test_map_reduce_finalize(self):
         """Ensure that map, reduce, and finalize run and introduce "scope"
@@ -2795,10 +2824,10 @@ class QuerySetTest(unittest.TestCase):
         from time import mktime
 
         class Link(Document):
-            title = StringField(db_field='bpTitle')
+            title = StringField(db_field="bpTitle")
             up_votes = IntField()
             down_votes = IntField()
-            submitted = DateTimeField(db_field='sTime')
+            submitted = DateTimeField(db_field="sTime")
 
         Link.drop_collection()
 
@@ -2808,30 +2837,42 @@ class QuerySetTest(unittest.TestCase):
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
         # reflect order of insertion below, but is not influenced
         # by insertion order.
-        Link(title="Google Buzz auto-followed a woman's abusive ex ...",
-             up_votes=1079,
-             down_votes=553,
-             submitted=now - datetime.timedelta(hours=4)).save()
-        Link(title="We did it! Barbie is a computer engineer.",
-             up_votes=481,
-             down_votes=124,
-             submitted=now - datetime.timedelta(hours=2)).save()
-        Link(title="This Is A Mosquito Getting Killed By A Laser",
-             up_votes=1446,
-             down_votes=530,
-             submitted=now - datetime.timedelta(hours=13)).save()
-        Link(title="Arabic flashcards land physics student in jail.",
-             up_votes=215,
-             down_votes=105,
-             submitted=now - datetime.timedelta(hours=6)).save()
-        Link(title="The Burger Lab: Presenting, the Flood Burger",
-             up_votes=48,
-             down_votes=17,
-             submitted=now - datetime.timedelta(hours=5)).save()
-        Link(title="How to see polarization with the naked eye",
-             up_votes=74,
-             down_votes=13,
-             submitted=now - datetime.timedelta(hours=10)).save()
+        Link(
+            title="Google Buzz auto-followed a woman's abusive ex ...",
+            up_votes=1079,
+            down_votes=553,
+            submitted=now - datetime.timedelta(hours=4),
+        ).save()
+        Link(
+            title="We did it! Barbie is a computer engineer.",
+            up_votes=481,
+            down_votes=124,
+            submitted=now - datetime.timedelta(hours=2),
+        ).save()
+        Link(
+            title="This Is A Mosquito Getting Killed By A Laser",
+            up_votes=1446,
+            down_votes=530,
+            submitted=now - datetime.timedelta(hours=13),
+        ).save()
+        Link(
+            title="Arabic flashcards land physics student in jail.",
+            up_votes=215,
+            down_votes=105,
+            submitted=now - datetime.timedelta(hours=6),
+        ).save()
+        Link(
+            title="The Burger Lab: Presenting, the Flood Burger",
+            up_votes=48,
+            down_votes=17,
+            submitted=now - datetime.timedelta(hours=5),
+        ).save()
+        Link(
+            title="How to see polarization with the naked eye",
+            up_votes=74,
+            down_votes=13,
+            submitted=now - datetime.timedelta(hours=10),
+        ).save()
 
         map_f = """
             function() {
@@ -2882,17 +2923,15 @@ class QuerySetTest(unittest.TestCase):
         # provide the reddit epoch (used for ranking) as a variable available
         # to all phases of the map/reduce operation: map, reduce, and finalize.
         reddit_epoch = mktime(datetime.datetime(2005, 12, 8, 7, 46, 43).timetuple())
-        scope = {'reddit_epoch': reddit_epoch}
+        scope = {"reddit_epoch": reddit_epoch}
 
         # run a map/reduce operation across all links. ordering is set
         # to "-value", which orders the "weight" value returned from
         # "finalize_f" in descending order.
         results = Link.objects.order_by("-value")
-        results = results.map_reduce(map_f,
-                                     reduce_f,
-                                     "myresults",
-                                     finalize_f=finalize_f,
-                                     scope=scope)
+        results = results.map_reduce(
+            map_f, reduce_f, "myresults", finalize_f=finalize_f, scope=scope
+        )
         results = list(results)
 
         # assert troublesome Buzz article is ranked 1st
@@ -2906,54 +2945,56 @@ class QuerySetTest(unittest.TestCase):
     def test_item_frequencies(self):
         """Ensure that item frequencies are properly generated from lists.
         """
+
         class BlogPost(Document):
             hits = IntField()
-            tags = ListField(StringField(), db_field='blogTags')
+            tags = ListField(StringField(), db_field="blogTags")
 
         BlogPost.drop_collection()
 
-        BlogPost(hits=1, tags=['music', 'film', 'actors', 'watch']).save()
-        BlogPost(hits=2, tags=['music', 'watch']).save()
-        BlogPost(hits=2, tags=['music', 'actors']).save()
+        BlogPost(hits=1, tags=["music", "film", "actors", "watch"]).save()
+        BlogPost(hits=2, tags=["music", "watch"]).save()
+        BlogPost(hits=2, tags=["music", "actors"]).save()
 
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            self.assertEqual(
-                set(['music', 'film', 'actors', 'watch']), set(f.keys()))
-            self.assertEqual(f['music'], 3)
-            self.assertEqual(f['actors'], 2)
-            self.assertEqual(f['watch'], 2)
-            self.assertEqual(f['film'], 1)
+            self.assertEqual(set(["music", "film", "actors", "watch"]), set(f.keys()))
+            self.assertEqual(f["music"], 3)
+            self.assertEqual(f["actors"], 2)
+            self.assertEqual(f["watch"], 2)
+            self.assertEqual(f["film"], 1)
 
-        exec_js = BlogPost.objects.item_frequencies('tags')
-        map_reduce = BlogPost.objects.item_frequencies('tags', map_reduce=True)
+        exec_js = BlogPost.objects.item_frequencies("tags")
+        map_reduce = BlogPost.objects.item_frequencies("tags", map_reduce=True)
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
         # Ensure query is taken into account
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            self.assertEqual(set(['music', 'actors', 'watch']), set(f.keys()))
-            self.assertEqual(f['music'], 2)
-            self.assertEqual(f['actors'], 1)
-            self.assertEqual(f['watch'], 1)
+            self.assertEqual(set(["music", "actors", "watch"]), set(f.keys()))
+            self.assertEqual(f["music"], 2)
+            self.assertEqual(f["actors"], 1)
+            self.assertEqual(f["watch"], 1)
 
-        exec_js = BlogPost.objects(hits__gt=1).item_frequencies('tags')
-        map_reduce = BlogPost.objects(
-            hits__gt=1).item_frequencies('tags', map_reduce=True)
+        exec_js = BlogPost.objects(hits__gt=1).item_frequencies("tags")
+        map_reduce = BlogPost.objects(hits__gt=1).item_frequencies(
+            "tags", map_reduce=True
+        )
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
         # Check that normalization works
         def test_assertions(f):
-            self.assertAlmostEqual(f['music'], 3.0 / 8.0)
-            self.assertAlmostEqual(f['actors'], 2.0 / 8.0)
-            self.assertAlmostEqual(f['watch'], 2.0 / 8.0)
-            self.assertAlmostEqual(f['film'], 1.0 / 8.0)
+            self.assertAlmostEqual(f["music"], 3.0 / 8.0)
+            self.assertAlmostEqual(f["actors"], 2.0 / 8.0)
+            self.assertAlmostEqual(f["watch"], 2.0 / 8.0)
+            self.assertAlmostEqual(f["film"], 1.0 / 8.0)
 
-        exec_js = BlogPost.objects.item_frequencies('tags', normalize=True)
+        exec_js = BlogPost.objects.item_frequencies("tags", normalize=True)
         map_reduce = BlogPost.objects.item_frequencies(
-            'tags', normalize=True, map_reduce=True)
+            "tags", normalize=True, map_reduce=True
+        )
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
@@ -2963,8 +3004,8 @@ class QuerySetTest(unittest.TestCase):
             self.assertEqual(f[1], 1)
             self.assertEqual(f[2], 2)
 
-        exec_js = BlogPost.objects.item_frequencies('hits')
-        map_reduce = BlogPost.objects.item_frequencies('hits', map_reduce=True)
+        exec_js = BlogPost.objects.item_frequencies("hits")
+        map_reduce = BlogPost.objects.item_frequencies("hits", map_reduce=True)
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
@@ -2984,57 +3025,56 @@ class QuerySetTest(unittest.TestCase):
         Person.drop_collection()
 
         doc = Person(name="Guido")
-        doc.phone = Phone(number='62-3331-1656')
+        doc.phone = Phone(number="62-3331-1656")
         doc.save()
 
         doc = Person(name="Marr")
-        doc.phone = Phone(number='62-3331-1656')
+        doc.phone = Phone(number="62-3331-1656")
         doc.save()
 
         doc = Person(name="WP Junior")
-        doc.phone = Phone(number='62-3332-1656')
+        doc.phone = Phone(number="62-3332-1656")
         doc.save()
 
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            self.assertEqual(
-                set(['62-3331-1656', '62-3332-1656']), set(f.keys()))
-            self.assertEqual(f['62-3331-1656'], 2)
-            self.assertEqual(f['62-3332-1656'], 1)
+            self.assertEqual(set(["62-3331-1656", "62-3332-1656"]), set(f.keys()))
+            self.assertEqual(f["62-3331-1656"], 2)
+            self.assertEqual(f["62-3332-1656"], 1)
 
-        exec_js = Person.objects.item_frequencies('phone.number')
-        map_reduce = Person.objects.item_frequencies(
-            'phone.number', map_reduce=True)
+        exec_js = Person.objects.item_frequencies("phone.number")
+        map_reduce = Person.objects.item_frequencies("phone.number", map_reduce=True)
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
         # Ensure query is taken into account
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            self.assertEqual(set(['62-3331-1656']), set(f.keys()))
-            self.assertEqual(f['62-3331-1656'], 2)
+            self.assertEqual(set(["62-3331-1656"]), set(f.keys()))
+            self.assertEqual(f["62-3331-1656"], 2)
 
-        exec_js = Person.objects(
-            phone__number='62-3331-1656').item_frequencies('phone.number')
-        map_reduce = Person.objects(
-            phone__number='62-3331-1656').item_frequencies('phone.number', map_reduce=True)
+        exec_js = Person.objects(phone__number="62-3331-1656").item_frequencies(
+            "phone.number"
+        )
+        map_reduce = Person.objects(phone__number="62-3331-1656").item_frequencies(
+            "phone.number", map_reduce=True
+        )
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
         # Check that normalization works
         def test_assertions(f):
-            self.assertEqual(f['62-3331-1656'], 2.0 / 3.0)
-            self.assertEqual(f['62-3332-1656'], 1.0 / 3.0)
+            self.assertEqual(f["62-3331-1656"], 2.0 / 3.0)
+            self.assertEqual(f["62-3332-1656"], 1.0 / 3.0)
 
-        exec_js = Person.objects.item_frequencies(
-            'phone.number', normalize=True)
+        exec_js = Person.objects.item_frequencies("phone.number", normalize=True)
         map_reduce = Person.objects.item_frequencies(
-            'phone.number', normalize=True, map_reduce=True)
+            "phone.number", normalize=True, map_reduce=True
+        )
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
     def test_item_frequencies_null_values(self):
-
         class Person(Document):
             name = StringField()
             city = StringField()
@@ -3044,16 +3084,15 @@ class QuerySetTest(unittest.TestCase):
         Person(name="Wilson Snr", city="CRB").save()
         Person(name="Wilson Jr").save()
 
-        freq = Person.objects.item_frequencies('city')
-        self.assertEqual(freq, {'CRB': 1.0, None: 1.0})
-        freq = Person.objects.item_frequencies('city', normalize=True)
-        self.assertEqual(freq, {'CRB': 0.5, None: 0.5})
+        freq = Person.objects.item_frequencies("city")
+        self.assertEqual(freq, {"CRB": 1.0, None: 1.0})
+        freq = Person.objects.item_frequencies("city", normalize=True)
+        self.assertEqual(freq, {"CRB": 0.5, None: 0.5})
 
-        freq = Person.objects.item_frequencies('city', map_reduce=True)
-        self.assertEqual(freq, {'CRB': 1.0, None: 1.0})
-        freq = Person.objects.item_frequencies(
-            'city', normalize=True, map_reduce=True)
-        self.assertEqual(freq, {'CRB': 0.5, None: 0.5})
+        freq = Person.objects.item_frequencies("city", map_reduce=True)
+        self.assertEqual(freq, {"CRB": 1.0, None: 1.0})
+        freq = Person.objects.item_frequencies("city", normalize=True, map_reduce=True)
+        self.assertEqual(freq, {"CRB": 0.5, None: 0.5})
 
     def test_item_frequencies_with_null_embedded(self):
         class Data(EmbeddedDocument):
@@ -3077,11 +3116,11 @@ class QuerySetTest(unittest.TestCase):
         p.extra = Extra(tag="friend")
         p.save()
 
-        ot = Person.objects.item_frequencies('extra.tag', map_reduce=False)
-        self.assertEqual(ot, {None: 1.0, u'friend': 1.0})
+        ot = Person.objects.item_frequencies("extra.tag", map_reduce=False)
+        self.assertEqual(ot, {None: 1.0, u"friend": 1.0})
 
-        ot = Person.objects.item_frequencies('extra.tag', map_reduce=True)
-        self.assertEqual(ot, {None: 1.0, u'friend': 1.0})
+        ot = Person.objects.item_frequencies("extra.tag", map_reduce=True)
+        self.assertEqual(ot, {None: 1.0, u"friend": 1.0})
 
     def test_item_frequencies_with_0_values(self):
         class Test(Document):
@@ -3092,9 +3131,9 @@ class QuerySetTest(unittest.TestCase):
         t.val = 0
         t.save()
 
-        ot = Test.objects.item_frequencies('val', map_reduce=True)
+        ot = Test.objects.item_frequencies("val", map_reduce=True)
         self.assertEqual(ot, {0: 1})
-        ot = Test.objects.item_frequencies('val', map_reduce=False)
+        ot = Test.objects.item_frequencies("val", map_reduce=False)
         self.assertEqual(ot, {0: 1})
 
     def test_item_frequencies_with_False_values(self):
@@ -3106,9 +3145,9 @@ class QuerySetTest(unittest.TestCase):
         t.val = False
         t.save()
 
-        ot = Test.objects.item_frequencies('val', map_reduce=True)
+        ot = Test.objects.item_frequencies("val", map_reduce=True)
         self.assertEqual(ot, {False: 1})
-        ot = Test.objects.item_frequencies('val', map_reduce=False)
+        ot = Test.objects.item_frequencies("val", map_reduce=False)
         self.assertEqual(ot, {False: 1})
 
     def test_item_frequencies_normalize(self):
@@ -3123,113 +3162,108 @@ class QuerySetTest(unittest.TestCase):
         for i in range(20):
             Test(val=2).save()
 
-        freqs = Test.objects.item_frequencies(
-            'val', map_reduce=False, normalize=True)
+        freqs = Test.objects.item_frequencies("val", map_reduce=False, normalize=True)
         self.assertEqual(freqs, {1: 50.0 / 70, 2: 20.0 / 70})
 
-        freqs = Test.objects.item_frequencies(
-            'val', map_reduce=True, normalize=True)
+        freqs = Test.objects.item_frequencies("val", map_reduce=True, normalize=True)
         self.assertEqual(freqs, {1: 50.0 / 70, 2: 20.0 / 70})
 
     def test_average(self):
         """Ensure that field can be averaged correctly.
         """
-        self.Person(name='person', age=0).save()
-        self.assertEqual(int(self.Person.objects.average('age')), 0)
+        self.Person(name="person", age=0).save()
+        self.assertEqual(int(self.Person.objects.average("age")), 0)
 
         ages = [23, 54, 12, 94, 27]
         for i, age in enumerate(ages):
-            self.Person(name='test%s' % i, age=age).save()
+            self.Person(name="test%s" % i, age=age).save()
 
         avg = float(sum(ages)) / (len(ages) + 1)  # take into account the 0
-        self.assertAlmostEqual(int(self.Person.objects.average('age')), avg)
+        self.assertAlmostEqual(int(self.Person.objects.average("age")), avg)
 
-        self.Person(name='ageless person').save()
-        self.assertEqual(int(self.Person.objects.average('age')), avg)
+        self.Person(name="ageless person").save()
+        self.assertEqual(int(self.Person.objects.average("age")), avg)
 
         # dot notation
-        self.Person(
-            name='person meta', person_meta=self.PersonMeta(weight=0)).save()
+        self.Person(name="person meta", person_meta=self.PersonMeta(weight=0)).save()
         self.assertAlmostEqual(
-            int(self.Person.objects.average('person_meta.weight')), 0)
+            int(self.Person.objects.average("person_meta.weight")), 0
+        )
 
         for i, weight in enumerate(ages):
             self.Person(
-                name='test meta%i', person_meta=self.PersonMeta(weight=weight)).save()
+                name="test meta%i", person_meta=self.PersonMeta(weight=weight)
+            ).save()
 
         self.assertAlmostEqual(
-            int(self.Person.objects.average('person_meta.weight')), avg
+            int(self.Person.objects.average("person_meta.weight")), avg
         )
 
-        self.Person(name='test meta none').save()
-        self.assertEqual(
-            int(self.Person.objects.average('person_meta.weight')), avg
-        )
+        self.Person(name="test meta none").save()
+        self.assertEqual(int(self.Person.objects.average("person_meta.weight")), avg)
 
         # test summing over a filtered queryset
         over_50 = [a for a in ages if a >= 50]
         avg = float(sum(over_50)) / len(over_50)
-        self.assertEqual(
-            self.Person.objects.filter(age__gte=50).average('age'),
-            avg
-        )
+        self.assertEqual(self.Person.objects.filter(age__gte=50).average("age"), avg)
 
     def test_sum(self):
         """Ensure that field can be summed over correctly.
         """
         ages = [23, 54, 12, 94, 27]
         for i, age in enumerate(ages):
-            self.Person(name='test%s' % i, age=age).save()
+            self.Person(name="test%s" % i, age=age).save()
 
-        self.assertEqual(self.Person.objects.sum('age'), sum(ages))
+        self.assertEqual(self.Person.objects.sum("age"), sum(ages))
 
-        self.Person(name='ageless person').save()
-        self.assertEqual(self.Person.objects.sum('age'), sum(ages))
+        self.Person(name="ageless person").save()
+        self.assertEqual(self.Person.objects.sum("age"), sum(ages))
 
         for i, age in enumerate(ages):
-            self.Person(name='test meta%s' %
-                        i, person_meta=self.PersonMeta(weight=age)).save()
+            self.Person(
+                name="test meta%s" % i, person_meta=self.PersonMeta(weight=age)
+            ).save()
 
-        self.assertEqual(
-            self.Person.objects.sum('person_meta.weight'), sum(ages)
-        )
+        self.assertEqual(self.Person.objects.sum("person_meta.weight"), sum(ages))
 
-        self.Person(name='weightless person').save()
-        self.assertEqual(self.Person.objects.sum('age'), sum(ages))
+        self.Person(name="weightless person").save()
+        self.assertEqual(self.Person.objects.sum("age"), sum(ages))
 
         # test summing over a filtered queryset
         self.assertEqual(
-            self.Person.objects.filter(age__gte=50).sum('age'),
-            sum([a for a in ages if a >= 50])
+            self.Person.objects.filter(age__gte=50).sum("age"),
+            sum([a for a in ages if a >= 50]),
         )
 
     def test_sum_over_db_field(self):
         """Ensure that a field mapped to a db field with a different name
         can be summed over correctly.
         """
+
         class UserVisit(Document):
-            num_visits = IntField(db_field='visits')
+            num_visits = IntField(db_field="visits")
 
         UserVisit.drop_collection()
 
         UserVisit.objects.create(num_visits=10)
         UserVisit.objects.create(num_visits=5)
 
-        self.assertEqual(UserVisit.objects.sum('num_visits'), 15)
+        self.assertEqual(UserVisit.objects.sum("num_visits"), 15)
 
     def test_average_over_db_field(self):
         """Ensure that a field mapped to a db field with a different name
         can have its average computed correctly.
         """
+
         class UserVisit(Document):
-            num_visits = IntField(db_field='visits')
+            num_visits = IntField(db_field="visits")
 
         UserVisit.drop_collection()
 
         UserVisit.objects.create(num_visits=20)
         UserVisit.objects.create(num_visits=10)
 
-        self.assertEqual(UserVisit.objects.average('num_visits'), 15)
+        self.assertEqual(UserVisit.objects.average("num_visits"), 15)
 
     def test_embedded_average(self):
         class Pay(EmbeddedDocument):
@@ -3237,17 +3271,16 @@ class QuerySetTest(unittest.TestCase):
 
         class Doc(Document):
             name = StringField()
-            pay = EmbeddedDocumentField(
-                Pay)
+            pay = EmbeddedDocumentField(Pay)
 
         Doc.drop_collection()
 
-        Doc(name='Wilson Junior', pay=Pay(value=150)).save()
-        Doc(name='Isabella Luanna', pay=Pay(value=530)).save()
-        Doc(name='Tayza mariana', pay=Pay(value=165)).save()
-        Doc(name='Eliana Costa', pay=Pay(value=115)).save()
+        Doc(name="Wilson Junior", pay=Pay(value=150)).save()
+        Doc(name="Isabella Luanna", pay=Pay(value=530)).save()
+        Doc(name="Tayza mariana", pay=Pay(value=165)).save()
+        Doc(name="Eliana Costa", pay=Pay(value=115)).save()
 
-        self.assertEqual(Doc.objects.average('pay.value'), 240)
+        self.assertEqual(Doc.objects.average("pay.value"), 240)
 
     def test_embedded_array_average(self):
         class Pay(EmbeddedDocument):
@@ -3259,12 +3292,12 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        Doc(name='Wilson Junior', pay=Pay(values=[150, 100])).save()
-        Doc(name='Isabella Luanna', pay=Pay(values=[530, 100])).save()
-        Doc(name='Tayza mariana', pay=Pay(values=[165, 100])).save()
-        Doc(name='Eliana Costa', pay=Pay(values=[115, 100])).save()
+        Doc(name="Wilson Junior", pay=Pay(values=[150, 100])).save()
+        Doc(name="Isabella Luanna", pay=Pay(values=[530, 100])).save()
+        Doc(name="Tayza mariana", pay=Pay(values=[165, 100])).save()
+        Doc(name="Eliana Costa", pay=Pay(values=[115, 100])).save()
 
-        self.assertEqual(Doc.objects.average('pay.values'), 170)
+        self.assertEqual(Doc.objects.average("pay.values"), 170)
 
     def test_array_average(self):
         class Doc(Document):
@@ -3277,7 +3310,7 @@ class QuerySetTest(unittest.TestCase):
         Doc(values=[165, 100]).save()
         Doc(values=[115, 100]).save()
 
-        self.assertEqual(Doc.objects.average('values'), 170)
+        self.assertEqual(Doc.objects.average("values"), 170)
 
     def test_embedded_sum(self):
         class Pay(EmbeddedDocument):
@@ -3289,12 +3322,12 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        Doc(name='Wilson Junior', pay=Pay(value=150)).save()
-        Doc(name='Isabella Luanna', pay=Pay(value=530)).save()
-        Doc(name='Tayza mariana', pay=Pay(value=165)).save()
-        Doc(name='Eliana Costa', pay=Pay(value=115)).save()
+        Doc(name="Wilson Junior", pay=Pay(value=150)).save()
+        Doc(name="Isabella Luanna", pay=Pay(value=530)).save()
+        Doc(name="Tayza mariana", pay=Pay(value=165)).save()
+        Doc(name="Eliana Costa", pay=Pay(value=115)).save()
 
-        self.assertEqual(Doc.objects.sum('pay.value'), 960)
+        self.assertEqual(Doc.objects.sum("pay.value"), 960)
 
     def test_embedded_array_sum(self):
         class Pay(EmbeddedDocument):
@@ -3306,12 +3339,12 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        Doc(name='Wilson Junior', pay=Pay(values=[150, 100])).save()
-        Doc(name='Isabella Luanna', pay=Pay(values=[530, 100])).save()
-        Doc(name='Tayza mariana', pay=Pay(values=[165, 100])).save()
-        Doc(name='Eliana Costa', pay=Pay(values=[115, 100])).save()
+        Doc(name="Wilson Junior", pay=Pay(values=[150, 100])).save()
+        Doc(name="Isabella Luanna", pay=Pay(values=[530, 100])).save()
+        Doc(name="Tayza mariana", pay=Pay(values=[165, 100])).save()
+        Doc(name="Eliana Costa", pay=Pay(values=[115, 100])).save()
 
-        self.assertEqual(Doc.objects.sum('pay.values'), 1360)
+        self.assertEqual(Doc.objects.sum("pay.values"), 1360)
 
     def test_array_sum(self):
         class Doc(Document):
@@ -3324,21 +3357,24 @@ class QuerySetTest(unittest.TestCase):
         Doc(values=[165, 100]).save()
         Doc(values=[115, 100]).save()
 
-        self.assertEqual(Doc.objects.sum('values'), 1360)
+        self.assertEqual(Doc.objects.sum("values"), 1360)
 
     def test_distinct(self):
         """Ensure that the QuerySet.distinct method works.
         """
-        self.Person(name='Mr Orange', age=20).save()
-        self.Person(name='Mr White', age=20).save()
-        self.Person(name='Mr Orange', age=30).save()
-        self.Person(name='Mr Pink', age=30).save()
-        self.assertEqual(set(self.Person.objects.distinct('name')),
-                         set(['Mr Orange', 'Mr White', 'Mr Pink']))
-        self.assertEqual(set(self.Person.objects.distinct('age')),
-                         set([20, 30]))
-        self.assertEqual(set(self.Person.objects(age=30).distinct('name')),
-                         set(['Mr Orange', 'Mr Pink']))
+        self.Person(name="Mr Orange", age=20).save()
+        self.Person(name="Mr White", age=20).save()
+        self.Person(name="Mr Orange", age=30).save()
+        self.Person(name="Mr Pink", age=30).save()
+        self.assertEqual(
+            set(self.Person.objects.distinct("name")),
+            set(["Mr Orange", "Mr White", "Mr Pink"]),
+        )
+        self.assertEqual(set(self.Person.objects.distinct("age")), set([20, 30]))
+        self.assertEqual(
+            set(self.Person.objects(age=30).distinct("name")),
+            set(["Mr Orange", "Mr Pink"]),
+        )
 
     def test_distinct_handles_references(self):
         class Foo(Document):
@@ -3364,53 +3400,58 @@ class QuerySetTest(unittest.TestCase):
             content = StringField()
             is_active = BooleanField(default=True)
 
-            meta = {'indexes': [
-                {'fields': ['$title', "$content"],
-                 'default_language': 'portuguese',
-                 'weights': {'title': 10, 'content': 2}
-                 }
-            ]}
+            meta = {
+                "indexes": [
+                    {
+                        "fields": ["$title", "$content"],
+                        "default_language": "portuguese",
+                        "weights": {"title": 10, "content": 2},
+                    }
+                ]
+            }
 
         News.drop_collection()
         info = News.objects._collection.index_information()
-        self.assertIn('title_text_content_text', info)
-        self.assertIn('textIndexVersion', info['title_text_content_text'])
+        self.assertIn("title_text_content_text", info)
+        self.assertIn("textIndexVersion", info["title_text_content_text"])
 
-        News(title="Neymar quebrou a vertebra",
-             content="O Brasil sofre com a perda de Neymar").save()
+        News(
+            title="Neymar quebrou a vertebra",
+            content="O Brasil sofre com a perda de Neymar",
+        ).save()
 
-        News(title="Brasil passa para as quartas de finais",
-             content="Com o brasil nas quartas de finais teremos um "
-             "jogo complicado com a alemanha").save()
+        News(
+            title="Brasil passa para as quartas de finais",
+            content="Com o brasil nas quartas de finais teremos um "
+            "jogo complicado com a alemanha",
+        ).save()
 
-        count = News.objects.search_text(
-            "neymar", language="portuguese").count()
-
-        self.assertEqual(count, 1)
-
-        count = News.objects.search_text(
-            "brasil -neymar").count()
+        count = News.objects.search_text("neymar", language="portuguese").count()
 
         self.assertEqual(count, 1)
 
-        News(title=u"As eleições no Brasil já estão em planejamento",
-             content=u"A candidata dilma roussef já começa o teu planejamento",
-             is_active=False).save()
+        count = News.objects.search_text("brasil -neymar").count()
 
-        new = News.objects(is_active=False).search_text(
-            "dilma", language="pt").first()
+        self.assertEqual(count, 1)
 
-        query = News.objects(is_active=False).search_text(
-            "dilma", language="pt")._query
+        News(
+            title=u"As eleições no Brasil já estão em planejamento",
+            content=u"A candidata dilma roussef já começa o teu planejamento",
+            is_active=False,
+        ).save()
+
+        new = News.objects(is_active=False).search_text("dilma", language="pt").first()
+
+        query = News.objects(is_active=False).search_text("dilma", language="pt")._query
 
         self.assertEqual(
-            query, {'$text': {
-                '$search': 'dilma', '$language': 'pt'},
-                'is_active': False})
+            query,
+            {"$text": {"$search": "dilma", "$language": "pt"}, "is_active": False},
+        )
 
         self.assertFalse(new.is_active)
-        self.assertIn('dilma', new.content)
-        self.assertIn('planejamento', new.title)
+        self.assertIn("dilma", new.content)
+        self.assertIn("planejamento", new.title)
 
         query = News.objects.search_text("candidata")
         self.assertEqual(query._search_text, "candidata")
@@ -3419,15 +3460,14 @@ class QuerySetTest(unittest.TestCase):
         self.assertIsInstance(new.get_text_score(), float)
 
         # count
-        query = News.objects.search_text('brasil').order_by('$text_score')
+        query = News.objects.search_text("brasil").order_by("$text_score")
         self.assertEqual(query._search_text, "brasil")
 
         self.assertEqual(query.count(), 3)
-        self.assertEqual(query._query, {'$text': {'$search': 'brasil'}})
+        self.assertEqual(query._query, {"$text": {"$search": "brasil"}})
         cursor_args = query._cursor_args
-        cursor_args_fields = cursor_args['projection']
-        self.assertEqual(
-            cursor_args_fields, {'_text_score': {'$meta': 'textScore'}})
+        cursor_args_fields = cursor_args["projection"]
+        self.assertEqual(cursor_args_fields, {"_text_score": {"$meta": "textScore"}})
 
         text_scores = [i.get_text_score() for i in query]
         self.assertEqual(len(text_scores), 3)
@@ -3437,20 +3477,19 @@ class QuerySetTest(unittest.TestCase):
         max_text_score = text_scores[0]
 
         # get item
-        item = News.objects.search_text(
-            'brasil').order_by('$text_score').first()
+        item = News.objects.search_text("brasil").order_by("$text_score").first()
         self.assertEqual(item.get_text_score(), max_text_score)
 
     def test_distinct_handles_references_to_alias(self):
-        register_connection('testdb', 'mongoenginetest2')
+        register_connection("testdb", "mongoenginetest2")
 
         class Foo(Document):
             bar = ReferenceField("Bar")
-            meta = {'db_alias': 'testdb'}
+            meta = {"db_alias": "testdb"}
 
         class Bar(Document):
             text = StringField()
-            meta = {'db_alias': 'testdb'}
+            meta = {"db_alias": "testdb"}
 
         Bar.drop_collection()
         Foo.drop_collection()
@@ -3466,8 +3505,9 @@ class QuerySetTest(unittest.TestCase):
     def test_distinct_handles_db_field(self):
         """Ensure that distinct resolves field name to db_field as expected.
         """
+
         class Product(Document):
-            product_id = IntField(db_field='pid')
+            product_id = IntField(db_field="pid")
 
         Product.drop_collection()
 
@@ -3475,15 +3515,12 @@ class QuerySetTest(unittest.TestCase):
         Product(product_id=2).save()
         Product(product_id=1).save()
 
-        self.assertEqual(set(Product.objects.distinct('product_id')),
-                         set([1, 2]))
-        self.assertEqual(set(Product.objects.distinct('pid')),
-                         set([1, 2]))
+        self.assertEqual(set(Product.objects.distinct("product_id")), set([1, 2]))
+        self.assertEqual(set(Product.objects.distinct("pid")), set([1, 2]))
 
         Product.drop_collection()
 
     def test_distinct_ListField_EmbeddedDocumentField(self):
-
         class Author(EmbeddedDocument):
             name = StringField()
 
@@ -3521,8 +3558,8 @@ class QuerySetTest(unittest.TestCase):
 
         Book.drop_collection()
 
-        europe = Continent(continent_name='europe')
-        asia = Continent(continent_name='asia')
+        europe = Continent(continent_name="europe")
+        asia = Continent(continent_name="asia")
 
         scotland = Country(country_name="Scotland", continent=europe)
         tibet = Country(country_name="Tibet", continent=asia)
@@ -3541,13 +3578,12 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(continent_list, [europe, asia])
 
     def test_distinct_ListField_ReferenceField(self):
-
         class Bar(Document):
             text = StringField()
 
         class Foo(Document):
-            bar = ReferenceField('Bar')
-            bar_lst = ListField(ReferenceField('Bar'))
+            bar = ReferenceField("Bar")
+            bar_lst = ListField(ReferenceField("Bar"))
 
         Bar.drop_collection()
         Foo.drop_collection()
@@ -3566,6 +3602,7 @@ class QuerySetTest(unittest.TestCase):
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected.
         """
+
         class BlogPost(Document):
             tags = ListField(StringField())
             deleted = BooleanField(default=False)
@@ -3583,32 +3620,30 @@ class QuerySetTest(unittest.TestCase):
 
             @queryset_manager
             def music_posts(doc_cls, queryset, deleted=False):
-                return queryset(tags='music',
-                                deleted=deleted).order_by('date')
+                return queryset(tags="music", deleted=deleted).order_by("date")
 
         BlogPost.drop_collection()
 
-        post1 = BlogPost(tags=['music', 'film']).save()
-        post2 = BlogPost(tags=['music']).save()
-        post3 = BlogPost(tags=['film', 'actors']).save()
-        post4 = BlogPost(tags=['film', 'actors', 'music'], deleted=True).save()
+        post1 = BlogPost(tags=["music", "film"]).save()
+        post2 = BlogPost(tags=["music"]).save()
+        post3 = BlogPost(tags=["film", "actors"]).save()
+        post4 = BlogPost(tags=["film", "actors", "music"], deleted=True).save()
 
-        self.assertEqual([p.id for p in BlogPost.objects()],
-                         [post1.id, post2.id, post3.id])
-        self.assertEqual([p.id for p in BlogPost.objects_1_arg()],
-                         [post1.id, post2.id, post3.id])
-        self.assertEqual([p.id for p in BlogPost.music_posts()],
-                         [post1.id, post2.id])
+        self.assertEqual(
+            [p.id for p in BlogPost.objects()], [post1.id, post2.id, post3.id]
+        )
+        self.assertEqual(
+            [p.id for p in BlogPost.objects_1_arg()], [post1.id, post2.id, post3.id]
+        )
+        self.assertEqual([p.id for p in BlogPost.music_posts()], [post1.id, post2.id])
 
-        self.assertEqual([p.id for p in BlogPost.music_posts(True)],
-                         [post4.id])
+        self.assertEqual([p.id for p in BlogPost.music_posts(True)], [post4.id])
 
         BlogPost.drop_collection()
 
     def test_custom_manager_overriding_objects_works(self):
-
         class Foo(Document):
-            bar = StringField(default='bar')
+            bar = StringField(default="bar")
             active = BooleanField(default=False)
 
             @queryset_manager
@@ -3632,9 +3667,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, Foo.objects.count())
 
     def test_inherit_objects(self):
-
         class Foo(Document):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
             active = BooleanField(default=True)
 
             @queryset_manager
@@ -3649,9 +3683,8 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(0, Bar.objects.count())
 
     def test_inherit_objects_override(self):
-
         class Foo(Document):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
             active = BooleanField(default=True)
 
             @queryset_manager
@@ -3659,7 +3692,6 @@ class QuerySetTest(unittest.TestCase):
                 return queryset(active=True)
 
         class Bar(Foo):
-
             @queryset_manager
             def objects(klass, queryset):
                 return queryset(active=False)
@@ -3672,12 +3704,13 @@ class QuerySetTest(unittest.TestCase):
     def test_query_value_conversion(self):
         """Ensure that query values are properly converted when necessary.
         """
+
         class BlogPost(Document):
             author = ReferenceField(self.Person)
 
         BlogPost.drop_collection()
 
-        person = self.Person(name='test', age=30)
+        person = self.Person(name="test", age=30)
         person.save()
 
         post = BlogPost(author=person)
@@ -3698,14 +3731,15 @@ class QuerySetTest(unittest.TestCase):
     def test_update_value_conversion(self):
         """Ensure that values used in updates are converted before use.
         """
+
         class Group(Document):
             members = ListField(ReferenceField(self.Person))
 
         Group.drop_collection()
 
-        user1 = self.Person(name='user1')
+        user1 = self.Person(name="user1")
         user1.save()
-        user2 = self.Person(name='user2')
+        user2 = self.Person(name="user2")
         user2.save()
 
         group = Group()
@@ -3723,6 +3757,7 @@ class QuerySetTest(unittest.TestCase):
     def test_bulk(self):
         """Ensure bulk querying by object id returns a proper dict.
         """
+
         class BlogPost(Document):
             title = StringField()
 
@@ -3761,13 +3796,13 @@ class QuerySetTest(unittest.TestCase):
     def test_custom_querysets(self):
         """Ensure that custom QuerySet classes may be used.
         """
-        class CustomQuerySet(QuerySet):
 
+        class CustomQuerySet(QuerySet):
             def not_empty(self):
                 return self.count() > 0
 
         class Post(Document):
-            meta = {'queryset_class': CustomQuerySet}
+            meta = {"queryset_class": CustomQuerySet}
 
         Post.drop_collection()
 
@@ -3784,7 +3819,6 @@ class QuerySetTest(unittest.TestCase):
         """
 
         class CustomQuerySet(QuerySet):
-
             def not_empty(self):
                 return self.count() > 0
 
@@ -3809,7 +3843,6 @@ class QuerySetTest(unittest.TestCase):
         """
 
         class CustomQuerySetManager(QuerySetManager):
-
             @staticmethod
             def get_queryset(doc_cls, queryset):
                 return queryset(is_published=True)
@@ -3832,12 +3865,11 @@ class QuerySetTest(unittest.TestCase):
         """
 
         class CustomQuerySet(QuerySet):
-
             def not_empty(self):
                 return self.count() > 0
 
         class Base(Document):
-            meta = {'abstract': True, 'queryset_class': CustomQuerySet}
+            meta = {"abstract": True, "queryset_class": CustomQuerySet}
 
         class Post(Base):
             pass
@@ -3856,7 +3888,6 @@ class QuerySetTest(unittest.TestCase):
         """
 
         class CustomQuerySet(QuerySet):
-
             def not_empty(self):
                 return self.count() > 0
 
@@ -3864,7 +3895,7 @@ class QuerySetTest(unittest.TestCase):
             queryset_class = CustomQuerySet
 
         class Base(Document):
-            meta = {'abstract': True}
+            meta = {"abstract": True}
             objects = CustomQuerySetManager()
 
         class Post(Base):
@@ -3888,10 +3919,13 @@ class QuerySetTest(unittest.TestCase):
         for i in range(10):
             Post(title="Post %s" % i).save()
 
-        self.assertEqual(5, Post.objects.limit(5).skip(5).count(with_limit_and_skip=True))
+        self.assertEqual(
+            5, Post.objects.limit(5).skip(5).count(with_limit_and_skip=True)
+        )
 
         self.assertEqual(
-            10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False))
+            10, Post.objects.limit(5).skip(5).count(with_limit_and_skip=False)
+        )
 
     def test_count_and_none(self):
         """Test count works with None()"""
@@ -3913,11 +3947,12 @@ class QuerySetTest(unittest.TestCase):
         class A(Document):
             b = ListField(EmbeddedDocumentField(B))
 
-        self.assertEqual(A.objects(b=[{'c': 'c'}]).count(), 0)
+        self.assertEqual(A.objects(b=[{"c": "c"}]).count(), 0)
 
     def test_call_after_limits_set(self):
         """Ensure that re-filtering after slicing works
         """
+
         class Post(Document):
             title = StringField()
 
@@ -3934,6 +3969,7 @@ class QuerySetTest(unittest.TestCase):
     def test_order_then_filter(self):
         """Ensure that ordering still works after filtering.
         """
+
         class Number(Document):
             n = IntField()
 
@@ -3943,14 +3979,15 @@ class QuerySetTest(unittest.TestCase):
         n1 = Number.objects.create(n=1)
 
         self.assertEqual(list(Number.objects), [n2, n1])
-        self.assertEqual(list(Number.objects.order_by('n')), [n1, n2])
-        self.assertEqual(list(Number.objects.order_by('n').filter()), [n1, n2])
+        self.assertEqual(list(Number.objects.order_by("n")), [n1, n2])
+        self.assertEqual(list(Number.objects.order_by("n").filter()), [n1, n2])
 
         Number.drop_collection()
 
     def test_clone(self):
         """Ensure that cloning clones complex querysets
         """
+
         class Number(Document):
             n = IntField()
 
@@ -3980,19 +4017,20 @@ class QuerySetTest(unittest.TestCase):
     def test_using(self):
         """Ensure that switching databases for a queryset is possible
         """
+
         class Number2(Document):
             n = IntField()
 
         Number2.drop_collection()
-        with switch_db(Number2, 'test2') as Number2:
+        with switch_db(Number2, "test2") as Number2:
             Number2.drop_collection()
 
         for i in range(1, 10):
             t = Number2(n=i)
-            t.switch_db('test2')
+            t.switch_db("test2")
             t.save()
 
-        self.assertEqual(len(Number2.objects.using('test2')), 9)
+        self.assertEqual(len(Number2.objects.using("test2")), 9)
 
     def test_unset_reference(self):
         class Comment(Document):
@@ -4004,7 +4042,7 @@ class QuerySetTest(unittest.TestCase):
         Comment.drop_collection()
         Post.drop_collection()
 
-        comment = Comment.objects.create(text='test')
+        comment = Comment.objects.create(text="test")
         post = Post.objects.create(comment=comment)
 
         self.assertEqual(post.comment, comment)
@@ -4017,7 +4055,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_order_works_with_custom_db_field_names(self):
         class Number(Document):
-            n = IntField(db_field='number')
+            n = IntField(db_field="number")
 
         Number.drop_collection()
 
@@ -4025,13 +4063,14 @@ class QuerySetTest(unittest.TestCase):
         n1 = Number.objects.create(n=1)
 
         self.assertEqual(list(Number.objects), [n2, n1])
-        self.assertEqual(list(Number.objects.order_by('n')), [n1, n2])
+        self.assertEqual(list(Number.objects.order_by("n")), [n1, n2])
 
         Number.drop_collection()
 
     def test_order_works_with_primary(self):
         """Ensure that order_by and primary work.
         """
+
         class Number(Document):
             n = IntField(primary_key=True)
 
@@ -4041,28 +4080,29 @@ class QuerySetTest(unittest.TestCase):
         Number(n=2).save()
         Number(n=3).save()
 
-        numbers = [n.n for n in Number.objects.order_by('-n')]
+        numbers = [n.n for n in Number.objects.order_by("-n")]
         self.assertEqual([3, 2, 1], numbers)
 
-        numbers = [n.n for n in Number.objects.order_by('+n')]
+        numbers = [n.n for n in Number.objects.order_by("+n")]
         self.assertEqual([1, 2, 3], numbers)
         Number.drop_collection()
 
     def test_ensure_index(self):
         """Ensure that manual creation of indexes works.
         """
+
         class Comment(Document):
             message = StringField()
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
-        Comment.ensure_index('message')
+        Comment.ensure_index("message")
 
         info = Comment.objects._collection.index_information()
-        info = [(value['key'],
-                 value.get('unique', False),
-                 value.get('sparse', False))
-                for key, value in iteritems(info)]
-        self.assertIn(([('_cls', 1), ('message', 1)], False, False), info)
+        info = [
+            (value["key"], value.get("unique", False), value.get("sparse", False))
+            for key, value in iteritems(info)
+        ]
+        self.assertIn(([("_cls", 1), ("message", 1)], False, False), info)
 
     def test_where(self):
         """Ensure that where clauses work.
@@ -4081,23 +4121,25 @@ class QuerySetTest(unittest.TestCase):
         b.save()
         c.save()
 
-        query = IntPair.objects.where('this[~fielda] >= this[~fieldb]')
-        self.assertEqual(
-            'this["fielda"] >= this["fieldb"]', query._where_clause)
+        query = IntPair.objects.where("this[~fielda] >= this[~fieldb]")
+        self.assertEqual('this["fielda"] >= this["fieldb"]', query._where_clause)
         results = list(query)
         self.assertEqual(2, len(results))
         self.assertIn(a, results)
         self.assertIn(c, results)
 
-        query = IntPair.objects.where('this[~fielda] == this[~fieldb]')
+        query = IntPair.objects.where("this[~fielda] == this[~fieldb]")
         results = list(query)
         self.assertEqual(1, len(results))
         self.assertIn(a, results)
 
         query = IntPair.objects.where(
-            'function() { return this[~fielda] >= this[~fieldb] }')
+            "function() { return this[~fielda] >= this[~fieldb] }"
+        )
         self.assertEqual(
-            'function() { return this["fielda"] >= this["fieldb"] }', query._where_clause)
+            'function() { return this["fielda"] >= this["fieldb"] }',
+            query._where_clause,
+        )
         results = list(query)
         self.assertEqual(2, len(results))
         self.assertIn(a, results)
@@ -4107,7 +4149,6 @@ class QuerySetTest(unittest.TestCase):
             list(IntPair.objects.where(fielda__gte=3))
 
     def test_scalar(self):
-
         class Organization(Document):
             name = StringField()
 
@@ -4124,13 +4165,13 @@ class QuerySetTest(unittest.TestCase):
 
         # Efficient way to get all unique organization names for a given
         # set of users (Pretend this has additional filtering.)
-        user_orgs = set(User.objects.scalar('organization'))
-        orgs = Organization.objects(id__in=user_orgs).scalar('name')
-        self.assertEqual(list(orgs), ['White House'])
+        user_orgs = set(User.objects.scalar("organization"))
+        orgs = Organization.objects(id__in=user_orgs).scalar("name")
+        self.assertEqual(list(orgs), ["White House"])
 
         # Efficient for generating listings, too.
-        orgs = Organization.objects.scalar('name').in_bulk(list(user_orgs))
-        user_map = User.objects.scalar('name', 'organization')
+        orgs = Organization.objects.scalar("name").in_bulk(list(user_orgs))
+        user_map = User.objects.scalar("name", "organization")
         user_listing = [(user, orgs[org]) for user, org in user_map]
         self.assertEqual([("Bob Dole", "White House")], user_listing)
 
@@ -4145,7 +4186,7 @@ class QuerySetTest(unittest.TestCase):
         TestDoc(x=20, y=False).save()
         TestDoc(x=30, y=True).save()
 
-        plist = list(TestDoc.objects.scalar('x', 'y'))
+        plist = list(TestDoc.objects.scalar("x", "y"))
 
         self.assertEqual(len(plist), 3)
         self.assertEqual(plist[0], (10, True))
@@ -4163,21 +4204,16 @@ class QuerySetTest(unittest.TestCase):
         UserDoc(name="Eliana", age=37).save()
         UserDoc(name="Tayza", age=15).save()
 
-        ulist = list(UserDoc.objects.scalar('name', 'age'))
+        ulist = list(UserDoc.objects.scalar("name", "age"))
 
-        self.assertEqual(ulist, [
-            (u'Wilson Jr', 19),
-            (u'Wilson', 43),
-            (u'Eliana', 37),
-            (u'Tayza', 15)])
+        self.assertEqual(
+            ulist,
+            [(u"Wilson Jr", 19), (u"Wilson", 43), (u"Eliana", 37), (u"Tayza", 15)],
+        )
 
-        ulist = list(UserDoc.objects.scalar('name').order_by('age'))
+        ulist = list(UserDoc.objects.scalar("name").order_by("age"))
 
-        self.assertEqual(ulist, [
-            (u'Tayza'),
-            (u'Wilson Jr'),
-            (u'Eliana'),
-            (u'Wilson')])
+        self.assertEqual(ulist, [(u"Tayza"), (u"Wilson Jr"), (u"Eliana"), (u"Wilson")])
 
     def test_scalar_embedded(self):
         class Profile(EmbeddedDocument):
@@ -4194,30 +4230,45 @@ class QuerySetTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        Person(profile=Profile(name="Wilson Jr", age=19),
-               locale=Locale(city="Corumba-GO", country="Brazil")).save()
+        Person(
+            profile=Profile(name="Wilson Jr", age=19),
+            locale=Locale(city="Corumba-GO", country="Brazil"),
+        ).save()
 
-        Person(profile=Profile(name="Gabriel Falcao", age=23),
-               locale=Locale(city="New York", country="USA")).save()
+        Person(
+            profile=Profile(name="Gabriel Falcao", age=23),
+            locale=Locale(city="New York", country="USA"),
+        ).save()
 
-        Person(profile=Profile(name="Lincoln de souza", age=28),
-               locale=Locale(city="Belo Horizonte", country="Brazil")).save()
+        Person(
+            profile=Profile(name="Lincoln de souza", age=28),
+            locale=Locale(city="Belo Horizonte", country="Brazil"),
+        ).save()
 
-        Person(profile=Profile(name="Walter cruz", age=30),
-               locale=Locale(city="Brasilia", country="Brazil")).save()
+        Person(
+            profile=Profile(name="Walter cruz", age=30),
+            locale=Locale(city="Brasilia", country="Brazil"),
+        ).save()
 
         self.assertEqual(
-            list(Person.objects.order_by(
-                'profile__age').scalar('profile__name')),
-            [u'Wilson Jr', u'Gabriel Falcao', u'Lincoln de souza', u'Walter cruz'])
+            list(Person.objects.order_by("profile__age").scalar("profile__name")),
+            [u"Wilson Jr", u"Gabriel Falcao", u"Lincoln de souza", u"Walter cruz"],
+        )
 
-        ulist = list(Person.objects.order_by('locale.city')
-                     .scalar('profile__name', 'profile__age', 'locale__city'))
-        self.assertEqual(ulist,
-                         [(u'Lincoln de souza', 28, u'Belo Horizonte'),
-                          (u'Walter cruz', 30, u'Brasilia'),
-                          (u'Wilson Jr', 19, u'Corumba-GO'),
-                          (u'Gabriel Falcao', 23, u'New York')])
+        ulist = list(
+            Person.objects.order_by("locale.city").scalar(
+                "profile__name", "profile__age", "locale__city"
+            )
+        )
+        self.assertEqual(
+            ulist,
+            [
+                (u"Lincoln de souza", 28, u"Belo Horizonte"),
+                (u"Walter cruz", 30, u"Brasilia"),
+                (u"Wilson Jr", 19, u"Corumba-GO"),
+                (u"Gabriel Falcao", 23, u"New York"),
+            ],
+        )
 
     def test_scalar_decimal(self):
         from decimal import Decimal
@@ -4227,10 +4278,10 @@ class QuerySetTest(unittest.TestCase):
             rating = DecimalField()
 
         Person.drop_collection()
-        Person(name="Wilson Jr", rating=Decimal('1.0')).save()
+        Person(name="Wilson Jr", rating=Decimal("1.0")).save()
 
-        ulist = list(Person.objects.scalar('name', 'rating'))
-        self.assertEqual(ulist, [(u'Wilson Jr', Decimal('1.0'))])
+        ulist = list(Person.objects.scalar("name", "rating"))
+        self.assertEqual(ulist, [(u"Wilson Jr", Decimal("1.0"))])
 
     def test_scalar_reference_field(self):
         class State(Document):
@@ -4248,8 +4299,8 @@ class QuerySetTest(unittest.TestCase):
 
         Person(name="Wilson JR", state=s1).save()
 
-        plist = list(Person.objects.scalar('name', 'state'))
-        self.assertEqual(plist, [(u'Wilson JR', s1)])
+        plist = list(Person.objects.scalar("name", "state"))
+        self.assertEqual(plist, [(u"Wilson JR", s1)])
 
     def test_scalar_generic_reference_field(self):
         class State(Document):
@@ -4267,8 +4318,8 @@ class QuerySetTest(unittest.TestCase):
 
         Person(name="Wilson JR", state=s1).save()
 
-        plist = list(Person.objects.scalar('name', 'state'))
-        self.assertEqual(plist, [(u'Wilson JR', s1)])
+        plist = list(Person.objects.scalar("name", "state"))
+        self.assertEqual(plist, [(u"Wilson JR", s1)])
 
     def test_generic_reference_field_with_only_and_as_pymongo(self):
         class TestPerson(Document):
@@ -4281,26 +4332,32 @@ class QuerySetTest(unittest.TestCase):
         TestPerson.drop_collection()
         TestActivity.drop_collection()
 
-        person = TestPerson(name='owner')
+        person = TestPerson(name="owner")
         person.save()
 
-        a1 = TestActivity(name='a1', owner=person)
+        a1 = TestActivity(name="a1", owner=person)
         a1.save()
 
-        activity = TestActivity.objects(owner=person).scalar('id', 'owner').no_dereference().first()
+        activity = (
+            TestActivity.objects(owner=person)
+            .scalar("id", "owner")
+            .no_dereference()
+            .first()
+        )
         self.assertEqual(activity[0], a1.pk)
-        self.assertEqual(activity[1]['_ref'], DBRef('test_person', person.pk))
+        self.assertEqual(activity[1]["_ref"], DBRef("test_person", person.pk))
 
-        activity = TestActivity.objects(owner=person).only('id', 'owner')[0]
+        activity = TestActivity.objects(owner=person).only("id", "owner")[0]
         self.assertEqual(activity.pk, a1.pk)
         self.assertEqual(activity.owner, person)
 
-        activity = TestActivity.objects(owner=person).only('id', 'owner').as_pymongo().first()
-        self.assertEqual(activity['_id'], a1.pk)
-        self.assertTrue(activity['owner']['_ref'], DBRef('test_person', person.pk))
+        activity = (
+            TestActivity.objects(owner=person).only("id", "owner").as_pymongo().first()
+        )
+        self.assertEqual(activity["_id"], a1.pk)
+        self.assertTrue(activity["owner"]["_ref"], DBRef("test_person", person.pk))
 
     def test_scalar_db_field(self):
-
         class TestDoc(Document):
             x = IntField()
             y = BooleanField()
@@ -4311,14 +4368,13 @@ class QuerySetTest(unittest.TestCase):
         TestDoc(x=20, y=False).save()
         TestDoc(x=30, y=True).save()
 
-        plist = list(TestDoc.objects.scalar('x', 'y'))
+        plist = list(TestDoc.objects.scalar("x", "y"))
         self.assertEqual(len(plist), 3)
         self.assertEqual(plist[0], (10, True))
         self.assertEqual(plist[1], (20, False))
         self.assertEqual(plist[2], (30, True))
 
     def test_scalar_primary_key(self):
-
         class SettingValue(Document):
             key = StringField(primary_key=True)
             value = StringField()
@@ -4327,8 +4383,8 @@ class QuerySetTest(unittest.TestCase):
         s = SettingValue(key="test", value="test value")
         s.save()
 
-        val = SettingValue.objects.scalar('key', 'value')
-        self.assertEqual(list(val), [('test', 'test value')])
+        val = SettingValue.objects.scalar("key", "value")
+        self.assertEqual(list(val), [("test", "test value")])
 
     def test_scalar_cursor_behaviour(self):
         """Ensure that a query returns a valid set of results.
@@ -4339,83 +4395,94 @@ class QuerySetTest(unittest.TestCase):
         person2.save()
 
         # Find all people in the collection
-        people = self.Person.objects.scalar('name')
+        people = self.Person.objects.scalar("name")
         self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertEqual(results[0], "User A")
         self.assertEqual(results[1], "User B")
 
         # Use a query to filter the people found to just person1
-        people = self.Person.objects(age=20).scalar('name')
+        people = self.Person.objects(age=20).scalar("name")
         self.assertEqual(people.count(), 1)
         person = people.next()
         self.assertEqual(person, "User A")
 
         # Test limit
-        people = list(self.Person.objects.limit(1).scalar('name'))
+        people = list(self.Person.objects.limit(1).scalar("name"))
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0], 'User A')
+        self.assertEqual(people[0], "User A")
 
         # Test skip
-        people = list(self.Person.objects.skip(1).scalar('name'))
+        people = list(self.Person.objects.skip(1).scalar("name"))
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0], 'User B')
+        self.assertEqual(people[0], "User B")
 
         person3 = self.Person(name="User C", age=40)
         person3.save()
 
         # Test slice limit
-        people = list(self.Person.objects[:2].scalar('name'))
+        people = list(self.Person.objects[:2].scalar("name"))
         self.assertEqual(len(people), 2)
-        self.assertEqual(people[0], 'User A')
-        self.assertEqual(people[1], 'User B')
+        self.assertEqual(people[0], "User A")
+        self.assertEqual(people[1], "User B")
 
         # Test slice skip
-        people = list(self.Person.objects[1:].scalar('name'))
+        people = list(self.Person.objects[1:].scalar("name"))
         self.assertEqual(len(people), 2)
-        self.assertEqual(people[0], 'User B')
-        self.assertEqual(people[1], 'User C')
+        self.assertEqual(people[0], "User B")
+        self.assertEqual(people[1], "User C")
 
         # Test slice limit and skip
-        people = list(self.Person.objects[1:2].scalar('name'))
+        people = list(self.Person.objects[1:2].scalar("name"))
         self.assertEqual(len(people), 1)
-        self.assertEqual(people[0], 'User B')
+        self.assertEqual(people[0], "User B")
 
-        people = list(self.Person.objects[1:1].scalar('name'))
+        people = list(self.Person.objects[1:1].scalar("name"))
         self.assertEqual(len(people), 0)
 
         # Test slice out of range
-        people = list(self.Person.objects.scalar('name')[80000:80001])
+        people = list(self.Person.objects.scalar("name")[80000:80001])
         self.assertEqual(len(people), 0)
 
         # Test larger slice __repr__
         self.Person.objects.delete()
         for i in range(55):
-            self.Person(name='A%s' % i, age=i).save()
+            self.Person(name="A%s" % i, age=i).save()
 
-        self.assertEqual(self.Person.objects.scalar('name').count(), 55)
+        self.assertEqual(self.Person.objects.scalar("name").count(), 55)
         self.assertEqual(
-            "A0", "%s" % self.Person.objects.order_by('name').scalar('name').first())
+            "A0", "%s" % self.Person.objects.order_by("name").scalar("name").first()
+        )
         self.assertEqual(
-            "A0", "%s" % self.Person.objects.scalar('name').order_by('name')[0])
+            "A0", "%s" % self.Person.objects.scalar("name").order_by("name")[0]
+        )
         if six.PY3:
-            self.assertEqual("['A1', 'A2']", "%s" % self.Person.objects.order_by(
-                'age').scalar('name')[1:3])
-            self.assertEqual("['A51', 'A52']", "%s" % self.Person.objects.order_by(
-                'age').scalar('name')[51:53])
+            self.assertEqual(
+                "['A1', 'A2']",
+                "%s" % self.Person.objects.order_by("age").scalar("name")[1:3],
+            )
+            self.assertEqual(
+                "['A51', 'A52']",
+                "%s" % self.Person.objects.order_by("age").scalar("name")[51:53],
+            )
         else:
-            self.assertEqual("[u'A1', u'A2']", "%s" % self.Person.objects.order_by(
-                'age').scalar('name')[1:3])
-            self.assertEqual("[u'A51', u'A52']", "%s" % self.Person.objects.order_by(
-                'age').scalar('name')[51:53])
+            self.assertEqual(
+                "[u'A1', u'A2']",
+                "%s" % self.Person.objects.order_by("age").scalar("name")[1:3],
+            )
+            self.assertEqual(
+                "[u'A51', u'A52']",
+                "%s" % self.Person.objects.order_by("age").scalar("name")[51:53],
+            )
 
         # with_id and in_bulk
-        person = self.Person.objects.order_by('name').first()
-        self.assertEqual("A0", "%s" %
-                         self.Person.objects.scalar('name').with_id(person.id))
+        person = self.Person.objects.order_by("name").first()
+        self.assertEqual(
+            "A0", "%s" % self.Person.objects.scalar("name").with_id(person.id)
+        )
 
-        pks = self.Person.objects.order_by('age').scalar('pk')[1:3]
-        names = self.Person.objects.scalar('name').in_bulk(list(pks)).values()
+        pks = self.Person.objects.order_by("age").scalar("pk")[1:3]
+        names = self.Person.objects.scalar("name").in_bulk(list(pks)).values()
         if six.PY3:
             expected = "['A1', 'A2']"
         else:
@@ -4427,51 +4494,61 @@ class QuerySetTest(unittest.TestCase):
             shape = StringField()
             color = StringField()
             thick = BooleanField()
-            meta = {'allow_inheritance': False}
+            meta = {"allow_inheritance": False}
 
         class Bar(Document):
             foo = ListField(EmbeddedDocumentField(Foo))
-            meta = {'allow_inheritance': False}
+            meta = {"allow_inheritance": False}
 
         Bar.drop_collection()
 
-        b1 = Bar(foo=[Foo(shape="square", color="purple", thick=False),
-                      Foo(shape="circle", color="red", thick=True)])
+        b1 = Bar(
+            foo=[
+                Foo(shape="square", color="purple", thick=False),
+                Foo(shape="circle", color="red", thick=True),
+            ]
+        )
         b1.save()
 
-        b2 = Bar(foo=[Foo(shape="square", color="red", thick=True),
-                      Foo(shape="circle", color="purple", thick=False)])
+        b2 = Bar(
+            foo=[
+                Foo(shape="square", color="red", thick=True),
+                Foo(shape="circle", color="purple", thick=False),
+            ]
+        )
         b2.save()
 
-        b3 = Bar(foo=[Foo(shape="square", thick=True),
-                      Foo(shape="circle", color="purple", thick=False)])
+        b3 = Bar(
+            foo=[
+                Foo(shape="square", thick=True),
+                Foo(shape="circle", color="purple", thick=False),
+            ]
+        )
         b3.save()
 
-        ak = list(
-            Bar.objects(foo__match={'shape': "square", "color": "purple"}))
+        ak = list(Bar.objects(foo__match={"shape": "square", "color": "purple"}))
         self.assertEqual([b1], ak)
 
-        ak = list(
-            Bar.objects(foo__elemMatch={'shape': "square", "color": "purple"}))
+        ak = list(Bar.objects(foo__elemMatch={"shape": "square", "color": "purple"}))
         self.assertEqual([b1], ak)
 
         ak = list(Bar.objects(foo__match=Foo(shape="square", color="purple")))
         self.assertEqual([b1], ak)
 
         ak = list(
-            Bar.objects(foo__elemMatch={'shape': "square", "color__exists": True}))
+            Bar.objects(foo__elemMatch={"shape": "square", "color__exists": True})
+        )
+        self.assertEqual([b1, b2], ak)
+
+        ak = list(Bar.objects(foo__match={"shape": "square", "color__exists": True}))
         self.assertEqual([b1, b2], ak)
 
         ak = list(
-            Bar.objects(foo__match={'shape': "square", "color__exists": True}))
-        self.assertEqual([b1, b2], ak)
-
-        ak = list(
-            Bar.objects(foo__elemMatch={'shape': "square", "color__exists": False}))
+            Bar.objects(foo__elemMatch={"shape": "square", "color__exists": False})
+        )
         self.assertEqual([b3], ak)
 
-        ak = list(
-            Bar.objects(foo__match={'shape': "square", "color__exists": False}))
+        ak = list(Bar.objects(foo__match={"shape": "square", "color__exists": False}))
         self.assertEqual([b3], ak)
 
     def test_upsert_includes_cls(self):
@@ -4482,24 +4559,25 @@ class QuerySetTest(unittest.TestCase):
             test = StringField()
 
         Test.drop_collection()
-        Test.objects(test='foo').update_one(upsert=True, set__test='foo')
-        self.assertNotIn('_cls', Test._collection.find_one())
+        Test.objects(test="foo").update_one(upsert=True, set__test="foo")
+        self.assertNotIn("_cls", Test._collection.find_one())
 
         class Test(Document):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
             test = StringField()
 
         Test.drop_collection()
 
-        Test.objects(test='foo').update_one(upsert=True, set__test='foo')
-        self.assertIn('_cls', Test._collection.find_one())
+        Test.objects(test="foo").update_one(upsert=True, set__test="foo")
+        self.assertIn("_cls", Test._collection.find_one())
 
     def test_update_upsert_looks_like_a_digit(self):
         class MyDoc(DynamicDocument):
             pass
+
         MyDoc.drop_collection()
         self.assertEqual(1, MyDoc.objects.update_one(upsert=True, inc__47=1))
-        self.assertEqual(MyDoc.objects.get()['47'], 1)
+        self.assertEqual(MyDoc.objects.get()["47"], 1)
 
     def test_dictfield_key_looks_like_a_digit(self):
         """Only should work with DictField even if they have numeric keys."""
@@ -4508,86 +4586,84 @@ class QuerySetTest(unittest.TestCase):
             test = DictField()
 
         MyDoc.drop_collection()
-        doc = MyDoc(test={'47': 1})
+        doc = MyDoc(test={"47": 1})
         doc.save()
-        self.assertEqual(MyDoc.objects.only('test__47').get().test['47'], 1)
+        self.assertEqual(MyDoc.objects.only("test__47").get().test["47"], 1)
 
     def test_read_preference(self):
         class Bar(Document):
             txt = StringField()
 
-            meta = {
-                'indexes': ['txt']
-            }
+            meta = {"indexes": ["txt"]}
 
         Bar.drop_collection()
         bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
         self.assertEqual([], bars)
 
-        self.assertRaises(TypeError, Bar.objects, read_preference='Primary')
+        self.assertRaises(TypeError, Bar.objects, read_preference="Primary")
 
         # read_preference as a kwarg
         bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._cursor._Cursor__read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+        )
 
         # read_preference as a query set method
         bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._cursor._Cursor__read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+        )
 
         # read_preference after skip
-        bars = Bar.objects.skip(1) \
-            .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._cursor._Cursor__read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        bars = Bar.objects.skip(1).read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+        )
 
         # read_preference after limit
-        bars = Bar.objects.limit(1) \
-            .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._cursor._Cursor__read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        bars = Bar.objects.limit(1).read_preference(ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+        )
 
         # read_preference after order_by
-        bars = Bar.objects.order_by('txt') \
-            .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._cursor._Cursor__read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        bars = Bar.objects.order_by("txt").read_preference(
+            ReadPreference.SECONDARY_PREFERRED
+        )
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+        )
 
         # read_preference after hint
-        bars = Bar.objects.hint([('txt', 1)]) \
-            .read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._cursor._Cursor__read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        bars = Bar.objects.hint([("txt", 1)]).read_preference(
+            ReadPreference.SECONDARY_PREFERRED
+        )
+        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
+        self.assertEqual(
+            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+        )
 
     def test_read_preference_aggregation_framework(self):
         class Bar(Document):
             txt = StringField()
 
-            meta = {
-                'indexes': ['txt']
-            }
+            meta = {"indexes": ["txt"]}
+
         # Aggregates with read_preference
-        bars = Bar.objects \
-                    .read_preference(ReadPreference.SECONDARY_PREFERRED) \
-                    .aggregate()
-        self.assertEqual(bars._CommandCursor__collection.read_preference,
-                         ReadPreference.SECONDARY_PREFERRED)
+        bars = Bar.objects.read_preference(
+            ReadPreference.SECONDARY_PREFERRED
+        ).aggregate()
+        self.assertEqual(
+            bars._CommandCursor__collection.read_preference,
+            ReadPreference.SECONDARY_PREFERRED,
+        )
 
     def test_json_simple(self):
-
         class Embedded(EmbeddedDocument):
             string = StringField()
 
@@ -4600,7 +4676,7 @@ class QuerySetTest(unittest.TestCase):
         Doc(string="Bye", embedded_field=Embedded(string="Bye")).save()
 
         Doc().save()
-        json_data = Doc.objects.to_json(sort_keys=True, separators=(',', ':'))
+        json_data = Doc.objects.to_json(sort_keys=True, separators=(",", ":"))
         doc_objects = list(Doc.objects)
 
         self.assertEqual(doc_objects, Doc.objects.from_json(json_data))
@@ -4613,33 +4689,34 @@ class QuerySetTest(unittest.TestCase):
             pass
 
         class Doc(Document):
-            string_field = StringField(default='1')
+            string_field = StringField(default="1")
             int_field = IntField(default=1)
             float_field = FloatField(default=1.1)
             boolean_field = BooleanField(default=True)
             datetime_field = DateTimeField(default=datetime.datetime.now)
             embedded_document_field = EmbeddedDocumentField(
-                EmbeddedDoc, default=lambda: EmbeddedDoc())
+                EmbeddedDoc, default=lambda: EmbeddedDoc()
+            )
             list_field = ListField(default=lambda: [1, 2, 3])
             dict_field = DictField(default=lambda: {"hello": "world"})
             objectid_field = ObjectIdField(default=ObjectId)
-            reference_field = ReferenceField(
-                Simple, default=lambda: Simple().save())
+            reference_field = ReferenceField(Simple, default=lambda: Simple().save())
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
             complex_datetime_field = ComplexDateTimeField(default=datetime.datetime.now)
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(
-                default=lambda: Simple().save())
-            sorted_list_field = SortedListField(IntField(),
-                                                default=lambda: [1, 2, 3])
+                default=lambda: Simple().save()
+            )
+            sorted_list_field = SortedListField(IntField(), default=lambda: [1, 2, 3])
             email_field = EmailField(default="ross@example.com")
             geo_point_field = GeoPointField(default=lambda: [1, 2])
             sequence_field = SequenceField()
             uuid_field = UUIDField(default=uuid.uuid4)
             generic_embedded_document_field = GenericEmbeddedDocumentField(
-                default=lambda: EmbeddedDoc())
+                default=lambda: EmbeddedDoc()
+            )
 
         Simple.drop_collection()
         Doc.drop_collection()
@@ -4664,111 +4741,96 @@ class QuerySetTest(unittest.TestCase):
 
         User.drop_collection()
 
-        User.objects.create(id='Bob', name="Bob Dole", age=89, price=Decimal('1.11'))
+        User.objects.create(id="Bob", name="Bob Dole", age=89, price=Decimal("1.11"))
         User.objects.create(
-            id='Barak',
+            id="Barak",
             name="Barak Obama",
             age=51,
-            price=Decimal('2.22'),
-            last_login=LastLogin(
-                location='White House',
-                ip='104.107.108.116'
-            )
+            price=Decimal("2.22"),
+            last_login=LastLogin(location="White House", ip="104.107.108.116"),
         )
 
         results = User.objects.as_pymongo()
+        self.assertEqual(set(results[0].keys()), set(["_id", "name", "age", "price"]))
         self.assertEqual(
-            set(results[0].keys()),
-            set(['_id', 'name', 'age', 'price'])
-        )
-        self.assertEqual(
-            set(results[1].keys()),
-            set(['_id', 'name', 'age', 'price', 'last_login'])
+            set(results[1].keys()), set(["_id", "name", "age", "price", "last_login"])
         )
 
-        results = User.objects.only('id', 'name').as_pymongo()
-        self.assertEqual(set(results[0].keys()), set(['_id', 'name']))
+        results = User.objects.only("id", "name").as_pymongo()
+        self.assertEqual(set(results[0].keys()), set(["_id", "name"]))
 
-        users = User.objects.only('name', 'price').as_pymongo()
+        users = User.objects.only("name", "price").as_pymongo()
         results = list(users)
         self.assertIsInstance(results[0], dict)
         self.assertIsInstance(results[1], dict)
-        self.assertEqual(results[0]['name'], 'Bob Dole')
-        self.assertEqual(results[0]['price'], 1.11)
-        self.assertEqual(results[1]['name'], 'Barak Obama')
-        self.assertEqual(results[1]['price'], 2.22)
+        self.assertEqual(results[0]["name"], "Bob Dole")
+        self.assertEqual(results[0]["price"], 1.11)
+        self.assertEqual(results[1]["name"], "Barak Obama")
+        self.assertEqual(results[1]["price"], 2.22)
 
-        users = User.objects.only('name', 'last_login').as_pymongo()
+        users = User.objects.only("name", "last_login").as_pymongo()
         results = list(users)
         self.assertIsInstance(results[0], dict)
         self.assertIsInstance(results[1], dict)
-        self.assertEqual(results[0], {
-            '_id': 'Bob',
-            'name': 'Bob Dole'
-        })
-        self.assertEqual(results[1], {
-            '_id': 'Barak',
-            'name': 'Barak Obama',
-            'last_login': {
-                'location': 'White House',
-                'ip': '104.107.108.116'
-            }
-        })
+        self.assertEqual(results[0], {"_id": "Bob", "name": "Bob Dole"})
+        self.assertEqual(
+            results[1],
+            {
+                "_id": "Barak",
+                "name": "Barak Obama",
+                "last_login": {"location": "White House", "ip": "104.107.108.116"},
+            },
+        )
 
     def test_as_pymongo_returns_cls_attribute_when_using_inheritance(self):
         class User(Document):
             name = StringField()
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         User.drop_collection()
 
         user = User(name="Bob Dole").save()
         result = User.objects.as_pymongo().first()
-        self.assertEqual(
-            result,
-            {
-                '_cls': 'User',
-                '_id': user.id,
-                'name': 'Bob Dole'
-            }
-        )
+        self.assertEqual(result, {"_cls": "User", "_id": user.id, "name": "Bob Dole"})
 
     def test_as_pymongo_json_limit_fields(self):
-
         class User(Document):
             email = EmailField(unique=True, required=True)
-            password_hash = StringField(
-                db_field='password_hash', required=True)
-            password_salt = StringField(
-                db_field='password_salt', required=True)
+            password_hash = StringField(db_field="password_hash", required=True)
+            password_salt = StringField(db_field="password_salt", required=True)
 
         User.drop_collection()
-        User(email="ross@example.com", password_salt="SomeSalt",
-             password_hash="SomeHash").save()
+        User(
+            email="ross@example.com", password_salt="SomeSalt", password_hash="SomeHash"
+        ).save()
 
         serialized_user = User.objects.exclude(
-            'password_salt', 'password_hash').as_pymongo()[0]
-        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
+            "password_salt", "password_hash"
+        ).as_pymongo()[0]
+        self.assertEqual({"_id", "email"}, set(serialized_user.keys()))
 
         serialized_user = User.objects.exclude(
-            'id', 'password_salt', 'password_hash').to_json()
+            "id", "password_salt", "password_hash"
+        ).to_json()
         self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
 
-        serialized_user = User.objects.only('email').as_pymongo()[0]
-        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
+        serialized_user = User.objects.only("email").as_pymongo()[0]
+        self.assertEqual({"_id", "email"}, set(serialized_user.keys()))
 
-        serialized_user = User.objects.exclude(
-            'password_salt').only('email').as_pymongo()[0]
-        self.assertEqual({'_id', 'email'}, set(serialized_user.keys()))
+        serialized_user = (
+            User.objects.exclude("password_salt").only("email").as_pymongo()[0]
+        )
+        self.assertEqual({"_id", "email"}, set(serialized_user.keys()))
 
-        serialized_user = User.objects.exclude(
-            'password_salt', 'id').only('email').as_pymongo()[0]
-        self.assertEqual({'email'}, set(serialized_user.keys()))
+        serialized_user = (
+            User.objects.exclude("password_salt", "id").only("email").as_pymongo()[0]
+        )
+        self.assertEqual({"email"}, set(serialized_user.keys()))
 
-        serialized_user = User.objects.exclude(
-            'password_salt', 'id').only('email').to_json()
-        self.assertEqual('[{"email": "ross@example.com"}]',
-                         serialized_user)
+        serialized_user = (
+            User.objects.exclude("password_salt", "id").only("email").to_json()
+        )
+        self.assertEqual('[{"email": "ross@example.com"}]', serialized_user)
 
     def test_only_after_count(self):
         """Test that only() works after count()"""
@@ -4777,9 +4839,9 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
             age = IntField()
             address = StringField()
+
         User.drop_collection()
-        user = User(name="User", age=50,
-                    address="Moscow, Russia").save()
+        user = User(name="User", age=50, address="Moscow, Russia").save()
 
         user_queryset = User.objects(age=50)
 
@@ -4793,7 +4855,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(result, {"_id": user.id, "name": "User", "age": 50})
 
     def test_no_dereference(self):
-
         class Organization(Document):
             name = StringField()
 
@@ -4839,12 +4900,14 @@ class QuerySetTest(unittest.TestCase):
         self.assertFalse(qs_no_deref._auto_dereference)
 
         # Make sure the instance field is different from the class field
-        instance_org_field = user_no_deref._fields['organization']
+        instance_org_field = user_no_deref._fields["organization"]
         self.assertIsNot(instance_org_field, cls_organization_field)
         self.assertFalse(instance_org_field._auto_dereference)
 
         self.assertIsInstance(user_no_deref.organization, DBRef)
-        self.assertTrue(cls_organization_field._auto_dereference, True)  # Make sure the class Field wasn't altered
+        self.assertTrue(
+            cls_organization_field._auto_dereference, True
+        )  # Make sure the class Field wasn't altered
 
     def test_no_dereference_no_side_effect_on_existing_instance(self):
         # Relates to issue #1677 - ensures no regression of the bug
@@ -4860,8 +4923,7 @@ class QuerySetTest(unittest.TestCase):
         Organization.drop_collection()
 
         org = Organization(name="whatever").save()
-        User(organization=org,
-             organization_gen=org).save()
+        User(organization=org, organization_gen=org).save()
 
         qs = User.objects()
         user = qs.first()
@@ -4870,7 +4932,7 @@ class QuerySetTest(unittest.TestCase):
         user_no_deref = qs_no_deref.first()
 
         # ReferenceField
-        no_derf_org = user_no_deref.organization    # was triggering the bug
+        no_derf_org = user_no_deref.organization  # was triggering the bug
         self.assertIsInstance(no_derf_org, DBRef)
         self.assertIsInstance(user.organization, Organization)
 
@@ -4880,7 +4942,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertIsInstance(user.organization_gen, Organization)
 
     def test_no_dereference_embedded_doc(self):
-
         class User(Document):
             name = StringField()
 
@@ -4903,17 +4964,15 @@ class QuerySetTest(unittest.TestCase):
 
         member = Member(name="Flash", user=user)
 
-        company = Organization(name="Mongo Inc",
-                               ceo=user,
-                               member=member,
-                               admins=[user],
-                               members=[member])
+        company = Organization(
+            name="Mongo Inc", ceo=user, member=member, admins=[user], members=[member]
+        )
         company.save()
 
         org = Organization.objects().no_dereference().first()
 
-        self.assertNotEqual(id(org._fields['admins']), id(Organization.admins))
-        self.assertFalse(org._fields['admins']._auto_dereference)
+        self.assertNotEqual(id(org._fields["admins"]), id(Organization.admins))
+        self.assertFalse(org._fields["admins"]._auto_dereference)
 
         admin = org.admins[0]
         self.assertIsInstance(admin, DBRef)
@@ -4978,14 +5037,14 @@ class QuerySetTest(unittest.TestCase):
 
         Person.drop_collection()
         qs = Person.objects.no_cache()
-        self.assertEqual(repr(qs), '[]')
+        self.assertEqual(repr(qs), "[]")
 
     def test_no_cached_on_a_cached_queryset_raise_error(self):
         class Person(Document):
             name = StringField()
 
         Person.drop_collection()
-        Person(name='a').save()
+        Person(name="a").save()
         qs = Person.objects()
         _ = list(qs)
         with self.assertRaises(OperationError) as ctx_err:
@@ -5005,7 +5064,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertIsInstance(qs, QuerySet)
 
     def test_cache_not_cloned(self):
-
         class User(Document):
             name = StringField()
 
@@ -5017,7 +5075,7 @@ class QuerySetTest(unittest.TestCase):
         User(name="Alice").save()
         User(name="Bob").save()
 
-        users = User.objects.all().order_by('name')
+        users = User.objects.all().order_by("name")
         self.assertEqual("%s" % users, "[<User: Alice>, <User: Bob>]")
         self.assertEqual(2, len(users._result_cache))
 
@@ -5027,6 +5085,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_no_cache(self):
         """Ensure you can add meta data to file"""
+
         class Noddy(Document):
             fields = DictField()
 
@@ -5060,7 +5119,7 @@ class QuerySetTest(unittest.TestCase):
 
     def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
-        names = ['Alice', 'Bob', 'Chuck', 'David', 'Eric', 'Francis', 'George']
+        names = ["Alice", "Bob", "Chuck", "David", "Eric", "Francis", "George"]
 
         class User(Document):
             name = StringField()
@@ -5073,7 +5132,7 @@ class QuerySetTest(unittest.TestCase):
         for name in names:
             User(name=name).save()
 
-        users = User.objects.all().order_by('name')
+        users = User.objects.all().order_by("name")
         outer_count = 0
         inner_count = 0
         inner_total_count = 0
@@ -5111,7 +5170,7 @@ class QuerySetTest(unittest.TestCase):
             x = IntField()
             y = IntField()
 
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class B(A):
             z = IntField()
@@ -5148,6 +5207,7 @@ class QuerySetTest(unittest.TestCase):
     def test_query_generic_embedded_document(self):
         """Ensure that querying sub field on generic_embedded_field works
         """
+
         class A(EmbeddedDocument):
             a_name = StringField()
 
@@ -5158,19 +5218,16 @@ class QuerySetTest(unittest.TestCase):
             document = GenericEmbeddedDocumentField(choices=(A, B))
 
         Doc.drop_collection()
-        Doc(document=A(a_name='A doc')).save()
-        Doc(document=B(b_name='B doc')).save()
+        Doc(document=A(a_name="A doc")).save()
+        Doc(document=B(b_name="B doc")).save()
 
         # Using raw in filter working fine
-        self.assertEqual(Doc.objects(
-            __raw__={'document.a_name': 'A doc'}).count(), 1)
-        self.assertEqual(Doc.objects(
-            __raw__={'document.b_name': 'B doc'}).count(), 1)
-        self.assertEqual(Doc.objects(document__a_name='A doc').count(), 1)
-        self.assertEqual(Doc.objects(document__b_name='B doc').count(), 1)
+        self.assertEqual(Doc.objects(__raw__={"document.a_name": "A doc"}).count(), 1)
+        self.assertEqual(Doc.objects(__raw__={"document.b_name": "B doc"}).count(), 1)
+        self.assertEqual(Doc.objects(document__a_name="A doc").count(), 1)
+        self.assertEqual(Doc.objects(document__b_name="B doc").count(), 1)
 
     def test_query_reference_to_custom_pk_doc(self):
-
         class A(Document):
             id = StringField(primary_key=True)
 
@@ -5180,7 +5237,7 @@ class QuerySetTest(unittest.TestCase):
         A.drop_collection()
         B.drop_collection()
 
-        a = A.objects.create(id='custom_id')
+        a = A.objects.create(id="custom_id")
         B.objects.create(a=a)
 
         self.assertEqual(B.objects.count(), 1)
@@ -5188,13 +5245,10 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(B.objects.get(a=a.id).a, a)
 
     def test_cls_query_in_subclassed_docs(self):
-
         class Animal(Document):
             name = StringField()
 
-            meta = {
-                'allow_inheritance': True
-            }
+            meta = {"allow_inheritance": True}
 
         class Dog(Animal):
             pass
@@ -5202,21 +5256,23 @@ class QuerySetTest(unittest.TestCase):
         class Cat(Animal):
             pass
 
-        self.assertEqual(Animal.objects(name='Charlie')._query, {
-            'name': 'Charlie',
-            '_cls': {'$in': ('Animal', 'Animal.Dog', 'Animal.Cat')}
-        })
-        self.assertEqual(Dog.objects(name='Charlie')._query, {
-            'name': 'Charlie',
-            '_cls': 'Animal.Dog'
-        })
-        self.assertEqual(Cat.objects(name='Charlie')._query, {
-            'name': 'Charlie',
-            '_cls': 'Animal.Cat'
-        })
+        self.assertEqual(
+            Animal.objects(name="Charlie")._query,
+            {
+                "name": "Charlie",
+                "_cls": {"$in": ("Animal", "Animal.Dog", "Animal.Cat")},
+            },
+        )
+        self.assertEqual(
+            Dog.objects(name="Charlie")._query,
+            {"name": "Charlie", "_cls": "Animal.Dog"},
+        )
+        self.assertEqual(
+            Cat.objects(name="Charlie")._query,
+            {"name": "Charlie", "_cls": "Animal.Cat"},
+        )
 
     def test_can_have_field_same_name_as_query_operator(self):
-
         class Size(Document):
             name = StringField()
 
@@ -5233,7 +5289,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(Example.objects(size__in=[instance_size]).count(), 1)
 
     def test_cursor_in_an_if_stmt(self):
-
         class Test(Document):
             test_field = StringField()
 
@@ -5241,23 +5296,23 @@ class QuerySetTest(unittest.TestCase):
         queryset = Test.objects
 
         if queryset:
-            raise AssertionError('Empty cursor returns True')
+            raise AssertionError("Empty cursor returns True")
 
         test = Test()
-        test.test_field = 'test'
+        test.test_field = "test"
         test.save()
 
         queryset = Test.objects
         if not test:
-            raise AssertionError('Cursor has data and returned False')
+            raise AssertionError("Cursor has data and returned False")
 
         queryset.next()
         if not queryset:
-            raise AssertionError('Cursor has data and it must returns True,'
-                                 ' even in the last item.')
+            raise AssertionError(
+                "Cursor has data and it must returns True," " even in the last item."
+            )
 
     def test_bool_performance(self):
-
         class Person(Document):
             name = StringField()
 
@@ -5270,10 +5325,11 @@ class QuerySetTest(unittest.TestCase):
                 pass
 
             self.assertEqual(q, 1)
-            op = q.db.system.profile.find({"ns":
-                                           {"$ne": "%s.system.indexes" % q.db.name}})[0]
+            op = q.db.system.profile.find(
+                {"ns": {"$ne": "%s.system.indexes" % q.db.name}}
+            )[0]
 
-            self.assertEqual(op['nreturned'], 1)
+            self.assertEqual(op["nreturned"], 1)
 
     def test_bool_with_ordering(self):
         ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
@@ -5286,26 +5342,28 @@ class QuerySetTest(unittest.TestCase):
         Person(name="Test").save()
 
         # Check that bool(queryset) does not uses the orderby
-        qs = Person.objects.order_by('name')
+        qs = Person.objects.order_by("name")
         with query_counter() as q:
 
             if bool(qs):
                 pass
 
-            op = q.db.system.profile.find({"ns":
-                                           {"$ne": "%s.system.indexes" % q.db.name}})[0]
+            op = q.db.system.profile.find(
+                {"ns": {"$ne": "%s.system.indexes" % q.db.name}}
+            )[0]
 
             self.assertNotIn(ORDER_BY_KEY, op[CMD_QUERY_KEY])
 
         # Check that normal query uses orderby
-        qs2 = Person.objects.order_by('name')
+        qs2 = Person.objects.order_by("name")
         with query_counter() as q:
 
             for x in qs2:
                 pass
 
-            op = q.db.system.profile.find({"ns":
-                                           {"$ne": "%s.system.indexes" % q.db.name}})[0]
+            op = q.db.system.profile.find(
+                {"ns": {"$ne": "%s.system.indexes" % q.db.name}}
+            )[0]
 
             self.assertIn(ORDER_BY_KEY, op[CMD_QUERY_KEY])
 
@@ -5314,9 +5372,7 @@ class QuerySetTest(unittest.TestCase):
 
         class Person(Document):
             name = StringField()
-            meta = {
-                'ordering': ['name']
-            }
+            meta = {"ordering": ["name"]}
 
         Person.drop_collection()
 
@@ -5329,15 +5385,20 @@ class QuerySetTest(unittest.TestCase):
             if Person.objects:
                 pass
 
-            op = q.db.system.profile.find({"ns":
-                                           {"$ne": "%s.system.indexes" % q.db.name}})[0]
+            op = q.db.system.profile.find(
+                {"ns": {"$ne": "%s.system.indexes" % q.db.name}}
+            )[0]
 
-            self.assertNotIn('$orderby', op[CMD_QUERY_KEY],
-                             'BaseQuerySet must remove orderby from meta in boolen test')
+            self.assertNotIn(
+                "$orderby",
+                op[CMD_QUERY_KEY],
+                "BaseQuerySet must remove orderby from meta in boolen test",
+            )
 
-            self.assertEqual(Person.objects.first().name, 'A')
-            self.assertTrue(Person.objects._has_data(),
-                            'Cursor has data and returned False')
+            self.assertEqual(Person.objects.first().name, "A")
+            self.assertTrue(
+                Person.objects._has_data(), "Cursor has data and returned False"
+            )
 
     def test_queryset_aggregation_framework(self):
         class Person(Document):
@@ -5352,33 +5413,39 @@ class QuerySetTest(unittest.TestCase):
         Person.objects.insert([p1, p2, p3])
 
         data = Person.objects(age__lte=22).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+            {"$project": {"name": {"$toUpper": "$name"}}}
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
-            {'_id': p2.pk, 'name': "WILSON JUNIOR"}
-        ])
-
-        data = Person.objects(age__lte=22).order_by('-name').aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+        self.assertEqual(
+            list(data),
+            [
+                {"_id": p1.pk, "name": "ISABELLA LUANNA"},
+                {"_id": p2.pk, "name": "WILSON JUNIOR"},
+            ],
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p2.pk, 'name': "WILSON JUNIOR"},
-            {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
-        ])
+        data = (
+            Person.objects(age__lte=22)
+            .order_by("-name")
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
+        )
 
-        data = Person.objects(age__gte=17, age__lte=40).order_by('-age').aggregate({
-            '$group': {
-                '_id': None,
-                'total': {'$sum': 1},
-                'avg': {'$avg': '$age'}
-            }
-        })
-        self.assertEqual(list(data), [
-            {'_id': None, 'avg': 29, 'total': 2}
-        ])
+        self.assertEqual(
+            list(data),
+            [
+                {"_id": p2.pk, "name": "WILSON JUNIOR"},
+                {"_id": p1.pk, "name": "ISABELLA LUANNA"},
+            ],
+        )
+
+        data = (
+            Person.objects(age__gte=17, age__lte=40)
+            .order_by("-age")
+            .aggregate(
+                {"$group": {"_id": None, "total": {"$sum": 1}, "avg": {"$avg": "$age"}}}
+            )
+        )
+        self.assertEqual(list(data), [{"_id": None, "avg": 29, "total": 2}])
 
     def test_queryset_aggregation_with_skip(self):
         class Person(Document):
@@ -5393,13 +5460,16 @@ class QuerySetTest(unittest.TestCase):
         Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.skip(1).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+            {"$project": {"name": {"$toUpper": "$name"}}}
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p2.pk, 'name': "WILSON JUNIOR"},
-            {'_id': p3.pk, 'name': "SANDRA MARA"}
-        ])
+        self.assertEqual(
+            list(data),
+            [
+                {"_id": p2.pk, "name": "WILSON JUNIOR"},
+                {"_id": p3.pk, "name": "SANDRA MARA"},
+            ],
+        )
 
     def test_queryset_aggregation_with_limit(self):
         class Person(Document):
@@ -5414,12 +5484,10 @@ class QuerySetTest(unittest.TestCase):
         Person.objects.insert([p1, p2, p3])
 
         data = Person.objects.limit(1).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+            {"$project": {"name": {"$toUpper": "$name"}}}
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p1.pk, 'name': "ISABELLA LUANNA"}
-        ])
+        self.assertEqual(list(data), [{"_id": p1.pk, "name": "ISABELLA LUANNA"}])
 
     def test_queryset_aggregation_with_sort(self):
         class Person(Document):
@@ -5433,15 +5501,18 @@ class QuerySetTest(unittest.TestCase):
         p3 = Person(name="Sandra Mara", age=37)
         Person.objects.insert([p1, p2, p3])
 
-        data = Person.objects.order_by('name').aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+        data = Person.objects.order_by("name").aggregate(
+            {"$project": {"name": {"$toUpper": "$name"}}}
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
-            {'_id': p3.pk, 'name': "SANDRA MARA"},
-            {'_id': p2.pk, 'name': "WILSON JUNIOR"}
-        ])
+        self.assertEqual(
+            list(data),
+            [
+                {"_id": p1.pk, "name": "ISABELLA LUANNA"},
+                {"_id": p3.pk, "name": "SANDRA MARA"},
+                {"_id": p2.pk, "name": "WILSON JUNIOR"},
+            ],
+        )
 
     def test_queryset_aggregation_with_skip_with_limit(self):
         class Person(Document):
@@ -5456,18 +5527,18 @@ class QuerySetTest(unittest.TestCase):
         Person.objects.insert([p1, p2, p3])
 
         data = list(
-            Person.objects.skip(1).limit(1).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
-            )
+            Person.objects.skip(1)
+            .limit(1)
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p2.pk, 'name': "WILSON JUNIOR"},
-        ])
+        self.assertEqual(list(data), [{"_id": p2.pk, "name": "WILSON JUNIOR"}])
 
         # Make sure limit/skip chaining order has no impact
-        data2 = Person.objects.limit(1).skip(1).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+        data2 = (
+            Person.objects.limit(1)
+            .skip(1)
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
         )
 
         self.assertEqual(data, list(data2))
@@ -5484,34 +5555,40 @@ class QuerySetTest(unittest.TestCase):
         p3 = Person(name="Sandra Mara", age=37)
         Person.objects.insert([p1, p2, p3])
 
-        data = Person.objects.order_by('name').limit(2).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+        data = (
+            Person.objects.order_by("name")
+            .limit(2)
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
-            {'_id': p3.pk, 'name': "SANDRA MARA"}
-        ])
+        self.assertEqual(
+            list(data),
+            [
+                {"_id": p1.pk, "name": "ISABELLA LUANNA"},
+                {"_id": p3.pk, "name": "SANDRA MARA"},
+            ],
+        )
 
         # Verify adding limit/skip steps works as expected
-        data = Person.objects.order_by('name').limit(2).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}},
-            {'$limit': 1},
+        data = (
+            Person.objects.order_by("name")
+            .limit(2)
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}}, {"$limit": 1})
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p1.pk, 'name': "ISABELLA LUANNA"},
-        ])
+        self.assertEqual(list(data), [{"_id": p1.pk, "name": "ISABELLA LUANNA"}])
 
-        data = Person.objects.order_by('name').limit(2).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}},
-            {'$skip': 1},
-            {'$limit': 1},
+        data = (
+            Person.objects.order_by("name")
+            .limit(2)
+            .aggregate(
+                {"$project": {"name": {"$toUpper": "$name"}}},
+                {"$skip": 1},
+                {"$limit": 1},
+            )
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p3.pk, 'name': "SANDRA MARA"},
-        ])
+        self.assertEqual(list(data), [{"_id": p3.pk, "name": "SANDRA MARA"}])
 
     def test_queryset_aggregation_with_sort_with_skip(self):
         class Person(Document):
@@ -5525,13 +5602,13 @@ class QuerySetTest(unittest.TestCase):
         p3 = Person(name="Sandra Mara", age=37)
         Person.objects.insert([p1, p2, p3])
 
-        data = Person.objects.order_by('name').skip(2).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+        data = (
+            Person.objects.order_by("name")
+            .skip(2)
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p2.pk, 'name': "WILSON JUNIOR"}
-        ])
+        self.assertEqual(list(data), [{"_id": p2.pk, "name": "WILSON JUNIOR"}])
 
     def test_queryset_aggregation_with_sort_with_skip_with_limit(self):
         class Person(Document):
@@ -5545,35 +5622,42 @@ class QuerySetTest(unittest.TestCase):
         p3 = Person(name="Sandra Mara", age=37)
         Person.objects.insert([p1, p2, p3])
 
-        data = Person.objects.order_by('name').skip(1).limit(1).aggregate(
-            {'$project': {'name': {'$toUpper': '$name'}}}
+        data = (
+            Person.objects.order_by("name")
+            .skip(1)
+            .limit(1)
+            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
         )
 
-        self.assertEqual(list(data), [
-            {'_id': p3.pk, 'name': "SANDRA MARA"}
-        ])
+        self.assertEqual(list(data), [{"_id": p3.pk, "name": "SANDRA MARA"}])
 
     def test_delete_count(self):
         [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
-        self.assertEqual(self.Person.objects().delete(), 3)  # test ordinary QuerySey delete count
+        self.assertEqual(
+            self.Person.objects().delete(), 3
+        )  # test ordinary QuerySey delete count
 
         [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
 
-        self.assertEqual(self.Person.objects().skip(1).delete(), 2)  # test Document delete with existing documents
+        self.assertEqual(
+            self.Person.objects().skip(1).delete(), 2
+        )  # test Document delete with existing documents
 
         self.Person.objects().delete()
-        self.assertEqual(self.Person.objects().skip(1).delete(), 0)  # test Document delete without existing documents
+        self.assertEqual(
+            self.Person.objects().skip(1).delete(), 0
+        )  # test Document delete without existing documents
 
     def test_max_time_ms(self):
         # 778: max_time_ms can get only int or None as input
-        self.assertRaises(TypeError,
-                          self.Person.objects(name="name").max_time_ms,
-                          'not a number')
+        self.assertRaises(
+            TypeError, self.Person.objects(name="name").max_time_ms, "not a number"
+        )
 
     def test_subclass_field_query(self):
         class Animal(Document):
             is_mamal = BooleanField()
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class Cat(Animal):
             whiskers_length = FloatField()
@@ -5595,14 +5679,15 @@ class QuerySetTest(unittest.TestCase):
 
         Person.drop_collection()
 
-        Person._get_collection().insert_one({'name': 'a', 'id': ''})
+        Person._get_collection().insert_one({"name": "a", "id": ""})
         for p in Person.objects():
-            self.assertEqual(p.name, 'a')
+            self.assertEqual(p.name, "a")
 
     def test_len_during_iteration(self):
         """Tests that calling len on a queyset during iteration doesn't
         stop paging.
         """
+
         class Data(Document):
             pass
 
@@ -5635,6 +5720,7 @@ class QuerySetTest(unittest.TestCase):
         in a given queryset even if there are multiple iterations of it
         happening at the same time.
         """
+
         class Data(Document):
             pass
 
@@ -5653,6 +5739,7 @@ class QuerySetTest(unittest.TestCase):
         """Ensure that using the `__in` operator on a non-iterable raises an
         error.
         """
+
         class User(Document):
             name = StringField()
 
@@ -5663,9 +5750,10 @@ class QuerySetTest(unittest.TestCase):
         User.drop_collection()
         BlogPost.drop_collection()
 
-        author = User.objects.create(name='Test User')
-        post = BlogPost.objects.create(content='Had a good coffee today...',
-                                       authors=[author])
+        author = User.objects.create(name="Test User")
+        post = BlogPost.objects.create(
+            content="Had a good coffee today...", authors=[author]
+        )
 
         # Make sure using `__in` with a list works
         blog_posts = BlogPost.objects(authors__in=[author])
@@ -5689,5 +5777,5 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -7,24 +7,38 @@ from six import iteritems
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
-__all__ = ('BaseDict', 'StrictDict', 'BaseList', 'EmbeddedDocumentList', 'LazyReference')
+__all__ = (
+    "BaseDict",
+    "StrictDict",
+    "BaseList",
+    "EmbeddedDocumentList",
+    "LazyReference",
+)
 
 
 def mark_as_changed_wrapper(parent_method):
     """Decorators that ensures _mark_as_changed method gets called"""
+
     def wrapper(self, *args, **kwargs):
-        result = parent_method(self, *args, **kwargs)   # Can't use super() in the decorator
+        result = parent_method(
+            self, *args, **kwargs
+        )  # Can't use super() in the decorator
         self._mark_as_changed()
         return result
+
     return wrapper
 
 
 def mark_key_as_changed_wrapper(parent_method):
     """Decorators that ensures _mark_as_changed method gets called with the key argument"""
+
     def wrapper(self, key, *args, **kwargs):
-        result = parent_method(self, key, *args, **kwargs)   # Can't use super() in the decorator
+        result = parent_method(
+            self, key, *args, **kwargs
+        )  # Can't use super() in the decorator
         self._mark_as_changed(key)
         return result
+
     return wrapper
 
 
@@ -36,7 +50,7 @@ class BaseDict(dict):
     _name = None
 
     def __init__(self, dict_items, instance, name):
-        BaseDocument = _import_class('BaseDocument')
+        BaseDocument = _import_class("BaseDocument")
 
         if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
@@ -53,15 +67,15 @@ class BaseDict(dict):
     def __getitem__(self, key):
         value = super(BaseDict, self).__getitem__(key)
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
+        EmbeddedDocument = _import_class("EmbeddedDocument")
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, None, '%s.%s' % (self._name, key))
+            value = BaseDict(value, None, "%s.%s" % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
-            value = BaseList(value, None, '%s.%s' % (self._name, key))
+            value = BaseList(value, None, "%s.%s" % (self._name, key))
             super(BaseDict, self).__setitem__(key, value)
             value._instance = self._instance
         return value
@@ -85,9 +99,9 @@ class BaseDict(dict):
     setdefault = mark_as_changed_wrapper(dict.setdefault)
 
     def _mark_as_changed(self, key=None):
-        if hasattr(self._instance, '_mark_as_changed'):
+        if hasattr(self._instance, "_mark_as_changed"):
             if key:
-                self._instance._mark_as_changed('%s.%s' % (self._name, key))
+                self._instance._mark_as_changed("%s.%s" % (self._name, key))
             else:
                 self._instance._mark_as_changed(self._name)
 
@@ -100,7 +114,7 @@ class BaseList(list):
     _name = None
 
     def __init__(self, list_items, instance, name):
-        BaseDocument = _import_class('BaseDocument')
+        BaseDocument = _import_class("BaseDocument")
 
         if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
@@ -115,17 +129,17 @@ class BaseList(list):
             # to parent's instance. This is buggy for now but would require more work to be handled properly
             return value
 
-        EmbeddedDocument = _import_class('EmbeddedDocument')
+        EmbeddedDocument = _import_class("EmbeddedDocument")
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             # Replace dict by BaseDict
-            value = BaseDict(value, None, '%s.%s' % (self._name, key))
+            value = BaseDict(value, None, "%s.%s" % (self._name, key))
             super(BaseList, self).__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
             # Replace list by BaseList
-            value = BaseList(value, None, '%s.%s' % (self._name, key))
+            value = BaseList(value, None, "%s.%s" % (self._name, key))
             super(BaseList, self).__setitem__(key, value)
             value._instance = self._instance
         return value
@@ -179,17 +193,14 @@ class BaseList(list):
             return self.__getitem__(slice(i, j))
 
     def _mark_as_changed(self, key=None):
-        if hasattr(self._instance, '_mark_as_changed'):
+        if hasattr(self._instance, "_mark_as_changed"):
             if key:
-                self._instance._mark_as_changed(
-                    '%s.%s' % (self._name, key % len(self))
-                )
+                self._instance._mark_as_changed("%s.%s" % (self._name, key % len(self)))
             else:
                 self._instance._mark_as_changed(self._name)
 
 
 class EmbeddedDocumentList(BaseList):
-
     def __init__(self, list_items, instance, name):
         super(EmbeddedDocumentList, self).__init__(list_items, instance, name)
         self._instance = instance
@@ -274,12 +285,10 @@ class EmbeddedDocumentList(BaseList):
         """
         values = self.__only_matches(self, kwargs)
         if len(values) == 0:
-            raise DoesNotExist(
-                '%s matching query does not exist.' % self._name
-            )
+            raise DoesNotExist("%s matching query does not exist." % self._name)
         elif len(values) > 1:
             raise MultipleObjectsReturned(
-                '%d items returned, instead of 1' % len(values)
+                "%d items returned, instead of 1" % len(values)
             )
 
         return values[0]
@@ -360,7 +369,7 @@ class EmbeddedDocumentList(BaseList):
 
 class StrictDict(object):
     __slots__ = ()
-    _special_fields = {'get', 'pop', 'iteritems', 'items', 'keys', 'create'}
+    _special_fields = {"get", "pop", "iteritems", "items", "keys", "create"}
     _classes = {}
 
     def __init__(self, **kwargs):
@@ -368,14 +377,14 @@ class StrictDict(object):
             setattr(self, k, v)
 
     def __getitem__(self, key):
-        key = '_reserved_' + key if key in self._special_fields else key
+        key = "_reserved_" + key if key in self._special_fields else key
         try:
             return getattr(self, key)
         except AttributeError:
             raise KeyError(key)
 
     def __setitem__(self, key, value):
-        key = '_reserved_' + key if key in self._special_fields else key
+        key = "_reserved_" + key if key in self._special_fields else key
         return setattr(self, key, value)
 
     def __contains__(self, key):
@@ -422,27 +431,32 @@ class StrictDict(object):
 
     @classmethod
     def create(cls, allowed_keys):
-        allowed_keys_tuple = tuple(('_reserved_' + k if k in cls._special_fields else k) for k in allowed_keys)
+        allowed_keys_tuple = tuple(
+            ("_reserved_" + k if k in cls._special_fields else k) for k in allowed_keys
+        )
         allowed_keys = frozenset(allowed_keys_tuple)
         if allowed_keys not in cls._classes:
+
             class SpecificStrictDict(cls):
                 __slots__ = allowed_keys_tuple
 
                 def __repr__(self):
-                    return '{%s}' % ', '.join('"{0!s}": {1!r}'.format(k, v) for k, v in self.items())
+                    return "{%s}" % ", ".join(
+                        '"{0!s}": {1!r}'.format(k, v) for k, v in self.items()
+                    )
 
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]
 
 
 class LazyReference(DBRef):
-    __slots__ = ('_cached_doc', 'passthrough', 'document_type')
+    __slots__ = ("_cached_doc", "passthrough", "document_type")
 
     def fetch(self, force=False):
         if not self._cached_doc or force:
             self._cached_doc = self.document_type.objects.get(pk=self.pk)
             if not self._cached_doc:
-                raise DoesNotExist('Trying to dereference unknown document %s' % (self))
+                raise DoesNotExist("Trying to dereference unknown document %s" % (self))
         return self._cached_doc
 
     @property
@@ -453,7 +467,9 @@ class LazyReference(DBRef):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough
-        super(LazyReference, self).__init__(self.document_type._get_collection_name(), pk)
+        super(LazyReference, self).__init__(
+            self.document_type._get_collection_name(), pk
+        )
 
     def __getitem__(self, name):
         if not self.passthrough:
@@ -462,7 +478,7 @@ class LazyReference(DBRef):
         return document[name]
 
     def __getattr__(self, name):
-        if not object.__getattribute__(self, 'passthrough'):
+        if not object.__getattribute__(self, "passthrough"):
             raise AttributeError()
         document = self.fetch()
         try:

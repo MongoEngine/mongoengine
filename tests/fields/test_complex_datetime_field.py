@@ -14,9 +14,10 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
         """Tests for complex datetime fields - which can handle
         microseconds without rounding.
         """
+
         class LogEntry(Document):
             date = ComplexDateTimeField()
-            date_with_dots = ComplexDateTimeField(separator='.')
+            date_with_dots = ComplexDateTimeField(separator=".")
 
         LogEntry.drop_collection()
 
@@ -62,17 +63,25 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
         mm = dd = hh = ii = ss = [1, 10]
 
         for values in itertools.product([2014], mm, dd, hh, ii, ss, microsecond):
-            stored = LogEntry(date=datetime.datetime(*values)).to_mongo()['date']
-            self.assertTrue(re.match('^\d{4},\d{2},\d{2},\d{2},\d{2},\d{2},\d{6}$', stored) is not None)
+            stored = LogEntry(date=datetime.datetime(*values)).to_mongo()["date"]
+            self.assertTrue(
+                re.match("^\d{4},\d{2},\d{2},\d{2},\d{2},\d{2},\d{6}$", stored)
+                is not None
+            )
 
         # Test separator
-        stored = LogEntry(date_with_dots=datetime.datetime(2014, 1, 1)).to_mongo()['date_with_dots']
-        self.assertTrue(re.match('^\d{4}.\d{2}.\d{2}.\d{2}.\d{2}.\d{2}.\d{6}$', stored) is not None)
+        stored = LogEntry(date_with_dots=datetime.datetime(2014, 1, 1)).to_mongo()[
+            "date_with_dots"
+        ]
+        self.assertTrue(
+            re.match("^\d{4}.\d{2}.\d{2}.\d{2}.\d{2}.\d{2}.\d{6}$", stored) is not None
+        )
 
     def test_complexdatetime_usage(self):
         """Tests for complex datetime fields - which can handle
         microseconds without rounding.
         """
+
         class LogEntry(Document):
             date = ComplexDateTimeField()
 
@@ -123,22 +132,21 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
 
         # Test microsecond-level ordering/filtering
         for microsecond in (99, 999, 9999, 10000):
-            LogEntry(
-                date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)
-            ).save()
+            LogEntry(date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)).save()
 
-        logs = list(LogEntry.objects.order_by('date'))
+        logs = list(LogEntry.objects.order_by("date"))
         for next_idx, log in enumerate(logs[:-1], start=1):
             next_log = logs[next_idx]
             self.assertTrue(log.date < next_log.date)
 
-        logs = list(LogEntry.objects.order_by('-date'))
+        logs = list(LogEntry.objects.order_by("-date"))
         for next_idx, log in enumerate(logs[:-1], start=1):
             next_log = logs[next_idx]
             self.assertTrue(log.date > next_log.date)
 
         logs = LogEntry.objects.filter(
-            date__lte=datetime.datetime(2015, 1, 1, 0, 0, 0, 10000))
+            date__lte=datetime.datetime(2015, 1, 1, 0, 0, 0, 10000)
+        )
         self.assertEqual(logs.count(), 4)
 
     def test_no_default_value(self):
@@ -156,6 +164,7 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
 
     def test_default_static_value(self):
         NOW = datetime.datetime.utcnow()
+
         class Log(Document):
             timestamp = ComplexDateTimeField(default=NOW)
 

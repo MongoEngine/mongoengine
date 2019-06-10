@@ -3,7 +3,7 @@ import copy
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
 
-__all__ = ('Q', 'QNode')
+__all__ = ("Q", "QNode")
 
 
 class QNodeVisitor(object):
@@ -69,9 +69,9 @@ class QueryCompilerVisitor(QNodeVisitor):
         self.document = document
 
     def visit_combination(self, combination):
-        operator = '$and'
+        operator = "$and"
         if combination.operation == combination.OR:
-            operator = '$or'
+            operator = "$or"
         return {operator: combination.children}
 
     def visit_query(self, query):
@@ -96,7 +96,7 @@ class QNode(object):
         """Combine this node with another node into a QCombination
         object.
         """
-        if getattr(other, 'empty', True):
+        if getattr(other, "empty", True):
             return self
 
         if self.empty:
@@ -132,8 +132,8 @@ class QCombination(QNode):
                 self.children.append(node)
 
     def __repr__(self):
-        op = ' & ' if self.operation is self.AND else ' | '
-        return '(%s)' % op.join([repr(node) for node in self.children])
+        op = " & " if self.operation is self.AND else " | "
+        return "(%s)" % op.join([repr(node) for node in self.children])
 
     def accept(self, visitor):
         for i in range(len(self.children)):
@@ -156,7 +156,7 @@ class Q(QNode):
         self.query = query
 
     def __repr__(self):
-        return 'Q(**%s)' % repr(self.query)
+        return "Q(**%s)" % repr(self.query)
 
     def accept(self, visitor):
         return visitor.visit_query(self)

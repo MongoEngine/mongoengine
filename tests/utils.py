@@ -8,7 +8,7 @@ from mongoengine.connection import get_db, disconnect_all
 from mongoengine.mongodb_support import get_mongodb_version
 
 
-MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database
+MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 
 
 class MongoDBTestCase(unittest.TestCase):
@@ -53,12 +53,15 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     :param mongo_version_req: The mongodb version requirement (tuple(int, int))
     :param oper: The operator to apply (e.g: operator.ge)
     """
+
     def _inner(*args, **kwargs):
         mongodb_v = get_mongodb_version()
         if oper(mongodb_v, mongo_version_req):
             return func(*args, **kwargs)
 
-        raise SkipTest('Needs MongoDB v{}+'.format('.'.join(str(n) for n in mongo_version_req)))
+        raise SkipTest(
+            "Needs MongoDB v{}+".format(".".join(str(n) for n in mongo_version_req))
+        )
 
     _inner.__name__ = func.__name__
     _inner.__doc__ = func.__doc__

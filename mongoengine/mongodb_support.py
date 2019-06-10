@@ -15,5 +15,5 @@ def get_mongodb_version():
 
     :return: tuple(int, int)
     """
-    version_list = get_connection().server_info()['versionArray'][:2]     # e.g: (3, 2)
+    version_list = get_connection().server_info()["versionArray"][:2]  # e.g: (3, 2)
     return tuple(version_list)

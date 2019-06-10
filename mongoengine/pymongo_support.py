@@ -27,6 +27,6 @@ def list_collection_names(db, include_system_collections=False):
         collections = db.collection_names()
 
     if not include_system_collections:
-        collections = [c for c in collections if not c.startswith('system.')]
+        collections = [c for c in collections if not c.startswith("system.")]
 
     return collections

@@ -7,7 +7,6 @@ from tests.utils import MongoDBTestCase
 
 
 class TestFloatField(MongoDBTestCase):
-
     def test_float_ne_operator(self):
         class TestDocument(Document):
             float_fld = FloatField()
@@ -23,6 +22,7 @@ class TestFloatField(MongoDBTestCase):
     def test_validation(self):
         """Ensure that invalid values cannot be assigned to float fields.
         """
+
         class Person(Document):
             height = FloatField(min_value=0.1, max_value=3.5)
 
@@ -33,7 +33,7 @@ class TestFloatField(MongoDBTestCase):
         person.height = 1.89
         person.validate()
 
-        person.height = '2.0'
+        person.height = "2.0"
         self.assertRaises(ValidationError, person.validate)
 
         person.height = 0.01
@@ -42,7 +42,7 @@ class TestFloatField(MongoDBTestCase):
         person.height = 4.0
         self.assertRaises(ValidationError, person.validate)
 
-        person_2 = Person(height='something invalid')
+        person_2 = Person(height="something invalid")
         self.assertRaises(ValidationError, person_2.validate)
 
         big_person = BigPerson()
