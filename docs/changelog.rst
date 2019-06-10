@@ -18,7 +18,7 @@ Development
 - Fix querying on `(Generic)EmbeddedDocument` subclasses fields #475
 - Generate unique indices for `SortedListField` and `EmbeddedDocumentListFields` #2020
 - BREAKING CHANGE: Changed the behavior of a custom field validator (i.e `validation` parameter of a `Field`). It is now expected to raise a `ValidationError` instead of returning True/False #2050
-- BREAKING CHANGE: `QuerySet.aggreagte` now takes limit and skip value into account #2029
+- BREAKING CHANGE: `QuerySet.aggregate` now takes limit and skip value into account #2029
 - BREAKING CHANGES (associated with connect/disconnect fixes):
     - Calling `connect` 2 times with the same alias and different parameter will raise an error (should call `disconnect` first).
     - `disconnect` now clears `mongoengine.connection._connection_settings`.
