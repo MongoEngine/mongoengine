@@ -3200,10 +3200,6 @@ class InstanceTest(MongoDBTestCase):
         doc = Doc(emb=Embedded()).save()
         doc.emb.save()  # Make sure its still working
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            with self.assertRaises(DeprecationWarning):
-                doc.emb.save()
-
             with self.assertRaises(DeprecationWarning):
                 doc.emb.reload()
 
