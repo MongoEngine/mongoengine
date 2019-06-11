@@ -4,12 +4,11 @@ from bson import ObjectId, SON
 from bson.dbref import DBRef
 import pymongo
 import six
+from six import iteritems
 
 from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class
-from mongoengine.connection import get_connection
 from mongoengine.errors import InvalidQueryError
-from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ('query', 'update')
 
@@ -87,18 +86,10 @@ def query(_doc_cls=None, **kwargs):
             singular_ops = [None, 'ne', 'gt', 'gte', 'lt', 'lte', 'not']
             singular_ops += STRING_OPERATORS
             if op in singular_ops:
-                if isinstance(field, six.string_types):
-                    if (op in STRING_OPERATORS and
-                            isinstance(value, six.string_types)):
-                        StringField = _import_class('StringField')
-                        value = StringField.prepare_query_value(op, value)
-                    else:
-                        value = field
-                else:
-                    value = field.prepare_query_value(op, value)
+                value = field.prepare_query_value(op, value)
 
-                    if isinstance(field, CachedReferenceField) and value:
-                        value = value['_id']
+                if isinstance(field, CachedReferenceField) and value:
+                    value = value['_id']
 
             elif op in ('in', 'nin', 'all', 'near') and not isinstance(value, dict):
                 # Raise an error if the in/nin/all/near param is not iterable.
@@ -154,7 +145,7 @@ def query(_doc_cls=None, **kwargs):
                 if ('$maxDistance' in value_dict or '$minDistance' in value_dict) and \
                         ('$near' in value_dict or '$nearSphere' in value_dict):
                     value_son = SON()
-                    for k, v in value_dict.iteritems():
+                    for k, v in iteritems(value_dict):
                         if k == '$maxDistance' or k == '$minDistance':
                             continue
                         value_son[k] = v
@@ -162,16 +153,14 @@ def query(_doc_cls=None, **kwargs):
                     # PyMongo 3+ and MongoDB < 2.6
                     near_embedded = False
                     for near_op in ('$near', '$nearSphere'):
-                        if isinstance(value_dict.get(near_op), dict) and (
-                                IS_PYMONGO_3 or get_connection().max_wire_version > 1):
+                        if isinstance(value_dict.get(near_op), dict):
                             value_son[near_op] = SON(value_son[near_op])
                             if '$maxDistance' in value_dict:
-                                value_son[near_op][
-                                    '$maxDistance'] = value_dict['$maxDistance']
+                                value_son[near_op]['$maxDistance'] = value_dict['$maxDistance']
                             if '$minDistance' in value_dict:
-                                value_son[near_op][
-                                    '$minDistance'] = value_dict['$minDistance']
+                                value_son[near_op]['$minDistance'] = value_dict['$minDistance']
                             near_embedded = True
+
                     if not near_embedded:
                         if '$maxDistance' in value_dict:
                             value_son['$maxDistance'] = value_dict['$maxDistance']
@@ -280,7 +269,7 @@ def update(_doc_cls=None, **update):
 
             if op == 'pull':
                 if field.required or value is not None:
-                    if match == 'in' and not isinstance(value, dict):
+                    if match in ('in', 'nin') and not isinstance(value, dict):
                         value = _prepare_query_for_iterable(field, op, value)
                     else:
                         value = field.prepare_query_value(op, value)
@@ -306,10 +295,6 @@ def update(_doc_cls=None, **update):
             value = {match: value}
 
         key = '.'.join(parts)
-
-        if not op:
-            raise InvalidQueryError('Updates must supply an operation '
-                                    'eg: set__FIELD=value')
 
         if 'pull' in op and '.' in key:
             # Dot operators don't work on pull operations

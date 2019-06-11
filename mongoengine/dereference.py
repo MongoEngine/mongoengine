@@ -1,5 +1,6 @@
 from bson import DBRef, SON
 import six
+from six import iteritems
 
 from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList,
                               TopLevelDocumentMetaclass, get_document)
@@ -71,7 +72,7 @@ class DeReference(object):
 
                     def _get_items_from_dict(items):
                         new_items = {}
-                        for k, v in items.iteritems():
+                        for k, v in iteritems(items):
                             value = v
                             if isinstance(v, list):
                                 value = _get_items_from_list(v)
@@ -112,7 +113,7 @@ class DeReference(object):
         depth += 1
         for item in iterator:
             if isinstance(item, (Document, EmbeddedDocument)):
-                for field_name, field in item._fields.iteritems():
+                for field_name, field in iteritems(item._fields):
                     v = item._data.get(field_name, None)
                     if isinstance(v, LazyReference):
                         # LazyReference inherits DBRef but should not be dereferenced here !
@@ -124,7 +125,7 @@ class DeReference(object):
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
                         references = self._find_references(v, depth)
-                        for key, refs in references.iteritems():
+                        for key, refs in iteritems(references):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
                             reference_map.setdefault(key, set()).update(refs)
@@ -137,7 +138,7 @@ class DeReference(object):
                 reference_map.setdefault(get_document(item['_cls']), set()).add(item['_ref'].id)
             elif isinstance(item, (dict, list, tuple)) and depth - 1 <= self.max_depth:
                 references = self._find_references(item, depth - 1)
-                for key, refs in references.iteritems():
+                for key, refs in iteritems(references):
                     reference_map.setdefault(key, set()).update(refs)
 
         return reference_map
@@ -146,7 +147,7 @@ class DeReference(object):
         """Fetch all references and convert to their document objects
         """
         object_map = {}
-        for collection, dbrefs in self.reference_map.iteritems():
+        for collection, dbrefs in iteritems(self.reference_map):
 
             # we use getattr instead of hasattr because hasattr swallows any exception under python2
             # so it could hide nasty things without raising exceptions (cfr bug #1688))
@@ -157,7 +158,7 @@ class DeReference(object):
                 refs = [dbref for dbref in dbrefs
                         if (col_name, dbref) not in object_map]
                 references = collection.objects.in_bulk(refs)
-                for key, doc in references.iteritems():
+                for key, doc in iteritems(references):
                     object_map[(col_name, key)] = doc
             else:  # Generic reference: use the refs data to convert to document
                 if isinstance(doc_type, (ListField, DictField, MapField)):
@@ -229,7 +230,7 @@ class DeReference(object):
             data = []
         else:
             is_list = False
-            iterator = items.iteritems()
+            iterator = iteritems(items)
             data = {}
 
         depth += 1

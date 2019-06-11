@@ -1,8 +1,11 @@
 from contextlib import contextmanager
+
 from pymongo.write_concern import WriteConcern
+from six import iteritems
+
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-
+from mongoengine.pymongo_support import count_documents
 
 __all__ = ('switch_db', 'switch_collection', 'no_dereference',
            'no_sub_classes', 'query_counter', 'set_write_concern')
@@ -112,7 +115,7 @@ class no_dereference(object):
         GenericReferenceField = _import_class('GenericReferenceField')
         ComplexBaseField = _import_class('ComplexBaseField')
 
-        self.deref_fields = [k for k, v in self.cls._fields.iteritems()
+        self.deref_fields = [k for k, v in iteritems(self.cls._fields)
                              if isinstance(v, (ReferenceField,
                                                GenericReferenceField,
                                                ComplexBaseField))]
@@ -235,7 +238,7 @@ class query_counter(object):
         and substracting the queries issued by this context. In fact everytime this is called, 1 query is
         issued so we need to balance that
         """
-        count = self.db.system.profile.find(self._ignored_query).count() - self._ctx_query_counter
+        count = count_documents(self.db.system.profile, self._ignored_query) - self._ctx_query_counter
         self._ctx_query_counter += 1    # Account for the query we just issued to gather the information
         return count
 

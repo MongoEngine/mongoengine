@@ -5,13 +5,13 @@ import weakref
 from bson import DBRef, ObjectId, SON
 import pymongo
 import six
+from six import iteritems
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (BaseDict, BaseList,
                                              EmbeddedDocumentList)
 from mongoengine.common import _import_class
-from mongoengine.errors import ValidationError
-
+from mongoengine.errors import DeprecatedError, ValidationError
 
 __all__ = ('BaseField', 'ComplexBaseField', 'ObjectIdField',
            'GeoJsonBaseField')
@@ -52,8 +52,8 @@ class BaseField(object):
             unique with.
         :param primary_key: Mark this field as the primary key. Defaults to False.
         :param validation: (optional) A callable to validate the value of the
-            field.  Generally this is deprecated in favour of the
-            `FIELD.validate` method
+            field.  The callable takes the value as parameter and should raise
+            a ValidationError if validation fails
         :param choices: (optional) The valid choices
         :param null: (optional) If the field value can be null. If no and there is a default value
             then the default value is set
@@ -225,10 +225,18 @@ class BaseField(object):
         # check validation argument
         if self.validation is not None:
             if callable(self.validation):
-                if not self.validation(value):
-                    self.error('Value does not match custom validation method')
+                try:
+                    # breaking change of 0.18
+                    # Get rid of True/False-type return for the validation method
+                    # in favor of having validation raising a ValidationError
+                    ret = self.validation(value)
+                    if ret is not None:
+                        raise DeprecatedError('validation argument for `%s` must not return anything, '
+                                              'it should raise a ValidationError if validation fails' % self.name)
+                except ValidationError as ex:
+                    self.error(str(ex))
             else:
-                raise ValueError('validation argument for "%s" must be a '
+                raise ValueError('validation argument for `"%s"` must be a '
                                  'callable.' % self.name)
 
         self.validate(value, **kwargs)
@@ -275,11 +283,16 @@ class ComplexBaseField(BaseField):
 
         _dereference = _import_class('DeReference')()
 
-        if instance._initialised and dereference and instance._data.get(self.name):
+        if (instance._initialised and
+                dereference and
+                instance._data.get(self.name) and
+                not getattr(instance._data[self.name], '_dereferenced', False)):
             instance._data[self.name] = _dereference(
                 instance._data.get(self.name), max_depth=1, instance=instance,
                 name=self.name
             )
+            if hasattr(instance._data[self.name], '_dereferenced'):
+                instance._data[self.name]._dereferenced = True
 
         value = super(ComplexBaseField, self).__get__(instance, owner)
 
@@ -382,11 +395,11 @@ class ComplexBaseField(BaseField):
         if self.field:
             value_dict = {
                 key: self.field._to_mongo_safe_call(item, use_db_field, fields)
-                for key, item in value.iteritems()
+                for key, item in iteritems(value)
             }
         else:
             value_dict = {}
-            for k, v in value.iteritems():
+            for k, v in iteritems(value):
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -423,7 +436,7 @@ class ComplexBaseField(BaseField):
         errors = {}
         if self.field:
             if hasattr(value, 'iteritems') or hasattr(value, 'items'):
-                sequence = value.iteritems()
+                sequence = iteritems(value)
             else:
                 sequence = enumerate(value)
             for k, v in sequence:

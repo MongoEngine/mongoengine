@@ -40,6 +40,11 @@ class GeoFieldTest(unittest.TestCase):
             expected = "Both values (%s) in point must be float or int" % repr(coord)
             self._test_for_expected_error(Location, coord, expected)
 
+        invalid_coords = [21, 4, 'a']
+        for coord in invalid_coords:
+            expected = "GeoPointField can only accept tuples or lists of (x, y)"
+            self._test_for_expected_error(Location, coord, expected)
+
     def test_point_validation(self):
         class Location(Document):
             loc = PointField()

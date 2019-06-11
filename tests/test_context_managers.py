@@ -5,6 +5,7 @@ from mongoengine.connection import get_db
 from mongoengine.context_managers import (switch_db, switch_collection,
                                           no_sub_classes, no_dereference,
                                           query_counter)
+from mongoengine.pymongo_support import count_documents
 
 
 class ContextManagersTest(unittest.TestCase):
@@ -36,14 +37,15 @@ class ContextManagersTest(unittest.TestCase):
 
     def test_switch_collection_context_manager(self):
         connect('mongoenginetest')
-        register_connection('testdb-1', 'mongoenginetest2')
+        register_connection(alias='testdb-1', db='mongoenginetest2')
 
         class Group(Document):
             name = StringField()
 
-        Group.drop_collection()
+        Group.drop_collection()         # drops in default
+
         with switch_collection(Group, 'group1') as Group:
-            Group.drop_collection()
+            Group.drop_collection()     # drops in group1
 
         Group(name="hello - group").save()
         self.assertEqual(1, Group.objects.count())
@@ -240,7 +242,7 @@ class ContextManagersTest(unittest.TestCase):
         collection.drop()
 
         def issue_1_count_query():
-            collection.find({}).count()
+            count_documents(collection, {})
 
         def issue_1_insert_query():
             collection.insert_one({'test': 'garbage'})
@@ -267,6 +269,14 @@ class ContextManagersTest(unittest.TestCase):
                 issue_1_count_query()
                 counter += 1
             self.assertEqual(q, counter)
+
+            self.assertEqual(int(q), counter)       # test __int__
+            self.assertEqual(repr(q), str(int(q)))  # test __repr__
+            self.assertGreater(q, -1)               # test __gt__
+            self.assertGreaterEqual(q, int(q))      # test __gte__
+            self.assertNotEqual(q, -1)
+            self.assertLess(q, 1000)
+            self.assertLessEqual(q, int(q))
 
     def test_query_counter_counts_getmore_queries(self):
         connect('mongoenginetest')
@@ -301,6 +311,7 @@ class ContextManagersTest(unittest.TestCase):
             self.assertEqual(q, 1)
             _ = db.system.indexes.find_one()    # queries on db.system.indexes are ignored as well
             self.assertEqual(q, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

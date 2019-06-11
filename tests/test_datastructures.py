@@ -1,4 +1,5 @@
 import unittest
+from six import iterkeys
 
 from mongoengine import Document
 from mongoengine.base.datastructures import StrictDict, BaseList, BaseDict
@@ -203,7 +204,7 @@ class TestBaseList(unittest.TestCase):
 
     def test___getitem__using_slice(self):
         base_list = self._get_baselist([0, 1, 2])
-        self.assertEqual(base_list[1:3], [1,2])
+        self.assertEqual(base_list[1:3], [1, 2])
         self.assertEqual(base_list[0:3:2], [0, 2])
 
     def test___getitem___using_slice_returns_list(self):
@@ -218,7 +219,7 @@ class TestBaseList(unittest.TestCase):
     def test___getitem__sublist_returns_BaseList_bound_to_instance(self):
         base_list = self._get_baselist(
             [
-                [1,2],
+                [1, 2],
                 [3, 4]
             ]
         )
@@ -305,10 +306,10 @@ class TestBaseList(unittest.TestCase):
         self.assertEqual(base_list, [-1, 1, -2])
 
     def test___setitem___with_slice(self):
-        base_list = self._get_baselist([0,1,2,3,4,5])
+        base_list = self._get_baselist([0, 1, 2, 3, 4, 5])
         base_list[0:6:2] = [None, None, None]
         self.assertEqual(base_list._instance._changed_fields, ['my_name'])
-        self.assertEqual(base_list, [None,1,None,3,None,5])
+        self.assertEqual(base_list, [None, 1, None, 3, None, 5])
 
     def test___setitem___item_0_calls_mark_as_changed(self):
         base_list = self._get_baselist([True])
@@ -368,6 +369,20 @@ class TestStrictDict(unittest.TestCase):
         d = self.dtype(a=1, b=1, c=1)
         self.assertEqual((d.a, d.b, d.c), (1, 1, 1))
 
+    def test_iterkeys(self):
+        d = self.dtype(a=1)
+        self.assertEqual(list(iterkeys(d)), ['a'])
+
+    def test_len(self):
+        d = self.dtype(a=1)
+        self.assertEqual(len(d), 1)
+
+    def test_pop(self):
+        d = self.dtype(a=1)
+        self.assertIn('a', d)
+        d.pop('a')
+        self.assertNotIn('a', d)
+
     def test_repr(self):
         d = self.dtype(a=1, b=2, c=3)
         self.assertEqual(repr(d), '{"a": 1, "b": 2, "c": 3}')
@@ -426,8 +441,8 @@ class TestStrictDict(unittest.TestCase):
 
     def test_mappings_protocol(self):
         d = self.dtype(a=1, b=2)
-        assert dict(d) == {'a': 1, 'b': 2}
-        assert dict(**d) == {'a': 1, 'b': 2}
+        self.assertEqual(dict(d), {'a': 1, 'b': 2})
+        self.assertEqual(dict(**d), {'a': 1, 'b': 2})
 
 
 if __name__ == '__main__':

@@ -2,25 +2,22 @@
 import unittest
 import warnings
 
+from six import iteritems
+
 from mongoengine import (BooleanField, Document, EmbeddedDocument,
                          EmbeddedDocumentField, GenericReferenceField,
-                         IntField, ReferenceField, StringField, connect)
-from mongoengine.connection import get_db
+                         IntField, ReferenceField, StringField)
+from mongoengine.pymongo_support import list_collection_names
+from tests.utils import MongoDBTestCase
 from tests.fixtures import Base
 
 __all__ = ('InheritanceTest', )
 
 
-class InheritanceTest(unittest.TestCase):
-
-    def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+class InheritanceTest(MongoDBTestCase):
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
+        for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
     def test_constructor_cls(self):
@@ -36,12 +33,12 @@ class InheritanceTest(unittest.TestCase):
             meta = {'allow_inheritance': True}
 
         test_doc = DataDoc(name='test', embed=EmbedData(data='data'))
-        assert test_doc._cls == 'DataDoc'
-        assert test_doc.embed._cls == 'EmbedData'
+        self.assertEqual(test_doc._cls, 'DataDoc')
+        self.assertEqual(test_doc.embed._cls, 'EmbedData')
         test_doc.save()
         saved_doc = DataDoc.objects.with_id(test_doc.id)
-        assert test_doc._cls == saved_doc._cls
-        assert test_doc.embed._cls == saved_doc.embed._cls
+        self.assertEqual(test_doc._cls, saved_doc._cls)
+        self.assertEqual(test_doc.embed._cls, saved_doc.embed._cls)
         test_doc.delete()
 
     def test_superclasses(self):
@@ -485,7 +482,7 @@ class InheritanceTest(unittest.TestCase):
             meta = {'abstract': True}
         class Human(Mammal): pass
 
-        for k, v in defaults.iteritems():
+        for k, v in iteritems(defaults):
             for cls in [Animal, Fish, Guppy]:
                 self.assertEqual(cls._meta[k], v)
 

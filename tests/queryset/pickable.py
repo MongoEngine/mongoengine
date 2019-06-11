@@ -6,9 +6,11 @@ from mongoengine.connection import connect
 
 __author__ = 'stas'
 
+
 class Person(Document):
     name = StringField()
     age = IntField()
+
 
 class TestQuerysetPickable(unittest.TestCase):
     """
@@ -18,7 +20,7 @@ class TestQuerysetPickable(unittest.TestCase):
     def setUp(self):
         super(TestQuerysetPickable, self).setUp()
 
-        connection = connect(db="test") #type: pymongo.mongo_client.MongoClient
+        connection = connect(db="test")  # type: pymongo.mongo_client.MongoClient
 
         connection.drop_database("test")
 
@@ -26,7 +28,6 @@ class TestQuerysetPickable(unittest.TestCase):
             name="John",
             age=21
         )
-
 
     def test_picke_simple_qs(self):
 
@@ -46,10 +47,10 @@ class TestQuerysetPickable(unittest.TestCase):
 
         self.assertEqual(qs.count(), loadedQs.count())
 
-        #can update loadedQs
+        # can update loadedQs
         loadedQs.update(age=23)
 
-        #check
+        # check
         self.assertEqual(Person.objects.first().age, 23)
 
     def test_pickle_support_filtration(self):
@@ -70,7 +71,7 @@ class TestQuerysetPickable(unittest.TestCase):
 
         self.assertEqual(loaded.count(), 2)
         self.assertEqual(loaded.filter(name="Bob").first().age, 23)
-    
+
 
 
 

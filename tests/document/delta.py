@@ -3,16 +3,14 @@ import unittest
 
 from bson import SON
 from mongoengine import *
-from mongoengine.connection import get_db
+from mongoengine.pymongo_support import list_collection_names
+from tests.utils import MongoDBTestCase
 
-__all__ = ("DeltaTest",)
 
-
-class DeltaTest(unittest.TestCase):
+class DeltaTest(MongoDBTestCase):
 
     def setUp(self):
-        connect(db='mongoenginetest')
-        self.db = get_db()
+        super(DeltaTest, self).setUp()
 
         class Person(Document):
             name = StringField()
@@ -25,9 +23,7 @@ class DeltaTest(unittest.TestCase):
         self.Person = Person
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
+        for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
     def test_delta(self):
@@ -862,6 +858,7 @@ class DeltaTest(unittest.TestCase):
         self.assertEqual('superadmin', delta[0]["users.007.roles.666"]["type"])
         self.assertEqual('oops', delta[0]["users.007.rolist"][0]["type"])
         self.assertEqual(uinfo.id, delta[0]["users.007.info"])
+
 
 if __name__ == '__main__':
     unittest.main()

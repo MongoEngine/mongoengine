@@ -39,7 +39,6 @@ class SignalTests(unittest.TestCase):
             def post_init(cls, sender, document, **kwargs):
                 signal_output.append('post_init signal, %s, document._created = %s' % (document, document._created))
 
-
             @classmethod
             def pre_save(cls, sender, document, **kwargs):
                 signal_output.append('pre_save signal, %s' % document)
@@ -228,6 +227,9 @@ class SignalTests(unittest.TestCase):
 
         self.ExplicitId.objects.delete()
 
+        # Note that there is a chance that the following assert fails in case
+        # some receivers (eventually created in other tests)
+        # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
         self.assertEqual(self.pre_signals, post_signals)
 
     def test_model_signals(self):
@@ -247,7 +249,7 @@ class SignalTests(unittest.TestCase):
         def load_existing_author():
             a  = self.Author(name='Bill Shakespeare')
             a.save()
-            self.get_signal_output(lambda: None) # eliminate signal output
+            self.get_signal_output(lambda: None)  # eliminate signal output
             a1 = self.Author.objects(name='Bill Shakespeare')[0]
 
         self.assertEqual(self.get_signal_output(create_author), [
@@ -430,6 +432,7 @@ class SignalTests(unittest.TestCase):
             'Is loaded',
             {}
         ])
+
 
 if __name__ == '__main__':
     unittest.main()

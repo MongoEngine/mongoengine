@@ -208,7 +208,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        post = BlogPost(content='Had a good coffee today...', various={'test_dynamic':{'some': True}})
+        post = BlogPost(content='Had a good coffee today...', various={'test_dynamic': {'some': True}})
         post.author = User(name='Test User')
         post.comments = [Comment(title='I aggree', text='Great post!'), Comment(title='Coffee', text='I hate coffee')]
         post.save()
@@ -413,7 +413,6 @@ class OnlyExcludeAllTest(unittest.TestCase):
         numbers = Numbers.objects.fields(embedded__n={"$slice": [-5, 10]}).get()
         self.assertEqual(numbers.embedded.n, [-5, -4, -3, -2, -1])
 
-
     def test_exclude_from_subclasses_docs(self):
 
         class Base(Document):
@@ -435,6 +434,7 @@ class OnlyExcludeAllTest(unittest.TestCase):
         self.assertEqual(user.password, None)
 
         self.assertRaises(LookUpError, Base.objects.exclude, "made_up")
+
 
 if __name__ == '__main__':
     unittest.main()

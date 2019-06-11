@@ -5,6 +5,7 @@ from bson.dbref import DBRef
 import pymongo
 from pymongo.read_preferences import ReadPreference
 import six
+from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base import (BaseDict, BaseDocument, BaseList,
@@ -17,7 +18,7 @@ from mongoengine.context_managers import (set_write_concern,
                                           switch_db)
 from mongoengine.errors import (InvalidDocumentError, InvalidQueryError,
                                 SaveConditionError)
-from mongoengine.python_support import IS_PYMONGO_3
+from mongoengine.pymongo_support import list_collection_names
 from mongoengine.queryset import (NotUniqueError, OperationError,
                                   QuerySet, transform)
 
@@ -175,10 +176,16 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return get_db(cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME))
 
     @classmethod
-    def _get_collection(cls):
-        """Return a PyMongo collection for the document."""
-        if not hasattr(cls, '_collection') or cls._collection is None:
+    def _disconnect(cls):
+        """Detach the Document class from the (cached) database collection"""
+        cls._collection = None
 
+    @classmethod
+    def _get_collection(cls):
+        """Return the corresponding PyMongo collection of this document.
+        Upon the first call, it will ensure that indexes gets created. The returned collection then gets cached
+        """
+        if not hasattr(cls, '_collection') or cls._collection is None:
             # Get the collection, either capped or regular.
             if cls._meta.get('max_size') or cls._meta.get('max_documents'):
                 cls._collection = cls._get_capped_collection()
@@ -215,7 +222,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         # If the collection already exists and has different options
         # (i.e. isn't capped or has different max/size), raise an error.
-        if collection_name in db.collection_names():
+        if collection_name in list_collection_names(db, include_system_collections=True):
             collection = db[collection_name]
             options = collection.options()
             if (
@@ -240,7 +247,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         data = super(Document, self).to_mongo(*args, **kwargs)
 
         # If '_id' is None, try and set it from self._data. If that
-        # doesn't exist either, remote '_id' from the SON completely.
+        # doesn't exist either, remove '_id' from the SON completely.
         if data['_id'] is None:
             if self._data.get('id') is None:
                 del data['_id']
@@ -346,21 +353,21 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionchanged:: 0.10.7
             Add signal_kwargs argument
         """
+        signal_kwargs = signal_kwargs or {}
+
         if self._meta.get('abstract'):
             raise InvalidDocumentError('Cannot save an abstract document.')
 
-        signal_kwargs = signal_kwargs or {}
         signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
         if validate:
             self.validate(clean=clean)
 
         if write_concern is None:
-            write_concern = {'w': 1}
+            write_concern = {}
 
-        doc = self.to_mongo()
-
-        created = ('_id' not in doc or self._created or force_insert)
+        doc_id = self.to_mongo(fields=['id'])
+        created = ('_id' not in doc_id or self._created or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)
@@ -438,16 +445,6 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
             object_id = wc_collection.insert_one(doc).inserted_id
 
-        # In PyMongo 3.0, the save() call calls internally the _update() call
-        # but they forget to return the _id value passed back, therefore getting it back here
-        # Correct behaviour in 2.X and in 3.0.1+ versions
-        if not object_id and pymongo.version_tuple == (3, 0):
-            pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
-            object_id = (
-                self._qs.filter(pk=pk_as_mongo_obj).first() and
-                self._qs.filter(pk=pk_as_mongo_obj).first().pk
-            )  # TODO doesn't this make 2 queries?
-
         return object_id
 
     def _get_update_doc(self):
@@ -493,8 +490,12 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         update_doc = self._get_update_doc()
         if update_doc:
             upsert = save_condition is None
-            last_error = collection.update(select_dict, update_doc,
-                                           upsert=upsert, **write_concern)
+            with set_write_concern(collection, write_concern) as wc_collection:
+                last_error = wc_collection.update_one(
+                    select_dict,
+                    update_doc,
+                    upsert=upsert
+                ).raw_result
             if not upsert and last_error['n'] == 0:
                 raise SaveConditionError('Race condition preventing'
                                          ' document update detected')
@@ -601,7 +602,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         # Delete FileFields separately
         FileField = _import_class('FileField')
-        for name, field in self._fields.iteritems():
+        for name, field in iteritems(self._fields):
             if isinstance(field, FileField):
                 getattr(self, name).delete()
 
@@ -786,13 +787,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionchanged:: 0.10.7
             :class:`OperationError` exception raised if no collection available
         """
-        col_name = cls._get_collection_name()
-        if not col_name:
+        coll_name = cls._get_collection_name()
+        if not coll_name:
             raise OperationError('Document %s has no collection defined '
                                  '(is it abstract ?)' % cls)
         cls._collection = None
         db = cls._get_db()
-        db.drop_collection(col_name)
+        db.drop_collection(coll_name)
 
     @classmethod
     def create_index(cls, keys, background=False, **kwargs):
@@ -807,18 +808,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         index_spec = index_spec.copy()
         fields = index_spec.pop('fields')
         drop_dups = kwargs.get('drop_dups', False)
-        if IS_PYMONGO_3 and drop_dups:
+        if drop_dups:
             msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
-        elif not IS_PYMONGO_3:
-            index_spec['drop_dups'] = drop_dups
         index_spec['background'] = background
         index_spec.update(kwargs)
 
-        if IS_PYMONGO_3:
-            return cls._get_collection().create_index(fields, **index_spec)
-        else:
-            return cls._get_collection().ensure_index(fields, **index_spec)
+        return cls._get_collection().create_index(fields, **index_spec)
 
     @classmethod
     def ensure_index(cls, key_or_list, drop_dups=False, background=False,
@@ -833,11 +829,9 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         :param drop_dups: Was removed/ignored with MongoDB >2.7.5. The value
             will be removed if PyMongo3+ is used
         """
-        if IS_PYMONGO_3 and drop_dups:
+        if drop_dups:
             msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
-        elif not IS_PYMONGO_3:
-            kwargs.update({'drop_dups': drop_dups})
         return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
@@ -853,7 +847,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         drop_dups = cls._meta.get('index_drop_dups', False)
         index_opts = cls._meta.get('index_opts') or {}
         index_cls = cls._meta.get('index_cls', True)
-        if IS_PYMONGO_3 and drop_dups:
+        if drop_dups:
             msg = 'drop_dups is deprecated and is removed when using PyMongo 3+.'
             warnings.warn(msg, DeprecationWarning)
 
@@ -884,11 +878,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 if 'cls' in opts:
                     del opts['cls']
 
-                if IS_PYMONGO_3:
-                    collection.create_index(fields, background=background, **opts)
-                else:
-                    collection.ensure_index(fields, background=background,
-                                            drop_dups=drop_dups, **opts)
+                collection.create_index(fields, background=background, **opts)
 
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
@@ -899,12 +889,8 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             if 'cls' in index_opts:
                 del index_opts['cls']
 
-            if IS_PYMONGO_3:
-                collection.create_index('_cls', background=background,
-                                        **index_opts)
-            else:
-                collection.ensure_index('_cls', background=background,
-                                        **index_opts)
+            collection.create_index('_cls', background=background,
+                                    **index_opts)
 
     @classmethod
     def list_indexes(cls):

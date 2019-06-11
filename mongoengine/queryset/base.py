@@ -10,8 +10,10 @@ from bson import SON, json_util
 from bson.code import Code
 import pymongo
 import pymongo.errors
+from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
 import six
+from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base import get_document
@@ -20,13 +22,9 @@ from mongoengine.connection import get_db
 from mongoengine.context_managers import set_write_concern, switch_db
 from mongoengine.errors import (InvalidQueryError, LookUpError,
                                 NotUniqueError, OperationError)
-from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
-
-if IS_PYMONGO_3:
-    from pymongo.collection import ReturnDocument
 
 
 __all__ = ('BaseQuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
@@ -196,7 +194,7 @@ class BaseQuerySet(object):
                 only_fields=self.only_fields
             )
 
-        raise AttributeError('Provide a slice or an integer index')
+        raise TypeError('Provide a slice or an integer index')
 
     def __iter__(self):
         raise NotImplementedError
@@ -498,10 +496,11 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-        :param full_result: Return the full result dictionary rather than just the number
-            updated, e.g. return
-            ``{'n': 2, 'nModified': 2, 'ok': 1.0, 'updatedExisting': True}``.
+        :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
+            updated items
         :param update: Django-style update keyword arguments
+
+        :returns the number of updated documents (unless ``full_result`` is True)
 
         .. versionadded:: 0.2
         """
@@ -566,7 +565,7 @@ class BaseQuerySet(object):
             document = self._document.objects.with_id(atomic_update.upserted_id)
         return document
 
-    def update_one(self, upsert=False, write_concern=None, **update):
+    def update_one(self, upsert=False, write_concern=None, full_result=False, **update):
         """Perform an atomic update on the fields of the first document
         matched by the query.
 
@@ -577,12 +576,19 @@ class BaseQuerySet(object):
             ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
+        :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
+            updated items
         :param update: Django-style update keyword arguments
-
+            full_result
+        :returns the number of updated documents (unless ``full_result`` is True)
         .. versionadded:: 0.2
         """
         return self.update(
-            upsert=upsert, multi=False, write_concern=write_concern, **update)
+            upsert=upsert,
+            multi=False,
+            write_concern=write_concern,
+            full_result=full_result,
+            **update)
 
     def modify(self, upsert=False, full_response=False, remove=False, new=False, **update):
         """Update and return the updated document.
@@ -617,31 +623,25 @@ class BaseQuerySet(object):
 
         queryset = self.clone()
         query = queryset._query
-        if not IS_PYMONGO_3 or not remove:
+        if not remove:
             update = transform.update(queryset._document, **update)
         sort = queryset._ordering
 
         try:
-            if IS_PYMONGO_3:
-                if full_response:
-                    msg = 'With PyMongo 3+, it is not possible anymore to get the full response.'
-                    warnings.warn(msg, DeprecationWarning)
-                if remove:
-                    result = queryset._collection.find_one_and_delete(
-                        query, sort=sort, **self._cursor_args)
-                else:
-                    if new:
-                        return_doc = ReturnDocument.AFTER
-                    else:
-                        return_doc = ReturnDocument.BEFORE
-                    result = queryset._collection.find_one_and_update(
-                        query, update, upsert=upsert, sort=sort, return_document=return_doc,
-                        **self._cursor_args)
-
+            if full_response:
+                msg = 'With PyMongo 3+, it is not possible anymore to get the full response.'
+                warnings.warn(msg, DeprecationWarning)
+            if remove:
+                result = queryset._collection.find_one_and_delete(
+                    query, sort=sort, **self._cursor_args)
             else:
-                result = queryset._collection.find_and_modify(
-                    query, update, upsert=upsert, sort=sort, remove=remove, new=new,
-                    full_response=full_response, **self._cursor_args)
+                if new:
+                    return_doc = ReturnDocument.AFTER
+                else:
+                    return_doc = ReturnDocument.BEFORE
+                result = queryset._collection.find_one_and_update(
+                    query, update, upsert=upsert, sort=sort, return_document=return_doc,
+                    **self._cursor_args)
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u'Update failed (%s)' % err)
         except pymongo.errors.OperationFailure as err:
@@ -748,7 +748,7 @@ class BaseQuerySet(object):
                       '_read_preference', '_iter', '_scalar', '_as_pymongo',
                       '_limit', '_skip', '_hint', '_auto_dereference',
                       '_search_text', 'only_fields', '_max_time_ms',
-                      '_comment')
+                      '_comment', '_batch_size')
 
         for prop in copy_props:
             val = getattr(self, prop)
@@ -1073,15 +1073,14 @@ class BaseQuerySet(object):
         ..versionchanged:: 0.5 - made chainable
         .. deprecated:: Ignored with PyMongo 3+
         """
-        if IS_PYMONGO_3:
-            msg = 'snapshot is deprecated as it has no impact when using PyMongo 3+.'
-            warnings.warn(msg, DeprecationWarning)
+        msg = 'snapshot is deprecated as it has no impact when using PyMongo 3+.'
+        warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._snapshot = enabled
         return queryset
 
     def timeout(self, enabled):
-        """Enable or disable the default mongod timeout when querying.
+        """Enable or disable the default mongod timeout when querying. (no_cursor_timeout option)
 
         :param enabled: whether or not the timeout is used
 
@@ -1099,9 +1098,8 @@ class BaseQuerySet(object):
 
         .. deprecated:: Ignored with PyMongo 3+
         """
-        if IS_PYMONGO_3:
-            msg = 'slave_okay is deprecated as it has no impact when using PyMongo 3+.'
-            warnings.warn(msg, DeprecationWarning)
+        msg = 'slave_okay is deprecated as it has no impact when using PyMongo 3+.'
+        warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._slave_okay = enabled
         return queryset
@@ -1191,14 +1189,18 @@ class BaseQuerySet(object):
             initial_pipeline.append({'$sort': dict(self._ordering)})
 
         if self._limit is not None:
-            initial_pipeline.append({'$limit': self._limit})
+            # As per MongoDB Documentation (https://docs.mongodb.com/manual/reference/operator/aggregation/limit/),
+            # keeping limit stage right after sort stage is more efficient. But this leads to wrong set of documents
+            # for a skip stage that might succeed these. So we need to maintain more documents in memory in such a
+            # case (https://stackoverflow.com/a/24161461).
+            initial_pipeline.append({'$limit': self._limit + (self._skip or 0)})
 
         if self._skip is not None:
             initial_pipeline.append({'$skip': self._skip})
 
         pipeline = initial_pipeline + list(pipeline)
 
-        if IS_PYMONGO_3 and self._read_preference is not None:
+        if self._read_preference is not None:
             return self._collection.with_options(read_preference=self._read_preference) \
                        .aggregate(pipeline, cursor={}, **kwargs)
 
@@ -1408,11 +1410,7 @@ class BaseQuerySet(object):
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {'$unwind': '$' + field})
 
-        result = self._document._get_collection().aggregate(pipeline)
-        if IS_PYMONGO_3:
-            result = tuple(result)
-        else:
-            result = result.get('result')
+        result = tuple(self._document._get_collection().aggregate(pipeline))
 
         if result:
             return result[0]['total']
@@ -1439,11 +1437,7 @@ class BaseQuerySet(object):
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {'$unwind': '$' + field})
 
-        result = self._document._get_collection().aggregate(pipeline)
-        if IS_PYMONGO_3:
-            result = tuple(result)
-        else:
-            result = result.get('result')
+        result = tuple(self._document._get_collection().aggregate(pipeline))
         if result:
             return result[0]['total']
         return 0
@@ -1518,26 +1512,16 @@ class BaseQuerySet(object):
 
     @property
     def _cursor_args(self):
-        if not IS_PYMONGO_3:
-            fields_name = 'fields'
-            cursor_args = {
-                'timeout': self._timeout,
-                'snapshot': self._snapshot
-            }
-            if self._read_preference is not None:
-                cursor_args['read_preference'] = self._read_preference
-            else:
-                cursor_args['slave_okay'] = self._slave_okay
-        else:
-            fields_name = 'projection'
-            # snapshot is not handled at all by PyMongo 3+
-            # TODO: evaluate similar possibilities using modifiers
-            if self._snapshot:
-                msg = 'The snapshot option is not anymore available with PyMongo 3+'
-                warnings.warn(msg, DeprecationWarning)
-            cursor_args = {
-                'no_cursor_timeout': not self._timeout
-            }
+        fields_name = 'projection'
+        # snapshot is not handled at all by PyMongo 3+
+        # TODO: evaluate similar possibilities using modifiers
+        if self._snapshot:
+            msg = 'The snapshot option is not anymore available with PyMongo 3+'
+            warnings.warn(msg, DeprecationWarning)
+        cursor_args = {
+            'no_cursor_timeout': not self._timeout
+        }
+
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
 
@@ -1561,7 +1545,7 @@ class BaseQuerySet(object):
         # XXX In PyMongo 3+, we define the read preference on a collection
         # level, not a cursor level. Thus, we need to get a cloned collection
         # object using `with_options` first.
-        if IS_PYMONGO_3 and self._read_preference is not None:
+        if self._read_preference is not None:
             self._cursor_obj = self._collection\
                 .with_options(read_preference=self._read_preference)\
                 .find(self._query, **self._cursor_args)
@@ -1731,13 +1715,13 @@ class BaseQuerySet(object):
             }
         """
         total, data, types = self.exec_js(freq_func, field)
-        values = {types.get(k): int(v) for k, v in data.iteritems()}
+        values = {types.get(k): int(v) for k, v in iteritems(data)}
 
         if normalize:
             values = {k: float(v) / total for k, v in values.items()}
 
         frequencies = {}
-        for k, v in values.iteritems():
+        for k, v in iteritems(values):
             if isinstance(k, float):
                 if int(k) == k:
                     k = int(k)

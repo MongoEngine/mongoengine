@@ -1,12 +1,7 @@
 """
-Helper functions, constants, and types to aid with Python v2.7 - v3.x and
-PyMongo v2.7 - v3.x support.
+Helper functions, constants, and types to aid with Python v2.7 - v3.x support
 """
-import pymongo
 import six
-
-
-IS_PYMONGO_3 = pymongo.version_tuple[0] >= 3
 
 # six.BytesIO resolves to StringIO.StringIO in Py2 and io.BytesIO in Py3.
 StringIO = six.BytesIO

@@ -275,7 +275,6 @@ class QTest(unittest.TestCase):
         with self.assertRaises(InvalidQueryError):
             self.Person.objects.filter('user1')
 
-
     def test_q_regex(self):
         """Ensure that Q objects can be queried using regexes.
         """

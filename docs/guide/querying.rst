@@ -64,7 +64,7 @@ Available operators are as follows:
 * ``gt`` -- greater than
 * ``gte`` -- greater than or equal to
 * ``not`` -- negate a standard check, may be used before other operators (e.g.
-  ``Q(age__not__mod=5)``)
+  ``Q(age__not__mod=(5, 0))``)
 * ``in`` -- value is in list (a list of values should be provided)
 * ``nin`` -- value is not in list (a list of values should be provided)
 * ``mod`` -- ``value % x == y``, where ``x`` and ``y`` are two provided values

@@ -4,11 +4,37 @@ Changelog
 
 Development
 ===========
+- Drop support for EOL'd MongoDB v2.6, v3.0, and v3.2.
+- MongoEngine now requires PyMongo >= v3.4. Travis CI now tests against MongoDB v3.4 – v3.6 and PyMongo v3.4 – v3.6 (#2017 #2066).
+- Improve performance by avoiding a call to `to_mongo` in `Document.save()` #2049
+- Connection/disconnection improvements:
+    - Expose `mongoengine.connection.disconnect` and `mongoengine.connection.disconnect_all`
+    - Fix disconnecting #566 #1599 #605 #607 #1213 #565
+    - Improve documentation of `connect`/`disconnect`
+    - Fix issue when using multiple connections to the same mongo with different credentials #2047
+    - `connect` fails immediately when db name contains invalid characters #2031 #1718
+- Fix the default write concern of `Document.save` that was overwriting the connection write concern #568
+- Fix querying on `List(EmbeddedDocument)` subclasses fields #1961 #1492
+- Fix querying on `(Generic)EmbeddedDocument` subclasses fields #475
+- Generate unique indices for `SortedListField` and `EmbeddedDocumentListFields` #2020
+- BREAKING CHANGE: Changed the behavior of a custom field validator (i.e `validation` parameter of a `Field`). It is now expected to raise a `ValidationError` instead of returning True/False #2050
+- BREAKING CHANGE: `QuerySet.aggregate` now takes limit and skip value into account #2029
+- BREAKING CHANGES (associated with connect/disconnect fixes):
+    - Calling `connect` 2 times with the same alias and different parameter will raise an error (should call `disconnect` first).
+    - `disconnect` now clears `mongoengine.connection._connection_settings`.
+    - `disconnect` now clears the cached attribute `Document._collection`.
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.17.0
+=================
 - Fix .only() working improperly after using .count() of the same instance of QuerySet
+- Fix batch_size that was not copied when cloning a queryset object #2011
 - POTENTIAL BREAKING CHANGE: All result fields are now passed, including internal fields (_cls, _id) when using `QuerySet.as_pymongo` #1976
+- Document a BREAKING CHANGE introduced in 0.15.3 and not reported at that time (#1995)
 - Fix InvalidStringData error when using modify on a BinaryField #1127
 - DEPRECATION: `EmbeddedDocument.save` & `.reload` are marked as deprecated and will be removed in a next version of mongoengine #1552
+- Fix test suite and CI to support MongoDB 3.4 #1445
+- Fix reference fields querying the database on each access if value contains orphan DBRefs
 
 =================
 Changes in 0.16.3
@@ -66,6 +92,7 @@ Changes in 0.16.0
 
 Changes in 0.15.3
 =================
+-  BREAKING CHANGES: `Queryset.update/update_one` methods now returns an UpdateResult when `full_result=True` is provided and no longer a dict (relates to #1491)
 -  Subfield resolve error in generic_emdedded_document query #1651 #1652
 -  use each modifier only with $position #1673 #1675
 -  Improve LazyReferenceField and GenericLazyReferenceField with nested fields #1704

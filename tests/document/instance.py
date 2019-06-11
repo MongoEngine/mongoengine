@@ -4,18 +4,20 @@ import os
 import pickle
 import unittest
 import uuid
+import warnings
 import weakref
-
 from datetime import datetime
 
-import warnings
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
+from six import iteritems
 
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_36, MONGODB_34
+from mongoengine.pymongo_support import list_collection_names
 from tests import fixtures
 from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
                             PickleDynamicEmbedded, PickleDynamicTest)
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 from mongoengine import *
 from mongoengine.base import get_document, _document_registry
@@ -26,8 +28,6 @@ from mongoengine.errors import (NotRegistered, InvalidDocumentError,
 from mongoengine.queryset import NULLIFY, Q
 from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
-
-from tests.utils import requires_mongodb_gte_26
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
@@ -55,9 +55,7 @@ class InstanceTest(MongoDBTestCase):
         self.Job = Job
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if 'system.' in collection:
-                continue
+        for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
     def assertDbEqual(self, docs):
@@ -421,6 +419,12 @@ class InstanceTest(MongoDBTestCase):
         person.save()
         person.to_dbref()
 
+    def test_key_like_attribute_access(self):
+        person = self.Person(age=30)
+        self.assertEqual(person['age'], 30)
+        with self.assertRaises(KeyError):
+            person['unknown_attr']
+
     def test_save_abstract_document(self):
         """Saving an abstract document should fail."""
         class Doc(Document):
@@ -463,7 +467,16 @@ class InstanceTest(MongoDBTestCase):
         Animal.drop_collection()
         doc = Animal(superphylum='Deuterostomia')
         doc.save()
-        doc.reload()
+
+        mongo_db = get_mongodb_version()
+        CMD_QUERY_KEY = 'command' if mongo_db >= MONGODB_36 else 'query'
+
+        with query_counter() as q:
+            doc.reload()
+            query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
+            self.assertEqual(set(query_op[CMD_QUERY_KEY]['filter'].keys()), set(['_id', 'superphylum']))
+
+        Animal.drop_collection()
 
     def test_reload_sharded_nested(self):
         class SuperPhylum(EmbeddedDocument):
@@ -477,6 +490,34 @@ class InstanceTest(MongoDBTestCase):
         doc = Animal(superphylum=SuperPhylum(name='Deuterostomia'))
         doc.save()
         doc.reload()
+        Animal.drop_collection()
+
+    def test_update_shard_key_routing(self):
+        """Ensures updating a doc with a specified shard_key includes it in
+        the query.
+        """
+        class Animal(Document):
+            is_mammal = BooleanField()
+            name = StringField()
+            meta = {'shard_key': ('is_mammal', 'id')}
+
+        Animal.drop_collection()
+        doc = Animal(is_mammal=True, name='Dog')
+        doc.save()
+
+        mongo_db = get_mongodb_version()
+
+        with query_counter() as q:
+            doc.name = 'Cat'
+            doc.save()
+            query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
+            self.assertEqual(query_op['op'], 'update')
+            if mongo_db == MONGODB_34:
+                self.assertEqual(set(query_op['query'].keys()), set(['_id', 'is_mammal']))
+            else:
+                self.assertEqual(set(query_op['command']['q'].keys()), set(['_id', 'is_mammal']))
+
+        Animal.drop_collection()
 
     def test_reload_with_changed_fields(self):
         """Ensures reloading will not affect changed fields"""
@@ -572,7 +613,7 @@ class InstanceTest(MongoDBTestCase):
 
         Post.drop_collection()
 
-        Post._get_collection().insert({
+        Post._get_collection().insert_one({
             "title": "Items eclipse",
             "items": ["more lorem", "even more ipsum"]
         })
@@ -712,39 +753,78 @@ class InstanceTest(MongoDBTestCase):
         acc1 = Account.objects.first()
         self.assertHasInstance(acc1._data["emails"][0], acc1)
 
+    def test_save_checks_that_clean_is_called(self):
+        class CustomError(Exception):
+            pass
+
+        class TestDocument(Document):
+            def clean(self):
+                raise CustomError()
+
+        with self.assertRaises(CustomError):
+            TestDocument().save()
+
+        TestDocument().save(clean=False)
+
+    def test_save_signal_pre_save_post_validation_makes_change_to_doc(self):
+        class BlogPost(Document):
+            content = StringField()
+
+            @classmethod
+            def pre_save_post_validation(cls, sender, document, **kwargs):
+                document.content = 'checked'
+
+        signals.pre_save_post_validation.connect(BlogPost.pre_save_post_validation, sender=BlogPost)
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(content='unchecked').save()
+        self.assertEqual(post.content, 'checked')
+        # Make sure pre_save_post_validation changes makes it to the db
+        raw_doc = get_as_pymongo(post)
+        self.assertEqual(
+            raw_doc,
+            {
+                'content': 'checked',
+                '_id': post.id
+            })
+
+        # Important to disconnect as it could cause some assertions in test_signals
+        # to fail (due to the garbage collection timing of this signal)
+        signals.pre_save_post_validation.disconnect(BlogPost.pre_save_post_validation)
+
     def test_document_clean(self):
         class TestDocument(Document):
             status = StringField()
-            pub_date = DateTimeField()
+            cleaned = BooleanField(default=False)
 
             def clean(self):
-                if self.status == 'draft' and self.pub_date is not None:
-                    msg = 'Draft entries may not have a publication date.'
-                    raise ValidationError(msg)
-                # Set the pub_date for published items if not set.
-                if self.status == 'published' and self.pub_date is None:
-                    self.pub_date = datetime.now()
+                self.cleaned = True
 
         TestDocument.drop_collection()
 
-        t = TestDocument(status="draft", pub_date=datetime.now())
+        t = TestDocument(status="draft")
 
-        with self.assertRaises(ValidationError) as cm:
-            t.save()
-
-        expected_msg = "Draft entries may not have a publication date."
-        self.assertIn(expected_msg, cm.exception.message)
-        self.assertEqual(cm.exception.to_dict(), {'__all__': expected_msg})
-
+        # Ensure clean=False prevent call to clean
         t = TestDocument(status="published")
         t.save(clean=False)
-
-        self.assertEqual(t.pub_date, None)
+        self.assertEqual(t.status, "published")
+        self.assertEqual(t.cleaned, False)
 
         t = TestDocument(status="published")
+        self.assertEqual(t.cleaned, False)
         t.save(clean=True)
-
-        self.assertEqual(type(t.pub_date), datetime)
+        self.assertEqual(t.status, "published")
+        self.assertEqual(t.cleaned, True)
+        raw_doc = get_as_pymongo(t)
+        # Make sure clean changes makes it to the db
+        self.assertEqual(
+            raw_doc,
+            {
+                'status': 'published',
+                'cleaned': True,
+                '_id': t.id
+            })
 
     def test_document_embedded_clean(self):
         class TestEmbeddedDocument(EmbeddedDocument):
@@ -806,7 +886,8 @@ class InstanceTest(MongoDBTestCase):
         doc2 = self.Person(name="jim", age=20).save()
         docs = [dict(doc1.to_mongo()), dict(doc2.to_mongo())]
 
-        assert not doc1.modify({'name': doc2.name}, set__age=100)
+        n_modified = doc1.modify({'name': doc2.name}, set__age=100)
+        self.assertEqual(n_modified, 0)
 
         self.assertDbEqual(docs)
 
@@ -815,7 +896,8 @@ class InstanceTest(MongoDBTestCase):
         doc2 = self.Person(id=ObjectId(), name="jim", age=20)
         docs = [dict(doc1.to_mongo())]
 
-        assert not doc2.modify({'name': doc2.name}, set__age=100)
+        n_modified = doc2.modify({'name': doc2.name}, set__age=100)
+        self.assertEqual(n_modified, 0)
 
         self.assertDbEqual(docs)
 
@@ -831,18 +913,18 @@ class InstanceTest(MongoDBTestCase):
         doc.job.name = "Google"
         doc.job.years = 3
 
-        assert doc.modify(
+        n_modified = doc.modify(
             set__age=21, set__job__name="MongoDB", unset__job__years=True)
+        self.assertEqual(n_modified, 1)
         doc_copy.age = 21
         doc_copy.job.name = "MongoDB"
         del doc_copy.job.years
 
-        assert doc.to_json() == doc_copy.to_json()
-        assert doc._get_changed_fields() == []
+        self.assertEqual(doc.to_json(), doc_copy.to_json())
+        self.assertEqual(doc._get_changed_fields(), [])
 
         self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
-    @requires_mongodb_gte_26
     def test_modify_with_positional_push(self):
         class Content(EmbeddedDocument):
             keywords = ListField(StringField())
@@ -882,19 +964,39 @@ class InstanceTest(MongoDBTestCase):
         person.save()
 
         # Ensure that the object is in the database
-        collection = self.db[self.Person._get_collection_name()]
-        person_obj = collection.find_one({'name': 'Test User'})
-        self.assertEqual(person_obj['name'], 'Test User')
-        self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(person_obj['_id'], person.id)
+        raw_doc = get_as_pymongo(person)
+        self.assertEqual(
+            raw_doc,
+            {
+                '_cls': 'Person',
+                'name': 'Test User',
+                'age': 30,
+                '_id': person.id
+            })
 
-        # Test skipping validation on save
+    def test_save_skip_validation(self):
         class Recipient(Document):
             email = EmailField(required=True)
 
         recipient = Recipient(email='not-an-email')
-        self.assertRaises(ValidationError, recipient.save)
+        with self.assertRaises(ValidationError):
+            recipient.save()
+
         recipient.save(validate=False)
+        raw_doc = get_as_pymongo(recipient)
+        self.assertEqual(
+            raw_doc,
+            {
+                'email': 'not-an-email',
+                '_id': recipient.id
+            })
+
+    def test_save_with_bad_id(self):
+        class Clown(Document):
+            id = IntField(primary_key=True)
+
+        with self.assertRaises(ValidationError):
+            Clown(id="not_an_int").save()
 
     def test_save_to_a_value_that_equates_to_false(self):
         class Thing(EmbeddedDocument):
@@ -2758,7 +2860,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'foo': 'Bar',
             'data': [1, 2, 3]
@@ -2774,7 +2876,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'foo': 'Bar',
             'data': [1, 2, 3]
@@ -2797,7 +2899,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'thing': {
                 'name': 'My thing',
@@ -2820,7 +2922,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'thing': {
                 'name': 'My thing',
@@ -2843,7 +2945,7 @@ class InstanceTest(MongoDBTestCase):
 
         User.drop_collection()
 
-        User._get_collection().save({
+        User._get_collection().insert_one({
             'name': 'John',
             'thing': {
                 'name': 'My thing',
@@ -3060,7 +3162,7 @@ class InstanceTest(MongoDBTestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in self.parameters.iteritems():
+                for parameter_name, parameter in iteritems(self.parameters):
                     parameter.expand()
 
         class NodesSystem(Document):
@@ -3068,7 +3170,7 @@ class InstanceTest(MongoDBTestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in self.nodes.iteritems():
+                for node_name, node in iteritems(self.nodes):
                     node.expand()
                     node.save(*args, **kwargs)
                 super(NodesSystem, self).save(*args, **kwargs)
@@ -3196,7 +3298,7 @@ class InstanceTest(MongoDBTestCase):
         p2.name = 'alon2'
         p2.save()
         p3 = Person.objects().only('created_on')[0]
-        self.assertEquals(orig_created_on, p3.created_on)
+        self.assertEqual(orig_created_on, p3.created_on)
 
         class Person(Document):
             created_on = DateTimeField(default=lambda: datetime.utcnow())
@@ -3205,29 +3307,28 @@ class InstanceTest(MongoDBTestCase):
 
         p4 = Person.objects()[0]
         p4.save()
-        self.assertEquals(p4.height, 189)
+        self.assertEqual(p4.height, 189)
 
         # However the default will not be fixed in DB
-        self.assertEquals(Person.objects(height=189).count(), 0)
+        self.assertEqual(Person.objects(height=189).count(), 0)
 
         # alter DB for the new default
         coll = Person._get_collection()
         for person in Person.objects.as_pymongo():
             if 'height' not in person:
-                person['height'] = 189
-                coll.save(person)
+                coll.update_one({'_id': person['_id']}, {'$set': {'height': 189}})
 
-        self.assertEquals(Person.objects(height=189).count(), 1)
+        self.assertEqual(Person.objects(height=189).count(), 1)
 
     def test_from_son(self):
         # 771
         class MyPerson(self.Person):
             meta = dict(shard_key=["id"])
         p = MyPerson.from_json('{"name": "name", "age": 27}', created=True)
-        self.assertEquals(p.id, None)
+        self.assertEqual(p.id, None)
         p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
         p = MyPerson._from_son({"name": "name", "age": 27}, created=True)
-        self.assertEquals(p.id, None)
+        self.assertEqual(p.id, None)
         p.id = "12345"  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
 
     def test_from_son_created_False_without_id(self):
@@ -3305,7 +3406,7 @@ class InstanceTest(MongoDBTestCase):
         u_from_db = User.objects.get(name='user')
         u_from_db.height = None
         u_from_db.save()
-        self.assertEquals(u_from_db.height, None)
+        self.assertEqual(u_from_db.height, None)
         # 864
         self.assertEqual(u_from_db.str_fld, None)
         self.assertEqual(u_from_db.int_fld, None)
@@ -3319,7 +3420,7 @@ class InstanceTest(MongoDBTestCase):
         u.save()
         User.objects(name='user').update_one(set__height=None, upsert=True)
         u_from_db = User.objects.get(name='user')
-        self.assertEquals(u_from_db.height, None)
+        self.assertEqual(u_from_db.height, None)
 
     def test_not_saved_eq(self):
         """Ensure we can compare documents not saved.
@@ -3361,7 +3462,6 @@ class InstanceTest(MongoDBTestCase):
 
         person.update(set__height=2.0)
 
-    @requires_mongodb_gte_26
     def test_push_with_position(self):
         """Ensure that push with position works properly for an instance."""
         class BlogPost(Document):

@@ -32,12 +32,12 @@ class TestJson(unittest.TestCase):
             string = StringField(db_field='s')
             embedded = EmbeddedDocumentField(Embedded, db_field='e')
 
-        doc = Doc( string="Hello", embedded=Embedded(string="Inner Hello"))
-        doc_json = doc.to_json(sort_keys=True, use_db_field=False,separators=(',', ':'))
+        doc = Doc(string="Hello", embedded=Embedded(string="Inner Hello"))
+        doc_json = doc.to_json(sort_keys=True, use_db_field=False, separators=(',', ':'))
 
         expected_json = """{"embedded":{"string":"Inner Hello"},"string":"Hello"}"""
 
-        self.assertEqual( doc_json, expected_json)
+        self.assertEqual(doc_json, expected_json)
 
     def test_json_simple(self):
 
@@ -61,10 +61,6 @@ class TestJson(unittest.TestCase):
         self.assertEqual(doc, Doc.from_json(doc.to_json()))
 
     def test_json_complex(self):
-
-        if pymongo.version_tuple[0] <= 2 and pymongo.version_tuple[1] <= 3:
-            raise SkipTest("Need pymongo 2.4 as has a fix for DBRefs")
-
         class EmbeddedDoc(EmbeddedDocument):
             pass
 

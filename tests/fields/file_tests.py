@@ -24,6 +24,16 @@ TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
 TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
 
 
+def get_file(path):
+    """Use a BytesIO instead of a file to allow
+    to have a one-liner and avoid that the file remains opened"""
+    bytes_io = StringIO()
+    with open(path, 'rb') as f:
+        bytes_io.write(f.read())
+    bytes_io.seek(0)
+    return bytes_io
+
+
 class FileTest(MongoDBTestCase):
 
     def tearDown(self):
@@ -247,8 +257,8 @@ class FileTest(MongoDBTestCase):
         Animal.drop_collection()
         marmot = Animal(genus='Marmota', family='Sciuridae')
 
-        marmot_photo = open(TEST_IMAGE_PATH, 'rb')  # Retrieve a photo from disk
-        marmot.photo.put(marmot_photo, content_type='image/jpeg', foo='bar')
+        marmot_photo_content = get_file(TEST_IMAGE_PATH)  # Retrieve a photo from disk
+        marmot.photo.put(marmot_photo_content, content_type='image/jpeg', foo='bar')
         marmot.photo.close()
         marmot.save()
 
@@ -261,11 +271,11 @@ class FileTest(MongoDBTestCase):
             the_file = FileField()
         TestFile.drop_collection()
 
-        test_file = TestFile(the_file=open(TEST_IMAGE_PATH, 'rb')).save()
+        test_file = TestFile(the_file=get_file(TEST_IMAGE_PATH)).save()
         self.assertEqual(test_file.the_file.get().length, 8313)
 
         test_file = TestFile.objects.first()
-        test_file.the_file = open(TEST_IMAGE2_PATH, 'rb')
+        test_file.the_file = get_file(TEST_IMAGE2_PATH)
         test_file.save()
         self.assertEqual(test_file.the_file.get().length, 4971)
 
@@ -310,16 +320,16 @@ class FileTest(MongoDBTestCase):
 
         files = db.fs.files.find()
         chunks = db.fs.chunks.find()
-        self.assertEquals(len(list(files)), 1)
-        self.assertEquals(len(list(chunks)), 1)
+        self.assertEqual(len(list(files)), 1)
+        self.assertEqual(len(list(chunks)), 1)
 
         # Deleting the docoument should delete the files
         testfile.delete()
 
         files = db.fs.files.find()
         chunks = db.fs.chunks.find()
-        self.assertEquals(len(list(files)), 0)
-        self.assertEquals(len(list(chunks)), 0)
+        self.assertEqual(len(list(files)), 0)
+        self.assertEqual(len(list(chunks)), 0)
 
         # Test case where we don't store a file in the first place
         testfile = TestFile()
@@ -327,15 +337,15 @@ class FileTest(MongoDBTestCase):
 
         files = db.fs.files.find()
         chunks = db.fs.chunks.find()
-        self.assertEquals(len(list(files)), 0)
-        self.assertEquals(len(list(chunks)), 0)
+        self.assertEqual(len(list(files)), 0)
+        self.assertEqual(len(list(chunks)), 0)
 
         testfile.delete()
 
         files = db.fs.files.find()
         chunks = db.fs.chunks.find()
-        self.assertEquals(len(list(files)), 0)
-        self.assertEquals(len(list(chunks)), 0)
+        self.assertEqual(len(list(files)), 0)
+        self.assertEqual(len(list(chunks)), 0)
 
         # Test case where we overwrite the file
         testfile = TestFile()
@@ -348,15 +358,15 @@ class FileTest(MongoDBTestCase):
 
         files = db.fs.files.find()
         chunks = db.fs.chunks.find()
-        self.assertEquals(len(list(files)), 1)
-        self.assertEquals(len(list(chunks)), 1)
+        self.assertEqual(len(list(files)), 1)
+        self.assertEqual(len(list(chunks)), 1)
 
         testfile.delete()
 
         files = db.fs.files.find()
         chunks = db.fs.chunks.find()
-        self.assertEquals(len(list(files)), 0)
-        self.assertEquals(len(list(chunks)), 0)
+        self.assertEqual(len(list(files)), 0)
+        self.assertEqual(len(list(chunks)), 0)
 
     def test_image_field(self):
         if not HAS_PIL:
@@ -379,7 +389,7 @@ class FileTest(MongoDBTestCase):
                 self.assertEqual("%s" % e, "Invalid image: cannot identify image file %s" % f)
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
+        t.image.put(get_file(TEST_IMAGE_PATH))
         t.save()
 
         t = TestImage.objects.first()
@@ -400,11 +410,11 @@ class FileTest(MongoDBTestCase):
             the_file = ImageField()
         TestFile.drop_collection()
 
-        test_file = TestFile(the_file=open(TEST_IMAGE_PATH, 'rb')).save()
+        test_file = TestFile(the_file=get_file(TEST_IMAGE_PATH)).save()
         self.assertEqual(test_file.the_file.size, (371, 76))
 
         test_file = TestFile.objects.first()
-        test_file.the_file = open(TEST_IMAGE2_PATH, 'rb')
+        test_file.the_file = get_file(TEST_IMAGE2_PATH)
         test_file.save()
         self.assertEqual(test_file.the_file.size, (45, 101))
 
@@ -418,7 +428,7 @@ class FileTest(MongoDBTestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
+        t.image.put(get_file(TEST_IMAGE_PATH))
         t.save()
 
         t = TestImage.objects.first()
@@ -441,7 +451,7 @@ class FileTest(MongoDBTestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
+        t.image.put(get_file(TEST_IMAGE_PATH))
         t.save()
 
         t = TestImage.objects.first()
@@ -464,7 +474,7 @@ class FileTest(MongoDBTestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image.put(open(TEST_IMAGE_PATH, 'rb'))
+        t.image.put(get_file(TEST_IMAGE_PATH))
         t.save()
 
         t = TestImage.objects.first()
@@ -542,8 +552,8 @@ class FileTest(MongoDBTestCase):
         TestImage.drop_collection()
 
         t = TestImage()
-        t.image1.put(open(TEST_IMAGE_PATH, 'rb'))
-        t.image2.put(open(TEST_IMAGE2_PATH, 'rb'))
+        t.image1.put(get_file(TEST_IMAGE_PATH))
+        t.image2.put(get_file(TEST_IMAGE2_PATH))
         t.save()
 
         test = TestImage.objects.first()
@@ -563,12 +573,10 @@ class FileTest(MongoDBTestCase):
         Animal.drop_collection()
         marmot = Animal(genus='Marmota', family='Sciuridae')
 
-        marmot_photo = open(TEST_IMAGE_PATH, 'rb')  # Retrieve a photo from disk
-
-        photos_field = marmot._fields['photos'].field
-        new_proxy = photos_field.get_proxy_obj('photos', marmot)
-        new_proxy.put(marmot_photo, content_type='image/jpeg', foo='bar')
-        marmot_photo.close()
+        with open(TEST_IMAGE_PATH, 'rb') as marmot_photo:   # Retrieve a photo from disk
+            photos_field = marmot._fields['photos'].field
+            new_proxy = photos_field.get_proxy_obj('photos', marmot)
+            new_proxy.put(marmot_photo, content_type='image/jpeg', foo='bar')
 
         marmot.photos.append(new_proxy)
         marmot.save()
@@ -577,6 +585,7 @@ class FileTest(MongoDBTestCase):
         self.assertEqual(marmot.photos[0].content_type, 'image/jpeg')
         self.assertEqual(marmot.photos[0].foo, 'bar')
         self.assertEqual(marmot.photos[0].get().length, 8313)
+
 
 if __name__ == '__main__':
     unittest.main()

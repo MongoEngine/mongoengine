@@ -31,7 +31,6 @@ def _import_class(cls_name):
 
     field_classes = _field_list_cache
 
-    queryset_classes = ('OperationError',)
     deref_classes = ('DeReference',)
 
     if cls_name == 'BaseDocument':
@@ -43,14 +42,11 @@ def _import_class(cls_name):
     elif cls_name in field_classes:
         from mongoengine import fields as module
         import_classes = field_classes
-    elif cls_name in queryset_classes:
-        from mongoengine import queryset as module
-        import_classes = queryset_classes
     elif cls_name in deref_classes:
         from mongoengine import dereference as module
         import_classes = deref_classes
     else:
-        raise ValueError('No import set for: ' % cls_name)
+        raise ValueError('No import set for: %s' % cls_name)
 
     for cls in import_classes:
         _class_registry_cache[cls] = getattr(module, cls)

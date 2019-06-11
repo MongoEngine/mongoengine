@@ -11,6 +11,7 @@ from bson import Binary, DBRef, ObjectId, SON
 import gridfs
 import pymongo
 import six
+from six import iteritems
 
 try:
     import dateutil
@@ -36,6 +37,7 @@ from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
 from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
+from mongoengine.queryset.transform import STRING_OPERATORS
 
 try:
     from PIL import Image, ImageOps
@@ -105,11 +107,11 @@ class StringField(BaseField):
         if not isinstance(op, six.string_types):
             return value
 
-        if op.lstrip('i') in ('startswith', 'endswith', 'contains', 'exact'):
-            flags = 0
-            if op.startswith('i'):
-                flags = re.IGNORECASE
-                op = op.lstrip('i')
+        if op in STRING_OPERATORS:
+            case_insensitive = op.startswith('i')
+            op = op.lstrip('i')
+
+            flags = re.IGNORECASE if case_insensitive else 0
 
             regex = r'%s'
             if op == 'startswith':
@@ -151,12 +153,10 @@ class URLField(StringField):
         scheme = value.split('://')[0].lower()
         if scheme not in self.schemes:
             self.error(u'Invalid scheme {} in URL: {}'.format(scheme, value))
-            return
 
         # Then check full URL
         if not self.url_regex.match(value):
             self.error(u'Invalid URL: {}'.format(value))
-            return
 
 
 class EmailField(StringField):
@@ -258,10 +258,10 @@ class EmailField(StringField):
             try:
                 domain_part = domain_part.encode('idna').decode('ascii')
             except UnicodeError:
-                self.error(self.error_msg % value)
+                self.error("%s %s" % (self.error_msg % value, "(domain failed IDN encoding)"))
             else:
                 if not self.validate_domain_part(domain_part):
-                    self.error(self.error_msg % value)
+                    self.error("%s %s" % (self.error_msg % value, "(domain validation failed)"))
 
 
 class IntField(BaseField):
@@ -498,15 +498,18 @@ class DateTimeField(BaseField):
         if not isinstance(value, six.string_types):
             return None
 
+        return self._parse_datetime(value)
+
+    def _parse_datetime(self, value):
+        # Attempt to parse a datetime from a string
         value = value.strip()
         if not value:
             return None
 
-        # Attempt to parse a datetime:
         if dateutil:
             try:
                 return dateutil.parser.parse(value)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 return None
 
         # split usecs, because they are not recognized by strptime.
@@ -699,7 +702,11 @@ class EmbeddedDocumentField(BaseField):
         self.document_type.validate(value, clean)
 
     def lookup_member(self, member_name):
-        return self.document_type._fields.get(member_name)
+        doc_and_subclasses = [self.document_type] + self.document_type.__subclasses__()
+        for doc_type in doc_and_subclasses:
+            field = doc_type._fields.get(member_name)
+            if field:
+                return field
 
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
@@ -746,12 +753,13 @@ class GenericEmbeddedDocumentField(BaseField):
         value.validate(clean=clean)
 
     def lookup_member(self, member_name):
-        if self.choices:
-            for choice in self.choices:
-                field = choice._fields.get(member_name)
+        document_choices = self.choices or []
+        for document_choice in document_choices:
+            doc_and_subclasses = [document_choice] + document_choice.__subclasses__()
+            for doc_type in doc_and_subclasses:
+                field = doc_type._fields.get(member_name)
                 if field:
                     return field
-        return None
 
     def to_mongo(self, document, use_db_field=True, fields=None):
         if document is None:
@@ -794,12 +802,12 @@ class DynamicField(BaseField):
             value = {k: v for k, v in enumerate(value)}
 
         data = {}
-        for k, v in value.iteritems():
+        for k, v in iteritems(value):
             data[k] = self.to_mongo(v, use_db_field, fields)
 
         value = data
         if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(data.iteritems(), key=itemgetter(0))]
+            value = [v for k, v in sorted(iteritems(data), key=itemgetter(0))]
         return value
 
     def to_python(self, value):

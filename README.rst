@@ -26,17 +26,17 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v2.6, v3.0 and v3.2. Future
-versions should be supported as well, but aren't actively tested at the moment.
-Make sure to open an issue or submit a pull request if you experience any
-problems with MongoDB v3.4+.
+MongoEngine is currently tested against MongoDB v3.4 and v3.6. Future versions
+should be supported as well, but aren't actively tested at the moment. Make
+sure to open an issue or submit a pull request if you experience any problems
+with MongoDB version > 3.6.
 
 Installation
 ============
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
 `pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
 You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
-and thus you can use ``easy_install -U mongoengine``. Another option is 
+and thus you can use ``easy_install -U mongoengine``. Another option is
 `pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
 to both create the virtual environment and install the package. Otherwise, you can
 download the source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
@@ -47,7 +47,7 @@ Dependencies
 All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
 At the very least, you'll need these two packages to use MongoEngine:
 
-- pymongo>=2.7.1
+- pymongo>=3.5
 - six>=1.10.0
 
 If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
