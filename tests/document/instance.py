@@ -512,7 +512,7 @@ class InstanceTest(MongoDBTestCase):
             doc.save()
             query_op = q.db.system.profile.find({'ns': 'mongoenginetest.animal'})[0]
             self.assertEqual(query_op['op'], 'update')
-            if mongo_db == MONGODB_34:
+            if mongo_db <= MONGODB_34:
                 self.assertEqual(set(query_op['query'].keys()), set(['_id', 'is_mammal']))
             else:
                 self.assertEqual(set(query_op['command']['q'].keys()), set(['_id', 'is_mammal']))
