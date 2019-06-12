@@ -348,6 +348,9 @@ class BaseDocument(object):
     def validate(self, clean=True):
         """Ensure that all fields' values are valid and that required fields
         are present.
+
+        Raises :class:`ValidationError` if any of the fields' values are found
+        to be invalid.
         """
         # Ensure that each field is matched to a valid value
         errors = {}
