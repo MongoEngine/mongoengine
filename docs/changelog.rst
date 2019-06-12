@@ -4,6 +4,10 @@ Changelog
 
 Development
 ===========
+- (Fill this out as you fix issues and develop your features).
+
+Changes in 0.18.0
+=================
 - Drop support for EOL'd MongoDB v2.6, v3.0, and v3.2.
 - MongoEngine now requires PyMongo >= v3.4. Travis CI now tests against MongoDB v3.4 – v3.6 and PyMongo v3.4 – v3.6 (#2017 #2066).
 - Improve performance by avoiding a call to `to_mongo` in `Document.save()` #2049
@@ -24,7 +28,6 @@ Development
     - `disconnect` now clears `mongoengine.connection._connection_settings`.
     - `disconnect` now clears the cached attribute `Document._collection`.
 - BREAKING CHANGE: `EmbeddedDocument.save` & `.reload` is no longier exist #1552
-- (Fill this out as you fix issues and develop your features).
 
 Changes in 0.17.0
 =================
