@@ -898,13 +898,19 @@ class QuerySetTest(unittest.TestCase):
         with self.assertRaises(OperationError) as cm:
             blog = Blog.objects.first()
             Blog.objects.insert(blog)
-        self.assertEqual(str(cm.exception), 'Some documents have ObjectIds use doc.update() instead')
+        self.assertEqual(
+            str(cm.exception),
+            'Some documents have ObjectIds, use doc.update() instead'
+        )
 
         # test inserting a query set
         with self.assertRaises(OperationError) as cm:
             blogs_qs = Blog.objects
             Blog.objects.insert(blogs_qs)
-        self.assertEqual(str(cm.exception), 'Some documents have ObjectIds use doc.update() instead')
+        self.assertEqual(
+            str(cm.exception),
+            'Some documents have ObjectIds, use doc.update() instead'
+        )
 
         # insert 1 new doc
         new_post = Blog(title="code123", id=ObjectId())

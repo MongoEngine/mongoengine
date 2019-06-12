@@ -335,7 +335,7 @@ class BaseQuerySet(object):
                        % str(self._document))
                 raise OperationError(msg)
             if doc.pk and not doc._created:
-                msg = 'Some documents have ObjectIds use doc.update() instead'
+                msg = 'Some documents have ObjectIds, use doc.update() instead'
                 raise OperationError(msg)
 
         signal_kwargs = signal_kwargs or {}
