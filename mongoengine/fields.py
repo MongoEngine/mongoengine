@@ -2300,7 +2300,11 @@ class LazyReferenceField(BaseField):
             if isinstance(value, self.document_type):
                 value = LazyReference(self.document_type, value.pk, passthrough=self.passthrough)
             elif isinstance(value, DBRef):
-                value = LazyReference(self.document_type, value.id, passthrough=self.passthrough)
+                # Honor cls field on DBRef for Abstract Documents
+                if hasattr(value, 'cls'):
+                    value = LazyReference(get_document(value.cls), value.id, passthrough=self.passthrough)
+                else:
+                    LazyReference(self.document_type, value.id, passthrough=self.passthrough)
             else:
                 # value is the primary key of the referenced document
                 value = LazyReference(self.document_type, value, passthrough=self.passthrough)
@@ -2345,7 +2349,10 @@ class LazyReferenceField(BaseField):
             pk = value.pk
         elif isinstance(value, DBRef):
             # TODO: check collection ?
-            collection = self.document_type._get_collection_name()
+            if hasattr(value, 'cls'):
+                collection = get_document(value.cls)._get_collection_name()
+            else:
+                collection = self.document_type._get_collection_name()
             if value.collection != collection:
                 self.error("DBRef on bad collection (must be on `%s`)" % collection)
             pk = value.id
