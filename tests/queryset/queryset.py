@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from bson import DBRef, ObjectId
 import pymongo
+from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 import six
@@ -16,7 +17,7 @@ from mongoengine import *
 from mongoengine.connection import get_connection, get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
+from mongoengine.mongodb_support import get_mongodb_version, MONGODB_36
 from mongoengine.queryset import (DoesNotExist, MultipleObjectsReturned,
                                   QuerySet, QuerySetManager, queryset_manager)
 
@@ -831,6 +832,8 @@ class QuerySetTest(unittest.TestCase):
 
     def test_bulk_insert(self):
         """Ensure that bulk insert works"""
+        MONGO_VER = self.mongodb_version
+
         class Comment(EmbeddedDocument):
             name = StringField()
 
@@ -843,6 +846,10 @@ class QuerySetTest(unittest.TestCase):
             posts = ListField(EmbeddedDocumentField(Post))
 
         Blog.drop_collection()
+
+        # get MongoDB version info
+        connection = get_connection()
+        info = connection.test.command('buildInfo')
 
         # Recreates the collection
         self.assertEqual(0, Blog.objects.count())
@@ -5378,13 +5385,6 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(list(data), [
             {'_id': None, 'avg': 29, 'total': 2}
         ])
-
-        data = Person.objects().aggregate({'$match': {'name': 'Isabella Luanna'}})
-        self.assertEqual(list(data), [
-            {u'_id': p1.pk,
-             u'age': 16,
-             u'name': u'Isabella Luanna'}]
-                         )
 
     def test_queryset_aggregation_with_skip(self):
         class Person(Document):
