@@ -366,7 +366,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         if write_concern is None:
             write_concern = {}
 
-        doc_id = self.to_mongo(fields=['id'])
+        doc_id = self.to_mongo(fields=[self._meta['id_field']])
         created = ('_id' not in doc_id or self._created or force_insert)
 
         signals.pre_save_post_validation.send(self.__class__, document=self,
