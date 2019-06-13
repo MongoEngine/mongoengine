@@ -22,7 +22,9 @@ python:
 - 2.7
 - 3.5
 - 3.6
+- 3.7
 - pypy
+- pypy3
 
 env:
   global:
@@ -40,8 +42,6 @@ matrix:
   - python: 2.7
     env: MONGODB=${MONGODB_3_4} PYMONGO=3.4.x
   - python: 3.6
-    env: MONGODB=${MONGODB_3_6} PYMONGO=3.x
-  - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=3.x
 
 
