@@ -42,7 +42,6 @@ matrix:
   - python: 3.6
     env: MONGODB=${MONGODB_3_6} PYMONGO=3.x
   - python: 3.7
-    dist: xenial    # python 3.7 not available on default dist (trusty)
     env: MONGODB=${MONGODB_3_6} PYMONGO=3.x
 
 
