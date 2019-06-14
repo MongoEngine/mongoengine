@@ -6,11 +6,7 @@ from mongoengine import (BooleanField, Document, EmbeddedDocument,
                          EmbeddedDocumentField, IntField, ListField,
                          StringField)
 
-conn_settings = {
-    'db': 'mongoengine-benchmark-test',
-}
-
-mongoengine.connect(**conn_settings)
+mongoengine.connect(db='mongoengine_benchmark_test')
 
 
 def timeit(f, n=10000):

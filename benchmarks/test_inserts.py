@@ -5,14 +5,14 @@ def main():
     setup = """
 from pymongo import MongoClient
 connection = MongoClient()
-connection.drop_database('timeit_test')
+connection.drop_database('mongoengine_benchmark_test')
 """
 
     stmt = """
 from pymongo import MongoClient
 connection = MongoClient()
 
-db = connection.timeit_test
+db = connection.mongoengine_benchmark_test
 noddy = db.noddy
 
 for i in xrange(10000):
@@ -35,7 +35,7 @@ myNoddys = noddy.find()
 from pymongo import MongoClient, WriteConcern
 connection = MongoClient()
 
-db = connection.timeit_test
+db = connection.mongoengine_benchmark_test
 noddy = db.noddy.with_options(write_concern=WriteConcern(w=0))
 
 for i in xrange(10000):
@@ -57,11 +57,11 @@ myNoddys = noddy.find()
     setup = """
 from pymongo import MongoClient
 connection = MongoClient()
-connection.drop_database('timeit_test')
+connection.drop_database('mongoengine_benchmark_test')
 connection.close()
 
 from mongoengine import Document, DictField, connect
-connect("timeit_test")
+connect("mongoengine_benchmark_test")
 
 class Noddy(Document):
     fields = DictField()
