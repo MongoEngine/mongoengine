@@ -739,7 +739,7 @@ class BaseDocument(object):
         return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _pqs=None):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         if not only_fields:
