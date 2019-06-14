@@ -21,7 +21,7 @@ class TestSequenceField(MongoDBTestCase):
         assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        assert ids == range(1, 11)
+        assert ids == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
         assert c["next"] == 10
@@ -76,7 +76,7 @@ class TestSequenceField(MongoDBTestCase):
         assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        assert ids == range(1, 11)
+        assert ids == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "jelly.id"})
         assert c["next"] == 10
@@ -101,10 +101,10 @@ class TestSequenceField(MongoDBTestCase):
         assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        assert ids == range(1, 11)
+        assert ids == list(range(1, 11))
 
         counters = [i.counter for i in Person.objects]
-        assert counters == range(1, 11)
+        assert counters == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
         assert c["next"] == 10
@@ -166,10 +166,10 @@ class TestSequenceField(MongoDBTestCase):
         assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        assert ids == range(1, 11)
+        assert ids == list(range(1, 11))
 
         id = [i.id for i in Animal.objects]
-        assert id == range(1, 11)
+        assert id == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
         assert c["next"] == 10
@@ -193,7 +193,7 @@ class TestSequenceField(MongoDBTestCase):
         assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        assert ids == map(str, range(1, 11))
+        assert ids == [str(i) for i in range(1, 11)]
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
         assert c["next"] == 10

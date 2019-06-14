@@ -92,7 +92,7 @@ class BaseDocument(object):
         # if so raise an Exception.
         if not self._dynamic and (self._meta.get("strict", True) or _created):
             _undefined_fields = set(values.keys()) - set(
-                self._fields.keys() + ["id", "pk", "_cls", "_text_score"]
+                list(self._fields.keys()) + ["id", "pk", "_cls", "_text_score"]
             )
             if _undefined_fields:
                 msg = ('The fields "{0}" do not exist on the document "{1}"').format(
@@ -670,7 +670,7 @@ class BaseDocument(object):
                 del set_data["_id"]
 
         # Determine if any changed items were actually unset.
-        for path, value in set_data.items():
+        for path, value in list(set_data.items()):
             if value or isinstance(
                 value, (numbers.Number, bool)
             ):  # Account for 0 and True that are truthy

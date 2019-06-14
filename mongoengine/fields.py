@@ -8,6 +8,7 @@ import uuid
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
+from bson.int64 import Int64
 import gridfs
 import pymongo
 from pymongo import ReturnDocument
@@ -20,11 +21,6 @@ except ImportError:
     dateutil = None
 else:
     import dateutil.parser
-
-try:
-    from bson.int64 import Int64
-except ImportError:
-    Int64 = long
 
 
 from mongoengine.base import (
@@ -53,8 +49,6 @@ except ImportError:
     ImageOps = None
 
 if six.PY3:
-    # Useless as long as 2to3 gets executed
-    # as it turns `long` into `int` blindly
     long = int
 
 

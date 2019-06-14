@@ -422,10 +422,10 @@ class StrictDict(object):
         return len(list(iteritems(self)))
 
     def __eq__(self, other):
-        return self.items() == other.items()
+        return list(self.items()) == list(other.items())
 
     def __ne__(self, other):
-        return self.items() != other.items()
+        return list(self.items()) != list(other.items())
 
     @classmethod
     def create(cls, allowed_keys):
