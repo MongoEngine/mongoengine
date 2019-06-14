@@ -182,8 +182,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
     @classmethod
     def _get_collection(cls):
-        """Return the corresponding PyMongo collection of this document.
-        Upon the first call, it will ensure that indexes gets created. The returned collection then gets cached
+        """Return the PyMongo collection corresponding to this document.
+
+        Upon first call, this method:
+        1. Initializes a :class:`~pymongo.collection.Collection` corresponding
+           to this document.
+        2. Creates indexes defined in this document's :attr:`meta` dictionary.
+           This happens only if `auto_create_index` is True.
         """
         if not hasattr(cls, '_collection') or cls._collection is None:
             # Get the collection, either capped or regular.
