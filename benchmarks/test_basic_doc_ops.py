@@ -4,7 +4,7 @@ from timeit import repeat
 import mongoengine
 from mongoengine import (BooleanField, Document, EmbeddedDocument,
                          EmbeddedDocumentField, IntField, ListField,
-                         StringField)
+                         StringField, EmailField)
 
 mongoengine.connect(db='mongoengine_benchmark_test')
 
@@ -19,6 +19,7 @@ def test_basic():
         pages = IntField()
         tags = ListField(StringField())
         is_published = BooleanField()
+        author_email = EmailField()
 
     Book.drop_collection()
 
@@ -28,6 +29,7 @@ def test_basic():
             pages=100,
             tags=['self-help', 'sales'],
             is_published=True,
+            author_email='alec@example.com',
         )
 
     print 'Doc initialization: %.3fus' % (timeit(init_book, 1000) * 10**6)
