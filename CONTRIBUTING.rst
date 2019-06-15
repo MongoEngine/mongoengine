@@ -22,11 +22,19 @@ Supported Interpreters
 
 MongoEngine supports CPython 2.7 and newer. Language
 features not supported by all interpreters can not be used.
-The codebase is written in python 2 so you must be using python 2
-when developing new features. Compatibility of the library with Python 3
-relies on the 2to3 package that gets executed as part of the installation
-build. You should ensure that your code is properly converted by
-`2to3 <http://docs.python.org/library/2to3.html>`_.
+The codebase is written in a compatible manner for python 2 & 3 so it
+is important that this is taken into account when it comes to discrepencies
+between the 2 versions (check this https://python-future.org/compatible_idioms.html).
+Travis runs run the tests against the different versions as a safety net.
+
+Python 2/3 compatibility
+----------------------
+
+The codebase is written in a compatible manner for python 2 & 3 so it
+is important that this is taken into account when it comes to discrepencies
+between the 2 versions (check this https://python-future.org/compatible_idioms.html).
+Travis runs run the tests against the different versions as a safety net.
+
 
 Style Guide
 -----------

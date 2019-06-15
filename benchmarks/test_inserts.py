@@ -3,13 +3,17 @@ import timeit
 
 def main():
     setup = """
+from builtins import range
+
 from pymongo import MongoClient
+
 connection = MongoClient()
 connection.drop_database('mongoengine_benchmark_test')
 """
 
     stmt = """
 from pymongo import MongoClient
+
 connection = MongoClient()
 
 db = connection.mongoengine_benchmark_test
@@ -55,7 +59,10 @@ myNoddys = noddy.find()
     print("{}s".format(t.timeit(1)))
 
     setup = """
+from builtins import range
+
 from pymongo import MongoClient
+
 connection = MongoClient()
 connection.drop_database('mongoengine_benchmark_test')
 connection.close()

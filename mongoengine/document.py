@@ -71,7 +71,6 @@ class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
 
     __slots__ = ("_instance",)
 
-    # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
 
@@ -156,7 +155,6 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     in the :attr:`meta` dictionary.
     """
 
-    # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
 
@@ -1045,7 +1043,6 @@ class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
         There is one caveat on Dynamic Documents: undeclared fields cannot start with `_`
     """
 
-    # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
 
@@ -1069,7 +1066,6 @@ class DynamicEmbeddedDocument(six.with_metaclass(DocumentMetaclass, EmbeddedDocu
     information about dynamic documents.
     """
 
-    # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
 
