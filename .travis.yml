@@ -24,6 +24,8 @@ python:
 - 3.6
 - pypy
 
+dist: xenial
+
 env:
   global:
     - MONGODB_3_4=3.4.17
