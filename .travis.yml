@@ -28,6 +28,8 @@ python:
 
 dist: xenial
 
+dist: xenial
+
 env:
   global:
     - MONGODB_3_4=3.4.17
