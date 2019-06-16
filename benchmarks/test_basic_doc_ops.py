@@ -135,7 +135,6 @@ def test_big_doc():
         % (timeit(create_and_delete_company, 10) * 10 ** 3)
     )
 
-
 if __name__ == "__main__":
     test_basic()
     print("-" * 100)
