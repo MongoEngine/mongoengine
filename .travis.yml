@@ -80,9 +80,6 @@ before_script:
 script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
 
-# For now only submit coveralls for Python v2.7. Python v3.x currently shows
-# 0% coverage. That's caused by 'use_2to3', which builds the py3-compatible
-# code in a separate dir and runs tests on that.
 after_success:
 - coveralls --verbose
 
