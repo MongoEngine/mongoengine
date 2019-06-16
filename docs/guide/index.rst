@@ -16,3 +16,4 @@ User Guide
    text-indexes
    logging-monitoring
    mongomock
+   migration
