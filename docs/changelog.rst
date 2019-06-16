@@ -1,9 +1,11 @@
+
 =========
 Changelog
 =========
 
 Development
 ===========
+- Add Python 3.7 in travis #2058
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.18.0
