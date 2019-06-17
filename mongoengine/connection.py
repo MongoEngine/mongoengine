@@ -2,9 +2,17 @@ from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
 import six
 
-__all__ = ['MongoEngineConnectionError', 'connect', 'disconnect', 'disconnect_all',
-           'register_connection', 'DEFAULT_CONNECTION_NAME', 'DEFAULT_DATABASE_NAME',
-           'get_db', 'get_connection']
+__all__ = [
+    'DEFAULT_CONNECTION_NAME',
+    'DEFAULT_DATABASE_NAME',
+    'MongoEngineConnectionError',
+    'connect',
+    'disconnect',
+    'disconnect_all',
+    'get_connection',
+    'get_db',
+    'register_connection',
+]
 
 
 DEFAULT_CONNECTION_NAME = 'default'
