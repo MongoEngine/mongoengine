@@ -47,14 +47,14 @@ class BaseDocument(object):
         """
         Initialise a document or an embedded document.
 
-        :param values: A dictionary of keys and values for the document.
+        :param dict values: A dictionary of keys and values for the document.
             It may contain additional reserved keywords, e.g. "__auto_convert".
-        :param __auto_convert: If True, supplied values will be converted
+        :param bool __auto_convert: If True, supplied values will be converted
             to Python-type values via each field's `to_python` method.
-        :param __only_fields: A list of fields that have been loaded for this
-            document. Empty if all fields have been loaded.
-        :param _created: Indicates whether this is a brand new document or
-            whether it's already been persisted before. Defaults to true.
+        :param set __only_fields: A set of fields that have been loaded for
+            this document. Empty if all fields have been loaded.
+        :param bool _created: Indicates whether this is a brand new document
+            or whether it's already been persisted before. Defaults to true.
         """
         self._initialised = False
         self._created = True
@@ -75,7 +75,6 @@ class BaseDocument(object):
 
         __auto_convert = values.pop('__auto_convert', True)
 
-        # 399: set default values only to fields loaded from DB
         __only_fields = set(values.pop('__only_fields', values))
 
         _created = values.pop('_created', True)
@@ -100,7 +99,9 @@ class BaseDocument(object):
 
         self._dynamic_fields = SON()
 
-        # Assign default values to instance
+        # Assign default values to the instance.
+        # We set default values only for fields loaded from DB. See
+        # https://github.com/mongoengine/mongoengine/issues/399 for more info.
         for key, field in iteritems(self._fields):
             if self._db_field_map.get(key, key) in __only_fields:
                 continue
