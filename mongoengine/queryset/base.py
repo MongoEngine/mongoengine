@@ -1009,13 +1009,15 @@ class BaseQuerySet(object):
         return queryset
 
     def order_by(self, *keys):
-        """Order the :class:`~mongoengine.queryset.QuerySet` by the keys. The
-        order may be specified by prepending each of the keys by a + or a -.
-        Ascending order is assumed. If no keys are passed, existing ordering
-        is cleared instead.
+        """Order the :class:`~mongoengine.queryset.QuerySet` by the given keys.
+
+        The order may be specified by prepending each of the keys by a "+" or
+        a "-". Ascending order is assumed if there's no prefix.
+
+        If no keys are passed, existing ordering is cleared instead.
 
         :param keys: fields to order the query results by; keys may be
-            prefixed with **+** or **-** to determine the ordering direction
+            prefixed with "+" or a "-" to determine the ordering direction.
         """
         queryset = self.clone()
 
