@@ -1,33 +1,30 @@
 # -*- coding: utf-8 -*-
-import bson
 import os
 import pickle
 import unittest
 import uuid
-import warnings
 import weakref
 from datetime import datetime
 
+import bson
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 from six import iteritems
 
-from mongoengine.mongodb_support import get_mongodb_version, MONGODB_36, MONGODB_34
-from mongoengine.pymongo_support import list_collection_names
-from tests import fixtures
-from tests.fixtures import (PickleEmbedded, PickleTest, PickleSignalsTest,
-                            PickleDynamicEmbedded, PickleDynamicTest)
-from tests.utils import MongoDBTestCase, get_as_pymongo
-
 from mongoengine import *
-from mongoengine.base import get_document, _document_registry
-from mongoengine.connection import get_db
-from mongoengine.errors import (NotRegistered, InvalidDocumentError,
-                                InvalidQueryError, NotUniqueError,
-                                FieldDoesNotExist, SaveConditionError)
-from mongoengine.queryset import NULLIFY, Q
-from mongoengine.context_managers import switch_db, query_counter
 from mongoengine import signals
+from mongoengine.base import _document_registry, get_document
+from mongoengine.connection import get_db
+from mongoengine.context_managers import query_counter, switch_db
+from mongoengine.errors import (FieldDoesNotExist, InvalidDocumentError, \
+                                InvalidQueryError, NotRegistered, NotUniqueError, SaveConditionError)
+from mongoengine.mongodb_support import MONGODB_34, MONGODB_36, get_mongodb_version
+from mongoengine.pymongo_support import list_collection_names
+from mongoengine.queryset import NULLIFY, Q
+from tests import fixtures
+from tests.fixtures import (PickleDynamicEmbedded, PickleDynamicTest, \
+                            PickleEmbedded, PickleSignalsTest, PickleTest)
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__),
                                '../fields/mongoengine.png')
@@ -1260,6 +1257,50 @@ class InstanceTest(MongoDBTestCase):
         self.assertTrue(w1.toggle)
         self.assertEqual(w1.count, 3)
 
+    def test_save_update_selectively(self):
+        class WildBoy(Document):
+            age = IntField()
+            name = StringField()
+
+        WildBoy.drop_collection()
+
+        WildBoy(age=12, name='John').save()
+
+        boy1 = WildBoy.objects().first()
+        boy2 = WildBoy.objects().first()
+
+        boy1.age = 99
+        boy1.save()
+        boy2.name = 'Bob'
+        boy2.save()
+
+        fresh_boy = WildBoy.objects().first()
+        self.assertEqual(fresh_boy.age, 99)
+        self.assertEqual(fresh_boy.name, 'Bob')
+
+    def test_save_update_selectively_with_custom_pk(self):
+        # Prevents regression of #2082
+        class WildBoy(Document):
+            pk_id = StringField(primary_key=True)
+            age = IntField()
+            name = StringField()
+
+        WildBoy.drop_collection()
+
+        WildBoy(pk_id='A', age=12, name='John').save()
+
+        boy1 = WildBoy.objects().first()
+        boy2 = WildBoy.objects().first()
+
+        boy1.age = 99
+        boy1.save()
+        boy2.name = 'Bob'
+        boy2.save()
+
+        fresh_boy = WildBoy.objects().first()
+        self.assertEqual(fresh_boy.age, 99)
+        self.assertEqual(fresh_boy.name, 'Bob')
+
     def test_update(self):
         """Ensure that an existing document is updated instead of be
         overwritten.
@@ -1552,9 +1593,9 @@ class InstanceTest(MongoDBTestCase):
                 EmbeddedChildModel)
 
         emb = EmbeddedChildModel(id={'1': [1]})
-        ParentModel(children=emb)._get_changed_fields()
+        ParentModel(child=emb)._get_changed_fields()
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop(self):
+    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_full_caseEmailUser(self):
         class User(Document):
             id = IntField(primary_key=True)
             name = StringField()
