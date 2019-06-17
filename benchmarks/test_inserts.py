@@ -15,7 +15,7 @@ connection = MongoClient()
 db = connection.mongoengine_benchmark_test
 noddy = db.noddy
 
-for i in xrange(10000):
+for i in range(10000):
     example = {'fields': {}}
     for j in range(20):
         example['fields']["key"+str(j)] = "value "+str(j)
@@ -26,10 +26,10 @@ myNoddys = noddy.find()
 [n for n in myNoddys]  # iterate
 """
 
-    print "-" * 100
-    print """Creating 10000 dictionaries - PyMongo"""
+    print('-' * 100)
+    print('PyMongo: Creating 10000 dictionaries.')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
     stmt = """
 from pymongo import MongoClient, WriteConcern
@@ -38,7 +38,7 @@ connection = MongoClient()
 db = connection.mongoengine_benchmark_test
 noddy = db.noddy.with_options(write_concern=WriteConcern(w=0))
 
-for i in xrange(10000):
+for i in range(10000):
     example = {'fields': {}}
     for j in range(20):
         example['fields']["key"+str(j)] = "value "+str(j)
@@ -49,10 +49,10 @@ myNoddys = noddy.find()
 [n for n in myNoddys]  # iterate
 """
 
-    print "-" * 100
-    print """Creating 10000 dictionaries - PyMongo write_concern={"w": 0}"""
+    print('-' * 100)
+    print('PyMongo: Creating 10000 dictionaries (write_concern={"w": 0}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
     setup = """
 from pymongo import MongoClient
@@ -68,7 +68,7 @@ class Noddy(Document):
 """
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -78,13 +78,13 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys]  # iterate
 """
 
-    print "-" * 100
-    print "Creating 10000 dictionaries - MongoEngine"
+    print('-' * 100)
+    print('MongoEngine: Creating 10000 dictionaries.')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     fields = {}
     for j in range(20):
@@ -96,13 +96,13 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys]  # iterate
 """
 
-    print "-" * 100
-    print "Creating 10000 dictionaries without continual assign - MongoEngine"
+    print('-' * 100)
+    print('MongoEngine: Creating 10000 dictionaries (using a single field assignment).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -112,13 +112,13 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys] # iterate
 """
 
-    print "-" * 100
-    print """Creating 10000 dictionaries - MongoEngine - write_concern={"w": 0}"""
+    print('-' * 100)
+    print('MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -128,13 +128,13 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys] # iterate
 """
 
-    print "-" * 100
-    print """Creating 10000 dictionaries - MongoEngine, write_concern={"w": 0}, validate=False"""
+    print('-' * 100)
+    print('MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}, validate=False).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
     stmt = """
-for i in xrange(10000):
+for i in range(10000):
     noddy = Noddy()
     for j in range(20):
         noddy.fields["key"+str(j)] = "value "+str(j)
@@ -144,10 +144,10 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys] # iterate
 """
 
-    print "-" * 100
-    print """Creating 10000 dictionaries - MongoEngine, force_insert=True, write_concern={"w": 0}, validate=False"""
+    print('-' * 100)
+    print('MongoEngine: Creating 10000 dictionaries (force_insert=True, write_concern={"w": 0}, validate=False).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print '{}s'.format(t.timeit(1))
+    print('{}s'.format(t.timeit(1)))
 
 
 if __name__ == "__main__":

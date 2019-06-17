@@ -1,10 +1,9 @@
-import unittest
 from timeit import repeat
 
 import mongoengine
-from mongoengine import (BooleanField, Document, EmbeddedDocument,
+from mongoengine import (BooleanField, Document, EmailField, EmbeddedDocument,
                          EmbeddedDocumentField, IntField, ListField,
-                         StringField, EmailField)
+                         StringField)
 
 mongoengine.connect(db='mongoengine_benchmark_test')
 
@@ -32,37 +31,54 @@ def test_basic():
             author_email='alec@example.com',
         )
 
-    print 'Doc initialization: %.3fus' % (timeit(init_book, 1000) * 10**6)
+    print('Doc initialization: %.3fus' % (timeit(init_book, 1000) * 10**6))
 
     b = init_book()
-    print 'Doc getattr: %.3fus' % (timeit(lambda: b.name, 10000) * 10**6)
+    print('Doc getattr: %.3fus' % (timeit(lambda: b.name, 10000) * 10**6))
 
-    print 'Doc setattr: %.3fus' % (
-        timeit(lambda: setattr(b, 'name', 'New name'), 10000) * 10**6
+    print(
+        'Doc setattr: %.3fus' % (
+            timeit(lambda: setattr(b, 'name', 'New name'), 10000) * 10**6
+        )
     )
 
-    print 'Doc to mongo: %.3fus' % (timeit(b.to_mongo, 1000) * 10**6)
+    print('Doc to mongo: %.3fus' % (timeit(b.to_mongo, 1000) * 10**6))
+
+    print('Doc validation: %.3fus' % (timeit(b.validate, 1000) * 10**6))
 
     def save_book():
         b._mark_as_changed('name')
         b._mark_as_changed('tags')
         b.save()
 
-    save_book()
+    print('Save to database: %.3fus' % (timeit(save_book, 100) * 10**6))
+
     son = b.to_mongo()
-
-    print 'Load from SON: %.3fus' % (
-        timeit(lambda: Book._from_son(son), 1000) * 10**6
+    print(
+        'Load from SON: %.3fus' % (
+            timeit(lambda: Book._from_son(son), 1000) * 10**6
+        )
     )
 
-    print 'Save to database: %.3fus' % (timeit(save_book, 100) * 10**6)
+    print(
+        'Load from database: %.3fus' % (
+            timeit(lambda: Book.objects[0], 100) * 10**6
+        )
+    )
 
-    print 'Load from database: %.3fus' % (
-        timeit(lambda: Book.objects[0], 100) * 10**6
+    def create_and_delete_book():
+        b = init_book()
+        b.save()
+        b.delete()
+
+    print(
+        'Init + save to database + delete: %.3fms' % (
+            timeit(create_and_delete_book, 10) * 10**3
+        )
     )
 
 
-def test_embedded():
+def test_big_doc():
     class Contact(EmbeddedDocument):
         name = StringField()
         title = StringField()
@@ -87,24 +103,46 @@ def test_embedded():
             ]
         )
 
-    def create_company():
+    company = init_company()
+    print('Big doc to mongo: %.3fms' % (timeit(company.to_mongo, 100) * 10**3))
+
+    print('Big doc validation: %.3fms' % (timeit(company.validate, 1000) * 10**3))
+
+    company.save()
+
+    def save_company():
+        company._mark_as_changed('name')
+        company._mark_as_changed('contacts')
+        company.save()
+
+    print('Save to database: %.3fms' % (timeit(save_company, 100) * 10**3))
+
+    son = company.to_mongo()
+    print(
+        'Load from SON: %.3fms' % (
+            timeit(lambda: Company._from_son(son), 100) * 10**3
+        )
+    )
+
+    print(
+        'Load from database: %.3fms' % (
+            timeit(lambda: Company.objects[0], 100) * 10**3
+        )
+    )
+
+    def create_and_delete_company():
         c = init_company()
         c.save()
         c.delete()
 
-    print 'Save/delete big object to database: %.3fms' % (
-        timeit(create_company, 10) * 10**3
-    )
-
-    c = init_company().save()
-    print 'Serialize big object: %.3fms' % (
-        timeit(c.to_mongo, 100) * 10**3
-    )
-    print 'Load big object from database: %.3fms' % (
-        timeit(lambda: Company.objects[0], 100) * 10**3
+    print(
+        'Init + save to database + delete: %.3fms' % (
+            timeit(create_and_delete_company, 10) * 10**3
+        )
     )
 
 
 if __name__ == '__main__':
     test_basic()
-    test_embedded()
+    print('-' * 100)
+    test_big_doc()
