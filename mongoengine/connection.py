@@ -263,17 +263,17 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     else:
         connection_class = MongoClient
 
-    # Re-use existing connection if one is suitable
+    # Re-use existing connection if one is suitable.
     existing_connection = _find_existing_connection(raw_conn_settings)
-
-    # If an existing connection was found, assign it to the new alias
     if existing_connection:
-        _connections[alias] = existing_connection
+        connection = existing_connection
     else:
-        _connections[alias] = _create_connection(alias=alias,
-                                                 connection_class=connection_class,
-                                                 **conn_settings)
-
+        connection = _create_connection(
+            alias=alias,
+            connection_class=connection_class,
+            **conn_settings
+        )
+    _connections[alias] = connection
     return _connections[alias]
 
 
@@ -359,8 +359,11 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
         new_conn_settings = _get_connection_settings(db, **kwargs)
 
         if new_conn_settings != prev_conn_setting:
-            raise MongoEngineConnectionError(
-                'A different connection with alias `%s` was already registered. Use disconnect() first' % alias)
+            err_msg = (
+                u'A different connection with alias `{}` was already '
+                u'registered. Use disconnect() first'
+            ).format(alias)
+            raise MongoEngineConnectionError(err_msg)
     else:
         register_connection(alias, db, **kwargs)
 
