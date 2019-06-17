@@ -45,13 +45,20 @@ class BaseDocument(object):
 
     def __init__(self, *args, **values):
         """
-        Initialise a document or embedded document
+        Initialise a document or an embedded document.
 
-        :param __auto_convert: Try and will cast python objects to Object types
-        :param values: A dictionary of values for the document
+        :param values: A dictionary of keys and values for the document.
+            It may contain additional reserved keywords, e.g. "__auto_convert".
+        :param __auto_convert: If True, supplied values will be converted
+            to Python-type values via each field's `to_python` method.
+        :param __only_fields: A list of fields that have been loaded for this
+            document. Empty if all fields have been loaded.
+        :param _created: Indicates whether this is a brand new document or
+            whether it's already been persisted before. Defaults to true.
         """
         self._initialised = False
         self._created = True
+
         if args:
             # Combine positional arguments with named arguments.
             # We only want named arguments.
@@ -135,6 +142,7 @@ class BaseDocument(object):
         # Flag initialised
         self._initialised = True
         self._created = _created
+
         signals.post_init.send(self.__class__, document=self)
 
     def __delattr__(self, *args, **kwargs):
