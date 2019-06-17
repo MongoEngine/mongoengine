@@ -890,12 +890,30 @@ class MapField(DictField):
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
-def dereference_dbref(value, document_type):
+def dereference_dbref(value, document_type, _pqs=None, _field=None):
     if hasattr(value, 'cls'):
         # Dereference using the class type specified in the reference
         cls = get_document(value.cls)
     else:
         cls = document_type
+
+    # Fetching is inevitable
+    if _pqs is not None and _pqs._reference_cache is not None:
+        attname = _field.attname
+        st, en = _pqs._reference_cache[attname], len(_pqs._result_cache)
+        docs = filter(lambda doc: attname in doc._data, _pqs._result_cache[st:en])
+        ids = map(lambda doc: doc._data[attname].id, docs)
+        cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
+        id_doc_map = dict((son['_id'], cls._from_son(son)) for son in cursor)
+
+        for i in xrange(st, en):
+            if attname in _pqs._result_cache[i]._data:
+                id = _pqs._result_cache[i]._data[attname].id
+                _pqs._result_cache[i]._data[attname].__setattr__('__target__', id_doc_map.get(id, None))
+
+        _pqs._reference_cache[attname] = len(_pqs._result_cache)
+        return id_doc_map.get(value.id, None)
+
     value = cls._get_db().dereference(value)
     if value is not None:
         value = cls._from_son(value)
@@ -1033,7 +1051,7 @@ class ReferenceField(BaseField):
 
         return id_
 
-    def to_python(self, value):
+    def to_python(self, value, _pqs=None):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if type(value) is DocumentProxy:
@@ -1044,8 +1062,16 @@ class ReferenceField(BaseField):
             value = DBRef(collection, self.document_type.id.to_python(value))
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(dereference_dbref, value=value, document_type=self.document_type),
-                value.id, value.collection)
+                functools.partial(
+                    dereference_dbref,
+                    value=value,
+                    document_type=self.document_type,
+                    _pqs=_pqs,
+                    _field=self
+                ),
+                value.id,
+                value.collection
+            )
 
         return value
 
@@ -1131,7 +1157,7 @@ class CachedReferenceField(BaseField):
                 for document in documents:
                     document.objects(**filter_kwargs).update(**update_kwargs)
 
-    def to_python(self, value):
+    def to_python(self, value, _pqs=None):
         if type(value) is DocumentProxy:
             return value
         
@@ -1141,10 +1167,16 @@ class CachedReferenceField(BaseField):
             else:
                 collection = self.document_type._get_collection_name()
                 value = DBRef(collection, self.document_type.id.to_python(value['_id']))
-        
+
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(dereference_dbref, value=value, document_type=self.document_type),
+                functools.partial(
+                    dereference_dbref,
+                    value=value,
+                    document_type=self.document_type,
+                    _pqs=_pqs,
+                    _field=self
+                ),
                 value.id, value.collection)
 
         return value
