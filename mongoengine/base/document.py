@@ -25,6 +25,16 @@ NON_FIELD_ERRORS = '__all__'
 
 
 class BaseDocument(object):
+    # TODO simplify how `_changed_fields` is used.
+    # Currently, handling of `_changed_fields` seems unnecessarily convoluted:
+    # 1. `BaseDocument` defines `_changed_fields` in its `__slots__`, yet it's
+    #    not setting it to `[]` (or any other value) in `__init__`.
+    # 2. `EmbeddedDocument` sets `_changed_fields` to `[]` it its overloaded
+    #    `__init__`.
+    # 3. `Document` does NOT set `_changed_fields` upon initialization. The
+    #    field is primarily set via `_from_son` or `_clear_changed_fields`,
+    #    though there are also other methods that manipulate it.
+    # 4. The codebase is littered with `hasattr` calls for `_changed_fields`.
     __slots__ = ('_changed_fields', '_initialised', '_created', '_data',
                  '_dynamic_fields', '_auto_id_field', '_db_field_map',
                  '__weakref__')
@@ -665,9 +675,7 @@ class BaseDocument(object):
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
-        """Create an instance of a Document (subclass) from a PyMongo
-        SON.
-        """
+        """Create an instance of a Document (subclass) from a PyMongo SON."""
         if not only_fields:
             only_fields = []
 
@@ -690,7 +698,6 @@ class BaseDocument(object):
         if class_name != cls._class_name:
             cls = get_document(class_name)
 
-        changed_fields = []
         errors_dict = {}
 
         fields = cls._fields
@@ -720,8 +727,13 @@ class BaseDocument(object):
         if cls.STRICT:
             data = {k: v for k, v in iteritems(data) if k in cls._fields}
 
-        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, **data)
-        obj._changed_fields = changed_fields
+        obj = cls(
+            __auto_convert=False,
+            _created=created,
+            __only_fields=only_fields,
+            **data
+        )
+        obj._changed_fields = []
         if not _auto_dereference:
             obj._fields = fields
 
