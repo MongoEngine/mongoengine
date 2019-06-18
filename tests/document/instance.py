@@ -351,7 +351,7 @@ class InstanceTest(MongoDBTestCase):
             class EmailUser(User):
                 email = StringField(primary_key=True)
         exc = e.exception
-        self.assertEqual(exc.message, 'Cannot override primary key field')
+        self.assertEqual(str(exc), 'Cannot override primary key field')
 
     def test_custom_id_field_is_required(self):
         """Ensure the custom primary key field is required."""
@@ -362,7 +362,7 @@ class InstanceTest(MongoDBTestCase):
         with self.assertRaises(ValidationError) as e:
             User(name='test').save()
         exc = e.exception
-        self.assertTrue("Field is required: ['username']" in exc.message)
+        self.assertTrue("Field is required: ['username']" in str(exc))
 
     def test_document_not_registered(self):
         class Place(Document):
