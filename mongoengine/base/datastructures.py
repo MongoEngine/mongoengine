@@ -51,11 +51,6 @@ class BaseDict(dict):
             return default
 
     def __getitem__(self, key):
-
-        # change index to positive value because MongoDB does not support negative one
-        if isinstance(key, int) and key < 0:
-            key = len(self) + key
-
         value = super(BaseDict, self).__getitem__(key)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
@@ -113,6 +108,11 @@ class BaseList(list):
         super(BaseList, self).__init__(list_items)
 
     def __getitem__(self, key):
+
+        # change index to positive value because MongoDB does not support negative one
+        if isinstance(key, int) and key < 0:
+            key = len(self) + key
+
         value = super(BaseList, self).__getitem__(key)
 
         if isinstance(key, slice):
