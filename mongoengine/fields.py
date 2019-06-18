@@ -909,7 +909,7 @@ def dereference_dbref(value, document_type, _pqs=None, _field=None):
         for i in xrange(st, en):
             if attname in _pqs._result_cache[i]._data:
                 id = _pqs._result_cache[i]._data[attname].id
-                _pqs._result_cache[i]._data[attname].__setattr__('__target__', id_doc_map.get(id, None))
+                _pqs._result_cache[i]._data[attname] = id_doc_map.get(id, None)
 
         _pqs._reference_cache[attname] = len(_pqs._result_cache)
         return id_doc_map.get(value.id, None)
