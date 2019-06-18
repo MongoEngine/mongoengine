@@ -1578,7 +1578,7 @@ class InstanceTest(MongoDBTestCase):
         self.assertEqual(person.age, 21)
         self.assertEqual(person.active, False)
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop(self):
+    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(self):
         # Refers to Issue #1685
         class EmbeddedChildModel(EmbeddedDocument):
             id = DictField(primary_key=True)
@@ -1588,9 +1588,11 @@ class InstanceTest(MongoDBTestCase):
                 EmbeddedChildModel)
 
         emb = EmbeddedChildModel(id={'1': [1]})
-        ParentModel(child=emb)._get_changed_fields()
+        changed_fields = ParentModel(child=emb)._get_changed_fields()
+        self.assertEqual(changed_fields, [])
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_full_caseEmailUser(self):
+    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(self):
+        # Refers to Issue #1685
         class User(Document):
             id = IntField(primary_key=True)
             name = StringField()
