@@ -10,7 +10,7 @@ Development
 Changes in 0.18.1
 =================
 - Fix a bug introduced in 0.18.0 which was causing `.save()` to update all the fields
-    instead of updating only the modified fields. This gug only occurs when using custom pk #2082
+    instead of updating only the modified fields. This bug only occurs when using custom pk #2082
 - Add Python 3.7 in travis #2058
 
 Changes in 0.18.0
