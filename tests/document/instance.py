@@ -333,41 +333,36 @@ class InstanceTest(MongoDBTestCase):
         self.assertEqual(User._fields['username'].db_field, '_id')
         self.assertEqual(User._meta['id_field'], 'username')
 
-        # test no primary key field
-        self.assertRaises(ValidationError, User(name='test').save)
+        User.objects.create(username='test', name='test user')
+        user = User.objects.first()
+        self.assertEqual(user.id, 'test')
+        self.assertEqual(user.pk, 'test')
+        user_dict = User.objects._collection.find_one()
+        self.assertEqual(user_dict['_id'], 'test')
 
-        # define a subclass with a different primary key field than the
-        # parent
-        with self.assertRaises(ValueError):
+    def test_change_custom_id_field_in_subclass(self):
+        """Subclasses cannot override which field is the primary key."""
+        class User(Document):
+            username = StringField(primary_key=True)
+            name = StringField()
+            meta = {'allow_inheritance': True}
+
+        with self.assertRaises(ValueError) as e:
             class EmailUser(User):
                 email = StringField(primary_key=True)
+        exc = e.exception
+        self.assertEqual(str(exc), 'Cannot override primary key field')
 
-        class EmailUser(User):
-            email = StringField()
+    def test_custom_id_field_is_required(self):
+        """Ensure the custom primary key field is required."""
+        class User(Document):
+            username = StringField(primary_key=True)
+            name = StringField()
 
-        user = User(username='test', name='test user')
-        user.save()
-
-        user_obj = User.objects.first()
-        self.assertEqual(user_obj.id, 'test')
-        self.assertEqual(user_obj.pk, 'test')
-
-        user_son = User.objects._collection.find_one()
-        self.assertEqual(user_son['_id'], 'test')
-        self.assertNotIn('username', user_son['_id'])
-
-        User.drop_collection()
-
-        user = User(pk='mongo', name='mongo user')
-        user.save()
-
-        user_obj = User.objects.first()
-        self.assertEqual(user_obj.id, 'mongo')
-        self.assertEqual(user_obj.pk, 'mongo')
-
-        user_son = User.objects._collection.find_one()
-        self.assertEqual(user_son['_id'], 'mongo')
-        self.assertNotIn('username', user_son['_id'])
+        with self.assertRaises(ValidationError) as e:
+            User(name='test').save()
+        exc = e.exception
+        self.assertTrue("Field is required: ['username']" in str(exc))
 
     def test_document_not_registered(self):
         class Place(Document):
