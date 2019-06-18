@@ -3,6 +3,7 @@ import numbers
 from functools import partial
 
 from bson import DBRef, ObjectId, SON, json_util
+from future.utils import listitems
 import pymongo
 import six
 from six import iteritems
@@ -670,7 +671,7 @@ class BaseDocument(object):
                 del set_data["_id"]
 
         # Determine if any changed items were actually unset.
-        for path, value in list(set_data.items()):
+        for path, value in listitems(set_data):
             if value or isinstance(
                 value, (numbers.Number, bool)
             ):  # Account for 0 and True that are truthy
