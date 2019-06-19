@@ -898,7 +898,7 @@ def dereference_dbref(value, document_type, _pqs=None, _field=None):
         cls = document_type
 
     # Fetching is inevitable
-    if (_pqs is not None) and (_pqs._reference_cache is not None) and hasattr(_pqs._reference_cache[0], '_data') and  (_field is not None):
+    if (_pqs is not None) and (_pqs._reference_cache is not None) and hasattr(_pqs._result_cache[0], '_data') and (_field is not None):
         attname = _field.attname
         if value.id in _pqs._cache[attname]:
             return _pqs._cache[attname][value.id]
