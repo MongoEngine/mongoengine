@@ -890,6 +890,12 @@ class MapField(DictField):
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
+def _dereference_dbref(value, cls):
+    value = cls._get_db().dereference(value)
+    if value is not None:
+        value = cls._from_son(value)
+    return value
+
 def dereference_dbref(value, document_type, _pqs=None, _field=None):
     if hasattr(value, 'cls'):
         # Dereference using the class type specified in the reference
@@ -897,29 +903,32 @@ def dereference_dbref(value, document_type, _pqs=None, _field=None):
     else:
         cls = document_type
 
+    cant_prefetch = (_pqs is None) or (_pqs._reference_cache is None) or (not _pqs._result_cache) or (_field is None)
+    cant_prefetch = cant_prefetch or not isinstance(_pqs._result_cache[0], Document)
+
+    if cant_prefetch:
+        return _dereference_dbref(value, cls)
+
+    attname = _field.attname
+    if value.id in _pqs._cache[attname]:
+        return _pqs._cache[attname][value.id]
+    st, en = _pqs._reference_cache[attname], len(_pqs._result_cache)
+    ids = [doc._data[attname].id for doc in _pqs._result_cache[st:en] if attname in doc._data]
+
+    # This case usually happens when a queryset cache is not updated, like when copying
+    if value.id not in ids:
+        return _dereference_dbref(value, cls)
+
     # Fetching is inevitable
-    if (_pqs is not None) and (_pqs._reference_cache is not None) and hasattr(_pqs._result_cache[0], '_data') and (_field is not None):
-        attname = _field.attname
-        if value.id in _pqs._cache[attname]:
-            return _pqs._cache[attname][value.id]
-        st, en = _pqs._reference_cache[attname], len(_pqs._result_cache)
-        docs = filter(lambda doc: attname in doc._data, _pqs._result_cache[st:en])
-        ids = map(lambda doc: doc._data[attname].id, docs)
-        cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
-        id_doc_map = dict((son['_id'], cls._from_son(son)) for son in cursor)
+    cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
+    id_doc_map = dict((son['_id'], cls._from_son(son)) for son in cursor)
 
-        for i in xrange(st, en):
-            if attname in _pqs._result_cache[i]._data:
-                id = _pqs._result_cache[i]._data[attname].id
-                _pqs._cache[attname][id] = id_doc_map.get(id, None)
+    _pqs._cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
 
-        _pqs._reference_cache[attname] = len(_pqs._result_cache)
-        return id_doc_map.get(value.id, None)
+    _pqs._reference_cache[attname] = len(_pqs._result_cache)
+    return id_doc_map.get(value.id, None)
 
-    value = cls._get_db().dereference(value)
-    if value is not None:
-        value = cls._from_son(value)
-    return value
+
 
 
 class ReferenceField(BaseField):
@@ -1072,7 +1081,7 @@ class ReferenceField(BaseField):
                     _field=self
                 ),
                 value.id,
-                value.collection
+                value.collection,
             )
 
         return value
@@ -1179,7 +1188,9 @@ class CachedReferenceField(BaseField):
                     _pqs=_pqs,
                     _field=self
                 ),
-                value.id, value.collection)
+                value.id,
+                value.collection,
+            )
 
         return value
 
