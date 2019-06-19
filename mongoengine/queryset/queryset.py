@@ -23,6 +23,7 @@ class QuerySet(BaseQuerySet):
     _len = None
     _result_cache = None
     _reference_cache = None
+    _cache = None
 
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
@@ -94,6 +95,8 @@ class QuerySet(BaseQuerySet):
             self._result_cache = []
         if self._reference_cache is None:
             self._reference_cache = defaultdict(int)
+        if self._cache is None:
+            self._cache = defaultdict(dict)
 
         pos = 0
         while True:
@@ -115,6 +118,8 @@ class QuerySet(BaseQuerySet):
             self._result_cache = []
         if self._reference_cache is None:
             self._reference_cache = defaultdict(int)
+        if self._cache is None:
+            self._cache = defaultdict(dict)
 
         if self._has_more:
             try:
