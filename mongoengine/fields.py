@@ -890,30 +890,49 @@ class MapField(DictField):
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
+
+def _get_field(doc, fields):
+    for index in xrange(0, len(fields)):
+        if doc is None:
+            return None
+        attname = fields[index].attname
+        if not (hasattr(doc, '_data') and attname in doc._data):
+            return None
+        doc = doc._data[attname]
+    return doc.id
+
 def _dereference_dbref(value, cls):
     value = cls._get_db().dereference(value)
     if value is not None:
         value = cls._from_son(value)
     return value
 
-def dereference_dbref(value, document_type, _pqs=None, _field=None):
+def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None):
     if hasattr(value, 'cls'):
         # Dereference using the class type specified in the reference
         cls = get_document(value.cls)
     else:
         cls = document_type
 
-    cant_prefetch = (_pqs is None) or (_pqs._reference_cache is None) or (not _pqs._result_cache) or (_field is None)
-    cant_prefetch = cant_prefetch or not isinstance(_pqs._result_cache[0], Document)
+    # Lets be extra safe and ensure that no exception can be thrown
+    cant_prefetch = (
+        _primary_queryset is None or
+        _primary_queryset._reference_cache_count is None or
+        not _primary_queryset._result_cache or
+        not _fields or
+        not isinstance(_primary_queryset._result_cache[0], Document)
+    )
 
     if cant_prefetch:
         return _dereference_dbref(value, cls)
 
-    attname = _field.attname
-    if value.id in _pqs._cache[attname]:
-        return _pqs._cache[attname][value.id]
-    st, en = _pqs._reference_cache[attname], len(_pqs._result_cache)
-    ids = [doc._data[attname].id for doc in _pqs._result_cache[st:en] if attname in doc._data]
+    attname = '.'.join(map(lambda f: f.attname, _fields))
+    if value.id in _primary_queryset._reference_cache[attname]:
+        return _primary_queryset._reference_cache[attname][value.id]
+    start, end = _primary_queryset._reference_cache_count[attname], len(_primary_queryset._result_cache)
+
+    ids = [_get_field(doc, _fields) for doc in _primary_queryset._result_cache[start:end]]
+    ids = [id for id in ids if id is not None]
 
     # This case usually happens when a queryset cache is not updated, like when copying
     if value.id not in ids:
@@ -921,11 +940,11 @@ def dereference_dbref(value, document_type, _pqs=None, _field=None):
 
     # Fetching is inevitable
     cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
-    id_doc_map = dict((son['_id'], cls._from_son(son)) for son in cursor)
+    id_doc_map = dict((son['_id'], cls._from_son(son, _primary_queryset=_primary_queryset, _fields=_fields)) for son in cursor)
 
-    _pqs._cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
+    _primary_queryset._reference_cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
 
-    _pqs._reference_cache[attname] = len(_pqs._result_cache)
+    _primary_queryset._reference_cache_count[attname] = len(_primary_queryset._result_cache)
     return id_doc_map.get(value.id, None)
 
 
@@ -1062,7 +1081,7 @@ class ReferenceField(BaseField):
 
         return id_
 
-    def to_python(self, value, _pqs=None):
+    def to_python(self, value, _primary_queryset=None, _fields=None):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if type(value) is DocumentProxy:
@@ -1077,8 +1096,8 @@ class ReferenceField(BaseField):
                     dereference_dbref,
                     value=value,
                     document_type=self.document_type,
-                    _pqs=_pqs,
-                    _field=self
+                    _primary_queryset=_primary_queryset,
+                    _fields=_fields[:] if _fields is not None else None,
                 ),
                 value.id,
                 value.collection,
@@ -1168,7 +1187,7 @@ class CachedReferenceField(BaseField):
                 for document in documents:
                     document.objects(**filter_kwargs).update(**update_kwargs)
 
-    def to_python(self, value, _pqs=None):
+    def to_python(self, value, _primary_queryset=None, _fields=None):
         if type(value) is DocumentProxy:
             return value
         
@@ -1185,8 +1204,8 @@ class CachedReferenceField(BaseField):
                     dereference_dbref,
                     value=value,
                     document_type=self.document_type,
-                    _pqs=_pqs,
-                    _field=self
+                    _primary_queryset=_primary_queryset,
+                    _fields=_fields[:] if _fields is not None else None,
                 ),
                 value.id,
                 value.collection,

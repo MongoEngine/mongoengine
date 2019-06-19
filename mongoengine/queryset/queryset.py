@@ -22,8 +22,8 @@ class QuerySet(BaseQuerySet):
     _has_more = True
     _len = None
     _result_cache = None
+    _reference_cache_count = None
     _reference_cache = None
-    _cache = None
 
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
@@ -39,7 +39,8 @@ class QuerySet(BaseQuerySet):
             raw_doc,
             _auto_dereference=self._auto_dereference,
             only_fields=self.only_fields,
-            _pqs=self
+            _primary_queryset=self,
+            _fields=[],
         )
 
         if self._scalar:
@@ -93,10 +94,10 @@ class QuerySet(BaseQuerySet):
         Raises StopIteration when there are no more results"""
         if self._result_cache is None:
             self._result_cache = []
+        if self._reference_cache_count is None:
+            self._reference_cache_count = defaultdict(int)
         if self._reference_cache is None:
-            self._reference_cache = defaultdict(int)
-        if self._cache is None:
-            self._cache = defaultdict(dict)
+            self._reference_cache = defaultdict(dict)
 
         pos = 0
         while True:
@@ -116,10 +117,10 @@ class QuerySet(BaseQuerySet):
         """
         if self._result_cache is None:
             self._result_cache = []
+        if self._reference_cache_count is None:
+            self._reference_cache_count = defaultdict(int)
         if self._reference_cache is None:
-            self._reference_cache = defaultdict(int)
-        if self._cache is None:
-            self._cache = defaultdict(dict)
+            self._reference_cache = defaultdict(dict)
 
         if self._has_more:
             try:
