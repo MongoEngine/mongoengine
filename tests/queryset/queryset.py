@@ -1857,8 +1857,8 @@ class QuerySetTest(unittest.TestCase):
         self.Person.objects()[:1].delete()
         self.assertEqual(1, BlogPost.objects.count())
 
-    def test_limit_with_write_concern_0(self):
-
+    def test_delete_edge_case_with_write_concern_0_return_None(self):
+        """Return None when write is unacknowledged"""
         p1 = self.Person(name="User Z", age=20).save()
         del_result = p1.delete(w=0)
         self.assertEqual(None, del_result)
