@@ -739,7 +739,7 @@ class BaseDocument(object):
         return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _pqs=None):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         if not only_fields:
@@ -761,9 +761,6 @@ class BaseDocument(object):
         if not _auto_dereference:
             fields = copy.copy(fields)
 
-        ReferenceField = _import_class("ReferenceField")
-        CachedReferenceField = _import_class("CachedReferenceField")
-
         for field_name, field in fields.iteritems():
             field._auto_dereference = _auto_dereference
             if field.db_field in data:
@@ -771,9 +768,7 @@ class BaseDocument(object):
                 try:
                     if value is not None:
                         if not field.is_v2_field():
-                            # Pass queryset for ReferenceFields only
-                            is_reference = isinstance(field, ReferenceField) or isinstance(field, CachedReferenceField)
-                            value = field.to_python(value, _pqs=_pqs) if is_reference else field.to_python(value)
+                            value = field.to_python(value)
                     data[field_name] = value
                     if field_name != field.db_field:
                         del data[field.db_field]

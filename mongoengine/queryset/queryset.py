@@ -1,7 +1,6 @@
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (BaseQuerySet, DO_NOTHING, NULLIFY,
                                        CASCADE, DENY, PULL)
-from collections import defaultdict
 
 __all__ = ('QuerySet', 'QuerySetNoCache', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
            'DENY', 'PULL')
@@ -22,29 +21,6 @@ class QuerySet(BaseQuerySet):
     _has_more = True
     _len = None
     _result_cache = None
-    _reference_cache = None
-
-    def next(self):
-        """Wrap the result in a :class:`~mongoengine.Document` object.
-        Override parent function for lazy pre-fetching.
-        """
-        if self._limit == 0 or self._none:
-            raise StopIteration
-
-        raw_doc = self._cursor.next()
-        if self._as_pymongo:
-            return self._get_as_pymongo(raw_doc)
-        doc = self._document._from_son(
-            raw_doc,
-            _auto_dereference=self._auto_dereference,
-            only_fields=self.only_fields,
-            _pqs=self
-        )
-
-        if self._scalar:
-            return self._get_scalar(doc)
-
-        return doc
 
     def __iter__(self):
         """Iteration utilises a results cache which iterates the cursor
@@ -92,9 +68,6 @@ class QuerySet(BaseQuerySet):
         Raises StopIteration when there are no more results"""
         if self._result_cache is None:
             self._result_cache = []
-        if self._reference_cache is None:
-            self._reference_cache = defaultdict(int)
-
         pos = 0
         while True:
             upper = len(self._result_cache)
@@ -113,9 +86,6 @@ class QuerySet(BaseQuerySet):
         """
         if self._result_cache is None:
             self._result_cache = []
-        if self._reference_cache is None:
-            self._reference_cache = defaultdict(int)
-
         if self._has_more:
             try:
                 for i in xrange(ITER_CHUNK_SIZE):
