@@ -73,6 +73,7 @@ class BaseQuerySet(object):
                 self._initial_query = {
                     '_cls': {'$in': self._document._subclasses}}
             self._loaded_fields = QueryFieldList(always_include=['_cls'])
+
         self._cursor_obj = None
         self._limit = None
         self._skip = None
@@ -707,8 +708,9 @@ class BaseQuerySet(object):
         return queryset
 
     def no_sub_classes(self):
-        """
-        Only return instances of this document and not any inherited documents
+        """Filter for only the instances of this specific document.
+
+        Do NOT return any inherited documents.
         """
         if self._document._meta.get('allow_inheritance') is True:
             self._initial_query = {'_cls': self._document._class_name}
