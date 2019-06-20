@@ -914,7 +914,9 @@ def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None
     else:
         cls = document_type
 
-    # Lets be extra safe and ensure that no exception can be thrown
+    # Lets be extra safe and ensure that no exception can be thrown.
+    # _result_cache contains tuples instead of Document when values_list is called on the queryset. Our document
+    # parsing logic does not work for tuples, so lets assert this before prefetching.
     cant_prefetch = (
         _primary_queryset is None or
         _primary_queryset._reference_cache_count is None or
@@ -934,7 +936,7 @@ def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None
     ids = [_get_field(doc, _fields) for doc in _primary_queryset._result_cache[start:end]]
     ids = [id for id in ids if id is not None]
 
-    # This case usually happens when a queryset cache is not updated, like when copying
+    # This case usually happens when a queryset cache is not updated, like when cloning a queryset.
     if value.id not in ids:
         return _dereference_dbref(value, cls)
 

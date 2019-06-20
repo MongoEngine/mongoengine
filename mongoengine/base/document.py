@@ -774,6 +774,8 @@ class BaseDocument(object):
                             # Pass queryset for ReferenceFields only
                             is_reference = isinstance(field, ReferenceField) or isinstance(field, CachedReferenceField)
                             if is_reference:
+                                # _fields contains a stack of reference fields being fetched.
+                                # e.g. D.ref1.ref2.ref3 -> [ref1, ref2, ref3]
                                 _fields is not None and _fields.append(field)
                                 value = field.to_python(value, _primary_queryset=_primary_queryset, _fields=_fields)
                                 _fields is not None and _fields.pop()
