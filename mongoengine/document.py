@@ -544,7 +544,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
     @property
     def _qs(self):
-        """Return the queryset to use for updating / reloading / deletions."""
+        """Return the default queryset corresponding to this document."""
         if not hasattr(self, '__objects'):
             self.__objects = QuerySet(self, self._get_collection())
         return self.__objects
@@ -552,9 +552,11 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     @property
     def _object_key(self):
         """Get the query dict that can be used to fetch this object from
-        the database. Most of the time it's a simple PK lookup, but in
-        case of a sharded collection with a compound shard key, it can
-        contain a more complex query.
+        the database.
+
+        Most of the time the dict is a simple PK lookup, but in case of
+        a sharded collection with a compound shard key, it can contain a more
+        complex query.
         """
         select_dict = {'pk': self.pk}
         shard_key = self.__class__._meta.get('shard_key', tuple())
