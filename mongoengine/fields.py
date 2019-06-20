@@ -895,7 +895,7 @@ def _get_field(doc, fields):
     for index in xrange(0, len(fields)):
         if doc is None:
             return None
-        attname = fields[index].attname
+        attname = fields[index].name
         if not (hasattr(doc, '_data') and attname in doc._data):
             return None
         doc = doc._data[attname]
@@ -928,7 +928,8 @@ def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None
     if cant_prefetch:
         return _dereference_dbref(value, cls)
 
-    attname = '.'.join(map(lambda f: f.attname, _fields))
+    attname = '.'.join(map(lambda f: f.name, _fields))
+
     if value.id in _primary_queryset._reference_cache[attname]:
         return _primary_queryset._reference_cache[attname][value.id]
     start, end = _primary_queryset._reference_cache_count[attname], len(_primary_queryset._result_cache)
