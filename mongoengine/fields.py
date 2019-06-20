@@ -890,16 +890,64 @@ class MapField(DictField):
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
-def dereference_dbref(value, document_type):
+
+def _get_field(doc, fields):
+    for index in xrange(0, len(fields)):
+        if doc is None:
+            return None
+        attname = fields[index].attname
+        if not (hasattr(doc, '_data') and attname in doc._data):
+            return None
+        doc = doc._data[attname]
+    return doc.id
+
+def _dereference_dbref(value, cls):
+    value = cls._get_db().dereference(value)
+    if value is not None:
+        value = cls._from_son(value)
+    return value
+
+def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None):
     if hasattr(value, 'cls'):
         # Dereference using the class type specified in the reference
         cls = get_document(value.cls)
     else:
         cls = document_type
-    value = cls._get_db().dereference(value)
-    if value is not None:
-        value = cls._from_son(value)
-    return value
+
+    # Lets be extra safe and ensure that no exception can be thrown
+    cant_prefetch = (
+        _primary_queryset is None or
+        _primary_queryset._reference_cache_count is None or
+        not _primary_queryset._result_cache or
+        not _fields or
+        not isinstance(_primary_queryset._result_cache[0], Document)
+    )
+
+    if cant_prefetch:
+        return _dereference_dbref(value, cls)
+
+    attname = '.'.join(map(lambda f: f.attname, _fields))
+    if value.id in _primary_queryset._reference_cache[attname]:
+        return _primary_queryset._reference_cache[attname][value.id]
+    start, end = _primary_queryset._reference_cache_count[attname], len(_primary_queryset._result_cache)
+
+    ids = [_get_field(doc, _fields) for doc in _primary_queryset._result_cache[start:end]]
+    ids = [id for id in ids if id is not None]
+
+    # This case usually happens when a queryset cache is not updated, like when copying
+    if value.id not in ids:
+        return _dereference_dbref(value, cls)
+
+    # Fetching is inevitable
+    cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
+    id_doc_map = dict((son['_id'], cls._from_son(son, _primary_queryset=_primary_queryset, _fields=_fields)) for son in cursor)
+
+    _primary_queryset._reference_cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
+
+    _primary_queryset._reference_cache_count[attname] = len(_primary_queryset._result_cache)
+    return id_doc_map.get(value.id, None)
+
+
 
 
 class ReferenceField(BaseField):
@@ -1033,7 +1081,7 @@ class ReferenceField(BaseField):
 
         return id_
 
-    def to_python(self, value):
+    def to_python(self, value, _primary_queryset=None, _fields=None):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if type(value) is DocumentProxy:
@@ -1044,8 +1092,16 @@ class ReferenceField(BaseField):
             value = DBRef(collection, self.document_type.id.to_python(value))
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(dereference_dbref, value=value, document_type=self.document_type),
-                value.id, value.collection)
+                functools.partial(
+                    dereference_dbref,
+                    value=value,
+                    document_type=self.document_type,
+                    _primary_queryset=_primary_queryset,
+                    _fields=_fields[:] if _fields is not None else None,
+                ),
+                value.id,
+                value.collection,
+            )
 
         return value
 
@@ -1131,7 +1187,7 @@ class CachedReferenceField(BaseField):
                 for document in documents:
                     document.objects(**filter_kwargs).update(**update_kwargs)
 
-    def to_python(self, value):
+    def to_python(self, value, _primary_queryset=None, _fields=None):
         if type(value) is DocumentProxy:
             return value
         
@@ -1141,11 +1197,19 @@ class CachedReferenceField(BaseField):
             else:
                 collection = self.document_type._get_collection_name()
                 value = DBRef(collection, self.document_type.id.to_python(value['_id']))
-        
+
         if isinstance(value, DBRef):
             value = DocumentProxy(
-                functools.partial(dereference_dbref, value=value, document_type=self.document_type),
-                value.id, value.collection)
+                functools.partial(
+                    dereference_dbref,
+                    value=value,
+                    document_type=self.document_type,
+                    _primary_queryset=_primary_queryset,
+                    _fields=_fields[:] if _fields is not None else None,
+                ),
+                value.id,
+                value.collection,
+            )
 
         return value
 
@@ -1304,8 +1368,15 @@ class GenericReferenceField(BaseField):
         value = instance._data.get(self.name)
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
+
+        if type(value) is DocumentProxy:
+            return value
         if self._auto_dereference and isinstance(value, (dict, SON)):
-            instance._data[self.name] = self.dereference(value)
+            doc_cls = get_document(value['_cls'])
+            reference = value['_ref']
+            return DocumentProxy(
+                functools.partial(self.dereference, doc_cls=doc_cls, reference=reference, instance=instance),
+                reference.id, doc_cls, instance)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 
@@ -1322,12 +1393,11 @@ class GenericReferenceField(BaseField):
             self.error('You can only reference documents once they have been'
                        ' saved to the database')
 
-    def dereference(self, value):
-        doc_cls = get_document(value['_cls'])
-        reference = value['_ref']
+    def dereference(self, doc_cls, reference, instance):
         doc = doc_cls._get_db().dereference(reference)
         if doc is not None:
             doc = doc_cls._from_son(doc)
+        instance._data[self.name] = doc
         return doc
 
     def to_mongo(self, document, **kwargs):
