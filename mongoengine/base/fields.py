@@ -128,10 +128,9 @@ class BaseField(object):
         return instance._data.get(self.name)
 
     def __set__(self, instance, value):
-        """Descriptor for assigning a value to a field in a document.
-        """
-        # If setting to None and there is a default
-        # Then set the value to the default value
+        """Descriptor for assigning a value to a field in a document."""
+        # If setting to None and there is a default value provided for this
+        # field, then set the value to the default value.
         if value is None:
             if self.null:
                 value = None
@@ -142,12 +141,16 @@ class BaseField(object):
 
         if instance._initialised:
             try:
-                if (self.name not in instance._data or
-                        instance._data[self.name] != value):
+                value_has_changed = (
+                    self.name not in instance._data or
+                    instance._data[self.name] != value
+                )
+                if value_has_changed:
                     instance._mark_as_changed(self.name)
             except Exception:
-                # Values cant be compared eg: naive and tz datetimes
-                # So mark it as changed
+                # Some values can't be compared and throw an error when we
+                # attempt to do so (e.g. tz-naive and tz-aware datetimes).
+                # Mark the field as changed in such cases.
                 instance._mark_as_changed(self.name)
 
         EmbeddedDocument = _import_class('EmbeddedDocument')
@@ -157,6 +160,7 @@ class BaseField(object):
             for v in value:
                 if isinstance(v, EmbeddedDocument):
                     v._instance = weakref.proxy(instance)
+
         instance._data[self.name] = value
 
     def error(self, message='', errors=None, field_name=None):
