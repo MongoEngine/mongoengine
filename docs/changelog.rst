@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Add a `BaseDocument.to_dict` method #2101
 
 Changes in 0.18.1
 =================
