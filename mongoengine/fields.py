@@ -12,7 +12,7 @@ import re
 import six
 import warnings
 from bson import Decimal128
-from mongoengine.base.proxy import DocumentProxy
+from mongoengine.base.proxy import DocumentProxy, ListFieldProxy, LazyPrefetchBase
 
 PST_TIMEZONE = pytz.timezone("US/Pacific")
 
@@ -717,7 +717,20 @@ class ListField(ComplexBaseField):
         if val is None:
             return None
         to_python = getattr(self.field, 'to_python', None)
-        return [to_python(v) for v in val] if to_python else val
+        if not to_python:
+            return val
+
+        is_reference = isinstance(self.field, ReferenceField) or isinstance(self.field, CachedReferenceField)
+        # Don't create a proxy object for non reference fields
+        if not is_reference:
+            return [to_python(v) for v in val]
+
+        list_field_proxy = ListFieldProxy([])
+        for v in val:
+            doc = to_python(v, _lazy_prefetch_base=list_field_proxy, _fields=[])
+            list_field_proxy.append(doc)
+            list_field_proxy._result_cache.append(doc)
+        return list_field_proxy
 
     def to_mongo(self, val, **kwargs):
         if val is None:
@@ -899,7 +912,7 @@ def _get_field(doc, fields):
         if not (hasattr(doc, '_data') and attname in doc._data):
             return None
         doc = doc._data[attname]
-    return doc.id
+    return getattr(doc, 'id', None)
 
 def _dereference_dbref(value, cls):
     value = cls._get_db().dereference(value)
@@ -907,7 +920,8 @@ def _dereference_dbref(value, cls):
         value = cls._from_son(value)
     return value
 
-def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None):
+def dereference_dbref(value, document_type, _lazy_prefetch_base=None, _fields=None):
+
     if hasattr(value, 'cls'):
         # Dereference using the class type specified in the reference
         cls = get_document(value.cls)
@@ -918,11 +932,10 @@ def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None
     # _result_cache contains tuples instead of Document when values_list is called on the queryset. Our document
     # parsing logic does not work for tuples, so lets assert this before prefetching.
     cant_prefetch = (
-        _primary_queryset is None or
-        _primary_queryset._reference_cache_count is None or
-        not _primary_queryset._result_cache or
-        not _fields or
-        not isinstance(_primary_queryset._result_cache[0], Document)
+        not isinstance(_lazy_prefetch_base, LazyPrefetchBase) or
+        _lazy_prefetch_base._reference_cache_count is None or
+        not _lazy_prefetch_base._result_cache or
+        _fields is None
     )
 
     if cant_prefetch:
@@ -930,12 +943,12 @@ def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None
 
     attname = '.'.join(map(lambda f: f.name, _fields))
 
-    if value.id in _primary_queryset._reference_cache[attname]:
-        return _primary_queryset._reference_cache[attname][value.id]
-    start, end = _primary_queryset._reference_cache_count[attname], len(_primary_queryset._result_cache)
+    if value.id in _lazy_prefetch_base._reference_cache[attname]:
+        return _lazy_prefetch_base._reference_cache[attname][value.id]
+    start, end = _lazy_prefetch_base._reference_cache_count[attname], len(_lazy_prefetch_base._result_cache)
 
-    ids = [_get_field(doc, _fields) for doc in _primary_queryset._result_cache[start:end]]
-    ids = [id for id in ids if id is not None]
+    ids = map(lambda doc: _get_field(doc, _fields), _lazy_prefetch_base._result_cache[start:end])
+    ids = filter(lambda id: id is not None, ids)
 
     # This case usually happens when a queryset cache is not updated, like when cloning a queryset.
     if value.id not in ids:
@@ -943,13 +956,12 @@ def dereference_dbref(value, document_type, _primary_queryset=None, _fields=None
 
     # Fetching is inevitable
     cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
-    id_doc_map = dict((son['_id'], cls._from_son(son, _primary_queryset=_primary_queryset, _fields=_fields)) for son in cursor)
+    id_doc_map = dict((son['_id'], cls._from_son(son, _lazy_prefetch_base=_lazy_prefetch_base, _fields=_fields)) for son in cursor)
 
-    _primary_queryset._reference_cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
+    _lazy_prefetch_base._reference_cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
 
-    _primary_queryset._reference_cache_count[attname] = len(_primary_queryset._result_cache)
+    _lazy_prefetch_base._reference_cache_count[attname] = len(_lazy_prefetch_base._result_cache)
     return id_doc_map.get(value.id, None)
-
 
 
 
@@ -1084,7 +1096,7 @@ class ReferenceField(BaseField):
 
         return id_
 
-    def to_python(self, value, _primary_queryset=None, _fields=None):
+    def to_python(self, value, _lazy_prefetch_base=None, _fields=None):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if type(value) is DocumentProxy:
@@ -1099,7 +1111,7 @@ class ReferenceField(BaseField):
                     dereference_dbref,
                     value=value,
                     document_type=self.document_type,
-                    _primary_queryset=_primary_queryset,
+                    _lazy_prefetch_base=_lazy_prefetch_base,
                     _fields=_fields[:] if _fields is not None else None,
                 ),
                 value.id,
@@ -1190,7 +1202,7 @@ class CachedReferenceField(BaseField):
                 for document in documents:
                     document.objects(**filter_kwargs).update(**update_kwargs)
 
-    def to_python(self, value, _primary_queryset=None, _fields=None):
+    def to_python(self, value, _lazy_prefetch_base=None, _fields=None):
         if type(value) is DocumentProxy:
             return value
         
@@ -1207,7 +1219,7 @@ class CachedReferenceField(BaseField):
                     dereference_dbref,
                     value=value,
                     document_type=self.document_type,
-                    _primary_queryset=_primary_queryset,
+                    _lazy_prefetch_base=_lazy_prefetch_base,
                     _fields=_fields[:] if _fields is not None else None,
                 ),
                 value.id,

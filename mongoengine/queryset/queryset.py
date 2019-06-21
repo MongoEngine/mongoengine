@@ -1,6 +1,7 @@
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (BaseQuerySet, DO_NOTHING, NULLIFY,
                                        CASCADE, DENY, PULL)
+from mongoengine.base.proxy import LazyPrefetchBase
 from collections import defaultdict
 
 __all__ = ('QuerySet', 'QuerySetNoCache', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
@@ -11,7 +12,7 @@ REPR_OUTPUT_SIZE = 20
 ITER_CHUNK_SIZE = 100
 
 
-class QuerySet(BaseQuerySet):
+class QuerySet(BaseQuerySet, LazyPrefetchBase):
     """The default queryset, that builds queries and handles a set of results
     returned from a query.
 
@@ -39,7 +40,7 @@ class QuerySet(BaseQuerySet):
             raw_doc,
             _auto_dereference=self._auto_dereference,
             only_fields=self.only_fields,
-            _primary_queryset=self,
+            _lazy_prefetch_base=self,
             _fields=[],
         )
 

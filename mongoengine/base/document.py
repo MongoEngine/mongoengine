@@ -739,7 +739,7 @@ class BaseDocument(object):
         return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _primary_queryset=None, _fields=None):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _lazy_prefetch_base=None, _fields=None):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         if not only_fields:
@@ -777,7 +777,7 @@ class BaseDocument(object):
                                 # _fields contains a stack of reference fields being fetched.
                                 # e.g. D.ref1.ref2.ref3 -> [ref1, ref2, ref3]
                                 _fields is not None and _fields.append(field)
-                                value = field.to_python(value, _primary_queryset=_primary_queryset, _fields=_fields)
+                                value = field.to_python(value, _lazy_prefetch_base=_lazy_prefetch_base, _fields=_fields)
                                 _fields is not None and _fields.pop()
                             else:
                                 value = field.to_python(value)
