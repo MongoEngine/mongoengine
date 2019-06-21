@@ -3525,5 +3525,76 @@ class InstanceTest(MongoDBTestCase):
             User.objects().select_related()
 
 
+class DocumentToDictTest(MongoDBTestCase):
+    """Class for testing the BaseDocument.to_dict method."""
+
+    def test_to_dict(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        p = Person(name='Tom', age=30)
+        self.assertEqual(p.to_dict(), {'id': None, 'name': 'Tom', 'age': 30})
+
+    def test_to_dict_with_a_persisted_doc(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        p = Person.objects.create(name='Tom', age=30)
+        p_dict = p.to_dict()
+        self.assertTrue(p_dict['id'])
+        self.assertEqual(p_dict['name'], 'Tom')
+        self.assertEqual(p_dict['age'], 30)
+
+    def test_to_dict_empty_doc(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        p = Person()
+        self.assertEqual(p.to_dict(), {'id': None, 'name': None, 'age': None})
+
+    def test_to_dict_with_default_values(self):
+        class Person(Document):
+            name = StringField(default='Unknown')
+            age = IntField(default=0)
+
+        p = Person()
+        self.assertEqual(
+            p.to_dict(),
+            {'id': None, 'name': 'Unknown', 'age': 0}
+        )
+
+    def test_to_dict_with_a_db_field(self):
+        class Person(Document):
+            name = StringField(db_field='db_name')
+
+        p = Person(name='Tom')
+        self.assertEqual(p.to_dict(), {'id': None, 'name': 'Tom'})
+
+    def test_to_dict_with_a_primary_key(self):
+        class Person(Document):
+            username = StringField(primary_key=True)
+
+        p = Person(username='tomtom')
+        self.assertEqual(p.to_dict(), {'username': 'tomtom'})
+
+    def test_to_dict_with_an_embedded_document(self):
+        class Book(EmbeddedDocument):
+            title = StringField()
+
+        class Author(Document):
+            name = StringField()
+            book = EmbeddedDocumentField(Book)
+
+        a = Author(name='Yuval', book=Book(title='Sapiens'))
+        self.assertEqual(a.to_dict(), {
+            'id': None,
+            'name': 'Yuval',
+            'book': {'title': 'Sapiens'}
+        })
+
+
 if __name__ == '__main__':
     unittest.main()

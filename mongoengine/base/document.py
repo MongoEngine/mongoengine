@@ -309,9 +309,7 @@ class BaseDocument(object):
         return self._data['_text_score']
 
     def to_mongo(self, use_db_field=True, fields=None):
-        """
-        Return as SON data ready for use with MongoDB.
-        """
+        """Return as SON data ready for use with MongoDB."""
         fields = fields or []
 
         data = SON()
@@ -412,12 +410,35 @@ class BaseDocument(object):
             message = 'ValidationError (%s:%s) ' % (self._class_name, pk)
             raise ValidationError(message, errors=errors)
 
+    def to_dict(self):
+        """Serialize this document into a dict.
+
+        Return field names as they're defined on the document (as opposed to
+        e.g. how they're stored in MongoDB). Return values in their
+        deserialized form (i.e. the same form that you get when you access
+        `doc.some_field_name`). Serialize embedded documents recursively.
+
+        The resultant dict can be consumed easily by other modules which
+        don't need to be aware of MongoEngine-specific object types.
+
+        :return dict: dictionary of field name & value pairs.
+        """
+        data_dict = {}
+        for field_name in self._fields:
+            value = getattr(self, field_name)
+            if isinstance(value, BaseDocument):
+                data_dict[field_name] = value.to_dict()
+            else:
+                data_dict[field_name] = value
+        return data_dict
+
     def to_json(self, *args, **kwargs):
         """Convert this document to JSON.
 
         :param use_db_field: Serialize field names as they appear in
             MongoDB (as opposed to attribute names on this document).
             Defaults to True.
+        :return str: string representing the jsonified document.
         """
         use_db_field = kwargs.pop('use_db_field', True)
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
@@ -426,12 +447,13 @@ class BaseDocument(object):
     def from_json(cls, json_data, created=False):
         """Converts json data to a Document instance
 
-        :param json_data: The json data to load into the Document
-        :param created: If True, the document will be considered as a brand new document
-                        If False and an id is provided, it will consider that the data being
-                        loaded corresponds to what's already in the database (This has an impact of subsequent call to .save())
-                        If False and no id is provided, it will consider the data as a new document
-                        (default ``False``)
+        :param str json_data: The json data to load into the Document
+        :param bool created: If True, the document will be considered as
+            a brand new document. If False and an ID is provided, it will
+            consider that the data being loaded corresponds to what's already
+            in the database (This has an impact of subsequent call to .save())
+            If False and no id is provided, it will consider the data as a new
+            document (default ``False``)
         """
         return cls._from_son(json_util.loads(json_data), created=created)
 
