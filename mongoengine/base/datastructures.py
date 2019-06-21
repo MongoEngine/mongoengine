@@ -11,18 +11,20 @@ __all__ = ('BaseDict', 'StrictDict', 'BaseList', 'EmbeddedDocumentList', 'LazyRe
 
 
 def mark_as_changed_wrapper(parent_method):
-    """Decorators that ensures _mark_as_changed method gets called"""
+    """Decorator that ensures _mark_as_changed method gets called."""
     def wrapper(self, *args, **kwargs):
-        result = parent_method(self, *args, **kwargs)   # Can't use super() in the decorator
+        # Can't use super() in the decorator.
+        result = parent_method(self, *args, **kwargs)
         self._mark_as_changed()
         return result
     return wrapper
 
 
 def mark_key_as_changed_wrapper(parent_method):
-    """Decorators that ensures _mark_as_changed method gets called with the key argument"""
+    """Decorator that ensures _mark_as_changed method gets called with the key argument"""
     def wrapper(self, key, *args, **kwargs):
-        result = parent_method(self, key, *args, **kwargs)   # Can't use super() in the decorator
+        # Can't use super() in the decorator.
+        result = parent_method(self, key, *args, **kwargs)
         self._mark_as_changed(key)
         return result
     return wrapper
