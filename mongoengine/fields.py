@@ -568,9 +568,14 @@ class EmbeddedDocumentField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
-    def to_python(self, value):
+    def to_python(self, value, _lazy_prefetch_base=None, _fields=None):
         if not isinstance(value, self.document_type):
-            return self.document_type._from_son(value, _auto_dereference=self._auto_dereference)
+            return self.document_type._from_son(
+                value,
+                _auto_dereference=self._auto_dereference,
+                _lazy_prefetch_base=_lazy_prefetch_base,
+                _fields=_fields
+            )
         return value
 
     def to_mongo(self, value, **kwargs):
@@ -720,9 +725,9 @@ class ListField(ComplexBaseField):
         if not to_python:
             return val
 
-        is_reference = isinstance(self.field, ReferenceField) or isinstance(self.field, CachedReferenceField)
+        has_reference = isinstance(self.field, (ReferenceField, CachedReferenceField, EmbeddedDocumentField))
         # Don't create a proxy object for non reference fields
-        if not is_reference:
+        if not has_reference:
             return [to_python(v) for v in val]
 
         list_field_proxy = ListFieldProxy([])

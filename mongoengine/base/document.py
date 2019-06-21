@@ -763,6 +763,7 @@ class BaseDocument(object):
 
         ReferenceField = _import_class("ReferenceField")
         CachedReferenceField = _import_class("CachedReferenceField")
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
 
         for field_name, field in fields.iteritems():
             field._auto_dereference = _auto_dereference
@@ -772,8 +773,8 @@ class BaseDocument(object):
                     if value is not None:
                         if not field.is_v2_field():
                             # Pass queryset for ReferenceFields only
-                            is_reference = isinstance(field, ReferenceField) or isinstance(field, CachedReferenceField)
-                            if is_reference:
+                            has_reference = isinstance(field, (ReferenceField, CachedReferenceField, EmbeddedDocumentField))
+                            if has_reference:
                                 # _fields contains a stack of reference fields being fetched.
                                 # e.g. D.ref1.ref2.ref3 -> [ref1, ref2, ref3]
                                 _fields is not None and _fields.append(field)
