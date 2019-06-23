@@ -5,6 +5,7 @@ Changelog
 
 Development
 ===========
+- Fix the `.read()` feature of FileField to properly close the file.
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 0.18.1

@@ -1632,6 +1632,8 @@ class GridFSProxy(object):
                 return gridout.read(size)
             except Exception:
                 return ''
+            finally:
+                gridout.seek(0)
 
     def delete(self):
         # Delete file from GridFS, FileField still remains
