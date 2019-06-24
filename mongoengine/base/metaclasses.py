@@ -385,30 +385,35 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     new_class._meta['id_field'] = field_name
                     new_class.id = field
 
-        # Set primary key if not defined by the document
-        new_class._auto_id_field = getattr(parent_doc_cls,
-                                           '_auto_id_field', False)
+        # If the document doesn't explicitly define a primary key field, create
+        # one. Make it an ObjectIdField and give it a non-clashing name ("id"
+        # by default, but can be different if that one's taken).
         if not new_class._meta.get('id_field'):
-            # After 0.10, find not existing names, instead of overwriting
             id_name, id_db_name = mcs.get_auto_id_names(new_class)
-            new_class._auto_id_field = True
             new_class._meta['id_field'] = id_name
             new_class._fields[id_name] = ObjectIdField(db_field=id_db_name)
             new_class._fields[id_name].name = id_name
             new_class.id = new_class._fields[id_name]
             new_class._db_field_map[id_name] = id_db_name
             new_class._reverse_db_field_map[id_db_name] = id_name
-            # Prepend id field to _fields_ordered
+
+            # Prepend the ID field to _fields_ordered (so that it's *always*
+            # the first field).
             new_class._fields_ordered = (id_name, ) + new_class._fields_ordered
 
-        # Merge in exceptions with parent hierarchy
+        # Merge in exceptions with parent hierarchy.
         exceptions_to_merge = (DoesNotExist, MultipleObjectsReturned)
         module = attrs.get('__module__')
         for exc in exceptions_to_merge:
             name = exc.__name__
-            parents = tuple(getattr(base, name) for base in flattened_bases
-                            if hasattr(base, name)) or (exc,)
-            # Create new exception and set to new_class
+            parents = tuple(
+                getattr(base, name)
+                for base in flattened_bases
+                if hasattr(base, name)
+            ) or (exc,)
+
+            # Create a new exception and set it as an attribute on the new
+            # class.
             exception = type(name, parents, {'__module__': module})
             setattr(new_class, name, exception)
 
@@ -416,17 +421,35 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
     @classmethod
     def get_auto_id_names(mcs, new_class):
+        """Find a name for the automatic ID field for the given new class.
+
+        Return a two-element tuple where the first item is the field name (i.e.
+        the attribute name on the object) and the second element is the DB
+        field name (i.e. the name of the key stored in MongoDB).
+
+        Defaults to ('id', '_id'), or generates a non-clashing name in the form
+        of ('auto_id_X', '_auto_id_X') if the default name is already taken.
+        """
         id_name, id_db_name = ('id', '_id')
-        if id_name not in new_class._fields and \
-                id_db_name not in (v.db_field for v in new_class._fields.values()):
+        existing_fields = new_class._fields
+        existing_db_fields = (v.db_field for v in new_class._fields.values())
+        if (
+            id_name not in existing_fields and
+            id_db_name not in existing_db_fields
+        ):
             return id_name, id_db_name
-        id_basename, id_db_basename, i = 'auto_id', '_auto_id', 0
-        while id_name in new_class._fields or \
-                id_db_name in (v.db_field for v in new_class._fields.values()):
+
+        id_basename, id_db_basename, i = ('auto_id', '_auto_id', 0)
+        while True:
             id_name = '{0}_{1}'.format(id_basename, i)
             id_db_name = '{0}_{1}'.format(id_db_basename, i)
-            i += 1
-        return id_name, id_db_name
+            if (
+                id_name not in existing_fields and
+                id_db_name not in existing_db_fields
+            ):
+                return id_name, id_db_name
+            else:
+                i += 1
 
 
 class MetaDict(dict):
