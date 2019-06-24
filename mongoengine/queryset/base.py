@@ -481,9 +481,10 @@ class BaseQuerySet(object):
                     write_concern=write_concern,
                     **{'pull_all__%s' % field_name: self})
 
-        result = queryset._collection.remove(queryset._query, **write_concern)
-        if result:
-            return result.get('n')
+        with set_write_concern(queryset._collection, write_concern) as collection:
+            result = collection.delete_many(queryset._query)
+            if result.acknowledged:
+                return result.deleted_count
 
     def update(self, upsert=False, multi=True, write_concern=None,
                full_result=False, **update):

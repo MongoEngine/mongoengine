@@ -10,6 +10,7 @@ from operator import itemgetter
 from bson import Binary, DBRef, ObjectId, SON
 import gridfs
 import pymongo
+from pymongo import ReturnDocument
 import six
 from six import iteritems
 
@@ -1964,10 +1965,12 @@ class SequenceField(BaseField):
         sequence_name = self.get_sequence_name()
         sequence_id = '%s.%s' % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
-        counter = collection.find_and_modify(query={'_id': sequence_id},
-                                             update={'$inc': {'next': 1}},
-                                             new=True,
-                                             upsert=True)
+
+        counter = collection.find_one_and_update(
+            filter={'_id': sequence_id},
+            update={'$inc': {'next': 1}},
+            return_document=ReturnDocument.AFTER,
+            upsert=True)
         return self.value_decorator(counter['next'])
 
     def set_next_value(self, value):
@@ -1975,10 +1978,11 @@ class SequenceField(BaseField):
         sequence_name = self.get_sequence_name()
         sequence_id = "%s.%s" % (sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
-        counter = collection.find_and_modify(query={"_id": sequence_id},
-                                             update={"$set": {"next": value}},
-                                             new=True,
-                                             upsert=True)
+        counter = collection.find_one_and_update(
+            filter={"_id": sequence_id},
+            update={"$set": {"next": value}},
+            return_document=ReturnDocument.AFTER,
+            upsert=True)
         return self.value_decorator(counter['next'])
 
     def get_next_value(self):
