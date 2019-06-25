@@ -431,8 +431,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         of ('auto_id_X', '_auto_id_X') if the default name is already taken.
         """
         id_name, id_db_name = ('id', '_id')
-        existing_fields = new_class._fields
-        existing_db_fields = (v.db_field for v in new_class._fields.values())
+        existing_fields = {field_name for field_name in new_class._fields}
+        existing_db_fields = {v.db_field for v in new_class._fields.values()}
         if (
             id_name not in existing_fields and
             id_db_name not in existing_db_fields
