@@ -3137,7 +3137,7 @@ class InstanceTest(MongoDBTestCase):
             'Instantiating a document with positional arguments is not '
             'supported. Please use `field_name=value` keyword arguments.'
         )
-        self.assertEqual(e.exception.message, expected_msg)
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_mixed_creation(self):
         """Document cannot be instantiated using mixed arguments."""
@@ -3147,7 +3147,7 @@ class InstanceTest(MongoDBTestCase):
             'Instantiating a document with positional arguments is not '
             'supported. Please use `field_name=value` keyword arguments.'
         )
-        self.assertEqual(e.exception.message, expected_msg)
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_positional_creation_embedded(self):
         """Embedded document cannot be created using positional arguments."""
@@ -3157,7 +3157,7 @@ class InstanceTest(MongoDBTestCase):
             'Instantiating a document with positional arguments is not '
             'supported. Please use `field_name=value` keyword arguments.'
         )
-        self.assertEqual(e.exception.message, expected_msg)
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_mixed_creation_embedded(self):
         """Embedded document cannot be created using mixed arguments."""
@@ -3167,7 +3167,7 @@ class InstanceTest(MongoDBTestCase):
             'Instantiating a document with positional arguments is not '
             'supported. Please use `field_name=value` keyword arguments.'
         )
-        self.assertEqual(e.exception.message, expected_msg)
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'."""
