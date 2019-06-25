@@ -7,6 +7,11 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.18.2
+=================
+- Replace some of the deprecated PyMongo v2.x methods with their v3.x equivalents #2097
+- Various code clarity and documentation improvements
+
 Changes in 0.18.1
 =================
 - Fix a bug introduced in 0.18.0 which was causing `.save()` to update all the fields
