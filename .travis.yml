@@ -102,5 +102,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: ($PYMONGO = 3.x) && ($MONGODB = 3.4)
+    condition: ($PYMONGO = 3.x) && ($MONGODB = 3.4.17)
     python: 2.7
