@@ -1,3 +1,4 @@
+import itertools
 import warnings
 
 import six
@@ -440,7 +441,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             return id_name, id_db_name
 
         id_basename, id_db_basename, i = ('auto_id', '_auto_id', 0)
-        while True:
+        for i in itertools.count():
             id_name = '{0}_{1}'.format(id_basename, i)
             id_db_name = '{0}_{1}'.format(id_db_basename, i)
             if (
@@ -448,8 +449,6 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 id_db_name not in existing_db_fields
             ):
                 return id_name, id_db_name
-            else:
-                i += 1
 
 
 class MetaDict(dict):
