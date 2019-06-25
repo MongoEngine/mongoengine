@@ -566,7 +566,8 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     ['database', 'mongodb']
 
 From MongoDB version 2.6, push operator supports $position value which allows
-to push values with index.
+to push values with index::
+
     >>> post = BlogPost(title="Test", tags=["mongo"])
     >>> post.save()
     >>> post.update(push__tags__0=["database", "code"])
