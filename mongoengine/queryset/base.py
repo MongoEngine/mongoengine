@@ -483,6 +483,10 @@ class BaseQuerySet(object):
 
         with set_write_concern(queryset._collection, write_concern) as collection:
             result = collection.delete_many(queryset._query)
+
+            # If we're using an unack'd write concern, we don't really know how
+            # many items have been deleted at this point, hence we only return
+            # the count for ack'd ops.
             if result.acknowledged:
                 return result.deleted_count
 

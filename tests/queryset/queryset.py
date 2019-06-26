@@ -1858,7 +1858,11 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(1, BlogPost.objects.count())
 
     def test_delete_edge_case_with_write_concern_0_return_None(self):
-        """Return None when write is unacknowledged"""
+        """Return None if the delete operation is unacknowledged.
+
+        If we use an unack'd write concern, we don't really know how many
+        documents have been deleted.
+        """
         p1 = self.Person(name="User Z", age=20).save()
         del_result = p1.delete(w=0)
         self.assertEqual(None, del_result)
