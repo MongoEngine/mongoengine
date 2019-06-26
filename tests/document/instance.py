@@ -3130,48 +3130,44 @@ class InstanceTest(MongoDBTestCase):
         self.assertEqual(classic_doc._data, dict_doc._data)
 
     def test_positional_creation(self):
-        """Ensure that document may be created using positional arguments."""
-        person = self.Person("Test User", 42)
-        self.assertEqual(person.name, "Test User")
-        self.assertEqual(person.age, 42)
+        """Document cannot be instantiated using positional arguments."""
+        with self.assertRaises(TypeError) as e:
+            person = self.Person("Test User", 42)
+        expected_msg = (
+            'Instantiating a document with positional arguments is not '
+            'supported. Please use `field_name=value` keyword arguments.'
+        )
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_mixed_creation(self):
-        """Ensure that document may be created using mixed arguments."""
-        person = self.Person("Test User", age=42)
-        self.assertEqual(person.name, "Test User")
-        self.assertEqual(person.age, 42)
+        """Document cannot be instantiated using mixed arguments."""
+        with self.assertRaises(TypeError) as e:
+            person = self.Person("Test User", age=42)
+        expected_msg = (
+            'Instantiating a document with positional arguments is not '
+            'supported. Please use `field_name=value` keyword arguments.'
+        )
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_positional_creation_embedded(self):
-        """Ensure that embedded document may be created using positional
-        arguments.
-        """
-        job = self.Job("Test Job", 4)
-        self.assertEqual(job.name, "Test Job")
-        self.assertEqual(job.years, 4)
+        """Embedded document cannot be created using positional arguments."""
+        with self.assertRaises(TypeError) as e:
+            job = self.Job("Test Job", 4)
+        expected_msg = (
+            'Instantiating a document with positional arguments is not '
+            'supported. Please use `field_name=value` keyword arguments.'
+        )
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_mixed_creation_embedded(self):
-        """Ensure that embedded document may be created using mixed
-        arguments.
-        """
-        job = self.Job("Test Job", years=4)
-        self.assertEqual(job.name, "Test Job")
-        self.assertEqual(job.years, 4)
-
-    def test_mixed_creation_dynamic(self):
-        """Ensure that document may be created using mixed arguments."""
-        class Person(DynamicDocument):
-            name = StringField()
-
-        person = Person("Test User", age=42)
-        self.assertEqual(person.name, "Test User")
-        self.assertEqual(person.age, 42)
-
-    def test_bad_mixed_creation(self):
-        """Ensure that document gives correct error when duplicating
-        arguments.
-        """
-        with self.assertRaises(TypeError):
-            return self.Person("Test User", 42, name="Bad User")
+        """Embedded document cannot be created using mixed arguments."""
+        with self.assertRaises(TypeError) as e:
+            job = self.Job("Test Job", years=4)
+        expected_msg = (
+            'Instantiating a document with positional arguments is not '
+            'supported. Please use `field_name=value` keyword arguments.'
+        )
+        self.assertEqual(str(e.exception), expected_msg)
 
     def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'."""

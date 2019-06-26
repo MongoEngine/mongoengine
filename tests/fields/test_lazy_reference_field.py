@@ -303,8 +303,8 @@ class TestLazyReferenceField(MongoDBTestCase):
         Animal.drop_collection()
         Ocurrence.drop_collection()
 
-        animal1 = Animal('doggo').save()
-        animal2 = Animal('cheeta').save()
+        animal1 = Animal(name='doggo').save()
+        animal2 = Animal(name='cheeta').save()
 
         def check_fields_type(occ):
             self.assertIsInstance(occ.direct, LazyReference)
@@ -542,8 +542,8 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         Animal.drop_collection()
         Ocurrence.drop_collection()
 
-        animal1 = Animal('doggo').save()
-        animal2 = Animal('cheeta').save()
+        animal1 = Animal(name='doggo').save()
+        animal2 = Animal(name='cheeta').save()
 
         def check_fields_type(occ):
             self.assertIsInstance(occ.direct, LazyReference)

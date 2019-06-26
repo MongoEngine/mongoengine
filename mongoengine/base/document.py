@@ -60,18 +60,10 @@ class BaseDocument(object):
         self._created = True
 
         if args:
-            # Combine positional arguments with named arguments.
-            # We only want named arguments.
-            field = iter(self._fields_ordered)
-            # If its an automatic id field then skip to the first defined field
-            if getattr(self, '_auto_id_field', False):
-                next(field)
-            for value in args:
-                name = next(field)
-                if name in values:
-                    raise TypeError(
-                        'Multiple values for keyword argument "%s"' % name)
-                values[name] = value
+            raise TypeError(
+                'Instantiating a document with positional arguments is not '
+                'supported. Please use `field_name=value` keyword arguments.'
+            )
 
         __auto_convert = values.pop('__auto_convert', True)
 
