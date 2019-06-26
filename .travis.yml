@@ -52,15 +52,16 @@ install:
   - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${MONGODB}.tgz
   - tar xzf mongodb-linux-x86_64-${MONGODB}.tgz
   - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --version
-  # Install python dependencies
+  # Install Python dependencies.
   - pip install --upgrade pip
   - pip install coveralls
   - pip install flake8 flake8-import-order
-  - pip install black
   - pip install tox         # tox 3.11.0 has requirement virtualenv>=14.0.0
   - pip install virtualenv  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
-  # Install the tox venv
+  # Install the tox venv.
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
+  # Install black for Python v3.7 only.
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.7' ]]; then pip install black; fi
 
 before_script:
   - mkdir ${PWD}/mongodb-linux-x86_64-${MONGODB}/data
