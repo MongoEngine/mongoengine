@@ -527,7 +527,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 ).raw_result
             if not upsert and last_error["n"] == 0:
                 raise SaveConditionError(
-                    "Race condition preventing" " document update detected"
+                    "Race condition preventing document update detected"
                 )
             if last_error is not None:
                 updated_existing = last_error.get("updatedExisting")
@@ -831,7 +831,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         coll_name = cls._get_collection_name()
         if not coll_name:
             raise OperationError(
-                "Document %s has no collection defined " "(is it abstract ?)" % cls
+                "Document %s has no collection defined (is it abstract ?)" % cls
             )
         cls._collection = None
         db = cls._get_db()

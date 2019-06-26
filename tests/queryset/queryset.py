@@ -5307,7 +5307,7 @@ class QuerySetTest(unittest.TestCase):
         queryset.next()
         if not queryset:
             raise AssertionError(
-                "Cursor has data and it must returns True," " even in the last item."
+                "Cursor has data and it must returns True, even in the last item."
             )
 
     def test_bool_performance(self):

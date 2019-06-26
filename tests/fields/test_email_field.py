@@ -19,7 +19,7 @@ class TestEmailField(MongoDBTestCase):
         user.validate()
 
         user = User(
-            email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5S" "aJIazqqWkm7.net")
+            email=("Kofq@rhom0e4klgauOhpbpNdogawnyIKvQS0wk2mjqrgGQ5SaJIazqqWkm7.net")
         )
         user.validate()
 

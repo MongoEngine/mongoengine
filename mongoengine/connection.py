@@ -285,7 +285,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         try:
             import mongomock
         except ImportError:
-            raise RuntimeError("You need mongomock installed to mock " "MongoEngine.")
+            raise RuntimeError("You need mongomock installed to mock MongoEngine.")
         connection_class = mongomock.MongoClient
     else:
         connection_class = MongoClient

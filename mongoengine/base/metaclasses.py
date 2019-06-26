@@ -199,7 +199,7 @@ class DocumentMetaclass(type):
 
                 if issubclass(new_class, EmbeddedDocument):
                     raise InvalidDocumentError(
-                        "CachedReferenceFields is not " "allowed in EmbeddedDocuments"
+                        "CachedReferenceFields is not allowed in EmbeddedDocuments"
                     )
 
                 if f.auto_sync:
@@ -232,9 +232,7 @@ class DocumentMetaclass(type):
                 and hasattr(Document, field.name)
                 and EmbeddedDocument not in new_class.mro()
             ):
-                msg = (
-                    "%s is a document method and not a valid " "field name" % field.name
-                )
+                msg = "%s is a document method and not a valid field name" % field.name
                 raise InvalidDocumentError(msg)
 
         return new_class

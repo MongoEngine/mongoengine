@@ -341,7 +341,7 @@ def update(_doc_cls=None, **update):
             # Otherwise it uses nested dict syntax
             if op == "pullAll":
                 raise InvalidQueryError(
-                    "pullAll operations only support " "a single field depth"
+                    "pullAll operations only support a single field depth"
                 )
 
             # Look for the last list field and use dot notation until there
@@ -450,7 +450,7 @@ def _infer_geometry(value):
         elif "coordinates" in value and "type" in value:
             return {"$geometry": value}
         raise InvalidQueryError(
-            "Invalid $geometry dictionary should have " "type and coordinates keys"
+            "Invalid $geometry dictionary should have type and coordinates keys"
         )
     elif isinstance(value, (list, set)):
         # TODO: shouldn't we test value[0][0][0][0] to see if it is MultiPolygon?

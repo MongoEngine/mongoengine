@@ -688,7 +688,7 @@ class ComplexDateTimeField(StringField):
     def validate(self, value):
         value = self.to_python(value)
         if not isinstance(value, datetime.datetime):
-            self.error("Only datetime objects may used in a " "ComplexDateTimeField")
+            self.error("Only datetime objects may used in a ComplexDateTimeField")
 
     def to_python(self, value):
         original_value = value
@@ -1062,7 +1062,7 @@ class DictField(ComplexBaseField):
             self.error("Only dictionaries may be used in a DictField")
 
         if key_not_string(value):
-            msg = "Invalid dictionary key - documents must " "have only string keys"
+            msg = "Invalid dictionary key - documents must have only string keys"
             self.error(msg)
         if key_has_dot_or_dollar(value):
             self.error(
@@ -1112,7 +1112,7 @@ class MapField(DictField):
     def __init__(self, field=None, *args, **kwargs):
         # XXX ValidationError raised outside of the "validate" method.
         if not isinstance(field, BaseField):
-            self.error("Argument to MapField constructor must be a valid " "field")
+            self.error("Argument to MapField constructor must be a valid field")
         super(MapField, self).__init__(field=field, *args, **kwargs)
 
 
@@ -2239,7 +2239,7 @@ class GeoPointField(BaseField):
     def validate(self, value):
         """Make sure that a geo-value is of type (x, y)"""
         if not isinstance(value, (list, tuple)):
-            self.error("GeoPointField can only accept tuples or lists " "of (x, y)")
+            self.error("GeoPointField can only accept tuples or lists of (x, y)")
 
         if not len(value) == 2:
             self.error("Value (%s) must be a two-dimensional point" % repr(value))
