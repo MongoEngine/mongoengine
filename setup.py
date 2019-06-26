@@ -8,9 +8,7 @@ try:
 except ImportError:
     pass
 
-DESCRIPTION = (
-    "MongoEngine is a Python Object-Document " "Mapper for working with MongoDB."
-)
+DESCRIPTION = "MongoEngine is a Python Object-Document Mapper for working with MongoDB."
 
 try:
     with open("README.rst") as fin:
