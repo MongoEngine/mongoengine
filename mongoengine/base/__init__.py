@@ -12,17 +12,22 @@ from mongoengine.base.metaclasses import *
 
 __all__ = (
     # common
-    'UPDATE_OPERATORS', '_document_registry', 'get_document',
-
+    "UPDATE_OPERATORS",
+    "_document_registry",
+    "get_document",
     # datastructures
-    'BaseDict', 'BaseList', 'EmbeddedDocumentList', 'LazyReference',
-
+    "BaseDict",
+    "BaseList",
+    "EmbeddedDocumentList",
+    "LazyReference",
     # document
-    'BaseDocument',
-
+    "BaseDocument",
     # fields
-    'BaseField', 'ComplexBaseField', 'ObjectIdField', 'GeoJsonBaseField',
-
+    "BaseField",
+    "ComplexBaseField",
+    "ObjectIdField",
+    "GeoJsonBaseField",
     # metaclasses
-    'DocumentMetaclass', 'TopLevelDocumentMetaclass'
+    "DocumentMetaclass",
+    "TopLevelDocumentMetaclass",
 )

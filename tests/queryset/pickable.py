@@ -4,7 +4,7 @@ from pymongo.mongo_client import MongoClient
 from mongoengine import Document, StringField, IntField
 from mongoengine.connection import connect
 
-__author__ = 'stas'
+__author__ = "stas"
 
 
 class Person(Document):
@@ -17,6 +17,7 @@ class TestQuerysetPickable(unittest.TestCase):
     Test for adding pickling support for QuerySet instances
     See issue https://github.com/MongoEngine/mongoengine/issues/442
     """
+
     def setUp(self):
         super(TestQuerysetPickable, self).setUp()
 
@@ -24,10 +25,7 @@ class TestQuerysetPickable(unittest.TestCase):
 
         connection.drop_database("test")
 
-        self.john = Person.objects.create(
-            name="John",
-            age=21
-        )
+        self.john = Person.objects.create(name="John", age=21)
 
     def test_picke_simple_qs(self):
 
@@ -54,15 +52,9 @@ class TestQuerysetPickable(unittest.TestCase):
         self.assertEqual(Person.objects.first().age, 23)
 
     def test_pickle_support_filtration(self):
-        Person.objects.create(
-            name="Alice",
-            age=22
-        )
+        Person.objects.create(name="Alice", age=22)
 
-        Person.objects.create(
-            name="Bob",
-            age=23
-        )
+        Person.objects.create(name="Bob", age=23)
 
         qs = Person.objects.filter(age__gte=22)
         self.assertEqual(qs.count(), 2)
@@ -71,9 +63,3 @@ class TestQuerysetPickable(unittest.TestCase):
 
         self.assertEqual(loaded.count(), 2)
         self.assertEqual(loaded.filter(name="Bob").first().age, 23)
-
-
-
-
-
-

@@ -11,15 +11,13 @@ class TestBooleanField(MongoDBTestCase):
 
         person = Person(admin=True)
         person.save()
-        self.assertEqual(
-            get_as_pymongo(person),
-            {'_id': person.id,
-             'admin': True})
+        self.assertEqual(get_as_pymongo(person), {"_id": person.id, "admin": True})
 
     def test_validation(self):
         """Ensure that invalid values cannot be assigned to boolean
         fields.
         """
+
         class Person(Document):
             admin = BooleanField()
 
@@ -29,9 +27,9 @@ class TestBooleanField(MongoDBTestCase):
 
         person.admin = 2
         self.assertRaises(ValidationError, person.validate)
-        person.admin = 'Yes'
+        person.admin = "Yes"
         self.assertRaises(ValidationError, person.validate)
-        person.admin = 'False'
+        person.admin = "False"
         self.assertRaises(ValidationError, person.validate)
 
     def test_weirdness_constructor(self):
@@ -39,11 +37,12 @@ class TestBooleanField(MongoDBTestCase):
         which causes some weird behavior. We dont necessarily want to maintain this behavior
         but its a known issue
         """
+
         class Person(Document):
             admin = BooleanField()
 
-        new_person = Person(admin='False')
+        new_person = Person(admin="False")
         self.assertTrue(new_person.admin)
 
-        new_person = Person(admin='0')
+        new_person = Person(admin="0")
         self.assertTrue(new_person.admin)

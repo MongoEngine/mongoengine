@@ -5,7 +5,6 @@ from mongoengine import Document
 
 
 class TestCommon(unittest.TestCase):
-
     def test__import_class(self):
         doc_cls = _import_class("Document")
         self.assertIs(doc_cls, Document)

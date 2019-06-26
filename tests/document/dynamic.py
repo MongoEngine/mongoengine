@@ -3,17 +3,16 @@ import unittest
 from mongoengine import *
 from tests.utils import MongoDBTestCase
 
-__all__ = ("TestDynamicDocument", )
+__all__ = ("TestDynamicDocument",)
 
 
 class TestDynamicDocument(MongoDBTestCase):
-
     def setUp(self):
         super(TestDynamicDocument, self).setUp()
 
         class Person(DynamicDocument):
             name = StringField()
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         Person.drop_collection()
 
@@ -26,8 +25,7 @@ class TestDynamicDocument(MongoDBTestCase):
         p.name = "James"
         p.age = 34
 
-        self.assertEqual(p.to_mongo(), {"_cls": "Person", "name": "James",
-                                        "age": 34})
+        self.assertEqual(p.to_mongo(), {"_cls": "Person", "name": "James", "age": 34})
         self.assertEqual(p.to_mongo().keys(), ["_cls", "name", "age"])
         p.save()
         self.assertEqual(p.to_mongo().keys(), ["_id", "_cls", "name", "age"])
@@ -35,7 +33,7 @@ class TestDynamicDocument(MongoDBTestCase):
         self.assertEqual(self.Person.objects.first().age, 34)
 
         # Confirm no changes to self.Person
-        self.assertFalse(hasattr(self.Person, 'age'))
+        self.assertFalse(hasattr(self.Person, "age"))
 
     def test_change_scope_of_variable(self):
         """Test changing the scope of a dynamic field has no adverse effects"""
@@ -45,11 +43,11 @@ class TestDynamicDocument(MongoDBTestCase):
         p.save()
 
         p = self.Person.objects.get()
-        p.misc = {'hello': 'world'}
+        p.misc = {"hello": "world"}
         p.save()
 
         p = self.Person.objects.get()
-        self.assertEqual(p.misc, {'hello': 'world'})
+        self.assertEqual(p.misc, {"hello": "world"})
 
     def test_delete_dynamic_field(self):
         """Test deleting a dynamic field works"""
@@ -60,23 +58,23 @@ class TestDynamicDocument(MongoDBTestCase):
         p.save()
 
         p = self.Person.objects.get()
-        p.misc = {'hello': 'world'}
+        p.misc = {"hello": "world"}
         p.save()
 
         p = self.Person.objects.get()
-        self.assertEqual(p.misc, {'hello': 'world'})
+        self.assertEqual(p.misc, {"hello": "world"})
         collection = self.db[self.Person._get_collection_name()]
         obj = collection.find_one()
-        self.assertEqual(sorted(obj.keys()), ['_cls', '_id', 'misc', 'name'])
+        self.assertEqual(sorted(obj.keys()), ["_cls", "_id", "misc", "name"])
 
         del p.misc
         p.save()
 
         p = self.Person.objects.get()
-        self.assertFalse(hasattr(p, 'misc'))
+        self.assertFalse(hasattr(p, "misc"))
 
         obj = collection.find_one()
-        self.assertEqual(sorted(obj.keys()), ['_cls', '_id', 'name'])
+        self.assertEqual(sorted(obj.keys()), ["_cls", "_id", "name"])
 
     def test_reload_after_unsetting(self):
         p = self.Person()
@@ -91,77 +89,52 @@ class TestDynamicDocument(MongoDBTestCase):
         p.update(age=1)
 
         self.assertEqual(len(p._data), 3)
-        self.assertEqual(sorted(p._data.keys()), ['_cls', 'id', 'name'])
+        self.assertEqual(sorted(p._data.keys()), ["_cls", "id", "name"])
 
         p.reload()
         self.assertEqual(len(p._data), 4)
-        self.assertEqual(sorted(p._data.keys()), ['_cls', 'age', 'id', 'name'])
+        self.assertEqual(sorted(p._data.keys()), ["_cls", "age", "id", "name"])
 
     def test_fields_without_underscore(self):
         """Ensure we can query dynamic fields"""
         Person = self.Person
 
-        p = self.Person(name='Dean')
+        p = self.Person(name="Dean")
         p.save()
 
         raw_p = Person.objects.as_pymongo().get(id=p.id)
-        self.assertEqual(
-            raw_p,
-            {
-                '_cls': u'Person',
-                '_id': p.id,
-                'name': u'Dean'
-             }
-        )
+        self.assertEqual(raw_p, {"_cls": u"Person", "_id": p.id, "name": u"Dean"})
 
-        p.name = 'OldDean'
-        p.newattr = 'garbage'
+        p.name = "OldDean"
+        p.newattr = "garbage"
         p.save()
         raw_p = Person.objects.as_pymongo().get(id=p.id)
         self.assertEqual(
             raw_p,
-            {
-                '_cls': u'Person',
-                '_id': p.id,
-                'name': 'OldDean',
-                'newattr': u'garbage'
-            }
+            {"_cls": u"Person", "_id": p.id, "name": "OldDean", "newattr": u"garbage"},
         )
 
     def test_fields_containing_underscore(self):
         """Ensure we can query dynamic fields"""
+
         class WeirdPerson(DynamicDocument):
             name = StringField()
             _name = StringField()
 
         WeirdPerson.drop_collection()
 
-        p = WeirdPerson(name='Dean', _name='Dean')
+        p = WeirdPerson(name="Dean", _name="Dean")
         p.save()
 
         raw_p = WeirdPerson.objects.as_pymongo().get(id=p.id)
-        self.assertEqual(
-            raw_p,
-            {
-                '_id': p.id,
-                '_name': u'Dean',
-                'name': u'Dean'
-            }
-        )
+        self.assertEqual(raw_p, {"_id": p.id, "_name": u"Dean", "name": u"Dean"})
 
-        p.name = 'OldDean'
-        p._name = 'NewDean'
-        p._newattr1 = 'garbage'    # Unknown fields won't be added
+        p.name = "OldDean"
+        p._name = "NewDean"
+        p._newattr1 = "garbage"  # Unknown fields won't be added
         p.save()
         raw_p = WeirdPerson.objects.as_pymongo().get(id=p.id)
-        self.assertEqual(
-            raw_p,
-            {
-                '_id': p.id,
-                '_name': u'NewDean',
-                'name': u'OldDean',
-            }
-        )
+        self.assertEqual(raw_p, {"_id": p.id, "_name": u"NewDean", "name": u"OldDean"})
 
     def test_dynamic_document_queries(self):
         """Ensure we can query dynamic fields"""
@@ -193,26 +166,25 @@ class TestDynamicDocument(MongoDBTestCase):
         p2.age = 10
         p2.save()
 
-        self.assertEqual(Person.objects(age__icontains='ten').count(), 2)
+        self.assertEqual(Person.objects(age__icontains="ten").count(), 2)
         self.assertEqual(Person.objects(age__gte=10).count(), 1)
 
     def test_complex_data_lookups(self):
         """Ensure you can query dynamic document dynamic fields"""
         p = self.Person()
-        p.misc = {'hello': 'world'}
+        p.misc = {"hello": "world"}
         p.save()
 
-        self.assertEqual(1, self.Person.objects(misc__hello='world').count())
+        self.assertEqual(1, self.Person.objects(misc__hello="world").count())
 
     def test_three_level_complex_data_lookups(self):
         """Ensure you can query three level document dynamic fields"""
-        p = self.Person.objects.create(
-            misc={'hello': {'hello2': 'world'}}
-        )
-        self.assertEqual(1, self.Person.objects(misc__hello__hello2='world').count())
+        p = self.Person.objects.create(misc={"hello": {"hello2": "world"}})
+        self.assertEqual(1, self.Person.objects(misc__hello__hello2="world").count())
 
     def test_complex_embedded_document_validation(self):
         """Ensure embedded dynamic documents may be validated"""
+
         class Embedded(DynamicEmbeddedDocument):
             content = URLField()
 
@@ -222,10 +194,10 @@ class TestDynamicDocument(MongoDBTestCase):
         Doc.drop_collection()
         doc = Doc()
 
-        embedded_doc_1 = Embedded(content='http://mongoengine.org')
+        embedded_doc_1 = Embedded(content="http://mongoengine.org")
         embedded_doc_1.validate()
 
-        embedded_doc_2 = Embedded(content='this is not a url')
+        embedded_doc_2 = Embedded(content="this is not a url")
         self.assertRaises(ValidationError, embedded_doc_2.validate)
 
         doc.embedded_field_1 = embedded_doc_1
@@ -234,15 +206,17 @@ class TestDynamicDocument(MongoDBTestCase):
 
     def test_inheritance(self):
         """Ensure that dynamic document plays nice with inheritance"""
+
         class Employee(self.Person):
             salary = IntField()
 
         Employee.drop_collection()
 
-        self.assertIn('name', Employee._fields)
-        self.assertIn('salary', Employee._fields)
-        self.assertEqual(Employee._get_collection_name(),
-                         self.Person._get_collection_name())
+        self.assertIn("name", Employee._fields)
+        self.assertIn("salary", Employee._fields)
+        self.assertEqual(
+            Employee._get_collection_name(), self.Person._get_collection_name()
+        )
 
         joe_bloggs = Employee()
         joe_bloggs.name = "Joe Bloggs"
@@ -258,6 +232,7 @@ class TestDynamicDocument(MongoDBTestCase):
 
     def test_embedded_dynamic_document(self):
         """Test dynamic embedded documents"""
+
         class Embedded(DynamicEmbeddedDocument):
             pass
 
@@ -268,78 +243,88 @@ class TestDynamicDocument(MongoDBTestCase):
         doc = Doc()
 
         embedded_1 = Embedded()
-        embedded_1.string_field = 'hello'
+        embedded_1.string_field = "hello"
         embedded_1.int_field = 1
-        embedded_1.dict_field = {'hello': 'world'}
-        embedded_1.list_field = ['1', 2, {'hello': 'world'}]
+        embedded_1.dict_field = {"hello": "world"}
+        embedded_1.list_field = ["1", 2, {"hello": "world"}]
         doc.embedded_field = embedded_1
 
-        self.assertEqual(doc.to_mongo(), {
-            "embedded_field": {
-                "_cls": "Embedded",
-                "string_field": "hello",
-                "int_field": 1,
-                "dict_field": {"hello": "world"},
-                "list_field": ['1', 2, {'hello': 'world'}]
-            }
-        })
-        doc.save()
-
-        doc = Doc.objects.first()
-        self.assertEqual(doc.embedded_field.__class__, Embedded)
-        self.assertEqual(doc.embedded_field.string_field, "hello")
-        self.assertEqual(doc.embedded_field.int_field, 1)
-        self.assertEqual(doc.embedded_field.dict_field, {'hello': 'world'})
-        self.assertEqual(doc.embedded_field.list_field,
-                            ['1', 2, {'hello': 'world'}])
-
-    def test_complex_embedded_documents(self):
-        """Test complex dynamic embedded documents setups"""
-        class Embedded(DynamicEmbeddedDocument):
-            pass
-
-        class Doc(DynamicDocument):
-            pass
-
-        Doc.drop_collection()
-        doc = Doc()
-
-        embedded_1 = Embedded()
-        embedded_1.string_field = 'hello'
-        embedded_1.int_field = 1
-        embedded_1.dict_field = {'hello': 'world'}
-
-        embedded_2 = Embedded()
-        embedded_2.string_field = 'hello'
-        embedded_2.int_field = 1
-        embedded_2.dict_field = {'hello': 'world'}
-        embedded_2.list_field = ['1', 2, {'hello': 'world'}]
-
-        embedded_1.list_field = ['1', 2, embedded_2]
-        doc.embedded_field = embedded_1
-
-        self.assertEqual(doc.to_mongo(), {
-            "embedded_field": {
-                "_cls": "Embedded",
-                "string_field": "hello",
-                "int_field": 1,
-                "dict_field": {"hello": "world"},
-                "list_field": ['1', 2,
-                    {"_cls": "Embedded",
+        self.assertEqual(
+            doc.to_mongo(),
+            {
+                "embedded_field": {
+                    "_cls": "Embedded",
                     "string_field": "hello",
                     "int_field": 1,
                     "dict_field": {"hello": "world"},
-                    "list_field": ['1', 2, {'hello': 'world'}]}
-                ]
-            }
-        })
+                    "list_field": ["1", 2, {"hello": "world"}],
+                }
+            },
+        )
+        doc.save()
+
+        doc = Doc.objects.first()
+        self.assertEqual(doc.embedded_field.__class__, Embedded)
+        self.assertEqual(doc.embedded_field.string_field, "hello")
+        self.assertEqual(doc.embedded_field.int_field, 1)
+        self.assertEqual(doc.embedded_field.dict_field, {"hello": "world"})
+        self.assertEqual(doc.embedded_field.list_field, ["1", 2, {"hello": "world"}])
+
+    def test_complex_embedded_documents(self):
+        """Test complex dynamic embedded documents setups"""
+
+        class Embedded(DynamicEmbeddedDocument):
+            pass
+
+        class Doc(DynamicDocument):
+            pass
+
+        Doc.drop_collection()
+        doc = Doc()
+
+        embedded_1 = Embedded()
+        embedded_1.string_field = "hello"
+        embedded_1.int_field = 1
+        embedded_1.dict_field = {"hello": "world"}
+
+        embedded_2 = Embedded()
+        embedded_2.string_field = "hello"
+        embedded_2.int_field = 1
+        embedded_2.dict_field = {"hello": "world"}
+        embedded_2.list_field = ["1", 2, {"hello": "world"}]
+
+        embedded_1.list_field = ["1", 2, embedded_2]
+        doc.embedded_field = embedded_1
+
+        self.assertEqual(
+            doc.to_mongo(),
+            {
+                "embedded_field": {
+                    "_cls": "Embedded",
+                    "string_field": "hello",
+                    "int_field": 1,
+                    "dict_field": {"hello": "world"},
+                    "list_field": [
+                        "1",
+                        2,
+                        {
+                            "_cls": "Embedded",
+                            "string_field": "hello",
+                            "int_field": 1,
+                            "dict_field": {"hello": "world"},
+                            "list_field": ["1", 2, {"hello": "world"}],
+                        },
+                    ],
+                }
+            },
+        )
         doc.save()
         doc = Doc.objects.first()
         self.assertEqual(doc.embedded_field.__class__, Embedded)
         self.assertEqual(doc.embedded_field.string_field, "hello")
         self.assertEqual(doc.embedded_field.int_field, 1)
-        self.assertEqual(doc.embedded_field.dict_field, {'hello': 'world'})
-        self.assertEqual(doc.embedded_field.list_field[0], '1')
+        self.assertEqual(doc.embedded_field.dict_field, {"hello": "world"})
+        self.assertEqual(doc.embedded_field.list_field[0], "1")
         self.assertEqual(doc.embedded_field.list_field[1], 2)
 
         embedded_field = doc.embedded_field.list_field[2]
@@ -347,9 +332,8 @@ class TestDynamicDocument(MongoDBTestCase):
         self.assertEqual(embedded_field.__class__, Embedded)
         self.assertEqual(embedded_field.string_field, "hello")
         self.assertEqual(embedded_field.int_field, 1)
-        self.assertEqual(embedded_field.dict_field, {'hello': 'world'})
-        self.assertEqual(embedded_field.list_field, ['1', 2,
-                                                        {'hello': 'world'}])
+        self.assertEqual(embedded_field.dict_field, {"hello": "world"})
+        self.assertEqual(embedded_field.list_field, ["1", 2, {"hello": "world"}])
 
     def test_dynamic_and_embedded(self):
         """Ensure embedded documents play nicely"""
@@ -392,10 +376,15 @@ class TestDynamicDocument(MongoDBTestCase):
 
         Person.drop_collection()
 
-        Person(name="Eric", address=Address(city="San Francisco", street_number="1337")).save()
+        Person(
+            name="Eric", address=Address(city="San Francisco", street_number="1337")
+        ).save()
 
-        self.assertEqual(Person.objects.first().address.street_number, '1337')
-        self.assertEqual(Person.objects.only('address__street_number').first().address.street_number, '1337')
+        self.assertEqual(Person.objects.first().address.street_number, "1337")
+        self.assertEqual(
+            Person.objects.only("address__street_number").first().address.street_number,
+            "1337",
+        )
 
     def test_dynamic_and_embedded_dict_access(self):
         """Ensure embedded dynamic documents work with dict[] style access"""
@@ -435,5 +424,5 @@ class TestDynamicDocument(MongoDBTestCase):
         self.assertEqual(Person.objects.first().age, 35)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

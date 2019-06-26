@@ -1,12 +1,15 @@
-__all__ = ('QueryFieldList',)
+__all__ = ("QueryFieldList",)
 
 
 class QueryFieldList(object):
     """Object that handles combinations of .only() and .exclude() calls"""
+
     ONLY = 1
     EXCLUDE = 0
 
-    def __init__(self, fields=None, value=ONLY, always_include=None, _only_called=False):
+    def __init__(
+        self, fields=None, value=ONLY, always_include=None, _only_called=False
+    ):
         """The QueryFieldList builder
 
         :param fields: A list of fields used in `.only()` or `.exclude()`
@@ -49,7 +52,7 @@ class QueryFieldList(object):
             self.fields = f.fields - self.fields
             self._clean_slice()
 
-        if '_id' in f.fields:
+        if "_id" in f.fields:
             self._id = f.value
 
         if self.always_include:
@@ -59,7 +62,7 @@ class QueryFieldList(object):
             else:
                 self.fields -= self.always_include
 
-        if getattr(f, '_only_called', False):
+        if getattr(f, "_only_called", False):
             self._only_called = True
         return self
 
@@ -73,7 +76,7 @@ class QueryFieldList(object):
         if self.slice:
             field_list.update(self.slice)
         if self._id is not None:
-            field_list['_id'] = self._id
+            field_list["_id"] = self._id
         return field_list
 
     def reset(self):
