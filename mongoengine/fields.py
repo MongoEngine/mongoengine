@@ -875,6 +875,10 @@ class ListField(ComplexBaseField):
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
+        # Validate that the `set` operator doesn't contain more items than `max_length`.
+        if op == "set" and self.max_length is not None and len(value) > self.max_length:
+            self.error("List is too long")
+
         if self.field:
 
             # If the value is iterable and it's not a string nor a
