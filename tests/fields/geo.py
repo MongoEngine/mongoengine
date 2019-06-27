@@ -4,28 +4,27 @@ import unittest
 from mongoengine import *
 from mongoengine.connection import get_db
 
-__all__ = ("GeoFieldTest", )
+__all__ = ("GeoFieldTest",)
 
 
 class GeoFieldTest(unittest.TestCase):
-
     def setUp(self):
-        connect(db='mongoenginetest')
+        connect(db="mongoenginetest")
         self.db = get_db()
 
     def _test_for_expected_error(self, Cls, loc, expected):
         try:
             Cls(loc=loc).validate()
-            self.fail('Should not validate the location {0}'.format(loc))
+            self.fail("Should not validate the location {0}".format(loc))
         except ValidationError as e:
-            self.assertEqual(expected, e.to_dict()['loc'])
+            self.assertEqual(expected, e.to_dict()["loc"])
 
     def test_geopoint_validation(self):
         class Location(Document):
             loc = GeoPointField()
 
         invalid_coords = [{"x": 1, "y": 2}, 5, "a"]
-        expected = 'GeoPointField can only accept tuples or lists of (x, y)'
+        expected = "GeoPointField can only accept tuples or lists of (x, y)"
 
         for coord in invalid_coords:
             self._test_for_expected_error(Location, coord, expected)
@@ -40,7 +39,7 @@ class GeoFieldTest(unittest.TestCase):
             expected = "Both values (%s) in point must be float or int" % repr(coord)
             self._test_for_expected_error(Location, coord, expected)
 
-        invalid_coords = [21, 4, 'a']
+        invalid_coords = [21, 4, "a"]
         for coord in invalid_coords:
             expected = "GeoPointField can only accept tuples or lists of (x, y)"
             self._test_for_expected_error(Location, coord, expected)
@@ -50,7 +49,9 @@ class GeoFieldTest(unittest.TestCase):
             loc = PointField()
 
         invalid_coords = {"x": 1, "y": 2}
-        expected = 'PointField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        expected = (
+            "PointField can only accept a valid GeoJson dictionary or lists of (x, y)"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MadeUp", "coordinates": []}
@@ -77,19 +78,16 @@ class GeoFieldTest(unittest.TestCase):
             self._test_for_expected_error(Location, coord, expected)
 
         Location(loc=[1, 2]).validate()
-        Location(loc={
-            "type": "Point",
-            "coordinates": [
-              81.4471435546875,
-              23.61432859499169
-            ]}).validate()
+        Location(
+            loc={"type": "Point", "coordinates": [81.4471435546875, 23.61432859499169]}
+        ).validate()
 
     def test_linestring_validation(self):
         class Location(Document):
             loc = LineStringField()
 
         invalid_coords = {"x": 1, "y": 2}
-        expected = 'LineStringField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        expected = "LineStringField can only accept a valid GeoJson dictionary or lists of (x, y)"
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
@@ -97,7 +95,9 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "LineString", "coordinates": [[1, 2, 3]]}
-        expected = "Invalid LineString:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        expected = (
+            "Invalid LineString:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [5, "a"]
@@ -105,16 +105,25 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[1]]
-        expected = "Invalid LineString:\nValue (%s) must be a two-dimensional point" % repr(invalid_coords[0])
+        expected = (
+            "Invalid LineString:\nValue (%s) must be a two-dimensional point"
+            % repr(invalid_coords[0])
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[1, 2, 3]]
-        expected = "Invalid LineString:\nValue (%s) must be a two-dimensional point" % repr(invalid_coords[0])
+        expected = (
+            "Invalid LineString:\nValue (%s) must be a two-dimensional point"
+            % repr(invalid_coords[0])
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[{}, {}]], [("a", "b")]]
         for coord in invalid_coords:
-            expected = "Invalid LineString:\nBoth values (%s) in point must be float or int" % repr(coord[0])
+            expected = (
+                "Invalid LineString:\nBoth values (%s) in point must be float or int"
+                % repr(coord[0])
+            )
             self._test_for_expected_error(Location, coord, expected)
 
         Location(loc=[[1, 2], [3, 4], [5, 6], [1, 2]]).validate()
@@ -124,7 +133,9 @@ class GeoFieldTest(unittest.TestCase):
             loc = PolygonField()
 
         invalid_coords = {"x": 1, "y": 2}
-        expected = 'PolygonField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        expected = (
+            "PolygonField can only accept a valid GeoJson dictionary or lists of (x, y)"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
@@ -136,7 +147,9 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[5, "a"]]]
-        expected = "Invalid Polygon:\nBoth values ([5, 'a']) in point must be float or int"
+        expected = (
+            "Invalid Polygon:\nBoth values ([5, 'a']) in point must be float or int"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[]]]
@@ -162,7 +175,7 @@ class GeoFieldTest(unittest.TestCase):
             loc = MultiPointField()
 
         invalid_coords = {"x": 1, "y": 2}
-        expected = 'MultiPointField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        expected = "MultiPointField can only accept a valid GeoJson dictionary or lists of (x, y)"
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
@@ -188,19 +201,19 @@ class GeoFieldTest(unittest.TestCase):
             self._test_for_expected_error(Location, coord, expected)
 
         Location(loc=[[1, 2]]).validate()
-        Location(loc={
-            "type": "MultiPoint",
-            "coordinates": [
-                [1, 2],
-                [81.4471435546875, 23.61432859499169]
-            ]}).validate()
+        Location(
+            loc={
+                "type": "MultiPoint",
+                "coordinates": [[1, 2], [81.4471435546875, 23.61432859499169]],
+            }
+        ).validate()
 
     def test_multilinestring_validation(self):
         class Location(Document):
             loc = MultiLineStringField()
 
         invalid_coords = {"x": 1, "y": 2}
-        expected = 'MultiLineStringField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        expected = "MultiLineStringField can only accept a valid GeoJson dictionary or lists of (x, y)"
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
@@ -216,16 +229,25 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[1]]]
-        expected = "Invalid MultiLineString:\nValue (%s) must be a two-dimensional point" % repr(invalid_coords[0][0])
+        expected = (
+            "Invalid MultiLineString:\nValue (%s) must be a two-dimensional point"
+            % repr(invalid_coords[0][0])
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[1, 2, 3]]]
-        expected = "Invalid MultiLineString:\nValue (%s) must be a two-dimensional point" % repr(invalid_coords[0][0])
+        expected = (
+            "Invalid MultiLineString:\nValue (%s) must be a two-dimensional point"
+            % repr(invalid_coords[0][0])
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[[{}, {}]]], [[("a", "b")]]]
         for coord in invalid_coords:
-            expected = "Invalid MultiLineString:\nBoth values (%s) in point must be float or int" % repr(coord[0][0])
+            expected = (
+                "Invalid MultiLineString:\nBoth values (%s) in point must be float or int"
+                % repr(coord[0][0])
+            )
             self._test_for_expected_error(Location, coord, expected)
 
         Location(loc=[[[1, 2], [3, 4], [5, 6], [1, 2]]]).validate()
@@ -235,7 +257,7 @@ class GeoFieldTest(unittest.TestCase):
             loc = MultiPolygonField()
 
         invalid_coords = {"x": 1, "y": 2}
-        expected = 'MultiPolygonField can only accept a valid GeoJson dictionary or lists of (x, y)'
+        expected = "MultiPolygonField can only accept a valid GeoJson dictionary or lists of (x, y)"
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MadeUp", "coordinates": [[]]}
@@ -243,7 +265,9 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = {"type": "MultiPolygon", "coordinates": [[[[1, 2, 3]]]]}
-        expected = "Invalid MultiPolygon:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        expected = (
+            "Invalid MultiPolygon:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[[5, "a"]]]]
@@ -255,7 +279,9 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[[1, 2, 3]]]]
-        expected = "Invalid MultiPolygon:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        expected = (
+            "Invalid MultiPolygon:\nValue ([1, 2, 3]) must be a two-dimensional point"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[[{}, {}]]], [[("a", "b")]]]
@@ -263,7 +289,9 @@ class GeoFieldTest(unittest.TestCase):
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         invalid_coords = [[[[1, 2], [3, 4]]]]
-        expected = "Invalid MultiPolygon:\nLineStrings must start and end at the same point"
+        expected = (
+            "Invalid MultiPolygon:\nLineStrings must start and end at the same point"
+        )
         self._test_for_expected_error(Location, invalid_coords, expected)
 
         Location(loc=[[[[1, 2], [3, 4], [5, 6], [1, 2]]]]).validate()
@@ -271,17 +299,19 @@ class GeoFieldTest(unittest.TestCase):
     def test_indexes_geopoint(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
+
         class Event(Document):
             title = StringField()
             location = GeoPointField()
 
         geo_indicies = Event._geo_indices()
-        self.assertEqual(geo_indicies, [{'fields': [('location', '2d')]}])
+        self.assertEqual(geo_indicies, [{"fields": [("location", "2d")]}])
 
     def test_geopoint_embedded_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields on
         embedded documents.
         """
+
         class Venue(EmbeddedDocument):
             location = GeoPointField()
             name = StringField()
@@ -291,11 +321,12 @@ class GeoFieldTest(unittest.TestCase):
             venue = EmbeddedDocumentField(Venue)
 
         geo_indicies = Event._geo_indices()
-        self.assertEqual(geo_indicies, [{'fields': [('venue.location', '2d')]}])
+        self.assertEqual(geo_indicies, [{"fields": [("venue.location", "2d")]}])
 
     def test_indexes_2dsphere(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
+
         class Event(Document):
             title = StringField()
             point = PointField()
@@ -303,13 +334,14 @@ class GeoFieldTest(unittest.TestCase):
             polygon = PolygonField()
 
         geo_indicies = Event._geo_indices()
-        self.assertIn({'fields': [('line', '2dsphere')]}, geo_indicies)
-        self.assertIn({'fields': [('polygon', '2dsphere')]}, geo_indicies)
-        self.assertIn({'fields': [('point', '2dsphere')]}, geo_indicies)
+        self.assertIn({"fields": [("line", "2dsphere")]}, geo_indicies)
+        self.assertIn({"fields": [("polygon", "2dsphere")]}, geo_indicies)
+        self.assertIn({"fields": [("point", "2dsphere")]}, geo_indicies)
 
     def test_indexes_2dsphere_embedded(self):
         """Ensure that indexes are created automatically for GeoPointFields.
         """
+
         class Venue(EmbeddedDocument):
             name = StringField()
             point = PointField()
@@ -321,12 +353,11 @@ class GeoFieldTest(unittest.TestCase):
             venue = EmbeddedDocumentField(Venue)
 
         geo_indicies = Event._geo_indices()
-        self.assertIn({'fields': [('venue.line', '2dsphere')]}, geo_indicies)
-        self.assertIn({'fields': [('venue.polygon', '2dsphere')]}, geo_indicies)
-        self.assertIn({'fields': [('venue.point', '2dsphere')]}, geo_indicies)
+        self.assertIn({"fields": [("venue.line", "2dsphere")]}, geo_indicies)
+        self.assertIn({"fields": [("venue.polygon", "2dsphere")]}, geo_indicies)
+        self.assertIn({"fields": [("venue.point", "2dsphere")]}, geo_indicies)
 
     def test_geo_indexes_recursion(self):
-
         class Location(Document):
             name = StringField()
             location = GeoPointField()
@@ -338,11 +369,11 @@ class GeoFieldTest(unittest.TestCase):
         Location.drop_collection()
         Parent.drop_collection()
 
-        Parent(name='Berlin').save()
+        Parent(name="Berlin").save()
         info = Parent._get_collection().index_information()
-        self.assertNotIn('location_2d', info)
+        self.assertNotIn("location_2d", info)
         info = Location._get_collection().index_information()
-        self.assertIn('location_2d', info)
+        self.assertIn("location_2d", info)
 
         self.assertEqual(len(Parent._geo_indices()), 0)
         self.assertEqual(len(Location._geo_indices()), 1)
@@ -354,9 +385,7 @@ class GeoFieldTest(unittest.TestCase):
             location = PointField(auto_index=False)
             datetime = DateTimeField()
 
-            meta = {
-                'indexes': [[("location", "2dsphere"), ("datetime", 1)]]
-            }
+            meta = {"indexes": [[("location", "2dsphere"), ("datetime", 1)]]}
 
         self.assertEqual([], Log._geo_indices())
 
@@ -364,8 +393,10 @@ class GeoFieldTest(unittest.TestCase):
         Log.ensure_indexes()
 
         info = Log._get_collection().index_information()
-        self.assertEqual(info["location_2dsphere_datetime_1"]["key"],
-                         [('location', '2dsphere'), ('datetime', 1)])
+        self.assertEqual(
+            info["location_2dsphere_datetime_1"]["key"],
+            [("location", "2dsphere"), ("datetime", 1)],
+        )
 
         # Test listing explicitly
         class Log(Document):
@@ -373,9 +404,7 @@ class GeoFieldTest(unittest.TestCase):
             datetime = DateTimeField()
 
             meta = {
-                'indexes': [
-                    {'fields': [("location", "2dsphere"), ("datetime", 1)]}
-                ]
+                "indexes": [{"fields": [("location", "2dsphere"), ("datetime", 1)]}]
             }
 
         self.assertEqual([], Log._geo_indices())
@@ -384,9 +413,11 @@ class GeoFieldTest(unittest.TestCase):
         Log.ensure_indexes()
 
         info = Log._get_collection().index_information()
-        self.assertEqual(info["location_2dsphere_datetime_1"]["key"],
-                         [('location', '2dsphere'), ('datetime', 1)])
+        self.assertEqual(
+            info["location_2dsphere_datetime_1"]["key"],
+            [("location", "2dsphere"), ("datetime", 1)],
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

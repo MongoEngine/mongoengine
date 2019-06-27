@@ -3,10 +3,20 @@ from collections import defaultdict
 import six
 from six import iteritems
 
-__all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
-           'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
-           'OperationError', 'NotUniqueError', 'FieldDoesNotExist',
-           'ValidationError', 'SaveConditionError', 'DeprecatedError')
+__all__ = (
+    "NotRegistered",
+    "InvalidDocumentError",
+    "LookUpError",
+    "DoesNotExist",
+    "MultipleObjectsReturned",
+    "InvalidQueryError",
+    "OperationError",
+    "NotUniqueError",
+    "FieldDoesNotExist",
+    "ValidationError",
+    "SaveConditionError",
+    "DeprecatedError",
+)
 
 
 class NotRegistered(Exception):
@@ -71,25 +81,25 @@ class ValidationError(AssertionError):
     field_name = None
     _message = None
 
-    def __init__(self, message='', **kwargs):
+    def __init__(self, message="", **kwargs):
         super(ValidationError, self).__init__(message)
-        self.errors = kwargs.get('errors', {})
-        self.field_name = kwargs.get('field_name')
+        self.errors = kwargs.get("errors", {})
+        self.field_name = kwargs.get("field_name")
         self.message = message
 
     def __str__(self):
         return six.text_type(self.message)
 
     def __repr__(self):
-        return '%s(%s,)' % (self.__class__.__name__, self.message)
+        return "%s(%s,)" % (self.__class__.__name__, self.message)
 
     def __getattribute__(self, name):
         message = super(ValidationError, self).__getattribute__(name)
-        if name == 'message':
+        if name == "message":
             if self.field_name:
-                message = '%s' % message
+                message = "%s" % message
             if self.errors:
-                message = '%s(%s)' % (message, self._format_errors())
+                message = "%s(%s)" % (message, self._format_errors())
         return message
 
     def _get_message(self):
@@ -128,22 +138,22 @@ class ValidationError(AssertionError):
     def _format_errors(self):
         """Returns a string listing all errors within a document"""
 
-        def generate_key(value, prefix=''):
+        def generate_key(value, prefix=""):
             if isinstance(value, list):
-                value = ' '.join([generate_key(k) for k in value])
+                value = " ".join([generate_key(k) for k in value])
             elif isinstance(value, dict):
-                value = ' '.join(
-                    [generate_key(v, k) for k, v in iteritems(value)])
+                value = " ".join([generate_key(v, k) for k, v in iteritems(value)])
 
-            results = '%s.%s' % (prefix, value) if prefix else value
+            results = "%s.%s" % (prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
         for k, v in iteritems(self.to_dict()):
             error_dict[generate_key(v)].append(k)
-        return ' '.join(['%s: %s' % (k, v) for k, v in iteritems(error_dict)])
+        return " ".join(["%s: %s" % (k, v) for k, v in iteritems(error_dict)])
 
 
 class DeprecatedError(Exception):
     """Raise when a user uses a feature that has been Deprecated"""
+
     pass

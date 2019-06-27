@@ -5,10 +5,10 @@ from tests.utils import MongoDBTestCase
 
 
 class TestIntField(MongoDBTestCase):
-
     def test_int_validation(self):
         """Ensure that invalid values cannot be assigned to int fields.
         """
+
         class Person(Document):
             age = IntField(min_value=0, max_value=110)
 
@@ -26,7 +26,7 @@ class TestIntField(MongoDBTestCase):
         self.assertRaises(ValidationError, person.validate)
         person.age = 120
         self.assertRaises(ValidationError, person.validate)
-        person.age = 'ten'
+        person.age = "ten"
         self.assertRaises(ValidationError, person.validate)
 
     def test_ne_operator(self):

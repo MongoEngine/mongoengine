@@ -1,3 +1,4 @@
+black
 nose
 pymongo>=3.4
 six==1.10.0
