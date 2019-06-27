@@ -10,9 +10,9 @@ __all__ = ("GeoQueriesTest",)
 
 
 class GeoQueriesTest(MongoDBTestCase):
-
     def _create_event_data(self, point_field_class=GeoPointField):
         """Create some sample data re-used in many of the tests below."""
+
         class Event(Document):
             title = StringField()
             date = DateTimeField()
@@ -28,15 +28,18 @@ class GeoQueriesTest(MongoDBTestCase):
         event1 = Event.objects.create(
             title="Coltrane Motion @ Double Door",
             date=datetime.datetime.now() - datetime.timedelta(days=1),
-            location=[-87.677137, 41.909889])
+            location=[-87.677137, 41.909889],
+        )
         event2 = Event.objects.create(
             title="Coltrane Motion @ Bottom of the Hill",
             date=datetime.datetime.now() - datetime.timedelta(days=10),
-            location=[-122.4194155, 37.7749295])
+            location=[-122.4194155, 37.7749295],
+        )
         event3 = Event.objects.create(
             title="Coltrane Motion @ Empty Bottle",
             date=datetime.datetime.now(),
-            location=[-87.686638, 41.900474])
+            location=[-87.686638, 41.900474],
+        )
 
         return event1, event2, event3
 
@@ -65,8 +68,7 @@ class GeoQueriesTest(MongoDBTestCase):
 
         # find events within 10 degrees of san francisco
         point = [-122.415579, 37.7566023]
-        events = self.Event.objects(location__near=point,
-                                    location__max_distance=10)
+        events = self.Event.objects(location__near=point, location__max_distance=10)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
 
@@ -78,8 +80,7 @@ class GeoQueriesTest(MongoDBTestCase):
 
         # find events at least 10 degrees away of san francisco
         point = [-122.415579, 37.7566023]
-        events = self.Event.objects(location__near=point,
-                                    location__min_distance=10)
+        events = self.Event.objects(location__near=point, location__min_distance=10)
         self.assertEqual(events.count(), 2)
 
     def test_within_distance(self):
@@ -88,8 +89,7 @@ class GeoQueriesTest(MongoDBTestCase):
 
         # find events within 5 degrees of pitchfork office, chicago
         point_and_distance = [[-87.67892, 41.9120459], 5]
-        events = self.Event.objects(
-            location__within_distance=point_and_distance)
+        events = self.Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 2)
         events = list(events)
         self.assertNotIn(event2, events)
@@ -98,21 +98,18 @@ class GeoQueriesTest(MongoDBTestCase):
 
         # find events within 10 degrees of san francisco
         point_and_distance = [[-122.415579, 37.7566023], 10]
-        events = self.Event.objects(
-            location__within_distance=point_and_distance)
+        events = self.Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
 
         # find events within 1 degree of greenpoint, broolyn, nyc, ny
         point_and_distance = [[-73.9509714, 40.7237134], 1]
-        events = self.Event.objects(
-            location__within_distance=point_and_distance)
+        events = self.Event.objects(location__within_distance=point_and_distance)
         self.assertEqual(events.count(), 0)
 
         # ensure ordering is respected by "within_distance"
         point_and_distance = [[-87.67892, 41.9120459], 10]
-        events = self.Event.objects(
-            location__within_distance=point_and_distance)
+        events = self.Event.objects(location__within_distance=point_and_distance)
         events = events.order_by("-date")
         self.assertEqual(events.count(), 2)
         self.assertEqual(events[0], event3)
@@ -145,7 +142,7 @@ class GeoQueriesTest(MongoDBTestCase):
         polygon2 = [
             (-1.742249, 54.033586),
             (-1.225891, 52.792797),
-            (-4.40094, 53.389881)
+            (-4.40094, 53.389881),
         ]
         events = self.Event.objects(location__within_polygon=polygon2)
         self.assertEqual(events.count(), 0)
@@ -154,9 +151,7 @@ class GeoQueriesTest(MongoDBTestCase):
         """Make sure the "near" operator works with a PointField, which
         corresponds to a 2dsphere index.
         """
-        event1, event2, event3 = self._create_event_data(
-            point_field_class=PointField
-        )
+        event1, event2, event3 = self._create_event_data(point_field_class=PointField)
 
         # find all events "near" pitchfork office, chicago.
         # note that "near" will show the san francisco event, too,
@@ -175,26 +170,23 @@ class GeoQueriesTest(MongoDBTestCase):
         """Ensure the "max_distance" operator works alongside the "near"
         operator with a 2dsphere index.
         """
-        event1, event2, event3 = self._create_event_data(
-            point_field_class=PointField
-        )
+        event1, event2, event3 = self._create_event_data(point_field_class=PointField)
 
         # find events within 10km of san francisco
         point = [-122.415579, 37.7566023]
-        events = self.Event.objects(location__near=point,
-                                    location__max_distance=10000)
+        events = self.Event.objects(location__near=point, location__max_distance=10000)
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
 
         # find events within 1km of greenpoint, broolyn, nyc, ny
-        events = self.Event.objects(location__near=[-73.9509714, 40.7237134],
-                                    location__max_distance=1000)
+        events = self.Event.objects(
+            location__near=[-73.9509714, 40.7237134], location__max_distance=1000
+        )
         self.assertEqual(events.count(), 0)
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(
-            location__near=[-87.67892, 41.9120459],
-            location__max_distance=10000
+            location__near=[-87.67892, 41.9120459], location__max_distance=10000
         ).order_by("-date")
         self.assertEqual(events.count(), 2)
         self.assertEqual(events[0], event3)
@@ -203,9 +195,7 @@ class GeoQueriesTest(MongoDBTestCase):
         """Ensure the "geo_within_box" operator works with a 2dsphere
         index.
         """
-        event1, event2, event3 = self._create_event_data(
-            point_field_class=PointField
-        )
+        event1, event2, event3 = self._create_event_data(point_field_class=PointField)
 
         # check that within_box works
         box = [(-125.0, 35.0), (-100.0, 40.0)]
@@ -217,9 +207,7 @@ class GeoQueriesTest(MongoDBTestCase):
         """Ensure the "geo_within_polygon" operator works with a
         2dsphere index.
         """
-        event1, event2, event3 = self._create_event_data(
-            point_field_class=PointField
-        )
+        event1, event2, event3 = self._create_event_data(point_field_class=PointField)
 
         polygon = [
             (-87.694445, 41.912114),
@@ -235,7 +223,7 @@ class GeoQueriesTest(MongoDBTestCase):
         polygon2 = [
             (-1.742249, 54.033586),
             (-1.225891, 52.792797),
-            (-4.40094, 53.389881)
+            (-4.40094, 53.389881),
         ]
         events = self.Event.objects(location__geo_within_polygon=polygon2)
         self.assertEqual(events.count(), 0)
@@ -244,23 +232,20 @@ class GeoQueriesTest(MongoDBTestCase):
         """Ensure "min_distace" and "max_distance" operators work well
         together with the "near" operator in a 2dsphere index.
         """
-        event1, event2, event3 = self._create_event_data(
-            point_field_class=PointField
-        )
+        event1, event2, event3 = self._create_event_data(point_field_class=PointField)
 
         # ensure min_distance and max_distance combine well
         events = self.Event.objects(
             location__near=[-87.67892, 41.9120459],
             location__min_distance=1000,
-            location__max_distance=10000
+            location__max_distance=10000,
         ).order_by("-date")
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event3)
 
         # ensure ordering is respected by "near" with "min_distance"
         events = self.Event.objects(
-            location__near=[-87.67892, 41.9120459],
-            location__min_distance=10000
+            location__near=[-87.67892, 41.9120459], location__min_distance=10000
         ).order_by("-date")
         self.assertEqual(events.count(), 1)
         self.assertEqual(events[0], event2)
@@ -269,14 +254,11 @@ class GeoQueriesTest(MongoDBTestCase):
         """Make sure the "geo_within_center" operator works with a
         2dsphere index.
         """
-        event1, event2, event3 = self._create_event_data(
-            point_field_class=PointField
-        )
+        event1, event2, event3 = self._create_event_data(point_field_class=PointField)
 
         # find events within 5 degrees of pitchfork office, chicago
         point_and_distance = [[-87.67892, 41.9120459], 2]
-        events = self.Event.objects(
-            location__geo_within_center=point_and_distance)
+        events = self.Event.objects(location__geo_within_center=point_and_distance)
         self.assertEqual(events.count(), 2)
         events = list(events)
         self.assertNotIn(event2, events)
@@ -287,6 +269,7 @@ class GeoQueriesTest(MongoDBTestCase):
         """Helper test method ensuring given point field class works
         well in an embedded document.
         """
+
         class Venue(EmbeddedDocument):
             location = point_field_class()
             name = StringField()
@@ -300,12 +283,11 @@ class GeoQueriesTest(MongoDBTestCase):
         venue1 = Venue(name="The Rock", location=[-87.677137, 41.909889])
         venue2 = Venue(name="The Bridge", location=[-122.4194155, 37.7749295])
 
-        event1 = Event(title="Coltrane Motion @ Double Door",
-                       venue=venue1).save()
-        event2 = Event(title="Coltrane Motion @ Bottom of the Hill",
-                       venue=venue2).save()
-        event3 = Event(title="Coltrane Motion @ Empty Bottle",
-                       venue=venue1).save()
+        event1 = Event(title="Coltrane Motion @ Double Door", venue=venue1).save()
+        event2 = Event(
+            title="Coltrane Motion @ Bottom of the Hill", venue=venue2
+        ).save()
+        event3 = Event(title="Coltrane Motion @ Empty Bottle", venue=venue1).save()
 
         # find all events "near" pitchfork office, chicago.
         # note that "near" will show the san francisco event, too,
@@ -324,6 +306,7 @@ class GeoQueriesTest(MongoDBTestCase):
 
     def test_spherical_geospatial_operators(self):
         """Ensure that spherical geospatial queries are working."""
+
         class Point(Document):
             location = GeoPointField()
 
@@ -343,26 +326,26 @@ class GeoQueriesTest(MongoDBTestCase):
 
         # Same behavior for _within_spherical_distance
         points = Point.objects(
-            location__within_spherical_distance=[
-                [-122, 37.5],
-                60 / earth_radius
-            ]
+            location__within_spherical_distance=[[-122, 37.5], 60 / earth_radius]
         )
         self.assertEqual(points.count(), 2)
 
-        points = Point.objects(location__near_sphere=[-122, 37.5],
-                               location__max_distance=60 / earth_radius)
+        points = Point.objects(
+            location__near_sphere=[-122, 37.5], location__max_distance=60 / earth_radius
+        )
         self.assertEqual(points.count(), 2)
 
         # Test query works with max_distance, being farer from one point
-        points = Point.objects(location__near_sphere=[-122, 37.8],
-                               location__max_distance=60 / earth_radius)
+        points = Point.objects(
+            location__near_sphere=[-122, 37.8], location__max_distance=60 / earth_radius
+        )
         close_point = points.first()
         self.assertEqual(points.count(), 1)
 
         # Test query works with min_distance, being farer from one point
-        points = Point.objects(location__near_sphere=[-122, 37.8],
-                               location__min_distance=60 / earth_radius)
+        points = Point.objects(
+            location__near_sphere=[-122, 37.8], location__min_distance=60 / earth_radius
+        )
         self.assertEqual(points.count(), 1)
         far_point = points.first()
         self.assertNotEqual(close_point, far_point)
@@ -384,10 +367,7 @@ class GeoQueriesTest(MongoDBTestCase):
         # Finds only one point because only the first point is within 60km of
         # the reference point to the south.
         points = Point.objects(
-            location__within_spherical_distance=[
-                [-122, 36.5],
-                60 / earth_radius
-            ]
+            location__within_spherical_distance=[[-122, 36.5], 60 / earth_radius]
         )
         self.assertEqual(points.count(), 1)
         self.assertEqual(points[0].id, south_point.id)
@@ -413,8 +393,10 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(1, roads)
 
         # Within
-        polygon = {"type": "Polygon",
-                   "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]}
+        polygon = {
+            "type": "Polygon",
+            "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
+        }
         roads = Road.objects.filter(line__geo_within=polygon["coordinates"]).count()
         self.assertEqual(1, roads)
 
@@ -425,8 +407,7 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(1, roads)
 
         # Intersects
-        line = {"type": "LineString",
-                "coordinates": [[40, 5], [40, 6]]}
+        line = {"type": "LineString", "coordinates": [[40, 5], [40, 6]]}
         roads = Road.objects.filter(line__geo_intersects=line["coordinates"]).count()
         self.assertEqual(1, roads)
 
@@ -436,8 +417,10 @@ class GeoQueriesTest(MongoDBTestCase):
         roads = Road.objects.filter(line__geo_intersects={"$geometry": line}).count()
         self.assertEqual(1, roads)
 
-        polygon = {"type": "Polygon",
-                   "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]}
+        polygon = {
+            "type": "Polygon",
+            "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
+        }
         roads = Road.objects.filter(line__geo_intersects=polygon["coordinates"]).count()
         self.assertEqual(1, roads)
 
@@ -468,8 +451,10 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(1, roads)
 
         # Within
-        polygon = {"type": "Polygon",
-                   "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]}
+        polygon = {
+            "type": "Polygon",
+            "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
+        }
         roads = Road.objects.filter(poly__geo_within=polygon["coordinates"]).count()
         self.assertEqual(1, roads)
 
@@ -480,8 +465,7 @@ class GeoQueriesTest(MongoDBTestCase):
         self.assertEqual(1, roads)
 
         # Intersects
-        line = {"type": "LineString",
-                "coordinates": [[40, 5], [41, 6]]}
+        line = {"type": "LineString", "coordinates": [[40, 5], [41, 6]]}
         roads = Road.objects.filter(poly__geo_intersects=line["coordinates"]).count()
         self.assertEqual(1, roads)
 
@@ -491,8 +475,10 @@ class GeoQueriesTest(MongoDBTestCase):
         roads = Road.objects.filter(poly__geo_intersects={"$geometry": line}).count()
         self.assertEqual(1, roads)
 
-        polygon = {"type": "Polygon",
-                   "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]}
+        polygon = {
+            "type": "Polygon",
+            "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
+        }
         roads = Road.objects.filter(poly__geo_intersects=polygon["coordinates"]).count()
         self.assertEqual(1, roads)
 
@@ -504,20 +490,20 @@ class GeoQueriesTest(MongoDBTestCase):
 
     def test_aspymongo_with_only(self):
         """Ensure as_pymongo works with only"""
+
         class Place(Document):
             location = PointField()
 
         Place.drop_collection()
         p = Place(location=[24.946861267089844, 60.16311983618494])
         p.save()
-        qs = Place.objects().only('location')
+        qs = Place.objects().only("location")
         self.assertDictEqual(
-            qs.as_pymongo()[0]['location'],
-            {u'type': u'Point',
-             u'coordinates': [
-                24.946861267089844,
-                60.16311983618494]
-            }
+            qs.as_pymongo()[0]["location"],
+            {
+                u"type": u"Point",
+                u"coordinates": [24.946861267089844, 60.16311983618494],
+            },
         )
 
     def test_2dsphere_point_sets_correctly(self):
@@ -542,11 +528,15 @@ class GeoQueriesTest(MongoDBTestCase):
 
         Location(line=[[1, 2], [2, 2]]).save()
         loc = Location.objects.as_pymongo()[0]
-        self.assertEqual(loc["line"], {"type": "LineString", "coordinates": [[1, 2], [2, 2]]})
+        self.assertEqual(
+            loc["line"], {"type": "LineString", "coordinates": [[1, 2], [2, 2]]}
+        )
 
         Location.objects.update(set__line=[[2, 1], [1, 2]])
         loc = Location.objects.as_pymongo()[0]
-        self.assertEqual(loc["line"], {"type": "LineString", "coordinates": [[2, 1], [1, 2]]})
+        self.assertEqual(
+            loc["line"], {"type": "LineString", "coordinates": [[2, 1], [1, 2]]}
+        )
 
     def test_geojson_PolygonField(self):
         class Location(Document):
@@ -556,12 +546,18 @@ class GeoQueriesTest(MongoDBTestCase):
 
         Location(poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]]).save()
         loc = Location.objects.as_pymongo()[0]
-        self.assertEqual(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]})
+        self.assertEqual(
+            loc["poly"],
+            {"type": "Polygon", "coordinates": [[[40, 5], [40, 6], [41, 6], [40, 5]]]},
+        )
 
         Location.objects.update(set__poly=[[[40, 4], [40, 6], [41, 6], [40, 4]]])
         loc = Location.objects.as_pymongo()[0]
-        self.assertEqual(loc["poly"], {"type": "Polygon", "coordinates": [[[40, 4], [40, 6], [41, 6], [40, 4]]]})
+        self.assertEqual(
+            loc["poly"],
+            {"type": "Polygon", "coordinates": [[[40, 4], [40, 6], [41, 6], [40, 4]]]},
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

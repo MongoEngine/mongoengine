@@ -9,19 +9,22 @@ from bson import Binary
 from mongoengine import *
 from tests.utils import MongoDBTestCase
 
-BIN_VALUE = six.b('\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde\xe6\x87\xb1\x7f\xc6\xe6\xd9r\x18\xf5')
+BIN_VALUE = six.b(
+    "\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde\xe6\x87\xb1\x7f\xc6\xe6\xd9r\x18\xf5"
+)
 
 
 class TestBinaryField(MongoDBTestCase):
     def test_binary_fields(self):
         """Ensure that binary fields can be stored and retrieved.
         """
+
         class Attachment(Document):
             content_type = StringField()
             blob = BinaryField()
 
-        BLOB = six.b('\xe6\x00\xc4\xff\x07')
-        MIME_TYPE = 'application/octet-stream'
+        BLOB = six.b("\xe6\x00\xc4\xff\x07")
+        MIME_TYPE = "application/octet-stream"
 
         Attachment.drop_collection()
 
@@ -35,6 +38,7 @@ class TestBinaryField(MongoDBTestCase):
     def test_validation_succeeds(self):
         """Ensure that valid values can be assigned to binary fields.
         """
+
         class AttachmentRequired(Document):
             blob = BinaryField(required=True)
 
@@ -43,11 +47,11 @@ class TestBinaryField(MongoDBTestCase):
 
         attachment_required = AttachmentRequired()
         self.assertRaises(ValidationError, attachment_required.validate)
-        attachment_required.blob = Binary(six.b('\xe6\x00\xc4\xff\x07'))
+        attachment_required.blob = Binary(six.b("\xe6\x00\xc4\xff\x07"))
         attachment_required.validate()
 
-        _5_BYTES = six.b('\xe6\x00\xc4\xff\x07')
-        _4_BYTES = six.b('\xe6\x00\xc4\xff')
+        _5_BYTES = six.b("\xe6\x00\xc4\xff\x07")
+        _4_BYTES = six.b("\xe6\x00\xc4\xff")
         self.assertRaises(ValidationError, AttachmentSizeLimit(blob=_5_BYTES).validate)
         AttachmentSizeLimit(blob=_4_BYTES).validate()
 
@@ -57,7 +61,7 @@ class TestBinaryField(MongoDBTestCase):
         class Attachment(Document):
             blob = BinaryField()
 
-        for invalid_data in (2, u'Im_a_unicode', ['some_str']):
+        for invalid_data in (2, u"Im_a_unicode", ["some_str"]):
             self.assertRaises(ValidationError, Attachment(blob=invalid_data).validate)
 
     def test__primary(self):
@@ -108,17 +112,17 @@ class TestBinaryField(MongoDBTestCase):
 
     def test_modify_operation__set(self):
         """Ensures no regression of bug #1127"""
+
         class MyDocument(Document):
             some_field = StringField()
             bin_field = BinaryField()
 
         MyDocument.drop_collection()
 
-        doc = MyDocument.objects(some_field='test').modify(
-            upsert=True, new=True,
-            set__bin_field=BIN_VALUE
+        doc = MyDocument.objects(some_field="test").modify(
+            upsert=True, new=True, set__bin_field=BIN_VALUE
         )
-        self.assertEqual(doc.some_field, 'test')
+        self.assertEqual(doc.some_field, "test")
         if six.PY3:
             self.assertEqual(doc.bin_field, BIN_VALUE)
         else:
@@ -126,15 +130,18 @@ class TestBinaryField(MongoDBTestCase):
 
     def test_update_one(self):
         """Ensures no regression of bug #1127"""
+
         class MyDocument(Document):
             bin_field = BinaryField()
 
         MyDocument.drop_collection()
 
-        bin_data = six.b('\xe6\x00\xc4\xff\x07')
+        bin_data = six.b("\xe6\x00\xc4\xff\x07")
         doc = MyDocument(bin_field=bin_data).save()
 
-        n_updated = MyDocument.objects(bin_field=bin_data).update_one(bin_field=BIN_VALUE)
+        n_updated = MyDocument.objects(bin_field=bin_data).update_one(
+            bin_field=BIN_VALUE
+        )
         self.assertEqual(n_updated, 1)
         fetched = MyDocument.objects.with_id(doc.id)
         if six.PY3:

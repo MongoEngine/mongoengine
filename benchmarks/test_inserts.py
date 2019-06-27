@@ -26,10 +26,10 @@ myNoddys = noddy.find()
 [n for n in myNoddys]  # iterate
 """
 
-    print('-' * 100)
-    print('PyMongo: Creating 10000 dictionaries.')
+    print("-" * 100)
+    print("PyMongo: Creating 10000 dictionaries.")
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
     stmt = """
 from pymongo import MongoClient, WriteConcern
@@ -49,10 +49,10 @@ myNoddys = noddy.find()
 [n for n in myNoddys]  # iterate
 """
 
-    print('-' * 100)
+    print("-" * 100)
     print('PyMongo: Creating 10000 dictionaries (write_concern={"w": 0}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
     setup = """
 from pymongo import MongoClient
@@ -78,10 +78,10 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys]  # iterate
 """
 
-    print('-' * 100)
-    print('MongoEngine: Creating 10000 dictionaries.')
+    print("-" * 100)
+    print("MongoEngine: Creating 10000 dictionaries.")
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
     stmt = """
 for i in range(10000):
@@ -96,10 +96,10 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys]  # iterate
 """
 
-    print('-' * 100)
-    print('MongoEngine: Creating 10000 dictionaries (using a single field assignment).')
+    print("-" * 100)
+    print("MongoEngine: Creating 10000 dictionaries (using a single field assignment).")
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
     stmt = """
 for i in range(10000):
@@ -112,10 +112,10 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys] # iterate
 """
 
-    print('-' * 100)
+    print("-" * 100)
     print('MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
     stmt = """
 for i in range(10000):
@@ -128,10 +128,12 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys] # iterate
 """
 
-    print('-' * 100)
-    print('MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}, validate=False).')
+    print("-" * 100)
+    print(
+        'MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}, validate=False).'
+    )
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
     stmt = """
 for i in range(10000):
@@ -144,10 +146,12 @@ myNoddys = Noddy.objects()
 [n for n in myNoddys] # iterate
 """
 
-    print('-' * 100)
-    print('MongoEngine: Creating 10000 dictionaries (force_insert=True, write_concern={"w": 0}, validate=False).')
+    print("-" * 100)
+    print(
+        'MongoEngine: Creating 10000 dictionaries (force_insert=True, write_concern={"w": 0}, validate=False).'
+    )
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print('{}s'.format(t.timeit(1)))
+    print("{}s".format(t.timeit(1)))
 
 
 if __name__ == "__main__":

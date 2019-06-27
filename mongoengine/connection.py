@@ -3,21 +3,21 @@ from pymongo.database import _check_name
 import six
 
 __all__ = [
-    'DEFAULT_CONNECTION_NAME',
-    'DEFAULT_DATABASE_NAME',
-    'MongoEngineConnectionError',
-    'connect',
-    'disconnect',
-    'disconnect_all',
-    'get_connection',
-    'get_db',
-    'register_connection',
+    "DEFAULT_CONNECTION_NAME",
+    "DEFAULT_DATABASE_NAME",
+    "MongoEngineConnectionError",
+    "connect",
+    "disconnect",
+    "disconnect_all",
+    "get_connection",
+    "get_db",
+    "register_connection",
 ]
 
 
-DEFAULT_CONNECTION_NAME = 'default'
-DEFAULT_DATABASE_NAME = 'test'
-DEFAULT_HOST = 'localhost'
+DEFAULT_CONNECTION_NAME = "default"
+DEFAULT_DATABASE_NAME = "test"
+DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 27017
 
 _connection_settings = {}
@@ -31,6 +31,7 @@ class MongoEngineConnectionError(Exception):
     """Error raised when the database connection can't be established or
     when a connection with a requested alias can't be retrieved.
     """
+
     pass
 
 
@@ -39,18 +40,23 @@ def _check_db_name(name):
     This functionality is copied from pymongo Database class constructor.
     """
     if not isinstance(name, six.string_types):
-        raise TypeError('name must be an instance of %s' % six.string_types)
-    elif name != '$external':
+        raise TypeError("name must be an instance of %s" % six.string_types)
+    elif name != "$external":
         _check_name(name)
 
 
 def _get_connection_settings(
-        db=None, name=None, host=None, port=None,
-        read_preference=READ_PREFERENCE,
-        username=None, password=None,
-        authentication_source=None,
-        authentication_mechanism=None,
-        **kwargs):
+    db=None,
+    name=None,
+    host=None,
+    port=None,
+    read_preference=READ_PREFERENCE,
+    username=None,
+    password=None,
+    authentication_source=None,
+    authentication_mechanism=None,
+    **kwargs
+):
     """Get the connection settings as a dict
 
     : param db: the name of the database to use, for compatibility with connect
@@ -73,18 +79,18 @@ def _get_connection_settings(
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
-        'name': name or db or DEFAULT_DATABASE_NAME,
-        'host': host or DEFAULT_HOST,
-        'port': port or DEFAULT_PORT,
-        'read_preference': read_preference,
-        'username': username,
-        'password': password,
-        'authentication_source': authentication_source,
-        'authentication_mechanism': authentication_mechanism
+        "name": name or db or DEFAULT_DATABASE_NAME,
+        "host": host or DEFAULT_HOST,
+        "port": port or DEFAULT_PORT,
+        "read_preference": read_preference,
+        "username": username,
+        "password": password,
+        "authentication_source": authentication_source,
+        "authentication_mechanism": authentication_mechanism,
     }
 
-    _check_db_name(conn_settings['name'])
-    conn_host = conn_settings['host']
+    _check_db_name(conn_settings["name"])
+    conn_host = conn_settings["host"]
 
     # Host can be a list or a string, so if string, force to a list.
     if isinstance(conn_host, six.string_types):
@@ -94,32 +100,32 @@ def _get_connection_settings(
     for entity in conn_host:
 
         # Handle Mongomock
-        if entity.startswith('mongomock://'):
-            conn_settings['is_mock'] = True
+        if entity.startswith("mongomock://"):
+            conn_settings["is_mock"] = True
             # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
-            resolved_hosts.append(entity.replace('mongomock://', 'mongodb://', 1))
+            resolved_hosts.append(entity.replace("mongomock://", "mongodb://", 1))
 
         # Handle URI style connections, only updating connection params which
         # were explicitly specified in the URI.
-        elif '://' in entity:
+        elif "://" in entity:
             uri_dict = uri_parser.parse_uri(entity)
             resolved_hosts.append(entity)
 
-            if uri_dict.get('database'):
-                conn_settings['name'] = uri_dict.get('database')
+            if uri_dict.get("database"):
+                conn_settings["name"] = uri_dict.get("database")
 
-            for param in ('read_preference', 'username', 'password'):
+            for param in ("read_preference", "username", "password"):
                 if uri_dict.get(param):
                     conn_settings[param] = uri_dict[param]
 
-            uri_options = uri_dict['options']
-            if 'replicaset' in uri_options:
-                conn_settings['replicaSet'] = uri_options['replicaset']
-            if 'authsource' in uri_options:
-                conn_settings['authentication_source'] = uri_options['authsource']
-            if 'authmechanism' in uri_options:
-                conn_settings['authentication_mechanism'] = uri_options['authmechanism']
-            if 'readpreference' in uri_options:
+            uri_options = uri_dict["options"]
+            if "replicaset" in uri_options:
+                conn_settings["replicaSet"] = uri_options["replicaset"]
+            if "authsource" in uri_options:
+                conn_settings["authentication_source"] = uri_options["authsource"]
+            if "authmechanism" in uri_options:
+                conn_settings["authentication_mechanism"] = uri_options["authmechanism"]
+            if "readpreference" in uri_options:
                 read_preferences = (
                     ReadPreference.NEAREST,
                     ReadPreference.PRIMARY,
@@ -133,34 +139,41 @@ def _get_connection_settings(
                 # int (e.g. 3).
                 # TODO simplify the code below once we drop support for
                 # PyMongo v3.4.
-                read_pf_mode = uri_options['readpreference']
+                read_pf_mode = uri_options["readpreference"]
                 if isinstance(read_pf_mode, six.string_types):
                     read_pf_mode = read_pf_mode.lower()
                 for preference in read_preferences:
                     if (
-                        preference.name.lower() == read_pf_mode or
-                        preference.mode == read_pf_mode
+                        preference.name.lower() == read_pf_mode
+                        or preference.mode == read_pf_mode
                     ):
-                        conn_settings['read_preference'] = preference
+                        conn_settings["read_preference"] = preference
                         break
         else:
             resolved_hosts.append(entity)
-    conn_settings['host'] = resolved_hosts
+    conn_settings["host"] = resolved_hosts
 
     # Deprecated parameters that should not be passed on
-    kwargs.pop('slaves', None)
-    kwargs.pop('is_slave', None)
+    kwargs.pop("slaves", None)
+    kwargs.pop("is_slave", None)
 
     conn_settings.update(kwargs)
     return conn_settings
 
 
-def register_connection(alias, db=None, name=None, host=None, port=None,
-                        read_preference=READ_PREFERENCE,
-                        username=None, password=None,
-                        authentication_source=None,
-                        authentication_mechanism=None,
-                        **kwargs):
+def register_connection(
+    alias,
+    db=None,
+    name=None,
+    host=None,
+    port=None,
+    read_preference=READ_PREFERENCE,
+    username=None,
+    password=None,
+    authentication_source=None,
+    authentication_mechanism=None,
+    **kwargs
+):
     """Register the connection settings.
 
     : param alias: the name that will be used to refer to this connection
@@ -185,12 +198,17 @@ def register_connection(alias, db=None, name=None, host=None, port=None,
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = _get_connection_settings(
-        db=db, name=name, host=host, port=port,
+        db=db,
+        name=name,
+        host=host,
+        port=port,
         read_preference=read_preference,
-        username=username, password=password,
+        username=username,
+        password=password,
         authentication_source=authentication_source,
         authentication_mechanism=authentication_mechanism,
-        **kwargs)
+        **kwargs
+    )
     _connection_settings[alias] = conn_settings
 
 
@@ -206,7 +224,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     if alias in _dbs:
         # Detach all cached collections in Documents
         for doc_cls in _get_documents_by_db(alias, DEFAULT_CONNECTION_NAME):
-            if issubclass(doc_cls, Document):     # Skip EmbeddedDocument
+            if issubclass(doc_cls, Document):  # Skip EmbeddedDocument
                 doc_cls._disconnect()
 
         del _dbs[alias]
@@ -237,19 +255,21 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     # Raise MongoEngineConnectionError if it doesn't.
     if alias not in _connection_settings:
         if alias == DEFAULT_CONNECTION_NAME:
-            msg = 'You have not defined a default connection'
+            msg = "You have not defined a default connection"
         else:
             msg = 'Connection with alias "%s" has not been defined' % alias
         raise MongoEngineConnectionError(msg)
 
     def _clean_settings(settings_dict):
         irrelevant_fields_set = {
-            'name', 'username', 'password',
-            'authentication_source', 'authentication_mechanism'
+            "name",
+            "username",
+            "password",
+            "authentication_source",
+            "authentication_mechanism",
         }
         return {
-            k: v for k, v in settings_dict.items()
-            if k not in irrelevant_fields_set
+            k: v for k, v in settings_dict.items() if k not in irrelevant_fields_set
         }
 
     raw_conn_settings = _connection_settings[alias].copy()
@@ -260,13 +280,12 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     conn_settings = _clean_settings(raw_conn_settings)
 
     # Determine if we should use PyMongo's or mongomock's MongoClient.
-    is_mock = conn_settings.pop('is_mock', False)
+    is_mock = conn_settings.pop("is_mock", False)
     if is_mock:
         try:
             import mongomock
         except ImportError:
-            raise RuntimeError('You need mongomock installed to mock '
-                               'MongoEngine.')
+            raise RuntimeError("You need mongomock installed to mock MongoEngine.")
         connection_class = mongomock.MongoClient
     else:
         connection_class = MongoClient
@@ -277,9 +296,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         connection = existing_connection
     else:
         connection = _create_connection(
-            alias=alias,
-            connection_class=connection_class,
-            **conn_settings
+            alias=alias, connection_class=connection_class, **conn_settings
         )
     _connections[alias] = connection
     return _connections[alias]
@@ -294,7 +311,8 @@ def _create_connection(alias, connection_class, **connection_settings):
         return connection_class(**connection_settings)
     except Exception as e:
         raise MongoEngineConnectionError(
-            'Cannot connect to database %s :\n%s' % (alias, e))
+            "Cannot connect to database %s :\n%s" % (alias, e)
+        )
 
 
 def _find_existing_connection(connection_settings):
@@ -316,7 +334,7 @@ def _find_existing_connection(connection_settings):
         # Only remove the name but it's important to
         # keep the username/password/authentication_source/authentication_mechanism
         # to identify if the connection could be shared (cfr https://github.com/MongoEngine/mongoengine/issues/2047)
-        return {k: v for k, v in settings_dict.items() if k != 'name'}
+        return {k: v for k, v in settings_dict.items() if k != "name"}
 
     cleaned_conn_settings = _clean_settings(connection_settings)
     for db_alias, connection_settings in connection_settings_bis:
@@ -332,14 +350,18 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     if alias not in _dbs:
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
-        db = conn[conn_settings['name']]
-        auth_kwargs = {'source': conn_settings['authentication_source']}
-        if conn_settings['authentication_mechanism'] is not None:
-            auth_kwargs['mechanism'] = conn_settings['authentication_mechanism']
+        db = conn[conn_settings["name"]]
+        auth_kwargs = {"source": conn_settings["authentication_source"]}
+        if conn_settings["authentication_mechanism"] is not None:
+            auth_kwargs["mechanism"] = conn_settings["authentication_mechanism"]
         # Authenticate if necessary
-        if conn_settings['username'] and (conn_settings['password'] or
-                                          conn_settings['authentication_mechanism'] == 'MONGODB-X509'):
-            db.authenticate(conn_settings['username'], conn_settings['password'], **auth_kwargs)
+        if conn_settings["username"] and (
+            conn_settings["password"]
+            or conn_settings["authentication_mechanism"] == "MONGODB-X509"
+        ):
+            db.authenticate(
+                conn_settings["username"], conn_settings["password"], **auth_kwargs
+            )
         _dbs[alias] = db
     return _dbs[alias]
 
@@ -368,8 +390,8 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
         if new_conn_settings != prev_conn_setting:
             err_msg = (
-                u'A different connection with alias `{}` was already '
-                u'registered. Use disconnect() first'
+                u"A different connection with alias `{}` was already "
+                u"registered. Use disconnect() first"
             ).format(alias)
             raise MongoEngineConnectionError(err_msg)
     else:

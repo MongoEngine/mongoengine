@@ -12,7 +12,6 @@ READ_PREF = ReadPreference.SECONDARY
 
 
 class ConnectionTest(unittest.TestCase):
-
     def setUp(self):
         mongoengine.connection._connection_settings = {}
         mongoengine.connection._connections = {}
@@ -28,9 +27,11 @@ class ConnectionTest(unittest.TestCase):
         """
 
         try:
-            conn = mongoengine.connect(db='mongoenginetest',
-                           host="mongodb://localhost/mongoenginetest?replicaSet=rs",
-                           read_preference=READ_PREF)
+            conn = mongoengine.connect(
+                db="mongoenginetest",
+                host="mongodb://localhost/mongoenginetest?replicaSet=rs",
+                read_preference=READ_PREF,
+            )
         except MongoEngineConnectionError as e:
             return
 
@@ -41,5 +42,5 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(conn.read_preference, READ_PREF)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
