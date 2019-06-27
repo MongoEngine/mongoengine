@@ -916,8 +916,9 @@ class ListField(ComplexBaseField):
         Required means it cannot be empty - as the default for ListFields is []
     """
 
-    def __init__(self, field=None, **kwargs):
+    def __init__(self, field=None, max_length=None, **kwargs):
         self.field = field
+        self.max_length = max_length
         kwargs.setdefault("default", lambda: [])
         super(ListField, self).__init__(**kwargs)
 
@@ -939,9 +940,21 @@ class ListField(ComplexBaseField):
         """Make sure that a list of valid fields is being used."""
         if not isinstance(value, (list, tuple, BaseQuerySet)):
             self.error("Only lists and tuples may be used in a list field")
+
+        # Validate that max_length is not exceeded.
+        # NOTE It's still possible to bypass this enforcement by using $push.
+        # However, if the document is reloaded after $push and then re-saved,
+        # the validation error will be raised.
+        if self.max_length is not None and len(value) > self.max_length:
+            self.error("List is too long")
+
         super(ListField, self).validate(value)
 
     def prepare_query_value(self, op, value):
+        # Validate that the `set` operator doesn't contain more items than `max_length`.
+        if op == "set" and self.max_length is not None and len(value) > self.max_length:
+            self.error("List is too long")
+
         if self.field:
 
             # If the value is iterable and it's not a string nor a

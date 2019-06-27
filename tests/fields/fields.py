@@ -1010,6 +1010,38 @@ class FieldTest(MongoDBTestCase):
             e.mapping = ["abc"]
             e.save()
 
+    def test_list_field_max_length(self):
+        """Ensure ListField's max_length is respected."""
+
+        class Foo(Document):
+            items = ListField(IntField(), max_length=5)
+
+        foo = Foo()
+        for i in range(1, 7):
+            foo.items.append(i)
+            if i < 6:
+                foo.save()
+            else:
+                with self.assertRaises(ValidationError) as cm:
+                    foo.save()
+                self.assertIn("List is too long", str(cm.exception))
+
+    def test_list_field_max_length(self):
+        """Ensure ListField's max_length is respected."""
+
+        class Foo(Document):
+            items = ListField(IntField(), max_length=5)
+
+        foo = Foo()
+        for i in range(1, 7):
+            foo.items.append(i)
+            if i < 6:
+                foo.save()
+            else:
+                with self.assertRaises(ValidationError) as cm:
+                    foo.save()
+                self.assertIn("List is too long", str(cm.exception))
+
     def test_list_field_rejects_strings(self):
         """Strings aren't valid list field data types."""
 
