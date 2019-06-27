@@ -6,8 +6,10 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- BREAKING CHANGE: Drop support for positional arguments when instantiating a document. #2103
+- BREAKING CHANGE: Positional arguments when instantiating a document are no longer supported. #2103
   - From now on keyword arguments (e.g. `Doc(field_name=value)`) are required.
+- The codebase is now formatted using `black`. #2109
+- `ListField` now accepts an optional `max_length` parameter. #2110
 
 Changes in 0.18.2
 =================
