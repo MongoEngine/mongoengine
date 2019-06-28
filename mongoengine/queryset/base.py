@@ -53,7 +53,7 @@ class BaseQuerySet(object):
         self._collection_obj = collection
         self._mongo_query = None
         self._query_obj = Q()
-        self._initial_query = {}
+        self._cls_query = {}
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
         self._ordering = None
@@ -72,9 +72,9 @@ class BaseQuerySet(object):
         # subclasses of the class being used
         if document._meta.get("allow_inheritance") is True:
             if len(self._document._subclasses) == 1:
-                self._initial_query = {"_cls": self._document._subclasses[0]}
+                self._cls_query = {"_cls": self._document._subclasses[0]}
             else:
-                self._initial_query = {"_cls": {"$in": self._document._subclasses}}
+                self._cls_query = {"_cls": {"$in": self._document._subclasses}}
             self._loaded_fields = QueryFieldList(always_include=["_cls"])
 
         self._cursor_obj = None
@@ -743,7 +743,7 @@ class BaseQuerySet(object):
         Do NOT return any inherited documents.
         """
         if self._document._meta.get("allow_inheritance") is True:
-            self._initial_query = {"_cls": self._document._class_name}
+            self._cls_query = {"_cls": self._document._class_name}
 
         return self
 
@@ -777,7 +777,7 @@ class BaseQuerySet(object):
 
         copy_props = (
             "_mongo_query",
-            "_initial_query",
+            "_cls_query",
             "_none",
             "_query_obj",
             "_where_clause",
@@ -1651,13 +1651,11 @@ class BaseQuerySet(object):
     def _query(self):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
-            if self._class_check and self._initial_query:
+            if self._class_check and self._cls_query:
                 if "_cls" in self._mongo_query:
-                    self._mongo_query = {
-                        "$and": [self._initial_query, self._mongo_query]
-                    }
+                    self._mongo_query = {"$and": [self._cls_query, self._mongo_query]}
                 else:
-                    self._mongo_query.update(self._initial_query)
+                    self._mongo_query.update(self._cls_query)
         return self._mongo_query
 
     @property
