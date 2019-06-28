@@ -9,6 +9,10 @@ Development
 - BREAKING CHANGE: Removed the deprecated `format` param from `QuerySet.explain` #2113
 - BREAKING CHANGE: Renamed `MongoEngineConnectionError` to `ConnectionFailure` #2111
   - If you catch/use `MongoEngineConnectionError` in your code, you'll have to rename it.
+- BREAKING CHANGE: "class_check" and "read_preference" keyword arguments are no longer available when filtering a QuerySet #2112
+  - Instead of `Doc.objects(foo=bar, read_preference=...)` use `Doc.objects(foo=bar).read_preference(...)`.
+  - Instead of `Doc.objects(foo=bar, class_check=False)` use `Doc.objects(foo=bar).clear_cls_query(...)`.
+  - This change also renames the private `QuerySet._initial_query` attribute to `_cls_query`.
 - BREAKING CHANGE: Positional arguments when instantiating a document are no longer supported. #2103
   - From now on keyword arguments (e.g. `Doc(field_name=value)`) are required.
 - The codebase is now formatted using `black`. #2109
