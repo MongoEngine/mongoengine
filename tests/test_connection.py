@@ -23,7 +23,7 @@ from mongoengine import (
 )
 import mongoengine.connection
 from mongoengine.connection import (
-    MongoEngineConnectionError,
+    ConnectionFailure,
     get_db,
     get_connection,
     disconnect,
@@ -92,10 +92,10 @@ class ConnectionTest(unittest.TestCase):
         disconnect("db1")
         disconnect("db2")
 
-        with self.assertRaises(MongoEngineConnectionError):
+        with self.assertRaises(ConnectionFailure):
             list(History1.objects().as_pymongo())
 
-        with self.assertRaises(MongoEngineConnectionError):
+        with self.assertRaises(ConnectionFailure):
             list(History2.objects().as_pymongo())
 
         connect("db1", alias="db1")
@@ -149,7 +149,7 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_fails_if_connect_2_times_with_default_alias(self):
         connect("mongoenginetest")
 
-        with self.assertRaises(MongoEngineConnectionError) as ctx_err:
+        with self.assertRaises(ConnectionFailure) as ctx_err:
             connect("mongoenginetest2")
         self.assertEqual(
             "A different connection with alias `default` was already registered. Use disconnect() first",
@@ -159,7 +159,7 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_fails_if_connect_2_times_with_custom_alias(self):
         connect("mongoenginetest", alias="alias1")
 
-        with self.assertRaises(MongoEngineConnectionError) as ctx_err:
+        with self.assertRaises(ConnectionFailure) as ctx_err:
             connect("mongoenginetest2", alias="alias1")
 
         self.assertEqual(
@@ -175,7 +175,7 @@ class ConnectionTest(unittest.TestCase):
         db_alias = "alias1"
         connect(db=db_name, alias=db_alias, host="localhost", port=27017)
 
-        with self.assertRaises(MongoEngineConnectionError):
+        with self.assertRaises(ConnectionFailure):
             connect(host="mongodb://localhost:27017/%s" % db_name, alias=db_alias)
 
     def test_connect_passes_silently_connect_multiple_times_with_same_config(self):
@@ -353,7 +353,7 @@ class ConnectionTest(unittest.TestCase):
 
         self.assertIsNone(History._collection)
 
-        with self.assertRaises(MongoEngineConnectionError) as ctx_err:
+        with self.assertRaises(ConnectionFailure) as ctx_err:
             History.objects.first()
         self.assertEqual(
             "You have not defined a default connection", str(ctx_err.exception)
@@ -379,7 +379,7 @@ class ConnectionTest(unittest.TestCase):
         disconnect()
 
         # Make sure save doesnt work at this stage
-        with self.assertRaises(MongoEngineConnectionError):
+        with self.assertRaises(ConnectionFailure):
             User(name="Wont work").save()
 
         # Save in db2
@@ -433,10 +433,10 @@ class ConnectionTest(unittest.TestCase):
         self.assertEqual(len(dbs), 0)
         self.assertEqual(len(connection_settings), 0)
 
-        with self.assertRaises(MongoEngineConnectionError):
+        with self.assertRaises(ConnectionFailure):
             History.objects.first()
 
-        with self.assertRaises(MongoEngineConnectionError):
+        with self.assertRaises(ConnectionFailure):
             History1.objects.first()
 
     def test_disconnect_all_silently_pass_if_no_connection_exist(self):
@@ -557,7 +557,7 @@ class ConnectionTest(unittest.TestCase):
         """
         register_connection("testdb", "mongoenginetest2")
 
-        self.assertRaises(MongoEngineConnectionError, get_connection)
+        self.assertRaises(ConnectionFailure, get_connection)
         conn = get_connection("testdb")
         self.assertIsInstance(conn, pymongo.mongo_client.MongoClient)
 
