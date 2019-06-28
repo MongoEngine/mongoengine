@@ -4588,6 +4588,38 @@ class QuerySetTest(unittest.TestCase):
         doc.save()
         self.assertEqual(MyDoc.objects.only("test__47").get().test["47"], 1)
 
+    def test_clear_cls_query(self):
+        class Parent(Document):
+            name = StringField()
+            meta = {"allow_inheritance": True}
+
+        class Child(Parent):
+            age = IntField()
+
+        Parent.drop_collection()
+
+        # Default query includes the "_cls" check.
+        self.assertEqual(
+            Parent.objects._query, {"_cls": {"$in": ("Parent", "Parent.Child")}}
+        )
+
+        # Clearing the "_cls" query should work.
+        self.assertEqual(Parent.objects.clear_cls_query()._query, {})
+
+        # Clearing the "_cls" query should not persist across queryset instances.
+        self.assertEqual(
+            Parent.objects._query, {"_cls": {"$in": ("Parent", "Parent.Child")}}
+        )
+
+        # The rest of the query should not be cleared.
+        self.assertEqual(
+            Parent.objects.filter(name="xyz").clear_cls_query()._query, {"name": "xyz"}
+        )
+
+        Parent.objects.create(name="foo")
+        Child.objects.create(name="bar", age=1)
+        self.assertEqual(Parent.objects.clear_cls_query().count(), 2)
+
     def test_read_preference(self):
         class Bar(Document):
             txt = StringField()
