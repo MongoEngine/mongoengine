@@ -6,7 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- BREAKING CHANGE: Renamed `MongoEngineConnectionError` to `ConnectionFailure` #TBD
+- BREAKING CHANGE: Renamed `MongoEngineConnectionError` to `ConnectionFailure` #2111
   - If you catch/use `MongoEngineConnectionError` in your code, you'll have to rename it.
 - BREAKING CHANGE: Positional arguments when instantiating a document are no longer supported. #2103
   - From now on keyword arguments (e.g. `Doc(field_name=value)`) are required.
