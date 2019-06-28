@@ -3,6 +3,19 @@ import weakref
 import copy
 import lazy_object_proxy
 from contextlib2 import contextmanager
+from collections import defaultdict
+
+
+class LazyPrefetchBase:
+    _result_cache = None
+    _reference_cache_count = None
+    _reference_cache = None
+
+class ListFieldProxy(list, LazyPrefetchBase):
+    def __init__(self, _list):
+        self._result_cache = _list
+        self._reference_cache_count = defaultdict(int)
+        self._reference_cache = defaultdict(dict)
 
 
 class DocumentProxy(lazy_object_proxy.Proxy):
@@ -10,7 +23,7 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     collection = None
     wrapped = None
     _instance = None
-    
+
     def __init__(self, wrapped, id, collection, instance=None):
         super(DocumentProxy, self).__init__(wrapped)
         self.id = id
