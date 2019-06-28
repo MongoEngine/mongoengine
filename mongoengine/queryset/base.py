@@ -86,7 +86,7 @@ class BaseQuerySet(object):
         self._max_time_ms = None
         self._comment = None
 
-    def __call__(self, q_obj=None, class_check=True, read_preference=None, **query):
+    def __call__(self, q_obj=None, class_check=True, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
@@ -96,13 +96,11 @@ class BaseQuerySet(object):
             objects, only the last one will be used
         :param class_check: If set to False bypass class name check when
             querying collection
-        :param read_preference: if set, overrides connection-level
-            read_preference from `ReplicaSetConnection`.
         :param query: Django-style query keyword arguments
         """
         query = Q(**query)
         if q_obj:
-            # make sure proper query object is passed
+            # Make sure proper query object is passed.
             if not isinstance(q_obj, QNode):
                 msg = (
                     "Not a query object: %s. "
@@ -111,12 +109,7 @@ class BaseQuerySet(object):
                 raise InvalidQueryError(msg)
             query &= q_obj
 
-        if read_preference is None:
-            queryset = self.clone()
-        else:
-            # Use the clone provided when setting read_preference
-            queryset = self.read_preference(read_preference)
-
+        queryset = self.clone()
         queryset._query_obj &= query
         queryset._mongo_query = None
         queryset._cursor_obj = None
@@ -222,8 +215,7 @@ class BaseQuerySet(object):
         return self.__call__()
 
     def filter(self, *q_objs, **query):
-        """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
-        """
+        """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`"""
         return self.__call__(*q_objs, **query)
 
     def search_text(self, text, language=None):
