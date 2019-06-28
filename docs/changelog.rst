@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- BREAKING CHANGE: Removed the deprecated `format` param from `QuerySet.explain` #2113
 - BREAKING CHANGE: Renamed `MongoEngineConnectionError` to `ConnectionFailure` #2111
   - If you catch/use `MongoEngineConnectionError` in your code, you'll have to rename it.
 - BREAKING CHANGE: Positional arguments when instantiating a document are no longer supported. #2103
