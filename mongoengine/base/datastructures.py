@@ -217,7 +217,7 @@ class EmbeddedDocumentList(BaseList):
         Filters the list by only including embedded documents with the
         given keyword arguments.
 
-        This method only supports simple comparison (e.g: .filter(name='John Doe'))
+        This method only supports simple comparison (e.g. .filter(name='John Doe'))
         and does not support operators like __gte, __lte, __icontains like queryset.filter does
 
         :param kwargs: The keyword arguments corresponding to the fields to

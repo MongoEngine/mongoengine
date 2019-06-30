@@ -2,15 +2,15 @@
 Document Validation
 ====================
 
-By design, mongoengine strictly validates the documents right before they are inserted in MongoDB
+By design, MongoEngine strictly validates the documents right before they are inserted in MongoDB
 and make sure they are consistent with the fields defined in your models.
 
 Mongoengine will not validate a document when an object is loaded from the DB into an instance
-of your model but this operation will fail under some circumstances (e.g: if there is a field in
-the document fetched from the database that is not defined in your model)
+of your model but this operation will fail under some circumstances (e.g. if there is a field in
+the document fetched from the database that is not defined in your model).
 
 
-Builtin validation
+Built-in validation
 =================
 
 Mongoengine provides different fields that encapsulate the corresponding validation
@@ -73,7 +73,7 @@ Note that `clean` runs before the validation when you save a Document.
 
 * Adding custom Field classes
 
-We recommend as much as possible to use the standard field but it is also possible
+We recommend as much as possible to use fields provided by MongoEngine. However, it is also possible
 to subclass a Field and encapsulate some validation by overriding the `validate` method
 
 .. code-block:: python

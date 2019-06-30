@@ -385,7 +385,7 @@ class DecimalField(BaseField):
         :param max_value: Validation rule for the maximum acceptable value.
         :param force_string: Store the value as a string (instead of a float).
          Be aware that this affects query sorting and operation like lte, gte (as string comparison is applied)
-         and some query operator won't work (e.g: inc, dec)
+         and some query operator won't work (e.g. inc, dec)
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal library:
 
