@@ -5,7 +5,7 @@ import six
 __all__ = [
     "DEFAULT_CONNECTION_NAME",
     "DEFAULT_DATABASE_NAME",
-    "MongoEngineConnectionError",
+    "ConnectionFailure",
     "connect",
     "disconnect",
     "disconnect_all",
@@ -27,7 +27,7 @@ _dbs = {}
 READ_PREFERENCE = ReadPreference.PRIMARY
 
 
-class MongoEngineConnectionError(Exception):
+class ConnectionFailure(Exception):
     """Error raised when the database connection can't be established or
     when a connection with a requested alias can't be retrieved.
     """
@@ -252,13 +252,13 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         return _connections[alias]
 
     # Validate that the requested alias exists in the _connection_settings.
-    # Raise MongoEngineConnectionError if it doesn't.
+    # Raise ConnectionFailure if it doesn't.
     if alias not in _connection_settings:
         if alias == DEFAULT_CONNECTION_NAME:
             msg = "You have not defined a default connection"
         else:
             msg = 'Connection with alias "%s" has not been defined' % alias
-        raise MongoEngineConnectionError(msg)
+        raise ConnectionFailure(msg)
 
     def _clean_settings(settings_dict):
         irrelevant_fields_set = {
@@ -305,14 +305,12 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 def _create_connection(alias, connection_class, **connection_settings):
     """
     Create the new connection for this alias. Raise
-    MongoEngineConnectionError if it can't be established.
+    ConnectionFailure if it can't be established.
     """
     try:
         return connection_class(**connection_settings)
     except Exception as e:
-        raise MongoEngineConnectionError(
-            "Cannot connect to database %s :\n%s" % (alias, e)
-        )
+        raise ConnectionFailure("Cannot connect to database %s :\n%s" % (alias, e))
 
 
 def _find_existing_connection(connection_settings):
@@ -393,7 +391,7 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
                 u"A different connection with alias `{}` was already "
                 u"registered. Use disconnect() first"
             ).format(alias)
-            raise MongoEngineConnectionError(err_msg)
+            raise ConnectionFailure(err_msg)
     else:
         register_connection(alias, db, **kwargs)
 

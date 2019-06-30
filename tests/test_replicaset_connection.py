@@ -4,7 +4,7 @@ from pymongo import ReadPreference
 from pymongo import MongoClient
 
 import mongoengine
-from mongoengine.connection import MongoEngineConnectionError
+from mongoengine.connection import ConnectionFailure
 
 
 CONN_CLASS = MongoClient
@@ -32,7 +32,7 @@ class ConnectionTest(unittest.TestCase):
                 host="mongodb://localhost/mongoenginetest?replicaSet=rs",
                 read_preference=READ_PREF,
             )
-        except MongoEngineConnectionError as e:
+        except ConnectionFailure as e:
             return
 
         if not isinstance(conn, CONN_CLASS):
