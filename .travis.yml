@@ -22,7 +22,9 @@ python:
 - 2.7
 - 3.5
 - 3.6
+- 3.7
 - pypy
+- pypy3
 
 dist: xenial
 
@@ -43,8 +45,6 @@ matrix:
   include:
   - python: 2.7
     env: MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_4}
-  - python: 3.6
-    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_X}
   - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_X}
 
