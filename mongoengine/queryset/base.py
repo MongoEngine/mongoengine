@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import copy
 import itertools
-import pprint
 import re
 import warnings
 
@@ -1109,25 +1108,11 @@ class BaseQuerySet(object):
         """
         return self._chainable_method("comment", text)
 
-    def explain(self, format=False):
+    def explain(self):
         """Return an explain plan record for the
         :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
-
-        :param format: format the plan before returning it
         """
-        plan = self._cursor.explain()
-
-        # TODO remove this option completely - it's useless. If somebody
-        # wants to pretty-print the output, they easily can.
-        if format:
-            msg = (
-                '"format" param of BaseQuerySet.explain has been '
-                "deprecated and will be removed in future versions."
-            )
-            warnings.warn(msg, DeprecationWarning)
-            plan = pprint.pformat(plan)
-
-        return plan
+        return self._cursor.explain()
 
     # DEPRECATED. Has no more impact on PyMongo 3+
     def snapshot(self, enabled):
