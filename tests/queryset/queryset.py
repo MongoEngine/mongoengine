@@ -4619,6 +4619,12 @@ class QuerySetTest(unittest.TestCase):
         Parent.objects.create(name="foo")
         Child.objects.create(name="bar", age=1)
         self.assertEqual(Parent.objects.clear_cls_query().count(), 2)
+        self.assertEqual(Parent.objects.count(), 2)
+        self.assertEqual(Child.objects().count(), 1)
+
+        # XXX This isn't really how you'd want to use `clear_cls_query()`, but
+        # it's a decent test to validate its behavior nonetheless.
+        self.assertEqual(Child.objects.clear_cls_query().count(), 2)
 
     def test_read_preference(self):
         class Bar(Document):
