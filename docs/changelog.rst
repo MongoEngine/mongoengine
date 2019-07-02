@@ -45,7 +45,7 @@ Changes in 0.18.0
     - Calling `connect` 2 times with the same alias and different parameter will raise an error (should call `disconnect` first).
     - `disconnect` now clears `mongoengine.connection._connection_settings`.
     - `disconnect` now clears the cached attribute `Document._collection`.
-- BREAKING CHANGE: `EmbeddedDocument.save` & `.reload` is no longer exist. #1552
+- BREAKING CHANGE: `EmbeddedDocument.save` & `.reload` no longer exist. #1552
 
 Changes in 0.17.0
 =================
