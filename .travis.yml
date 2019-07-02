@@ -32,10 +32,10 @@ env:
   global:
     - MONGODB_3_4=3.4.17
     - MONGODB_3_6=3.6.12
-    - PYMONGO_3_X=3.x
+    - PYMONGO_3_6=3.6
     - PYMONGO_3_4=3.4.x
   matrix:
-    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_X}
+    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_6}
 
 matrix:
 
@@ -46,7 +46,7 @@ matrix:
   - python: 2.7
     env: MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_4}
   - python: 3.7
-    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_X}
+    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
 
 
 install:
@@ -107,5 +107,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: ($PYMONGO = ${PYMONGO_3_X}) && ($MONGODB = ${MONGODB_3_4})
+    condition: ($PYMONGO = ${PYMONGO_3_6}) && ($MONGODB = ${MONGODB_3_4})
     python: 2.7
