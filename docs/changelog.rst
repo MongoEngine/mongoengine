@@ -49,12 +49,12 @@ Changes in 0.18.0
 
 Changes in 0.17.0
 =================
-- Fix `.only()` working improperly after using `.count()` of the same instance of a `QuerySet`.
-- Fix `batch_size` that was not copied when cloning a `QuerySet` object. #2011
 - POTENTIAL BREAKING CHANGE: All result fields are now passed, including internal fields (`_cls`, `_id`) when using `QuerySet.as_pymongo`. #1976
 - Document a BREAKING CHANGE introduced in 0.15.3 and not reported at that time. #1995
-- Fix `InvalidStringData` error when using `modify` on a `BinaryField`. #1127
 - DEPRECATION: `EmbeddedDocument.save` & `.reload` are marked as deprecated and will be removed in a next version of MongoEngine. #1552
+- Fix `.only()` working improperly after using `.count()` of the same instance of a `QuerySet`.
+- Fix `batch_size` that was not copied when cloning a `QuerySet` object. #2011
+- Fix `InvalidStringData` error when using `modify` on a `BinaryField`. #1127
 - Fix test suite and CI to support MongoDB v3.4. #1445
 - Fix reference fields querying the database on each access if value contains orphan DBRefs.
 
@@ -71,8 +71,8 @@ Changes in 0.16.2
 =================
 Changes in 0.16.1
 =================
-- Fix `_cls` that is not set properly in the Document constructor (regression). #1950
-- Fix a bug in the `_delta` method - update of a ListField depends on an unrelated dynamic field update. #1733
+- Fix `_cls` that is not set properly in the `Document` constructor (regression). #1950
+- Fix a bug in the `_delta` method - update of a `ListField` depends on an unrelated dynamic field update. #1733
 - Remove PyMongo's deprecated `save()` method and use `insert_one()` instead. #1899
 
 =================
@@ -84,16 +84,16 @@ Changes in 0.16.0
     - Default value of the `ComplexDateTime` field is now `None` (and no longer the current datetime). #1368
 - Fix an unhashable `TypeError` when referencing a `Document` with a compound key in an `EmbeddedDocument`. #1685
 - Fix a bug where an `EmbeddedDocument` with the same id as its parent would not be tracked for changes. #1768
-- Fix the fact that bulk `insert()` was not setting primary keys of inserted document instances. #1919
-- Fix a bug when referencing the abstract class in a `ReferenceField`. #1920
-- Allow modification to the document made in `pre_save_post_validation` to be taken into account. #1202
-- Replaced MongoDB v2.4 tests in Travis CI with MongoDB v3.2. #1903
+- Fix the fact that a bulk `QuerySet.insert` was not setting primary keys of inserted document instances. #1919
+- Fix a bug when referencing an abstract class in a `ReferenceField`. #1920
+- Allow modifications to the document made in `pre_save_post_validation` to be taken into account. #1202
+- Replace MongoDB v2.4 tests in Travis CI with MongoDB v3.2. #1903
 - Fix side effects of using `QuerySet.no_dereference` on other documents. #1677
-- Fix `TypeError` when using lazy django translation objects as translated choices. #1879
+- Fix `TypeError` when using lazy Django translation objects as translated choices. #1879
 - Improve Python 2-3 codebase compatibility. #1889
-- Fix the support for changing the default value of the `ComplexDateTime` field. #1368
+- Fix support for changing the default value of the `ComplexDateTime` field. #1368
 - Improve error message in case an `EmbeddedDocumentListField` receives an `EmbeddedDocument` instance instead of a list. #1877
-- Fix the Decimal operator inc/dec. #1517 #1320
+- Fix the `inc` and `dec` operators for the `DecimalField`. #1517 #1320
 - Ignore `killcursors` queries in `query_counter` context manager. #1869
 - Fix the fact that `query_counter` was modifying the initial profiling level in case it was != 0. #1870
 - Repair the `no_sub_classes` context manager + fix the fact that it was swallowing exceptions. #1865
@@ -106,23 +106,23 @@ Changes in 0.16.0
 - Update `GridFSProxy.__str__`  so that it would always print both the filename and grid_id. #710
 - Add `__repr__` to `Q` and `QCombination` classes. #1843
 - Fix bug in the `BaseList.__iter__` operator (was occuring when modifying a BaseList while iterating over it). #1676
-- Added a `DateField`. #513
+- Add a `DateField`. #513
 - Various improvements to the documentation.
 - Various code quality improvements.
 
 Changes in 0.15.3
 =================
--  BREAKING CHANGES: `Queryset.update/update_one` methods now return an `UpdateResult` when `full_result=True` is provided and no longer a dict. #1491
--  Fix the subfield resolve error in `generic_emdedded_document` query. #1651 #1652
--  Use each modifier only with `$position`. #1673 #1675
--  Improve `LazyReferenceField` and `GenericLazyReferenceField` with nested fields. #1704
--  Fix validation error instance in `GenericEmbeddedDocumentField`. #1067
--  Update cached fields when fields argument is given. #1712
--  Add a db parameter to `register_connection` for compatibility with `connect`.
--  Use PyMongo v3.x's `insert_one` and `insert_many` in `Document.insert`. #1491
--  Use PyMongo v3.x's `update_one` and `update_many` in `Document.update` and `QuerySet.update`. #1491
--  Fix how `reload(fields)` affects changed fields. #1371
--  Fix a bug where the read-only access to the database fails when trying to create indexes. #1338
+- `Queryset.update/update_one` methods now return an `UpdateResult` when `full_result=True` is provided and no longer a dict. #1491
+- Improve `LazyReferenceField` and `GenericLazyReferenceField` with nested fields. #1704
+- Fix the subfield resolve error in `generic_emdedded_document` query. #1651 #1652
+- Use each modifier only with `$position`. #1673 #1675
+- Fix validation errors in the `GenericEmbeddedDocumentField`. #1067
+- Update cached fields when a `fields` argument is given. #1712
+- Add a `db` parameter to `register_connection` for compatibility with `connect`.
+- Use PyMongo v3.x's `insert_one` and `insert_many` in `Document.insert`. #1491
+- Use PyMongo v3.x's `update_one` and `update_many` in `Document.update` and `QuerySet.update`. #1491
+- Fix how `reload(fields)` affects changed fields. #1371
+- Fix a bug where the read-only access to the database fails when trying to create indexes. #1338
 
 Changes in 0.15.0
 =================
@@ -138,9 +138,9 @@ Changes in 0.14.1
 
 Changes in 0.14.0
 =================
-- BREAKING CHANGE: Remov the `coerce_types` param from `QuerySet.as_pymongo`. #1549
+- BREAKING CHANGE: Remove the `coerce_types` param from `QuerySet.as_pymongo`. #1549
 - POTENTIAL BREAKING CHANGE: Make `EmbeddedDocument` not hashable by default. #1528
-- Improv code quality. #1531, #1540, #1541, #1547
+- Improve code quality. #1531, #1540, #1541, #1547
 
 Changes in 0.13.0
 =================
