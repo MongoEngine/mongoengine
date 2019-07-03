@@ -33,7 +33,7 @@ env:
     - MONGODB_3_4=3.4.17
     - MONGODB_3_6=3.6.12
     - PYMONGO_3_6=3.6
-    - PYMONGO_3_4=3.4.x
+    - PYMONGO_3_4=3.4
   matrix:
     - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_6}
 
