@@ -4588,6 +4588,44 @@ class QuerySetTest(unittest.TestCase):
         doc.save()
         self.assertEqual(MyDoc.objects.only("test__47").get().test["47"], 1)
 
+    def test_clear_cls_query(self):
+        class Parent(Document):
+            name = StringField()
+            meta = {"allow_inheritance": True}
+
+        class Child(Parent):
+            age = IntField()
+
+        Parent.drop_collection()
+
+        # Default query includes the "_cls" check.
+        self.assertEqual(
+            Parent.objects._query, {"_cls": {"$in": ("Parent", "Parent.Child")}}
+        )
+
+        # Clearing the "_cls" query should work.
+        self.assertEqual(Parent.objects.clear_cls_query()._query, {})
+
+        # Clearing the "_cls" query should not persist across queryset instances.
+        self.assertEqual(
+            Parent.objects._query, {"_cls": {"$in": ("Parent", "Parent.Child")}}
+        )
+
+        # The rest of the query should not be cleared.
+        self.assertEqual(
+            Parent.objects.filter(name="xyz").clear_cls_query()._query, {"name": "xyz"}
+        )
+
+        Parent.objects.create(name="foo")
+        Child.objects.create(name="bar", age=1)
+        self.assertEqual(Parent.objects.clear_cls_query().count(), 2)
+        self.assertEqual(Parent.objects.count(), 2)
+        self.assertEqual(Child.objects().count(), 1)
+
+        # XXX This isn't really how you'd want to use `clear_cls_query()`, but
+        # it's a decent test to validate its behavior nonetheless.
+        self.assertEqual(Child.objects.clear_cls_query().count(), 2)
+
     def test_read_preference(self):
         class Bar(Document):
             txt = StringField()
@@ -4595,40 +4633,35 @@ class QuerySetTest(unittest.TestCase):
             meta = {"indexes": ["txt"]}
 
         Bar.drop_collection()
-        bars = list(Bar.objects(read_preference=ReadPreference.PRIMARY))
-        self.assertEqual([], bars)
+        bar = Bar.objects.create(txt="xyz")
 
-        self.assertRaises(TypeError, Bar.objects, read_preference="Primary")
+        bars = list(Bar.objects.read_preference(ReadPreference.PRIMARY))
+        self.assertEqual(bars, [bar])
 
-        # read_preference as a kwarg
-        bars = Bar.objects(read_preference=ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
-        )
-
-        # read_preference as a query set method
         bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(
             bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
         )
 
-        # read_preference after skip
+        # Make sure that `.read_preference(...)` does accept string values.
+        self.assertRaises(TypeError, Bar.objects.read_preference, "Primary")
+
+        # Make sure read preference is respected after a `.skip(...)`.
         bars = Bar.objects.skip(1).read_preference(ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(
             bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
         )
 
-        # read_preference after limit
+        # Make sure read preference is respected after a `.limit(...)`.
         bars = Bar.objects.limit(1).read_preference(ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(
             bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
         )
 
-        # read_preference after order_by
+        # Make sure read preference is respected after an `.order_by(...)`.
         bars = Bar.objects.order_by("txt").read_preference(
             ReadPreference.SECONDARY_PREFERRED
         )
@@ -4637,7 +4670,7 @@ class QuerySetTest(unittest.TestCase):
             bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
         )
 
-        # read_preference after hint
+        # Make sure read preference is respected after a `.hint(...)`.
         bars = Bar.objects.hint([("txt", 1)]).read_preference(
             ReadPreference.SECONDARY_PREFERRED
         )

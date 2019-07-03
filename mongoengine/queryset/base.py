@@ -53,13 +53,12 @@ class BaseQuerySet(object):
         self._collection_obj = collection
         self._mongo_query = None
         self._query_obj = Q()
-        self._initial_query = {}
+        self._cls_query = {}
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
         self._ordering = None
         self._snapshot = False
         self._timeout = True
-        self._class_check = True
         self._slave_okay = False
         self._read_preference = None
         self._iter = False
@@ -72,9 +71,9 @@ class BaseQuerySet(object):
         # subclasses of the class being used
         if document._meta.get("allow_inheritance") is True:
             if len(self._document._subclasses) == 1:
-                self._initial_query = {"_cls": self._document._subclasses[0]}
+                self._cls_query = {"_cls": self._document._subclasses[0]}
             else:
-                self._initial_query = {"_cls": {"$in": self._document._subclasses}}
+                self._cls_query = {"_cls": {"$in": self._document._subclasses}}
             self._loaded_fields = QueryFieldList(always_include=["_cls"])
 
         self._cursor_obj = None
@@ -86,23 +85,19 @@ class BaseQuerySet(object):
         self._max_time_ms = None
         self._comment = None
 
-    def __call__(self, q_obj=None, class_check=True, read_preference=None, **query):
+    def __call__(self, q_obj=None, **query):
         """Filter the selected documents by calling the
         :class:`~mongoengine.queryset.QuerySet` with a query.
 
         :param q_obj: a :class:`~mongoengine.queryset.Q` object to be used in
             the query; the :class:`~mongoengine.queryset.QuerySet` is filtered
             multiple times with different :class:`~mongoengine.queryset.Q`
-            objects, only the last one will be used
-        :param class_check: If set to False bypass class name check when
-            querying collection
-        :param read_preference: if set, overrides connection-level
-            read_preference from `ReplicaSetConnection`.
-        :param query: Django-style query keyword arguments
+            objects, only the last one will be used.
+        :param query: Django-style query keyword arguments.
         """
         query = Q(**query)
         if q_obj:
-            # make sure proper query object is passed
+            # Make sure proper query object is passed.
             if not isinstance(q_obj, QNode):
                 msg = (
                     "Not a query object: %s. "
@@ -111,16 +106,10 @@ class BaseQuerySet(object):
                 raise InvalidQueryError(msg)
             query &= q_obj
 
-        if read_preference is None:
-            queryset = self.clone()
-        else:
-            # Use the clone provided when setting read_preference
-            queryset = self.read_preference(read_preference)
-
+        queryset = self.clone()
         queryset._query_obj &= query
         queryset._mongo_query = None
         queryset._cursor_obj = None
-        queryset._class_check = class_check
 
         return queryset
 
@@ -222,8 +211,7 @@ class BaseQuerySet(object):
         return self.__call__()
 
     def filter(self, *q_objs, **query):
-        """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`
-        """
+        """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`"""
         return self.__call__(*q_objs, **query)
 
     def search_text(self, text, language=None):
@@ -743,7 +731,7 @@ class BaseQuerySet(object):
         Do NOT return any inherited documents.
         """
         if self._document._meta.get("allow_inheritance") is True:
-            self._initial_query = {"_cls": self._document._class_name}
+            self._cls_query = {"_cls": self._document._class_name}
 
         return self
 
@@ -777,7 +765,7 @@ class BaseQuerySet(object):
 
         copy_props = (
             "_mongo_query",
-            "_initial_query",
+            "_cls_query",
             "_none",
             "_query_obj",
             "_where_clause",
@@ -785,7 +773,6 @@ class BaseQuerySet(object):
             "_ordering",
             "_snapshot",
             "_timeout",
-            "_class_check",
             "_slave_okay",
             "_read_preference",
             "_iter",
@@ -1098,6 +1085,20 @@ class BaseQuerySet(object):
 
         queryset._ordering = new_ordering
 
+        return queryset
+
+    def clear_cls_query(self):
+        """Clear the default "_cls" query.
+
+        By default, all queries generated for documents that allow inheritance
+        include an extra "_cls" clause. In most cases this is desirable, but
+        sometimes you might achieve better performance if you clear that
+        default query.
+
+        Scan the code for `_cls_query` to get more details.
+        """
+        queryset = self.clone()
+        queryset._cls_query = {}
         return queryset
 
     def comment(self, text):
@@ -1651,13 +1652,11 @@ class BaseQuerySet(object):
     def _query(self):
         if self._mongo_query is None:
             self._mongo_query = self._query_obj.to_query(self._document)
-            if self._class_check and self._initial_query:
+            if self._cls_query:
                 if "_cls" in self._mongo_query:
-                    self._mongo_query = {
-                        "$and": [self._initial_query, self._mongo_query]
-                    }
+                    self._mongo_query = {"$and": [self._cls_query, self._mongo_query]}
                 else:
-                    self._mongo_query.update(self._initial_query)
+                    self._mongo_query.update(self._cls_query)
         return self._mongo_query
 
     @property
