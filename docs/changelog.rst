@@ -15,8 +15,9 @@ Development
     - If you catch/use ``MongoEngineConnectionError`` in your code, you'll have to rename it.
 - BREAKING CHANGE: Positional arguments when instantiating a document are no longer supported. #2103
     - From now on keyword arguments (e.g. ``Doc(field_name=value)``) are required.
-- The codebase is now formatted using ``black``. #2109
+- Fix updating/modifying/deleting/reloading a document that's sharded by a field with ``db_field`` specified. #2125
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
+- The codebase is now formatted using ``black``. #2109
 
 Changes in 0.18.2
 =================
