@@ -474,8 +474,7 @@ class InstanceTest(MongoDBTestCase):
             doc.reload()
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
             self.assertEqual(
-                set(query_op[CMD_QUERY_KEY]["filter"].keys()),
-                {"_id", "superphylum"},
+                set(query_op[CMD_QUERY_KEY]["filter"].keys()), {"_id", "superphylum"}
             )
 
     def test_reload_sharded_with_db_field(self):
@@ -492,8 +491,7 @@ class InstanceTest(MongoDBTestCase):
             doc.reload()
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.person"})[0]
             self.assertEqual(
-                set(query_op[CMD_QUERY_KEY]["filter"].keys()),
-                {"_id", "country"},
+                set(query_op[CMD_QUERY_KEY]["filter"].keys()), {"_id", "country"}
             )
 
     def test_reload_sharded_nested(self):
