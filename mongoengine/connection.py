@@ -178,8 +178,8 @@ def register_connection(
 
     : param alias: the name that will be used to refer to this connection
         throughout MongoEngine
-    : param name: the name of the specific database to use
     : param db: the name of the database to use, for compatibility with connect
+    : param name: the name of the specific database to use
     : param host: the host name of the: program: `mongod` instance to connect to
     : param port: the port that the: program: `mongod` instance is running on
     : param read_preference: The read preference for the collection
