@@ -575,22 +575,24 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
     @property
     def _object_key(self):
-        """Get the query dict that can be used to fetch this object from
-        the database.
+        """Return a query dict that can be used to fetch this document.
 
         Most of the time the dict is a simple PK lookup, but in case of
         a sharded collection with a compound shard key, it can contain a more
         complex query.
+
+        Note that the dict returned by this method uses MongoEngine field
+        names instead of PyMongo field names (e.g. "pk" instead of "_id",
+        "some__nested__field" instead of "some.nested.field", etc.).
         """
         select_dict = {"pk": self.pk}
         shard_key = self.__class__._meta.get("shard_key", tuple())
         for k in shard_key:
-            path = self._lookup_field(k.split("."))
-            actual_key = [p.db_field for p in path]
             val = self
-            for ak in actual_key:
-                val = getattr(val, ak)
-            select_dict["__".join(actual_key)] = val
+            field_parts = k.split(".")
+            for part in field_parts:
+                val = getattr(val, part)
+            select_dict["__".join(field_parts)] = val
         return select_dict
 
     def update(self, **kwargs):

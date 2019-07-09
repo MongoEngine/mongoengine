@@ -202,6 +202,7 @@ class BaseDocument(object):
             self__initialised = self._initialised
         except AttributeError:
             self__initialised = False
+
         # Check if the user has created a new instance of a class
         if (
             self._is_document

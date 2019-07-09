@@ -466,21 +466,33 @@ class InstanceTest(MongoDBTestCase):
             meta = {"shard_key": ("superphylum",)}
 
         Animal.drop_collection()
-        doc = Animal(superphylum="Deuterostomia")
-        doc.save()
+        doc = Animal.objects.create(superphylum="Deuterostomia")
 
         mongo_db = get_mongodb_version()
         CMD_QUERY_KEY = "command" if mongo_db >= MONGODB_36 else "query"
-
         with query_counter() as q:
             doc.reload()
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
             self.assertEqual(
-                set(query_op[CMD_QUERY_KEY]["filter"].keys()),
-                set(["_id", "superphylum"]),
+                set(query_op[CMD_QUERY_KEY]["filter"].keys()), {"_id", "superphylum"}
             )
 
-        Animal.drop_collection()
+    def test_reload_sharded_with_db_field(self):
+        class Person(Document):
+            nationality = StringField(db_field="country")
+            meta = {"shard_key": ("nationality",)}
+
+        Person.drop_collection()
+        doc = Person.objects.create(nationality="Poland")
+
+        mongo_db = get_mongodb_version()
+        CMD_QUERY_KEY = "command" if mongo_db >= MONGODB_36 else "query"
+        with query_counter() as q:
+            doc.reload()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.person"})[0]
+            self.assertEqual(
+                set(query_op[CMD_QUERY_KEY]["filter"].keys()), {"_id", "country"}
+            )
 
     def test_reload_sharded_nested(self):
         class SuperPhylum(EmbeddedDocument):
@@ -3614,6 +3626,58 @@ class InstanceTest(MongoDBTestCase):
         # Ensure index creation exception aren't swallowed (#1688)
         with self.assertRaises(DuplicateKeyError):
             User.objects().select_related()
+
+
+class ObjectKeyTestCase(MongoDBTestCase):
+    def test_object_key_simple_document(self):
+        class Book(Document):
+            title = StringField()
+
+        book = Book(title="Whatever")
+        self.assertEqual(book._object_key, {"pk": None})
+
+        book.pk = ObjectId()
+        self.assertEqual(book._object_key, {"pk": book.pk})
+
+    def test_object_key_with_custom_primary_key(self):
+        class Book(Document):
+            isbn = StringField(primary_key=True)
+            title = StringField()
+
+        book = Book(title="Sapiens")
+        self.assertEqual(book._object_key, {"pk": None})
+
+        book = Book(pk="0062316117")
+        self.assertEqual(book._object_key, {"pk": "0062316117"})
+
+    def test_object_key_in_a_sharded_collection(self):
+        class Book(Document):
+            title = StringField()
+            meta = {"shard_key": ("pk", "title")}
+
+        book = Book()
+        self.assertEqual(book._object_key, {"pk": None, "title": None})
+        book = Book(pk=ObjectId(), title="Sapiens")
+        self.assertEqual(book._object_key, {"pk": book.pk, "title": "Sapiens"})
+
+    def test_object_key_with_custom_db_field(self):
+        class Book(Document):
+            author = StringField(db_field="creator")
+            meta = {"shard_key": ("pk", "author")}
+
+        book = Book(pk=ObjectId(), author="Author")
+        self.assertEqual(book._object_key, {"pk": book.pk, "author": "Author"})
+
+    def test_object_key_with_nested_shard_key(self):
+        class Author(EmbeddedDocument):
+            name = StringField()
+
+        class Book(Document):
+            author = EmbeddedDocumentField(Author)
+            meta = {"shard_key": ("pk", "author.name")}
+
+        book = Book(pk=ObjectId(), author=Author(name="Author"))
+        self.assertEqual(book._object_key, {"pk": book.pk, "author__name": "Author"})
 
 
 if __name__ == "__main__":
