@@ -463,13 +463,21 @@ class BaseDocument(object):
     def from_json(cls, json_data, created=False):
         """Converts json data to a Document instance
 
-        :param json_data: The json data to load into the Document
-        :param created: If True, the document will be considered as a brand new document
-                        If False and an id is provided, it will consider that the data being
-                        loaded corresponds to what's already in the database (This has an impact of subsequent call to .save())
-                        If False and no id is provided, it will consider the data as a new document
-                        (default ``False``)
+        :param str json_data: The json data to load into the Document
+        :param bool created: Boolean defining whether to consider the newly
+            instantiated document as brand new or as persisted already:
+            * If True, consider the document as brand new, no matter what data
+              it's loaded with (i.e. even if an ID is loaded).
+            * If False and an ID is NOT provided, consider the document as
+              brand new.
+            * If False and an ID is provided, assume that the object has
+              already been persisted (this has an impact on the subsequent
+              call to .save()).
+            * Defaults to ``False``.
         """
+        # TODO should `created` default to False? If the object already exists
+        # in the DB, you would likely retrieve it from MongoDB itself through
+        # a query, not load it from JSON data.
         return cls._from_son(json_util.loads(json_data), created=created)
 
     def __expand_dynamic_values(self, name, value):
