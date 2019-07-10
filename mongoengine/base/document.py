@@ -880,11 +880,7 @@ class BaseDocument(object):
             # append an index on history_date,
             # _rippling_process_index_spec will take care of adding company prefix if needed
             indexes.append({'fields': [('history_date', -1)]})
-
-            history_auto_id_index = {'fields': [('history_date', -1), ('_auto_id_0', 1)]}
-            if 'company' not in cls._fields_ordered:
-                history_auto_id_index['args'] = {'noCompanyPrefix': True}
-            indexes.append(history_auto_id_index)
+            indexes.append({'fields': [('history_date', -1), ('_auto_id_0', 1)]})
 
         return indexes
         
