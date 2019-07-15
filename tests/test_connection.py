@@ -4,6 +4,8 @@ from pymongo import MongoClient
 from pymongo.errors import OperationFailure, InvalidName
 from pymongo import ReadPreference
 
+from mongoengine import Document
+
 try:
     import unittest2 as unittest
 except ImportError:
@@ -268,6 +270,14 @@ class ConnectionTest(unittest.TestCase):
         )
         conn = get_connection("testdb7")
         self.assertIsInstance(conn, mongomock.MongoClient)
+
+        disconnect_all()
+        class SomeDocument(Document): pass
+        conn = connect(host="mongomock://localhost:27017/mongoenginetest8")
+        some_document = SomeDocument()
+        some_document.save()
+        self.assertEqual(conn.get_default_database().name, "mongoenginetest8")
+        self.assertEqual(conn.database_names()[0], "mongoenginetest8")
 
     def test_connect_with_host_list(self):
         """Ensure that the connect() method works when host is a list
