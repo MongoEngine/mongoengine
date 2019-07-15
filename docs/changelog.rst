@@ -3,6 +3,7 @@
 Changelog
 =========
 
+===========
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
@@ -19,16 +20,19 @@ Development
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
 - The codebase is now formatted using ``black``. #2109
 
+=================
 Changes in 0.18.2
 =================
 - Replace deprecated PyMongo v2.x methods with their v3.x equivalents in the ``SequenceField``. #2097
 - Various code clarity and documentation improvements.
 
+=================
 Changes in 0.18.1
 =================
 - Fix a bug introduced in 0.18.0 which was causing ``Document.save`` to update all the fields instead of updating only the modified fields. This bug only occurred when using a custom PK. #2082
 - Add Python 3.7 to Travis CI. #2058
 
+=================
 Changes in 0.18.0
 =================
 - Drop support for EOL'd MongoDB v2.6, v3.0, and v3.2.
@@ -52,6 +56,7 @@ Changes in 0.18.0
     - ``disconnect`` now clears the cached attribute ``Document._collection``.
 - BREAKING CHANGE: ``EmbeddedDocument.save`` & ``.reload`` no longer exist. #1552
 
+=================
 Changes in 0.17.0
 =================
 - POTENTIAL BREAKING CHANGE: All result fields are now passed, including internal fields (``_cls``, ``_id``) when using ``QuerySet.as_pymongo``. #1976
