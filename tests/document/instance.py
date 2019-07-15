@@ -3429,83 +3429,114 @@ class InstanceTest(MongoDBTestCase):
 
         self.assertEqual(Person.objects(height=189).count(), 1)
 
-    def test_from_son(self):
-        # 771
-        class MyPerson(self.Person):
-            meta = dict(shard_key=["id"])
+    def test_shard_key_mutability_after_from_json(self):
+        """Ensure that a document ID can be modified after from_json.
 
-        p = MyPerson.from_json('{"name": "name", "age": 27}', created=True)
-        self.assertEqual(p.id, None)
-        p.id = (
-            "12345"
-        )  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
-        p = MyPerson._from_son({"name": "name", "age": 27}, created=True)
-        self.assertEqual(p.id, None)
-        p.id = (
-            "12345"
-        )  # in case it is not working: "OperationError: Shard Keys are immutable..." will be raised here
+        If you instantiate a document by using from_json/_from_son and you
+        indicate that this should be considered a new document (vs a doc that
+        already exists in the database), then you should be able to modify
+        fields that are part of its shard key (note that this is not permitted
+        on docs that are already persisted).
 
-    def test_from_son_created_False_without_id(self):
-        class MyPerson(Document):
+        See https://github.com/mongoengine/mongoengine/issues/771 for details.
+        """
+
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+            meta = {"shard_key": ("id", "name")}
+
+        p = Person.from_json('{"name": "name", "age": 27}', created=True)
+        self.assertEqual(p._created, True)
+        p.name = "new name"
+        p.id = "12345"
+        self.assertEqual(p.name, "new name")
+        self.assertEqual(p.id, "12345")
+
+    def test_shard_key_mutability_after_from_son(self):
+        """Ensure that a document ID can be modified after _from_son.
+
+        See `test_shard_key_mutability_after_from_json` above for more details.
+        """
+
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+            meta = {"shard_key": ("id", "name")}
+
+        p = Person._from_son({"name": "name", "age": 27}, created=True)
+        self.assertEqual(p._created, True)
+        p.name = "new name"
+        p.id = "12345"
+        self.assertEqual(p.name, "new name")
+        self.assertEqual(p.id, "12345")
+
+    def test_from_json_created_false_without_an_id(self):
+        class Person(Document):
             name = StringField()
 
-        MyPerson.objects.delete()
+        Person.objects.delete()
 
-        p = MyPerson.from_json('{"name": "a_fancy_name"}', created=False)
-        self.assertFalse(p._created)
-        self.assertIsNone(p.id)
+        p = Person.from_json('{"name": "name"}', created=False)
+        self.assertEqual(p._created, False)
+        self.assertEqual(p.id, None)
+
+        # Make sure the document is subsequently persisted correctly.
         p.save()
-        self.assertIsNotNone(p.id)
-        saved_p = MyPerson.objects.get(id=p.id)
-        self.assertEqual(saved_p.name, "a_fancy_name")
+        self.assertTrue(p.id is not None)
+        saved_p = Person.objects.get(id=p.id)
+        self.assertEqual(saved_p.name, "name")
 
-    def test_from_son_created_False_with_id(self):
-        # 1854
-        class MyPerson(Document):
+    def test_from_json_created_false_with_an_id(self):
+        """See https://github.com/mongoengine/mongoengine/issues/1854"""
+
+        class Person(Document):
             name = StringField()
 
-        MyPerson.objects.delete()
+        Person.objects.delete()
 
-        p = MyPerson.from_json(
-            '{"_id": "5b85a8b04ec5dc2da388296e", "name": "a_fancy_name"}', created=False
+        p = Person.from_json(
+            '{"_id": "5b85a8b04ec5dc2da388296e", "name": "name"}', created=False
         )
-        self.assertFalse(p._created)
+        self.assertEqual(p._created, False)
         self.assertEqual(p._changed_fields, [])
-        self.assertEqual(p.name, "a_fancy_name")
+        self.assertEqual(p.name, "name")
         self.assertEqual(p.id, ObjectId("5b85a8b04ec5dc2da388296e"))
         p.save()
 
         with self.assertRaises(DoesNotExist):
-            # Since created=False and we gave an id in the json and _changed_fields is empty
-            # mongoengine assumes that the document exits with that structure already
-            # and calling .save() didn't save anything
-            MyPerson.objects.get(id=p.id)
+            # Since the object is considered as already persisted (thanks to
+            # `created=False` and an existing ID), and we haven't changed any
+            # fields (i.e. `_changed_fields` is empty), the document is
+            # considered unchanged and hence the `save()` call above did
+            # nothing.
+            Person.objects.get(id=p.id)
 
         self.assertFalse(p._created)
-        p.name = "a new fancy name"
+        p.name = "a new name"
         self.assertEqual(p._changed_fields, ["name"])
         p.save()
-        saved_p = MyPerson.objects.get(id=p.id)
+        saved_p = Person.objects.get(id=p.id)
         self.assertEqual(saved_p.name, p.name)
 
-    def test_from_son_created_True_with_an_id(self):
-        class MyPerson(Document):
+    def test_from_json_created_true_with_an_id(self):
+        class Person(Document):
             name = StringField()
 
-        MyPerson.objects.delete()
+        Person.objects.delete()
 
-        p = MyPerson.from_json(
-            '{"_id": "5b85a8b04ec5dc2da388296e", "name": "a_fancy_name"}', created=True
+        p = Person.from_json(
+            '{"_id": "5b85a8b04ec5dc2da388296e", "name": "name"}', created=True
         )
         self.assertTrue(p._created)
         self.assertEqual(p._changed_fields, [])
-        self.assertEqual(p.name, "a_fancy_name")
+        self.assertEqual(p.name, "name")
         self.assertEqual(p.id, ObjectId("5b85a8b04ec5dc2da388296e"))
         p.save()
 
-        saved_p = MyPerson.objects.get(id=p.id)
+        saved_p = Person.objects.get(id=p.id)
         self.assertEqual(saved_p, p)
-        self.assertEqual(p.name, "a_fancy_name")
+        self.assertEqual(saved_p.name, "name")
 
     def test_null_field(self):
         # 734
