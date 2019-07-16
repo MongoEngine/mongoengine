@@ -739,7 +739,6 @@ class BaseDocument(object):
 
     @classmethod
     def _get_db_alias(cls):
-
         if ReadOnlyContext.isActive():
             return 'read_only'
         return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
