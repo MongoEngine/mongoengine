@@ -15,6 +15,8 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.common import ReadOnlyContext
+
 from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
@@ -734,8 +736,12 @@ class BaseDocument(object):
         """
         return cls._meta.get('collection', None)
 
+
     @classmethod
     def _get_db_alias(cls):
+
+        if ReadOnlyContext.isActive():
+            return 'read_only'
         return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
 
     @classmethod
