@@ -7,11 +7,9 @@ class ReadOnlyContext(object):
     read_only = False
 
     def __enter__(self):
-        connection.disconnect()
         ReadOnlyContext.read_only = True
 
     def __exit__(self, *args):
-        connection.disconnect('read_only')
         ReadOnlyContext.read_only = False
 
     @classmethod
