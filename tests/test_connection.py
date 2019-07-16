@@ -272,7 +272,10 @@ class ConnectionTest(unittest.TestCase):
         self.assertIsInstance(conn, mongomock.MongoClient)
 
         disconnect_all()
-        class SomeDocument(Document): pass
+
+        class SomeDocument(Document):
+            pass
+
         conn = connect(host="mongomock://localhost:27017/mongoenginetest8")
         some_document = SomeDocument()
         some_document.save()
