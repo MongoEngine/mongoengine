@@ -151,7 +151,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                     connection = _connections[db_alias]
                     break
                 connection_settings.pop('username', None)
-                conn_settings.pop('username', None)
+            conn_settings.pop('username', None)
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
         except Exception, e:
