@@ -886,6 +886,7 @@ class BaseDocument(object):
             # _rippling_process_index_spec will take care of adding company prefix if needed
             indexes.append({'fields': [('history_date', -1)]})
             indexes.append({'fields': [('history_date', -1), ('_auto_id_0', 1)]})
+            indexes.append({'fields': [('_auto_id_0', 1), ('history_date', -1)]})
 
         return indexes
         
