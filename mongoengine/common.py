@@ -1,6 +1,21 @@
 _class_registry_cache = {}
 _field_list_cache = []
 
+from mongoengine import connection
+
+class ReadOnlyContext(object):
+    read_only = False
+
+    def __enter__(self):
+        ReadOnlyContext.read_only = True
+
+    def __exit__(self, *args):
+        ReadOnlyContext.read_only = False
+
+    @classmethod
+    def isActive(cls):
+        return cls.read_only
+
 
 def _import_class(cls_name):
     """Cache mechanism for imports.

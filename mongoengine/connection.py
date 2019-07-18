@@ -110,7 +110,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings = _connection_settings[alias].copy()
 
         conn_settings.pop('name', None)
-        conn_settings.pop('username', None)
+        # conn_settings.pop('username', None)
         conn_settings.pop('password', None)
         conn_settings.pop('authentication_source', None)
 
@@ -144,12 +144,14 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 (db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
             for db_alias, connection_settings in connection_settings_iterator:
                 connection_settings.pop('name', None)
-                connection_settings.pop('username', None)
+                # connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
                 connection_settings.pop('authentication_source', None)
                 if conn_settings == connection_settings and _connections.get(db_alias, None):
                     connection = _connections[db_alias]
                     break
+                connection_settings.pop('username', None)
+            conn_settings.pop('username', None)
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
         except Exception, e:
