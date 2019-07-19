@@ -682,7 +682,6 @@ class BaseDocument(object):
             set_data = doc
             if '_id' in set_data:
                 del set_data['_id']
-
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
             if value or isinstance(value, (numbers.Number, bool, list)):
@@ -690,6 +689,7 @@ class BaseDocument(object):
 
             # If we've set a value that ain't the default value don't unset it.
             default = None
+            to_unset = True
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
                 del set_data[path]
@@ -718,12 +718,13 @@ class BaseDocument(object):
                         default = d._fields.get(field_name).default
                     else:
                         default = None
+                elif isinstance(d, dict):
+                    to_unset = False
 
             if default is not None:
                 if callable(default):
                     default = default()
-
-            if default != value:
+            if not to_unset or default != value:
                 continue
 
             del set_data[path]
