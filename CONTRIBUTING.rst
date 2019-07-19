@@ -28,8 +28,8 @@ Python 2/3 compatibility
 
 The codebase is written in a compatible manner for python 2 & 3 so it
 is important that this is taken into account when it comes to discrepencies
-between the 2 versions (check this https://python-future.org/compatible_idioms.html).
-Travis runs run the tests against the different versions as a safety net.
+between the two versions (see https://python-future.org/compatible_idioms.html).
+Travis runs the tests against different Python versions as a safety net.
 
 
 Style Guide
