@@ -711,8 +711,8 @@ class BaseDocument(object):
                         d_next = getattr(d, real_path)
                     else:
                         d_next = d.get(p)
-                    if hasattr(d, '_fields'):
-                        d_type = self._fields[p]
+                    if hasattr(d, '_fields') and p in d._fields:
+                        d_type = d._fields[p]
                     else:
                         d_type = d_next
                     d = d_next
