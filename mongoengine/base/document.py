@@ -699,18 +699,24 @@ class BaseDocument(object):
                 default = self._fields[path].default
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
+                d_type = type(self)
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
                     if isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
+                        d_next = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
                         real_path = d._reverse_db_field_map.get(p, p)
-                        d = getattr(d, real_path)
+                        d_next = getattr(d, real_path)
                     else:
-                        d = d.get(p)
-
+                        d_next = d.get(p)
+                    if hasattr(d, '_fields'):
+                        d_type = self._fields[p]
+                    else:
+                        d_type = d_next
+                    d = d_next
+                from mongoengine import DictField
                 if hasattr(d, '_fields'):
                     field_name = d._reverse_db_field_map.get(db_field_name,
                                                              db_field_name)
@@ -718,7 +724,7 @@ class BaseDocument(object):
                         default = d._fields.get(field_name).default
                     else:
                         default = None
-                elif isinstance(d, dict):
+                elif isinstance(d_type, DictField):
                     to_unset = False
 
             if default is not None:
