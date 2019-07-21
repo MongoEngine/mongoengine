@@ -10,6 +10,7 @@ from operator import itemgetter
 from bson import Binary, DBRef, ObjectId, SON
 from bson.int64 import Int64
 import gridfs
+from past.builtins import long
 import pymongo
 from pymongo import ReturnDocument
 import six
@@ -47,9 +48,6 @@ try:
 except ImportError:
     Image = None
     ImageOps = None
-
-if six.PY3:
-    long = int
 
 
 __all__ = (
