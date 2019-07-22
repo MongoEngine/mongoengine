@@ -103,7 +103,14 @@ def _get_connection_settings(
         if entity.startswith("mongomock://"):
             conn_settings["is_mock"] = True
             # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
-            resolved_hosts.append(entity.replace("mongomock://", "mongodb://", 1))
+            new_entity = entity.replace("mongomock://", "mongodb://", 1)
+            resolved_hosts.append(new_entity)
+
+            uri_dict = uri_parser.parse_uri(new_entity)
+
+            database = uri_dict.get("database")
+            if database:
+                conn_settings["name"] = database
 
         # Handle URI style connections, only updating connection params which
         # were explicitly specified in the URI.
@@ -111,8 +118,9 @@ def _get_connection_settings(
             uri_dict = uri_parser.parse_uri(entity)
             resolved_hosts.append(entity)
 
-            if uri_dict.get("database"):
-                conn_settings["name"] = uri_dict.get("database")
+            database = uri_dict.get("database")
+            if database:
+                conn_settings["name"] = database
 
             for param in ("read_preference", "username", "password"):
                 if uri_dict.get(param):
