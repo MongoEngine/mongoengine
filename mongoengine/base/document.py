@@ -682,7 +682,6 @@ class BaseDocument(object):
             set_data = doc
             if '_id' in set_data:
                 del set_data['_id']
-
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
             if value or isinstance(value, (numbers.Number, bool, list)):
@@ -690,6 +689,7 @@ class BaseDocument(object):
 
             # If we've set a value that ain't the default value don't unset it.
             default = None
+            to_unset = True
             if (self._dynamic and len(parts) and parts[0] in
                     self._dynamic_fields):
                 del set_data[path]
@@ -699,18 +699,24 @@ class BaseDocument(object):
                 default = self._fields[path].default
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
+                d_type = type(self)
                 parts = path.split('.')
                 db_field_name = parts.pop()
                 for p in parts:
                     if isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
+                        d_next = d[int(p)]
                     elif (hasattr(d, '__getattribute__') and
                           not isinstance(d, dict)):
                         real_path = d._reverse_db_field_map.get(p, p)
-                        d = getattr(d, real_path)
+                        d_next = getattr(d, real_path)
                     else:
-                        d = d.get(p)
-
+                        d_next = d.get(p)
+                    if hasattr(d, '_fields') and p in d._fields:
+                        d_type = d._fields[p]
+                    else:
+                        d_type = d_next
+                    d = d_next
+                from mongoengine import DictField
                 if hasattr(d, '_fields'):
                     field_name = d._reverse_db_field_map.get(db_field_name,
                                                              db_field_name)
@@ -718,12 +724,13 @@ class BaseDocument(object):
                         default = d._fields.get(field_name).default
                     else:
                         default = None
+                elif isinstance(d_type, DictField):
+                    to_unset = False
 
             if default is not None:
                 if callable(default):
                     default = default()
-
-            if default != value:
+            if not to_unset or default != value:
                 continue
 
             del set_data[path]
