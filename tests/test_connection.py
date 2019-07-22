@@ -271,16 +271,25 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection("testdb7")
         self.assertIsInstance(conn, mongomock.MongoClient)
 
+    def test_default_database_with_mocking(self):
+        """Ensure that the default database is correctly set when using mongomock.
+        """
+        try:
+            import mongomock
+        except ImportError:
+            raise SkipTest("you need mongomock installed to run this testcase")
+
         disconnect_all()
 
         class SomeDocument(Document):
             pass
 
-        conn = connect(host="mongomock://localhost:27017/mongoenginetest8")
+        conn = connect(host="mongomock://localhost:27017/mongoenginetest")
         some_document = SomeDocument()
+        # database won't exist until we save a document
         some_document.save()
-        self.assertEqual(conn.get_default_database().name, "mongoenginetest8")
-        self.assertEqual(conn.database_names()[0], "mongoenginetest8")
+        self.assertEqual(conn.get_default_database().name, "mongoenginetest")
+        self.assertEqual(conn.database_names()[0], "mongoenginetest")
 
     def test_connect_with_host_list(self):
         """Ensure that the connect() method works when host is a list
