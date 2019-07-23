@@ -349,6 +349,9 @@ class Document(BaseDocument):
                 self.cascade_save(**kwargs)
         except pymongo.errors.DuplicateKeyError, err:
             message = u'Tried to save duplicate unique keys (%s)'
+            import logging
+            log = logging.getLogger(__name__)
+            log.exception(message)
             raise NotUniqueError(message % unicode(err))
         except pymongo.errors.OperationFailure, err:
             message = 'Could not save document (%s)'

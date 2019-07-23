@@ -746,9 +746,17 @@ class BaseDocument(object):
 
     @classmethod
     def _get_db_alias(cls):
+        from mongoengine.connection import aliases
+        alias = DEFAULT_CONNECTION_NAME
+        app_name = cls.__module__.split(".")[-2]
+        if app_name in aliases:
+            alias = app_name
+        class_alias = cls._meta.get('db_alias', None)
+        if class_alias is not None and class_alias in aliases:
+            alias = class_alias
         if ReadOnlyContext.isActive():
-            return 'read_only'
-        return cls._meta.get('db_alias', DEFAULT_CONNECTION_NAME)
+            alias += '_read_only'
+        return alias
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _lazy_prefetch_base=None, _fields=None):
