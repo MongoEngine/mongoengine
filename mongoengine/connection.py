@@ -111,6 +111,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError(msg)
         conn_settings = _connection_settings[alias].copy()
 
+        conn_settings.pop('name', None)
         conn_settings.pop('password', None)
         conn_settings.pop('authentication_source', None)
 
@@ -150,9 +151,9 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                     connection = _connections[db_alias]
                     break
                 connection_settings.pop('username', None)
-                connection_settings.pop('name', None)
+                # connection_settings.pop('name', None)
             conn_settings.pop('username', None)
-            conn_settings.pop('name', None)
+            # conn_settings.pop('name', None)
 
             _connections[alias] = connection if connection else connection_class(**conn_settings)
         except Exception, e:
