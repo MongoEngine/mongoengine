@@ -19,10 +19,6 @@ upload_egg:
     # update version to put custom ContextLogic version
     - version_cl="return version + '+cl$CI_PIPELINE_ID'"
     - sed -i "s/return version/$version_cl/g" setup.py
-    # update name to put the branch name in it
-    - name_origin=$(sed -n "/.*\(name\).*=.*'.*/p" setup.py | sed "/.*'\(.*\)'.*/ s//\1/g")
-    - name_cl="name='$name_origin-$BRANCH_NAME'"
-    - sed -i "s/name.*=.*'mongoengine'/$name_cl/g" setup.py
 
     # Install
     - pip install .
