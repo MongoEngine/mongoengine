@@ -22,7 +22,7 @@ upload_egg:
 
     # Install
     - pip install .
-    - pip show $name_origin-$BRANCH_NAME
+    - pip show $CI_PROJECT_NAME
 
     # Upload to pypicloud
     - pip install twine
