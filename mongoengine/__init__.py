@@ -18,12 +18,17 @@ from mongoengine.queryset import *
 from mongoengine.signals import *
 
 
-__all__ = (list(document.__all__) + list(fields.__all__) +
-           list(connection.__all__) + list(queryset.__all__) +
-           list(signals.__all__) + list(errors.__all__))
+__all__ = (
+    list(document.__all__)
+    + list(fields.__all__)
+    + list(connection.__all__)
+    + list(queryset.__all__)
+    + list(signals.__all__)
+    + list(errors.__all__)
+)
 
 
-VERSION = (0, 18, 0)
+VERSION = (0, 18, 2)
 
 
 def get_version():
@@ -31,7 +36,7 @@ def get_version():
 
     For example, if `VERSION == (0, 10, 7)`, return '0.10.7'.
     """
-    return '.'.join(map(str, VERSION))
+    return ".".join(map(str, VERSION))
 
 
 __version__ = get_version()

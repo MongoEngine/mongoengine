@@ -7,23 +7,24 @@ from tests.utils import MongoDBTestCase
 
 
 class TestMapField(MongoDBTestCase):
-
     def test_mapfield(self):
         """Ensure that the MapField handles the declared type."""
+
         class Simple(Document):
             mapping = MapField(IntField())
 
         Simple.drop_collection()
 
         e = Simple()
-        e.mapping['someint'] = 1
+        e.mapping["someint"] = 1
         e.save()
 
         with self.assertRaises(ValidationError):
-            e.mapping['somestring'] = "abc"
+            e.mapping["somestring"] = "abc"
             e.save()
 
         with self.assertRaises(ValidationError):
+
             class NoDeclaredType(Document):
                 mapping = MapField()
 
@@ -45,38 +46,37 @@ class TestMapField(MongoDBTestCase):
         Extensible.drop_collection()
 
         e = Extensible()
-        e.mapping['somestring'] = StringSetting(value='foo')
-        e.mapping['someint'] = IntegerSetting(value=42)
+        e.mapping["somestring"] = StringSetting(value="foo")
+        e.mapping["someint"] = IntegerSetting(value=42)
         e.save()
 
         e2 = Extensible.objects.get(id=e.id)
-        self.assertIsInstance(e2.mapping['somestring'], StringSetting)
-        self.assertIsInstance(e2.mapping['someint'], IntegerSetting)
+        self.assertIsInstance(e2.mapping["somestring"], StringSetting)
+        self.assertIsInstance(e2.mapping["someint"], IntegerSetting)
 
         with self.assertRaises(ValidationError):
-            e.mapping['someint'] = 123
+            e.mapping["someint"] = 123
             e.save()
 
     def test_embedded_mapfield_db_field(self):
         class Embedded(EmbeddedDocument):
-            number = IntField(default=0, db_field='i')
+            number = IntField(default=0, db_field="i")
 
         class Test(Document):
-            my_map = MapField(field=EmbeddedDocumentField(Embedded),
-                              db_field='x')
+            my_map = MapField(field=EmbeddedDocumentField(Embedded), db_field="x")
 
         Test.drop_collection()
 
         test = Test()
-        test.my_map['DICTIONARY_KEY'] = Embedded(number=1)
+        test.my_map["DICTIONARY_KEY"] = Embedded(number=1)
         test.save()
 
         Test.objects.update_one(inc__my_map__DICTIONARY_KEY__number=1)
 
         test = Test.objects.get()
-        self.assertEqual(test.my_map['DICTIONARY_KEY'].number, 2)
+        self.assertEqual(test.my_map["DICTIONARY_KEY"].number, 2)
         doc = self.db.test.find_one()
-        self.assertEqual(doc['x']['DICTIONARY_KEY']['i'], 2)
+        self.assertEqual(doc["x"]["DICTIONARY_KEY"]["i"], 2)
 
     def test_mapfield_numerical_index(self):
         """Ensure that MapField accept numeric strings as indexes."""
@@ -90,9 +90,9 @@ class TestMapField(MongoDBTestCase):
         Test.drop_collection()
 
         test = Test()
-        test.my_map['1'] = Embedded(name='test')
+        test.my_map["1"] = Embedded(name="test")
         test.save()
-        test.my_map['1'].name = 'test updated'
+        test.my_map["1"].name = "test updated"
         test.save()
 
     def test_map_field_lookup(self):
@@ -110,15 +110,20 @@ class TestMapField(MongoDBTestCase):
             actions = MapField(EmbeddedDocumentField(Action))
 
         Log.drop_collection()
-        Log(name="wilson", visited={'friends': datetime.datetime.now()},
-            actions={'friends': Action(operation='drink', object='beer')}).save()
+        Log(
+            name="wilson",
+            visited={"friends": datetime.datetime.now()},
+            actions={"friends": Action(operation="drink", object="beer")},
+        ).save()
 
-        self.assertEqual(1, Log.objects(
-            visited__friends__exists=True).count())
+        self.assertEqual(1, Log.objects(visited__friends__exists=True).count())
 
-        self.assertEqual(1, Log.objects(
-            actions__friends__operation='drink',
-            actions__friends__object='beer').count())
+        self.assertEqual(
+            1,
+            Log.objects(
+                actions__friends__operation="drink", actions__friends__object="beer"
+            ).count(),
+        )
 
     def test_map_field_unicode(self):
         class Info(EmbeddedDocument):
@@ -130,15 +135,11 @@ class TestMapField(MongoDBTestCase):
 
         BlogPost.drop_collection()
 
-        tree = BlogPost(info_dict={
-            u"éééé": {
-                'description': u"VALUE: éééé"
-            }
-        })
+        tree = BlogPost(info_dict={u"éééé": {"description": u"VALUE: éééé"}})
 
         tree.save()
 
         self.assertEqual(
             BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description,
-            u"VALUE: éééé"
+            u"VALUE: éééé",
         )

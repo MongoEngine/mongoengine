@@ -714,11 +714,16 @@ subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
 Shard keys
 ==========
 
-If your collection is sharded, then you need to specify the shard key as a tuple,
-using the :attr:`shard_key` attribute of :attr:`~mongoengine.Document.meta`.
-This ensures that the shard key is sent with the query when calling the
-:meth:`~mongoengine.document.Document.save` or
-:meth:`~mongoengine.document.Document.update` method on an existing
+If your collection is sharded by multiple keys, then you can improve shard
+routing (and thus the performance of your application) by specifying the shard
+key, using the :attr:`shard_key` attribute of
+:attr:`~mongoengine.Document.meta`. The shard key should be defined as a tuple.
+
+This ensures that the full shard key is sent with the query when calling
+methods such as :meth:`~mongoengine.document.Document.save`,
+:meth:`~mongoengine.document.Document.update`,
+:meth:`~mongoengine.document.Document.modify`, or
+:meth:`~mongoengine.document.Document.delete` on an existing
 :class:`~mongoengine.Document` instance::
 
     class LogEntry(Document):
@@ -728,7 +733,8 @@ This ensures that the shard key is sent with the query when calling the
         data = StringField()
 
         meta = {
-            'shard_key': ('machine', 'timestamp',)
+            'shard_key': ('machine', 'timestamp'),
+            'indexes': ('machine', 'timestamp'),
         }
 
 .. _document-inheritance:

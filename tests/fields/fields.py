@@ -6,27 +6,52 @@ from nose.plugins.skip import SkipTest
 
 from bson import DBRef, ObjectId, SON
 
-from mongoengine import Document, StringField, IntField, DateTimeField, DateField, ValidationError, \
-    ComplexDateTimeField, FloatField, ListField, ReferenceField, DictField, EmbeddedDocument, EmbeddedDocumentField, \
-    GenericReferenceField, DoesNotExist, NotRegistered, OperationError, DynamicField, \
-    FieldDoesNotExist, EmbeddedDocumentListField, MultipleObjectsReturned, NotUniqueError, BooleanField,\
-    ObjectIdField, SortedListField, GenericLazyReferenceField, LazyReferenceField, DynamicDocument
-from mongoengine.base import (BaseField, EmbeddedDocumentList, _document_registry)
+from mongoengine import (
+    Document,
+    StringField,
+    IntField,
+    DateTimeField,
+    DateField,
+    ValidationError,
+    ComplexDateTimeField,
+    FloatField,
+    ListField,
+    ReferenceField,
+    DictField,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    GenericReferenceField,
+    DoesNotExist,
+    NotRegistered,
+    OperationError,
+    DynamicField,
+    FieldDoesNotExist,
+    EmbeddedDocumentListField,
+    MultipleObjectsReturned,
+    NotUniqueError,
+    BooleanField,
+    ObjectIdField,
+    SortedListField,
+    GenericLazyReferenceField,
+    LazyReferenceField,
+    DynamicDocument,
+)
+from mongoengine.base import BaseField, EmbeddedDocumentList, _document_registry
 from mongoengine.errors import DeprecatedError
 
 from tests.utils import MongoDBTestCase
 
 
 class FieldTest(MongoDBTestCase):
-
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating
         a document.
         """
+
         class Person(Document):
             name = StringField()
             age = IntField(default=30, required=False)
-            userid = StringField(default=lambda: 'test', required=True)
+            userid = StringField(default=lambda: "test", required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
             day = DateField(default=datetime.date.today)
 
@@ -34,9 +59,7 @@ class FieldTest(MongoDBTestCase):
 
         # Confirm saving now would store values
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved,
-            ['age', 'created', 'day', 'name', 'userid']
-        )
+        self.assertEqual(data_to_be_saved, ["age", "created", "day", "name", "userid"])
 
         self.assertTrue(person.validate() is None)
 
@@ -46,18 +69,19 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(person.created, person.created)
         self.assertEqual(person.day, person.day)
 
-        self.assertEqual(person._data['name'], person.name)
-        self.assertEqual(person._data['age'], person.age)
-        self.assertEqual(person._data['userid'], person.userid)
-        self.assertEqual(person._data['created'], person.created)
-        self.assertEqual(person._data['day'], person.day)
+        self.assertEqual(person._data["name"], person.name)
+        self.assertEqual(person._data["age"], person.age)
+        self.assertEqual(person._data["userid"], person.userid)
+        self.assertEqual(person._data["created"], person.created)
+        self.assertEqual(person._data["day"], person.day)
 
         # Confirm introspection changes nothing
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(
-            data_to_be_saved, ['age', 'created', 'day', 'name', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "day", "name", "userid"])
 
-    def test_custom_field_validation_raise_deprecated_error_when_validation_return_something(self):
+    def test_custom_field_validation_raise_deprecated_error_when_validation_return_something(
+        self
+    ):
         # Covers introduction of a breaking change in the validation parameter (0.18)
         def _not_empty(z):
             return bool(z)
@@ -67,8 +91,10 @@ class FieldTest(MongoDBTestCase):
 
         Person.drop_collection()
 
-        error = ("validation argument for `name` must not return anything, "
-                 "it should raise a ValidationError if validation fails")
+        error = (
+            "validation argument for `name` must not return anything, "
+            "it should raise a ValidationError if validation fails"
+        )
 
         with self.assertRaises(DeprecatedError) as ctx_err:
             Person(name="").validate()
@@ -81,7 +107,7 @@ class FieldTest(MongoDBTestCase):
     def test_custom_field_validation_raise_validation_error(self):
         def _not_empty(z):
             if not z:
-                raise ValidationError('cantbeempty')
+                raise ValidationError("cantbeempty")
 
         class Person(Document):
             name = StringField(validation=_not_empty)
@@ -90,11 +116,17 @@ class FieldTest(MongoDBTestCase):
 
         with self.assertRaises(ValidationError) as ctx_err:
             Person(name="").validate()
-        self.assertEqual("ValidationError (Person:None) (cantbeempty: ['name'])", str(ctx_err.exception))
+        self.assertEqual(
+            "ValidationError (Person:None) (cantbeempty: ['name'])",
+            str(ctx_err.exception),
+        )
 
         with self.assertRaises(ValidationError):
             Person(name="").save()
-        self.assertEqual("ValidationError (Person:None) (cantbeempty: ['name'])", str(ctx_err.exception))
+        self.assertEqual(
+            "ValidationError (Person:None) (cantbeempty: ['name'])",
+            str(ctx_err.exception),
+        )
 
         Person(name="garbage").validate()
         Person(name="garbage").save()
@@ -103,10 +135,11 @@ class FieldTest(MongoDBTestCase):
         """Ensure that default field values are used even when
         we explcitly initialize the doc with None values.
         """
+
         class Person(Document):
             name = StringField()
             age = IntField(default=30, required=False)
-            userid = StringField(default=lambda: 'test', required=True)
+            userid = StringField(default=lambda: "test", required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
 
         # Trying setting values to None
@@ -114,7 +147,7 @@ class FieldTest(MongoDBTestCase):
 
         # Confirm saving now would store values
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
         self.assertTrue(person.validate() is None)
 
@@ -123,23 +156,24 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(person.userid, person.userid)
         self.assertEqual(person.created, person.created)
 
-        self.assertEqual(person._data['name'], person.name)
-        self.assertEqual(person._data['age'], person.age)
-        self.assertEqual(person._data['userid'], person.userid)
-        self.assertEqual(person._data['created'], person.created)
+        self.assertEqual(person._data["name"], person.name)
+        self.assertEqual(person._data["age"], person.age)
+        self.assertEqual(person._data["userid"], person.userid)
+        self.assertEqual(person._data["created"], person.created)
 
         # Confirm introspection changes nothing
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
     def test_default_values_when_setting_to_None(self):
         """Ensure that default field values are used when creating
         a document.
         """
+
         class Person(Document):
             name = StringField()
             age = IntField(default=30, required=False)
-            userid = StringField(default=lambda: 'test', required=True)
+            userid = StringField(default=lambda: "test", required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
 
         person = Person()
@@ -150,25 +184,27 @@ class FieldTest(MongoDBTestCase):
 
         # Confirm saving now would store values
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
         self.assertTrue(person.validate() is None)
 
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, 30)
-        self.assertEqual(person.userid, 'test')
+        self.assertEqual(person.userid, "test")
         self.assertIsInstance(person.created, datetime.datetime)
 
-        self.assertEqual(person._data['name'], person.name)
-        self.assertEqual(person._data['age'], person.age)
-        self.assertEqual(person._data['userid'], person.userid)
-        self.assertEqual(person._data['created'], person.created)
+        self.assertEqual(person._data["name"], person.name)
+        self.assertEqual(person._data["age"], person.age)
+        self.assertEqual(person._data["userid"], person.userid)
+        self.assertEqual(person._data["created"], person.created)
 
         # Confirm introspection changes nothing
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
-    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(self):
+    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(
+        self
+    ):
         """List field with default can be set to the empty list (strict)"""
         # Issue #1733
         class Doc(Document):
@@ -180,7 +216,9 @@ class FieldTest(MongoDBTestCase):
         reloaded = Doc.objects.get(id=doc.id)
         self.assertEqual(reloaded.x, [])
 
-    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(self):
+    def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(
+        self
+    ):
         """List field with default can be set to the empty list (dynamic)"""
         # Issue #1733
         class Doc(DynamicDocument):
@@ -188,7 +226,7 @@ class FieldTest(MongoDBTestCase):
 
         doc = Doc(x=[1]).save()
         doc.x = []
-        doc.y = 2   # Was triggering the bug
+        doc.y = 2  # Was triggering the bug
         doc.save()
         reloaded = Doc.objects.get(id=doc.id)
         self.assertEqual(reloaded.x, [])
@@ -197,41 +235,47 @@ class FieldTest(MongoDBTestCase):
         """Ensure that default field values are used after non-default
         values are explicitly deleted.
         """
+
         class Person(Document):
             name = StringField()
             age = IntField(default=30, required=False)
-            userid = StringField(default=lambda: 'test', required=True)
+            userid = StringField(default=lambda: "test", required=True)
             created = DateTimeField(default=datetime.datetime.utcnow)
 
-        person = Person(name="Ross", age=50, userid='different',
-                        created=datetime.datetime(2014, 6, 12))
+        person = Person(
+            name="Ross",
+            age=50,
+            userid="different",
+            created=datetime.datetime(2014, 6, 12),
+        )
         del person.name
         del person.age
         del person.userid
         del person.created
 
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
         self.assertTrue(person.validate() is None)
 
         self.assertEqual(person.name, None)
         self.assertEqual(person.age, 30)
-        self.assertEqual(person.userid, 'test')
+        self.assertEqual(person.userid, "test")
         self.assertIsInstance(person.created, datetime.datetime)
         self.assertNotEqual(person.created, datetime.datetime(2014, 6, 12))
 
-        self.assertEqual(person._data['name'], person.name)
-        self.assertEqual(person._data['age'], person.age)
-        self.assertEqual(person._data['userid'], person.userid)
-        self.assertEqual(person._data['created'], person.created)
+        self.assertEqual(person._data["name"], person.name)
+        self.assertEqual(person._data["age"], person.age)
+        self.assertEqual(person._data["userid"], person.userid)
+        self.assertEqual(person._data["created"], person.created)
 
         # Confirm introspection changes nothing
         data_to_be_saved = sorted(person.to_mongo().keys())
-        self.assertEqual(data_to_be_saved, ['age', 'created', 'userid'])
+        self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
     def test_required_values(self):
         """Ensure that required field constraints are enforced."""
+
         class Person(Document):
             name = StringField(required=True)
             age = IntField(required=True)
@@ -246,6 +290,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that every fields should accept None if required is
         False.
         """
+
         class HandleNoneFields(Document):
             str_fld = StringField()
             int_fld = IntField()
@@ -255,7 +300,7 @@ class FieldTest(MongoDBTestCase):
         HandleNoneFields.drop_collection()
 
         doc = HandleNoneFields()
-        doc.str_fld = u'spam ham egg'
+        doc.str_fld = u"spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
         doc.com_dt_fld = datetime.datetime.utcnow()
@@ -281,6 +326,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that every field can handle null values from the
         database.
         """
+
         class HandleNoneFields(Document):
             str_fld = StringField(required=True)
             int_fld = IntField(required=True)
@@ -290,21 +336,17 @@ class FieldTest(MongoDBTestCase):
         HandleNoneFields.drop_collection()
 
         doc = HandleNoneFields()
-        doc.str_fld = u'spam ham egg'
+        doc.str_fld = u"spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
         doc.comp_dt_fld = datetime.datetime.utcnow()
         doc.save()
 
         # Unset all the fields
-        obj = HandleNoneFields._get_collection().update({"_id": doc.id}, {
-            "$unset": {
-                "str_fld": 1,
-                "int_fld": 1,
-                "flt_fld": 1,
-                "comp_dt_fld": 1
-            }
-        })
+        obj = HandleNoneFields._get_collection().update(
+            {"_id": doc.id},
+            {"$unset": {"str_fld": 1, "int_fld": 1, "flt_fld": 1, "comp_dt_fld": 1}},
+        )
 
         # Retrive data from db and verify it.
         ret = HandleNoneFields.objects.first()
@@ -321,16 +363,17 @@ class FieldTest(MongoDBTestCase):
         """Ensure that invalid values cannot be assigned to an
         ObjectIdField.
         """
+
         class Person(Document):
             name = StringField()
 
-        person = Person(name='Test User')
+        person = Person(name="Test User")
         self.assertEqual(person.id, None)
 
         person.id = 47
         self.assertRaises(ValidationError, person.validate)
 
-        person.id = 'abc'
+        person.id = "abc"
         self.assertRaises(ValidationError, person.validate)
 
         person.id = str(ObjectId())
@@ -338,26 +381,27 @@ class FieldTest(MongoDBTestCase):
 
     def test_string_validation(self):
         """Ensure that invalid values cannot be assigned to string fields."""
+
         class Person(Document):
             name = StringField(max_length=20)
-            userid = StringField(r'[0-9a-z_]+$')
+            userid = StringField(r"[0-9a-z_]+$")
 
         person = Person(name=34)
         self.assertRaises(ValidationError, person.validate)
 
         # Test regex validation on userid
-        person = Person(userid='test.User')
+        person = Person(userid="test.User")
         self.assertRaises(ValidationError, person.validate)
 
-        person.userid = 'test_user'
-        self.assertEqual(person.userid, 'test_user')
+        person.userid = "test_user"
+        self.assertEqual(person.userid, "test_user")
         person.validate()
 
         # Test max length validation on name
-        person = Person(name='Name that is more than twenty characters')
+        person = Person(name="Name that is more than twenty characters")
         self.assertRaises(ValidationError, person.validate)
 
-        person.name = 'Shorter name'
+        person.name = "Shorter name"
         person.validate()
 
     def test_db_field_validation(self):
@@ -365,25 +409,28 @@ class FieldTest(MongoDBTestCase):
 
         # dot in the name
         with self.assertRaises(ValueError):
+
             class User(Document):
-                name = StringField(db_field='user.name')
+                name = StringField(db_field="user.name")
 
         # name starting with $
         with self.assertRaises(ValueError):
+
             class User(Document):
-                name = StringField(db_field='$name')
+                name = StringField(db_field="$name")
 
         # name containing a null character
         with self.assertRaises(ValueError):
+
             class User(Document):
-                name = StringField(db_field='name\0')
+                name = StringField(db_field="name\0")
 
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements."""
         access_level_choices = (
-            ('a', u'Administration'),
-            ('b', u'Manager'),
-            ('c', u'Staff'),
+            ("a", u"Administration"),
+            ("b", u"Manager"),
+            ("c", u"Staff"),
         )
 
         class User(Document):
@@ -400,41 +447,41 @@ class FieldTest(MongoDBTestCase):
             authors_as_lazy = ListField(LazyReferenceField(User))
             generic = ListField(GenericReferenceField())
             generic_as_lazy = ListField(GenericLazyReferenceField())
-            access_list = ListField(choices=access_level_choices, display_sep=', ')
+            access_list = ListField(choices=access_level_choices, display_sep=", ")
 
         User.drop_collection()
         BlogPost.drop_collection()
 
-        post = BlogPost(content='Went for a walk today...')
+        post = BlogPost(content="Went for a walk today...")
         post.validate()
 
-        post.tags = 'fun'
+        post.tags = "fun"
         self.assertRaises(ValidationError, post.validate)
         post.tags = [1, 2]
         self.assertRaises(ValidationError, post.validate)
 
-        post.tags = ['fun', 'leisure']
+        post.tags = ["fun", "leisure"]
         post.validate()
-        post.tags = ('fun', 'leisure')
-        post.validate()
-
-        post.access_list = 'a,b'
-        self.assertRaises(ValidationError, post.validate)
-
-        post.access_list = ['c', 'd']
-        self.assertRaises(ValidationError, post.validate)
-
-        post.access_list = ['a', 'b']
+        post.tags = ("fun", "leisure")
         post.validate()
 
-        self.assertEqual(post.get_access_list_display(), u'Administration, Manager')
-
-        post.comments = ['a']
-        self.assertRaises(ValidationError, post.validate)
-        post.comments = 'yay'
+        post.access_list = "a,b"
         self.assertRaises(ValidationError, post.validate)
 
-        comments = [Comment(content='Good for you'), Comment(content='Yay.')]
+        post.access_list = ["c", "d"]
+        self.assertRaises(ValidationError, post.validate)
+
+        post.access_list = ["a", "b"]
+        post.validate()
+
+        self.assertEqual(post.get_access_list_display(), u"Administration, Manager")
+
+        post.comments = ["a"]
+        self.assertRaises(ValidationError, post.validate)
+        post.comments = "yay"
+        self.assertRaises(ValidationError, post.validate)
+
+        comments = [Comment(content="Good for you"), Comment(content="Yay.")]
         post.comments = comments
         post.validate()
 
@@ -485,28 +532,28 @@ class FieldTest(MongoDBTestCase):
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values.
         """
+
         class Comment(EmbeddedDocument):
             order = IntField()
             content = StringField()
 
         class BlogPost(Document):
             content = StringField()
-            comments = SortedListField(EmbeddedDocumentField(Comment),
-                                       ordering='order')
+            comments = SortedListField(EmbeddedDocumentField(Comment), ordering="order")
             tags = SortedListField(StringField())
 
         BlogPost.drop_collection()
 
-        post = BlogPost(content='Went for a walk today...')
+        post = BlogPost(content="Went for a walk today...")
         post.save()
 
-        post.tags = ['leisure', 'fun']
+        post.tags = ["leisure", "fun"]
         post.save()
         post.reload()
-        self.assertEqual(post.tags, ['fun', 'leisure'])
+        self.assertEqual(post.tags, ["fun", "leisure"])
 
-        comment1 = Comment(content='Good for you', order=1)
-        comment2 = Comment(content='Yay.', order=0)
+        comment1 = Comment(content="Good for you", order=1)
+        comment2 = Comment(content="Yay.", order=0)
         comments = [comment1, comment2]
         post.comments = comments
         post.save()
@@ -529,16 +576,17 @@ class FieldTest(MongoDBTestCase):
             name = StringField()
 
         class CategoryList(Document):
-            categories = SortedListField(EmbeddedDocumentField(Category),
-                                         ordering='count', reverse=True)
+            categories = SortedListField(
+                EmbeddedDocumentField(Category), ordering="count", reverse=True
+            )
             name = StringField()
 
         CategoryList.drop_collection()
 
         catlist = CategoryList(name="Top categories")
-        cat1 = Category(name='posts', count=10)
-        cat2 = Category(name='food', count=100)
-        cat3 = Category(name='drink', count=40)
+        cat1 = Category(name="posts", count=10)
+        cat2 = Category(name="food", count=100)
+        cat3 = Category(name="drink", count=40)
         catlist.categories = [cat1, cat2, cat3]
         catlist.save()
         catlist.reload()
@@ -549,57 +597,59 @@ class FieldTest(MongoDBTestCase):
 
     def test_list_field(self):
         """Ensure that list types work as expected."""
+
         class BlogPost(Document):
             info = ListField()
 
         BlogPost.drop_collection()
 
         post = BlogPost()
-        post.info = 'my post'
+        post.info = "my post"
         self.assertRaises(ValidationError, post.validate)
 
-        post.info = {'title': 'test'}
+        post.info = {"title": "test"}
         self.assertRaises(ValidationError, post.validate)
 
-        post.info = ['test']
+        post.info = ["test"]
         post.save()
 
         post = BlogPost()
-        post.info = [{'test': 'test'}]
+        post.info = [{"test": "test"}]
         post.save()
 
         post = BlogPost()
-        post.info = [{'test': 3}]
+        post.info = [{"test": 3}]
         post.save()
 
         self.assertEqual(BlogPost.objects.count(), 3)
-        self.assertEqual(
-            BlogPost.objects.filter(info__exact='test').count(), 1)
-        self.assertEqual(
-            BlogPost.objects.filter(info__0__test='test').count(), 1)
+        self.assertEqual(BlogPost.objects.filter(info__exact="test").count(), 1)
+        self.assertEqual(BlogPost.objects.filter(info__0__test="test").count(), 1)
 
         # Confirm handles non strings or non existing keys
+        self.assertEqual(BlogPost.objects.filter(info__0__test__exact="5").count(), 0)
         self.assertEqual(
-            BlogPost.objects.filter(info__0__test__exact='5').count(), 0)
-        self.assertEqual(
-            BlogPost.objects.filter(info__100__test__exact='test').count(), 0)
+            BlogPost.objects.filter(info__100__test__exact="test").count(), 0
+        )
 
         # test queries by list
         post = BlogPost()
-        post.info = ['1', '2']
+        post.info = ["1", "2"]
         post.save()
-        post = BlogPost.objects(info=['1', '2']).get()
-        post.info += ['3', '4']
+        post = BlogPost.objects(info=["1", "2"]).get()
+        post.info += ["3", "4"]
         post.save()
-        self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4']).count(), 1)
-        post = BlogPost.objects(info=['1', '2', '3', '4']).get()
+        self.assertEqual(BlogPost.objects(info=["1", "2", "3", "4"]).count(), 1)
+        post = BlogPost.objects(info=["1", "2", "3", "4"]).get()
         post.info *= 2
         post.save()
-        self.assertEqual(BlogPost.objects(info=['1', '2', '3', '4', '1', '2', '3', '4']).count(), 1)
+        self.assertEqual(
+            BlogPost.objects(info=["1", "2", "3", "4", "1", "2", "3", "4"]).count(), 1
+        )
 
     def test_list_field_manipulative_operators(self):
         """Ensure that ListField works with standard list operators that manipulate the list.
         """
+
         class BlogPost(Document):
             ref = StringField()
             info = ListField(StringField())
@@ -608,162 +658,178 @@ class FieldTest(MongoDBTestCase):
 
         post = BlogPost()
         post.ref = "1234"
-        post.info = ['0', '1', '2', '3', '4', '5']
+        post.info = ["0", "1", "2", "3", "4", "5"]
         post.save()
 
         def reset_post():
-            post.info = ['0', '1', '2', '3', '4', '5']
+            post.info = ["0", "1", "2", "3", "4", "5"]
             post.save()
 
         # '__add__(listB)'
         # listA+listB
         # operator.add(listA, listB)
         reset_post()
-        temp = ['a', 'b']
+        temp = ["a", "b"]
         post.info = post.info + temp
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "4", "5", "a", "b"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "4", "5", "a", "b"])
 
         # '__delitem__(index)'
         # aka 'del list[index]'
         # aka 'operator.delitem(list, index)'
         reset_post()
         del post.info[2]  # del from middle ('2')
-        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "1", "3", "4", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "1", "3", "4", "5"])
 
         # '__delitem__(slice(i, j))'
         # aka 'del list[i:j]'
         # aka 'operator.delitem(list, slice(i,j))'
         reset_post()
         del post.info[1:3]  # removes '1', '2'
-        self.assertEqual(post.info, ['0', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "3", "4", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "3", "4", "5"])
 
         # '__iadd__'
         # aka 'list += list'
         reset_post()
-        temp = ['a', 'b']
+        temp = ["a", "b"]
         post.info += temp
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "4", "5", "a", "b"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'a', 'b'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "4", "5", "a", "b"])
 
         # '__imul__'
         # aka 'list *= number'
         reset_post()
         post.info *= 2
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "0", "1", "2", "3", "4", "5"]
+        )
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "0", "1", "2", "3", "4", "5"]
+        )
 
         # '__mul__'
         # aka 'listA*listB'
         reset_post()
         post.info = post.info * 2
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "0", "1", "2", "3", "4", "5"]
+        )
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "0", "1", "2", "3", "4", "5"]
+        )
 
         # '__rmul__'
         # aka 'listB*listA'
         reset_post()
         post.info = 2 * post.info
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "0", "1", "2", "3", "4", "5"]
+        )
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', '0', '1', '2', '3', '4', '5'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "0", "1", "2", "3", "4", "5"]
+        )
 
         # '__setitem__(index, value)'
         # aka 'list[index]=value'
         # aka 'setitem(list, value)'
         reset_post()
-        post.info[4] = 'a'
-        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+        post.info[4] = "a"
+        self.assertEqual(post.info, ["0", "1", "2", "3", "a", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "a", "5"])
 
         # __setitem__(index, value) with a negative index
         reset_post()
-        post.info[-2] = 'a'
-        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+        post.info[-2] = "a"
+        self.assertEqual(post.info, ["0", "1", "2", "3", "a", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', 'a', '5'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "a", "5"])
 
         # '__setitem__(slice(i, j), listB)'
         # aka 'listA[i:j] = listB'
         # aka 'setitem(listA, slice(i, j), listB)'
         reset_post()
-        post.info[1:3] = ['h', 'e', 'l', 'l', 'o']
-        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+        post.info[1:3] = ["h", "e", "l", "l", "o"]
+        self.assertEqual(post.info, ["0", "h", "e", "l", "l", "o", "3", "4", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "h", "e", "l", "l", "o", "3", "4", "5"])
 
         # '__setitem__(slice(i, j), listB)' with negative i and j
         reset_post()
-        post.info[-5:-3] = ['h', 'e', 'l', 'l', 'o']
-        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+        post.info[-5:-3] = ["h", "e", "l", "l", "o"]
+        self.assertEqual(post.info, ["0", "h", "e", "l", "l", "o", "3", "4", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', 'h', 'e', 'l', 'l', 'o', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "h", "e", "l", "l", "o", "3", "4", "5"])
 
         # negative
 
         # 'append'
         reset_post()
-        post.info.append('h')
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h'])
+        post.info.append("h")
+        self.assertEqual(post.info, ["0", "1", "2", "3", "4", "5", "h"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h'])
+        self.assertEqual(post.info, ["0", "1", "2", "3", "4", "5", "h"])
 
         # 'extend'
         reset_post()
-        post.info.extend(['h', 'e', 'l', 'l', 'o'])
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h', 'e', 'l', 'l', 'o'])
+        post.info.extend(["h", "e", "l", "l", "o"])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "h", "e", "l", "l", "o"]
+        )
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '2', '3', '4', '5', 'h', 'e', 'l', 'l', 'o'])
+        self.assertEqual(
+            post.info, ["0", "1", "2", "3", "4", "5", "h", "e", "l", "l", "o"]
+        )
         # 'insert'
 
         # 'pop'
         reset_post()
         x = post.info.pop(2)
         y = post.info.pop()
-        self.assertEqual(post.info, ['0', '1', '3', '4'])
-        self.assertEqual(x, '2')
-        self.assertEqual(y, '5')
+        self.assertEqual(post.info, ["0", "1", "3", "4"])
+        self.assertEqual(x, "2")
+        self.assertEqual(y, "5")
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '3', '4'])
+        self.assertEqual(post.info, ["0", "1", "3", "4"])
 
         # 'remove'
         reset_post()
-        post.info.remove('2')
-        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+        post.info.remove("2")
+        self.assertEqual(post.info, ["0", "1", "3", "4", "5"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['0', '1', '3', '4', '5'])
+        self.assertEqual(post.info, ["0", "1", "3", "4", "5"])
 
         # 'reverse'
         reset_post()
         post.info.reverse()
-        self.assertEqual(post.info, ['5', '4', '3', '2', '1', '0'])
+        self.assertEqual(post.info, ["5", "4", "3", "2", "1", "0"])
         post.save()
         post.reload()
-        self.assertEqual(post.info, ['5', '4', '3', '2', '1', '0'])
+        self.assertEqual(post.info, ["5", "4", "3", "2", "1", "0"])
 
         # 'sort': though this operator method does manipulate the list, it is
         # tested in the 'test_list_field_lexicograpic_operators' function
@@ -775,7 +841,7 @@ class FieldTest(MongoDBTestCase):
 
         post = BlogPost()
         post.ref = "1234"
-        post.info = ['0', '1', '2', '3', '4', '5']
+        post.info = ["0", "1", "2", "3", "4", "5"]
 
         # '__hash__'
         # aka 'hash(list)'
@@ -785,6 +851,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that ListField works with standard list operators that
         do lexigraphic ordering.
         """
+
         class BlogPost(Document):
             ref = StringField()
             text_info = ListField(StringField())
@@ -810,7 +877,7 @@ class FieldTest(MongoDBTestCase):
         blogLargeB.oid_info = [
             "54495ad94c934721ede76f90",
             "54495ad94c934721ede76d23",
-            "54495ad94c934721ede76d00"
+            "54495ad94c934721ede76d00",
         ]
         blogLargeB.bool_info = [False, True]
         blogLargeB.save()
@@ -852,7 +919,7 @@ class FieldTest(MongoDBTestCase):
         sorted_target_list = [
             ObjectId("54495ad94c934721ede76d00"),
             ObjectId("54495ad94c934721ede76d23"),
-            ObjectId("54495ad94c934721ede76f90")
+            ObjectId("54495ad94c934721ede76f90"),
         ]
         self.assertEqual(blogLargeB.text_info, ["a", "j", "z"])
         self.assertEqual(blogLargeB.oid_info, sorted_target_list)
@@ -865,13 +932,14 @@ class FieldTest(MongoDBTestCase):
 
     def test_list_assignment(self):
         """Ensure that list field element assignment and slicing work."""
+
         class BlogPost(Document):
             info = ListField()
 
         BlogPost.drop_collection()
 
         post = BlogPost()
-        post.info = ['e1', 'e2', 3, '4', 5]
+        post.info = ["e1", "e2", 3, "4", 5]
         post.save()
 
         post.info[0] = 1
@@ -879,35 +947,35 @@ class FieldTest(MongoDBTestCase):
         post.reload()
         self.assertEqual(post.info[0], 1)
 
-        post.info[1:3] = ['n2', 'n3']
+        post.info[1:3] = ["n2", "n3"]
         post.save()
         post.reload()
-        self.assertEqual(post.info, [1, 'n2', 'n3', '4', 5])
+        self.assertEqual(post.info, [1, "n2", "n3", "4", 5])
 
-        post.info[-1] = 'n5'
+        post.info[-1] = "n5"
         post.save()
         post.reload()
-        self.assertEqual(post.info, [1, 'n2', 'n3', '4', 'n5'])
+        self.assertEqual(post.info, [1, "n2", "n3", "4", "n5"])
 
         post.info[-2] = 4
         post.save()
         post.reload()
-        self.assertEqual(post.info, [1, 'n2', 'n3', 4, 'n5'])
+        self.assertEqual(post.info, [1, "n2", "n3", 4, "n5"])
 
         post.info[1:-1] = [2]
         post.save()
         post.reload()
-        self.assertEqual(post.info, [1, 2, 'n5'])
+        self.assertEqual(post.info, [1, 2, "n5"])
 
-        post.info[:-1] = [1, 'n2', 'n3', 4]
+        post.info[:-1] = [1, "n2", "n3", 4]
         post.save()
         post.reload()
-        self.assertEqual(post.info, [1, 'n2', 'n3', 4, 'n5'])
+        self.assertEqual(post.info, [1, "n2", "n3", 4, "n5"])
 
         post.info[-4:3] = [2, 3]
         post.save()
         post.reload()
-        self.assertEqual(post.info, [1, 2, 3, 4, 'n5'])
+        self.assertEqual(post.info, [1, 2, 3, 4, "n5"])
 
     def test_list_field_passed_in_value(self):
         class Foo(Document):
@@ -921,12 +989,13 @@ class FieldTest(MongoDBTestCase):
 
         foo = Foo(bars=[])
         foo.bars.append(bar)
-        self.assertEqual(repr(foo.bars), '[<Bar: Bar object>]')
+        self.assertEqual(repr(foo.bars), "[<Bar: Bar object>]")
 
     def test_list_field_strict(self):
         """Ensure that list field handles validation if provided
         a strict field type.
         """
+
         class Simple(Document):
             mapping = ListField(field=IntField())
 
@@ -941,19 +1010,48 @@ class FieldTest(MongoDBTestCase):
             e.mapping = ["abc"]
             e.save()
 
+    def test_list_field_max_length(self):
+        """Ensure ListField's max_length is respected."""
+
+        class Foo(Document):
+            items = ListField(IntField(), max_length=5)
+
+        foo = Foo()
+        for i in range(1, 7):
+            foo.items.append(i)
+            if i < 6:
+                foo.save()
+            else:
+                with self.assertRaises(ValidationError) as cm:
+                    foo.save()
+                self.assertIn("List is too long", str(cm.exception))
+
+    def test_list_field_max_length_set_operator(self):
+        """Ensure ListField's max_length is respected for a "set" operator."""
+
+        class Foo(Document):
+            items = ListField(IntField(), max_length=3)
+
+        foo = Foo.objects.create(items=[1, 2, 3])
+        with self.assertRaises(ValidationError) as cm:
+            foo.modify(set__items=[1, 2, 3, 4])
+        self.assertIn("List is too long", str(cm.exception))
+
     def test_list_field_rejects_strings(self):
         """Strings aren't valid list field data types."""
+
         class Simple(Document):
             mapping = ListField()
 
         Simple.drop_collection()
 
         e = Simple()
-        e.mapping = 'hello world'
+        e.mapping = "hello world"
         self.assertRaises(ValidationError, e.save)
 
     def test_complex_field_required(self):
         """Ensure required cant be None / Empty."""
+
         class Simple(Document):
             mapping = ListField(required=True)
 
@@ -975,6 +1073,7 @@ class FieldTest(MongoDBTestCase):
         """If a complex field is set to the same value, it should not
         be marked as changed.
         """
+
         class Simple(Document):
             mapping = ListField()
 
@@ -999,7 +1098,7 @@ class FieldTest(MongoDBTestCase):
 
         simple = Simple(widgets=[1, 2, 3, 4]).save()
         simple.widgets[:3] = []
-        self.assertEqual(['widgets'], simple._changed_fields)
+        self.assertEqual(["widgets"], simple._changed_fields)
         simple.save()
 
         simple = simple.reload()
@@ -1011,7 +1110,7 @@ class FieldTest(MongoDBTestCase):
 
         simple = Simple(widgets=[1, 2, 3, 4]).save()
         del simple.widgets[:3]
-        self.assertEqual(['widgets'], simple._changed_fields)
+        self.assertEqual(["widgets"], simple._changed_fields)
         simple.save()
 
         simple = simple.reload()
@@ -1023,7 +1122,7 @@ class FieldTest(MongoDBTestCase):
 
         simple = Simple(widgets=[1, 2, 3, 4]).save()
         simple.widgets[-1] = 5
-        self.assertEqual(['widgets.3'], simple._changed_fields)
+        self.assertEqual(["widgets.3"], simple._changed_fields)
         simple.save()
 
         simple = simple.reload()
@@ -1031,8 +1130,9 @@ class FieldTest(MongoDBTestCase):
 
     def test_list_field_complex(self):
         """Ensure that the list fields can handle the complex types."""
+
         class SettingBase(EmbeddedDocument):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class StringSetting(SettingBase):
             value = StringField()
@@ -1046,12 +1146,17 @@ class FieldTest(MongoDBTestCase):
         Simple.drop_collection()
 
         e = Simple()
-        e.mapping.append(StringSetting(value='foo'))
+        e.mapping.append(StringSetting(value="foo"))
         e.mapping.append(IntegerSetting(value=42))
-        e.mapping.append({'number': 1, 'string': 'Hi!', 'float': 1.001,
-                          'complex': IntegerSetting(value=42),
-                          'list': [IntegerSetting(value=42),
-                                   StringSetting(value='foo')]})
+        e.mapping.append(
+            {
+                "number": 1,
+                "string": "Hi!",
+                "float": 1.001,
+                "complex": IntegerSetting(value=42),
+                "list": [IntegerSetting(value=42), StringSetting(value="foo")],
+            }
+        )
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
@@ -1059,35 +1164,36 @@ class FieldTest(MongoDBTestCase):
         self.assertIsInstance(e2.mapping[1], IntegerSetting)
 
         # Test querying
+        self.assertEqual(Simple.objects.filter(mapping__1__value=42).count(), 1)
+        self.assertEqual(Simple.objects.filter(mapping__2__number=1).count(), 1)
         self.assertEqual(
-            Simple.objects.filter(mapping__1__value=42).count(), 1)
+            Simple.objects.filter(mapping__2__complex__value=42).count(), 1
+        )
         self.assertEqual(
-            Simple.objects.filter(mapping__2__number=1).count(), 1)
+            Simple.objects.filter(mapping__2__list__0__value=42).count(), 1
+        )
         self.assertEqual(
-            Simple.objects.filter(mapping__2__complex__value=42).count(), 1)
-        self.assertEqual(
-            Simple.objects.filter(mapping__2__list__0__value=42).count(), 1)
-        self.assertEqual(
-            Simple.objects.filter(mapping__2__list__1__value='foo').count(), 1)
+            Simple.objects.filter(mapping__2__list__1__value="foo").count(), 1
+        )
 
         # Confirm can update
         Simple.objects().update(set__mapping__1=IntegerSetting(value=10))
-        self.assertEqual(
-            Simple.objects.filter(mapping__1__value=10).count(), 1)
+        self.assertEqual(Simple.objects.filter(mapping__1__value=10).count(), 1)
 
-        Simple.objects().update(
-            set__mapping__2__list__1=StringSetting(value='Boo'))
+        Simple.objects().update(set__mapping__2__list__1=StringSetting(value="Boo"))
         self.assertEqual(
-            Simple.objects.filter(mapping__2__list__1__value='foo').count(), 0)
+            Simple.objects.filter(mapping__2__list__1__value="foo").count(), 0
+        )
         self.assertEqual(
-            Simple.objects.filter(mapping__2__list__1__value='Boo').count(), 1)
+            Simple.objects.filter(mapping__2__list__1__value="Boo").count(), 1
+        )
 
     def test_embedded_db_field(self):
         class Embedded(EmbeddedDocument):
-            number = IntField(default=0, db_field='i')
+            number = IntField(default=0, db_field="i")
 
         class Test(Document):
-            embedded = EmbeddedDocumentField(Embedded, db_field='x')
+            embedded = EmbeddedDocumentField(Embedded, db_field="x")
 
         Test.drop_collection()
 
@@ -1100,58 +1206,54 @@ class FieldTest(MongoDBTestCase):
         test = Test.objects.get()
         self.assertEqual(test.embedded.number, 2)
         doc = self.db.test.find_one()
-        self.assertEqual(doc['x']['i'], 2)
+        self.assertEqual(doc["x"]["i"], 2)
 
     def test_double_embedded_db_field(self):
         """Make sure multiple layers of embedded docs resolve db fields
         properly and can be initialized using dicts.
         """
+
         class C(EmbeddedDocument):
             txt = StringField()
 
         class B(EmbeddedDocument):
-            c = EmbeddedDocumentField(C, db_field='fc')
+            c = EmbeddedDocumentField(C, db_field="fc")
 
         class A(Document):
-            b = EmbeddedDocumentField(B, db_field='fb')
+            b = EmbeddedDocumentField(B, db_field="fb")
 
-        a = A(
-            b=B(
-                c=C(txt='hi')
-            )
-        )
+        a = A(b=B(c=C(txt="hi")))
         a.validate()
 
-        a = A(b={'c': {'txt': 'hi'}})
+        a = A(b={"c": {"txt": "hi"}})
         a.validate()
 
     def test_double_embedded_db_field_from_son(self):
         """Make sure multiple layers of embedded docs resolve db fields
         from SON properly.
         """
+
         class C(EmbeddedDocument):
             txt = StringField()
 
         class B(EmbeddedDocument):
-            c = EmbeddedDocumentField(C, db_field='fc')
+            c = EmbeddedDocumentField(C, db_field="fc")
 
         class A(Document):
-            b = EmbeddedDocumentField(B, db_field='fb')
+            b = EmbeddedDocumentField(B, db_field="fb")
 
-        a = A._from_son(SON([
-            ('fb', SON([
-                ('fc', SON([
-                    ('txt', 'hi')
-                ]))
-            ]))
-        ]))
-        self.assertEqual(a.b.c.txt, 'hi')
+        a = A._from_son(SON([("fb", SON([("fc", SON([("txt", "hi")]))]))]))
+        self.assertEqual(a.b.c.txt, "hi")
 
-    def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(self):
-        raise SkipTest("Using a string reference in an EmbeddedDocumentField does not work if the class isnt registerd yet")
+    def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(
+        self
+    ):
+        raise SkipTest(
+            "Using a string reference in an EmbeddedDocumentField does not work if the class isnt registerd yet"
+        )
 
         class MyDoc2(Document):
-            emb = EmbeddedDocumentField('MyDoc')
+            emb = EmbeddedDocumentField("MyDoc")
 
         class MyDoc(EmbeddedDocument):
             name = StringField()
@@ -1160,6 +1262,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.
         """
+
         class Comment(EmbeddedDocument):
             content = StringField()
 
@@ -1173,30 +1276,31 @@ class FieldTest(MongoDBTestCase):
 
         Person.drop_collection()
 
-        person = Person(name='Test User')
-        person.preferences = 'My Preferences'
+        person = Person(name="Test User")
+        person.preferences = "My Preferences"
         self.assertRaises(ValidationError, person.validate)
 
         # Check that only the right embedded doc works
-        person.preferences = Comment(content='Nice blog post...')
+        person.preferences = Comment(content="Nice blog post...")
         self.assertRaises(ValidationError, person.validate)
 
         # Check that the embedded doc is valid
         person.preferences = PersonPreferences()
         self.assertRaises(ValidationError, person.validate)
 
-        person.preferences = PersonPreferences(food='Cheese', number=47)
-        self.assertEqual(person.preferences.food, 'Cheese')
+        person.preferences = PersonPreferences(food="Cheese", number=47)
+        self.assertEqual(person.preferences.food, "Cheese")
         person.validate()
 
     def test_embedded_document_inheritance(self):
         """Ensure that subclasses of embedded documents may be provided
         to EmbeddedDocumentFields of the superclass' type.
         """
+
         class User(EmbeddedDocument):
             name = StringField()
 
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class PowerUser(User):
             power = IntField()
@@ -1207,8 +1311,8 @@ class FieldTest(MongoDBTestCase):
 
         BlogPost.drop_collection()
 
-        post = BlogPost(content='What I did today...')
-        post.author = PowerUser(name='Test User', power=47)
+        post = BlogPost(content="What I did today...")
+        post.author = PowerUser(name="Test User", power=47)
         post.save()
 
         self.assertEqual(47, BlogPost.objects.first().author.power)
@@ -1217,21 +1321,22 @@ class FieldTest(MongoDBTestCase):
         """Ensure that nested list of subclassed embedded documents is
         handled correctly.
         """
+
         class Group(EmbeddedDocument):
             name = StringField()
             content = ListField(StringField())
 
         class Basedoc(Document):
             groups = ListField(EmbeddedDocumentField(Group))
-            meta = {'abstract': True}
+            meta = {"abstract": True}
 
         class User(Basedoc):
-            doctype = StringField(require=True, default='userdata')
+            doctype = StringField(require=True, default="userdata")
 
         User.drop_collection()
 
-        content = ['la', 'le', 'lu']
-        group = Group(name='foo', content=content)
+        content = ["la", "le", "lu"]
+        group = Group(name="foo", content=content)
         foobar = User(groups=[group])
         foobar.save()
 
@@ -1241,6 +1346,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure an exception is raised when dereferencing an unknown
         document.
         """
+
         class Foo(Document):
             pass
 
@@ -1257,20 +1363,21 @@ class FieldTest(MongoDBTestCase):
         # Reference is no longer valid
         foo.delete()
         bar = Bar.objects.get()
-        self.assertRaises(DoesNotExist, getattr, bar, 'ref')
-        self.assertRaises(DoesNotExist, getattr, bar, 'generic_ref')
+        self.assertRaises(DoesNotExist, getattr, bar, "ref")
+        self.assertRaises(DoesNotExist, getattr, bar, "generic_ref")
 
         # When auto_dereference is disabled, there is no trouble returning DBRef
         bar = Bar.objects.get()
         expected = foo.to_dbref()
-        bar._fields['ref']._auto_dereference = False
+        bar._fields["ref"]._auto_dereference = False
         self.assertEqual(bar.ref, expected)
-        bar._fields['generic_ref']._auto_dereference = False
-        self.assertEqual(bar.generic_ref, {'_ref': expected, '_cls': 'Foo'})
+        bar._fields["generic_ref"]._auto_dereference = False
+        self.assertEqual(bar.generic_ref, {"_ref": expected, "_cls": "Foo"})
 
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.
         """
+
         class User(Document):
             name = StringField()
 
@@ -1280,9 +1387,9 @@ class FieldTest(MongoDBTestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        user1 = User(name='user1')
+        user1 = User(name="user1")
         user1.save()
-        user2 = User(name='user2')
+        user2 = User(name="user2")
         user2.save()
 
         group = Group(members=[user1, user2])
@@ -1296,24 +1403,25 @@ class FieldTest(MongoDBTestCase):
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
         """
+
         class Employee(Document):
             name = StringField()
-            boss = ReferenceField('self')
-            friends = ListField(ReferenceField('self'))
+            boss = ReferenceField("self")
+            friends = ListField(ReferenceField("self"))
 
         Employee.drop_collection()
 
-        bill = Employee(name='Bill Lumbergh')
+        bill = Employee(name="Bill Lumbergh")
         bill.save()
 
-        michael = Employee(name='Michael Bolton')
+        michael = Employee(name="Michael Bolton")
         michael.save()
 
-        samir = Employee(name='Samir Nagheenanajar')
+        samir = Employee(name="Samir Nagheenanajar")
         samir.save()
 
         friends = [michael, samir]
-        peter = Employee(name='Peter Gibbons', boss=bill, friends=friends)
+        peter = Employee(name="Peter Gibbons", boss=bill, friends=friends)
         peter.save()
 
         peter = Employee.objects.with_id(peter.id)
@@ -1323,13 +1431,14 @@ class FieldTest(MongoDBTestCase):
     def test_recursive_embedding(self):
         """Ensure that EmbeddedDocumentFields can contain their own documents.
         """
+
         class TreeNode(EmbeddedDocument):
             name = StringField()
-            children = ListField(EmbeddedDocumentField('self'))
+            children = ListField(EmbeddedDocumentField("self"))
 
         class Tree(Document):
             name = StringField()
-            children = ListField(EmbeddedDocumentField('TreeNode'))
+            children = ListField(EmbeddedDocumentField("TreeNode"))
 
         Tree.drop_collection()
 
@@ -1356,18 +1465,18 @@ class FieldTest(MongoDBTestCase):
         self.assertEqual(tree.children[0].children[1].name, third_child.name)
 
         # Test updating
-        tree.children[0].name = 'I am Child 1'
-        tree.children[0].children[0].name = 'I am Child 2'
-        tree.children[0].children[1].name = 'I am Child 3'
+        tree.children[0].name = "I am Child 1"
+        tree.children[0].children[0].name = "I am Child 2"
+        tree.children[0].children[1].name = "I am Child 3"
         tree.save()
 
-        self.assertEqual(tree.children[0].name, 'I am Child 1')
-        self.assertEqual(tree.children[0].children[0].name, 'I am Child 2')
-        self.assertEqual(tree.children[0].children[1].name, 'I am Child 3')
+        self.assertEqual(tree.children[0].name, "I am Child 1")
+        self.assertEqual(tree.children[0].children[0].name, "I am Child 2")
+        self.assertEqual(tree.children[0].children[1].name, "I am Child 3")
 
         # Test removal
         self.assertEqual(len(tree.children[0].children), 2)
-        del(tree.children[0].children[1])
+        del tree.children[0].children[1]
 
         tree.save()
         self.assertEqual(len(tree.children[0].children), 1)
@@ -1388,6 +1497,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that an abstract document cannot be dropped given it
         has no underlying collection.
         """
+
         class AbstractDoc(Document):
             name = StringField()
             meta = {"abstract": True}
@@ -1397,6 +1507,7 @@ class FieldTest(MongoDBTestCase):
     def test_reference_class_with_abstract_parent(self):
         """Ensure that a class with an abstract parent can be referenced.
         """
+
         class Sibling(Document):
             name = StringField()
             meta = {"abstract": True}
@@ -1421,6 +1532,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that an abstract class instance cannot be used in the
         reference of that abstract class.
         """
+
         class Sibling(Document):
             name = StringField()
             meta = {"abstract": True}
@@ -1442,6 +1554,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure that an an abstract reference fails validation when given a
         Document that does not inherit from the abstract type.
         """
+
         class Sibling(Document):
             name = StringField()
             meta = {"abstract": True}
@@ -1463,9 +1576,10 @@ class FieldTest(MongoDBTestCase):
     def test_generic_reference(self):
         """Ensure that a GenericReferenceField properly dereferences items.
         """
+
         class Link(Document):
             title = StringField()
-            meta = {'allow_inheritance': False}
+            meta = {"allow_inheritance": False}
 
         class Post(Document):
             title = StringField()
@@ -1502,6 +1616,7 @@ class FieldTest(MongoDBTestCase):
     def test_generic_reference_list(self):
         """Ensure that a ListField properly dereferences generic references.
         """
+
         class Link(Document):
             title = StringField()
 
@@ -1533,6 +1648,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure dereferencing out of the document registry throws a
         `NotRegistered` error.
         """
+
         class Link(Document):
             title = StringField()
 
@@ -1550,7 +1666,7 @@ class FieldTest(MongoDBTestCase):
 
         # Mimic User and Link definitions being in a different file
         # and the Link model not being imported in the User file.
-        del(_document_registry["Link"])
+        del _document_registry["Link"]
 
         user = User.objects.first()
         try:
@@ -1560,7 +1676,6 @@ class FieldTest(MongoDBTestCase):
             pass
 
     def test_generic_reference_is_none(self):
-
         class Person(Document):
             name = StringField()
             city = GenericReferenceField()
@@ -1568,11 +1683,11 @@ class FieldTest(MongoDBTestCase):
         Person.drop_collection()
 
         Person(name="Wilson Jr").save()
-        self.assertEqual(repr(Person.objects(city=None)),
-                         "[<Person: Person object>]")
+        self.assertEqual(repr(Person.objects(city=None)), "[<Person: Person object>]")
 
     def test_generic_reference_choices(self):
         """Ensure that a GenericReferenceField can handle choices."""
+
         class Link(Document):
             title = StringField()
 
@@ -1604,6 +1719,7 @@ class FieldTest(MongoDBTestCase):
     def test_generic_reference_string_choices(self):
         """Ensure that a GenericReferenceField can handle choices as strings
         """
+
         class Link(Document):
             title = StringField()
 
@@ -1611,7 +1727,7 @@ class FieldTest(MongoDBTestCase):
             title = StringField()
 
         class Bookmark(Document):
-            bookmark_object = GenericReferenceField(choices=('Post', Link))
+            bookmark_object = GenericReferenceField(choices=("Post", Link))
 
         Link.drop_collection()
         Post.drop_collection()
@@ -1636,11 +1752,12 @@ class FieldTest(MongoDBTestCase):
         """Ensure that a GenericReferenceField can handle choices on
         non-derefenreced (i.e. DBRef) elements
         """
+
         class Post(Document):
             title = StringField()
 
         class Bookmark(Document):
-            bookmark_object = GenericReferenceField(choices=(Post, ))
+            bookmark_object = GenericReferenceField(choices=(Post,))
             other_field = StringField()
 
         Post.drop_collection()
@@ -1654,13 +1771,14 @@ class FieldTest(MongoDBTestCase):
 
         bm = Bookmark.objects.get(id=bm.id)
         # bookmark_object is now a DBRef
-        bm.other_field = 'dummy_change'
+        bm.other_field = "dummy_change"
         bm.save()
 
     def test_generic_reference_list_choices(self):
         """Ensure that a ListField properly dereferences generic references and
         respects choices.
         """
+
         class Link(Document):
             title = StringField()
 
@@ -1692,6 +1810,7 @@ class FieldTest(MongoDBTestCase):
     def test_generic_reference_list_item_modification(self):
         """Ensure that modifications of related documents (through generic reference) don't influence on querying
         """
+
         class Post(Document):
             title = StringField()
 
@@ -1721,6 +1840,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure we can search for a specific generic reference by
         providing its ObjectId.
         """
+
         class Doc(Document):
             ref = GenericReferenceField()
 
@@ -1729,13 +1849,14 @@ class FieldTest(MongoDBTestCase):
         doc1 = Doc.objects.create()
         doc2 = Doc.objects.create(ref=doc1)
 
-        doc = Doc.objects.get(ref=DBRef('doc', doc1.pk))
+        doc = Doc.objects.get(ref=DBRef("doc", doc1.pk))
         self.assertEqual(doc, doc2)
 
     def test_generic_reference_is_not_tracked_in_parent_doc(self):
         """Ensure that modifications of related documents (through generic reference) don't influence
         the owner changed fields (#1934)
         """
+
         class Doc1(Document):
             name = StringField()
 
@@ -1746,14 +1867,14 @@ class FieldTest(MongoDBTestCase):
         Doc1.drop_collection()
         Doc2.drop_collection()
 
-        doc1 = Doc1(name='garbage1').save()
-        doc11 = Doc1(name='garbage11').save()
+        doc1 = Doc1(name="garbage1").save()
+        doc11 = Doc1(name="garbage11").save()
         doc2 = Doc2(ref=doc1, refs=[doc11]).save()
 
-        doc2.ref.name = 'garbage2'
+        doc2.ref.name = "garbage2"
         self.assertEqual(doc2._get_changed_fields(), [])
 
-        doc2.refs[0].name = 'garbage3'
+        doc2.refs[0].name = "garbage3"
         self.assertEqual(doc2._get_changed_fields(), [])
         self.assertEqual(doc2._delta(), ({}, {}))
 
@@ -1761,6 +1882,7 @@ class FieldTest(MongoDBTestCase):
         """Ensure we can search for a specific generic reference by
         providing its DBRef.
         """
+
         class Doc(Document):
             ref = GenericReferenceField()
 
@@ -1777,17 +1899,19 @@ class FieldTest(MongoDBTestCase):
     def test_choices_allow_using_sets_as_choices(self):
         """Ensure that sets can be used when setting choices
         """
-        class Shirt(Document):
-            size = StringField(choices={'M', 'L'})
 
-        Shirt(size='M').validate()
+        class Shirt(Document):
+            size = StringField(choices={"M", "L"})
+
+        Shirt(size="M").validate()
 
     def test_choices_validation_allow_no_value(self):
         """Ensure that .validate passes and no value was provided
         for a field setup with choices
         """
+
         class Shirt(Document):
-            size = StringField(choices=('S', 'M'))
+            size = StringField(choices=("S", "M"))
 
         shirt = Shirt()
         shirt.validate()
@@ -1795,17 +1919,19 @@ class FieldTest(MongoDBTestCase):
     def test_choices_validation_accept_possible_value(self):
         """Ensure that value is in a container of allowed values.
         """
-        class Shirt(Document):
-            size = StringField(choices=('S', 'M'))
 
-        shirt = Shirt(size='S')
+        class Shirt(Document):
+            size = StringField(choices=("S", "M"))
+
+        shirt = Shirt(size="S")
         shirt.validate()
 
     def test_choices_validation_reject_unknown_value(self):
         """Ensure that unallowed value are rejected upon validation
         """
+
         class Shirt(Document):
-            size = StringField(choices=('S', 'M'))
+            size = StringField(choices=("S", "M"))
 
         shirt = Shirt(size="XS")
         with self.assertRaises(ValidationError):
@@ -1815,12 +1941,23 @@ class FieldTest(MongoDBTestCase):
         """Test dynamic helper for returning the display value of a choices
         field.
         """
+
         class Shirt(Document):
-            size = StringField(max_length=3, choices=(
-                ('S', 'Small'), ('M', 'Medium'), ('L', 'Large'),
-                ('XL', 'Extra Large'), ('XXL', 'Extra Extra Large')))
-            style = StringField(max_length=3, choices=(
-                ('S', 'Small'), ('B', 'Baggy'), ('W', 'Wide')), default='W')
+            size = StringField(
+                max_length=3,
+                choices=(
+                    ("S", "Small"),
+                    ("M", "Medium"),
+                    ("L", "Large"),
+                    ("XL", "Extra Large"),
+                    ("XXL", "Extra Extra Large"),
+                ),
+            )
+            style = StringField(
+                max_length=3,
+                choices=(("S", "Small"), ("B", "Baggy"), ("W", "Wide")),
+                default="W",
+            )
 
         Shirt.drop_collection()
 
@@ -1829,30 +1966,30 @@ class FieldTest(MongoDBTestCase):
 
         # Make sure get_<field>_display returns the default value (or None)
         self.assertEqual(shirt1.get_size_display(), None)
-        self.assertEqual(shirt1.get_style_display(), 'Wide')
+        self.assertEqual(shirt1.get_style_display(), "Wide")
 
-        shirt1.size = 'XXL'
-        shirt1.style = 'B'
-        shirt2.size = 'M'
-        shirt2.style = 'S'
-        self.assertEqual(shirt1.get_size_display(), 'Extra Extra Large')
-        self.assertEqual(shirt1.get_style_display(), 'Baggy')
-        self.assertEqual(shirt2.get_size_display(), 'Medium')
-        self.assertEqual(shirt2.get_style_display(), 'Small')
+        shirt1.size = "XXL"
+        shirt1.style = "B"
+        shirt2.size = "M"
+        shirt2.style = "S"
+        self.assertEqual(shirt1.get_size_display(), "Extra Extra Large")
+        self.assertEqual(shirt1.get_style_display(), "Baggy")
+        self.assertEqual(shirt2.get_size_display(), "Medium")
+        self.assertEqual(shirt2.get_style_display(), "Small")
 
         # Set as Z - an invalid choice
-        shirt1.size = 'Z'
-        shirt1.style = 'Z'
-        self.assertEqual(shirt1.get_size_display(), 'Z')
-        self.assertEqual(shirt1.get_style_display(), 'Z')
+        shirt1.size = "Z"
+        shirt1.style = "Z"
+        self.assertEqual(shirt1.get_size_display(), "Z")
+        self.assertEqual(shirt1.get_style_display(), "Z")
         self.assertRaises(ValidationError, shirt1.validate)
 
     def test_simple_choices_validation(self):
         """Ensure that value is in a container of allowed values.
         """
+
         class Shirt(Document):
-            size = StringField(max_length=3,
-                               choices=('S', 'M', 'L', 'XL', 'XXL'))
+            size = StringField(max_length=3, choices=("S", "M", "L", "XL", "XXL"))
 
         Shirt.drop_collection()
 
@@ -1869,37 +2006,37 @@ class FieldTest(MongoDBTestCase):
         """Test dynamic helper for returning the display value of a choices
         field.
         """
+
         class Shirt(Document):
-            size = StringField(max_length=3,
-                               choices=('S', 'M', 'L', 'XL', 'XXL'))
-            style = StringField(max_length=3,
-                                choices=('Small', 'Baggy', 'wide'),
-                                default='Small')
+            size = StringField(max_length=3, choices=("S", "M", "L", "XL", "XXL"))
+            style = StringField(
+                max_length=3, choices=("Small", "Baggy", "wide"), default="Small"
+            )
 
         Shirt.drop_collection()
 
         shirt = Shirt()
 
         self.assertEqual(shirt.get_size_display(), None)
-        self.assertEqual(shirt.get_style_display(), 'Small')
+        self.assertEqual(shirt.get_style_display(), "Small")
 
         shirt.size = "XXL"
         shirt.style = "Baggy"
-        self.assertEqual(shirt.get_size_display(), 'XXL')
-        self.assertEqual(shirt.get_style_display(), 'Baggy')
+        self.assertEqual(shirt.get_size_display(), "XXL")
+        self.assertEqual(shirt.get_style_display(), "Baggy")
 
         # Set as Z - an invalid choice
         shirt.size = "Z"
         shirt.style = "Z"
-        self.assertEqual(shirt.get_size_display(), 'Z')
-        self.assertEqual(shirt.get_style_display(), 'Z')
+        self.assertEqual(shirt.get_size_display(), "Z")
+        self.assertEqual(shirt.get_style_display(), "Z")
         self.assertRaises(ValidationError, shirt.validate)
 
     def test_simple_choices_validation_invalid_value(self):
         """Ensure that error messages are correct.
         """
-        SIZES = ('S', 'M', 'L', 'XL', 'XXL')
-        COLORS = (('R', 'Red'), ('B', 'Blue'))
+        SIZES = ("S", "M", "L", "XL", "XXL")
+        COLORS = (("R", "Red"), ("B", "Blue"))
         SIZE_MESSAGE = u"Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
         COLOR_MESSAGE = u"Value must be one of ['R', 'B']"
 
@@ -1924,11 +2061,12 @@ class FieldTest(MongoDBTestCase):
         except ValidationError as error:
             # get the validation rules
             error_dict = error.to_dict()
-            self.assertEqual(error_dict['size'], SIZE_MESSAGE)
-            self.assertEqual(error_dict['color'], COLOR_MESSAGE)
+            self.assertEqual(error_dict["size"], SIZE_MESSAGE)
+            self.assertEqual(error_dict["color"], COLOR_MESSAGE)
 
     def test_recursive_validation(self):
         """Ensure that a validation result to_dict is available."""
+
         class Author(EmbeddedDocument):
             name = StringField(required=True)
 
@@ -1940,9 +2078,9 @@ class FieldTest(MongoDBTestCase):
             title = StringField(required=True)
             comments = ListField(EmbeddedDocumentField(Comment))
 
-        bob = Author(name='Bob')
-        post = Post(title='hello world')
-        post.comments.append(Comment(content='hello', author=bob))
+        bob = Author(name="Bob")
+        post = Post(title="hello world")
+        post.comments.append(Comment(content="hello", author=bob))
         post.comments.append(Comment(author=bob))
 
         self.assertRaises(ValidationError, post.validate)
@@ -1950,30 +2088,31 @@ class FieldTest(MongoDBTestCase):
             post.validate()
         except ValidationError as error:
             # ValidationError.errors property
-            self.assertTrue(hasattr(error, 'errors'))
+            self.assertTrue(hasattr(error, "errors"))
             self.assertIsInstance(error.errors, dict)
-            self.assertIn('comments', error.errors)
-            self.assertIn(1, error.errors['comments'])
-            self.assertIsInstance(error.errors['comments'][1]['content'], ValidationError)
+            self.assertIn("comments", error.errors)
+            self.assertIn(1, error.errors["comments"])
+            self.assertIsInstance(
+                error.errors["comments"][1]["content"], ValidationError
+            )
 
             # ValidationError.schema property
             error_dict = error.to_dict()
             self.assertIsInstance(error_dict, dict)
-            self.assertIn('comments', error_dict)
-            self.assertIn(1, error_dict['comments'])
-            self.assertIn('content', error_dict['comments'][1])
-            self.assertEqual(error_dict['comments'][1]['content'],
-                             u'Field is required')
+            self.assertIn("comments", error_dict)
+            self.assertIn(1, error_dict["comments"])
+            self.assertIn("content", error_dict["comments"][1])
+            self.assertEqual(error_dict["comments"][1]["content"], u"Field is required")
 
-        post.comments[1].content = 'here we go'
+        post.comments[1].content = "here we go"
         post.validate()
 
     def test_tuples_as_tuples(self):
         """Ensure that tuples remain tuples when they are inside
         a ComplexBaseField.
         """
-        class EnumField(BaseField):
 
+        class EnumField(BaseField):
             def __init__(self, **kwargs):
                 super(EnumField, self).__init__(**kwargs)
 
@@ -1988,7 +2127,7 @@ class FieldTest(MongoDBTestCase):
 
         TestDoc.drop_collection()
 
-        tuples = [(100, 'Testing')]
+        tuples = [(100, "Testing")]
         doc = TestDoc()
         doc.items = tuples
         doc.save()
@@ -2000,12 +2139,12 @@ class FieldTest(MongoDBTestCase):
 
     def test_dynamic_fields_class(self):
         class Doc2(Document):
-            field_1 = StringField(db_field='f')
+            field_1 = StringField(db_field="f")
 
         class Doc(Document):
             my_id = IntField(primary_key=True)
-            embed_me = DynamicField(db_field='e')
-            field_x = StringField(db_field='x')
+            embed_me = DynamicField(db_field="e")
+            field_x = StringField(db_field="x")
 
         Doc.drop_collection()
         Doc2.drop_collection()
@@ -2022,12 +2161,12 @@ class FieldTest(MongoDBTestCase):
 
     def test_dynamic_fields_embedded_class(self):
         class Embed(EmbeddedDocument):
-            field_1 = StringField(db_field='f')
+            field_1 = StringField(db_field="f")
 
         class Doc(Document):
             my_id = IntField(primary_key=True)
-            embed_me = DynamicField(db_field='e')
-            field_x = StringField(db_field='x')
+            embed_me = DynamicField(db_field="e")
+            field_x = StringField(db_field="x")
 
         Doc.drop_collection()
 
@@ -2038,6 +2177,7 @@ class FieldTest(MongoDBTestCase):
 
     def test_dynamicfield_dump_document(self):
         """Ensure a DynamicField can handle another document's dump."""
+
         class Doc(Document):
             field = DynamicField()
 
@@ -2049,7 +2189,7 @@ class FieldTest(MongoDBTestCase):
             id = IntField(primary_key=True, default=1)
             recursive = DynamicField()
 
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class ToEmbedChild(ToEmbedParent):
             pass
@@ -2070,7 +2210,7 @@ class FieldTest(MongoDBTestCase):
 
     def test_cls_field(self):
         class Animal(Document):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class Fish(Animal):
             pass
@@ -2088,7 +2228,9 @@ class FieldTest(MongoDBTestCase):
         Dog().save()
         Fish().save()
         Human().save()
-        self.assertEqual(Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count(), 2)
+        self.assertEqual(
+            Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count(), 2
+        )
         self.assertEqual(Animal.objects(_cls__in=["Animal.Fish.Guppy"]).count(), 0)
 
     def test_sparse_field(self):
@@ -2104,32 +2246,34 @@ class FieldTest(MongoDBTestCase):
         trying to instantiate a document with a field that's not
         defined.
         """
+
         class Doc(Document):
             foo = StringField()
 
         with self.assertRaises(FieldDoesNotExist):
-            Doc(bar='test')
+            Doc(bar="test")
 
     def test_undefined_field_exception_with_strict(self):
         """Tests if a `FieldDoesNotExist` exception is raised when
         trying to instantiate a document with a field that's not
         defined, even when strict is set to False.
         """
+
         class Doc(Document):
             foo = StringField()
-            meta = {'strict': False}
+            meta = {"strict": False}
 
         with self.assertRaises(FieldDoesNotExist):
-            Doc(bar='test')
+            Doc(bar="test")
 
 
 class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
-
     def setUp(self):
         """
         Create two BlogPost entries in the database, each with
         several EmbeddedDocuments.
         """
+
         class Comments(EmbeddedDocument):
             author = StringField()
             message = StringField()
@@ -2142,20 +2286,24 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.Comments = Comments
         self.BlogPost = BlogPost
 
-        self.post1 = self.BlogPost(comments=[
-            self.Comments(author='user1', message='message1'),
-            self.Comments(author='user2', message='message1')
-        ]).save()
+        self.post1 = self.BlogPost(
+            comments=[
+                self.Comments(author="user1", message="message1"),
+                self.Comments(author="user2", message="message1"),
+            ]
+        ).save()
 
-        self.post2 = self.BlogPost(comments=[
-            self.Comments(author='user2', message='message2'),
-            self.Comments(author='user2', message='message3'),
-            self.Comments(author='user3', message='message1')
-        ]).save()
+        self.post2 = self.BlogPost(
+            comments=[
+                self.Comments(author="user2", message="message2"),
+                self.Comments(author="user2", message="message3"),
+                self.Comments(author="user3", message="message1"),
+            ]
+        ).save()
 
     def test_fails_upon_validate_if_provide_a_doc_instead_of_a_list_of_doc(self):
         # Relates to Issue #1464
-        comment = self.Comments(author='John')
+        comment = self.Comments(author="John")
 
         class Title(Document):
             content = StringField()
@@ -2166,14 +2314,18 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         with self.assertRaises(ValidationError) as ctx_err:
             post.validate()
         self.assertIn("'comments'", str(ctx_err.exception))
-        self.assertIn('Only lists and tuples may be used in a list field', str(ctx_err.exception))
+        self.assertIn(
+            "Only lists and tuples may be used in a list field", str(ctx_err.exception)
+        )
 
         # Test with a Document
-        post = self.BlogPost(comments=Title(content='garbage'))
+        post = self.BlogPost(comments=Title(content="garbage"))
         with self.assertRaises(ValidationError) as e:
             post.validate()
         self.assertIn("'comments'", str(ctx_err.exception))
-        self.assertIn('Only lists and tuples may be used in a list field', str(ctx_err.exception))
+        self.assertIn(
+            "Only lists and tuples may be used in a list field", str(ctx_err.exception)
+        )
 
     def test_no_keyword_filter(self):
         """
@@ -2190,44 +2342,40 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         Tests the filter method of a List of Embedded Documents
         with a single keyword.
         """
-        filtered = self.post1.comments.filter(author='user1')
+        filtered = self.post1.comments.filter(author="user1")
 
         # Ensure only 1 entry was returned.
         self.assertEqual(len(filtered), 1)
 
         # Ensure the entry returned is the correct entry.
-        self.assertEqual(filtered[0].author, 'user1')
+        self.assertEqual(filtered[0].author, "user1")
 
     def test_multi_keyword_filter(self):
         """
         Tests the filter method of a List of Embedded Documents
         with multiple keywords.
         """
-        filtered = self.post2.comments.filter(
-            author='user2', message='message2'
-        )
+        filtered = self.post2.comments.filter(author="user2", message="message2")
 
         # Ensure only 1 entry was returned.
         self.assertEqual(len(filtered), 1)
 
         # Ensure the entry returned is the correct entry.
-        self.assertEqual(filtered[0].author, 'user2')
-        self.assertEqual(filtered[0].message, 'message2')
+        self.assertEqual(filtered[0].author, "user2")
+        self.assertEqual(filtered[0].message, "message2")
 
     def test_chained_filter(self):
         """
         Tests chained filter methods of a List of Embedded Documents
         """
-        filtered = self.post2.comments.filter(author='user2').filter(
-            message='message2'
-        )
+        filtered = self.post2.comments.filter(author="user2").filter(message="message2")
 
         # Ensure only 1 entry was returned.
         self.assertEqual(len(filtered), 1)
 
         # Ensure the entry returned is the correct entry.
-        self.assertEqual(filtered[0].author, 'user2')
-        self.assertEqual(filtered[0].message, 'message2')
+        self.assertEqual(filtered[0].author, "user2")
+        self.assertEqual(filtered[0].message, "message2")
 
     def test_unknown_keyword_filter(self):
         """
@@ -2252,36 +2400,34 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         Tests the exclude method of a List of Embedded Documents
         with a single keyword.
         """
-        excluded = self.post1.comments.exclude(author='user1')
+        excluded = self.post1.comments.exclude(author="user1")
 
         # Ensure only 1 entry was returned.
         self.assertEqual(len(excluded), 1)
 
         # Ensure the entry returned is the correct entry.
-        self.assertEqual(excluded[0].author, 'user2')
+        self.assertEqual(excluded[0].author, "user2")
 
     def test_multi_keyword_exclude(self):
         """
         Tests the exclude method of a List of Embedded Documents
         with multiple keywords.
         """
-        excluded = self.post2.comments.exclude(
-            author='user3', message='message1'
-        )
+        excluded = self.post2.comments.exclude(author="user3", message="message1")
 
         # Ensure only 2 entries were returned.
         self.assertEqual(len(excluded), 2)
 
         # Ensure the entries returned are the correct entries.
-        self.assertEqual(excluded[0].author, 'user2')
-        self.assertEqual(excluded[1].author, 'user2')
+        self.assertEqual(excluded[0].author, "user2")
+        self.assertEqual(excluded[1].author, "user2")
 
     def test_non_matching_exclude(self):
         """
         Tests the exclude method of a List of Embedded Documents
         when the keyword does not match any entries.
         """
-        excluded = self.post2.comments.exclude(author='user4')
+        excluded = self.post2.comments.exclude(author="user4")
 
         # Ensure the 3 entries still exist.
         self.assertEqual(len(excluded), 3)
@@ -2299,16 +2445,16 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         Tests the exclude method after a filter method of a List of
         Embedded Documents.
         """
-        excluded = self.post2.comments.filter(author='user2').exclude(
-            message='message2'
+        excluded = self.post2.comments.filter(author="user2").exclude(
+            message="message2"
         )
 
         # Ensure only 1 entry was returned.
         self.assertEqual(len(excluded), 1)
 
         # Ensure the entry returned is the correct entry.
-        self.assertEqual(excluded[0].author, 'user2')
-        self.assertEqual(excluded[0].message, 'message3')
+        self.assertEqual(excluded[0].author, "user2")
+        self.assertEqual(excluded[0].message, "message3")
 
     def test_count(self):
         """
@@ -2321,7 +2467,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         """
         Tests the filter + count method of a List of Embedded Documents.
         """
-        count = self.post1.comments.filter(author='user1').count()
+        count = self.post1.comments.filter(author="user1").count()
         self.assertEqual(count, 1)
 
     def test_single_keyword_get(self):
@@ -2329,19 +2475,19 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         Tests the get method of a List of Embedded Documents using a
         single keyword.
         """
-        comment = self.post1.comments.get(author='user1')
+        comment = self.post1.comments.get(author="user1")
         self.assertIsInstance(comment, self.Comments)
-        self.assertEqual(comment.author, 'user1')
+        self.assertEqual(comment.author, "user1")
 
     def test_multi_keyword_get(self):
         """
         Tests the get method of a List of Embedded Documents using
         multiple keywords.
         """
-        comment = self.post2.comments.get(author='user2', message='message2')
+        comment = self.post2.comments.get(author="user2", message="message2")
         self.assertIsInstance(comment, self.Comments)
-        self.assertEqual(comment.author, 'user2')
-        self.assertEqual(comment.message, 'message2')
+        self.assertEqual(comment.author, "user2")
+        self.assertEqual(comment.message, "message2")
 
     def test_no_keyword_multiple_return_get(self):
         """
@@ -2357,7 +2503,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         to return multiple documents.
         """
         with self.assertRaises(MultipleObjectsReturned):
-            self.post2.comments.get(author='user2')
+            self.post2.comments.get(author="user2")
 
     def test_unknown_keyword_get(self):
         """
@@ -2373,7 +2519,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         returns no results.
         """
         with self.assertRaises(DoesNotExist):
-            self.post1.comments.get(author='user3')
+            self.post1.comments.get(author="user3")
 
     def test_first(self):
         """
@@ -2390,20 +2536,17 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         """
         Test the create method of a List of Embedded Documents.
         """
-        comment = self.post1.comments.create(
-            author='user4', message='message1'
-        )
+        comment = self.post1.comments.create(author="user4", message="message1")
         self.post1.save()
 
         # Ensure the returned value is the comment object.
         self.assertIsInstance(comment, self.Comments)
-        self.assertEqual(comment.author, 'user4')
-        self.assertEqual(comment.message, 'message1')
+        self.assertEqual(comment.author, "user4")
+        self.assertEqual(comment.message, "message1")
 
         # Ensure the new comment was actually saved to the database.
         self.assertIn(
-            comment,
-            self.BlogPost.objects(comments__author='user4')[0].comments
+            comment, self.BlogPost.objects(comments__author="user4")[0].comments
         )
 
     def test_filtered_create(self):
@@ -2412,20 +2555,19 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         to a call to the filter method. Filtering should have no effect
         on creation.
         """
-        comment = self.post1.comments.filter(author='user1').create(
-            author='user4', message='message1'
+        comment = self.post1.comments.filter(author="user1").create(
+            author="user4", message="message1"
         )
         self.post1.save()
 
         # Ensure the returned value is the comment object.
         self.assertIsInstance(comment, self.Comments)
-        self.assertEqual(comment.author, 'user4')
-        self.assertEqual(comment.message, 'message1')
+        self.assertEqual(comment.author, "user4")
+        self.assertEqual(comment.message, "message1")
 
         # Ensure the new comment was actually saved to the database.
         self.assertIn(
-            comment,
-            self.BlogPost.objects(comments__author='user4')[0].comments
+            comment, self.BlogPost.objects(comments__author="user4")[0].comments
         )
 
     def test_no_keyword_update(self):
@@ -2438,15 +2580,9 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         self.post1.save()
 
         # Ensure that nothing was altered.
-        self.assertIn(
-            original[0],
-            self.BlogPost.objects(id=self.post1.id)[0].comments
-        )
+        self.assertIn(original[0], self.BlogPost.objects(id=self.post1.id)[0].comments)
 
-        self.assertIn(
-            original[1],
-            self.BlogPost.objects(id=self.post1.id)[0].comments
-        )
+        self.assertIn(original[1], self.BlogPost.objects(id=self.post1.id)[0].comments)
 
         # Ensure the method returned 0 as the number of entries
         # modified
@@ -2457,14 +2593,14 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         Tests the update method of a List of Embedded Documents with
         a single keyword.
         """
-        number = self.post1.comments.update(author='user4')
+        number = self.post1.comments.update(author="user4")
         self.post1.save()
 
         comments = self.BlogPost.objects(id=self.post1.id)[0].comments
 
         # Ensure that the database was updated properly.
-        self.assertEqual(comments[0].author, 'user4')
-        self.assertEqual(comments[1].author, 'user4')
+        self.assertEqual(comments[0].author, "user4")
+        self.assertEqual(comments[1].author, "user4")
 
         # Ensure the method returned 2 as the number of entries
         # modified
@@ -2474,27 +2610,25 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         """
         Tests that unicode strings handled correctly
         """
-        post = self.BlogPost(comments=[
-            self.Comments(author='user1', message=u'сообщение'),
-            self.Comments(author='user2', message=u'хабарлама')
-        ]).save()
-        self.assertEqual(post.comments.get(message=u'сообщение').author,
-                         'user1')
+        post = self.BlogPost(
+            comments=[
+                self.Comments(author="user1", message=u"сообщение"),
+                self.Comments(author="user2", message=u"хабарлама"),
+            ]
+        ).save()
+        self.assertEqual(post.comments.get(message=u"сообщение").author, "user1")
 
     def test_save(self):
         """
         Tests the save method of a List of Embedded Documents.
         """
         comments = self.post1.comments
-        new_comment = self.Comments(author='user4')
+        new_comment = self.Comments(author="user4")
         comments.append(new_comment)
         comments.save()
 
         # Ensure that the new comment has been added to the database.
-        self.assertIn(
-            new_comment,
-            self.BlogPost.objects(id=self.post1.id)[0].comments
-        )
+        self.assertIn(new_comment, self.BlogPost.objects(id=self.post1.id)[0].comments)
 
     def test_delete(self):
         """
@@ -2505,9 +2639,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
 
         # Ensure that all the comments under post1 were deleted in the
         # database.
-        self.assertListEqual(
-            self.BlogPost.objects(id=self.post1.id)[0].comments, []
-        )
+        self.assertListEqual(self.BlogPost.objects(id=self.post1.id)[0].comments, [])
 
         # Ensure that post1 comments were deleted from the list.
         self.assertListEqual(self.post1.comments, [])
@@ -2525,6 +2657,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         that have a unique field can be saved, but if the unique field is
         also sparse than multiple documents with an empty list can be saved.
         """
+
         class EmbeddedWithUnique(EmbeddedDocument):
             number = IntField(unique=True)
 
@@ -2553,16 +2686,12 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         after the filter method has been called.
         """
         comment = self.post1.comments[1]
-        number = self.post1.comments.filter(author='user2').delete()
+        number = self.post1.comments.filter(author="user2").delete()
         self.post1.save()
 
         # Ensure that only the user2 comment was deleted.
-        self.assertNotIn(
-            comment, self.BlogPost.objects(id=self.post1.id)[0].comments
-        )
-        self.assertEqual(
-            len(self.BlogPost.objects(id=self.post1.id)[0].comments), 1
-        )
+        self.assertNotIn(comment, self.BlogPost.objects(id=self.post1.id)[0].comments)
+        self.assertEqual(len(self.BlogPost.objects(id=self.post1.id)[0].comments), 1)
 
         # Ensure that the user2 comment no longer exists in the list.
         self.assertNotIn(comment, self.post1.comments)
@@ -2577,7 +2706,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
         Tests that custom data is saved in the field object
         and doesn't interfere with the rest of field functionalities.
         """
-        custom_data = {'a': 'a_value', 'b': [1, 2]}
+        custom_data = {"a": "a_value", "b": [1, 2]}
 
         class CustomData(Document):
             a_field = IntField()
@@ -2587,10 +2716,10 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
 
         a1 = CustomData(a_field=1, c_field=2).save()
         self.assertEqual(2, a1.c_field)
-        self.assertFalse(hasattr(a1.c_field, 'custom_data'))
-        self.assertTrue(hasattr(CustomData.c_field, 'custom_data'))
-        self.assertEqual(custom_data['a'], CustomData.c_field.custom_data['a'])
+        self.assertFalse(hasattr(a1.c_field, "custom_data"))
+        self.assertTrue(hasattr(CustomData.c_field, "custom_data"))
+        self.assertEqual(custom_data["a"], CustomData.c_field.custom_data["a"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

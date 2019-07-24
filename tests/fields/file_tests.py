@@ -14,36 +14,37 @@ from mongoengine.python_support import StringIO
 
 try:
     from PIL import Image
+
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
 
 from tests.utils import MongoDBTestCase
 
-TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'mongoengine.png')
-TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), 'mongodb_leaf.png')
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "mongoengine.png")
+TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), "mongodb_leaf.png")
 
 
 def get_file(path):
     """Use a BytesIO instead of a file to allow
     to have a one-liner and avoid that the file remains opened"""
     bytes_io = StringIO()
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         bytes_io.write(f.read())
     bytes_io.seek(0)
     return bytes_io
 
 
 class FileTest(MongoDBTestCase):
-
     def tearDown(self):
-        self.db.drop_collection('fs.files')
-        self.db.drop_collection('fs.chunks')
+        self.db.drop_collection("fs.files")
+        self.db.drop_collection("fs.chunks")
 
     def test_file_field_optional(self):
         # Make sure FileField is optional and not required
         class DemoFile(Document):
             the_file = FileField()
+
         DemoFile.objects.create()
 
     def test_file_fields(self):
@@ -55,8 +56,8 @@ class FileTest(MongoDBTestCase):
 
         PutFile.drop_collection()
 
-        text = six.b('Hello, World!')
-        content_type = 'text/plain'
+        text = six.b("Hello, World!")
+        content_type = "text/plain"
 
         putfile = PutFile()
         putfile.the_file.put(text, content_type=content_type, filename="hello")
@@ -64,7 +65,10 @@ class FileTest(MongoDBTestCase):
 
         result = PutFile.objects.first()
         self.assertEqual(putfile, result)
-        self.assertEqual("%s" % result.the_file, "<GridFSProxy: hello (%s)>" % result.the_file.grid_id)
+        self.assertEqual(
+            "%s" % result.the_file,
+            "<GridFSProxy: hello (%s)>" % result.the_file.grid_id,
+        )
         self.assertEqual(result.the_file.read(), text)
         self.assertEqual(result.the_file.content_type, content_type)
         result.the_file.delete()  # Remove file from GridFS
@@ -89,14 +93,15 @@ class FileTest(MongoDBTestCase):
     def test_file_fields_stream(self):
         """Ensure that file fields can be written to and their data retrieved
         """
+
         class StreamFile(Document):
             the_file = FileField()
 
         StreamFile.drop_collection()
 
-        text = six.b('Hello, World!')
-        more_text = six.b('Foo Bar')
-        content_type = 'text/plain'
+        text = six.b("Hello, World!")
+        more_text = six.b("Foo Bar")
+        content_type = "text/plain"
 
         streamfile = StreamFile()
         streamfile.the_file.new_file(content_type=content_type)
@@ -124,14 +129,15 @@ class FileTest(MongoDBTestCase):
         """Ensure that a file field can be written to after it has been saved as
         None
         """
+
         class StreamFile(Document):
             the_file = FileField()
 
         StreamFile.drop_collection()
 
-        text = six.b('Hello, World!')
-        more_text = six.b('Foo Bar')
-        content_type = 'text/plain'
+        text = six.b("Hello, World!")
+        more_text = six.b("Foo Bar")
+        content_type = "text/plain"
 
         streamfile = StreamFile()
         streamfile.save()
@@ -157,12 +163,11 @@ class FileTest(MongoDBTestCase):
         self.assertTrue(result.the_file.read() is None)
 
     def test_file_fields_set(self):
-
         class SetFile(Document):
             the_file = FileField()
 
-        text = six.b('Hello, World!')
-        more_text = six.b('Foo Bar')
+        text = six.b("Hello, World!")
+        more_text = six.b("Foo Bar")
 
         SetFile.drop_collection()
 
@@ -184,7 +189,6 @@ class FileTest(MongoDBTestCase):
         result.the_file.delete()
 
     def test_file_field_no_default(self):
-
         class GridDocument(Document):
             the_file = FileField()
 
@@ -199,7 +203,7 @@ class FileTest(MongoDBTestCase):
             doc_a.save()
 
             doc_b = GridDocument.objects.with_id(doc_a.id)
-            doc_b.the_file.replace(f, filename='doc_b')
+            doc_b.the_file.replace(f, filename="doc_b")
             doc_b.save()
             self.assertNotEqual(doc_b.the_file.grid_id, None)
 
@@ -208,13 +212,13 @@ class FileTest(MongoDBTestCase):
             self.assertEqual(doc_b.the_file.grid_id, doc_c.the_file.grid_id)
 
             # Test with default
-            doc_d = GridDocument(the_file=six.b(''))
+            doc_d = GridDocument(the_file=six.b(""))
             doc_d.save()
 
             doc_e = GridDocument.objects.with_id(doc_d.id)
             self.assertEqual(doc_d.the_file.grid_id, doc_e.the_file.grid_id)
 
-            doc_e.the_file.replace(f, filename='doc_e')
+            doc_e.the_file.replace(f, filename="doc_e")
             doc_e.save()
 
             doc_f = GridDocument.objects.with_id(doc_e.id)
@@ -222,11 +226,12 @@ class FileTest(MongoDBTestCase):
 
         db = GridDocument._get_db()
         grid_fs = gridfs.GridFS(db)
-        self.assertEqual(['doc_b', 'doc_e'], grid_fs.list())
+        self.assertEqual(["doc_b", "doc_e"], grid_fs.list())
 
     def test_file_uniqueness(self):
         """Ensure that each instance of a FileField is unique
         """
+
         class TestFile(Document):
             name = StringField()
             the_file = FileField()
@@ -234,7 +239,7 @@ class FileTest(MongoDBTestCase):
         # First instance
         test_file = TestFile()
         test_file.name = "Hello, World!"
-        test_file.the_file.put(six.b('Hello, World!'))
+        test_file.the_file.put(six.b("Hello, World!"))
         test_file.save()
 
         # Second instance
@@ -255,20 +260,21 @@ class FileTest(MongoDBTestCase):
             photo = FileField()
 
         Animal.drop_collection()
-        marmot = Animal(genus='Marmota', family='Sciuridae')
+        marmot = Animal(genus="Marmota", family="Sciuridae")
 
         marmot_photo_content = get_file(TEST_IMAGE_PATH)  # Retrieve a photo from disk
-        marmot.photo.put(marmot_photo_content, content_type='image/jpeg', foo='bar')
+        marmot.photo.put(marmot_photo_content, content_type="image/jpeg", foo="bar")
         marmot.photo.close()
         marmot.save()
 
         marmot = Animal.objects.get()
-        self.assertEqual(marmot.photo.content_type, 'image/jpeg')
-        self.assertEqual(marmot.photo.foo, 'bar')
+        self.assertEqual(marmot.photo.content_type, "image/jpeg")
+        self.assertEqual(marmot.photo.foo, "bar")
 
     def test_file_reassigning(self):
         class TestFile(Document):
             the_file = FileField()
+
         TestFile.drop_collection()
 
         test_file = TestFile(the_file=get_file(TEST_IMAGE_PATH)).save()
@@ -282,13 +288,15 @@ class FileTest(MongoDBTestCase):
     def test_file_boolean(self):
         """Ensure that a boolean test of a FileField indicates its presence
         """
+
         class TestFile(Document):
             the_file = FileField()
+
         TestFile.drop_collection()
 
         test_file = TestFile()
         self.assertFalse(bool(test_file.the_file))
-        test_file.the_file.put(six.b('Hello, World!'), content_type='text/plain')
+        test_file.the_file.put(six.b("Hello, World!"), content_type="text/plain")
         test_file.save()
         self.assertTrue(bool(test_file.the_file))
 
@@ -297,6 +305,7 @@ class FileTest(MongoDBTestCase):
 
     def test_file_cmp(self):
         """Test comparing against other types"""
+
         class TestFile(Document):
             the_file = FileField()
 
@@ -305,11 +314,12 @@ class FileTest(MongoDBTestCase):
 
     def test_file_disk_space(self):
         """ Test disk space usage when we delete/replace a file """
+
         class TestFile(Document):
             the_file = FileField()
 
-        text = six.b('Hello, World!')
-        content_type = 'text/plain'
+        text = six.b("Hello, World!")
+        content_type = "text/plain"
 
         testfile = TestFile()
         testfile.the_file.put(text, content_type=content_type, filename="hello")
@@ -352,7 +362,7 @@ class FileTest(MongoDBTestCase):
         testfile.the_file.put(text, content_type=content_type, filename="hello")
         testfile.save()
 
-        text = six.b('Bonjour, World!')
+        text = six.b("Bonjour, World!")
         testfile.the_file.replace(text, content_type=content_type, filename="hello")
         testfile.save()
 
@@ -370,7 +380,7 @@ class FileTest(MongoDBTestCase):
 
     def test_image_field(self):
         if not HAS_PIL:
-            raise SkipTest('PIL not installed')
+            raise SkipTest("PIL not installed")
 
         class TestImage(Document):
             image = ImageField()
@@ -386,7 +396,9 @@ class FileTest(MongoDBTestCase):
                 t.image.put(f)
                 self.fail("Should have raised an invalidation error")
             except ValidationError as e:
-                self.assertEqual("%s" % e, "Invalid image: cannot identify image file %s" % f)
+                self.assertEqual(
+                    "%s" % e, "Invalid image: cannot identify image file %s" % f
+                )
 
         t = TestImage()
         t.image.put(get_file(TEST_IMAGE_PATH))
@@ -394,7 +406,7 @@ class FileTest(MongoDBTestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEqual(t.image.format, 'PNG')
+        self.assertEqual(t.image.format, "PNG")
 
         w, h = t.image.size
         self.assertEqual(w, 371)
@@ -404,10 +416,11 @@ class FileTest(MongoDBTestCase):
 
     def test_image_field_reassigning(self):
         if not HAS_PIL:
-            raise SkipTest('PIL not installed')
+            raise SkipTest("PIL not installed")
 
         class TestFile(Document):
             the_file = ImageField()
+
         TestFile.drop_collection()
 
         test_file = TestFile(the_file=get_file(TEST_IMAGE_PATH)).save()
@@ -420,7 +433,7 @@ class FileTest(MongoDBTestCase):
 
     def test_image_field_resize(self):
         if not HAS_PIL:
-            raise SkipTest('PIL not installed')
+            raise SkipTest("PIL not installed")
 
         class TestImage(Document):
             image = ImageField(size=(185, 37))
@@ -433,7 +446,7 @@ class FileTest(MongoDBTestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEqual(t.image.format, 'PNG')
+        self.assertEqual(t.image.format, "PNG")
         w, h = t.image.size
 
         self.assertEqual(w, 185)
@@ -443,7 +456,7 @@ class FileTest(MongoDBTestCase):
 
     def test_image_field_resize_force(self):
         if not HAS_PIL:
-            raise SkipTest('PIL not installed')
+            raise SkipTest("PIL not installed")
 
         class TestImage(Document):
             image = ImageField(size=(185, 37, True))
@@ -456,7 +469,7 @@ class FileTest(MongoDBTestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEqual(t.image.format, 'PNG')
+        self.assertEqual(t.image.format, "PNG")
         w, h = t.image.size
 
         self.assertEqual(w, 185)
@@ -466,7 +479,7 @@ class FileTest(MongoDBTestCase):
 
     def test_image_field_thumbnail(self):
         if not HAS_PIL:
-            raise SkipTest('PIL not installed')
+            raise SkipTest("PIL not installed")
 
         class TestImage(Document):
             image = ImageField(thumbnail_size=(92, 18))
@@ -479,19 +492,18 @@ class FileTest(MongoDBTestCase):
 
         t = TestImage.objects.first()
 
-        self.assertEqual(t.image.thumbnail.format, 'PNG')
+        self.assertEqual(t.image.thumbnail.format, "PNG")
         self.assertEqual(t.image.thumbnail.width, 92)
         self.assertEqual(t.image.thumbnail.height, 18)
 
         t.image.delete()
 
     def test_file_multidb(self):
-        register_connection('test_files', 'test_files')
+        register_connection("test_files", "test_files")
 
         class TestFile(Document):
             name = StringField()
-            the_file = FileField(db_alias="test_files",
-                                 collection_name="macumba")
+            the_file = FileField(db_alias="test_files", collection_name="macumba")
 
         TestFile.drop_collection()
 
@@ -502,23 +514,21 @@ class FileTest(MongoDBTestCase):
         # First instance
         test_file = TestFile()
         test_file.name = "Hello, World!"
-        test_file.the_file.put(six.b('Hello, World!'),
-                          name="hello.txt")
+        test_file.the_file.put(six.b("Hello, World!"), name="hello.txt")
         test_file.save()
 
         data = get_db("test_files").macumba.files.find_one()
-        self.assertEqual(data.get('name'), 'hello.txt')
+        self.assertEqual(data.get("name"), "hello.txt")
 
         test_file = TestFile.objects.first()
-        self.assertEqual(test_file.the_file.read(), six.b('Hello, World!'))
+        self.assertEqual(test_file.the_file.read(), six.b("Hello, World!"))
 
         test_file = TestFile.objects.first()
-        test_file.the_file = six.b('HELLO, WORLD!')
+        test_file.the_file = six.b("HELLO, WORLD!")
         test_file.save()
 
         test_file = TestFile.objects.first()
-        self.assertEqual(test_file.the_file.read(),
-                         six.b('HELLO, WORLD!'))
+        self.assertEqual(test_file.the_file.read(), six.b("HELLO, WORLD!"))
 
     def test_copyable(self):
         class PutFile(Document):
@@ -526,8 +536,8 @@ class FileTest(MongoDBTestCase):
 
         PutFile.drop_collection()
 
-        text = six.b('Hello, World!')
-        content_type = 'text/plain'
+        text = six.b("Hello, World!")
+        content_type = "text/plain"
 
         putfile = PutFile()
         putfile.the_file.put(text, content_type=content_type)
@@ -542,7 +552,7 @@ class FileTest(MongoDBTestCase):
     def test_get_image_by_grid_id(self):
 
         if not HAS_PIL:
-            raise SkipTest('PIL not installed')
+            raise SkipTest("PIL not installed")
 
         class TestImage(Document):
 
@@ -559,8 +569,9 @@ class FileTest(MongoDBTestCase):
         test = TestImage.objects.first()
         grid_id = test.image1.grid_id
 
-        self.assertEqual(1, TestImage.objects(Q(image1=grid_id)
-                                              or Q(image2=grid_id)).count())
+        self.assertEqual(
+            1, TestImage.objects(Q(image1=grid_id) or Q(image2=grid_id)).count()
+        )
 
     def test_complex_field_filefield(self):
         """Ensure you can add meta data to file"""
@@ -571,21 +582,21 @@ class FileTest(MongoDBTestCase):
             photos = ListField(FileField())
 
         Animal.drop_collection()
-        marmot = Animal(genus='Marmota', family='Sciuridae')
+        marmot = Animal(genus="Marmota", family="Sciuridae")
 
-        with open(TEST_IMAGE_PATH, 'rb') as marmot_photo:   # Retrieve a photo from disk
-            photos_field = marmot._fields['photos'].field
-            new_proxy = photos_field.get_proxy_obj('photos', marmot)
-            new_proxy.put(marmot_photo, content_type='image/jpeg', foo='bar')
+        with open(TEST_IMAGE_PATH, "rb") as marmot_photo:  # Retrieve a photo from disk
+            photos_field = marmot._fields["photos"].field
+            new_proxy = photos_field.get_proxy_obj("photos", marmot)
+            new_proxy.put(marmot_photo, content_type="image/jpeg", foo="bar")
 
         marmot.photos.append(new_proxy)
         marmot.save()
 
         marmot = Animal.objects.get()
-        self.assertEqual(marmot.photos[0].content_type, 'image/jpeg')
-        self.assertEqual(marmot.photos[0].foo, 'bar')
+        self.assertEqual(marmot.photos[0].content_type, "image/jpeg")
+        self.assertEqual(marmot.photos[0].foo, "bar")
         self.assertEqual(marmot.photos[0].get().length, 8313)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

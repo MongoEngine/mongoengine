@@ -15,11 +15,8 @@ class TestUUIDField(MongoDBTestCase):
         uid = uuid.uuid4()
         person = Person(api_key=uid).save()
         self.assertEqual(
-            get_as_pymongo(person),
-            {'_id': person.id,
-             'api_key': str(uid)
-             }
-            )
+            get_as_pymongo(person), {"_id": person.id, "api_key": str(uid)}
+        )
 
     def test_field_string(self):
         """Test UUID fields storing as String
@@ -37,8 +34,10 @@ class TestUUIDField(MongoDBTestCase):
             person.api_key = api_key
             person.validate()
 
-        invalid = ('9d159858-549b-4975-9f98-dd2f987c113g',
-                   '9d159858-549b-4975-9f98-dd2f987c113')
+        invalid = (
+            "9d159858-549b-4975-9f98-dd2f987c113g",
+            "9d159858-549b-4975-9f98-dd2f987c113",
+        )
         for api_key in invalid:
             person.api_key = api_key
             self.assertRaises(ValidationError, person.validate)
@@ -58,8 +57,10 @@ class TestUUIDField(MongoDBTestCase):
             person.api_key = api_key
             person.validate()
 
-        invalid = ('9d159858-549b-4975-9f98-dd2f987c113g',
-                   '9d159858-549b-4975-9f98-dd2f987c113')
+        invalid = (
+            "9d159858-549b-4975-9f98-dd2f987c113g",
+            "9d159858-549b-4975-9f98-dd2f987c113",
+        )
         for api_key in invalid:
             person.api_key = api_key
             self.assertRaises(ValidationError, person.validate)

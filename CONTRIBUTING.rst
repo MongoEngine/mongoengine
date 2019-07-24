@@ -31,12 +31,8 @@ build. You should ensure that your code is properly converted by
 Style Guide
 -----------
 
-MongoEngine aims to follow `PEP8 <http://www.python.org/dev/peps/pep-0008/>`_
-including 4 space indents. When possible we try to stick to 79 character line
-limits. However, screens got bigger and an ORM has a strong focus on
-readability and if it can help, we accept 119 as maximum line length, in a
-similar way as `django does
-<https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/coding-style/#python-style>`_
+MongoEngine uses `black <https://github.com/python/black>`_ for code
+formatting.
 
 Testing
 -------

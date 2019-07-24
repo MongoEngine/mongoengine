@@ -25,7 +25,7 @@ class TestLazyReferenceField(MongoDBTestCase):
 
         animal = Animal()
         oc = Ocurrence(animal=animal)
-        self.assertIn('LazyReference', repr(oc.animal))
+        self.assertIn("LazyReference", repr(oc.animal))
 
     def test___getattr___unknown_attr_raises_attribute_error(self):
         class Animal(Document):
@@ -93,7 +93,7 @@ class TestLazyReferenceField(MongoDBTestCase):
 
     def test_lazy_reference_set(self):
         class Animal(Document):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
             name = StringField()
             tag = StringField()
@@ -109,18 +109,17 @@ class TestLazyReferenceField(MongoDBTestCase):
             nick = StringField()
 
         animal = Animal(name="Leopard", tag="heavy").save()
-        sub_animal = SubAnimal(nick='doggo', name='dog').save()
+        sub_animal = SubAnimal(nick="doggo", name="dog").save()
         for ref in (
-                animal,
-                animal.pk,
-                DBRef(animal._get_collection_name(), animal.pk),
-                LazyReference(Animal, animal.pk),
-
-                sub_animal,
-                sub_animal.pk,
-                DBRef(sub_animal._get_collection_name(), sub_animal.pk),
-                LazyReference(SubAnimal, sub_animal.pk),
-                ):
+            animal,
+            animal.pk,
+            DBRef(animal._get_collection_name(), animal.pk),
+            LazyReference(Animal, animal.pk),
+            sub_animal,
+            sub_animal.pk,
+            DBRef(sub_animal._get_collection_name(), sub_animal.pk),
+            LazyReference(SubAnimal, sub_animal.pk),
+        ):
             p = Ocurrence(person="test", animal=ref).save()
             p.reload()
             self.assertIsInstance(p.animal, LazyReference)
@@ -144,12 +143,12 @@ class TestLazyReferenceField(MongoDBTestCase):
         animal = Animal(name="Leopard", tag="heavy").save()
         baddoc = BadDoc().save()
         for bad in (
-                42,
-                'foo',
-                baddoc,
-                DBRef(baddoc._get_collection_name(), animal.pk),
-                LazyReference(BadDoc, animal.pk)
-                ):
+            42,
+            "foo",
+            baddoc,
+            DBRef(baddoc._get_collection_name(), animal.pk),
+            LazyReference(BadDoc, animal.pk),
+        ):
             with self.assertRaises(ValidationError):
                 p = Ocurrence(person="test", animal=bad).save()
 
@@ -157,6 +156,7 @@ class TestLazyReferenceField(MongoDBTestCase):
         """Ensure that LazyReferenceFields can be queried using objects and values
         of the type of the primary key of the referenced object.
         """
+
         class Member(Document):
             user_num = IntField(primary_key=True)
 
@@ -172,10 +172,10 @@ class TestLazyReferenceField(MongoDBTestCase):
         m2 = Member(user_num=2)
         m2.save()
 
-        post1 = BlogPost(title='post 1', author=m1)
+        post1 = BlogPost(title="post 1", author=m1)
         post1.save()
 
-        post2 = BlogPost(title='post 2', author=m2)
+        post2 = BlogPost(title="post 2", author=m2)
         post2.save()
 
         post = BlogPost.objects(author=m1).first()
@@ -192,6 +192,7 @@ class TestLazyReferenceField(MongoDBTestCase):
         """Ensure that LazyReferenceFields can be queried using objects and values
         of the type of the primary key of the referenced object.
         """
+
         class Member(Document):
             user_num = IntField(primary_key=True)
 
@@ -207,10 +208,10 @@ class TestLazyReferenceField(MongoDBTestCase):
         m2 = Member(user_num=2)
         m2.save()
 
-        post1 = BlogPost(title='post 1', author=m1)
+        post1 = BlogPost(title="post 1", author=m1)
         post1.save()
 
-        post2 = BlogPost(title='post 2', author=m2)
+        post2 = BlogPost(title="post 2", author=m2)
         post2.save()
 
         post = BlogPost.objects(author=m1).first()
@@ -240,19 +241,19 @@ class TestLazyReferenceField(MongoDBTestCase):
         p = Ocurrence.objects.get()
         self.assertIsInstance(p.animal, LazyReference)
         with self.assertRaises(KeyError):
-            p.animal['name']
+            p.animal["name"]
         with self.assertRaises(AttributeError):
             p.animal.name
         self.assertEqual(p.animal.pk, animal.pk)
 
         self.assertEqual(p.animal_passthrough.name, "Leopard")
-        self.assertEqual(p.animal_passthrough['name'], "Leopard")
+        self.assertEqual(p.animal_passthrough["name"], "Leopard")
 
         # Should not be able to access referenced document's methods
         with self.assertRaises(AttributeError):
             p.animal.save
         with self.assertRaises(KeyError):
-            p.animal['save']
+            p.animal["save"]
 
     def test_lazy_reference_not_set(self):
         class Animal(Document):
@@ -266,7 +267,7 @@ class TestLazyReferenceField(MongoDBTestCase):
         Animal.drop_collection()
         Ocurrence.drop_collection()
 
-        Ocurrence(person='foo').save()
+        Ocurrence(person="foo").save()
         p = Ocurrence.objects.get()
         self.assertIs(p.animal, None)
 
@@ -303,8 +304,8 @@ class TestLazyReferenceField(MongoDBTestCase):
         Animal.drop_collection()
         Ocurrence.drop_collection()
 
-        animal1 = Animal('doggo').save()
-        animal2 = Animal('cheeta').save()
+        animal1 = Animal(name="doggo").save()
+        animal2 = Animal(name="cheeta").save()
 
         def check_fields_type(occ):
             self.assertIsInstance(occ.direct, LazyReference)
@@ -316,8 +317,8 @@ class TestLazyReferenceField(MongoDBTestCase):
 
         occ = Ocurrence(
             in_list=[animal1, animal2],
-            in_embedded={'in_list': [animal1, animal2], 'direct': animal1},
-            direct=animal1
+            in_embedded={"in_list": [animal1, animal2], "direct": animal1},
+            direct=animal1,
         ).save()
         check_fields_type(occ)
         occ.reload()
@@ -403,7 +404,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
 
     def test_generic_lazy_reference_set(self):
         class Animal(Document):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
             name = StringField()
             tag = StringField()
@@ -419,16 +420,18 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
             nick = StringField()
 
         animal = Animal(name="Leopard", tag="heavy").save()
-        sub_animal = SubAnimal(nick='doggo', name='dog').save()
+        sub_animal = SubAnimal(nick="doggo", name="dog").save()
         for ref in (
-                animal,
-                LazyReference(Animal, animal.pk),
-                {'_cls': 'Animal', '_ref': DBRef(animal._get_collection_name(), animal.pk)},
-
-                sub_animal,
-                LazyReference(SubAnimal, sub_animal.pk),
-                {'_cls': 'SubAnimal', '_ref': DBRef(sub_animal._get_collection_name(), sub_animal.pk)},
-                ):
+            animal,
+            LazyReference(Animal, animal.pk),
+            {"_cls": "Animal", "_ref": DBRef(animal._get_collection_name(), animal.pk)},
+            sub_animal,
+            LazyReference(SubAnimal, sub_animal.pk),
+            {
+                "_cls": "SubAnimal",
+                "_ref": DBRef(sub_animal._get_collection_name(), sub_animal.pk),
+            },
+        ):
             p = Ocurrence(person="test", animal=ref).save()
             p.reload()
             self.assertIsInstance(p.animal, (LazyReference, Document))
@@ -441,7 +444,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
 
         class Ocurrence(Document):
             person = StringField()
-            animal = GenericLazyReferenceField(choices=['Animal'])
+            animal = GenericLazyReferenceField(choices=["Animal"])
 
         Animal.drop_collection()
         Ocurrence.drop_collection()
@@ -451,12 +454,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
 
         animal = Animal(name="Leopard", tag="heavy").save()
         baddoc = BadDoc().save()
-        for bad in (
-                42,
-                'foo',
-                baddoc,
-                LazyReference(BadDoc, animal.pk)
-                ):
+        for bad in (42, "foo", baddoc, LazyReference(BadDoc, animal.pk)):
             with self.assertRaises(ValidationError):
                 p = Ocurrence(person="test", animal=bad).save()
 
@@ -476,10 +474,10 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         m2 = Member(user_num=2)
         m2.save()
 
-        post1 = BlogPost(title='post 1', author=m1)
+        post1 = BlogPost(title="post 1", author=m1)
         post1.save()
 
-        post2 = BlogPost(title='post 2', author=m2)
+        post2 = BlogPost(title="post 2", author=m2)
         post2.save()
 
         post = BlogPost.objects(author=m1).first()
@@ -504,7 +502,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         Animal.drop_collection()
         Ocurrence.drop_collection()
 
-        Ocurrence(person='foo').save()
+        Ocurrence(person="foo").save()
         p = Ocurrence.objects.get()
         self.assertIs(p.animal, None)
 
@@ -515,7 +513,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
 
         class Ocurrence(Document):
             person = StringField()
-            animal = GenericLazyReferenceField('Animal')
+            animal = GenericLazyReferenceField("Animal")
 
         Animal.drop_collection()
         Ocurrence.drop_collection()
@@ -542,8 +540,8 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         Animal.drop_collection()
         Ocurrence.drop_collection()
 
-        animal1 = Animal('doggo').save()
-        animal2 = Animal('cheeta').save()
+        animal1 = Animal(name="doggo").save()
+        animal2 = Animal(name="cheeta").save()
 
         def check_fields_type(occ):
             self.assertIsInstance(occ.direct, LazyReference)
@@ -555,14 +553,20 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
 
         occ = Ocurrence(
             in_list=[animal1, animal2],
-            in_embedded={'in_list': [animal1, animal2], 'direct': animal1},
-            direct=animal1
+            in_embedded={"in_list": [animal1, animal2], "direct": animal1},
+            direct=animal1,
         ).save()
         check_fields_type(occ)
         occ.reload()
         check_fields_type(occ)
-        animal1_ref = {'_cls': 'Animal', '_ref': DBRef(animal1._get_collection_name(), animal1.pk)}
-        animal2_ref = {'_cls': 'Animal', '_ref': DBRef(animal2._get_collection_name(), animal2.pk)}
+        animal1_ref = {
+            "_cls": "Animal",
+            "_ref": DBRef(animal1._get_collection_name(), animal1.pk),
+        }
+        animal2_ref = {
+            "_cls": "Animal",
+            "_ref": DBRef(animal2._get_collection_name(), animal2.pk),
+        }
         occ.direct = animal1_ref
         occ.in_list = [animal1_ref, animal2_ref]
         occ.in_embedded.direct = animal1_ref

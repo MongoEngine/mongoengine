@@ -2,17 +2,20 @@ import unittest
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.context_managers import (switch_db, switch_collection,
-                                          no_sub_classes, no_dereference,
-                                          query_counter)
+from mongoengine.context_managers import (
+    switch_db,
+    switch_collection,
+    no_sub_classes,
+    no_dereference,
+    query_counter,
+)
 from mongoengine.pymongo_support import count_documents
 
 
 class ContextManagersTest(unittest.TestCase):
-
     def test_switch_db_context_manager(self):
-        connect('mongoenginetest')
-        register_connection('testdb-1', 'mongoenginetest2')
+        connect("mongoenginetest")
+        register_connection("testdb-1", "mongoenginetest2")
 
         class Group(Document):
             name = StringField()
@@ -22,7 +25,7 @@ class ContextManagersTest(unittest.TestCase):
         Group(name="hello - default").save()
         self.assertEqual(1, Group.objects.count())
 
-        with switch_db(Group, 'testdb-1') as Group:
+        with switch_db(Group, "testdb-1") as Group:
 
             self.assertEqual(0, Group.objects.count())
 
@@ -36,21 +39,21 @@ class ContextManagersTest(unittest.TestCase):
         self.assertEqual(1, Group.objects.count())
 
     def test_switch_collection_context_manager(self):
-        connect('mongoenginetest')
-        register_connection(alias='testdb-1', db='mongoenginetest2')
+        connect("mongoenginetest")
+        register_connection(alias="testdb-1", db="mongoenginetest2")
 
         class Group(Document):
             name = StringField()
 
-        Group.drop_collection()         # drops in default
+        Group.drop_collection()  # drops in default
 
-        with switch_collection(Group, 'group1') as Group:
-            Group.drop_collection()     # drops in group1
+        with switch_collection(Group, "group1") as Group:
+            Group.drop_collection()  # drops in group1
 
         Group(name="hello - group").save()
         self.assertEqual(1, Group.objects.count())
 
-        with switch_collection(Group, 'group1') as Group:
+        with switch_collection(Group, "group1") as Group:
 
             self.assertEqual(0, Group.objects.count())
 
@@ -66,7 +69,7 @@ class ContextManagersTest(unittest.TestCase):
     def test_no_dereference_context_manager_object_id(self):
         """Ensure that DBRef items in ListFields aren't dereferenced.
         """
-        connect('mongoenginetest')
+        connect("mongoenginetest")
 
         class User(Document):
             name = StringField()
@@ -80,14 +83,14 @@ class ContextManagersTest(unittest.TestCase):
         Group.drop_collection()
 
         for i in range(1, 51):
-            User(name='user %s' % i).save()
+            User(name="user %s" % i).save()
 
         user = User.objects.first()
         Group(ref=user, members=User.objects, generic=user).save()
 
         with no_dereference(Group) as NoDeRefGroup:
-            self.assertTrue(Group._fields['members']._auto_dereference)
-            self.assertFalse(NoDeRefGroup._fields['members']._auto_dereference)
+            self.assertTrue(Group._fields["members"]._auto_dereference)
+            self.assertFalse(NoDeRefGroup._fields["members"]._auto_dereference)
 
         with no_dereference(Group) as Group:
             group = Group.objects.first()
@@ -104,7 +107,7 @@ class ContextManagersTest(unittest.TestCase):
     def test_no_dereference_context_manager_dbref(self):
         """Ensure that DBRef items in ListFields aren't dereferenced.
         """
-        connect('mongoenginetest')
+        connect("mongoenginetest")
 
         class User(Document):
             name = StringField()
@@ -118,31 +121,29 @@ class ContextManagersTest(unittest.TestCase):
         Group.drop_collection()
 
         for i in range(1, 51):
-            User(name='user %s' % i).save()
+            User(name="user %s" % i).save()
 
         user = User.objects.first()
         Group(ref=user, members=User.objects, generic=user).save()
 
         with no_dereference(Group) as NoDeRefGroup:
-            self.assertTrue(Group._fields['members']._auto_dereference)
-            self.assertFalse(NoDeRefGroup._fields['members']._auto_dereference)
+            self.assertTrue(Group._fields["members"]._auto_dereference)
+            self.assertFalse(NoDeRefGroup._fields["members"]._auto_dereference)
 
         with no_dereference(Group) as Group:
             group = Group.objects.first()
-            self.assertTrue(all([not isinstance(m, User)
-                                for m in group.members]))
+            self.assertTrue(all([not isinstance(m, User) for m in group.members]))
             self.assertNotIsInstance(group.ref, User)
             self.assertNotIsInstance(group.generic, User)
 
-        self.assertTrue(all([isinstance(m, User)
-                             for m in group.members]))
+        self.assertTrue(all([isinstance(m, User) for m in group.members]))
         self.assertIsInstance(group.ref, User)
         self.assertIsInstance(group.generic, User)
 
     def test_no_sub_classes(self):
         class A(Document):
             x = IntField()
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class B(A):
             z = IntField()
@@ -188,20 +189,20 @@ class ContextManagersTest(unittest.TestCase):
     def test_no_sub_classes_modification_to_document_class_are_temporary(self):
         class A(Document):
             x = IntField()
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class B(A):
             z = IntField()
 
-        self.assertEqual(A._subclasses, ('A', 'A.B'))
+        self.assertEqual(A._subclasses, ("A", "A.B"))
         with no_sub_classes(A):
-            self.assertEqual(A._subclasses, ('A',))
-        self.assertEqual(A._subclasses, ('A', 'A.B'))
+            self.assertEqual(A._subclasses, ("A",))
+        self.assertEqual(A._subclasses, ("A", "A.B"))
 
-        self.assertEqual(B._subclasses, ('A.B',))
+        self.assertEqual(B._subclasses, ("A.B",))
         with no_sub_classes(B):
-            self.assertEqual(B._subclasses, ('A.B',))
-        self.assertEqual(B._subclasses, ('A.B',))
+            self.assertEqual(B._subclasses, ("A.B",))
+        self.assertEqual(B._subclasses, ("A.B",))
 
     def test_no_subclass_context_manager_does_not_swallow_exception(self):
         class User(Document):
@@ -218,7 +219,7 @@ class ContextManagersTest(unittest.TestCase):
                 raise TypeError()
 
     def test_query_counter_temporarily_modifies_profiling_level(self):
-        connect('mongoenginetest')
+        connect("mongoenginetest")
         db = get_db()
 
         initial_profiling_level = db.profiling_level()
@@ -231,11 +232,13 @@ class ContextManagersTest(unittest.TestCase):
                 self.assertEqual(db.profiling_level(), 2)
             self.assertEqual(db.profiling_level(), NEW_LEVEL)
         except Exception:
-            db.set_profiling_level(initial_profiling_level)    # Ensures it gets reseted no matter the outcome of the test
+            db.set_profiling_level(
+                initial_profiling_level
+            )  # Ensures it gets reseted no matter the outcome of the test
             raise
 
     def test_query_counter(self):
-        connect('mongoenginetest')
+        connect("mongoenginetest")
         db = get_db()
 
         collection = db.query_counter
@@ -245,7 +248,7 @@ class ContextManagersTest(unittest.TestCase):
             count_documents(collection, {})
 
         def issue_1_insert_query():
-            collection.insert_one({'test': 'garbage'})
+            collection.insert_one({"test": "garbage"})
 
         def issue_1_find_query():
             collection.find_one()
@@ -253,7 +256,9 @@ class ContextManagersTest(unittest.TestCase):
         counter = 0
         with query_counter() as q:
             self.assertEqual(q, counter)
-            self.assertEqual(q, counter)    # Ensures previous count query did not get counted
+            self.assertEqual(
+                q, counter
+            )  # Ensures previous count query did not get counted
 
             for _ in range(10):
                 issue_1_insert_query()
@@ -270,23 +275,25 @@ class ContextManagersTest(unittest.TestCase):
                 counter += 1
             self.assertEqual(q, counter)
 
-            self.assertEqual(int(q), counter)       # test __int__
+            self.assertEqual(int(q), counter)  # test __int__
             self.assertEqual(repr(q), str(int(q)))  # test __repr__
-            self.assertGreater(q, -1)               # test __gt__
-            self.assertGreaterEqual(q, int(q))      # test __gte__
+            self.assertGreater(q, -1)  # test __gt__
+            self.assertGreaterEqual(q, int(q))  # test __gte__
             self.assertNotEqual(q, -1)
             self.assertLess(q, 1000)
             self.assertLessEqual(q, int(q))
 
     def test_query_counter_counts_getmore_queries(self):
-        connect('mongoenginetest')
+        connect("mongoenginetest")
         db = get_db()
 
         collection = db.query_counter
         collection.drop()
 
-        many_docs = [{'test': 'garbage %s' % i} for i in range(150)]
-        collection.insert_many(many_docs)   # first batch of documents contains 101 documents
+        many_docs = [{"test": "garbage %s" % i} for i in range(150)]
+        collection.insert_many(
+            many_docs
+        )  # first batch of documents contains 101 documents
 
         with query_counter() as q:
             self.assertEqual(q, 0)
@@ -294,24 +301,26 @@ class ContextManagersTest(unittest.TestCase):
             self.assertEqual(q, 2)  # 1st select + 1 getmore
 
     def test_query_counter_ignores_particular_queries(self):
-        connect('mongoenginetest')
+        connect("mongoenginetest")
         db = get_db()
 
         collection = db.query_counter
-        collection.insert_many([{'test': 'garbage %s' % i} for i in range(10)])
+        collection.insert_many([{"test": "garbage %s" % i} for i in range(10)])
 
         with query_counter() as q:
             self.assertEqual(q, 0)
             cursor = collection.find()
-            self.assertEqual(q, 0)      # cursor wasn't opened yet
-            _ = next(cursor)            # opens the cursor and fires the find query
+            self.assertEqual(q, 0)  # cursor wasn't opened yet
+            _ = next(cursor)  # opens the cursor and fires the find query
             self.assertEqual(q, 1)
 
-            cursor.close()              # issues a `killcursors` query that is ignored by the context
+            cursor.close()  # issues a `killcursors` query that is ignored by the context
             self.assertEqual(q, 1)
-            _ = db.system.indexes.find_one()    # queries on db.system.indexes are ignored as well
+            _ = (
+                db.system.indexes.find_one()
+            )  # queries on db.system.indexes are ignored as well
             self.assertEqual(q, 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

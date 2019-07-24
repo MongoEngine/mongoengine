@@ -18,10 +18,11 @@ class TestDateField(MongoDBTestCase):
         Ensure an exception is raised when trying to
         cast an empty string to datetime.
         """
+
         class MyDoc(Document):
             dt = DateField()
 
-        md = MyDoc(dt='')
+        md = MyDoc(dt="")
         self.assertRaises(ValidationError, md.save)
 
     def test_date_from_whitespace_string(self):
@@ -29,16 +30,18 @@ class TestDateField(MongoDBTestCase):
         Ensure an exception is raised when trying to
         cast a whitespace-only string to datetime.
         """
+
         class MyDoc(Document):
             dt = DateField()
 
-        md = MyDoc(dt='   ')
+        md = MyDoc(dt="   ")
         self.assertRaises(ValidationError, md.save)
 
     def test_default_values_today(self):
         """Ensure that default field values are used when creating
         a document.
         """
+
         class Person(Document):
             day = DateField(default=datetime.date.today)
 
@@ -46,13 +49,14 @@ class TestDateField(MongoDBTestCase):
         person.validate()
         self.assertEqual(person.day, person.day)
         self.assertEqual(person.day, datetime.date.today())
-        self.assertEqual(person._data['day'], person.day)
+        self.assertEqual(person._data["day"], person.day)
 
     def test_date(self):
         """Tests showing pymongo date fields
 
         See: http://api.mongodb.org/python/current/api/bson/son.html#dt
         """
+
         class LogEntry(Document):
             date = DateField()
 
@@ -95,6 +99,7 @@ class TestDateField(MongoDBTestCase):
 
     def test_regular_usage(self):
         """Tests for regular datetime fields"""
+
         class LogEntry(Document):
             date = DateField()
 
@@ -106,12 +111,12 @@ class TestDateField(MongoDBTestCase):
         log.validate()
         log.save()
 
-        for query in (d1, d1.isoformat(' ')):
+        for query in (d1, d1.isoformat(" ")):
             log1 = LogEntry.objects.get(date=query)
             self.assertEqual(log, log1)
 
         if dateutil:
-            log1 = LogEntry.objects.get(date=d1.isoformat('T'))
+            log1 = LogEntry.objects.get(date=d1.isoformat("T"))
             self.assertEqual(log, log1)
 
         # create additional 19 log entries for a total of 20
@@ -142,6 +147,7 @@ class TestDateField(MongoDBTestCase):
         """Ensure that invalid values cannot be assigned to datetime
         fields.
         """
+
         class LogEntry(Document):
             time = DateField()
 
@@ -152,14 +158,14 @@ class TestDateField(MongoDBTestCase):
         log.time = datetime.date.today()
         log.validate()
 
-        log.time = datetime.datetime.now().isoformat(' ')
+        log.time = datetime.datetime.now().isoformat(" ")
         log.validate()
 
         if dateutil:
-            log.time = datetime.datetime.now().isoformat('T')
+            log.time = datetime.datetime.now().isoformat("T")
             log.validate()
 
         log.time = -1
         self.assertRaises(ValidationError, log.validate)
-        log.time = 'ABC'
+        log.time = "ABC"
         self.assertRaises(ValidationError, log.validate)
