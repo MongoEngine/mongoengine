@@ -80,6 +80,7 @@ class BaseQuerySet(object):
         self._limit = None
         self._skip = None
         self._hint = -1  # Using -1 as None is a valid value for hint
+        self._collation = None
         self._batch_size = None
         self.only_fields = []
         self._max_time_ms = None
@@ -781,6 +782,7 @@ class BaseQuerySet(object):
             "_limit",
             "_skip",
             "_hint",
+            "_collation",
             "_auto_dereference",
             "_search_text",
             "only_fields",
@@ -860,6 +862,32 @@ class BaseQuerySet(object):
         # If a cursor object has already been created, apply the hint to it.
         if queryset._cursor_obj:
             queryset._cursor_obj.hint(queryset._hint)
+
+        return queryset
+
+    def collation(self, collation=None):
+        """
+        Collation allows users to specify language-specific rules for string
+        comparison, such as rules for lettercase and accent marks.
+        :param collation: `~pymongo.collation.Collation` or dict with
+        following fields:
+            {
+                locale: str,
+                caseLevel: bool,
+                caseFirst: str,
+                strength: int,
+                numericOrdering: bool,
+                alternate: str,
+                maxVariable: str,
+                backwards: str
+            }
+        Collation should be added to indexes like in test example
+        """
+        queryset = self.clone()
+        queryset._collation = collation
+
+        if queryset._cursor_obj:
+            queryset._cursor_obj.collation(collation)
 
         return queryset
 
@@ -1635,6 +1663,9 @@ class BaseQuerySet(object):
 
         if self._hint != -1:
             self._cursor_obj.hint(self._hint)
+
+        if self._collation is not None:
+            self._cursor_obj.collation(self._collation)
 
         if self._batch_size is not None:
             self._cursor_obj.batch_size(self._batch_size)
