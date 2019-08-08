@@ -540,33 +540,34 @@ class IndexesTest(unittest.TestCase):
             BlogPost.objects.hint(("tags", 1)).count()
 
     def test_collation(self):
-        base = {'locale': "en", 'strength': 2}
+        base = {"locale": "en", "strength": 2}
 
         class BlogPost(Document):
             name = StringField()
-            meta = {"indexes": [
-                {"fields": ["name"], "name": 'name_index',
-                 'collation': base}
-            ]}
+            meta = {
+                "indexes": [
+                    {"fields": ["name"], "name": "name_index", "collation": base}
+                ]
+            }
 
         BlogPost.drop_collection()
 
-        names = tuple("%sag %i" % ('t' if n % 2 == 0 else 'T', n) for n in range(10))
+        names = tuple("%sag %i" % ("t" if n % 2 == 0 else "T", n) for n in range(10))
         for name in names:
             BlogPost(name=name).save()
 
-        query_result = BlogPost.objects.collation(base).order_by('name')
-        self.assertEqual([x.name for x in query_result],
-                         sorted(names, key=lambda x: x.lower()))
+        query_result = BlogPost.objects.collation(base).order_by("name")
+        self.assertEqual(
+            [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
+        )
         self.assertEqual(10, query_result.count())
 
-        incorrect_collation = {'arndom': 'wrdo'}
+        incorrect_collation = {"arndom": "wrdo"}
         with self.assertRaises(OperationFailure):
             BlogPost.objects.collation(incorrect_collation).count()
 
-        query_result = BlogPost.objects.collation({}).order_by('name')
-        self.assertEqual([x.name for x in query_result],
-                         sorted(names))
+        query_result = BlogPost.objects.collation({}).order_by("name")
+        self.assertEqual([x.name for x in query_result], sorted(names))
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
