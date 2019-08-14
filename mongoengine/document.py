@@ -182,9 +182,9 @@ class Document(BaseDocument):
                     object_id = collection.save(doc, w=w)
         except (pymongo.errors.OperationFailure, ProxiedGrpcError, RPCException), err:
             message = 'Could not save document (%s)'
-            if u'duplicate key' in unicode(err):
+            if u'duplicate key' in unicode(err, errors='replace'):
                 message = u'Tried to save duplicate unique keys (%s)'
-            raise OperationError(message % unicode(err))
+            raise OperationError(message % unicode(err, errors='replace'))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
