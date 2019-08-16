@@ -431,8 +431,15 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 self.cascade_save(**kwargs)
 
         except pymongo.errors.DuplicateKeyError as err:
+            # NOTE: This is a workaround for change introduced in https://github.com/mongodb/mongo-python-driver/commit/e7114087c7af87d804aaa6cdc3696a62c5d59d08#diff-83f588285a24ab0d1ee8a57f88312a6a
+            # which would cause a failure if error message contains unicode data
+            # encoded as nn ascii string with unicode escape sequiences
+            if six.PY2:
+                err_str = str(err).decode('utf-8')
+            else:
+                err_str = six.text_type(err)
             message = u"Tried to save duplicate unique keys (%s)"
-            raise NotUniqueError(message % six.text_type(err))
+            raise NotUniqueError(message % err_str)
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", six.text_type(err)):
