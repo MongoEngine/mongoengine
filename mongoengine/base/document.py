@@ -894,6 +894,7 @@ class BaseDocument(object):
             indexes.append({'fields': [('history_date', -1)]})
             indexes.append({'fields': [('history_date', -1), ('_auto_id_0', 1)]})
             indexes.append({'fields': [('_auto_id_0', 1), ('history_date', -1)]})
+            indexes.append({'fields': [('history_date', -1), ('_auto_id_0', -1)]})
 
         return indexes
         
