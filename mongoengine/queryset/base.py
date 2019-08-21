@@ -355,8 +355,8 @@ class BaseQuerySet(object):
         except pymongo.errors.BulkWriteError as err:
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
-            message = u"Document must not have _id value before bulk write (%s)"
-            raise NotUniqueError(message % six.text_type(err))
+            message = u"Bulk write error: (%s)"
+            raise NotUniqueError(message % six.text_type(err.details))
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", six.text_type(err)):
