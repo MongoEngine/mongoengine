@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime
 
 from nose.plugins.skip import SkipTest
+from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
 import pymongo
 from six import iteritems
@@ -552,7 +553,7 @@ class IndexesTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
-        names = tuple("%sag %i" % ("t" if n % 2 == 0 else "T", n) for n in range(10))
+        names = ["tag1", "Tag2", "tag3", "Tag4", "tag5"]
         for name in names:
             BlogPost(name=name).save()
 
@@ -560,7 +561,13 @@ class IndexesTest(unittest.TestCase):
         self.assertEqual(
             [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
         )
-        self.assertEqual(10, query_result.count())
+        self.assertEqual(5, query_result.count())
+
+        query_result = BlogPost.objects.collation(Collation(**base)).order_by("name")
+        self.assertEqual(
+            [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
+        )
+        self.assertEqual(5, query_result.count())
 
         incorrect_collation = {"arndom": "wrdo"}
         with self.assertRaises(OperationFailure):
