@@ -2,7 +2,7 @@ from pymongo import MongoClient, ReadPreference, uri_parser
 from mongoengine.python_support import IS_PYMONGO_3
 
 __all__ = ['ConnectionError', 'connect', 'register_connection',
-           'DEFAULT_CONNECTION_NAME']
+           'DEFAULT_CONNECTION_NAME', 'aliases']
 
 
 DEFAULT_CONNECTION_NAME = 'default'
@@ -16,7 +16,7 @@ else:
 class ConnectionError(Exception):
     pass
 
-
+aliases = []
 _connection_settings = {}
 _connections = {}
 _dbs = {}
@@ -45,6 +45,7 @@ def register_connection(alias, name=None, host=None, port=None,
     .. versionchanged:: 0.10.6 - added mongomock support
     """
     global _connection_settings
+    global aliases
 
     conn_settings = {
         'name': name or 'test',
@@ -82,6 +83,7 @@ def register_connection(alias, name=None, host=None, port=None,
 
     conn_settings.update(kwargs)
     _connection_settings[alias] = conn_settings
+    aliases.append(alias)
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
@@ -110,7 +112,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn_settings = _connection_settings[alias].copy()
 
         conn_settings.pop('name', None)
-        # conn_settings.pop('username', None)
         conn_settings.pop('password', None)
         conn_settings.pop('authentication_source', None)
 
@@ -144,7 +145,6 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 (db_alias, settings.copy()) for db_alias, settings in _connection_settings.iteritems())
             for db_alias, connection_settings in connection_settings_iterator:
                 connection_settings.pop('name', None)
-                # connection_settings.pop('username', None)
                 connection_settings.pop('password', None)
                 connection_settings.pop('authentication_source', None)
                 if conn_settings == connection_settings and _connections.get(db_alias, None):
