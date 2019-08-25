@@ -1,6 +1,9 @@
 import os
 import sys
+
+from pkg_resources import normalize_path
 from setuptools import find_packages, setup
+from setuptools.command.test import test as TestCommand
 
 # Hack to silence atexit traceback in newer python versions
 try:
@@ -22,6 +25,65 @@ def get_version(version_tuple):
     return '0.10.7'.
     """
     return ".".join(map(str, version_tuple))
+
+
+class PyTest(TestCommand):
+    """Will force pytest to search for tests inside the build directory
+    for 2to3 converted code (used by tox), instead of the current directory.
+    Required as long as we need 2to3
+
+    Known Limitation: https://tox.readthedocs.io/en/latest/example/pytest.html#known-issues-and-limitations
+    Source: https://www.hackzine.org/python-testing-with-pytest-and-2to3-plus-tox-and-travis-ci.html
+    """
+
+    # https://pytest.readthedocs.io/en/2.7.3/goodpractises.html#integration-with-setuptools-test-commands
+    # Allows to provide pytest command arguments through the test runner command `python setup.py test`
+    # e.g: `python setup.py test -a "-k=test"`
+    user_options = [("pytest-args=", "a", "Arguments to pass to py.test")]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = ""
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = ["tests"]
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded
+        from pkg_resources import _namespace_packages
+        import pytest
+
+        # Purge modules under test from sys.modules. The test loader will
+        # re-import them from the build location. Required when 2to3 is used
+        # with namespace packages.
+        if sys.version_info >= (3,) and getattr(self.distribution, "use_2to3", False):
+            print("Hack for 2to3", self.test_args)
+            module = self.test_args[-1].split(".")[0]
+            if module in _namespace_packages:
+                del_modules = []
+                if module in sys.modules:
+                    del_modules.append(module)
+                module += "."
+                for name in sys.modules:
+                    if name.startswith(module):
+                        del_modules.append(name)
+                map(sys.modules.__delitem__, del_modules)
+
+            # Run on the build directory for 2to3-built code
+            # This will prevent the old 2.x code from being found
+            # by py.test discovery mechanism, that apparently
+            # ignores sys.path..
+            ei_cmd = self.get_finalized_command("egg_info")
+            self.test_args = [normalize_path(ei_cmd.egg_base)]
+
+        print(self.test_args, self.pytest_args)
+        cmd_args = self.test_args + ([self.pytest_args] if self.pytest_args else [])
+        print(cmd_args)
+        errno = pytest.main(cmd_args)
+
+        sys.exit(errno)
 
 
 # Dirty hack to get version number from monogengine/__init__.py - we can't
@@ -51,7 +113,7 @@ CLASSIFIERS = [
 
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
-    "tests_require": ["nose", "coverage==4.2", "blinker", "Pillow>=2.0.0"],
+    "tests_require": ["pytest<5.0", "coverage==4.2", "blinker", "Pillow>=2.0.0"],
 }
 if sys.version_info[0] == 3:
     extra_opts["use_2to3"] = True
@@ -79,6 +141,6 @@ setup(
     platforms=["any"],
     classifiers=CLASSIFIERS,
     install_requires=["pymongo>=3.4", "six"],
-    test_suite="nose.collector",
+    cmdclass={"test": PyTest},
     **extra_opts
 )

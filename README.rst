@@ -116,7 +116,8 @@ Some simple examples of what MongoEngine code looks like:
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port and have ``nose`` installed. Then, run ``python setup.py nosetests``.
+the standard port and have ``pytest`` installed. Then, run ``python setup.py test``
+or simply ``pytest``.
 
 To run the test suite on every supported Python and PyMongo version, you can
 use ``tox``. You'll need to make sure you have each supported Python version
@@ -129,16 +130,14 @@ installed in your environment and then:
     # Run the test suites
     $ tox
 
-If you wish to run a subset of tests, use the nosetests convention:
+If you wish to run a subset of tests, use the pytest convention:
 
 .. code-block:: shell
 
     # Run all the tests in a particular test file
-    $ python setup.py nosetests --tests tests/fields/fields.py
+    $ pytest tests/fields/test_fields.py
     # Run only particular test class in that file
-    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest
-    # Use the -s option if you want to print some debug statements or use pdb
-    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest -s
+    $ pytest tests/fields/test_fields.py::TestField
 
 Community
 =========
