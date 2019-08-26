@@ -113,7 +113,13 @@ CLASSIFIERS = [
 
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
-    "tests_require": ["pytest<5.0", "coverage==4.2", "blinker", "Pillow>=2.0.0"],
+    "tests_require": [
+        "pytest<5.0",
+        "pytest-cov",
+        "coverage",
+        "blinker",
+        "Pillow>=2.0.0",
+    ],
 }
 if sys.version_info[0] == 3:
     extra_opts["use_2to3"] = True
