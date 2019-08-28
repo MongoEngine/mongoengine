@@ -179,7 +179,7 @@ class TestDynamicDocument(MongoDBTestCase):
 
     def test_three_level_complex_data_lookups(self):
         """Ensure you can query three level document dynamic fields"""
-        p = self.Person.objects.create(misc={"hello": {"hello2": "world"}})
+        self.Person.objects.create(misc={"hello": {"hello2": "world"}})
         self.assertEqual(1, self.Person.objects(misc__hello__hello2="world").count())
 
     def test_complex_embedded_document_validation(self):
