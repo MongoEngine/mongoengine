@@ -41,7 +41,7 @@ def get_key_compat(mongo_ver):
     return ORDER_BY_KEY, CMD_QUERY_KEY
 
 
-class QuerySetTest(unittest.TestCase):
+class TestQueryset(unittest.TestCase):
     def setUp(self):
         connect(db="mongoenginetest")
         connect(db="mongoenginetest2", alias="test2")

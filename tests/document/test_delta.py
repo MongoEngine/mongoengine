@@ -7,9 +7,9 @@ from mongoengine.pymongo_support import list_collection_names
 from tests.utils import MongoDBTestCase
 
 
-class DeltaTest(MongoDBTestCase):
+class TestDelta(MongoDBTestCase):
     def setUp(self):
-        super(DeltaTest, self).setUp()
+        super(TestDelta, self).setUp()
 
         class Person(Document):
             name = StringField()

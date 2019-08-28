@@ -1,21 +1,14 @@
 import unittest
 import uuid
 
-from nose.plugins.skip import SkipTest
 from datetime import datetime
 from bson import ObjectId
 
-import pymongo
-
 from mongoengine import *
+from tests.utils import MongoDBTestCase
 
-__all__ = ("TestJson",)
 
-
-class TestJson(unittest.TestCase):
-    def setUp(self):
-        connect(db="mongoenginetest")
-
+class TestJson(MongoDBTestCase):
     def test_json_names(self):
         """
         Going to test reported issue:

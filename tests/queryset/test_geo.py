@@ -6,10 +6,7 @@ from mongoengine import *
 from tests.utils import MongoDBTestCase
 
 
-__all__ = ("GeoQueriesTest",)
-
-
-class GeoQueriesTest(MongoDBTestCase):
+class TestGeoQueries(MongoDBTestCase):
     def _create_event_data(self, point_field_class=GeoPointField):
         """Create some sample data re-used in many of the tests below."""
 

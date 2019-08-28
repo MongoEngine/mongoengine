@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import copy
 import os
-import unittest
 import tempfile
+import unittest
 
 import gridfs
+from nose.plugins.skip import SkipTest
 import six
 
-from nose.plugins.skip import SkipTest
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.python_support import StringIO
@@ -35,7 +35,7 @@ def get_file(path):
     return bytes_io
 
 
-class FileTest(MongoDBTestCase):
+class TestFileField(MongoDBTestCase):
     def tearDown(self):
         self.db.drop_collection("fs.files")
         self.db.drop_collection("fs.chunks")
