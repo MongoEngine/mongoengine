@@ -37,8 +37,9 @@ class PyTest(TestCommand):
     """
 
     # https://pytest.readthedocs.io/en/2.7.3/goodpractises.html#integration-with-setuptools-test-commands
-    # Allows to provide pytest command arguments through the test runner command `python setup.py test`
+    # Allows to provide pytest command argument through the test runner command `python setup.py test`
     # e.g: `python setup.py test -a "-k=test"`
+    # This only works for 1 argument though
     user_options = [("pytest-args=", "a", "Arguments to pass to py.test")]
 
     def initialize_options(self):
@@ -59,7 +60,6 @@ class PyTest(TestCommand):
         # re-import them from the build location. Required when 2to3 is used
         # with namespace packages.
         if sys.version_info >= (3,) and getattr(self.distribution, "use_2to3", False):
-            print("Hack for 2to3", self.test_args)
             module = self.test_args[-1].split(".")[0]
             if module in _namespace_packages:
                 del_modules = []
@@ -78,11 +78,8 @@ class PyTest(TestCommand):
             ei_cmd = self.get_finalized_command("egg_info")
             self.test_args = [normalize_path(ei_cmd.egg_base)]
 
-        print(self.test_args, self.pytest_args)
         cmd_args = self.test_args + ([self.pytest_args] if self.pytest_args else [])
-        print(cmd_args)
         errno = pytest.main(cmd_args)
-
         sys.exit(errno)
 
 
@@ -116,7 +113,7 @@ extra_opts = {
     "tests_require": [
         "pytest<5.0",
         "pytest-cov",
-        "coverage",
+        "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
         "blinker",
         "Pillow>=2.0.0",
     ],
