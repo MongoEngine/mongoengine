@@ -355,7 +355,7 @@ class DecimalField(BaseField):
         if value is None:
             return value
         if self.force_string:
-            return unicode(value)
+            return unicode(self.to_python(value))
         return Decimal128(self.to_python(value))
 
     def validate(self, value):
@@ -568,13 +568,14 @@ class EmbeddedDocumentField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
-    def to_python(self, value, _lazy_prefetch_base=None, _fields=None):
+    def to_python(self, value, _lazy_prefetch_base=None, _fields=None, loading_from_db=False):
         if not isinstance(value, self.document_type):
             return self.document_type._from_son(
                 value,
                 _auto_dereference=self._auto_dereference,
                 _lazy_prefetch_base=_lazy_prefetch_base,
-                _fields=_fields
+                _fields=_fields,
+                loading_from_db=loading_from_db,
             )
         return value
 
@@ -1101,7 +1102,7 @@ class ReferenceField(BaseField):
 
         return id_
 
-    def to_python(self, value, _lazy_prefetch_base=None, _fields=None):
+    def to_python(self, value, _lazy_prefetch_base=None, _fields=None, **kwargs):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if type(value) is DocumentProxy:
@@ -1207,7 +1208,7 @@ class CachedReferenceField(BaseField):
                 for document in documents:
                     document.objects(**filter_kwargs).update(**update_kwargs)
 
-    def to_python(self, value, _lazy_prefetch_base=None, _fields=None):
+    def to_python(self, value, _lazy_prefetch_base=None, _fields=None, **kwargs):
         if type(value) is DocumentProxy:
             return value
         
