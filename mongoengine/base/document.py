@@ -51,6 +51,7 @@ class BaseDocument(object):
         self._created = True
         
         kwargs_passed = values.pop("kwargs_passed", None)
+        loading_from_db = values.pop("loading_from_db", False)
         if kwargs_passed is not None:
             values.update(kwargs_passed)
             
@@ -94,11 +95,11 @@ class BaseDocument(object):
             key = self._reverse_db_field_map.get(key, key)
             if key in self._fields or key in ('id', 'pk', '_cls'):
                 field = self._fields.get(key)
-                is_v2 = field and field.is_v2_field()
+                optimize_v2 = field and field.is_v2_field() and loading_from_db
                 if __auto_convert and value is not None:
-                    if field and not isinstance(field, FileField) and not is_v2:
+                    if field and not isinstance(field, FileField) and not optimize_v2:
                         value = field.to_python(value)
-                if is_v2:
+                if optimize_v2:
                     self._data[key] = value
                 else:
                     self.setattr_quick(key, value)
@@ -759,7 +760,8 @@ class BaseDocument(object):
         return alias
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _lazy_prefetch_base=None, _fields=None):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _lazy_prefetch_base=None,
+                  _fields=None, loading_from_db=True):
         """Create an instance of a Document (subclass) from a PyMongo SON.
         """
         if not only_fields:
@@ -798,7 +800,8 @@ class BaseDocument(object):
                                 # _fields contains a stack of reference fields being fetched.
                                 # e.g. D.ref1.ref2.ref3 -> [ref1, ref2, ref3]
                                 _fields is not None and _fields.append(field)
-                                value = field.to_python(value, _lazy_prefetch_base=_lazy_prefetch_base, _fields=_fields)
+                                value = field.to_python(value, _lazy_prefetch_base=_lazy_prefetch_base, _fields=_fields,
+                                                        loading_from_db=loading_from_db)
                                 _fields is not None and _fields.pop()
                             else:
                                 value = field.to_python(value)
@@ -826,7 +829,8 @@ class BaseDocument(object):
         if cls.STRICT:
             data = dict((k, v)
                         for k, v in data.iteritems() if k in cls._fields)
-        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, kwargs_passed=data)
+        obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, kwargs_passed=data,
+                  loading_from_db=loading_from_db)
         obj._changed_fields = changed_fields
         if not _auto_dereference:
             obj._fields = fields
