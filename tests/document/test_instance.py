@@ -39,10 +39,8 @@ from tests.utils import MongoDBTestCase, get_as_pymongo
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
-__all__ = ("InstanceTest",)
 
-
-class InstanceTest(MongoDBTestCase):
+class TestInstance(MongoDBTestCase):
     def setUp(self):
         class Job(EmbeddedDocument):
             name = StringField()

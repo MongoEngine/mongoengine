@@ -3,14 +3,10 @@ import unittest
 from datetime import datetime
 
 from mongoengine import *
+from tests.utils import MongoDBTestCase
 
-__all__ = ("ValidatorErrorTest",)
 
-
-class ValidatorErrorTest(unittest.TestCase):
-    def setUp(self):
-        connect(db="mongoenginetest")
-
+class TestValidatorError(MongoDBTestCase):
     def test_to_dict(self):
         """Ensure a ValidationError handles error to_dict correctly.
         """

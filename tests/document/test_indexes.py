@@ -5,16 +5,13 @@ from datetime import datetime
 from nose.plugins.skip import SkipTest
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
-import pymongo
 from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
 
-__all__ = ("IndexesTest",)
 
-
-class IndexesTest(unittest.TestCase):
+class TestIndexes(unittest.TestCase):
     def setUp(self):
         self.connection = connect(db="mongoenginetest")
         self.db = get_db()
