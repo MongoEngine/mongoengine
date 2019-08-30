@@ -2,6 +2,7 @@
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
+import pytest
 
 
 class TestURLField(MongoDBTestCase):
@@ -13,7 +14,8 @@ class TestURLField(MongoDBTestCase):
 
         link = Link()
         link.url = "google"
-        self.assertRaises(ValidationError, link.validate)
+        with pytest.raises(ValidationError):
+            link.validate()
 
         link.url = "http://www.google.com:8080"
         link.validate()
@@ -29,11 +31,11 @@ class TestURLField(MongoDBTestCase):
 
         # TODO fix URL validation - this *IS* a valid URL
         # For now we just want to make sure that the error message is correct
-        with self.assertRaises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as ctx_err:
             link.validate()
-        self.assertEqual(
-            unicode(ctx_err.exception),
-            u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])",
+        assert (
+            unicode(ctx_err.exception)
+            == u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
         )
 
     def test_url_scheme_validation(self):
@@ -48,7 +50,8 @@ class TestURLField(MongoDBTestCase):
 
         link = Link()
         link.url = "ws://google.com"
-        self.assertRaises(ValidationError, link.validate)
+        with pytest.raises(ValidationError):
+            link.validate()
 
         scheme_link = SchemeLink()
         scheme_link.url = "ws://google.com"

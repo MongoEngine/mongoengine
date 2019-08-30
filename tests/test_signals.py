@@ -245,7 +245,7 @@ class SignalTests(unittest.TestCase):
         # Note that there is a chance that the following assert fails in case
         # some receivers (eventually created in other tests)
         # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
-        self.assertEqual(self.pre_signals, post_signals)
+        assert self.pre_signals == post_signals
 
     def test_model_signals(self):
         """ Model saves should throw some signals. """
@@ -267,97 +267,76 @@ class SignalTests(unittest.TestCase):
             self.get_signal_output(lambda: None)  # eliminate signal output
             a1 = self.Author.objects(name="Bill Shakespeare")[0]
 
-        self.assertEqual(
-            self.get_signal_output(create_author),
-            [
-                "pre_init signal, Author",
-                {"name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = True",
-            ],
-        )
+        assert self.get_signal_output(create_author) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+        ]
 
         a1 = self.Author(name="Bill Shakespeare")
-        self.assertEqual(
-            self.get_signal_output(a1.save),
-            [
-                "pre_save signal, Bill Shakespeare",
-                {},
-                "pre_save_post_validation signal, Bill Shakespeare",
-                "Is created",
-                {},
-                "post_save signal, Bill Shakespeare",
-                "post_save dirty keys, ['name']",
-                "Is created",
-                {},
-            ],
-        )
+        assert self.get_signal_output(a1.save) == [
+            "pre_save signal, Bill Shakespeare",
+            {},
+            "pre_save_post_validation signal, Bill Shakespeare",
+            "Is created",
+            {},
+            "post_save signal, Bill Shakespeare",
+            "post_save dirty keys, ['name']",
+            "Is created",
+            {},
+        ]
 
         a1.reload()
         a1.name = "William Shakespeare"
-        self.assertEqual(
-            self.get_signal_output(a1.save),
-            [
-                "pre_save signal, William Shakespeare",
-                {},
-                "pre_save_post_validation signal, William Shakespeare",
-                "Is updated",
-                {},
-                "post_save signal, William Shakespeare",
-                "post_save dirty keys, ['name']",
-                "Is updated",
-                {},
-            ],
-        )
+        assert self.get_signal_output(a1.save) == [
+            "pre_save signal, William Shakespeare",
+            {},
+            "pre_save_post_validation signal, William Shakespeare",
+            "Is updated",
+            {},
+            "post_save signal, William Shakespeare",
+            "post_save dirty keys, ['name']",
+            "Is updated",
+            {},
+        ]
 
-        self.assertEqual(
-            self.get_signal_output(a1.delete),
-            [
-                "pre_delete signal, William Shakespeare",
-                {},
-                "post_delete signal, William Shakespeare",
-                {},
-            ],
-        )
+        assert self.get_signal_output(a1.delete) == [
+            "pre_delete signal, William Shakespeare",
+            {},
+            "post_delete signal, William Shakespeare",
+            {},
+        ]
 
-        self.assertEqual(
-            self.get_signal_output(load_existing_author),
-            [
-                "pre_init signal, Author",
-                {"id": 2, "name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = False",
-            ],
-        )
+        assert self.get_signal_output(load_existing_author) == [
+            "pre_init signal, Author",
+            {"id": 2, "name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = False",
+        ]
 
-        self.assertEqual(
-            self.get_signal_output(bulk_create_author_with_load),
-            [
-                "pre_init signal, Author",
-                {"name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = True",
-                "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
-                {},
-                "pre_init signal, Author",
-                {"id": 3, "name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = False",
-                "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
-                "Is loaded",
-                {},
-            ],
-        )
+        assert self.get_signal_output(bulk_create_author_with_load) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            {},
+            "pre_init signal, Author",
+            {"id": 3, "name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = False",
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Is loaded",
+            {},
+        ]
 
-        self.assertEqual(
-            self.get_signal_output(bulk_create_author_without_load),
-            [
-                "pre_init signal, Author",
-                {"name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = True",
-                "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
-                {},
-                "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
-                "Not loaded",
-                {},
-            ],
-        )
+        assert self.get_signal_output(bulk_create_author_without_load) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            {},
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Not loaded",
+            {},
+        ]
 
     def test_signal_kwargs(self):
         """ Make sure signal_kwargs is passed to signals calls. """
@@ -367,83 +346,74 @@ class SignalTests(unittest.TestCase):
             a.save(signal_kwargs={"live": True, "die": False})
             a.delete(signal_kwargs={"live": False, "die": True})
 
-        self.assertEqual(
-            self.get_signal_output(live_and_let_die),
-            [
-                "pre_init signal, Author",
-                {"name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = True",
-                "pre_save signal, Bill Shakespeare",
-                {"die": False, "live": True},
-                "pre_save_post_validation signal, Bill Shakespeare",
-                "Is created",
-                {"die": False, "live": True},
-                "post_save signal, Bill Shakespeare",
-                "post_save dirty keys, ['name']",
-                "Is created",
-                {"die": False, "live": True},
-                "pre_delete signal, Bill Shakespeare",
-                {"die": True, "live": False},
-                "post_delete signal, Bill Shakespeare",
-                {"die": True, "live": False},
-            ],
-        )
+        assert self.get_signal_output(live_and_let_die) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_save signal, Bill Shakespeare",
+            {"die": False, "live": True},
+            "pre_save_post_validation signal, Bill Shakespeare",
+            "Is created",
+            {"die": False, "live": True},
+            "post_save signal, Bill Shakespeare",
+            "post_save dirty keys, ['name']",
+            "Is created",
+            {"die": False, "live": True},
+            "pre_delete signal, Bill Shakespeare",
+            {"die": True, "live": False},
+            "post_delete signal, Bill Shakespeare",
+            {"die": True, "live": False},
+        ]
 
         def bulk_create_author():
             a1 = self.Author(name="Bill Shakespeare")
             self.Author.objects.insert([a1], signal_kwargs={"key": True})
 
-        self.assertEqual(
-            self.get_signal_output(bulk_create_author),
-            [
-                "pre_init signal, Author",
-                {"name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = True",
-                "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
-                {"key": True},
-                "pre_init signal, Author",
-                {"id": 2, "name": "Bill Shakespeare"},
-                "post_init signal, Bill Shakespeare, document._created = False",
-                "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
-                "Is loaded",
-                {"key": True},
-            ],
-        )
+        assert self.get_signal_output(bulk_create_author) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            {"key": True},
+            "pre_init signal, Author",
+            {"id": 2, "name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = False",
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Is loaded",
+            {"key": True},
+        ]
 
     def test_queryset_delete_signals(self):
         """ Queryset delete should throw some signals. """
 
         self.Another(name="Bill Shakespeare").save()
-        self.assertEqual(
-            self.get_signal_output(self.Another.objects.delete),
-            [
-                "pre_delete signal, Bill Shakespeare",
-                {},
-                "post_delete signal, Bill Shakespeare",
-                {},
-            ],
-        )
+        assert self.get_signal_output(self.Another.objects.delete) == [
+            "pre_delete signal, Bill Shakespeare",
+            {},
+            "post_delete signal, Bill Shakespeare",
+            {},
+        ]
 
     def test_signals_with_explicit_doc_ids(self):
         """ Model saves must have a created flag the first time."""
         ei = self.ExplicitId(id=123)
         # post save must received the created flag, even if there's already
         # an object id present
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
         # second time, it must be an update
-        self.assertEqual(self.get_signal_output(ei.save), ["Is updated"])
+        assert self.get_signal_output(ei.save) == ["Is updated"]
 
     def test_signals_with_switch_collection(self):
         ei = self.ExplicitId(id=123)
         ei.switch_collection("explicit__1")
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
         ei.switch_collection("explicit__1")
-        self.assertEqual(self.get_signal_output(ei.save), ["Is updated"])
+        assert self.get_signal_output(ei.save) == ["Is updated"]
 
         ei.switch_collection("explicit__1", keep_created=False)
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
         ei.switch_collection("explicit__1", keep_created=False)
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
 
     def test_signals_with_switch_db(self):
         connect("mongoenginetest")
@@ -451,14 +421,14 @@ class SignalTests(unittest.TestCase):
 
         ei = self.ExplicitId(id=123)
         ei.switch_db("testdb-1")
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
         ei.switch_db("testdb-1")
-        self.assertEqual(self.get_signal_output(ei.save), ["Is updated"])
+        assert self.get_signal_output(ei.save) == ["Is updated"]
 
         ei.switch_db("testdb-1", keep_created=False)
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
         ei.switch_db("testdb-1", keep_created=False)
-        self.assertEqual(self.get_signal_output(ei.save), ["Is created"])
+        assert self.get_signal_output(ei.save) == ["Is created"]
 
     def test_signals_bulk_insert(self):
         def bulk_set_active_post():
@@ -470,16 +440,13 @@ class SignalTests(unittest.TestCase):
             self.Post.objects.insert(posts)
 
         results = self.get_signal_output(bulk_set_active_post)
-        self.assertEqual(
-            results,
-            [
-                "pre_bulk_insert signal, [(<Post: Post 1>, {'active': False}), (<Post: Post 2>, {'active': False}), (<Post: Post 3>, {'active': False})]",
-                {},
-                "post_bulk_insert signal, [(<Post: Post 1>, {'active': True}), (<Post: Post 2>, {'active': True}), (<Post: Post 3>, {'active': True})]",
-                "Is loaded",
-                {},
-            ],
-        )
+        assert results == [
+            "pre_bulk_insert signal, [(<Post: Post 1>, {'active': False}), (<Post: Post 2>, {'active': False}), (<Post: Post 3>, {'active': False})]",
+            {},
+            "post_bulk_insert signal, [(<Post: Post 1>, {'active': True}), (<Post: Post 2>, {'active': True}), (<Post: Post 3>, {'active': True})]",
+            "Is loaded",
+            {},
+        ]
 
 
 if __name__ == "__main__":

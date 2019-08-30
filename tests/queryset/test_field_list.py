@@ -2,66 +2,67 @@ import unittest
 
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
+import pytest
 
 
 class TestQueryFieldList(unittest.TestCase):
     def test_empty(self):
         q = QueryFieldList()
-        self.assertFalse(q)
+        assert not q
 
         q = QueryFieldList(always_include=["_cls"])
-        self.assertFalse(q)
+        assert not q
 
     def test_include_include(self):
         q = QueryFieldList()
         q += QueryFieldList(
             fields=["a", "b"], value=QueryFieldList.ONLY, _only_called=True
         )
-        self.assertEqual(q.as_dict(), {"a": 1, "b": 1})
+        assert q.as_dict() == {"a": 1, "b": 1}
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {"a": 1, "b": 1, "c": 1})
+        assert q.as_dict() == {"a": 1, "b": 1, "c": 1}
 
     def test_include_exclude(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=["a", "b"], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {"a": 1, "b": 1})
+        assert q.as_dict() == {"a": 1, "b": 1}
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {"a": 1})
+        assert q.as_dict() == {"a": 1}
 
     def test_exclude_exclude(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=["a", "b"], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {"a": 0, "b": 0})
+        assert q.as_dict() == {"a": 0, "b": 0}
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {"a": 0, "b": 0, "c": 0})
+        assert q.as_dict() == {"a": 0, "b": 0, "c": 0}
 
     def test_exclude_include(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=["a", "b"], value=QueryFieldList.EXCLUDE)
-        self.assertEqual(q.as_dict(), {"a": 0, "b": 0})
+        assert q.as_dict() == {"a": 0, "b": 0}
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {"c": 1})
+        assert q.as_dict() == {"c": 1}
 
     def test_always_include(self):
         q = QueryFieldList(always_include=["x", "y"])
         q += QueryFieldList(fields=["a", "b", "x"], value=QueryFieldList.EXCLUDE)
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {"x": 1, "y": 1, "c": 1})
+        assert q.as_dict() == {"x": 1, "y": 1, "c": 1}
 
     def test_reset(self):
         q = QueryFieldList(always_include=["x", "y"])
         q += QueryFieldList(fields=["a", "b", "x"], value=QueryFieldList.EXCLUDE)
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {"x": 1, "y": 1, "c": 1})
+        assert q.as_dict() == {"x": 1, "y": 1, "c": 1}
         q.reset()
-        self.assertFalse(q)
+        assert not q
         q += QueryFieldList(fields=["b", "c"], value=QueryFieldList.ONLY)
-        self.assertEqual(q.as_dict(), {"x": 1, "y": 1, "b": 1, "c": 1})
+        assert q.as_dict() == {"x": 1, "y": 1, "b": 1, "c": 1}
 
     def test_using_a_slice(self):
         q = QueryFieldList()
         q += QueryFieldList(fields=["a"], value={"$slice": 5})
-        self.assertEqual(q.as_dict(), {"a": {"$slice": 5}})
+        assert q.as_dict() == {"a": {"$slice": 5}}
 
 
 class TestOnlyExcludeAll(unittest.TestCase):
@@ -90,25 +91,23 @@ class TestOnlyExcludeAll(unittest.TestCase):
         only = ["b", "c"]
 
         qs = MyDoc.objects.fields(**{i: 1 for i in include})
-        self.assertEqual(
-            qs._loaded_fields.as_dict(), {"a": 1, "b": 1, "c": 1, "d": 1, "e": 1}
-        )
+        assert qs._loaded_fields.as_dict() == {"a": 1, "b": 1, "c": 1, "d": 1, "e": 1}
         qs = qs.only(*only)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"b": 1, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"b": 1, "c": 1}
         qs = qs.exclude(*exclude)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"b": 1, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"b": 1, "c": 1}
 
         qs = MyDoc.objects.fields(**{i: 1 for i in include})
         qs = qs.exclude(*exclude)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"a": 1, "b": 1, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"a": 1, "b": 1, "c": 1}
         qs = qs.only(*only)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"b": 1, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"b": 1, "c": 1}
 
         qs = MyDoc.objects.exclude(*exclude)
         qs = qs.fields(**{i: 1 for i in include})
-        self.assertEqual(qs._loaded_fields.as_dict(), {"a": 1, "b": 1, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"a": 1, "b": 1, "c": 1}
         qs = qs.only(*only)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"b": 1, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"b": 1, "c": 1}
 
     def test_slicing(self):
         class MyDoc(Document):
@@ -127,15 +126,16 @@ class TestOnlyExcludeAll(unittest.TestCase):
         qs = qs.exclude(*exclude)
         qs = qs.only(*only)
         qs = qs.fields(slice__b=5)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"b": {"$slice": 5}, "c": 1})
+        assert qs._loaded_fields.as_dict() == {"b": {"$slice": 5}, "c": 1}
 
         qs = qs.fields(slice__c=[5, 1])
-        self.assertEqual(
-            qs._loaded_fields.as_dict(), {"b": {"$slice": 5}, "c": {"$slice": [5, 1]}}
-        )
+        assert qs._loaded_fields.as_dict() == {
+            "b": {"$slice": 5},
+            "c": {"$slice": [5, 1]},
+        }
 
         qs = qs.exclude("c")
-        self.assertEqual(qs._loaded_fields.as_dict(), {"b": {"$slice": 5}})
+        assert qs._loaded_fields.as_dict() == {"b": {"$slice": 5}}
 
     def test_mix_slice_with_other_fields(self):
         class MyDoc(Document):
@@ -144,7 +144,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
             c = ListField()
 
         qs = MyDoc.objects.fields(a=1, b=0, slice__c=2)
-        self.assertEqual(qs._loaded_fields.as_dict(), {"c": {"$slice": 2}, "a": 1})
+        assert qs._loaded_fields.as_dict() == {"c": {"$slice": 2}, "a": 1}
 
     def test_only(self):
         """Ensure that QuerySet.only only returns the requested fields.
@@ -153,20 +153,20 @@ class TestOnlyExcludeAll(unittest.TestCase):
         person.save()
 
         obj = self.Person.objects.only("name").get()
-        self.assertEqual(obj.name, person.name)
-        self.assertEqual(obj.age, None)
+        assert obj.name == person.name
+        assert obj.age == None
 
         obj = self.Person.objects.only("age").get()
-        self.assertEqual(obj.name, None)
-        self.assertEqual(obj.age, person.age)
+        assert obj.name == None
+        assert obj.age == person.age
 
         obj = self.Person.objects.only("name", "age").get()
-        self.assertEqual(obj.name, person.name)
-        self.assertEqual(obj.age, person.age)
+        assert obj.name == person.name
+        assert obj.age == person.age
 
         obj = self.Person.objects.only(*("id", "name")).get()
-        self.assertEqual(obj.name, person.name)
-        self.assertEqual(obj.age, None)
+        assert obj.name == person.name
+        assert obj.age == None
 
         # Check polymorphism still works
         class Employee(self.Person):
@@ -176,12 +176,12 @@ class TestOnlyExcludeAll(unittest.TestCase):
         employee.save()
 
         obj = self.Person.objects(id=employee.id).only("age").get()
-        self.assertIsInstance(obj, Employee)
+        assert isinstance(obj, Employee)
 
         # Check field names are looked up properly
         obj = Employee.objects(id=employee.id).only("salary").get()
-        self.assertEqual(obj.salary, employee.salary)
-        self.assertEqual(obj.name, None)
+        assert obj.salary == employee.salary
+        assert obj.name == None
 
     def test_only_with_subfields(self):
         class User(EmbeddedDocument):
@@ -215,29 +215,29 @@ class TestOnlyExcludeAll(unittest.TestCase):
         post.save()
 
         obj = BlogPost.objects.only("author.name").get()
-        self.assertEqual(obj.content, None)
-        self.assertEqual(obj.author.email, None)
-        self.assertEqual(obj.author.name, "Test User")
-        self.assertEqual(obj.comments, [])
+        assert obj.content == None
+        assert obj.author.email == None
+        assert obj.author.name == "Test User"
+        assert obj.comments == []
 
         obj = BlogPost.objects.only("various.test_dynamic.some").get()
-        self.assertEqual(obj.various["test_dynamic"].some, True)
+        assert obj.various["test_dynamic"].some == True
 
         obj = BlogPost.objects.only("content", "comments.title").get()
-        self.assertEqual(obj.content, "Had a good coffee today...")
-        self.assertEqual(obj.author, None)
-        self.assertEqual(obj.comments[0].title, "I aggree")
-        self.assertEqual(obj.comments[1].title, "Coffee")
-        self.assertEqual(obj.comments[0].text, None)
-        self.assertEqual(obj.comments[1].text, None)
+        assert obj.content == "Had a good coffee today..."
+        assert obj.author == None
+        assert obj.comments[0].title == "I aggree"
+        assert obj.comments[1].title == "Coffee"
+        assert obj.comments[0].text == None
+        assert obj.comments[1].text == None
 
         obj = BlogPost.objects.only("comments").get()
-        self.assertEqual(obj.content, None)
-        self.assertEqual(obj.author, None)
-        self.assertEqual(obj.comments[0].title, "I aggree")
-        self.assertEqual(obj.comments[1].title, "Coffee")
-        self.assertEqual(obj.comments[0].text, "Great post!")
-        self.assertEqual(obj.comments[1].text, "I hate coffee")
+        assert obj.content == None
+        assert obj.author == None
+        assert obj.comments[0].title == "I aggree"
+        assert obj.comments[1].title == "Coffee"
+        assert obj.comments[0].text == "Great post!"
+        assert obj.comments[1].text == "I hate coffee"
 
         BlogPost.drop_collection()
 
@@ -266,10 +266,10 @@ class TestOnlyExcludeAll(unittest.TestCase):
         post.save()
 
         obj = BlogPost.objects.exclude("author", "comments.text").get()
-        self.assertEqual(obj.author, None)
-        self.assertEqual(obj.content, "Had a good coffee today...")
-        self.assertEqual(obj.comments[0].title, "I aggree")
-        self.assertEqual(obj.comments[0].text, None)
+        assert obj.author == None
+        assert obj.content == "Had a good coffee today..."
+        assert obj.comments[0].title == "I aggree"
+        assert obj.comments[0].text == None
 
         BlogPost.drop_collection()
 
@@ -301,18 +301,18 @@ class TestOnlyExcludeAll(unittest.TestCase):
         email.save()
 
         obj = Email.objects.exclude("content_type").exclude("body").get()
-        self.assertEqual(obj.sender, "me")
-        self.assertEqual(obj.to, "you")
-        self.assertEqual(obj.subject, "From Russia with Love")
-        self.assertEqual(obj.body, None)
-        self.assertEqual(obj.content_type, None)
+        assert obj.sender == "me"
+        assert obj.to == "you"
+        assert obj.subject == "From Russia with Love"
+        assert obj.body == None
+        assert obj.content_type == None
 
         obj = Email.objects.only("sender", "to").exclude("body", "sender").get()
-        self.assertEqual(obj.sender, None)
-        self.assertEqual(obj.to, "you")
-        self.assertEqual(obj.subject, None)
-        self.assertEqual(obj.body, None)
-        self.assertEqual(obj.content_type, None)
+        assert obj.sender == None
+        assert obj.to == "you"
+        assert obj.subject == None
+        assert obj.body == None
+        assert obj.content_type == None
 
         obj = (
             Email.objects.exclude("attachments.content")
@@ -320,13 +320,13 @@ class TestOnlyExcludeAll(unittest.TestCase):
             .only("to", "attachments.name")
             .get()
         )
-        self.assertEqual(obj.attachments[0].name, "file1.doc")
-        self.assertEqual(obj.attachments[0].content, None)
-        self.assertEqual(obj.sender, None)
-        self.assertEqual(obj.to, "you")
-        self.assertEqual(obj.subject, None)
-        self.assertEqual(obj.body, None)
-        self.assertEqual(obj.content_type, None)
+        assert obj.attachments[0].name == "file1.doc"
+        assert obj.attachments[0].content == None
+        assert obj.sender == None
+        assert obj.to == "you"
+        assert obj.subject == None
+        assert obj.body == None
+        assert obj.content_type == None
 
         Email.drop_collection()
 
@@ -355,11 +355,11 @@ class TestOnlyExcludeAll(unittest.TestCase):
             .all_fields()
             .get()
         )
-        self.assertEqual(obj.sender, "me")
-        self.assertEqual(obj.to, "you")
-        self.assertEqual(obj.subject, "From Russia with Love")
-        self.assertEqual(obj.body, "Hello!")
-        self.assertEqual(obj.content_type, "text/plain")
+        assert obj.sender == "me"
+        assert obj.to == "you"
+        assert obj.subject == "From Russia with Love"
+        assert obj.body == "Hello!"
+        assert obj.content_type == "text/plain"
 
         Email.drop_collection()
 
@@ -377,27 +377,27 @@ class TestOnlyExcludeAll(unittest.TestCase):
 
         # first three
         numbers = Numbers.objects.fields(slice__n=3).get()
-        self.assertEqual(numbers.n, [0, 1, 2])
+        assert numbers.n == [0, 1, 2]
 
         # last three
         numbers = Numbers.objects.fields(slice__n=-3).get()
-        self.assertEqual(numbers.n, [-3, -2, -1])
+        assert numbers.n == [-3, -2, -1]
 
         # skip 2, limit 3
         numbers = Numbers.objects.fields(slice__n=[2, 3]).get()
-        self.assertEqual(numbers.n, [2, 3, 4])
+        assert numbers.n == [2, 3, 4]
 
         # skip to fifth from last, limit 4
         numbers = Numbers.objects.fields(slice__n=[-5, 4]).get()
-        self.assertEqual(numbers.n, [-5, -4, -3, -2])
+        assert numbers.n == [-5, -4, -3, -2]
 
         # skip to fifth from last, limit 10
         numbers = Numbers.objects.fields(slice__n=[-5, 10]).get()
-        self.assertEqual(numbers.n, [-5, -4, -3, -2, -1])
+        assert numbers.n == [-5, -4, -3, -2, -1]
 
         # skip to fifth from last, limit 10 dict method
         numbers = Numbers.objects.fields(n={"$slice": [-5, 10]}).get()
-        self.assertEqual(numbers.n, [-5, -4, -3, -2, -1])
+        assert numbers.n == [-5, -4, -3, -2, -1]
 
     def test_slicing_nested_fields(self):
         """Ensure that query slicing an embedded array works.
@@ -417,27 +417,27 @@ class TestOnlyExcludeAll(unittest.TestCase):
 
         # first three
         numbers = Numbers.objects.fields(slice__embedded__n=3).get()
-        self.assertEqual(numbers.embedded.n, [0, 1, 2])
+        assert numbers.embedded.n == [0, 1, 2]
 
         # last three
         numbers = Numbers.objects.fields(slice__embedded__n=-3).get()
-        self.assertEqual(numbers.embedded.n, [-3, -2, -1])
+        assert numbers.embedded.n == [-3, -2, -1]
 
         # skip 2, limit 3
         numbers = Numbers.objects.fields(slice__embedded__n=[2, 3]).get()
-        self.assertEqual(numbers.embedded.n, [2, 3, 4])
+        assert numbers.embedded.n == [2, 3, 4]
 
         # skip to fifth from last, limit 4
         numbers = Numbers.objects.fields(slice__embedded__n=[-5, 4]).get()
-        self.assertEqual(numbers.embedded.n, [-5, -4, -3, -2])
+        assert numbers.embedded.n == [-5, -4, -3, -2]
 
         # skip to fifth from last, limit 10
         numbers = Numbers.objects.fields(slice__embedded__n=[-5, 10]).get()
-        self.assertEqual(numbers.embedded.n, [-5, -4, -3, -2, -1])
+        assert numbers.embedded.n == [-5, -4, -3, -2, -1]
 
         # skip to fifth from last, limit 10 dict method
         numbers = Numbers.objects.fields(embedded__n={"$slice": [-5, 10]}).get()
-        self.assertEqual(numbers.embedded.n, [-5, -4, -3, -2, -1])
+        assert numbers.embedded.n == [-5, -4, -3, -2, -1]
 
     def test_exclude_from_subclasses_docs(self):
         class Base(Document):
@@ -456,9 +456,10 @@ class TestOnlyExcludeAll(unittest.TestCase):
         User(username="mongodb", password="secret").save()
 
         user = Base.objects().exclude("password", "wibble").first()
-        self.assertEqual(user.password, None)
+        assert user.password == None
 
-        self.assertRaises(LookUpError, Base.objects.exclude, "made_up")
+        with pytest.raises(LookUpError):
+            Base.objects.exclude("made_up")
 
 
 if __name__ == "__main__":

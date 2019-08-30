@@ -32,7 +32,7 @@ class TestJson(MongoDBTestCase):
 
         expected_json = """{"embedded":{"string":"Inner Hello"},"string":"Hello"}"""
 
-        self.assertEqual(doc_json, expected_json)
+        assert doc_json == expected_json
 
     def test_json_simple(self):
         class Embedded(EmbeddedDocument):
@@ -52,9 +52,9 @@ class TestJson(MongoDBTestCase):
 
         doc_json = doc.to_json(sort_keys=True, separators=(",", ":"))
         expected_json = """{"embedded_field":{"string":"Hi"},"string":"Hi"}"""
-        self.assertEqual(doc_json, expected_json)
+        assert doc_json == expected_json
 
-        self.assertEqual(doc, Doc.from_json(doc.to_json()))
+        assert doc == Doc.from_json(doc.to_json())
 
     def test_json_complex(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -99,7 +99,7 @@ class TestJson(MongoDBTestCase):
                 return json.loads(self.to_json()) == json.loads(other.to_json())
 
         doc = Doc()
-        self.assertEqual(doc, Doc.from_json(doc.to_json()))
+        assert doc == Doc.from_json(doc.to_json())
 
 
 if __name__ == "__main__":

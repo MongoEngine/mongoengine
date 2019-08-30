@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from mongoengine import Document
 from mongoengine.common import _import_class
 
@@ -7,8 +9,8 @@ from mongoengine.common import _import_class
 class TestCommon(unittest.TestCase):
     def test__import_class(self):
         doc_cls = _import_class("Document")
-        self.assertIs(doc_cls, Document)
+        assert doc_cls is Document
 
     def test__import_class_raise_if_not_known(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _import_class("UnknownClass")

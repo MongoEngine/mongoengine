@@ -5,6 +5,7 @@ from unittest import SkipTest
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
+import pytest
 
 
 class TestEmailField(MongoDBTestCase):
@@ -27,7 +28,8 @@ class TestEmailField(MongoDBTestCase):
         user.validate()
 
         user = User(email="ross@example.com.")
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         # unicode domain
         user = User(email=u"user@пример.рф")
@@ -35,11 +37,13 @@ class TestEmailField(MongoDBTestCase):
 
         # invalid unicode domain
         user = User(email=u"user@пример")
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         # invalid data type
         user = User(email=123)
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
     def test_email_field_unicode_user(self):
         # Don't run this test on pypy3, which doesn't support unicode regex:
@@ -52,7 +56,8 @@ class TestEmailField(MongoDBTestCase):
 
         # unicode user shouldn't validate by default...
         user = User(email=u"Dörte@Sörensen.example.com")
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         # ...but it should be fine with allow_utf8_user set to True
         class User(Document):
@@ -67,7 +72,8 @@ class TestEmailField(MongoDBTestCase):
 
         # localhost domain shouldn't validate by default...
         user = User(email="me@localhost")
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         # ...but it should be fine if it's whitelisted
         class User(Document):
@@ -82,9 +88,9 @@ class TestEmailField(MongoDBTestCase):
 
         invalid_idn = ".google.com"
         user = User(email="me@%s" % invalid_idn)
-        with self.assertRaises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as ctx_err:
             user.validate()
-        self.assertIn("domain failed IDN encoding", str(ctx_err.exception))
+        assert "domain failed IDN encoding" in str(ctx_err.exception)
 
     def test_email_field_ip_domain(self):
         class User(Document):
@@ -96,13 +102,16 @@ class TestEmailField(MongoDBTestCase):
 
         # IP address as a domain shouldn't validate by default...
         user = User(email=valid_ipv4)
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         user = User(email=valid_ipv6)
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         user = User(email=invalid_ip)
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         # ...but it should be fine with allow_ip_domain set to True
         class User(Document):
@@ -116,7 +125,8 @@ class TestEmailField(MongoDBTestCase):
 
         # invalid IP should still fail validation
         user = User(email=invalid_ip)
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
     def test_email_field_honors_regex(self):
         class User(Document):
@@ -124,8 +134,9 @@ class TestEmailField(MongoDBTestCase):
 
         # Fails regex validation
         user = User(email="me@foo.com")
-        self.assertRaises(ValidationError, user.validate)
+        with pytest.raises(ValidationError):
+            user.validate()
 
         # Passes regex validation
         user = User(email="me@example.com")
-        self.assertIsNone(user.validate())
+        assert user.validate() is None

@@ -3,6 +3,7 @@ from mongoengine import *
 from mongoengine.base import BaseDict
 
 from tests.utils import MongoDBTestCase, get_as_pymongo
+import pytest
 
 
 class TestDictField(MongoDBTestCase):
@@ -14,7 +15,7 @@ class TestDictField(MongoDBTestCase):
 
         info = {"testkey": "testvalue"}
         post = BlogPost(info=info).save()
-        self.assertEqual(get_as_pymongo(post), {"_id": post.id, "info": info})
+        assert get_as_pymongo(post) == {"_id": post.id, "info": info}
 
     def test_general_things(self):
         """Ensure that dict types work as expected."""
@@ -26,25 +27,32 @@ class TestDictField(MongoDBTestCase):
 
         post = BlogPost()
         post.info = "my post"
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = ["test", "test"]
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = {"$title": "test"}
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = {"nested": {"$title": "test"}}
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = {"the.title": "test"}
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = {"nested": {"the.title": "test"}}
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = {1: "test"}
-        self.assertRaises(ValidationError, post.validate)
+        with pytest.raises(ValidationError):
+            post.validate()
 
         post.info = {"title": "test"}
         post.save()
@@ -61,33 +69,27 @@ class TestDictField(MongoDBTestCase):
         post.info = {"details": {"test": 3}}
         post.save()
 
-        self.assertEqual(BlogPost.objects.count(), 4)
-        self.assertEqual(BlogPost.objects.filter(info__title__exact="test").count(), 1)
-        self.assertEqual(
-            BlogPost.objects.filter(info__details__test__exact="test").count(), 1
-        )
+        assert BlogPost.objects.count() == 4
+        assert BlogPost.objects.filter(info__title__exact="test").count() == 1
+        assert BlogPost.objects.filter(info__details__test__exact="test").count() == 1
 
         post = BlogPost.objects.filter(info__title__exact="dollar_sign").first()
-        self.assertIn("te$t", post["info"]["details"])
+        assert "te$t" in post["info"]["details"]
 
         # Confirm handles non strings or non existing keys
-        self.assertEqual(
-            BlogPost.objects.filter(info__details__test__exact=5).count(), 0
-        )
-        self.assertEqual(
-            BlogPost.objects.filter(info__made_up__test__exact="test").count(), 0
-        )
+        assert BlogPost.objects.filter(info__details__test__exact=5).count() == 0
+        assert BlogPost.objects.filter(info__made_up__test__exact="test").count() == 0
 
         post = BlogPost.objects.create(info={"title": "original"})
         post.info.update({"title": "updated"})
         post.save()
         post.reload()
-        self.assertEqual("updated", post.info["title"])
+        assert "updated" == post.info["title"]
 
         post.info.setdefault("authors", [])
         post.save()
         post.reload()
-        self.assertEqual([], post.info["authors"])
+        assert [] == post.info["authors"]
 
     def test_dictfield_dump_document(self):
         """Ensure a DictField can handle another document's dump."""
@@ -114,10 +116,8 @@ class TestDictField(MongoDBTestCase):
         ).save()
         doc = Doc(field=to_embed.to_mongo().to_dict())
         doc.save()
-        self.assertIsInstance(doc.field, dict)
-        self.assertEqual(
-            doc.field, {"_id": 2, "recursive": {"_id": 1, "recursive": {}}}
-        )
+        assert isinstance(doc.field, dict)
+        assert doc.field == {"_id": 2, "recursive": {"_id": 1, "recursive": {}}}
         # Same thing with a Document with a _cls field
         to_embed_recursive = ToEmbedChild(id=1).save()
         to_embed_child = ToEmbedChild(
@@ -125,7 +125,7 @@ class TestDictField(MongoDBTestCase):
         ).save()
         doc = Doc(field=to_embed_child.to_mongo().to_dict())
         doc.save()
-        self.assertIsInstance(doc.field, dict)
+        assert isinstance(doc.field, dict)
         expected = {
             "_id": 2,
             "_cls": "ToEmbedParent.ToEmbedChild",
@@ -135,7 +135,7 @@ class TestDictField(MongoDBTestCase):
                 "recursive": {},
             },
         }
-        self.assertEqual(doc.field, expected)
+        assert doc.field == expected
 
     def test_dictfield_strict(self):
         """Ensure that dict field handles validation if provided a strict field type."""
@@ -150,7 +150,7 @@ class TestDictField(MongoDBTestCase):
         e.save()
 
         # try creating an invalid mapping
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             e.mapping["somestring"] = "abc"
             e.save()
 
@@ -184,22 +184,21 @@ class TestDictField(MongoDBTestCase):
         e.save()
 
         e2 = Simple.objects.get(id=e.id)
-        self.assertIsInstance(e2.mapping["somestring"], StringSetting)
-        self.assertIsInstance(e2.mapping["someint"], IntegerSetting)
+        assert isinstance(e2.mapping["somestring"], StringSetting)
+        assert isinstance(e2.mapping["someint"], IntegerSetting)
 
         # Test querying
-        self.assertEqual(Simple.objects.filter(mapping__someint__value=42).count(), 1)
-        self.assertEqual(
-            Simple.objects.filter(mapping__nested_dict__number=1).count(), 1
+        assert Simple.objects.filter(mapping__someint__value=42).count() == 1
+        assert Simple.objects.filter(mapping__nested_dict__number=1).count() == 1
+        assert (
+            Simple.objects.filter(mapping__nested_dict__complex__value=42).count() == 1
         )
-        self.assertEqual(
-            Simple.objects.filter(mapping__nested_dict__complex__value=42).count(), 1
+        assert (
+            Simple.objects.filter(mapping__nested_dict__list__0__value=42).count() == 1
         )
-        self.assertEqual(
-            Simple.objects.filter(mapping__nested_dict__list__0__value=42).count(), 1
-        )
-        self.assertEqual(
-            Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count(), 1
+        assert (
+            Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count()
+            == 1
         )
 
         # Confirm can update
@@ -207,11 +206,13 @@ class TestDictField(MongoDBTestCase):
         Simple.objects().update(
             set__mapping__nested_dict__list__1=StringSetting(value="Boo")
         )
-        self.assertEqual(
-            Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count(), 0
+        assert (
+            Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count()
+            == 0
         )
-        self.assertEqual(
-            Simple.objects.filter(mapping__nested_dict__list__1__value="Boo").count(), 1
+        assert (
+            Simple.objects.filter(mapping__nested_dict__list__1__value="Boo").count()
+            == 1
         )
 
     def test_push_dict(self):
@@ -221,12 +222,12 @@ class TestDictField(MongoDBTestCase):
         doc = MyModel(events=[{"a": 1}]).save()
         raw_doc = get_as_pymongo(doc)
         expected_raw_doc = {"_id": doc.id, "events": [{"a": 1}]}
-        self.assertEqual(raw_doc, expected_raw_doc)
+        assert raw_doc == expected_raw_doc
 
         MyModel.objects(id=doc.id).update(push__events={})
         raw_doc = get_as_pymongo(doc)
         expected_raw_doc = {"_id": doc.id, "events": [{"a": 1}, {}]}
-        self.assertEqual(raw_doc, expected_raw_doc)
+        assert raw_doc == expected_raw_doc
 
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""
@@ -239,8 +240,8 @@ class TestDictField(MongoDBTestCase):
         d1.data["foo"] = "bar"
         d1.data2["foo"] = "bar"
         d2 = D()
-        self.assertEqual(d2.data, {})
-        self.assertEqual(d2.data2, {})
+        assert d2.data == {}
+        assert d2.data2 == {}
 
     def test_dict_field_invalid_dict_value(self):
         class DictFieldTest(Document):
@@ -250,11 +251,13 @@ class TestDictField(MongoDBTestCase):
 
         test = DictFieldTest(dictionary=None)
         test.dictionary  # Just access to test getter
-        self.assertRaises(ValidationError, test.validate)
+        with pytest.raises(ValidationError):
+            test.validate()
 
         test = DictFieldTest(dictionary=False)
         test.dictionary  # Just access to test getter
-        self.assertRaises(ValidationError, test.validate)
+        with pytest.raises(ValidationError):
+            test.validate()
 
     def test_dict_field_raises_validation_error_if_wrongly_assign_embedded_doc(self):
         class DictFieldTest(Document):
@@ -267,12 +270,10 @@ class TestDictField(MongoDBTestCase):
 
         embed = Embedded(name="garbage")
         doc = DictFieldTest(dictionary=embed)
-        with self.assertRaises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as ctx_err:
             doc.validate()
-        self.assertIn("'dictionary'", str(ctx_err.exception))
-        self.assertIn(
-            "Only dictionaries may be used in a DictField", str(ctx_err.exception)
-        )
+        assert "'dictionary'" in str(ctx_err.exception)
+        assert "Only dictionaries may be used in a DictField" in str(ctx_err.exception)
 
     def test_atomic_update_dict_field(self):
         """Ensure that the entire DictField can be atomically updated."""
@@ -287,11 +288,11 @@ class TestDictField(MongoDBTestCase):
         e.save()
         e.update(set__mapping={"ints": [3, 4]})
         e.reload()
-        self.assertEqual(BaseDict, type(e.mapping))
-        self.assertEqual({"ints": [3, 4]}, e.mapping)
+        assert BaseDict == type(e.mapping)
+        assert {"ints": [3, 4]} == e.mapping
 
         # try creating an invalid mapping
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             e.update(set__mapping={"somestrings": ["foo", "bar"]})
 
     def test_dictfield_with_referencefield_complex_nesting_cases(self):
@@ -329,13 +330,13 @@ class TestDictField(MongoDBTestCase):
         e.save()
 
         s = Simple.objects.first()
-        self.assertIsInstance(s.mapping0["someint"], Doc)
-        self.assertIsInstance(s.mapping1["someint"], Doc)
-        self.assertIsInstance(s.mapping2["someint"][0], Doc)
-        self.assertIsInstance(s.mapping3["someint"][0], Doc)
-        self.assertIsInstance(s.mapping4["someint"]["d"], Doc)
-        self.assertIsInstance(s.mapping5["someint"]["d"], Doc)
-        self.assertIsInstance(s.mapping6["someint"][0]["d"], Doc)
-        self.assertIsInstance(s.mapping7["someint"][0]["d"], Doc)
-        self.assertIsInstance(s.mapping8["someint"][0]["d"][0], Doc)
-        self.assertIsInstance(s.mapping9["someint"][0]["d"][0], Doc)
+        assert isinstance(s.mapping0["someint"], Doc)
+        assert isinstance(s.mapping1["someint"], Doc)
+        assert isinstance(s.mapping2["someint"][0], Doc)
+        assert isinstance(s.mapping3["someint"][0], Doc)
+        assert isinstance(s.mapping4["someint"]["d"], Doc)
+        assert isinstance(s.mapping5["someint"]["d"], Doc)
+        assert isinstance(s.mapping6["someint"][0]["d"], Doc)
+        assert isinstance(s.mapping7["someint"][0]["d"], Doc)
+        assert isinstance(s.mapping8["someint"][0]["d"][0], Doc)
+        assert isinstance(s.mapping9["someint"][0]["d"][0], Doc)

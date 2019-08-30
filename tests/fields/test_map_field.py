@@ -4,6 +4,7 @@ import datetime
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
+import pytest
 
 
 class TestMapField(MongoDBTestCase):
@@ -19,11 +20,11 @@ class TestMapField(MongoDBTestCase):
         e.mapping["someint"] = 1
         e.save()
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             e.mapping["somestring"] = "abc"
             e.save()
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
 
             class NoDeclaredType(Document):
                 mapping = MapField()
@@ -51,10 +52,10 @@ class TestMapField(MongoDBTestCase):
         e.save()
 
         e2 = Extensible.objects.get(id=e.id)
-        self.assertIsInstance(e2.mapping["somestring"], StringSetting)
-        self.assertIsInstance(e2.mapping["someint"], IntegerSetting)
+        assert isinstance(e2.mapping["somestring"], StringSetting)
+        assert isinstance(e2.mapping["someint"], IntegerSetting)
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             e.mapping["someint"] = 123
             e.save()
 
@@ -74,9 +75,9 @@ class TestMapField(MongoDBTestCase):
         Test.objects.update_one(inc__my_map__DICTIONARY_KEY__number=1)
 
         test = Test.objects.get()
-        self.assertEqual(test.my_map["DICTIONARY_KEY"].number, 2)
+        assert test.my_map["DICTIONARY_KEY"].number == 2
         doc = self.db.test.find_one()
-        self.assertEqual(doc["x"]["DICTIONARY_KEY"]["i"], 2)
+        assert doc["x"]["DICTIONARY_KEY"]["i"] == 2
 
     def test_mapfield_numerical_index(self):
         """Ensure that MapField accept numeric strings as indexes."""
@@ -116,13 +117,13 @@ class TestMapField(MongoDBTestCase):
             actions={"friends": Action(operation="drink", object="beer")},
         ).save()
 
-        self.assertEqual(1, Log.objects(visited__friends__exists=True).count())
+        assert 1 == Log.objects(visited__friends__exists=True).count()
 
-        self.assertEqual(
-            1,
-            Log.objects(
+        assert (
+            1
+            == Log.objects(
                 actions__friends__operation="drink", actions__friends__object="beer"
-            ).count(),
+            ).count()
         )
 
     def test_map_field_unicode(self):
@@ -139,7 +140,7 @@ class TestMapField(MongoDBTestCase):
 
         tree.save()
 
-        self.assertEqual(
-            BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description,
-            u"VALUE: éééé",
+        assert (
+            BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description
+            == u"VALUE: éééé"
         )

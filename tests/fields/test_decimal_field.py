@@ -4,6 +4,7 @@ from decimal import Decimal
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
+import pytest
 
 
 class TestDecimalField(MongoDBTestCase):
@@ -18,21 +19,26 @@ class TestDecimalField(MongoDBTestCase):
 
         Person(height=Decimal("1.89")).save()
         person = Person.objects.first()
-        self.assertEqual(person.height, Decimal("1.89"))
+        assert person.height == Decimal("1.89")
 
         person.height = "2.0"
         person.save()
         person.height = 0.01
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
         person.height = Decimal("0.01")
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
         person.height = Decimal("4.0")
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
         person.height = "something invalid"
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
 
         person_2 = Person(height="something invalid")
-        self.assertRaises(ValidationError, person_2.validate)
+        with pytest.raises(ValidationError):
+            person_2.validate()
 
     def test_comparison(self):
         class Person(Document):
@@ -45,11 +51,11 @@ class TestDecimalField(MongoDBTestCase):
         Person(money=8).save()
         Person(money=10).save()
 
-        self.assertEqual(2, Person.objects(money__gt=Decimal("7")).count())
-        self.assertEqual(2, Person.objects(money__gt=7).count())
-        self.assertEqual(2, Person.objects(money__gt="7").count())
+        assert 2 == Person.objects(money__gt=Decimal("7")).count()
+        assert 2 == Person.objects(money__gt=7).count()
+        assert 2 == Person.objects(money__gt="7").count()
 
-        self.assertEqual(3, Person.objects(money__gte="7").count())
+        assert 3 == Person.objects(money__gte="7").count()
 
     def test_storage(self):
         class Person(Document):
@@ -87,7 +93,7 @@ class TestDecimalField(MongoDBTestCase):
         ]
         expected.extend(expected)
         actual = list(Person.objects.exclude("id").as_pymongo())
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
         # How it comes out locally
         expected = [
@@ -101,4 +107,4 @@ class TestDecimalField(MongoDBTestCase):
         expected.extend(expected)
         for field_name in ["float_value", "string_value"]:
             actual = list(Person.objects().scalar(field_name))
-            self.assertEqual(expected, actual)
+            assert expected == actual

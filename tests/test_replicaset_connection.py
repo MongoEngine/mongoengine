@@ -39,7 +39,7 @@ class ConnectionTest(unittest.TestCase):
             # really???
             return
 
-        self.assertEqual(conn.read_preference, READ_PREF)
+        assert conn.read_preference == READ_PREF
 
 
 if __name__ == "__main__":
