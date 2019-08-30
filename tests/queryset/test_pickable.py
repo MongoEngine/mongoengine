@@ -1,10 +1,8 @@
 import pickle
 import unittest
-from pymongo.mongo_client import MongoClient
-from mongoengine import Document, StringField, IntField
-from mongoengine.connection import connect
 
-__author__ = "stas"
+from mongoengine import Document, IntField, StringField
+from mongoengine.connection import connect
 
 
 class Person(Document):
@@ -20,11 +18,8 @@ class TestQuerysetPickable(unittest.TestCase):
 
     def setUp(self):
         super(TestQuerysetPickable, self).setUp()
-
-        connection = connect(db="test")  # type: pymongo.mongo_client.MongoClient
-
+        connection = connect(db="test")
         connection.drop_database("test")
-
         self.john = Person.objects.create(name="John", age=21)
 
     def test_picke_simple_qs(self):
