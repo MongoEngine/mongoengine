@@ -86,6 +86,22 @@ class BaseDocument(object):
 
         _created = values.pop("_created", True)
 
+
+        # will raise exception if we try to retrieve fields not in .only() and in .exclude() 
+        _requested_fields = values.pop('_requested_fields', None)
+        _requested_fields_value = values.pop('_requested_fields_value', None)
+
+        if _requested_fields is not None:
+            all_dbfields = set(self._reverse_db_field_map)
+            _requested_fields = _requested_fields or []
+            if _requested_fields_value is None or _requested_fields_value == 1:
+                if _requested_fields:
+                    self._requested_fields = set(_requested_fields)
+                else:
+                    self._requested_fields = set(all_dbfields)
+            else:
+                self._requested_fields = set(all_dbfields) - set(_requested_fields)
+        
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         # Check if there are undefined fields supplied to the constructor,
@@ -726,8 +742,11 @@ class BaseDocument(object):
         return cls._meta.get("collection", None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False, _requested_fields=None, _requested_fields_value=None):
         """Create an instance of a Document (subclass) from a PyMongo SON."""
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        ComplexBaseField = _import_class("ComplexBaseField")
+
         if not only_fields:
             only_fields = []
 
@@ -756,19 +775,35 @@ class BaseDocument(object):
         if not _auto_dereference:
             fields = copy.deepcopy(fields)
 
+        _requested_fields_dict = {}
+        if _requested_fields is not None:
+            for field_ in _requested_fields:
+                base, _, rest = field_.partition('.')
+                _requested_fields_dict[base] = _requested_fields_dict.get(base, [])
+                if rest:
+                    _requested_fields_dict[base].append(rest)
+
         for field_name, field in iteritems(fields):
             field._auto_dereference = _auto_dereference
+            embedded_kwargs = {}
+            if isinstance(field, (EmbeddedDocumentField, ComplexBaseField)):
+                embedded_kwargs = {
+                    '_requested_fields': _requested_fields_dict.get(field.db_field), 
+                    '_requested_fields_value': _requested_fields_value
+                }
+                if _requested_fields_value == 0 and _requested_fields_dict.get(field.db_field, None):
+                    _requested_fields_dict.pop(field.db_field, None)
+
             if field.db_field in data:
                 value = data[field.db_field]
                 try:
                     data[field_name] = (
-                        value if value is None else field.to_python(value)
+                        value if value is None else field.to_python(value, **embedded_kwargs)
                     )
                     if field_name != field.db_field:
                         del data[field.db_field]
                 except (AttributeError, ValueError) as e:
                     errors_dict[field_name] = e
-
         if errors_dict:
             errors = "\n".join(["%s - %s" % (k, v) for k, v in errors_dict.items()])
             msg = "Invalid data to create a `%s` instance.\n%s" % (
@@ -780,9 +815,10 @@ class BaseDocument(object):
         # In STRICT documents, remove any keys that aren't in cls._fields
         if cls.STRICT:
             data = {k: v for k, v in iteritems(data) if k in cls._fields}
-
+        
         obj = cls(
-            __auto_convert=False, _created=created, __only_fields=only_fields, **data
+            __auto_convert=False, _created=created, __only_fields=only_fields, 
+            _requested_fields=_requested_fields_dict.keys(), _requested_fields_value=_requested_fields_value, **data
         )
         obj._changed_fields = []
         if not _auto_dereference:

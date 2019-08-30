@@ -10,7 +10,7 @@ from six import iteritems
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import BaseDict, BaseList, EmbeddedDocumentList
 from mongoengine.common import _import_class
-from mongoengine.errors import DeprecatedError, ValidationError
+from mongoengine.errors import DeprecatedError, ValidationError, FieldIsNotRetrieved
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
@@ -135,6 +135,9 @@ class BaseField(object):
             # Document class being used rather than a document object
             return self
 
+        if instance._initialised and hasattr(instance, '_requested_fields') and self.db_field not in instance._requested_fields:
+            raise FieldIsNotRetrieved("Field \"{}\" of model \"{}\" does not retrieved".format(self.name, owner.__name__))
+
         # Get value from document instance if available
         return instance._data.get(self.name)
 
@@ -163,6 +166,8 @@ class BaseField(object):
                 # attempt to do so (e.g. tz-naive and tz-aware datetimes).
                 # Mark the field as changed in such cases.
                 instance._mark_as_changed(self.name)
+            if hasattr(instance, '_requested_fields'):
+                instance._requested_fields.add(self.db_field)
 
         EmbeddedDocument = _import_class("EmbeddedDocument")
         if isinstance(value, EmbeddedDocument):
@@ -343,7 +348,7 @@ class ComplexBaseField(BaseField):
 
         return value
 
-    def to_python(self, value):
+    def to_python(self, value, _requested_fields=None, _requested_fields_value=None):
         """Convert a MongoDB-compatible type to a Python type."""
         if isinstance(value, six.string_types):
             return value
@@ -365,9 +370,17 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
+            EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+            
             self.field._auto_dereference = self._auto_dereference
+            embedded_kwargs = {}
+            if isinstance(self.field, EmbeddedDocumentField):
+                embedded_kwargs = {
+                    '_requested_fields': _requested_fields, 
+                    '_requested_fields_value': _requested_fields_value
+                }
             value_dict = {
-                key: self.field.to_python(item) for key, item in value.items()
+                key: self.field.to_python(item, **embedded_kwargs) for key, item in value.items()
             }
         else:
             Document = _import_class("Document")
