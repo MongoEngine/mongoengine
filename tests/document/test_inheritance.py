@@ -559,8 +559,8 @@ class TestInheritance(MongoDBTestCase):
         assert "collection" not in Animal._meta
         assert "collection" not in Mammal._meta
 
-        assert Animal._get_collection_name() == None
-        assert Mammal._get_collection_name() == None
+        assert Animal._get_collection_name() is None
+        assert Mammal._get_collection_name() is None
 
         assert Fish._get_collection_name() == "fish"
         assert Guppy._get_collection_name() == "fish"

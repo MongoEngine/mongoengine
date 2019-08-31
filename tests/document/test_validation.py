@@ -110,7 +110,7 @@ class TestValidatorError(MongoDBTestCase):
 
         comment.date = datetime.now()
         comment.validate()
-        assert comment._instance == None
+        assert comment._instance is None
 
     def test_embedded_db_field_validate(self):
         class SubDoc(EmbeddedDocument):

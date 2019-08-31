@@ -294,7 +294,7 @@ class TestQ(unittest.TestCase):
         obj = self.Person.objects(Q(name=re.compile("^Gui"))).first()
         assert obj == person
         obj = self.Person.objects(Q(name=re.compile("^gui"))).first()
-        assert obj == None
+        assert obj is None
 
         obj = self.Person.objects(Q(name=re.compile("^gui", re.I))).first()
         assert obj == person
@@ -303,7 +303,7 @@ class TestQ(unittest.TestCase):
         assert obj == person
 
         obj = self.Person.objects(Q(name__not=re.compile("^Gui"))).first()
-        assert obj == None
+        assert obj is None
 
     def test_q_repr(self):
         assert repr(Q()) == "Q(**{})"

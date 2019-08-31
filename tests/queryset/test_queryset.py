@@ -142,7 +142,7 @@ class TestQueryset(unittest.TestCase):
         person = self.Person.objects().limit(1).only("name").first()
         assert person == user_a
         assert person.name == "User A"
-        assert person.age == None
+        assert person.age is None
 
     def test_skip(self):
         """Ensure that QuerySet.skip works as expected."""
@@ -166,7 +166,7 @@ class TestQueryset(unittest.TestCase):
         person = self.Person.objects().skip(1).only("name").first()
         assert person == user_b
         assert person.name == "User B"
-        assert person.age == None
+        assert person.age is None
 
     def test___getitem___invalid_index(self):
         """Ensure slicing a queryset works as expected."""
@@ -444,7 +444,7 @@ class TestQueryset(unittest.TestCase):
 
         assert result == 2
         result = self.Person.objects.update(set__name="Ross", write_concern={"w": 0})
-        assert result == None
+        assert result is None
 
         result = self.Person.objects.update_one(
             set__name="Test User", write_concern={"w": 1}
@@ -453,7 +453,7 @@ class TestQueryset(unittest.TestCase):
         result = self.Person.objects.update_one(
             set__name="Test User", write_concern={"w": 0}
         )
-        assert result == None
+        assert result is None
 
     def test_update_update_has_a_value(self):
         """Test to ensure that update is passed a value to update to"""
@@ -1148,7 +1148,7 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__contains="van").first()
         assert obj == person
         obj = self.Person.objects(name__contains="Van").first()
-        assert obj == None
+        assert obj is None
 
         # Test icontains
         obj = self.Person.objects(name__icontains="Van").first()
@@ -1158,7 +1158,7 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__startswith="Guido").first()
         assert obj == person
         obj = self.Person.objects(name__startswith="guido").first()
-        assert obj == None
+        assert obj is None
 
         # Test istartswith
         obj = self.Person.objects(name__istartswith="guido").first()
@@ -1168,7 +1168,7 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__endswith="Rossum").first()
         assert obj == person
         obj = self.Person.objects(name__endswith="rossuM").first()
-        assert obj == None
+        assert obj is None
 
         # Test iendswith
         obj = self.Person.objects(name__iendswith="rossuM").first()
@@ -1178,15 +1178,15 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__exact="Guido van Rossum").first()
         assert obj == person
         obj = self.Person.objects(name__exact="Guido van rossum").first()
-        assert obj == None
+        assert obj is None
         obj = self.Person.objects(name__exact="Guido van Rossu").first()
-        assert obj == None
+        assert obj is None
 
         # Test iexact
         obj = self.Person.objects(name__iexact="gUIDO VAN rOSSUM").first()
         assert obj == person
         obj = self.Person.objects(name__iexact="gUIDO VAN rOSSU").first()
-        assert obj == None
+        assert obj is None
 
         # Test unsafe expressions
         person = self.Person(name="Guido van Rossum [.'Geek']")
@@ -1205,7 +1205,7 @@ class TestQueryset(unittest.TestCase):
         assert obj == alice
 
         obj = self.Person.objects(name__not__iexact="alice").first()
-        assert obj == None
+        assert obj is None
 
     def test_filter_chaining(self):
         """Ensure filters can be chained together.
@@ -1430,7 +1430,7 @@ class TestQueryset(unittest.TestCase):
         BlogPost.objects.create(content="Anonymous post...")
 
         result = BlogPost.objects.get(author=None)
-        assert result.author == None
+        assert result.author is None
 
     def test_find_dict_item(self):
         """Ensure that DictField items may be found.
@@ -2050,7 +2050,7 @@ class TestQueryset(unittest.TestCase):
         assert post.title != None
         BlogPost.objects.update_one(unset__title=1)
         post.reload()
-        assert post.title == None
+        assert post.title is None
         pymongo_doc = BlogPost.objects.as_pymongo().first()
         assert "title" not in pymongo_doc
 
@@ -4041,7 +4041,7 @@ class TestQueryset(unittest.TestCase):
         assert post.comment == comment
         Post.objects.update(unset__comment=1)
         post.reload()
-        assert post.comment == None
+        assert post.comment is None
 
         Comment.drop_collection()
         Post.drop_collection()

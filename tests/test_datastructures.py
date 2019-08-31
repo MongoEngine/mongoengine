@@ -122,7 +122,7 @@ class TestBaseDict(unittest.TestCase):
     def test_get_default(self):
         base_dict = self._get_basedict({})
         sentinel = object()
-        assert base_dict.get("new") == None
+        assert base_dict.get("new") is None
         assert base_dict.get("new", sentinel) is sentinel
 
     def test___setitem___calls_mark_as_changed(self):

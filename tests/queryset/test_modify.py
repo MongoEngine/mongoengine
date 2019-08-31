@@ -35,13 +35,13 @@ class TestFindAndModify(unittest.TestCase):
 
     def test_modify_not_existing(self):
         Doc(id=0, value=0).save()
-        assert Doc.objects(id=1).modify(set__value=-1) == None
+        assert Doc.objects(id=1).modify(set__value=-1) is None
         self.assertDbEqual([{"_id": 0, "value": 0}])
 
     def test_modify_with_upsert(self):
         Doc(id=0, value=0).save()
         old_doc = Doc.objects(id=1).modify(set__value=1, upsert=True)
-        assert old_doc == None
+        assert old_doc is None
         self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": 1}])
 
     def test_modify_with_upsert_existing(self):
@@ -68,7 +68,7 @@ class TestFindAndModify(unittest.TestCase):
 
     def test_find_and_modify_with_remove_not_existing(self):
         Doc(id=0, value=0).save()
-        assert Doc.objects(id=1).modify(remove=True) == None
+        assert Doc.objects(id=1).modify(remove=True) is None
         self.assertDbEqual([{"_id": 0, "value": 0}])
 
     def test_modify_with_order_by(self):

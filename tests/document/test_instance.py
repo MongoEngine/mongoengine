@@ -1391,7 +1391,7 @@ class TestInstance(MongoDBTestCase):
 
         person.reload()
         assert person.name == "User"
-        assert person.age == None
+        assert person.age is None
 
         person = self.Person.objects.get()
         person.name = None
@@ -1399,8 +1399,8 @@ class TestInstance(MongoDBTestCase):
         person.save()
 
         person.reload()
-        assert person.name == None
-        assert person.age == None
+        assert person.name is None
+        assert person.age is None
 
     def test_update_rename_operator(self):
         """Test the $rename operator."""
@@ -2018,7 +2018,7 @@ class TestInstance(MongoDBTestCase):
         promoted_employee.save()
 
         promoted_employee.reload()
-        assert promoted_employee.details == None
+        assert promoted_employee.details is None
 
     def test_object_mixins(self):
         class NameMixin(object):
@@ -2154,7 +2154,7 @@ class TestInstance(MongoDBTestCase):
         reviewer.delete()
         # No effect on the BlogPost
         assert BlogPost.objects.count() == 1
-        assert BlogPost.objects.get().reviewer == None
+        assert BlogPost.objects.get().reviewer is None
 
         # Delete the Person, which should lead to deletion of the BlogPost, too
         author.delete()
@@ -2200,7 +2200,7 @@ class TestInstance(MongoDBTestCase):
 
         reviewer.delete()
         assert Book.objects.count() == 1
-        assert Book.objects.get().reviewer == None
+        assert Book.objects.get().reviewer is None
 
         user.delete()
         assert Book.objects.count() == 0
@@ -2267,7 +2267,7 @@ class TestInstance(MongoDBTestCase):
 
         reviewer.delete()
         assert BlogPost.objects.count() == 1
-        assert BlogPost.objects.get().reviewer == None
+        assert BlogPost.objects.get().reviewer is None
 
         # Delete the Writer should lead to deletion of the BlogPost
         author.delete()
@@ -2378,7 +2378,7 @@ class TestInstance(MongoDBTestCase):
         f.delete()
 
         assert Bar.objects.count() == 1  # No effect on the BlogPost
-        assert Bar.objects.get().foo == None
+        assert Bar.objects.get().foo is None
 
     def test_invalid_reverse_delete_rule_raise_errors(self):
         with pytest.raises(InvalidDocumentError):
@@ -3464,7 +3464,7 @@ class TestInstance(MongoDBTestCase):
 
         p = Person.from_json('{"name": "name"}', created=False)
         assert p._created == False
-        assert p.id == None
+        assert p.id is None
 
         # Make sure the document is subsequently persisted correctly.
         p.save()
@@ -3540,13 +3540,13 @@ class TestInstance(MongoDBTestCase):
         u_from_db = User.objects.get(name="user")
         u_from_db.height = None
         u_from_db.save()
-        assert u_from_db.height == None
+        assert u_from_db.height is None
         # 864
-        assert u_from_db.str_fld == None
-        assert u_from_db.int_fld == None
-        assert u_from_db.flt_fld == None
-        assert u_from_db.dt_fld == None
-        assert u_from_db.cdt_fld == None
+        assert u_from_db.str_fld is None
+        assert u_from_db.int_fld is None
+        assert u_from_db.flt_fld is None
+        assert u_from_db.dt_fld is None
+        assert u_from_db.cdt_fld is None
 
         # 735
         User.objects.delete()
@@ -3554,7 +3554,7 @@ class TestInstance(MongoDBTestCase):
         u.save()
         User.objects(name="user").update_one(set__height=None, upsert=True)
         u_from_db = User.objects.get(name="user")
-        assert u_from_db.height == None
+        assert u_from_db.height is None
 
     def test_not_saved_eq(self):
         """Ensure we can compare documents not saved.

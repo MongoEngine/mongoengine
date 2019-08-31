@@ -72,7 +72,7 @@ class TestClassMethods(unittest.TestCase):
         class Job(Document):
             employee = ReferenceField(self.Person)
 
-        assert self.Person._meta.get("delete_rules") == None
+        assert self.Person._meta.get("delete_rules") is None
 
         self.Person.register_delete_rule(Job, "employee", NULLIFY)
         assert self.Person._meta["delete_rules"] == {(Job, "employee"): NULLIFY}

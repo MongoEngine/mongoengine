@@ -180,7 +180,7 @@ class TestField(MongoDBTestCase):
 
         assert person.validate() is None
 
-        assert person.name == None
+        assert person.name is None
         assert person.age == 30
         assert person.userid == "test"
         assert isinstance(person.created, datetime.datetime)
@@ -250,7 +250,7 @@ class TestField(MongoDBTestCase):
 
         assert person.validate() is None
 
-        assert person.name == None
+        assert person.name is None
         assert person.age == 30
         assert person.userid == "test"
         assert isinstance(person.created, datetime.datetime)
@@ -363,7 +363,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
 
         person = Person(name="Test User")
-        assert person.id == None
+        assert person.id is None
 
         person.id = 47
         with pytest.raises(ValidationError):
@@ -1970,7 +1970,7 @@ class TestField(MongoDBTestCase):
         shirt2 = Shirt()
 
         # Make sure get_<field>_display returns the default value (or None)
-        assert shirt1.get_size_display() == None
+        assert shirt1.get_size_display() is None
         assert shirt1.get_style_display() == "Wide"
 
         shirt1.size = "XXL"
@@ -2024,7 +2024,7 @@ class TestField(MongoDBTestCase):
 
         shirt = Shirt()
 
-        assert shirt.get_size_display() == None
+        assert shirt.get_size_display() is None
         assert shirt.get_style_display() == "Small"
 
         shirt.size = "XXL"

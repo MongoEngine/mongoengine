@@ -154,10 +154,10 @@ class TestOnlyExcludeAll(unittest.TestCase):
 
         obj = self.Person.objects.only("name").get()
         assert obj.name == person.name
-        assert obj.age == None
+        assert obj.age is None
 
         obj = self.Person.objects.only("age").get()
-        assert obj.name == None
+        assert obj.name is None
         assert obj.age == person.age
 
         obj = self.Person.objects.only("name", "age").get()
@@ -166,7 +166,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
 
         obj = self.Person.objects.only(*("id", "name")).get()
         assert obj.name == person.name
-        assert obj.age == None
+        assert obj.age is None
 
         # Check polymorphism still works
         class Employee(self.Person):
@@ -181,7 +181,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
         # Check field names are looked up properly
         obj = Employee.objects(id=employee.id).only("salary").get()
         assert obj.salary == employee.salary
-        assert obj.name == None
+        assert obj.name is None
 
     def test_only_with_subfields(self):
         class User(EmbeddedDocument):
@@ -215,8 +215,8 @@ class TestOnlyExcludeAll(unittest.TestCase):
         post.save()
 
         obj = BlogPost.objects.only("author.name").get()
-        assert obj.content == None
-        assert obj.author.email == None
+        assert obj.content is None
+        assert obj.author.email is None
         assert obj.author.name == "Test User"
         assert obj.comments == []
 
@@ -225,15 +225,15 @@ class TestOnlyExcludeAll(unittest.TestCase):
 
         obj = BlogPost.objects.only("content", "comments.title").get()
         assert obj.content == "Had a good coffee today..."
-        assert obj.author == None
+        assert obj.author is None
         assert obj.comments[0].title == "I aggree"
         assert obj.comments[1].title == "Coffee"
-        assert obj.comments[0].text == None
-        assert obj.comments[1].text == None
+        assert obj.comments[0].text is None
+        assert obj.comments[1].text is None
 
         obj = BlogPost.objects.only("comments").get()
-        assert obj.content == None
-        assert obj.author == None
+        assert obj.content is None
+        assert obj.author is None
         assert obj.comments[0].title == "I aggree"
         assert obj.comments[1].title == "Coffee"
         assert obj.comments[0].text == "Great post!"
@@ -266,10 +266,10 @@ class TestOnlyExcludeAll(unittest.TestCase):
         post.save()
 
         obj = BlogPost.objects.exclude("author", "comments.text").get()
-        assert obj.author == None
+        assert obj.author is None
         assert obj.content == "Had a good coffee today..."
         assert obj.comments[0].title == "I aggree"
-        assert obj.comments[0].text == None
+        assert obj.comments[0].text is None
 
         BlogPost.drop_collection()
 
@@ -304,15 +304,15 @@ class TestOnlyExcludeAll(unittest.TestCase):
         assert obj.sender == "me"
         assert obj.to == "you"
         assert obj.subject == "From Russia with Love"
-        assert obj.body == None
-        assert obj.content_type == None
+        assert obj.body is None
+        assert obj.content_type is None
 
         obj = Email.objects.only("sender", "to").exclude("body", "sender").get()
-        assert obj.sender == None
+        assert obj.sender is None
         assert obj.to == "you"
-        assert obj.subject == None
-        assert obj.body == None
-        assert obj.content_type == None
+        assert obj.subject is None
+        assert obj.body is None
+        assert obj.content_type is None
 
         obj = (
             Email.objects.exclude("attachments.content")
@@ -321,12 +321,12 @@ class TestOnlyExcludeAll(unittest.TestCase):
             .get()
         )
         assert obj.attachments[0].name == "file1.doc"
-        assert obj.attachments[0].content == None
-        assert obj.sender == None
+        assert obj.attachments[0].content is None
+        assert obj.sender is None
         assert obj.to == "you"
-        assert obj.subject == None
-        assert obj.body == None
-        assert obj.content_type == None
+        assert obj.subject is None
+        assert obj.body is None
+        assert obj.content_type is None
 
         Email.drop_collection()
 
@@ -456,7 +456,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
         User(username="mongodb", password="secret").save()
 
         user = Base.objects().exclude("password", "wibble").first()
-        assert user.password == None
+        assert user.password is None
 
         with pytest.raises(LookUpError):
             Base.objects.exclude("made_up")
