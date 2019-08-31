@@ -270,10 +270,12 @@ class TestDictField(MongoDBTestCase):
 
         embed = Embedded(name="garbage")
         doc = DictFieldTest(dictionary=embed)
-        with pytest.raises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as exc_info:
             doc.validate()
-        assert "'dictionary'" in str(ctx_err.exception)
-        assert "Only dictionaries may be used in a DictField" in str(ctx_err.exception)
+
+        error_msg = str(exc_info.value)
+        assert "'dictionary'" in error_msg
+        assert "Only dictionaries may be used in a DictField" in error_msg
 
     def test_atomic_update_dict_field(self):
         """Ensure that the entire DictField can be atomically updated."""

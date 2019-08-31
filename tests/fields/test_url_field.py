@@ -31,10 +31,10 @@ class TestURLField(MongoDBTestCase):
 
         # TODO fix URL validation - this *IS* a valid URL
         # For now we just want to make sure that the error message is correct
-        with pytest.raises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as exc_info:
             link.validate()
         assert (
-            unicode(ctx_err.exception)
+            unicode(exc_info.value)
             == u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
         )
 

@@ -908,20 +908,20 @@ class TestQueryset(unittest.TestCase):
         assert Blog.objects.count() == 2
 
         # test inserting an existing document (shouldn't be allowed)
-        with pytest.raises(OperationError) as cm:
+        with pytest.raises(OperationError) as exc_info:
             blog = Blog.objects.first()
             Blog.objects.insert(blog)
         assert (
-            str(cm.exception)
+            str(exc_info.value)
             == "Some documents have ObjectIds, use doc.update() instead"
         )
 
         # test inserting a query set
-        with pytest.raises(OperationError) as cm:
+        with pytest.raises(OperationError) as exc_info:
             blogs_qs = Blog.objects
             Blog.objects.insert(blogs_qs)
         assert (
-            str(cm.exception)
+            str(exc_info.value)
             == "Some documents have ObjectIds, use doc.update() instead"
         )
 
@@ -5053,9 +5053,8 @@ class TestQueryset(unittest.TestCase):
         Person(name="a").save()
         qs = Person.objects()
         _ = list(qs)
-        with pytest.raises(OperationError) as ctx_err:
+        with pytest.raises(OperationError, match="QuerySet already cached") as ctx_err:
             qs.no_cache()
-        assert "QuerySet already cached" == str(ctx_err.exception)
 
     def test_no_cached_queryset_no_cache_back_to_cache(self):
         class Person(Document):

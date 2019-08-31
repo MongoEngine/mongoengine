@@ -142,22 +142,22 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_fails_if_connect_2_times_with_default_alias(self):
         connect("mongoenginetest")
 
-        with pytest.raises(ConnectionFailure) as ctx_err:
+        with pytest.raises(ConnectionFailure) as exc_info:
             connect("mongoenginetest2")
         assert (
             "A different connection with alias `default` was already registered. Use disconnect() first"
-            == str(ctx_err.exception)
+            == str(exc_info.value)
         )
 
     def test_connect_fails_if_connect_2_times_with_custom_alias(self):
         connect("mongoenginetest", alias="alias1")
 
-        with pytest.raises(ConnectionFailure) as ctx_err:
+        with pytest.raises(ConnectionFailure) as exc_info:
             connect("mongoenginetest2", alias="alias1")
 
         assert (
             "A different connection with alias `alias1` was already registered. Use disconnect() first"
-            == str(ctx_err.exception)
+            == str(exc_info.value)
         )
 
     def test_connect_fails_if_similar_connection_settings_arent_defined_the_same_way(
@@ -366,9 +366,9 @@ class ConnectionTest(unittest.TestCase):
 
         assert History._collection is None
 
-        with pytest.raises(ConnectionFailure) as ctx_err:
+        with pytest.raises(ConnectionFailure) as exc_info:
             History.objects.first()
-        assert "You have not defined a default connection" == str(ctx_err.exception)
+        assert "You have not defined a default connection" == str(exc_info.value)
 
     def test_connect_disconnect_works_on_same_document(self):
         """Ensure that the connect/disconnect works properly with a single Document"""

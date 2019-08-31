@@ -350,13 +350,10 @@ class TestInstance(MongoDBTestCase):
             name = StringField()
             meta = {"allow_inheritance": True}
 
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError, match="Cannot override primary key field") as e:
 
             class EmailUser(User):
                 email = StringField(primary_key=True)
-
-        exc = e.exception
-        assert str(exc) == "Cannot override primary key field"
 
     def test_custom_id_field_is_required(self):
         """Ensure the custom primary key field is required."""
@@ -365,10 +362,9 @@ class TestInstance(MongoDBTestCase):
             username = StringField(primary_key=True)
             name = StringField()
 
-        with pytest.raises(ValidationError) as e:
+        with pytest.raises(ValidationError) as exc_info:
             User(name="test").save()
-        exc = e.exception
-        assert "Field is required: ['username']" in str(exc)
+        assert "Field is required: ['username']" in str(exc_info.value)
 
     def test_document_not_registered(self):
         class Place(Document):
@@ -870,12 +866,12 @@ class TestInstance(MongoDBTestCase):
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
 
-        with pytest.raises(ValidationError) as cm:
+        with pytest.raises(ValidationError) as exc_info:
             t.save()
 
         expected_msg = "Value of z != x + y"
-        assert expected_msg in cm.exception.message
-        assert cm.exception.to_dict() == {"doc": {"__all__": expected_msg}}
+        assert expected_msg in str(exc_info.value)
+        assert exc_info.value.to_dict() == {"doc": {"__all__": expected_msg}}
 
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25)).save()
         assert t.doc.z == 35
@@ -3208,43 +3204,47 @@ class TestInstance(MongoDBTestCase):
 
     def test_positional_creation(self):
         """Document cannot be instantiated using positional arguments."""
-        with pytest.raises(TypeError) as e:
+        with pytest.raises(TypeError) as exc_info:
             person = self.Person("Test User", 42)
+
         expected_msg = (
             "Instantiating a document with positional arguments is not "
             "supported. Please use `field_name=value` keyword arguments."
         )
-        assert str(e.exception) == expected_msg
+        assert str(exc_info.value) == expected_msg
 
     def test_mixed_creation(self):
         """Document cannot be instantiated using mixed arguments."""
-        with pytest.raises(TypeError) as e:
+        with pytest.raises(TypeError) as exc_info:
             person = self.Person("Test User", age=42)
+
         expected_msg = (
             "Instantiating a document with positional arguments is not "
             "supported. Please use `field_name=value` keyword arguments."
         )
-        assert str(e.exception) == expected_msg
+        assert str(exc_info.value) == expected_msg
 
     def test_positional_creation_embedded(self):
         """Embedded document cannot be created using positional arguments."""
-        with pytest.raises(TypeError) as e:
+        with pytest.raises(TypeError) as exc_info:
             job = self.Job("Test Job", 4)
+
         expected_msg = (
             "Instantiating a document with positional arguments is not "
             "supported. Please use `field_name=value` keyword arguments."
         )
-        assert str(e.exception) == expected_msg
+        assert str(exc_info.value) == expected_msg
 
     def test_mixed_creation_embedded(self):
         """Embedded document cannot be created using mixed arguments."""
-        with pytest.raises(TypeError) as e:
+        with pytest.raises(TypeError) as exc_info:
             job = self.Job("Test Job", years=4)
+
         expected_msg = (
             "Instantiating a document with positional arguments is not "
             "supported. Please use `field_name=value` keyword arguments."
         )
-        assert str(e.exception) == expected_msg
+        assert str(exc_info.value) == expected_msg
 
     def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'."""

@@ -595,12 +595,12 @@ class TestIndexes(unittest.TestCase):
 
         Blog.drop_collection()
 
-        with pytest.raises(OperationFailure) as ctx_err:
+        with pytest.raises(OperationFailure) as exc_info:
             Blog(id="garbage").save()
 
         # One of the errors below should happen. Which one depends on the
         # PyMongo version and dict order.
-        err_msg = str(ctx_err.exception)
+        err_msg = str(exc_info.value)
         assert any(
             [
                 "The field 'unique' is not valid for an _id index specification"

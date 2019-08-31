@@ -96,13 +96,13 @@ class TestField(MongoDBTestCase):
             "it should raise a ValidationError if validation fails"
         )
 
-        with pytest.raises(DeprecatedError) as ctx_err:
+        with pytest.raises(DeprecatedError) as exc_info:
             Person(name="").validate()
-        assert str(ctx_err.exception) == error
+        assert str(exc_info.value) == error
 
-        with pytest.raises(DeprecatedError) as ctx_err:
+        with pytest.raises(DeprecatedError) as exc_info:
             Person(name="").save()
-        assert str(ctx_err.exception) == error
+        assert str(exc_info.value) == error
 
     def test_custom_field_validation_raise_validation_error(self):
         def _not_empty(z):
@@ -114,16 +114,10 @@ class TestField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        with pytest.raises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as exc_info:
             Person(name="").validate()
         assert "ValidationError (Person:None) (cantbeempty: ['name'])" == str(
-            ctx_err.exception
-        )
-
-        with pytest.raises(ValidationError):
-            Person(name="").save()
-        assert "ValidationError (Person:None) (cantbeempty: ['name'])" == str(
-            ctx_err.exception
+            exc_info.value
         )
 
         Person(name="garbage").validate()
@@ -1029,9 +1023,9 @@ class TestField(MongoDBTestCase):
             if i < 6:
                 foo.save()
             else:
-                with pytest.raises(ValidationError) as cm:
+                with pytest.raises(ValidationError) as exc_info:
                     foo.save()
-                assert "List is too long" in str(cm.exception)
+                assert "List is too long" in str(exc_info.value)
 
     def test_list_field_max_length_set_operator(self):
         """Ensure ListField's max_length is respected for a "set" operator."""
@@ -1040,9 +1034,9 @@ class TestField(MongoDBTestCase):
             items = ListField(IntField(), max_length=3)
 
         foo = Foo.objects.create(items=[1, 2, 3])
-        with pytest.raises(ValidationError) as cm:
+        with pytest.raises(ValidationError) as exc_info:
             foo.modify(set__items=[1, 2, 3, 4])
-        assert "List is too long" in str(cm.exception)
+        assert "List is too long" in str(exc_info.value)
 
     def test_list_field_rejects_strings(self):
         """Strings aren't valid list field data types."""
@@ -2325,21 +2319,21 @@ class TestEmbeddedDocumentListField(MongoDBTestCase):
         # Test with an embeddedDocument instead of a list(embeddedDocument)
         # It's an edge case but it used to fail with a vague error, making it difficult to troubleshoot it
         post = self.BlogPost(comments=comment)
-        with pytest.raises(ValidationError) as ctx_err:
+        with pytest.raises(ValidationError) as exc_info:
             post.validate()
-        assert "'comments'" in str(ctx_err.exception)
-        assert "Only lists and tuples may be used in a list field" in str(
-            ctx_err.exception
-        )
+
+        error_msg = str(exc_info.value)
+        assert "'comments'" in error_msg
+        assert "Only lists and tuples may be used in a list field" in error_msg
 
         # Test with a Document
         post = self.BlogPost(comments=Title(content="garbage"))
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             post.validate()
-        assert "'comments'" in str(ctx_err.exception)
-        assert "Only lists and tuples may be used in a list field" in str(
-            ctx_err.exception
-        )
+
+        error_msg = str(exc_info.value)
+        assert "'comments'" in error_msg
+        assert "Only lists and tuples may be used in a list field" in error_msg
 
     def test_no_keyword_filter(self):
         """
