@@ -3,6 +3,7 @@ import unittest
 
 from mongoengine import Document, IntField, StringField
 from mongoengine.connection import connect
+from tests.utils import MongoDBTestCase
 
 
 class Person(Document):
@@ -10,7 +11,7 @@ class Person(Document):
     age = IntField()
 
 
-class TestQuerysetPickable(unittest.TestCase):
+class TestQuerysetPickable(MongoDBTestCase):
     """
     Test for adding pickling support for QuerySet instances
     See issue https://github.com/MongoEngine/mongoengine/issues/442
@@ -18,8 +19,6 @@ class TestQuerysetPickable(unittest.TestCase):
 
     def setUp(self):
         super(TestQuerysetPickable, self).setUp()
-        connection = connect(db="test")
-        connection.drop_database("test")
         self.john = Person.objects.create(name="John", age=21)
 
     def test_picke_simple_qs(self):
