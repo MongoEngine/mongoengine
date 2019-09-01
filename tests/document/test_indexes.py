@@ -2,7 +2,6 @@
 import unittest
 from datetime import datetime
 
-from nose.plugins.skip import SkipTest
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
 import pytest
@@ -251,7 +250,7 @@ class TestIndexes(unittest.TestCase):
     def test_explicit_geohaystack_index(self):
         """Ensure that geohaystack indexes work when created via meta[indexes]
         """
-        raise SkipTest(
+        pytest.skip(
             "GeoHaystack index creation is not supported for now"
             "from meta, as it requires a bucketSize parameter."
         )

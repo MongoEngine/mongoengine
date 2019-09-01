@@ -3,7 +3,6 @@ import datetime
 import unittest
 
 from bson import DBRef, ObjectId, SON
-from nose.plugins.skip import SkipTest
 import pytest
 
 from mongoengine import (
@@ -1239,17 +1238,17 @@ class TestField(MongoDBTestCase):
         a = A._from_son(SON([("fb", SON([("fc", SON([("txt", "hi")]))]))]))
         assert a.b.c.txt == "hi"
 
+    @pytest.mark.xfail(
+        reason="Using a string reference in an EmbeddedDocumentField does not work if the class isnt registerd yet",
+        raises=NotRegistered,
+    )
     def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(
         self,
     ):
-        raise SkipTest(
-            "Using a string reference in an EmbeddedDocumentField does not work if the class isnt registerd yet"
-        )
-
         class MyDoc2(Document):
-            emb = EmbeddedDocumentField("MyDoc")
+            emb = EmbeddedDocumentField("MyFunkyDoc123")
 
-        class MyDoc(EmbeddedDocument):
+        class MyFunkyDoc123(EmbeddedDocument):
             name = StringField()
 
     def test_embedded_document_validation(self):

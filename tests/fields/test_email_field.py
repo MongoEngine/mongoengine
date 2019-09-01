@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import sys
-from unittest import SkipTest
 
 import pytest
 
@@ -46,11 +45,6 @@ class TestEmailField(MongoDBTestCase):
             user.validate()
 
     def test_email_field_unicode_user(self):
-        # Don't run this test on pypy3, which doesn't support unicode regex:
-        # https://bitbucket.org/pypy/pypy/issues/1821/regular-expression-doesnt-find-unicode
-        if sys.version_info[:2] == (3, 2):
-            raise SkipTest("unicode email addresses are not supported on PyPy 3")
-
         class User(Document):
             email = EmailField()
 

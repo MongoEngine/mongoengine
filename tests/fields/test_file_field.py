@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 import gridfs
-from nose.plugins.skip import SkipTest
+import pytest
 import six
 
 from mongoengine import *
@@ -20,6 +20,8 @@ except ImportError:
     HAS_PIL = False
 
 from tests.utils import MongoDBTestCase
+
+require_pil = pytest.mark.skipif(not HAS_PIL, reason="PIL not installed")
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "mongoengine.png")
 TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), "mongodb_leaf.png")
@@ -377,10 +379,8 @@ class TestFileField(MongoDBTestCase):
         assert len(list(files)) == 0
         assert len(list(chunks)) == 0
 
+    @require_pil
     def test_image_field(self):
-        if not HAS_PIL:
-            raise SkipTest("PIL not installed")
-
         class TestImage(Document):
             image = ImageField()
 
@@ -411,10 +411,8 @@ class TestFileField(MongoDBTestCase):
 
         t.image.delete()
 
+    @require_pil
     def test_image_field_reassigning(self):
-        if not HAS_PIL:
-            raise SkipTest("PIL not installed")
-
         class TestFile(Document):
             the_file = ImageField()
 
@@ -428,10 +426,8 @@ class TestFileField(MongoDBTestCase):
         test_file.save()
         assert test_file.the_file.size == (45, 101)
 
+    @require_pil
     def test_image_field_resize(self):
-        if not HAS_PIL:
-            raise SkipTest("PIL not installed")
-
         class TestImage(Document):
             image = ImageField(size=(185, 37))
 
@@ -451,10 +447,8 @@ class TestFileField(MongoDBTestCase):
 
         t.image.delete()
 
+    @require_pil
     def test_image_field_resize_force(self):
-        if not HAS_PIL:
-            raise SkipTest("PIL not installed")
-
         class TestImage(Document):
             image = ImageField(size=(185, 37, True))
 
@@ -474,10 +468,8 @@ class TestFileField(MongoDBTestCase):
 
         t.image.delete()
 
+    @require_pil
     def test_image_field_thumbnail(self):
-        if not HAS_PIL:
-            raise SkipTest("PIL not installed")
-
         class TestImage(Document):
             image = ImageField(thumbnail_size=(92, 18))
 
@@ -546,11 +538,8 @@ class TestFileField(MongoDBTestCase):
         assert putfile == copy.copy(putfile)
         assert putfile == copy.deepcopy(putfile)
 
+    @require_pil
     def test_get_image_by_grid_id(self):
-
-        if not HAS_PIL:
-            raise SkipTest("PIL not installed")
-
         class TestImage(Document):
 
             image1 = ImageField()

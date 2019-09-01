@@ -1,7 +1,6 @@
 import datetime
 
 from bson.tz_util import utc
-from nose.plugins.skip import SkipTest
 import pymongo
 
 from pymongo import MongoClient, ReadPreference
@@ -33,6 +32,18 @@ from mongoengine.connection import (
 
 def get_tz_awareness(connection):
     return connection.codec_options.tz_aware
+
+
+try:
+    import mongomock
+
+    MONGOMOCK_INSTALLED = True
+except ImportError:
+    MONGOMOCK_INSTALLED = False
+
+require_mongomock = pytest.mark.skipif(
+    not MONGOMOCK_INSTALLED, reason="you need mongomock installed to run this testcase"
+)
 
 
 class ConnectionTest(unittest.TestCase):
@@ -212,14 +223,10 @@ class ConnectionTest(unittest.TestCase):
             non_string_db_name = ["e. g. list instead of a string"]
             connect(non_string_db_name)
 
+    @require_mongomock
     def test_connect_in_mocking(self):
         """Ensure that the connect() method works properly in mocking.
         """
-        try:
-            import mongomock
-        except ImportError:
-            raise SkipTest("you need mongomock installed to run this testcase")
-
         connect("mongoenginetest", host="mongomock://localhost")
         conn = get_connection()
         assert isinstance(conn, mongomock.MongoClient)
@@ -261,14 +268,10 @@ class ConnectionTest(unittest.TestCase):
         conn = get_connection("testdb7")
         assert isinstance(conn, mongomock.MongoClient)
 
+    @require_mongomock
     def test_default_database_with_mocking(self):
         """Ensure that the default database is correctly set when using mongomock.
         """
-        try:
-            import mongomock
-        except ImportError:
-            raise SkipTest("you need mongomock installed to run this testcase")
-
         disconnect_all()
 
         class SomeDocument(Document):
@@ -281,16 +284,12 @@ class ConnectionTest(unittest.TestCase):
         assert conn.get_default_database().name == "mongoenginetest"
         assert conn.database_names()[0] == "mongoenginetest"
 
+    @require_mongomock
     def test_connect_with_host_list(self):
         """Ensure that the connect() method works when host is a list
 
         Uses mongomock to test w/o needing multiple mongod/mongos processes
         """
-        try:
-            import mongomock
-        except ImportError:
-            raise SkipTest("you need mongomock installed to run this testcase")
-
         connect(host=["mongomock://localhost"])
         conn = get_connection()
         assert isinstance(conn, mongomock.MongoClient)
