@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+import pytest
+
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
-import pytest
 
 
 class TestIntField(MongoDBTestCase):

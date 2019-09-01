@@ -1,8 +1,9 @@
 import re
 import unittest
 
-from mongoengine.base.utils import LazyRegexCompiler
 import pytest
+
+from mongoengine.base.utils import LazyRegexCompiler
 
 signal_output = []
 

@@ -9,6 +9,7 @@ from datetime import datetime
 import bson
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
+import pytest
 from six import iteritems
 
 from mongoengine import *
@@ -36,7 +37,6 @@ from tests.fixtures import (
     PickleTest,
 )
 from tests.utils import MongoDBTestCase, get_as_pymongo
-import pytest
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
@@ -96,7 +96,7 @@ class TestInstance(MongoDBTestCase):
         assert Log.objects.count() == 10
 
         options = Log.objects._collection.options()
-        assert options["capped"] == True
+        assert options["capped"] is True
         assert options["max"] == 10
         assert options["size"] == 4096
 
@@ -122,7 +122,7 @@ class TestInstance(MongoDBTestCase):
         Log().save()
 
         options = Log.objects._collection.options()
-        assert options["capped"] == True
+        assert options["capped"] is True
         assert options["max"] == 10
         assert options["size"] == 10 * 2 ** 20
 
@@ -150,7 +150,7 @@ class TestInstance(MongoDBTestCase):
         Log().save()
 
         options = Log.objects._collection.options()
-        assert options["capped"] == True
+        assert options["capped"] is True
         assert options["size"] >= 10000
 
         # Check that the document with odd max_size value can be recreated
@@ -350,7 +350,7 @@ class TestInstance(MongoDBTestCase):
             name = StringField()
             meta = {"allow_inheritance": True}
 
-        with pytest.raises(ValueError, match="Cannot override primary key field") as e:
+        with pytest.raises(ValueError, match="Cannot override primary key field"):
 
             class EmailUser(User):
                 email = StringField(primary_key=True)
@@ -620,7 +620,7 @@ class TestInstance(MongoDBTestCase):
             f.reload()
 
     def test_reload_of_non_strict_with_special_field_name(self):
-        """Ensures reloading works for documents with meta strict == False."""
+        """Ensures reloading works for documents with meta strict is False."""
 
         class Post(Document):
             meta = {"strict": False}
@@ -832,13 +832,13 @@ class TestInstance(MongoDBTestCase):
         t = TestDocument(status="published")
         t.save(clean=False)
         assert t.status == "published"
-        assert t.cleaned == False
+        assert t.cleaned is False
 
         t = TestDocument(status="published")
-        assert t.cleaned == False
+        assert t.cleaned is False
         t.save(clean=True)
         assert t.status == "published"
-        assert t.cleaned == True
+        assert t.cleaned is True
         raw_doc = get_as_pymongo(t)
         # Make sure clean changes makes it to the db
         assert raw_doc == {"status": "published", "cleaned": True, "_id": t.id}
@@ -1600,7 +1600,7 @@ class TestInstance(MongoDBTestCase):
         person = self.Person.objects.get()
         assert person.name == "User"
         assert person.age == 21
-        assert person.active == False
+        assert person.active is False
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
         self,
@@ -2521,9 +2521,9 @@ class TestInstance(MongoDBTestCase):
         assert all_user_dic.get(u1, False) == "OK"
         assert all_user_dic.get(u2, False) == "OK"
         assert all_user_dic.get(u3, False) == "OK"
-        assert all_user_dic.get(u4, False) == False  # New object
-        assert all_user_dic.get(b1, False) == False  # Other object
-        assert all_user_dic.get(b2, False) == False  # Other object
+        assert all_user_dic.get(u4, False) is False  # New object
+        assert all_user_dic.get(b1, False) is False  # Other object
+        assert all_user_dic.get(b2, False) is False  # Other object
 
         # Make sure docs are properly identified in a set (__hash__ is used
         # for hashing the docs).
@@ -3216,7 +3216,7 @@ class TestInstance(MongoDBTestCase):
     def test_mixed_creation(self):
         """Document cannot be instantiated using mixed arguments."""
         with pytest.raises(TypeError) as exc_info:
-            person = self.Person("Test User", age=42)
+            self.Person("Test User", age=42)
 
         expected_msg = (
             "Instantiating a document with positional arguments is not "
@@ -3227,7 +3227,7 @@ class TestInstance(MongoDBTestCase):
     def test_positional_creation_embedded(self):
         """Embedded document cannot be created using positional arguments."""
         with pytest.raises(TypeError) as exc_info:
-            job = self.Job("Test Job", 4)
+            self.Job("Test Job", 4)
 
         expected_msg = (
             "Instantiating a document with positional arguments is not "
@@ -3238,7 +3238,7 @@ class TestInstance(MongoDBTestCase):
     def test_mixed_creation_embedded(self):
         """Embedded document cannot be created using mixed arguments."""
         with pytest.raises(TypeError) as exc_info:
-            job = self.Job("Test Job", years=4)
+            self.Job("Test Job", years=4)
 
         expected_msg = (
             "Instantiating a document with positional arguments is not "
@@ -3432,7 +3432,7 @@ class TestInstance(MongoDBTestCase):
             meta = {"shard_key": ("id", "name")}
 
         p = Person.from_json('{"name": "name", "age": 27}', created=True)
-        assert p._created == True
+        assert p._created is True
         p.name = "new name"
         p.id = "12345"
         assert p.name == "new name"
@@ -3450,7 +3450,7 @@ class TestInstance(MongoDBTestCase):
             meta = {"shard_key": ("id", "name")}
 
         p = Person._from_son({"name": "name", "age": 27}, created=True)
-        assert p._created == True
+        assert p._created is True
         p.name = "new name"
         p.id = "12345"
         assert p.name == "new name"
@@ -3463,7 +3463,7 @@ class TestInstance(MongoDBTestCase):
         Person.objects.delete()
 
         p = Person.from_json('{"name": "name"}', created=False)
-        assert p._created == False
+        assert p._created is False
         assert p.id is None
 
         # Make sure the document is subsequently persisted correctly.
@@ -3483,7 +3483,7 @@ class TestInstance(MongoDBTestCase):
         p = Person.from_json(
             '{"_id": "5b85a8b04ec5dc2da388296e", "name": "name"}', created=False
         )
-        assert p._created == False
+        assert p._created is False
         assert p._changed_fields == []
         assert p.name == "name"
         assert p.id == ObjectId("5b85a8b04ec5dc2da388296e")

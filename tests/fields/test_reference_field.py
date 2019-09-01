@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 from bson import DBRef, SON
+import pytest
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
-import pytest
 
 
 class TestReferenceField(MongoDBTestCase):
@@ -58,21 +57,6 @@ class TestReferenceField(MongoDBTestCase):
         post1.author = post2
         with pytest.raises(ValidationError):
             post1.validate()
-
-    def test_objectid_reference_fields(self):
-        """Make sure storing Object ID references works."""
-
-        class Person(Document):
-            name = StringField()
-            parent = ReferenceField("self")
-
-        Person.drop_collection()
-
-        p1 = Person(name="John").save()
-        Person(name="Ross", parent=p1.pk).save()
-
-        p = Person.objects.get(name="Ross")
-        assert p.parent == p1
 
     def test_dbref_reference_fields(self):
         """Make sure storing references as bson.dbref.DBRef works."""

@@ -4,6 +4,7 @@ import unittest
 
 from bson import DBRef, ObjectId, SON
 from nose.plugins.skip import SkipTest
+import pytest
 
 from mongoengine import (
     BooleanField,
@@ -39,7 +40,6 @@ from mongoengine.base import BaseField, EmbeddedDocumentList, _document_registry
 from mongoengine.errors import DeprecatedError
 
 from tests.utils import MongoDBTestCase
-import pytest
 
 
 class TestField(MongoDBTestCase):
@@ -1838,7 +1838,7 @@ class TestField(MongoDBTestCase):
 
         user = User.objects(bookmarks__all=[post_1]).first()
 
-        assert user != None
+        assert user is not None
         assert user.bookmarks[0] == post_1
 
     def test_generic_reference_filter_by_dbref(self):

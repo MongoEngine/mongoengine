@@ -3,11 +3,11 @@ import re
 import unittest
 
 from bson import ObjectId
+import pytest
 
 from mongoengine import *
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import Q
-import pytest
 
 
 class TestQ(unittest.TestCase):

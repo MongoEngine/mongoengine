@@ -3,10 +3,10 @@ import datetime
 from bson.tz_util import utc
 from nose.plugins.skip import SkipTest
 import pymongo
-from pymongo import MongoClient
-from pymongo import ReadPreference
-from pymongo.errors import InvalidName, OperationFailure
 
+from pymongo import MongoClient, ReadPreference
+from pymongo.errors import InvalidName, OperationFailure
+import pytest
 
 try:
     import unittest2 as unittest
@@ -29,7 +29,6 @@ from mongoengine.connection import (
     get_connection,
     get_db,
 )
-import pytest
 
 
 def get_tz_awareness(connection):

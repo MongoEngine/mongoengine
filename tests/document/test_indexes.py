@@ -5,11 +5,11 @@ from datetime import datetime
 from nose.plugins.skip import SkipTest
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
+import pytest
 from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
-import pytest
 
 
 class TestIndexes(unittest.TestCase):

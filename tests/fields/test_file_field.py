@@ -137,7 +137,6 @@ class TestFileField(MongoDBTestCase):
 
         text = six.b("Hello, World!")
         more_text = six.b("Foo Bar")
-        content_type = "text/plain"
 
         streamfile = StreamFile()
         streamfile.save()
@@ -205,7 +204,7 @@ class TestFileField(MongoDBTestCase):
             doc_b = GridDocument.objects.with_id(doc_a.id)
             doc_b.the_file.replace(f, filename="doc_b")
             doc_b.save()
-            assert doc_b.the_file.grid_id != None
+            assert doc_b.the_file.grid_id is not None
 
             # Test it matches
             doc_c = GridDocument.objects.with_id(doc_b.id)

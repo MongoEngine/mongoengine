@@ -2,12 +2,11 @@
 import uuid
 
 from bson import Binary
-from nose.plugins.skip import SkipTest
+import pytest
 import six
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase
-import pytest
 
 BIN_VALUE = six.b(
     "\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde\xe6\x87\xb1\x7f\xc6\xe6\xd9r\x18\xf5"

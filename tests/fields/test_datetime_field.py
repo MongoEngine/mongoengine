@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime as dt
+
+import pytest
 import six
 
 try:
@@ -11,7 +13,6 @@ from mongoengine import *
 from mongoengine import connection
 
 from tests.utils import MongoDBTestCase
-import pytest
 
 
 class TestDateTimeField(MongoDBTestCase):

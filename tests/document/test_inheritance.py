@@ -2,6 +2,7 @@
 import unittest
 import warnings
 
+import pytest
 from six import iteritems
 
 from mongoengine import (
@@ -17,7 +18,6 @@ from mongoengine import (
 from mongoengine.pymongo_support import list_collection_names
 from tests.fixtures import Base
 from tests.utils import MongoDBTestCase
-import pytest
 
 
 class TestInheritance(MongoDBTestCase):
@@ -335,9 +335,7 @@ class TestInheritance(MongoDBTestCase):
             name = StringField()
 
         # can't inherit because Animal didn't explicitly allow inheritance
-        with pytest.raises(
-            ValueError, match="Document Animal may not be subclassed"
-        ) as exc_info:
+        with pytest.raises(ValueError, match="Document Animal may not be subclassed"):
 
             class Dog(Animal):
                 pass
@@ -475,7 +473,7 @@ class TestInheritance(MongoDBTestCase):
             meta = {"abstract": True, "allow_inheritance": False}
 
         city = City(continent="asia")
-        assert None == city.pk
+        assert city.pk is None
         # TODO: expected error? Shouldn't we create a new error type?
         with pytest.raises(KeyError):
             setattr(city, "pk", 1)

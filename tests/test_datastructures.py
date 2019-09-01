@@ -1,7 +1,7 @@
 import unittest
-from six import iterkeys
 
 import pytest
+from six import iterkeys
 
 from mongoengine import Document
 from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict

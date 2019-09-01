@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
@@ -10,7 +12,6 @@ from mongoengine.context_managers import (
     switch_db,
 )
 from mongoengine.pymongo_support import count_documents
-import pytest
 
 
 class ContextManagersTest(unittest.TestCase):
@@ -214,7 +215,6 @@ class ContextManagersTest(unittest.TestCase):
                 raise TypeError()
 
     def test_query_counter_does_not_swallow_exception(self):
-
         with pytest.raises(TypeError):
             with query_counter() as q:
                 raise TypeError()

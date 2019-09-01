@@ -1,8 +1,9 @@
 import unittest
 
+import pytest
+
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
-import pytest
 
 
 class TestQueryFieldList(unittest.TestCase):
@@ -221,7 +222,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
         assert obj.comments == []
 
         obj = BlogPost.objects.only("various.test_dynamic.some").get()
-        assert obj.various["test_dynamic"].some == True
+        assert obj.various["test_dynamic"].some is True
 
         obj = BlogPost.objects.only("content", "comments.title").get()
         assert obj.content == "Had a good coffee today..."

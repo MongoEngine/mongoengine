@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
+import pytest
 import six
 
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
-import pytest
 
 
 class TestFloatField(MongoDBTestCase):

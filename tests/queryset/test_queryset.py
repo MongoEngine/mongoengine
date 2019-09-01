@@ -9,6 +9,7 @@ from bson import DBRef, ObjectId
 import pymongo
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
+import pytest
 import six
 from six import iteritems
 
@@ -24,7 +25,6 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
-import pytest
 
 
 class db_ops_tracker(query_counter):
@@ -1712,11 +1712,11 @@ class TestQueryset(unittest.TestCase):
         post = BlogPost(content="Watching TV", category=lameness)
         post.save()
 
-        assert 1 == BlogPost.objects.count()
-        assert "Lameness" == BlogPost.objects.first().category.name
+        assert BlogPost.objects.count() == 1
+        assert BlogPost.objects.first().category.name == "Lameness"
         Category.objects.delete()
-        assert 1 == BlogPost.objects.count()
-        assert None == BlogPost.objects.first().category
+        assert BlogPost.objects.count() == 1
+        assert BlogPost.objects.first().category is None
 
     def test_reverse_delete_rule_nullify_on_abstract_document(self):
         """Ensure nullification of references to deleted documents when
@@ -1739,11 +1739,11 @@ class TestQueryset(unittest.TestCase):
 
         BlogPost(content="Watching TV", author=me).save()
 
-        assert 1 == BlogPost.objects.count()
-        assert me == BlogPost.objects.first().author
+        assert BlogPost.objects.count() == 1
+        assert BlogPost.objects.first().author == me
         self.Person.objects(name="Test User").delete()
-        assert 1 == BlogPost.objects.count()
-        assert None == BlogPost.objects.first().author
+        assert BlogPost.objects.count() == 1
+        assert BlogPost.objects.first().author is None
 
     def test_reverse_delete_rule_deny(self):
         """Ensure deletion gets denied on documents that still have references
@@ -1896,7 +1896,7 @@ class TestQueryset(unittest.TestCase):
         """
         p1 = self.Person(name="User Z", age=20).save()
         del_result = p1.delete(w=0)
-        assert None == del_result
+        assert del_result is None
 
     def test_reference_field_find(self):
         """Ensure cascading deletion of referring documents from the database.
@@ -2047,7 +2047,7 @@ class TestQueryset(unittest.TestCase):
 
         post = BlogPost(title="garbage").save()
 
-        assert post.title != None
+        assert post.title is not None
         BlogPost.objects.update_one(unset__title=1)
         post.reload()
         assert post.title is None
@@ -5006,7 +5006,7 @@ class TestQueryset(unittest.TestCase):
                 # PyPy evaluates __len__ when iterating with list comprehensions while CPython does not.
                 # This may be a bug in PyPy (PyPy/#1802) but it does not affect
                 # the behavior of MongoEngine.
-                assert None == people._len
+                assert people._len is None
             assert q == 1
 
             list(people)
@@ -5053,7 +5053,7 @@ class TestQueryset(unittest.TestCase):
         Person(name="a").save()
         qs = Person.objects()
         _ = list(qs)
-        with pytest.raises(OperationError, match="QuerySet already cached") as ctx_err:
+        with pytest.raises(OperationError, match="QuerySet already cached"):
             qs.no_cache()
 
     def test_no_cached_queryset_no_cache_back_to_cache(self):

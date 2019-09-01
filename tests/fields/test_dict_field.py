@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import pytest
+
 from mongoengine import *
 from mongoengine.base import BaseDict
 
 from tests.utils import MongoDBTestCase, get_as_pymongo
-import pytest
 
 
 class TestDictField(MongoDBTestCase):
@@ -290,7 +291,7 @@ class TestDictField(MongoDBTestCase):
         e.save()
         e.update(set__mapping={"ints": [3, 4]})
         e.reload()
-        assert BaseDict == type(e.mapping)
+        assert isinstance(e.mapping, BaseDict)
         assert {"ints": [3, 4]} == e.mapping
 
         # try creating an invalid mapping
