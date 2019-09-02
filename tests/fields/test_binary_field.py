@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import uuid
 
+from bson import Binary
 from nose.plugins.skip import SkipTest
 import six
-
-from bson import Binary
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase
@@ -77,8 +76,6 @@ class TestBinaryField(MongoDBTestCase):
         self.assertEqual(0, Attachment.objects.count())
 
     def test_primary_filter_by_binary_pk_as_str(self):
-        raise SkipTest("Querying by id as string is not currently supported")
-
         class Attachment(Document):
             id = BinaryField(primary_key=True)
 

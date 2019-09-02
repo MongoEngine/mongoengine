@@ -5,10 +5,8 @@ from bson.son import SON
 from mongoengine import *
 from mongoengine.queryset import Q, transform
 
-__all__ = ("TransformTest",)
 
-
-class TransformTest(unittest.TestCase):
+class TestTransform(unittest.TestCase):
     def setUp(self):
         connect(db="mongoenginetest")
 

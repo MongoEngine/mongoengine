@@ -2292,7 +2292,7 @@ class LineStringField(GeoJsonBaseField):
     .. code-block:: js
 
         {'type' : 'LineString' ,
-         'coordinates' : [[x1, y1], [x1, y1] ... [xn, yn]]}
+         'coordinates' : [[x1, y1], [x2, y2] ... [xn, yn]]}
 
     You can either pass a dict with the full information or a list of points.
 

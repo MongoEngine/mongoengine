@@ -2,15 +2,12 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.pymongo_support import list_collection_names
-
-from mongoengine.queryset import NULLIFY, PULL
 from mongoengine.connection import get_db
+from mongoengine.pymongo_support import list_collection_names
+from mongoengine.queryset import NULLIFY, PULL
 
-__all__ = ("ClassMethodsTest",)
 
-
-class ClassMethodsTest(unittest.TestCase):
+class TestClassMethods(unittest.TestCase):
     def setUp(self):
         connect(db="mongoenginetest")
         self.db = get_db()

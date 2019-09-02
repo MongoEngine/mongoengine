@@ -2,16 +2,10 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.connection import get_db
-
-__all__ = ("GeoFieldTest",)
+from tests.utils import MongoDBTestCase
 
 
-class GeoFieldTest(unittest.TestCase):
-    def setUp(self):
-        connect(db="mongoenginetest")
-        self.db = get_db()
-
+class TestGeoField(MongoDBTestCase):
     def _test_for_expected_error(self, Cls, loc, expected):
         try:
             Cls(loc=loc).validate()

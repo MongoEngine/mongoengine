@@ -8,10 +8,8 @@ from mongoengine import *
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import Q
 
-__all__ = ("QTest",)
 
-
-class QTest(unittest.TestCase):
+class TestQ(unittest.TestCase):
     def setUp(self):
         connect(db="mongoenginetest")
 

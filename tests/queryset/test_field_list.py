@@ -3,10 +3,8 @@ import unittest
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
 
-__all__ = ("QueryFieldListTest", "OnlyExcludeAllTest")
 
-
-class QueryFieldListTest(unittest.TestCase):
+class TestQueryFieldList(unittest.TestCase):
     def test_empty(self):
         q = QueryFieldList()
         self.assertFalse(q)
@@ -66,7 +64,7 @@ class QueryFieldListTest(unittest.TestCase):
         self.assertEqual(q.as_dict(), {"a": {"$slice": 5}})
 
 
-class OnlyExcludeAllTest(unittest.TestCase):
+class TestOnlyExcludeAll(unittest.TestCase):
     def setUp(self):
         connect(db="mongoenginetest")
 

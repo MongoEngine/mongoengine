@@ -2,39 +2,38 @@
 import datetime
 import unittest
 
+from bson import DBRef, ObjectId, SON
 from nose.plugins.skip import SkipTest
 
-from bson import DBRef, ObjectId, SON
-
 from mongoengine import (
-    Document,
-    StringField,
-    IntField,
-    DateTimeField,
-    DateField,
-    ValidationError,
+    BooleanField,
     ComplexDateTimeField,
-    FloatField,
-    ListField,
-    ReferenceField,
+    DateField,
+    DateTimeField,
     DictField,
+    Document,
+    DoesNotExist,
+    DynamicDocument,
+    DynamicField,
     EmbeddedDocument,
     EmbeddedDocumentField,
-    GenericReferenceField,
-    DoesNotExist,
-    NotRegistered,
-    OperationError,
-    DynamicField,
-    FieldDoesNotExist,
     EmbeddedDocumentListField,
-    MultipleObjectsReturned,
-    NotUniqueError,
-    BooleanField,
-    ObjectIdField,
-    SortedListField,
+    FieldDoesNotExist,
+    FloatField,
     GenericLazyReferenceField,
+    GenericReferenceField,
+    IntField,
     LazyReferenceField,
-    DynamicDocument,
+    ListField,
+    MultipleObjectsReturned,
+    NotRegistered,
+    NotUniqueError,
+    ObjectIdField,
+    OperationError,
+    ReferenceField,
+    SortedListField,
+    StringField,
+    ValidationError,
 )
 from mongoengine.base import BaseField, EmbeddedDocumentList, _document_registry
 from mongoengine.errors import DeprecatedError
@@ -42,7 +41,7 @@ from mongoengine.errors import DeprecatedError
 from tests.utils import MongoDBTestCase
 
 
-class FieldTest(MongoDBTestCase):
+class TestField(MongoDBTestCase):
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating
         a document.
@@ -343,7 +342,7 @@ class FieldTest(MongoDBTestCase):
         doc.save()
 
         # Unset all the fields
-        obj = HandleNoneFields._get_collection().update(
+        HandleNoneFields._get_collection().update(
             {"_id": doc.id},
             {"$unset": {"str_fld": 1, "int_fld": 1, "flt_fld": 1, "comp_dt_fld": 1}},
         )
@@ -416,13 +415,13 @@ class FieldTest(MongoDBTestCase):
         # name starting with $
         with self.assertRaises(ValueError):
 
-            class User(Document):
+            class UserX1(Document):
                 name = StringField(db_field="$name")
 
         # name containing a null character
         with self.assertRaises(ValueError):
 
-            class User(Document):
+            class UserX2(Document):
                 name = StringField(db_field="name\0")
 
     def test_list_validation(self):
@@ -2267,7 +2266,7 @@ class FieldTest(MongoDBTestCase):
             Doc(bar="test")
 
 
-class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
+class TestEmbeddedDocumentListField(MongoDBTestCase):
     def setUp(self):
         """
         Create two BlogPost entries in the database, each with
@@ -2320,7 +2319,7 @@ class EmbeddedDocumentListFieldTestCase(MongoDBTestCase):
 
         # Test with a Document
         post = self.BlogPost(comments=Title(content="garbage"))
-        with self.assertRaises(ValidationError) as e:
+        with self.assertRaises(ValidationError):
             post.validate()
         self.assertIn("'comments'", str(ctx_err.exception))
         self.assertIn(

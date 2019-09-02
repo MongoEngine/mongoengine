@@ -15,13 +15,11 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.pymongo_support import list_collection_names
-from tests.utils import MongoDBTestCase
 from tests.fixtures import Base
+from tests.utils import MongoDBTestCase
 
-__all__ = ("InheritanceTest",)
 
-
-class InheritanceTest(MongoDBTestCase):
+class TestInheritance(MongoDBTestCase):
     def tearDown(self):
         for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
@@ -401,7 +399,7 @@ class InheritanceTest(MongoDBTestCase):
         class Animal(FinalDocument):
             name = StringField()
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError):
 
             class Mammal(Animal):
                 pass

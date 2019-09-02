@@ -1,8 +1,6 @@
 import unittest
 
-from mongoengine import connect, Document, IntField, StringField, ListField
-
-__all__ = ("FindAndModifyTest",)
+from mongoengine import Document, IntField, ListField, StringField, connect
 
 
 class Doc(Document):
@@ -10,7 +8,7 @@ class Doc(Document):
     value = IntField()
 
 
-class FindAndModifyTest(unittest.TestCase):
+class TestFindAndModify(unittest.TestCase):
     def setUp(self):
         connect(db="mongoenginetest")
         Doc.drop_collection()
