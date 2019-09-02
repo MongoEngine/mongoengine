@@ -6,7 +6,7 @@ from mongoengine import *
 from mongoengine.queryset import QueryFieldList
 
 
-class TestQueryFieldList(unittest.TestCase):
+class TestQueryFieldList:
     def test_empty(self):
         q = QueryFieldList()
         assert not q

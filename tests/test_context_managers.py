@@ -14,7 +14,7 @@ from mongoengine.context_managers import (
 from mongoengine.pymongo_support import count_documents
 
 
-class ContextManagersTest(unittest.TestCase):
+class TestContextManagers:
     def test_switch_db_context_manager(self):
         connect("mongoenginetest")
         register_connection("testdb-1", "mongoenginetest2")

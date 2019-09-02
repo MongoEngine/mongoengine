@@ -8,7 +8,7 @@ from mongoengine.base.utils import LazyRegexCompiler
 signal_output = []
 
 
-class LazyRegexCompilerTest(unittest.TestCase):
+class TestLazyRegexCompiler:
     def test_lazy_regex_compiler_verify_laziness_of_descriptor(self):
         class UserEmail(object):
             EMAIL_REGEX = LazyRegexCompiler("@", flags=32)

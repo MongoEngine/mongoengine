@@ -15,7 +15,7 @@ class DocumentStub(object):
         self._changed_fields.append(key)
 
 
-class TestBaseDict(unittest.TestCase):
+class TestBaseDict:
     @staticmethod
     def _get_basedict(dict_items):
         """Get a BaseList bound to a fake document instance"""
@@ -151,7 +151,7 @@ class TestBaseDict(unittest.TestCase):
         assert base_dict._instance._changed_fields == ["my_name.a_new_attr"]
 
 
-class TestBaseList(unittest.TestCase):
+class TestBaseList:
     @staticmethod
     def _get_baselist(list_items):
         """Get a BaseList bound to a fake document instance"""
@@ -360,11 +360,11 @@ class TestBaseList(unittest.TestCase):
 
 
 class TestStrictDict(unittest.TestCase):
-    def strict_dict_class(self, *args, **kwargs):
-        return StrictDict.create(*args, **kwargs)
-
     def setUp(self):
         self.dtype = self.strict_dict_class(("a", "b", "c"))
+
+    def strict_dict_class(self, *args, **kwargs):
+        return StrictDict.create(*args, **kwargs)
 
     def test_init(self):
         d = self.dtype(a=1, b=1, c=1)

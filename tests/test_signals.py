@@ -7,7 +7,7 @@ from mongoengine import signals
 signal_output = []
 
 
-class SignalTests(unittest.TestCase):
+class TestSignal(unittest.TestCase):
     """
     Testing signals before/after saving and deleting.
     """
