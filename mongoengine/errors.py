@@ -12,6 +12,7 @@ __all__ = (
     "InvalidQueryError",
     "OperationError",
     "NotUniqueError",
+    "BulkWriteError",
     "FieldDoesNotExist",
     "ValidationError",
     "SaveConditionError",
@@ -48,6 +49,10 @@ class OperationError(Exception):
 
 
 class NotUniqueError(OperationError):
+    pass
+
+
+class BulkWriteError(OperationError):
     pass
 
 
