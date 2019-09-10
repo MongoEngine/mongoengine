@@ -23,6 +23,9 @@ MongoDB. To install it, simply run
 :doc:`upgrade`
   How to upgrade MongoEngine.
 
+:doc:`faq`
+  Frequently Asked Questions
+
 :doc:`django`
   Using MongoEngine and Django
 
@@ -73,6 +76,7 @@ formats for offline reading.
     apireference
     changelog
     upgrade
+    faq
     django
 
 Indices and tables
