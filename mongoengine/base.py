@@ -796,7 +796,7 @@ class BaseDocument(object):
         """
         # get the class name from the document, falling back to the given
         # class if unavailable
-        class_name = son.pop(u'_cls', cls._class_name)
+        class_name = son.get(u'_cls', cls._class_name)
 
         data = dict((str(key), value) for key, value in son.items())
 
