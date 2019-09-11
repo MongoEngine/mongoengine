@@ -748,8 +748,10 @@ class EmbeddedDocumentField(BaseField):
     def to_python(self, value, _requested_fields=None, _requested_fields_value=None):
         if not isinstance(value, self.document_type):
             return self.document_type._from_son(
-                value, _auto_dereference=self._auto_dereference,
-                _requested_fields=_requested_fields, _requested_fields_value=_requested_fields_value
+                value,
+                _auto_dereference=self._auto_dereference,
+                _requested_fields=_requested_fields,
+                _requested_fields_value=_requested_fields_value,
             )
         return value
 

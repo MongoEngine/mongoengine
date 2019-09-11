@@ -135,8 +135,16 @@ class BaseField(object):
             # Document class being used rather than a document object
             return self
 
-        if instance._initialised and hasattr(instance, '_requested_fields') and self.db_field not in instance._requested_fields:
-            raise FieldIsNotRetrieved("Field \"{}\" of model \"{}\" does not retrieved".format(self.name, owner.__name__))
+        if (
+            instance._initialised
+            and hasattr(instance, "_requested_fields")
+            and self.db_field not in instance._requested_fields
+        ):
+            raise FieldIsNotRetrieved(
+                'Field "{}" of model "{}" does not retrieved'.format(
+                    self.name, owner.__name__
+                )
+            )
 
         # Get value from document instance if available
         return instance._data.get(self.name)
@@ -166,7 +174,7 @@ class BaseField(object):
                 # attempt to do so (e.g. tz-naive and tz-aware datetimes).
                 # Mark the field as changed in such cases.
                 instance._mark_as_changed(self.name)
-            if hasattr(instance, '_requested_fields'):
+            if hasattr(instance, "_requested_fields"):
                 instance._requested_fields.add(self.db_field)
 
         EmbeddedDocument = _import_class("EmbeddedDocument")
@@ -375,11 +383,12 @@ class ComplexBaseField(BaseField):
             embedded_kwargs = {}
             if isinstance(self.field, EmbeddedDocumentField):
                 embedded_kwargs = {
-                    '_requested_fields': _requested_fields,
-                    '_requested_fields_value': _requested_fields_value
+                    "_requested_fields": _requested_fields,
+                    "_requested_fields_value": _requested_fields_value,
                 }
             value_dict = {
-                key: self.field.to_python(item, **embedded_kwargs) for key, item in value.items()
+                key: self.field.to_python(item, **embedded_kwargs)
+                for key, item in value.items()
             }
         else:
             Document = _import_class("Document")

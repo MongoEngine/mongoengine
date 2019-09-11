@@ -23,12 +23,12 @@ from mongoengine.queryset import (
     queryset_manager,
 )
 
-Document._meta['check_fields_retrieved'] = True
+Document._meta["check_fields_retrieved"] = True
 
 
 class TestException(unittest.TestCase):
     def setUp(self):
-            connect(db="mongoenginetest")
+        connect(db="mongoenginetest")
 
     def test_exception(self):
         import random
@@ -53,38 +53,37 @@ class TestException(unittest.TestCase):
 
         City.drop_collection()
 
-        literals = 'ABCDEF'
+        literals = "ABCDEF"
 
         schools = [
             {
-                'name': 'School number 1', 
-                'director': Person(name='Director 1'),
-                'classes': [
-                    {
-                        'number': 1,
-                        'literal': random.choice(literals),
-                    }
-                ]
+                "name": "School number 1",
+                "director": Person(name="Director 1"),
+                "classes": [{"number": 1, "literal": random.choice(literals)}],
             }
         ]
 
-        City(schools=schools, name='Moscow', postal_code='000000').save()
+        City(schools=schools, name="Moscow", postal_code="000000").save()
 
-        city1 = City.objects.only('postal_code', 'schools.classes.number', 'schools.director.name').first()
-        city2 = City.objects.exclude('name', 'schools.name', 'schools.classes.literal', 'schools.director.age').first()
+        city1 = City.objects.only(
+            "postal_code", "schools.classes.number", "schools.director.name"
+        ).first()
+        city2 = City.objects.exclude(
+            "name", "schools.name", "schools.classes.literal", "schools.director.age"
+        ).first()
 
         for city in [city1, city2]:
             excpected_exceptions = [
-                (city, 'name'),
-                (city.schools[0], 'name'),
-                (city.schools[0].director, 'age'),
-                (city.schools[0].classes[0], 'literal'),
+                (city, "name"),
+                (city.schools[0], "name"),
+                (city.schools[0].director, "age"),
+                (city.schools[0].classes[0], "literal"),
             ]
-            
+
             no_exceptions = [
-                (city, 'postal_code', '000000'),
-                (city.schools[0].director, 'name', 'Director 1'),
-                (city.schools[0].classes[0], 'number', 1),
+                (city, "postal_code", "000000"),
+                (city.schools[0].director, "name", "Director 1"),
+                (city.schools[0].classes[0], "number", 1),
             ]
             for doc, field in excpected_exceptions:
                 with self.assertRaises(FieldIsNotRetrieved):
@@ -92,7 +91,7 @@ class TestException(unittest.TestCase):
 
             for doc, field, value in no_exceptions:
                 assert getattr(doc, field) == value
-            
+
 
 if __name__ == "__main__":
     unittest.main()
