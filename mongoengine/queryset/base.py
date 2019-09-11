@@ -157,7 +157,7 @@ class BaseQuerySet(object):
         [<User: User object>, <User: User object>]
         """
         queryset = self.clone()
-        
+
         # To pass into Document
         _requested_fields, _requested_fields_value = (None, None)
         if self._document._meta.get('check_fields_retrieved', False):
@@ -1543,7 +1543,6 @@ class BaseQuerySet(object):
         raw_doc = six.next(self._cursor)
         if self._as_pymongo:
             return raw_doc
-
 
         _requested_fields, _requested_fields_value = (None, None)
         if self._document._meta.get('check_fields_retrieved', False):

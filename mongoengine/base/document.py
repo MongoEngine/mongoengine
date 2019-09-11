@@ -86,8 +86,7 @@ class BaseDocument(object):
 
         _created = values.pop("_created", True)
 
-
-        # will raise exception if we try to retrieve fields not in .only() and in .exclude() 
+        # will raise exception if we try to retrieve fields not in .only() and in .exclude()
         _requested_fields = values.pop('_requested_fields', None)
         _requested_fields_value = values.pop('_requested_fields_value', None)
 
@@ -101,7 +100,7 @@ class BaseDocument(object):
                     self._requested_fields = set(all_dbfields)
             else:
                 self._requested_fields = set(all_dbfields) - set(_requested_fields)
-        
+
         signals.pre_init.send(self.__class__, document=self, values=values)
 
         # Check if there are undefined fields supplied to the constructor,
@@ -788,7 +787,7 @@ class BaseDocument(object):
             embedded_kwargs = {}
             if isinstance(field, (EmbeddedDocumentField, ComplexBaseField)):
                 embedded_kwargs = {
-                    '_requested_fields': _requested_fields_dict.get(field.db_field), 
+                    '_requested_fields': _requested_fields_dict.get(field.db_field),
                     '_requested_fields_value': _requested_fields_value
                 }
                 if _requested_fields_value == 0 and _requested_fields_dict.get(field.db_field, None):
@@ -815,9 +814,9 @@ class BaseDocument(object):
         # In STRICT documents, remove any keys that aren't in cls._fields
         if cls.STRICT:
             data = {k: v for k, v in iteritems(data) if k in cls._fields}
-        
+
         obj = cls(
-            __auto_convert=False, _created=created, __only_fields=only_fields, 
+            __auto_convert=False, _created=created, __only_fields=only_fields,
             _requested_fields=_requested_fields_dict.keys(), _requested_fields_value=_requested_fields_value, **data
         )
         obj._changed_fields = []
