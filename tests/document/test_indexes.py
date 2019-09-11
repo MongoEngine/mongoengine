@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime
 
 from nose.plugins.skip import SkipTest
+from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
 from six import iteritems
 
@@ -535,6 +536,42 @@ class TestIndexes(unittest.TestCase):
         # Invalid shape argument (missing list brackets) should fail.
         with self.assertRaises(ValueError):
             BlogPost.objects.hint(("tags", 1)).count()
+
+    def test_collation(self):
+        base = {"locale": "en", "strength": 2}
+
+        class BlogPost(Document):
+            name = StringField()
+            meta = {
+                "indexes": [
+                    {"fields": ["name"], "name": "name_index", "collation": base}
+                ]
+            }
+
+        BlogPost.drop_collection()
+
+        names = ["tag1", "Tag2", "tag3", "Tag4", "tag5"]
+        for name in names:
+            BlogPost(name=name).save()
+
+        query_result = BlogPost.objects.collation(base).order_by("name")
+        self.assertEqual(
+            [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
+        )
+        self.assertEqual(5, query_result.count())
+
+        query_result = BlogPost.objects.collation(Collation(**base)).order_by("name")
+        self.assertEqual(
+            [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
+        )
+        self.assertEqual(5, query_result.count())
+
+        incorrect_collation = {"arndom": "wrdo"}
+        with self.assertRaises(OperationFailure):
+            BlogPost.objects.collation(incorrect_collation).count()
+
+        query_result = BlogPost.objects.collation({}).order_by("name")
+        self.assertEqual([x.name for x in query_result], sorted(names))
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.
