@@ -79,7 +79,6 @@ class BaseDocument:
 
         _created = values.pop("_created", True)
 
-
         # will raise exception if we try to retrieve fields not in .only() and in .exclude()
         _requested_fields = values.pop('_requested_fields', None)
         _requested_fields_value = values.pop('_requested_fields_value', None)

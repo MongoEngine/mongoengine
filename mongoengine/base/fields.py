@@ -11,7 +11,7 @@ from mongoengine.base.datastructures import (
     EmbeddedDocumentList,
 )
 from mongoengine.common import _import_class
-from mongoengine.errors import DeprecatedError, ValidationError, FieldIsNotRetrieved
+from mongoengine.errors import DeprecatedError, FieldIsNotRetrieved, ValidationError
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
@@ -369,12 +369,11 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
-            
             self.field._auto_dereference = self._auto_dereference
             embedded_kwargs = {}
             if isinstance(self.field, EmbeddedDocumentField):
                 embedded_kwargs = {
-                    '_requested_fields': _requested_fields, 
+                    '_requested_fields': _requested_fields,
                     '_requested_fields_value': _requested_fields_value
                 }
             value_dict = {

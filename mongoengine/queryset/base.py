@@ -1583,7 +1583,6 @@ class BaseQuerySet:
         if self._as_pymongo:
             return raw_doc
 
-
         _requested_fields, _requested_fields_value = (None, None)
         if self._document._meta.get('check_fields_retrieved', False):
             _requested_fields, _requested_fields_value = self._loaded_fields.fields, self._loaded_fields.value
