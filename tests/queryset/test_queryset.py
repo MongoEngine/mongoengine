@@ -5809,8 +5809,18 @@ class TestQueryset(unittest.TestCase):
         self.Person.objects.create(name="Baz")
         self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 3)
 
-        newPerson = self.Person.objects.create(name="Foo_1")
+        self.Person.objects.create(name="Foo_1")
         self.assertEqual(self.Person.objects.count(with_limit_and_skip=True), 4)
+
+    def test_no_cursor_timeout(self):
+        qs = self.Person.objects()
+        self.assertEqual(qs._cursor_args, {})  # ensure no regression of  #2148
+
+        qs = self.Person.objects().timeout(True)
+        self.assertEqual(qs._cursor_args, {})
+
+        qs = self.Person.objects().timeout(False)
+        self.assertEqual(qs._cursor_args, {"no_cursor_timeout": True})
 
 
 if __name__ == "__main__":
