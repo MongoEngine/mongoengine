@@ -20,6 +20,7 @@ from mongoengine.common import _import_class
 from mongoengine.connection import get_db
 from mongoengine.context_managers import set_write_concern, switch_db
 from mongoengine.errors import (
+    BulkWriteError,
     InvalidQueryError,
     LookUpError,
     NotUniqueError,
@@ -364,8 +365,8 @@ class BaseQuerySet(object):
         except pymongo.errors.BulkWriteError as err:
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
-            message = u"Document must not have _id value before bulk write (%s)"
-            raise NotUniqueError(message % six.text_type(err))
+            message = u"Bulk write error: (%s)"
+            raise BulkWriteError(message % six.text_type(err.details))
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", six.text_type(err)):

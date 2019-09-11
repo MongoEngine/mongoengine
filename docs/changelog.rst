@@ -18,6 +18,7 @@ Development
 - Fix updating/modifying/deleting/reloading a document that's sharded by a field with ``db_field`` specified. #2125
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
 - The codebase is now formatted using ``black``. #2109
+- In bulk write insert, the detailed error message would raise in exception.
 
 Changes in 0.18.2
 =================
