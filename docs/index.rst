@@ -29,6 +29,12 @@ MongoDB. To install it, simply run
 :doc:`django`
   Using MongoEngine and Django
 
+MongoDB and driver support
+--------------------------
+
+MongoEngine is based on the PyMongo driver and tested against multiple versions of MongoDB.
+For further details, please refer to the `readme <https://github.com/MongoEngine/mongoengine#mongoengine>`_.
+
 Community
 ---------
 
