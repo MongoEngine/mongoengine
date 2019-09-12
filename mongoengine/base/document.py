@@ -786,6 +786,7 @@ class BaseDocument(object):
         ReferenceField = _import_class("ReferenceField")
         CachedReferenceField = _import_class("CachedReferenceField")
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        ListField = _import_class("ListField")
 
         for field_name, field in fields.iteritems():
             field._auto_dereference = _auto_dereference
@@ -804,7 +805,11 @@ class BaseDocument(object):
                                                         loading_from_db=loading_from_db)
                                 _fields is not None and _fields.pop()
                             else:
-                                value = field.to_python(value)
+                                if isinstance(field, ListField):
+                                    value = field.to_python(value, loading_from_db=loading_from_db)
+                                else:
+                                    value = field.to_python(value)
+
                     data[field_name] = value
                     if field_name != field.db_field:
                         del data[field.db_field]

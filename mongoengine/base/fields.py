@@ -189,7 +189,7 @@ class BaseField(object):
         field_name = field_name if field_name else self.name
         raise ValidationError(message, errors=errors, field_name=field_name)
 
-    def to_python(self, value):
+    def to_python(self, value, **kwargs):
         """Convert a MongoDB-compatible type to a Python type.
         """
         return value
@@ -295,7 +295,7 @@ class ComplexBaseField(BaseField):
 
         return value
 
-    def to_python(self, value):
+    def to_python(self, value, **kwargs):
         """Convert a MongoDB-compatible type to a Python type.
         """
         if isinstance(value, basestring):
@@ -458,7 +458,7 @@ class ObjectIdField(BaseField):
     """A field wrapper around MongoDB's ObjectIds.
     """
 
-    def to_python(self, value):
+    def to_python(self, value, **kwargs):
         try:
             if not isinstance(value, ObjectId):
                 value = ObjectId(value)

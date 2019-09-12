@@ -72,7 +72,7 @@ class StringField(BaseField):
         self.min_length = min_length
         super(StringField, self).__init__(**kwargs)
 
-    def to_python(self, value):
+    def to_python(self, value, **kwargs):
         if isinstance(value, unicode):
             return value
         try:
@@ -719,7 +719,7 @@ class ListField(ComplexBaseField):
         kwargs.setdefault('default', lambda: [])
         super(ListField, self).__init__(**kwargs)
 
-    def to_python(self, val):
+    def to_python(self, val, loading_from_db=False):
         if val is None:
             return None
         to_python = getattr(self.field, 'to_python', None)
@@ -733,7 +733,7 @@ class ListField(ComplexBaseField):
 
         list_field_proxy = ListFieldProxy([])
         for v in val:
-            doc = to_python(v, _lazy_prefetch_base=list_field_proxy, _fields=[])
+            doc = to_python(v, _lazy_prefetch_base=list_field_proxy, _fields=[], loading_from_db=loading_from_db)
             list_field_proxy.append(doc)
             list_field_proxy._result_cache.append(doc)
         return list_field_proxy
