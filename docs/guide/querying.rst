@@ -349,9 +349,9 @@ Just as with limiting and skipping results, there is a method on a
 You could technically use ``len(User.objects)`` to get the same result, but it
 would be significantly slower than :meth:`~mongoengine.queryset.QuerySet.count`.
 When you execute a server-side count query, you let MongoDB do the heavy
-lifting and you receive a single integer over the wire. Meanwhile, len()
+lifting and you receive a single integer over the wire. Meanwhile, ``len()``
 retrieves all the results, places them in a local cache, and finally counts
-them. If we compare the performance of the two operations, len() is much slower
+them. If we compare the performance of the two operations, ``len()`` is much slower
 than :meth:`~mongoengine.queryset.QuerySet.count`.
 
 Further aggregation
@@ -385,6 +385,18 @@ would be generating "tag-clouds"::
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
 
+
+MongoDB aggregation API
+-----------------------
+If you need to run aggregation pipelines, MongoEngine provides an entry point to `pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
+ through :meth:`~mongoengine.queryset.base.aggregate`. Checkout pymongo's documentation for the syntax and pipeline.
+An example of its use would be ::
+
+        class Person(Document):
+            name = StringField()
+
+        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        data = Person.objects().aggregate(*pipeline)    # Would return e.g: [{"_id": ObjectId('5d7eac82aae098e4ed3784c7'), "name": "JOHN DOE"}]
 
 Query efficiency and performance
 ================================
