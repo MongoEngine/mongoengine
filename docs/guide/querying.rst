@@ -388,15 +388,22 @@ would be generating "tag-clouds"::
 
 MongoDB aggregation API
 -----------------------
-If you need to run aggregation pipelines, MongoEngine provides an entry point to `pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
- through :meth:`~mongoengine.queryset.base.aggregate`. Checkout pymongo's documentation for the syntax and pipeline.
-An example of its use would be ::
+If you need to run aggregation pipelines, MongoEngine provides an entry point `Pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
+through :meth:`~mongoengine.queryset.QuerySet.aggregate`. Check out Pymongo's documentation for the syntax and pipeline.
+An example of its use would be::
 
         class Person(Document):
             name = StringField()
 
-        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = Person.objects().aggregate(*pipeline)    # Would return e.g: [{"_id": ObjectId('5d7eac82aae098e4ed3784c7'), "name": "JOHN DOE"}]
+        Person(name='John').save()
+        Person(name='Bob').save()
+
+        pipeline = [
+            {"$sort" : {"name" : -1}},
+            {"$project": {"_id": 0, "name": {"$toUpper": "$name"}}}
+            ]
+        data = Person.objects().aggregate(*pipeline)
+        assert data == [{'name': 'BOB'}, {'name': 'JOHN'}]
 
 Query efficiency and performance
 ================================
