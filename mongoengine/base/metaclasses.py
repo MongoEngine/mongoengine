@@ -53,11 +53,10 @@ class DocumentMetaclass(type):
                 value = None
                 has_value = False
                 for base in flattened_bases[::-1]:
-                    if hasattr(base, 'meta') and key in base.meta:
-                        value = base.meta[key]
-                        has_value = True
-                    elif hasattr(base, '_meta') and key in base._meta:
-                        value = base._meta[key]
+                    # at most one of 'meta' and '_meta' will exist
+                    meta = getattr(base, 'meta', getattr(base, '_meta', {}))
+                    if key in meta:
+                        value = meta[key]
                         has_value = True
                 if has_value:
                     attrs['_meta'][key] = value
