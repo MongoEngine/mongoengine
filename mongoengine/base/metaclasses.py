@@ -44,6 +44,23 @@ class DocumentMetaclass(type):
                     meta.merge(base._meta)
             attrs['_meta'] = meta
             attrs['_meta']['abstract'] = False  # 789: EmbeddedDocument shouldn't inherit abstract
+        else:
+            # if meta exists, then try to inherit the keys in inherit_list
+            inherit_list = ['permission']
+            for key in inherit_list:
+                if key in attrs['_meta']:
+                    continue
+                value = None
+                has_value = False
+                for base in flattened_bases[::-1]:
+                    if hasattr(base, 'meta') and key in base.meta:
+                        value = base.meta[key]
+                        has_value = True
+                    elif hasattr(base, '_meta') and key in base._meta:
+                        value = base._meta[key]
+                        has_value = True
+                if has_value:
+                    attrs['_meta'][key] = value
 
         if attrs['_meta'].get('allow_inheritance', ALLOW_INHERITANCE):
             StringField = _import_class('StringField')
