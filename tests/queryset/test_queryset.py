@@ -947,7 +947,10 @@ class TestQueryset(unittest.TestCase):
         self.assertEqual(Blog.objects.count(), 2)
         # pass ordered=False
         Blog.drop_collection()
-        Blog.objects.insert([blog1, blog2], ordered=False)
+        Blog.objects.insert([
+            Blog(title="foo", posts=[post1, post2]),
+            Blog(title="bar", posts=[post2, post3])
+        ], ordered=False)
 
     def test_bulk_insert_different_class_fails(self):
         class Blog(Document):
