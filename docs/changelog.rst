@@ -19,6 +19,7 @@ Development
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
 - The codebase is now formatted using ``black``. #2109
 - In bulk write insert, the detailed error message would raise in exception.
+- ``Doc.objects.insert`` accepts kwargs to pass ``ordered``, ``bypass_document_validation``, etc. #2169
 
 Changes in 0.18.2
 =================

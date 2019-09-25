@@ -288,7 +288,8 @@ class BaseQuerySet(object):
         return result
 
     def insert(
-        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
+        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None,
+        **kwargs
     ):
         """bulk insert documents
 
@@ -323,6 +324,10 @@ class BaseQuerySet(object):
             return_one = True
             docs = [docs]
 
+        if return_one and 'ordered' in kwargs:
+            # insert_one does not accept `ordered` argument
+            kwargs.pop('ordered')
+
         for doc in docs:
             if not isinstance(doc, self._document):
                 msg = "Some documents inserted aren't instances of %s" % str(
@@ -345,7 +350,7 @@ class BaseQuerySet(object):
                 insert_func = collection.insert_one
 
         try:
-            inserted_result = insert_func(raw)
+            inserted_result = insert_func(raw, **kwargs)
             ids = (
                 [inserted_result.inserted_id]
                 if return_one
