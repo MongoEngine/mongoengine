@@ -950,14 +950,13 @@ class TestQueryset(unittest.TestCase):
         class Blog(Document):
             title = StringField(unique=True)
             tags = ListField(StringField())
-            posts = ListField(EmbeddedDocumentField(Post))
 
         Blog.drop_collection()
 
         # pass ordered=False
         Blog.objects.insert([
-            Blog(title="foo", posts=[post1, post2]),
-            Blog(title="bar", posts=[post2, post3])
+            Blog(title="foo", tags=["A", "B"]),
+            Blog(title="bar", posts=["C", "D"])
         ], ordered=False)
 
     def test_bulk_insert_different_class_fails(self):
