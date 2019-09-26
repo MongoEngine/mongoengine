@@ -303,8 +303,11 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
+        :param kwargs: (optional) kwargs dictionary to be forwarded to
+                        the pymongo's insert method. For example,
+                        ``Document.objects.insert(docs, ordered=False)``
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
