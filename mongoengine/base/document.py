@@ -81,9 +81,7 @@ class BaseDocument(object):
             )
 
         __auto_convert = values.pop("__auto_convert", True)
-
         __only_fields = set(values.pop("__only_fields", values))
-
         _created = values.pop("_created", True)
 
         signals.pre_init.send(self.__class__, document=self, values=values)
@@ -130,7 +128,6 @@ class BaseDocument(object):
         else:
             FileField = _import_class("FileField")
             for key, value in iteritems(values):
-                key = self._reverse_db_field_map.get(key, key)
                 if key in self._fields or key in ("id", "pk", "_cls"):
                     if __auto_convert and value is not None:
                         field = self._fields.get(key)
@@ -743,7 +740,6 @@ class BaseDocument(object):
         data = {}
         for key, value in iteritems(son):
             key = str(key)
-            key = cls._db_field_map.get(key, key)
             data[key] = value
 
         # Return correct subclass for document type
@@ -756,19 +752,25 @@ class BaseDocument(object):
         if not _auto_dereference:
             fields = copy.deepcopy(fields)
 
+        _conflict_cached_data = {}
         for field_name, field in iteritems(fields):
             field._auto_dereference = _auto_dereference
             if field.db_field in data:
                 value = data[field.db_field]
                 try:
-                    data[field_name] = (
-                        value if value is None else field.to_python(value)
-                    )
+                    if field_name in data:
+                        _conflict_cached_data[field_name] = (
+                            value if value is None else field.to_python(value)
+                        )
+                    else:
+                        data[field_name] = (
+                            value if value is None else field.to_python(value)
+                        )
                     if field_name != field.db_field:
                         del data[field.db_field]
                 except (AttributeError, ValueError) as e:
                     errors_dict[field_name] = e
-
+        data.update(_conflict_cached_data)
         if errors_dict:
             errors = "\n".join(["%s - %s" % (k, v) for k, v in errors_dict.items()])
             msg = "Invalid data to create a `%s` instance.\n%s" % (
