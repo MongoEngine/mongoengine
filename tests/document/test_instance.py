@@ -297,6 +297,31 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(Person.objects.get(name="Jack").rank, "Corporal")
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
 
+    def test_db_field_conflict(self):
+        """Ensure we load data correctly from the right db field."""
+
+        class Person(Document):
+            name = StringField(required=True)
+            age = IntField(required=False, db_field="gregorian_age")
+            lunar_age = IntField(required=False, db_field="age")
+            # in 0.18.2 version, remove db_field this will run correct
+            # age = IntField(required=False)
+            # lunar_age = IntField(required=False)
+
+        Person.drop_collection()
+        p = Person(name="Jack", age="18", lunar_age="20")
+
+        self.assertEqual(p._data, {'age': 18, 'id': None, 'name': u'Jack', 'lunar_age': 20})
+        self.assertEqual(p.to_mongo(), bson.SON([('name', u'Jack'), ('gregorian_age', 18), ('age', 20)]))
+
+
+        Person(name="Jack", age="18", lunar_age="20").save()
+        Person(name="Fred", age="28", lunar_age="30").save()
+
+        p = Person.objects.get(name="Jack")
+        self.assertEqual(p.age, 18)
+        self.assertEqual(Person.objects.get(name="Fred").lunar_age, 30)
+
     def test_db_embedded_doc_field_load(self):
         """Ensure we load embedded document data correctly."""
 
