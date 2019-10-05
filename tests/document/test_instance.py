@@ -298,15 +298,12 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(Person.objects.get(name="Fred").rank, "Private")
 
     def test_db_field_conflict(self):
-        """Ensure we load data correctly from the right db field."""
+        """Ensure two db field will not conflict."""
 
         class Person(Document):
             name = StringField(required=True)
             age = IntField(required=False, db_field="gregorian_age")
             lunar_age = IntField(required=False, db_field="age")
-            # in 0.18.2 version, remove db_field this will run correct
-            # age = IntField(required=False)
-            # lunar_age = IntField(required=False)
 
         Person.drop_collection()
         p = Person(name="Jack", age="18", lunar_age="20")
@@ -314,8 +311,8 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(p._data, {'age': 18, 'id': None, 'name': u'Jack', 'lunar_age': 20})
         self.assertEqual(p.to_mongo(), bson.SON([('name', u'Jack'), ('gregorian_age', 18), ('age', 20)]))
 
-
         Person(name="Jack", age="18", lunar_age="20").save()
+
         Person(name="Fred", age="28", lunar_age="30").save()
 
         p = Person.objects.get(name="Jack")
@@ -376,7 +373,6 @@ class TestInstance(MongoDBTestCase):
             meta = {"allow_inheritance": True}
 
         with self.assertRaises(ValueError) as e:
-
             class EmailUser(User):
                 email = StringField(primary_key=True)
 
@@ -775,8 +771,8 @@ class TestInstance(MongoDBTestCase):
 
         d = (
             Doc(embedded_field=[Embedded(string="Hi")])
-            .to_mongo(use_db_field=False)
-            .to_dict()
+                .to_mongo(use_db_field=False)
+                .to_dict()
         )
         self.assertEqual(d["embedded_field"], [{"string": "Hi"}])
 
@@ -1640,7 +1636,7 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(person.active, False)
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
-        self
+            self
     ):
         # Refers to Issue #1685
         class EmbeddedChildModel(EmbeddedDocument):
@@ -1654,7 +1650,7 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(changed_fields, [])
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
-        self
+            self
     ):
         # Refers to Issue #1685
         class User(Document):
@@ -2133,7 +2129,6 @@ class TestInstance(MongoDBTestCase):
         declare the same db_field.
         """
         with self.assertRaises(InvalidDocumentError):
-
             class Foo(Document):
                 name = StringField()
                 name2 = StringField(db_field="name")
@@ -2419,7 +2414,6 @@ class TestInstance(MongoDBTestCase):
 
     def test_invalid_reverse_delete_rule_raise_errors(self):
         with self.assertRaises(InvalidDocumentError):
-
             class Blog(Document):
                 content = StringField()
                 authors = MapField(
@@ -2430,7 +2424,6 @@ class TestInstance(MongoDBTestCase):
                 )
 
         with self.assertRaises(InvalidDocumentError):
-
             class Parents(EmbeddedDocument):
                 father = ReferenceField("Person", reverse_delete_rule=DENY)
                 mother = ReferenceField("Person", reverse_delete_rule=DENY)
@@ -2668,7 +2661,6 @@ class TestInstance(MongoDBTestCase):
         the "validate" method.
         """
         with self.assertRaises(InvalidDocumentError):
-
             class Blog(Document):
                 validate = DictField()
 
@@ -2932,8 +2924,8 @@ class TestInstance(MongoDBTestCase):
                 [
                     str(b)
                     for b in Book.objects.filter(
-                        Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
-                    )
+                    Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
+                )
                 ]
             ),
             "1,2,3,4",
@@ -2945,10 +2937,10 @@ class TestInstance(MongoDBTestCase):
                 [
                     str(b)
                     for b in Book.objects.filter(
-                        Q(extra__a__all=[karl, susan])
-                        | Q(author__all=[karl, susan])
-                        | Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
-                    )
+                    Q(extra__a__all=[karl, susan])
+                    | Q(author__all=[karl, susan])
+                    | Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
+                )
                 ]
             ),
             "1",
@@ -2960,13 +2952,13 @@ class TestInstance(MongoDBTestCase):
                 [
                     str(b)
                     for b in Book.objects.filter(
-                        __raw__={
-                            "$where": """
+                    __raw__={
+                        "$where": """
                                             function(){
                                                 return this.name == '1' ||
                                                        this.name == '2';}"""
-                        }
-                    )
+                    }
+                )
                 ]
             ),
             "1,2",
