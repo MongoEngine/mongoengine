@@ -3321,7 +3321,7 @@ class TestInstance(MongoDBTestCase):
 
     def test_embedded_document_equality_with_lazy_ref(self):
         class Job(EmbeddedDocument):
-            boss = LazyReferenceField('Person')
+            boss = LazyReferenceField("Person")
 
         class Person(Document):
             job = EmbeddedDocumentField(Job)
