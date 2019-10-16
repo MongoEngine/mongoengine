@@ -41,7 +41,7 @@ class BaseDict(dict):
 
     def __setitem__(self, key, value, *args, **kwargs):
         if key not in self or self[key] != value:
-            self._mark_as_changed(key)
+            self._mark_as_changed()
         return super(BaseDict, self).__setitem__(key, value)
 
     def __delete__(self, *args, **kwargs):
@@ -49,11 +49,11 @@ class BaseDict(dict):
         return super(BaseDict, self).__delete__(*args, **kwargs)
 
     def __delitem__(self, key, *args, **kwargs):
-        self._mark_as_changed(key)
+        self._mark_as_changed()
         return super(BaseDict, self).__delitem__(key)
 
     def __delattr__(self, key, *args, **kwargs):
-        self._mark_as_changed(key)
+        self._mark_as_changed()
         return super(BaseDict, self).__delattr__(key)
 
     def __getstate__(self):
