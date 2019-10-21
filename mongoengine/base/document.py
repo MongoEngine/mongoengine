@@ -62,13 +62,13 @@ class BaseDocument(object):
         """
         Initialise a document or an embedded document.
 
-        :param dict values: A dictionary of keys and values for the document.
+        :param values: A dictionary of keys and values for the document.
             It may contain additional reserved keywords, e.g. "__auto_convert".
-        :param bool __auto_convert: If True, supplied values will be converted
+        :param __auto_convert: If True, supplied values will be converted
             to Python-type values via each field's `to_python` method.
-        :param set __only_fields: A set of fields that have been loaded for
+        :param __only_fields: A set of fields that have been loaded for
             this document. Empty if all fields have been loaded.
-        :param bool _created: Indicates whether this is a brand new document
+        :param _created: Indicates whether this is a brand new document
             or whether it's already been persisted before. Defaults to true.
         """
         self._initialised = False
