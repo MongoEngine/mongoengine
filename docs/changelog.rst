@@ -6,6 +6,8 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Documentation improvements:
+    - Documented how `pymongo.monitoring` can be used to log all queries issued by MongoEngine to the driver.
 - BREAKING CHANGE: ``class_check`` and ``read_preference`` keyword arguments are no longer available when filtering a ``QuerySet``. #2112
     - Instead of ``Doc.objects(foo=bar, read_preference=...)`` use ``Doc.objects(foo=bar).read_preference(...)``.
     - Instead of ``Doc.objects(foo=bar, class_check=False)`` use ``Doc.objects(foo=bar).clear_cls_query(...)``.
