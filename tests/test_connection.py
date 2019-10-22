@@ -1,35 +1,33 @@
 import datetime
 
+from bson.tz_util import utc
+from nose.plugins.skip import SkipTest
+import pymongo
 from pymongo import MongoClient
-from pymongo.errors import OperationFailure, InvalidName
 from pymongo import ReadPreference
+from pymongo.errors import InvalidName, OperationFailure
 
-from mongoengine import Document
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-from nose.plugins.skip import SkipTest
 
-import pymongo
-from bson.tz_util import utc
-
-from mongoengine import (
-    connect,
-    register_connection,
-    Document,
-    DateTimeField,
-    disconnect_all,
-    StringField,
-)
 import mongoengine.connection
+from mongoengine import (
+    DateTimeField,
+    Document,
+    StringField,
+    connect,
+    disconnect_all,
+    register_connection,
+)
 from mongoengine.connection import (
     ConnectionFailure,
-    get_db,
-    get_connection,
-    disconnect,
     DEFAULT_DATABASE_NAME,
+    disconnect,
+    get_connection,
+    get_db,
 )
 
 
@@ -289,7 +287,7 @@ class ConnectionTest(unittest.TestCase):
         # database won't exist until we save a document
         some_document.save()
         self.assertEqual(conn.get_default_database().name, "mongoenginetest")
-        self.assertEqual(conn.database_names()[0], "mongoenginetest")
+        self.assertEqual(conn.list_database_names()[0], "mongoenginetest")
 
     def test_connect_with_host_list(self):
         """Ensure that the connect() method works when host is a list
@@ -631,8 +629,10 @@ class ConnectionTest(unittest.TestCase):
         """Ensure write concern can be specified in connect() via
         a kwarg or as part of the connection URI.
         """
-        conn1 = connect(alias="conn1", host="mongodb://localhost/testing?w=1&j=true")
-        conn2 = connect("testing", alias="conn2", w=1, j=True)
+        conn1 = connect(
+            alias="conn1", host="mongodb://localhost/testing?w=1&journal=true"
+        )
+        conn2 = connect("testing", alias="conn2", w=1, journal=True)
         self.assertEqual(conn1.write_concern.document, {"w": 1, "j": True})
         self.assertEqual(conn2.write_concern.document, {"w": 1, "j": True})
 
