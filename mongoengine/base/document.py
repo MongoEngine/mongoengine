@@ -561,6 +561,7 @@ class BaseDocument(object):
                     data._changed_fields = []
         self._changed_fields = []
         self._original_values = {}
+        self._force_changed_fields = set()
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
         # Loop list / dict fields as they contain documents
