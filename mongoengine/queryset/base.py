@@ -1639,6 +1639,7 @@ class BaseQuerySet(object):
             ).find(self._query, **self._cursor_args)
         else:
             self._cursor_obj = self._collection.find(self._query, **self._cursor_args)
+
         # Apply "where" clauses to cursor
         if self._where_clause:
             where_clause = self._sub_js_fields(self._where_clause)

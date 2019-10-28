@@ -32,10 +32,11 @@ env:
   global:
     - MONGODB_3_4=3.4.17
     - MONGODB_3_6=3.6.12
+    - PYMONGO_3_9=3.9
     - PYMONGO_3_6=3.6
     - PYMONGO_3_4=3.4
   matrix:
-    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_6}
+    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_9}
 
 matrix:
 
@@ -47,6 +48,8 @@ matrix:
     env: MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_4}
   - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
+  - python: 3.7
+    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
 
 
 install:

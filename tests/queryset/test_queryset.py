@@ -4641,43 +4641,35 @@ class TestQueryset(unittest.TestCase):
         bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
         self.assertEqual(
-            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
+            bars._cursor.collection.read_preference, ReadPreference.SECONDARY_PREFERRED
         )
 
         # Make sure that `.read_preference(...)` does accept string values.
         self.assertRaises(TypeError, Bar.objects.read_preference, "Primary")
 
+        def assert_read_pref(qs, expected_read_pref):
+            self.assertEqual(qs._read_preference, expected_read_pref)
+            self.assertEqual(qs._cursor.collection.read_preference, expected_read_pref)
+
         # Make sure read preference is respected after a `.skip(...)`.
         bars = Bar.objects.skip(1).read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
-        )
+        assert_read_pref(bars, ReadPreference.SECONDARY_PREFERRED)
 
         # Make sure read preference is respected after a `.limit(...)`.
         bars = Bar.objects.limit(1).read_preference(ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
-        )
+        assert_read_pref(bars, ReadPreference.SECONDARY_PREFERRED)
 
         # Make sure read preference is respected after an `.order_by(...)`.
         bars = Bar.objects.order_by("txt").read_preference(
             ReadPreference.SECONDARY_PREFERRED
         )
-        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
-        )
+        assert_read_pref(bars, ReadPreference.SECONDARY_PREFERRED)
 
         # Make sure read preference is respected after a `.hint(...)`.
         bars = Bar.objects.hint([("txt", 1)]).read_preference(
             ReadPreference.SECONDARY_PREFERRED
         )
-        self.assertEqual(bars._read_preference, ReadPreference.SECONDARY_PREFERRED)
-        self.assertEqual(
-            bars._cursor._Cursor__read_preference, ReadPreference.SECONDARY_PREFERRED
-        )
+        assert_read_pref(bars, ReadPreference.SECONDARY_PREFERRED)
 
     def test_read_preference_aggregation_framework(self):
         class Bar(Document):
