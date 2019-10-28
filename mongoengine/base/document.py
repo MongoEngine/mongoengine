@@ -732,7 +732,10 @@ class BaseDocument(object):
             only_fields = []
 
         if son and not isinstance(son, dict):
-            raise ValueError("The source SON object needs to be of type 'dict'")
+            raise ValueError(
+                "The source SON object needs to be of type 'dict' but a '%s' was found"
+                % type(son)
+            )
 
         # Get the class name from the document, falling back to the given
         # class if unavailable
@@ -770,7 +773,9 @@ class BaseDocument(object):
                     errors_dict[field_name] = e
 
         if errors_dict:
-            errors = "\n".join(["%s - %s" % (k, v) for k, v in errors_dict.items()])
+            errors = "\n".join(
+                ["Field '%s' - %s" % (k, v) for k, v in errors_dict.items()]
+            )
             msg = "Invalid data to create a `%s` instance.\n%s" % (
                 cls._class_name,
                 errors,
