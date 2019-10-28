@@ -3670,13 +3670,16 @@ class TestInstance(MongoDBTestCase):
         _ = list(Jedi.objects)  # Ensure a proper document loads without errors
 
         # Forces a document with a wrong shape (may occur in case of migration)
-        coll.insert_one({"light_saber": "I_should_be_a_dict"})
+        value = u"I_should_be_a_dict"
+        coll.insert_one({"light_saber": value})
 
         with self.assertRaises(InvalidDocumentError) as cm:
             list(Jedi.objects)
+
         self.assertEqual(
             str(cm.exception),
-            "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '<type 'unicode'>' was found",
+            "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found"
+            % type(value),
         )
 
 
