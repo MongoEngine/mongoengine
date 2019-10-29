@@ -1224,7 +1224,10 @@ class TestField(MongoDBTestCase):
         a = A(b=B(c=C(txt="hi")))
         a.validate()
 
-        a = A(b={"c": {"txt": "hi"}})
+        a = A(b=B(c={"txt": "hi"}))
+        a.validate()
+
+        a = A(b={"fc": {"txt": "hi"}})
         a.validate()
 
     def test_double_embedded_db_field_from_son(self):
