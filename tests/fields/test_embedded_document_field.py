@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 from mongoengine import (
     Document,
-    StringField,
-    ValidationError,
     EmbeddedDocument,
     EmbeddedDocumentField,
-    InvalidQueryError,
-    LookUpError,
-    IntField,
     GenericEmbeddedDocumentField,
+    IntField,
+    InvalidQueryError,
     ListField,
-    EmbeddedDocumentListField,
-    ReferenceField,
+    LookUpError,
+    StringField,
+    ValidationError,
 )
 
 from tests.utils import MongoDBTestCase

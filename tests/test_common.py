@@ -1,7 +1,7 @@
 import unittest
 
-from mongoengine.common import _import_class
 from mongoengine import Document
+from mongoengine.common import _import_class
 
 
 class TestCommon(unittest.TestCase):

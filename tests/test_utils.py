@@ -1,5 +1,5 @@
-import unittest
 import re
+import unittest
 
 from mongoengine.base.utils import LazyRegexCompiler
 

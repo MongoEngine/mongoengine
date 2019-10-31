@@ -4,7 +4,7 @@ import unittest
 from nose.plugins.skip import SkipTest
 
 from mongoengine import connect
-from mongoengine.connection import get_db, disconnect_all
+from mongoengine.connection import disconnect_all, get_db
 from mongoengine.mongodb_support import get_mongodb_version
 
 
