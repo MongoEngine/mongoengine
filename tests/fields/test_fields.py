@@ -79,7 +79,7 @@ class TestField(MongoDBTestCase):
         self.assertEqual(data_to_be_saved, ["age", "created", "day", "name", "userid"])
 
     def test_custom_field_validation_raise_deprecated_error_when_validation_return_something(
-        self
+        self,
     ):
         # Covers introduction of a breaking change in the validation parameter (0.18)
         def _not_empty(z):
@@ -202,7 +202,7 @@ class TestField(MongoDBTestCase):
         self.assertEqual(data_to_be_saved, ["age", "created", "userid"])
 
     def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(
-        self
+        self,
     ):
         """List field with default can be set to the empty list (strict)"""
         # Issue #1733
@@ -216,7 +216,7 @@ class TestField(MongoDBTestCase):
         self.assertEqual(reloaded.x, [])
 
     def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(
-        self
+        self,
     ):
         """List field with default can be set to the empty list (dynamic)"""
         # Issue #1733
@@ -1245,7 +1245,7 @@ class TestField(MongoDBTestCase):
         self.assertEqual(a.b.c.txt, "hi")
 
     def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(
-        self
+        self,
     ):
         raise SkipTest(
             "Using a string reference in an EmbeddedDocumentField does not work if the class isnt registerd yet"

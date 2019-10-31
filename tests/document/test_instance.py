@@ -1615,7 +1615,7 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(person.active, False)
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
-        self
+        self,
     ):
         # Refers to Issue #1685
         class EmbeddedChildModel(EmbeddedDocument):
@@ -1629,7 +1629,7 @@ class TestInstance(MongoDBTestCase):
         self.assertEqual(changed_fields, [])
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
-        self
+        self,
     ):
         # Refers to Issue #1685
         class User(Document):

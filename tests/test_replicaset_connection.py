@@ -1,7 +1,7 @@
 import unittest
 
-from pymongo import ReadPreference
 from pymongo import MongoClient
+from pymongo import ReadPreference
 
 import mongoengine
 from mongoengine.connection import ConnectionFailure

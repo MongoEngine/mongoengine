@@ -3,11 +3,11 @@ import unittest
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
-    switch_db,
-    switch_collection,
-    no_sub_classes,
     no_dereference,
+    no_sub_classes,
     query_counter,
+    switch_collection,
+    switch_db,
 )
 from mongoengine.pymongo_support import count_documents
 
