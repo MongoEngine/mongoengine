@@ -19,6 +19,7 @@ Development
     - From now on keyword arguments (e.g. ``Doc(field_name=value)``) are required.
 - Fix updating/modifying/deleting/reloading a document that's sharded by a field with ``db_field`` specified. #2125
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
+- Switch from nosetest to pytest as test runner #2114
 - The codebase is now formatted using ``black``. #2109
 - In bulk write insert, the detailed error message would raise in exception.
 
