@@ -4626,7 +4626,8 @@ class TestQueryset(unittest.TestCase):
         bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
         assert bars._read_preference == ReadPreference.SECONDARY_PREFERRED
         assert (
-            bars._cursor.collection.read_preference == ReadPreference.SECONDARY_PREFERRED
+            bars._cursor.collection.read_preference
+            == ReadPreference.SECONDARY_PREFERRED
         )
 
         # Make sure that `.read_preference(...)` does accept string values.
@@ -5765,13 +5766,13 @@ class TestQueryset(unittest.TestCase):
 
     def test_no_cursor_timeout(self):
         qs = self.Person.objects()
-        self.assertEqual(qs._cursor_args, {})  # ensure no regression of  #2148
+        assert qs._cursor_args == {}  # ensure no regression of  #2148
 
         qs = self.Person.objects().timeout(True)
-        self.assertEqual(qs._cursor_args, {})
+        assert qs._cursor_args == {}
 
         qs = self.Person.objects().timeout(False)
-        self.assertEqual(qs._cursor_args, {"no_cursor_timeout": True})
+        assert qs._cursor_args == {"no_cursor_timeout": True}
 
 
 if __name__ == "__main__":

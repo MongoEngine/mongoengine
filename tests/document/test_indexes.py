@@ -544,23 +544,19 @@ class TestIndexes(unittest.TestCase):
             BlogPost(name=name).save()
 
         query_result = BlogPost.objects.collation(base).order_by("name")
-        self.assertEqual(
-            [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
-        )
-        self.assertEqual(5, query_result.count())
+        assert [x.name for x in query_result] == sorted(names, key=lambda x: x.lower())
+        assert 5 == query_result.count()
 
         query_result = BlogPost.objects.collation(Collation(**base)).order_by("name")
-        self.assertEqual(
-            [x.name for x in query_result], sorted(names, key=lambda x: x.lower())
-        )
-        self.assertEqual(5, query_result.count())
+        assert [x.name for x in query_result] == sorted(names, key=lambda x: x.lower())
+        assert 5 == query_result.count()
 
         incorrect_collation = {"arndom": "wrdo"}
-        with self.assertRaises(OperationFailure):
+        with pytest.raises(OperationFailure):
             BlogPost.objects.collation(incorrect_collation).count()
 
         query_result = BlogPost.objects.collation({}).order_by("name")
-        self.assertEqual([x.name for x in query_result], sorted(names))
+        assert [x.name for x in query_result] == sorted(names)
 
     def test_unique(self):
         """Ensure that uniqueness constraints are applied to fields.

@@ -625,8 +625,8 @@ class ConnectionTest(unittest.TestCase):
             alias="conn1", host="mongodb://localhost/testing?w=1&journal=true"
         )
         conn2 = connect("testing", alias="conn2", w=1, journal=True)
-        self.assertEqual(conn1.write_concern.document, {"w": 1, "j": True})
-        self.assertEqual(conn2.write_concern.document, {"w": 1, "j": True})
+        assert conn1.write_concern.document == {"w": 1, "j": True}
+        assert conn2.write_concern.document == {"w": 1, "j": True}
 
     def test_connect_with_replicaset_via_uri(self):
         """Ensure connect() works when specifying a replicaSet via the
