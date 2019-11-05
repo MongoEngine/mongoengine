@@ -2,7 +2,7 @@
 import uuid
 
 from bson import Binary
-from nose.plugins.skip import SkipTest
+import pytest
 import six
 
 from mongoengine import *
@@ -31,8 +31,8 @@ class TestBinaryField(MongoDBTestCase):
         attachment.save()
 
         attachment_1 = Attachment.objects().first()
-        self.assertEqual(MIME_TYPE, attachment_1.content_type)
-        self.assertEqual(BLOB, six.binary_type(attachment_1.blob))
+        assert MIME_TYPE == attachment_1.content_type
+        assert BLOB == six.binary_type(attachment_1.blob)
 
     def test_validation_succeeds(self):
         """Ensure that valid values can be assigned to binary fields.
@@ -45,13 +45,15 @@ class TestBinaryField(MongoDBTestCase):
             blob = BinaryField(max_bytes=4)
 
         attachment_required = AttachmentRequired()
-        self.assertRaises(ValidationError, attachment_required.validate)
+        with pytest.raises(ValidationError):
+            attachment_required.validate()
         attachment_required.blob = Binary(six.b("\xe6\x00\xc4\xff\x07"))
         attachment_required.validate()
 
         _5_BYTES = six.b("\xe6\x00\xc4\xff\x07")
         _4_BYTES = six.b("\xe6\x00\xc4\xff")
-        self.assertRaises(ValidationError, AttachmentSizeLimit(blob=_5_BYTES).validate)
+        with pytest.raises(ValidationError):
+            AttachmentSizeLimit(blob=_5_BYTES).validate()
         AttachmentSizeLimit(blob=_4_BYTES).validate()
 
     def test_validation_fails(self):
@@ -61,7 +63,8 @@ class TestBinaryField(MongoDBTestCase):
             blob = BinaryField()
 
         for invalid_data in (2, u"Im_a_unicode", ["some_str"]):
-            self.assertRaises(ValidationError, Attachment(blob=invalid_data).validate)
+            with pytest.raises(ValidationError):
+                Attachment(blob=invalid_data).validate()
 
     def test__primary(self):
         class Attachment(Document):
@@ -70,10 +73,10 @@ class TestBinaryField(MongoDBTestCase):
         Attachment.drop_collection()
         binary_id = uuid.uuid4().bytes
         att = Attachment(id=binary_id).save()
-        self.assertEqual(1, Attachment.objects.count())
-        self.assertEqual(1, Attachment.objects.filter(id=att.id).count())
+        assert 1 == Attachment.objects.count()
+        assert 1 == Attachment.objects.filter(id=att.id).count()
         att.delete()
-        self.assertEqual(0, Attachment.objects.count())
+        assert 0 == Attachment.objects.count()
 
     def test_primary_filter_by_binary_pk_as_str(self):
         class Attachment(Document):
@@ -82,9 +85,9 @@ class TestBinaryField(MongoDBTestCase):
         Attachment.drop_collection()
         binary_id = uuid.uuid4().bytes
         att = Attachment(id=binary_id).save()
-        self.assertEqual(1, Attachment.objects.filter(id=binary_id).count())
+        assert 1 == Attachment.objects.filter(id=binary_id).count()
         att.delete()
-        self.assertEqual(0, Attachment.objects.count())
+        assert 0 == Attachment.objects.count()
 
     def test_match_querying_with_bytes(self):
         class MyDocument(Document):
@@ -94,7 +97,7 @@ class TestBinaryField(MongoDBTestCase):
 
         doc = MyDocument(bin_field=BIN_VALUE).save()
         matched_doc = MyDocument.objects(bin_field=BIN_VALUE).first()
-        self.assertEqual(matched_doc.id, doc.id)
+        assert matched_doc.id == doc.id
 
     def test_match_querying_with_binary(self):
         class MyDocument(Document):
@@ -105,7 +108,7 @@ class TestBinaryField(MongoDBTestCase):
         doc = MyDocument(bin_field=BIN_VALUE).save()
 
         matched_doc = MyDocument.objects(bin_field=Binary(BIN_VALUE)).first()
-        self.assertEqual(matched_doc.id, doc.id)
+        assert matched_doc.id == doc.id
 
     def test_modify_operation__set(self):
         """Ensures no regression of bug #1127"""
@@ -119,11 +122,11 @@ class TestBinaryField(MongoDBTestCase):
         doc = MyDocument.objects(some_field="test").modify(
             upsert=True, new=True, set__bin_field=BIN_VALUE
         )
-        self.assertEqual(doc.some_field, "test")
+        assert doc.some_field == "test"
         if six.PY3:
-            self.assertEqual(doc.bin_field, BIN_VALUE)
+            assert doc.bin_field == BIN_VALUE
         else:
-            self.assertEqual(doc.bin_field, Binary(BIN_VALUE))
+            assert doc.bin_field == Binary(BIN_VALUE)
 
     def test_update_one(self):
         """Ensures no regression of bug #1127"""
@@ -139,9 +142,9 @@ class TestBinaryField(MongoDBTestCase):
         n_updated = MyDocument.objects(bin_field=bin_data).update_one(
             bin_field=BIN_VALUE
         )
-        self.assertEqual(n_updated, 1)
+        assert n_updated == 1
         fetched = MyDocument.objects.with_id(doc.id)
         if six.PY3:
-            self.assertEqual(fetched.bin_field, BIN_VALUE)
+            assert fetched.bin_field == BIN_VALUE
         else:
-            self.assertEqual(fetched.bin_field, Binary(BIN_VALUE))
+            assert fetched.bin_field == Binary(BIN_VALUE)

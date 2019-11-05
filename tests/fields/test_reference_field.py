@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from bson import DBRef, SON
+import pytest
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
 
 
@@ -24,19 +24,22 @@ class TestReferenceField(MongoDBTestCase):
 
         # Make sure ReferenceField only accepts a document class or a string
         # with a document class name.
-        self.assertRaises(ValidationError, ReferenceField, EmbeddedDocument)
+        with pytest.raises(ValidationError):
+            ReferenceField(EmbeddedDocument)
 
         user = User(name="Test User")
 
         # Ensure that the referenced object must have been saved
         post1 = BlogPost(content="Chips and gravy taste good.")
         post1.author = user
-        self.assertRaises(ValidationError, post1.save)
+        with pytest.raises(ValidationError):
+            post1.save()
 
         # Check that an invalid object type cannot be used
         post2 = BlogPost(content="Chips and chilli taste good.")
         post1.author = post2
-        self.assertRaises(ValidationError, post1.validate)
+        with pytest.raises(ValidationError):
+            post1.validate()
 
         # Ensure ObjectID's are accepted as references
         user_object_id = user.pk
@@ -52,22 +55,8 @@ class TestReferenceField(MongoDBTestCase):
         # Make sure referencing a saved document of the *wrong* type fails
         post2.save()
         post1.author = post2
-        self.assertRaises(ValidationError, post1.validate)
-
-    def test_objectid_reference_fields(self):
-        """Make sure storing Object ID references works."""
-
-        class Person(Document):
-            name = StringField()
-            parent = ReferenceField("self")
-
-        Person.drop_collection()
-
-        p1 = Person(name="John").save()
-        Person(name="Ross", parent=p1.pk).save()
-
-        p = Person.objects.get(name="Ross")
-        self.assertEqual(p.parent, p1)
+        with pytest.raises(ValidationError):
+            post1.validate()
 
     def test_dbref_reference_fields(self):
         """Make sure storing references as bson.dbref.DBRef works."""
@@ -81,13 +70,12 @@ class TestReferenceField(MongoDBTestCase):
         p1 = Person(name="John").save()
         Person(name="Ross", parent=p1).save()
 
-        self.assertEqual(
-            Person._get_collection().find_one({"name": "Ross"})["parent"],
-            DBRef("person", p1.pk),
+        assert Person._get_collection().find_one({"name": "Ross"})["parent"] == DBRef(
+            "person", p1.pk
         )
 
         p = Person.objects.get(name="Ross")
-        self.assertEqual(p.parent, p1)
+        assert p.parent == p1
 
     def test_dbref_to_mongo(self):
         """Make sure that calling to_mongo on a ReferenceField which
@@ -100,9 +88,7 @@ class TestReferenceField(MongoDBTestCase):
             parent = ReferenceField("self", dbref=False)
 
         p = Person(name="Steve", parent=DBRef("person", "abcdefghijklmnop"))
-        self.assertEqual(
-            p.to_mongo(), SON([("name", u"Steve"), ("parent", "abcdefghijklmnop")])
-        )
+        assert p.to_mongo() == SON([("name", u"Steve"), ("parent", "abcdefghijklmnop")])
 
     def test_objectid_reference_fields(self):
         class Person(Document):
@@ -116,10 +102,10 @@ class TestReferenceField(MongoDBTestCase):
 
         col = Person._get_collection()
         data = col.find_one({"name": "Ross"})
-        self.assertEqual(data["parent"], p1.pk)
+        assert data["parent"] == p1.pk
 
         p = Person.objects.get(name="Ross")
-        self.assertEqual(p.parent, p1)
+        assert p.parent == p1
 
     def test_undefined_reference(self):
         """Ensure that ReferenceFields may reference undefined Documents.
@@ -144,14 +130,14 @@ class TestReferenceField(MongoDBTestCase):
         me.save()
 
         obj = Product.objects(company=ten_gen).first()
-        self.assertEqual(obj, mongodb)
-        self.assertEqual(obj.company, ten_gen)
+        assert obj == mongodb
+        assert obj.company == ten_gen
 
         obj = Product.objects(company=None).first()
-        self.assertEqual(obj, me)
+        assert obj == me
 
         obj = Product.objects.get(company=None)
-        self.assertEqual(obj, me)
+        assert obj == me
 
     def test_reference_query_conversion(self):
         """Ensure that ReferenceFields can be queried using objects and values
@@ -180,10 +166,10 @@ class TestReferenceField(MongoDBTestCase):
         post2.save()
 
         post = BlogPost.objects(author=m1).first()
-        self.assertEqual(post.id, post1.id)
+        assert post.id == post1.id
 
         post = BlogPost.objects(author=m2).first()
-        self.assertEqual(post.id, post2.id)
+        assert post.id == post2.id
 
     def test_reference_query_conversion_dbref(self):
         """Ensure that ReferenceFields can be queried using objects and values
@@ -212,7 +198,7 @@ class TestReferenceField(MongoDBTestCase):
         post2.save()
 
         post = BlogPost.objects(author=m1).first()
-        self.assertEqual(post.id, post1.id)
+        assert post.id == post1.id
 
         post = BlogPost.objects(author=m2).first()
-        self.assertEqual(post.id, post2.id)
+        assert post.id == post2.id

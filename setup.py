@@ -120,7 +120,7 @@ extra_opts = {
 }
 if sys.version_info[0] == 3:
     extra_opts["use_2to3"] = True
-    if "test" in sys.argv or "nosetests" in sys.argv:
+    if "test" in sys.argv:
         extra_opts["packages"] = find_packages()
         extra_opts["package_data"] = {
             "tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]

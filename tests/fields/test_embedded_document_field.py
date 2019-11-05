@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import pytest
+
 from mongoengine import (
     Document,
     EmbeddedDocument,
@@ -21,13 +23,13 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
             name = StringField()
 
         field = EmbeddedDocumentField(MyDoc)
-        self.assertEqual(field.document_type_obj, MyDoc)
+        assert field.document_type_obj == MyDoc
 
         field2 = EmbeddedDocumentField("MyDoc")
-        self.assertEqual(field2.document_type_obj, "MyDoc")
+        assert field2.document_type_obj == "MyDoc"
 
     def test___init___throw_error_if_document_type_is_not_EmbeddedDocument(self):
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             EmbeddedDocumentField(dict)
 
     def test_document_type_throw_error_if_not_EmbeddedDocument_subclass(self):
@@ -35,11 +37,11 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
             name = StringField()
 
         emb = EmbeddedDocumentField("MyDoc")
-        with self.assertRaises(ValidationError) as ctx:
+        with pytest.raises(ValidationError) as exc_info:
             emb.document_type
-        self.assertIn(
-            "Invalid embedded document class provided to an EmbeddedDocumentField",
-            str(ctx.exception),
+        assert (
+            "Invalid embedded document class provided to an EmbeddedDocumentField"
+            in str(exc_info.value)
         )
 
     def test_embedded_document_field_only_allow_subclasses_of_embedded_document(self):
@@ -47,12 +49,12 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         class MyDoc(Document):
             name = StringField()
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
 
             class MyFailingDoc(Document):
                 emb = EmbeddedDocumentField(MyDoc)
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
 
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
@@ -71,24 +73,24 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         p = Person(settings=AdminSettings(foo1="bar1", foo2="bar2"), name="John").save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
+        with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
 
-        with self.assertRaises(LookUpError):
+        with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__foo1="bar1").first().id, p.id)
+        assert Person.objects(settings__foo1="bar1").first().id == p.id
         only_p = Person.objects.only("settings.foo1").first()
-        self.assertEqual(only_p.settings.foo1, p.settings.foo1)
-        self.assertIsNone(only_p.settings.foo2)
-        self.assertIsNone(only_p.name)
+        assert only_p.settings.foo1 == p.settings.foo1
+        assert only_p.settings.foo2 is None
+        assert only_p.name is None
 
         exclude_p = Person.objects.exclude("settings.foo1").first()
-        self.assertIsNone(exclude_p.settings.foo1)
-        self.assertEqual(exclude_p.settings.foo2, p.settings.foo2)
-        self.assertEqual(exclude_p.name, p.name)
+        assert exclude_p.settings.foo1 is None
+        assert exclude_p.settings.foo2 == p.settings.foo2
+        assert exclude_p.name == p.name
 
     def test_query_embedded_document_attribute_with_inheritance(self):
         class BaseSettings(EmbeddedDocument):
@@ -107,17 +109,17 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         p.save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
-            self.assertEqual(Person.objects(settings__notexist="bar").first().id, p.id)
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        with pytest.raises(InvalidQueryError) as exc_info:
+            assert Person.objects(settings__notexist="bar").first().id == p.id
+        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__base_foo="basefoo").first().id, p.id)
-        self.assertEqual(Person.objects(settings__sub_foo="subfoo").first().id, p.id)
+        assert Person.objects(settings__base_foo="basefoo").first().id == p.id
+        assert Person.objects(settings__sub_foo="subfoo").first().id == p.id
 
         only_p = Person.objects.only("settings.base_foo", "settings._cls").first()
-        self.assertEqual(only_p.settings.base_foo, "basefoo")
-        self.assertIsNone(only_p.settings.sub_foo)
+        assert only_p.settings.base_foo == "basefoo"
+        assert only_p.settings.sub_foo is None
 
     def test_query_list_embedded_document_with_inheritance(self):
         class Post(EmbeddedDocument):
@@ -137,14 +139,14 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         record_text = Record(posts=[TextPost(content="a", title="foo")]).save()
 
         records = list(Record.objects(posts__author=record_movie.posts[0].author))
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0].id, record_movie.id)
+        assert len(records) == 1
+        assert records[0].id == record_movie.id
 
         records = list(Record.objects(posts__content=record_text.posts[0].content))
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0].id, record_text.id)
+        assert len(records) == 1
+        assert records[0].id == record_text.id
 
-        self.assertEqual(Record.objects(posts__title="foo").count(), 2)
+        assert Record.objects(posts__title="foo").count() == 2
 
 
 class TestGenericEmbeddedDocumentField(MongoDBTestCase):
@@ -167,13 +169,13 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.like, Car)
+        assert isinstance(person.like, Car)
 
         person.like = Dish(food="arroz", number=15)
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.like, Dish)
+        assert isinstance(person.like, Dish)
 
     def test_generic_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices."""
@@ -193,13 +195,14 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         person = Person(name="Test User")
         person.like = Car(name="Fiat")
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
 
         person.like = Dish(food="arroz", number=15)
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.like, Dish)
+        assert isinstance(person.like, Dish)
 
     def test_generic_list_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices inside
@@ -221,13 +224,14 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         person = Person(name="Test User")
         person.likes = [Car(name="Fiat")]
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
 
         person.likes = [Dish(food="arroz", number=15)]
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.likes[0], Dish)
+        assert isinstance(person.likes[0], Dish)
 
     def test_choices_validation_documents(self):
         """
@@ -263,7 +267,8 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         # Single Entry Failure
         post = BlogPost(comments=[ModeratorComments(author="mod1", message="message1")])
-        self.assertRaises(ValidationError, post.save)
+        with pytest.raises(ValidationError):
+            post.save()
 
         # Mixed Entry Failure
         post = BlogPost(
@@ -272,7 +277,8 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
                 UserComments(author="user2", message="message2"),
             ]
         )
-        self.assertRaises(ValidationError, post.save)
+        with pytest.raises(ValidationError):
+            post.save()
 
     def test_choices_validation_documents_inheritance(self):
         """
@@ -311,16 +317,16 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         p2 = Person(settings=NonAdminSettings(foo2="bar2")).save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
+        with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
 
-        with self.assertRaises(LookUpError):
+        with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__foo1="bar1").first().id, p1.id)
-        self.assertEqual(Person.objects(settings__foo2="bar2").first().id, p2.id)
+        assert Person.objects(settings__foo1="bar1").first().id == p1.id
+        assert Person.objects(settings__foo2="bar2").first().id == p2.id
 
     def test_query_generic_embedded_document_attribute_with_inheritance(self):
         class BaseSettings(EmbeddedDocument):
@@ -339,10 +345,10 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         p.save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
-            self.assertEqual(Person.objects(settings__notexist="bar").first().id, p.id)
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        with pytest.raises(InvalidQueryError) as exc_info:
+            assert Person.objects(settings__notexist="bar").first().id == p.id
+        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__base_foo="basefoo").first().id, p.id)
-        self.assertEqual(Person.objects(settings__sub_foo="subfoo").first().id, p.id)
+        assert Person.objects(settings__base_foo="basefoo").first().id == p.id
+        assert Person.objects(settings__sub_foo="subfoo").first().id == p.id

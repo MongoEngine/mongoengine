@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime as dt
+
+import pytest
 import six
 
 try:
@@ -24,7 +26,8 @@ class TestDateTimeField(MongoDBTestCase):
             dt = DateTimeField()
 
         md = MyDoc(dt="")
-        self.assertRaises(ValidationError, md.save)
+        with pytest.raises(ValidationError):
+            md.save()
 
     def test_datetime_from_whitespace_string(self):
         """
@@ -36,7 +39,8 @@ class TestDateTimeField(MongoDBTestCase):
             dt = DateTimeField()
 
         md = MyDoc(dt="   ")
-        self.assertRaises(ValidationError, md.save)
+        with pytest.raises(ValidationError):
+            md.save()
 
     def test_default_value_utcnow(self):
         """Ensure that default field values are used when creating
@@ -50,11 +54,9 @@ class TestDateTimeField(MongoDBTestCase):
         person = Person()
         person.validate()
         person_created_t0 = person.created
-        self.assertLess(person.created - utcnow, dt.timedelta(seconds=1))
-        self.assertEqual(
-            person_created_t0, person.created
-        )  # make sure it does not change
-        self.assertEqual(person._data["created"], person.created)
+        assert person.created - utcnow < dt.timedelta(seconds=1)
+        assert person_created_t0 == person.created  # make sure it does not change
+        assert person._data["created"] == person.created
 
     def test_handling_microseconds(self):
         """Tests showing pymongo datetime fields handling of microseconds.
@@ -74,7 +76,7 @@ class TestDateTimeField(MongoDBTestCase):
         log.date = dt.date.today()
         log.save()
         log.reload()
-        self.assertEqual(log.date.date(), dt.date.today())
+        assert log.date.date() == dt.date.today()
 
         # Post UTC - microseconds are rounded (down) nearest millisecond and
         # dropped
@@ -84,8 +86,8 @@ class TestDateTimeField(MongoDBTestCase):
         log.date = d1
         log.save()
         log.reload()
-        self.assertNotEqual(log.date, d1)
-        self.assertEqual(log.date, d2)
+        assert log.date != d1
+        assert log.date == d2
 
         # Post UTC - microseconds are rounded (down) nearest millisecond
         d1 = dt.datetime(1970, 1, 1, 0, 0, 1, 9999)
@@ -93,8 +95,8 @@ class TestDateTimeField(MongoDBTestCase):
         log.date = d1
         log.save()
         log.reload()
-        self.assertNotEqual(log.date, d1)
-        self.assertEqual(log.date, d2)
+        assert log.date != d1
+        assert log.date == d2
 
         if not six.PY3:
             # Pre UTC dates microseconds below 1000 are dropped
@@ -104,8 +106,8 @@ class TestDateTimeField(MongoDBTestCase):
             log.date = d1
             log.save()
             log.reload()
-            self.assertNotEqual(log.date, d1)
-            self.assertEqual(log.date, d2)
+            assert log.date != d1
+            assert log.date == d2
 
     def test_regular_usage(self):
         """Tests for regular datetime fields"""
@@ -123,43 +125,43 @@ class TestDateTimeField(MongoDBTestCase):
 
         for query in (d1, d1.isoformat(" ")):
             log1 = LogEntry.objects.get(date=query)
-            self.assertEqual(log, log1)
+            assert log == log1
 
         if dateutil:
             log1 = LogEntry.objects.get(date=d1.isoformat("T"))
-            self.assertEqual(log, log1)
+            assert log == log1
 
         # create additional 19 log entries for a total of 20
         for i in range(1971, 1990):
             d = dt.datetime(i, 1, 1, 0, 0, 1)
             LogEntry(date=d).save()
 
-        self.assertEqual(LogEntry.objects.count(), 20)
+        assert LogEntry.objects.count() == 20
 
         # Test ordering
         logs = LogEntry.objects.order_by("date")
         i = 0
         while i < 19:
-            self.assertTrue(logs[i].date <= logs[i + 1].date)
+            assert logs[i].date <= logs[i + 1].date
             i += 1
 
         logs = LogEntry.objects.order_by("-date")
         i = 0
         while i < 19:
-            self.assertTrue(logs[i].date >= logs[i + 1].date)
+            assert logs[i].date >= logs[i + 1].date
             i += 1
 
         # Test searching
         logs = LogEntry.objects.filter(date__gte=dt.datetime(1980, 1, 1))
-        self.assertEqual(logs.count(), 10)
+        assert logs.count() == 10
 
         logs = LogEntry.objects.filter(date__lte=dt.datetime(1980, 1, 1))
-        self.assertEqual(logs.count(), 10)
+        assert logs.count() == 10
 
         logs = LogEntry.objects.filter(
             date__lte=dt.datetime(1980, 1, 1), date__gte=dt.datetime(1975, 1, 1)
         )
-        self.assertEqual(logs.count(), 5)
+        assert logs.count() == 5
 
     def test_datetime_validation(self):
         """Ensure that invalid values cannot be assigned to datetime
@@ -187,15 +189,20 @@ class TestDateTimeField(MongoDBTestCase):
             log.validate()
 
         log.time = -1
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
         log.time = "ABC"
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
         log.time = "2019-05-16 21:GARBAGE:12"
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
         log.time = "2019-05-16 21:42:57.GARBAGE"
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
         log.time = "2019-05-16 21:42:57.123.456"
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
 
     def test_parse_datetime_as_str(self):
         class DTDoc(Document):
@@ -206,15 +213,16 @@ class TestDateTimeField(MongoDBTestCase):
         # make sure that passing a parsable datetime works
         dtd = DTDoc()
         dtd.date = date_str
-        self.assertIsInstance(dtd.date, six.string_types)
+        assert isinstance(dtd.date, six.string_types)
         dtd.save()
         dtd.reload()
 
-        self.assertIsInstance(dtd.date, dt.datetime)
-        self.assertEqual(str(dtd.date), date_str)
+        assert isinstance(dtd.date, dt.datetime)
+        assert str(dtd.date) == date_str
 
         dtd.date = "January 1st, 9999999999"
-        self.assertRaises(ValidationError, dtd.validate)
+        with pytest.raises(ValidationError):
+            dtd.validate()
 
 
 class TestDateTimeTzAware(MongoDBTestCase):
@@ -235,4 +243,4 @@ class TestDateTimeTzAware(MongoDBTestCase):
 
         log = LogEntry.objects.first()
         log.time = dt.datetime(2013, 1, 1, 0, 0, 0)
-        self.assertEqual(["time"], log._changed_fields)
+        assert ["time"] == log._changed_fields

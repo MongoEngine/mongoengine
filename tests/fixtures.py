@@ -42,11 +42,11 @@ class PickleSignalsTest(Document):
 
     @classmethod
     def post_save(self, sender, document, created, **kwargs):
-        pickled = pickle.dumps(document)
+        pickle.dumps(document)
 
     @classmethod
     def post_delete(self, sender, document, **kwargs):
-        pickled = pickle.dumps(document)
+        pickle.dumps(document)
 
 
 signals.post_save.connect(PickleSignalsTest.post_save, sender=PickleSignalsTest)
