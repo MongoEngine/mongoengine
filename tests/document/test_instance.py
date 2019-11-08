@@ -3643,6 +3643,32 @@ class TestInstance(MongoDBTestCase):
         with pytest.raises(DuplicateKeyError):
             User.objects().select_related()
 
+    def test_embedded_document_failed_while_loading_instance_when_it_is_not_a_dict(
+        self
+    ):
+        class LightSaber(EmbeddedDocument):
+            color = StringField()
+
+        class Jedi(Document):
+            light_saber = EmbeddedDocumentField(LightSaber)
+
+        coll = Jedi._get_collection()
+        Jedi(light_saber=LightSaber(color="red")).save()
+        _ = list(Jedi.objects)  # Ensure a proper document loads without errors
+
+        # Forces a document with a wrong shape (may occur in case of migration)
+        value = u"I_should_be_a_dict"
+        coll.insert_one({"light_saber": value})
+
+        with self.assertRaises(InvalidDocumentError) as cm:
+            list(Jedi.objects)
+
+        self.assertEqual(
+            str(cm.exception),
+            "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found"
+            % type(value),
+        )
+
 
 class ObjectKeyTestCase(MongoDBTestCase):
     def test_object_key_simple_document(self):
