@@ -789,9 +789,7 @@ class BaseDocument(object):
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         ListField = _import_class("ListField")
 
-        field_name_set = set()
         for field_name, field in fields.iteritems():
-            field_name_set.add(field_name)
             field._auto_dereference = _auto_dereference
             if field.db_field in data:
                 value = data[field.db_field]
@@ -812,7 +810,10 @@ class BaseDocument(object):
                                     value = field.to_python(value, loading_from_db=loading_from_db)
                                 else:
                                     value = field.to_python(value)
+
                     data[field_name] = value
+                    if field_name != field.db_field:
+                        del data[field.db_field]
                 except (AttributeError, ValueError), e:
                     errors_dict[field_name] = e
             elif field.default:
@@ -823,13 +824,6 @@ class BaseDocument(object):
                     changed_fields.append(field_name)
                 elif not only_fields or field_name in only_fields:
                     changed_fields.append(field_name)
-
-        # Remove the unwanted keys from the dict. This dict should only contain keys which are a field name of the model
-        # Some keys corresponding to the db_field (where field name is not same as db_field) may have become stale so we
-        # want to remove them.
-        keys_to_delete = set(data.keys()) - field_name_set
-        for key in keys_to_delete:
-            del data[key]
 
         if errors_dict:
             errors = "\n".join(["%s - %s" % (k, v)
