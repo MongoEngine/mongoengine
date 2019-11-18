@@ -182,10 +182,10 @@ class query_counter(object):
     - Some queries are ignored by default by the counter (killcursors, db.system.indexes)
     """
 
-    def __init__(self):
+    def __init__(self, alias=DEFAULT_CONNECTION_NAME):
         """Construct the query_counter
         """
-        self.db = get_db()
+        self.db = get_db(alias=alias)
         self.initial_profiling_level = None
         self._ctx_query_counter = 0  # number of queries issued by the context
 
