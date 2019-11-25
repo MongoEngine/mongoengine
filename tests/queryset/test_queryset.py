@@ -952,6 +952,19 @@ class TestQueryset(unittest.TestCase):
 
         assert Blog.objects.count() == 2
 
+    def test_bulk_insert_with_kwargs(self):
+        class Blog(Document):
+            title = StringField(unique=True)
+            tags = ListField(StringField())
+
+        Blog.drop_collection()
+
+        # pass ordered=False
+        Blog.objects.insert([
+            Blog(title="foo", tags=["A", "B"]),
+            Blog(title="bar", posts=["C", "D"])
+        ], ordered=False)
+
     def test_bulk_insert_different_class_fails(self):
         class Blog(Document):
             pass

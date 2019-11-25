@@ -288,7 +288,8 @@ class BaseQuerySet(object):
         return result
 
     def insert(
-        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
+        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None,
+        **kwargs
     ):
         """bulk insert documents
 
@@ -302,8 +303,11 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
+        :param kwargs: (optional) kwargs dictionary to be forwarded to
+                        the pymongo's insert method. For example,
+                        ``Document.objects.insert(docs, ordered=False)``
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
@@ -322,6 +326,10 @@ class BaseQuerySet(object):
         if isinstance(docs, Document) or issubclass(docs.__class__, Document):
             return_one = True
             docs = [docs]
+
+        if return_one and 'ordered' in kwargs:
+            # insert_one does not accept `ordered` argument
+            kwargs.pop('ordered')
 
         for doc in docs:
             if not isinstance(doc, self._document):
@@ -345,7 +353,7 @@ class BaseQuerySet(object):
                 insert_func = collection.insert_one
 
         try:
-            inserted_result = insert_func(raw)
+            inserted_result = insert_func(raw, **kwargs)
             ids = (
                 [inserted_result.inserted_id]
                 if return_one
