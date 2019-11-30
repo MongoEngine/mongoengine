@@ -92,7 +92,7 @@ class BaseDocument(object):
         # if so raise an Exception.
         if not self._dynamic and (self._meta.get("strict", True) or _created):
             _undefined_fields = set(values.keys()) - set(
-                self._fields.keys() + ["id", "pk", "_cls", "_text_score"]
+                list(self._fields.keys()) + ["id", "pk", "_cls", "_text_score"]
             )
             if _undefined_fields:
                 msg = ('The fields "{0}" do not exist on the document "{1}"').format(
