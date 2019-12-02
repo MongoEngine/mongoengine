@@ -23,6 +23,7 @@ Development
 - Switch from nosetest to pytest as test runner #2114
 - The codebase is now formatted using ``black``. #2109
 - In bulk write insert, the detailed error message would raise in exception.
+- Added ability to compare Q and Q operations #2204
 
 Changes in 0.18.2
 =================
