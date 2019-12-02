@@ -374,6 +374,38 @@ class TestQ(unittest.TestCase):
             == 2
         )
 
+    def test_equality(self):
+        assert Q(name="John") == Q(name="John")
+        assert Q() == Q()
+
+    def test_inequality(self):
+        assert Q(name="John") != Q(name="Ralph")
+
+    def test_operation_equality(self):
+        q1 = Q(name="John") | Q(title="Sir") & Q(surname="Paul")
+        q2 = Q(name="John") | Q(title="Sir") & Q(surname="Paul")
+        assert q1 == q2
+
+    def test_operation_inequality(self):
+        q1 = Q(name="John") | Q(title="Sir")
+        q2 = Q(title="Sir") | Q(name="John")
+        assert q1 != q2
+
+    def test_combine_and_empty(self):
+        q = Q(x=1)
+        assert q & Q() == q
+        assert Q() & q == q
+
+    def test_combine_and_both_empty(self):
+        assert Q() & Q() == Q()
+
+    def test_combine_or_empty(self):
+        q = Q(x=1)
+        assert q | Q() == q
+        assert Q() | q == q
+
+    def test_combine_or_both_empty(self):
+        assert Q() | Q() == Q()
 
 if __name__ == "__main__":
     unittest.main()

@@ -96,9 +96,11 @@ class QNode(object):
         """Combine this node with another node into a QCombination
         object.
         """
+        # If the other Q() is empty, ignore it and just use `self`.
         if getattr(other, "empty", True):
             return self
 
+        # Or if this Q is empty, ignore it and just use `other`.
         if self.empty:
             return other
 
@@ -146,6 +148,13 @@ class QCombination(QNode):
     def empty(self):
         return not bool(self.children)
 
+    def __eq__(self, other):
+        return (
+            self.__class__ == other.__class__
+            and self.operation == other.operation
+            and self.children == other.children
+        )
+
 
 class Q(QNode):
     """A simple query object, used in a query tree to build up more complex
@@ -164,3 +173,6 @@ class Q(QNode):
     @property
     def empty(self):
         return not bool(self.query)
+
+    def __eq__(self, other):
+        return self.__class__ == other.__class__ and self.query == other.query
