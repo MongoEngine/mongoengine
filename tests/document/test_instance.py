@@ -2825,6 +2825,44 @@ class TestInstance(MongoDBTestCase):
 
         assert "testdb-1" == B._meta.get("db_alias")
 
+    def test_query_counter_alias(self):
+        """query_counter works properly with db aliases?"""
+        # Register a connection with db_alias testdb-1
+        register_connection("testdb-1", "mongoenginetest2")
+
+        class A(Document):
+            """Uses default db_alias
+            """
+
+            name = StringField()
+
+        class B(Document):
+            """Uses testdb-1 db_alias
+            """
+
+            name = StringField()
+            meta = {"db_alias": "testdb-1"}
+
+        with query_counter() as q:
+            assert q == 0
+            a = A.objects.create(name="A")
+            assert q == 1
+            a = A.objects.first()
+            assert q == 2
+            a.name = "Test A"
+            a.save()
+            assert q == 3
+
+        with query_counter(alias="testdb-1") as q:
+            assert q == 0
+            b = B.objects.create(name="B")
+            assert q == 1
+            b = B.objects.first()
+            assert q == 2
+            b.name = "Test B"
+            b.save()
+            assert q == 3
+
     def test_db_ref_usage(self):
         """DB Ref usage in dict_fields."""
 
@@ -3644,7 +3682,7 @@ class TestInstance(MongoDBTestCase):
             User.objects().select_related()
 
     def test_embedded_document_failed_while_loading_instance_when_it_is_not_a_dict(
-        self
+        self,
     ):
         class LightSaber(EmbeddedDocument):
             color = StringField()
