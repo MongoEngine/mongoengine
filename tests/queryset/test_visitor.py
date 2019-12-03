@@ -407,5 +407,6 @@ class TestQ(unittest.TestCase):
     def test_combine_or_both_empty(self):
         assert Q() | Q() == Q()
 
+
 if __name__ == "__main__":
     unittest.main()
