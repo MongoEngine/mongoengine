@@ -2,10 +2,10 @@
 Use mongomock for testing
 ==============================
 
-`mongomock <https://github.com/vmalloc/mongomock/>`_ is a package to do just 
+`mongomock <https://github.com/vmalloc/mongomock/>`_ is a package to do just
 what the name implies, mocking a mongo database.
 
-To use with mongoengine, simply specify mongomock when connecting with 
+To use with mongoengine, simply specify mongomock when connecting with
 mongoengine:
 
 .. code-block:: python
