@@ -3644,7 +3644,7 @@ class TestInstance(MongoDBTestCase):
             User.objects().select_related()
 
     def test_embedded_document_failed_while_loading_instance_when_it_is_not_a_dict(
-        self
+        self,
     ):
         class LightSaber(EmbeddedDocument):
             color = StringField()

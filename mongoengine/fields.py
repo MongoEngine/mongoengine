@@ -41,6 +41,7 @@ from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
+from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
 from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
@@ -1040,13 +1041,20 @@ def key_not_string(d):
             return True
 
 
-def key_has_dot_or_dollar(d):
+def key_has_forbidden_characters(d):
     """Helper function to recursively determine if any key in a
-    dictionary contains a dot or a dollar sign.
+    dictionary has forbidden characters.
     """
+
+    def is_key_forbidden(key):
+        if get_mongodb_version() >= MONGODB_36:
+            return key.startswith("$")
+        else:
+            return "." in key or key.startswith("$")
+
     for k, v in d.items():
-        if ("." in k or k.startswith("$")) or (
-            isinstance(v, dict) and key_has_dot_or_dollar(v)
+        if is_key_forbidden(k) or (
+            isinstance(v, dict) and key_has_forbidden_characters(v)
         ):
             return True
 
@@ -1077,11 +1085,18 @@ class DictField(ComplexBaseField):
         if key_not_string(value):
             msg = "Invalid dictionary key - documents must have only string keys"
             self.error(msg)
-        if key_has_dot_or_dollar(value):
-            self.error(
-                'Invalid dictionary key name - keys may not contain "."'
-                ' or startswith "$" characters'
-            )
+        if key_has_forbidden_characters(value):
+            if get_mongodb_version() >= MONGODB_36:
+                msg = (
+                    "Invalid dictionary key name - keys may not "
+                    'startswith "$" characters'
+                )
+            else:
+                msg = (
+                    'Invalid dictionary key name - keys may not contain "."'
+                    ' or startswith "$" characters'
+                )
+            self.error(msg)
         super(DictField, self).validate(value)
 
     def lookup_member(self, member_name):
