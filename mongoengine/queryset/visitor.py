@@ -2,6 +2,8 @@ import copy
 
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
+import warnings
+
 
 __all__ = ("Q", "QNode")
 
@@ -101,13 +103,15 @@ class QNode(object):
             return self
 
         # Or if this Q is empty, ignore it and just use `other`.
-        if self.empty:
+        if not self:
             return other
 
         return QCombination(operation, [self, other])
 
     @property
     def empty(self):
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)"
+        warnings.warn(msg, DeprecationWarning)
         return False
 
     def __or__(self, other):
@@ -137,6 +141,9 @@ class QCombination(QNode):
         op = " & " if self.operation is self.AND else " | "
         return "(%s)" % op.join([repr(node) for node in self.children])
 
+    def __bool__(self):
+        return bool(self.children)
+
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -146,6 +153,8 @@ class QCombination(QNode):
 
     @property
     def empty(self):
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)"
+        warnings.warn(msg, DeprecationWarning)
         return not bool(self.children)
 
     def __eq__(self, other):
@@ -167,12 +176,15 @@ class Q(QNode):
     def __repr__(self):
         return "Q(**%s)" % repr(self.query)
 
+    def __bool__(self):
+        return bool(self.query)
+
+    def __eq__(self, other):
+        return self.__class__ == other.__class__ and self.query == other.query
+
     def accept(self, visitor):
         return visitor.visit_query(self)
 
     @property
     def empty(self):
         return not bool(self.query)
-
-    def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.query == other.query

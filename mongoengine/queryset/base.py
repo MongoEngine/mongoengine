@@ -686,7 +686,7 @@ class BaseQuerySet(object):
         .. versionchanged:: 0.6 Raises InvalidQueryError if filter has been set
         """
         queryset = self.clone()
-        if not queryset._query_obj.empty:
+        if queryset._query_obj:
             msg = "Cannot use a filter whilst using `with_id`"
             raise InvalidQueryError(msg)
         return queryset.filter(pk=object_id).first()
