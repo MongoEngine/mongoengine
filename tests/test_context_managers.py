@@ -282,6 +282,52 @@ class TestContextManagers:
             assert q < 1000
             assert q <= int(q)
 
+    def test_query_counter_alias(self):
+        """query_counter works properly with db aliases?"""
+        # Register a connection with db_alias testdb-1
+        register_connection("testdb-1", "mongoenginetest2")
+
+        class A(Document):
+            """Uses default db_alias"""
+
+            name = StringField()
+
+        class B(Document):
+            """Uses testdb-1 db_alias"""
+
+            name = StringField()
+            meta = {"db_alias": "testdb-1"}
+
+        A.drop_collection()
+        B.drop_collection()
+
+        with query_counter() as q:
+            assert q == 0
+            A.objects.create(name="A")
+            assert q == 1
+            a = A.objects.first()
+            assert q == 2
+            a.name = "Test A"
+            a.save()
+            assert q == 3
+            # querying the other db should'nt alter the counter
+            B.objects().first()
+            assert q == 3
+
+        with query_counter(alias="testdb-1") as q:
+            assert q == 0
+            B.objects.create(name="B")
+            assert q == 1
+            b = B.objects.first()
+            assert q == 2
+            b.name = "Test B"
+            b.save()
+            assert b.name == "Test B"
+            assert q == 3
+            # querying the other db should'nt alter the counter
+            A.objects().first()
+            assert q == 3
+
     def test_query_counter_counts_getmore_queries(self):
         connect("mongoenginetest")
         db = get_db()

@@ -171,7 +171,7 @@ class no_sub_classes(object):
 class query_counter(object):
     """Query_counter context manager to get the number of queries.
     This works by updating the `profiling_level` of the database so that all queries get logged,
-    resetting the db.system.profile collection at the beginnig of the context and counting the new entries.
+    resetting the db.system.profile collection at the beginning of the context and counting the new entries.
 
     This was designed for debugging purpose. In fact it is a global counter so queries issued by other threads/processes
     can interfere with it
