@@ -1,9 +1,8 @@
 import copy
+import warnings
 
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
-import warnings
-
 
 __all__ = ("Q", "QNode")
 
