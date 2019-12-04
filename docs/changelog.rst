@@ -25,6 +25,7 @@ Development
 - In bulk write insert, the detailed error message would raise in exception.
 - Added ability to compare Q and Q operations #2204
 - Added ability to use a db alias on query_counter #2194
+- Added ability to check if Q or Q operations is empty by parsing them to bool #2210
 
 Changes in 0.18.2
 =================
