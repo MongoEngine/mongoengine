@@ -143,6 +143,8 @@ class QCombination(QNode):
     def __bool__(self):
         return bool(self.children)
 
+    __nonzero__ = __bool__  # For Py2 support
+
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -177,6 +179,8 @@ class Q(QNode):
 
     def __bool__(self):
         return bool(self.query)
+
+    __nonzero__ = __bool__  # For Py2 support
 
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.query == other.query
