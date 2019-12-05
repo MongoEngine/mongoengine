@@ -25,8 +25,8 @@ Development
 - In bulk write insert, the detailed error message would raise in exception.
 - Added ability to compare Q and Q operations #2204
 - Added ability to use a db alias on query_counter #2194
-- Added pre-commit
-- Renamed requirements-lint.txt to requirements-dev.txt
+- Added pre-commit #2212
+- Renamed requirements-lint.txt to requirements-dev.txt #2212
 
 Changes in 0.18.2
 =================

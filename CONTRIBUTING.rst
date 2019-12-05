@@ -44,7 +44,7 @@ You can install `pre-commit <https://pre-commit.com/>`_ into your git hooks,
 to automatically check and fix any formatting issue before creating a
 git commit.
 
-Simply run the following command:
+To enable ``pre-commit`` simply run:
 
 .. code-block:: console
 
