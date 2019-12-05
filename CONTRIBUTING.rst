@@ -31,8 +31,28 @@ build. You should ensure that your code is properly converted by
 Style Guide
 -----------
 
-MongoEngine uses `black <https://github.com/python/black>`_ for code
-formatting.
+MongoEngine uses various tools to maintain a common coding style.
+
+To install all development tools, simply run the following commands:
+
+.. code-block:: console
+
+    $ python -m pip install -r requirements-dev.txt
+
+
+You can install `pre-commit <https://pre-commit.com/>`_ into your git hooks,
+to automatically check and fix any formatting issue before creating a
+git commit.
+
+Simply run the following command:
+
+.. code-block:: console
+
+    $ pre-commit install
+
+See the ``.pre-commit-config.yaml`` configuration file for more information
+on how it works.
+
 
 Testing
 -------
