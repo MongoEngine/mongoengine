@@ -18,7 +18,7 @@ location --- running it locally will be easier, but if that is not an option
 then it may be run on a remote server. If you haven't installed MongoEngine,
 simply use pip to install it like so::
 
-    $ pip install mongoengine
+    $ python -m pip install mongoengine
 
 Before we can start using MongoEngine, we need to tell it how to connect to our
 instance of :program:`mongod`. For this we use the :func:`~mongoengine.connect`

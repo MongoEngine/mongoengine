@@ -85,10 +85,10 @@ by default from now on.
 
 The 0.8.7 package on pypi was corrupted.  If upgrading from 0.8.7 to 0.9.0 please follow: ::
 
-    pip uninstall pymongo
-    pip uninstall mongoengine
-    pip install pymongo==2.8
-    pip install mongoengine
+    python -m pip uninstall pymongo
+    python -m pip uninstall mongoengine
+    python -m pip install pymongo==2.8
+    python -m pip install mongoengine
 
 0.8.7
 *****
