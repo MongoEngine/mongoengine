@@ -102,14 +102,14 @@ class QNode(object):
             return self
 
         # Or if this Q is empty, ignore it and just use `other`.
-        if not self:
+        if self.empty:
             return other
 
         return QCombination(operation, [self, other])
 
     @property
     def empty(self):
-        msg = "'empty' property is deprecated in favour of using 'not bool(filter)"
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
         warnings.warn(msg, DeprecationWarning)
         return False
 
@@ -154,7 +154,7 @@ class QCombination(QNode):
 
     @property
     def empty(self):
-        msg = "'empty' property is deprecated in favour of using 'not bool(filter)"
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
         warnings.warn(msg, DeprecationWarning)
         return not bool(self.children)
 
