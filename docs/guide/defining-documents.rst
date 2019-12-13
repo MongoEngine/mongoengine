@@ -744,7 +744,7 @@ Document inheritance
 
 To create a specialised type of a :class:`~mongoengine.Document` you have
 defined, you may subclass it and add any extra fields or methods you may need.
-As this is new class is not a direct subclass of
+As this new class is not a direct subclass of
 :class:`~mongoengine.Document`, it will not be stored in its own collection; it
 will use the same collection as its superclass uses. This allows for more
 convenient and efficient retrieval of related documents -- all you need do is
@@ -766,6 +766,27 @@ document.::
 
           Setting :attr:`allow_inheritance` to True should also be used in
           :class:`~mongoengine.EmbeddedDocument` class in case you need to subclass it
+
+When it comes to querying using :attr:`.objects()`, querying `Page.objects()` will query
+both `Page` and `DatedPage` whereas querying `DatedPage` will only query the `DatedPage` documents.
+Behind the scenes, MongoEngine deals with inheritance by adding a :attr:`_cls` attribute that contains
+the class name in every documents. When a document is loaded, MongoEngine checks
+it's :attr:`_cls` attribute and use that class to construct the instance.::
+
+    Page(title='a funky title').save()
+    DatedPage(title='another title', date=datetime.utcnow()).save()
+
+    print(Page.objects().count())         # 2
+    print(DatedPage.objects().count())    # 1
+
+    # print documents in their native form
+    # we remove 'id' to avoid polluting the output with unnecessary detail
+    qs = Page.objects.exclude('id').as_pymongo()
+    print(list(qs))
+    # [
+    #   {'_cls': u 'Page', 'title': 'a funky title'},
+    #   {'_cls': u 'Page.DatedPage', 'title': u 'another title', 'date': datetime.datetime(2019, 12, 13, 20, 16, 59, 993000)}
+    # ]
 
 Working with existing data
 --------------------------
