@@ -407,6 +407,17 @@ class TestQ(unittest.TestCase):
     def test_combine_or_both_empty(self):
         assert Q() | Q() == Q()
 
+    def test_q_bool(self):
+        assert Q(name="John")
+        assert not Q()
+
+    def test_combine_bool(self):
+        assert not Q() & Q()
+        assert Q() & Q(name="John")
+        assert Q(name="John") & Q()
+        assert Q() | Q(name="John")
+        assert Q(name="John") | Q()
+
 
 if __name__ == "__main__":
     unittest.main()
