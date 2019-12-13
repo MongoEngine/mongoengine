@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-import pytest
-
 from builtins import str
 
-from mongoengine import *
+import pytest
 
+from mongoengine import *
 from tests.utils import MongoDBTestCase
 
 
@@ -37,8 +36,9 @@ class TestURLField(MongoDBTestCase):
         with pytest.raises(ValidationError) as exc_info:
             link.validate()
         assert (
-            str(exc_info.exception)
-            == u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])")
+            str(exc_info.value)
+            == u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
+        )
 
     def test_url_scheme_validation(self):
         """Ensure that URLFields validate urls with specific schemes properly.
