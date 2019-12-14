@@ -352,7 +352,7 @@ Its value can take any of the following constants:
   Deletion is denied if there still exist references to the object being
   deleted.
 :const:`mongoengine.NULLIFY`
-  Any object's fields still referring to the object being deleted are removed
+  Any object's fields still referring to the object being deleted are set to None
   (using MongoDB's "unset" operation), effectively nullifying the relationship.
 :const:`mongoengine.CASCADE`
   Any object containing fields that are referring to the object being deleted
