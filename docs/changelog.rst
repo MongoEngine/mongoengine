@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Codebase is now compatible with both Python2 and Python3 (no more relying on 2to3 during installation) #2087
 - Documentation improvements:
     - Documented how `pymongo.monitoring` can be used to log all queries issued by MongoEngine to the driver.
 - BREAKING CHANGE: ``class_check`` and ``read_preference`` keyword arguments are no longer available when filtering a ``QuerySet``. #2112
