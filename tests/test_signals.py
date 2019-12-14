@@ -58,7 +58,9 @@ class TestSignal(unittest.TestCase):
 
             @classmethod
             def post_save(cls, sender, document, **kwargs):
-                dirty_keys = list(document._delta()[0].keys()) + list(document._delta()[1].keys())
+                dirty_keys = list(document._delta()[0].keys()) + list(
+                    document._delta()[1].keys()
+                )
                 signal_output.append("post_save signal, %s" % document)
                 signal_output.append("post_save dirty keys, %s" % dirty_keys)
                 if kwargs.pop("created", False):

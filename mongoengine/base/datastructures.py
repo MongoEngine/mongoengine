@@ -426,7 +426,7 @@ class StrictDict(object):
         return listitems(self) == listitems(other)
 
     def __ne__(self, other):
-        return not(self == other)
+        return not (self == other)
 
     @classmethod
     def create(cls, allowed_keys):
