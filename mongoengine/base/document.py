@@ -506,7 +506,8 @@ class BaseDocument(object):
         
         if not hasattr(self, '_original_values'):
             self._original_values = {}
-            
+
+        model_key = key
         if '.' in key:
             key, rest = key.split('.', 1)
             key = self._db_field_map.get(key, key)
@@ -530,7 +531,8 @@ class BaseDocument(object):
                     # self.field.append('x')
                     # The on_change should not be fired even in this case.
                     with DocumentProxy.ignore_deep_copy():
-                        self._original_values[key] = copy.deepcopy(self[key])
+                        # Always use model_key names here as this will give KeyError for db_field names.
+                        self._original_values[key] = copy.deepcopy(self[model_key])
 
                 # remove lower level changed fields
                 level = '.'.join(levels[:idx]) + '.'
