@@ -2502,6 +2502,13 @@ class LazyReferenceField(BaseField):
         else:
             return pk
 
+    def to_python(self, value):
+        """Convert a MongoDB-compatible type to a Python type."""
+        if not isinstance(value, (DBRef, Document, EmbeddedDocument)):
+            collection = self.document_type._get_collection_name()
+            value = DBRef(collection, self.document_type.id.to_python(value))
+        return value
+
     def validate(self, value):
         if isinstance(value, LazyReference):
             if value.collection != self.document_type._get_collection_name():

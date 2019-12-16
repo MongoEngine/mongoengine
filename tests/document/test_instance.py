@@ -3319,6 +3319,39 @@ class TestInstance(MongoDBTestCase):
         f1.ref  # Dereferences lazily
         assert f1 == f2
 
+    def test_embedded_document_equality_with_lazy_ref(self):
+        class Job(EmbeddedDocument):
+            boss = LazyReferenceField("Person")
+            boss_dbref = LazyReferenceField("Person", dbref=True)
+
+        class Person(Document):
+            job = EmbeddedDocumentField(Job)
+
+        Person.drop_collection()
+
+        boss = Person()
+        worker = Person(job=Job(boss=boss, boss_dbref=boss))
+        boss.save()
+        worker.save()
+
+        worker1 = Person.objects.get(id=worker.id)
+
+        # worker1.job should be equal to the job used originally to create the
+        # document.
+        self.assertEqual(worker1.job, worker.job)
+
+        # worker1.job should be equal to a newly created Job EmbeddedDocument
+        # using either the Boss object or his ID.
+        self.assertEqual(worker1.job, Job(boss=boss, boss_dbref=boss))
+        self.assertEqual(worker1.job, Job(boss=boss.id, boss_dbref=boss.id))
+
+        # The above equalities should also hold after worker1.job.boss has been
+        # fetch()ed.
+        worker1.job.boss.fetch()
+        self.assertEqual(worker1.job, worker.job)
+        self.assertEqual(worker1.job, Job(boss=boss, boss_dbref=boss))
+        self.assertEqual(worker1.job, Job(boss=boss.id, boss_dbref=boss.id))
+
     def test_dbref_equality(self):
         class Test2(Document):
             name = StringField()
