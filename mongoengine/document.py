@@ -364,7 +364,8 @@ class Document(BaseDocument):
 
         changed_fields = list(set([f.split('.')[0] for f in getattr(self, '_changed_fields', [])]))
         changed_fields = [self._reverse_db_field_map.get(changed_field, changed_field) for changed_field in changed_fields]
-        original_values = getattr(self, '_original_values', {})
+        # Use reverse_db_field_map in original_values as well
+        original_values = {self._reverse_db_field_map.get(k,k):v for k,v in getattr(self, '_original_values', {}).iteritems()}
         force_changed_fields = getattr(self, '_force_changed_fields', set())
 
         def is_field_unchanged(field):
