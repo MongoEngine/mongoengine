@@ -2,25 +2,23 @@
 import unittest
 from datetime import datetime
 
+import pytest
+
 from mongoengine import *
+from tests.utils import MongoDBTestCase
 
-__all__ = ("ValidatorErrorTest",)
 
-
-class ValidatorErrorTest(unittest.TestCase):
-    def setUp(self):
-        connect(db="mongoenginetest")
-
+class TestValidatorError(MongoDBTestCase):
     def test_to_dict(self):
         """Ensure a ValidationError handles error to_dict correctly.
         """
         error = ValidationError("root")
-        self.assertEqual(error.to_dict(), {})
+        assert error.to_dict() == {}
 
         # 1st level error schema
         error.errors = {"1st": ValidationError("bad 1st")}
-        self.assertIn("1st", error.to_dict())
-        self.assertEqual(error.to_dict()["1st"], "bad 1st")
+        assert "1st" in error.to_dict()
+        assert error.to_dict()["1st"] == "bad 1st"
 
         # 2nd level error schema
         error.errors = {
@@ -28,10 +26,10 @@ class ValidatorErrorTest(unittest.TestCase):
                 "bad 1st", errors={"2nd": ValidationError("bad 2nd")}
             )
         }
-        self.assertIn("1st", error.to_dict())
-        self.assertIsInstance(error.to_dict()["1st"], dict)
-        self.assertIn("2nd", error.to_dict()["1st"])
-        self.assertEqual(error.to_dict()["1st"]["2nd"], "bad 2nd")
+        assert "1st" in error.to_dict()
+        assert isinstance(error.to_dict()["1st"], dict)
+        assert "2nd" in error.to_dict()["1st"]
+        assert error.to_dict()["1st"]["2nd"] == "bad 2nd"
 
         # moar levels
         error.errors = {
@@ -49,13 +47,13 @@ class ValidatorErrorTest(unittest.TestCase):
                 },
             )
         }
-        self.assertIn("1st", error.to_dict())
-        self.assertIn("2nd", error.to_dict()["1st"])
-        self.assertIn("3rd", error.to_dict()["1st"]["2nd"])
-        self.assertIn("4th", error.to_dict()["1st"]["2nd"]["3rd"])
-        self.assertEqual(error.to_dict()["1st"]["2nd"]["3rd"]["4th"], "Inception")
+        assert "1st" in error.to_dict()
+        assert "2nd" in error.to_dict()["1st"]
+        assert "3rd" in error.to_dict()["1st"]["2nd"]
+        assert "4th" in error.to_dict()["1st"]["2nd"]["3rd"]
+        assert error.to_dict()["1st"]["2nd"]["3rd"]["4th"] == "Inception"
 
-        self.assertEqual(error.message, "root(2nd.3rd.4th.Inception: ['1st'])")
+        assert error.message == "root(2nd.3rd.4th.Inception: ['1st'])"
 
     def test_model_validation(self):
         class User(Document):
@@ -65,19 +63,19 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             User().validate()
         except ValidationError as e:
-            self.assertIn("User:None", e.message)
-            self.assertEqual(
-                e.to_dict(),
-                {"username": "Field is required", "name": "Field is required"},
-            )
+            assert "User:None" in e.message
+            assert e.to_dict() == {
+                "username": "Field is required",
+                "name": "Field is required",
+            }
 
         user = User(username="RossC0", name="Ross").save()
         user.name = None
         try:
             user.save()
         except ValidationError as e:
-            self.assertIn("User:RossC0", e.message)
-            self.assertEqual(e.to_dict(), {"name": "Field is required"})
+            assert "User:RossC0" in e.message
+            assert e.to_dict() == {"name": "Field is required"}
 
     def test_fields_rewrite(self):
         class BasePerson(Document):
@@ -89,7 +87,8 @@ class ValidatorErrorTest(unittest.TestCase):
             name = StringField(required=True)
 
         p = Person(age=15)
-        self.assertRaises(ValidationError, p.validate)
+        with pytest.raises(ValidationError):
+            p.validate()
 
     def test_embedded_document_validation(self):
         """Ensure that embedded documents may be validated.
@@ -100,17 +99,19 @@ class ValidatorErrorTest(unittest.TestCase):
             content = StringField(required=True)
 
         comment = Comment()
-        self.assertRaises(ValidationError, comment.validate)
+        with pytest.raises(ValidationError):
+            comment.validate()
 
         comment.content = "test"
         comment.validate()
 
         comment.date = 4
-        self.assertRaises(ValidationError, comment.validate)
+        with pytest.raises(ValidationError):
+            comment.validate()
 
         comment.date = datetime.now()
         comment.validate()
-        self.assertEqual(comment._instance, None)
+        assert comment._instance is None
 
     def test_embedded_db_field_validate(self):
         class SubDoc(EmbeddedDocument):
@@ -123,10 +124,8 @@ class ValidatorErrorTest(unittest.TestCase):
         try:
             Doc(id="bad").validate()
         except ValidationError as e:
-            self.assertIn("SubDoc:None", e.message)
-            self.assertEqual(
-                e.to_dict(), {"e": {"val": "OK could not be converted to int"}}
-            )
+            assert "SubDoc:None" in e.message
+            assert e.to_dict() == {"e": {"val": "OK could not be converted to int"}}
 
         Doc.drop_collection()
 
@@ -134,18 +133,16 @@ class ValidatorErrorTest(unittest.TestCase):
 
         doc = Doc.objects.first()
         keys = doc._data.keys()
-        self.assertEqual(2, len(keys))
-        self.assertIn("e", keys)
-        self.assertIn("id", keys)
+        assert 2 == len(keys)
+        assert "e" in keys
+        assert "id" in keys
 
         doc.e.val = "OK"
         try:
             doc.save()
         except ValidationError as e:
-            self.assertIn("Doc:test", e.message)
-            self.assertEqual(
-                e.to_dict(), {"e": {"val": "OK could not be converted to int"}}
-            )
+            assert "Doc:test" in e.message
+            assert e.to_dict() == {"e": {"val": "OK could not be converted to int"}}
 
     def test_embedded_weakref(self):
         class SubDoc(EmbeddedDocument):
@@ -161,14 +158,16 @@ class ValidatorErrorTest(unittest.TestCase):
 
         s = SubDoc()
 
-        self.assertRaises(ValidationError, s.validate)
+        with pytest.raises(ValidationError):
+            s.validate()
 
         d1.e = s
         d2.e = s
 
         del d1
 
-        self.assertRaises(ValidationError, d2.validate)
+        with pytest.raises(ValidationError):
+            d2.validate()
 
     def test_parent_reference_in_child_document(self):
         """

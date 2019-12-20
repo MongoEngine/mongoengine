@@ -1,4 +1,5 @@
 import copy
+import warnings
 
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
@@ -96,9 +97,11 @@ class QNode(object):
         """Combine this node with another node into a QCombination
         object.
         """
+        # If the other Q() is empty, ignore it and just use `self`.
         if getattr(other, "empty", True):
             return self
 
+        # Or if this Q is empty, ignore it and just use `other`.
         if self.empty:
             return other
 
@@ -106,6 +109,8 @@ class QNode(object):
 
     @property
     def empty(self):
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
+        warnings.warn(msg, DeprecationWarning)
         return False
 
     def __or__(self, other):
@@ -135,6 +140,11 @@ class QCombination(QNode):
         op = " & " if self.operation is self.AND else " | "
         return "(%s)" % op.join([repr(node) for node in self.children])
 
+    def __bool__(self):
+        return bool(self.children)
+
+    __nonzero__ = __bool__  # For Py2 support
+
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -144,7 +154,16 @@ class QCombination(QNode):
 
     @property
     def empty(self):
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
+        warnings.warn(msg, DeprecationWarning)
         return not bool(self.children)
+
+    def __eq__(self, other):
+        return (
+            self.__class__ == other.__class__
+            and self.operation == other.operation
+            and self.children == other.children
+        )
 
 
 class Q(QNode):
@@ -157,6 +176,14 @@ class Q(QNode):
 
     def __repr__(self):
         return "Q(**%s)" % repr(self.query)
+
+    def __bool__(self):
+        return bool(self.query)
+
+    __nonzero__ = __bool__  # For Py2 support
+
+    def __eq__(self, other):
+        return self.__class__ == other.__class__ and self.query == other.query
 
     def accept(self, visitor):
         return visitor.visit_query(self)

@@ -1,21 +1,14 @@
 import unittest
 import uuid
 
-from nose.plugins.skip import SkipTest
 from datetime import datetime
 from bson import ObjectId
 
-import pymongo
-
 from mongoengine import *
+from tests.utils import MongoDBTestCase
 
-__all__ = ("TestJson",)
 
-
-class TestJson(unittest.TestCase):
-    def setUp(self):
-        connect(db="mongoenginetest")
-
+class TestJson(MongoDBTestCase):
     def test_json_names(self):
         """
         Going to test reported issue:
@@ -39,7 +32,7 @@ class TestJson(unittest.TestCase):
 
         expected_json = """{"embedded":{"string":"Inner Hello"},"string":"Hello"}"""
 
-        self.assertEqual(doc_json, expected_json)
+        assert doc_json == expected_json
 
     def test_json_simple(self):
         class Embedded(EmbeddedDocument):
@@ -59,9 +52,9 @@ class TestJson(unittest.TestCase):
 
         doc_json = doc.to_json(sort_keys=True, separators=(",", ":"))
         expected_json = """{"embedded_field":{"string":"Hi"},"string":"Hi"}"""
-        self.assertEqual(doc_json, expected_json)
+        assert doc_json == expected_json
 
-        self.assertEqual(doc, Doc.from_json(doc.to_json()))
+        assert doc == Doc.from_json(doc.to_json())
 
     def test_json_complex(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -106,7 +99,7 @@ class TestJson(unittest.TestCase):
                 return json.loads(self.to_json()) == json.loads(other.to_json())
 
         doc = Doc()
-        self.assertEqual(doc, Doc.from_json(doc.to_json()))
+        assert doc == Doc.from_json(doc.to_json())
 
 
 if __name__ == "__main__":

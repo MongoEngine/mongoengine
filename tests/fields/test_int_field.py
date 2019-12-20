@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import pytest
+
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
@@ -23,11 +25,14 @@ class TestIntField(MongoDBTestCase):
         person.validate()
 
         person.age = -1
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
         person.age = 120
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
         person.age = "ten"
-        self.assertRaises(ValidationError, person.validate)
+        with pytest.raises(ValidationError):
+            person.validate()
 
     def test_ne_operator(self):
         class TestDocument(Document):
@@ -38,5 +43,5 @@ class TestIntField(MongoDBTestCase):
         TestDocument(int_fld=None).save()
         TestDocument(int_fld=1).save()
 
-        self.assertEqual(1, TestDocument.objects(int_fld__ne=None).count())
-        self.assertEqual(1, TestDocument.objects(int_fld__ne=1).count())
+        assert 1 == TestDocument.objects(int_fld__ne=None).count()
+        assert 1 == TestDocument.objects(int_fld__ne=1).count()

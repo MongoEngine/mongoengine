@@ -2291,7 +2291,7 @@ class LineStringField(GeoJsonBaseField):
     .. code-block:: js
 
         {'type' : 'LineString' ,
-         'coordinates' : [[x1, y1], [x1, y1] ... [xn, yn]]}
+         'coordinates' : [[x1, y1], [x2, y2] ... [xn, yn]]}
 
     You can either pass a dict with the full information or a list of points.
 
@@ -2501,6 +2501,13 @@ class LazyReferenceField(BaseField):
             return DBRef(self.document_type._get_collection_name(), pk)
         else:
             return pk
+
+    def to_python(self, value):
+        """Convert a MongoDB-compatible type to a Python type."""
+        if not isinstance(value, (DBRef, Document, EmbeddedDocument)):
+            collection = self.document_type._get_collection_name()
+            value = DBRef(collection, self.document_type.id.to_python(value))
+        return value
 
     def validate(self, value):
         if isinstance(value, LazyReference):
