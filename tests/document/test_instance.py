@@ -3338,19 +3338,19 @@ class TestInstance(MongoDBTestCase):
 
         # worker1.job should be equal to the job used originally to create the
         # document.
-        self.assertEqual(worker1.job, worker.job)
+        assert worker1.job == worker.job
 
         # worker1.job should be equal to a newly created Job EmbeddedDocument
         # using either the Boss object or his ID.
-        self.assertEqual(worker1.job, Job(boss=boss, boss_dbref=boss))
-        self.assertEqual(worker1.job, Job(boss=boss.id, boss_dbref=boss.id))
+        assert worker1.job == Job(boss=boss, boss_dbref=boss)
+        assert worker1.job == Job(boss=boss.id, boss_dbref=boss.id)
 
         # The above equalities should also hold after worker1.job.boss has been
         # fetch()ed.
         worker1.job.boss.fetch()
-        self.assertEqual(worker1.job, worker.job)
-        self.assertEqual(worker1.job, Job(boss=boss, boss_dbref=boss))
-        self.assertEqual(worker1.job, Job(boss=boss.id, boss_dbref=boss.id))
+        assert worker1.job == worker.job
+        assert worker1.job == Job(boss=boss, boss_dbref=boss)
+        assert worker1.job == Job(boss=boss.id, boss_dbref=boss.id)
 
     def test_dbref_equality(self):
         class Test2(Document):
@@ -3693,13 +3693,13 @@ class TestInstance(MongoDBTestCase):
         value = u"I_should_be_a_dict"
         coll.insert_one({"light_saber": value})
 
-        with self.assertRaises(InvalidDocumentError) as cm:
+        with pytest.raises(InvalidDocumentError) as exc_info:
             list(Jedi.objects)
 
-        self.assertEqual(
-            str(cm.exception),
-            "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found"
-            % type(value),
+        assert str(
+            exc_info.value
+        ) == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found" % type(
+            value
         )
 
 
