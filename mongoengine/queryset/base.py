@@ -12,6 +12,7 @@ import pymongo.errors
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
 import six
+from pymongo.errors import OperationFailure
 from six import iteritems
 
 from mongoengine import signals
@@ -26,6 +27,7 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
+from mongoengine.pymongo_support import count_documents
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -392,9 +394,37 @@ class BaseQuerySet(object):
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
+        # mimic the fact that setting .limit(0) in pymongo sets no limit
+        # https://docs.mongodb.com/manual/reference/method/cursor.limit/#zero-value
         if self._limit == 0 and with_limit_and_skip is False or self._none:
             return 0
-        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+
+        kwargs = (
+            {"limit": self._limit, "skip": self._skip} if with_limit_and_skip else {}
+        )
+
+        if self._limit == 0:
+            # mimic the fact that historically .limit(0) sets no limit
+            kwargs.pop('limit', None)
+
+        if self._hint not in (-1, None):
+            kwargs["hint"] = self._hint
+
+        if self._collation:
+            kwargs["collation"] = self._collation
+
+        try:
+            count = count_documents(
+                collection=self._cursor.collection,
+                filter=self._cursor._Cursor__spec,
+                **kwargs
+            )
+        except OperationFailure:
+            # Accounts for some operators that used to work with .count but are no longer working
+            # with count_documents (i.e $geoNear, $near, and $nearSphere)
+            # fallback to deprecated Cursor.count
+            count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+
         self._cursor_obj = None
         return count
 

@@ -146,6 +146,7 @@ class QuerySet(BaseQuerySet):
             return super(QuerySet, self).count(with_limit_and_skip)
 
         if self._len is None:
+            # cache the length
             self._len = super(QuerySet, self).count(with_limit_and_skip)
 
         return self._len

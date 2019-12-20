@@ -282,7 +282,7 @@ class ConnectionTest(unittest.TestCase):
         # database won't exist until we save a document
         some_document.save()
         assert conn.get_default_database().name == "mongoenginetest"
-        assert conn.database_names()[0] == "mongoenginetest"
+        assert conn.list_database_names()[0] == "mongoenginetest"
 
     @require_mongomock
     def test_connect_with_host_list(self):
