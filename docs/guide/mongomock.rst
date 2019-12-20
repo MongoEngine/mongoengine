@@ -21,7 +21,7 @@ or with an alias:
     conn = get_connection('testdb')
 
 Example of test file:
---------
+---------------------
 .. code-block:: python
 
     import unittest
