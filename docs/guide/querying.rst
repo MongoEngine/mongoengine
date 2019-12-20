@@ -222,6 +222,18 @@ keyword argument::
 
 .. versionadded:: 0.4
 
+Sorting/Ordering results
+========================
+It is possible to order the results by 1 or more keys using :meth:`~mongoengine.queryset.QuerySet.order_by`.
+The order may be specified by prepending each of the keys by "+" or "-". Ascending order is assumed if there's no prefix.::
+
+    # Order by ascending date
+    blogs = BlogPost.objects().order_by('date')    # equivalent to .order_by('+date')
+
+    # Order by ascending date first, then descending title
+    blogs = BlogPost.objects().order_by('+date', '-title')
+
+
 Limiting and skipping results
 =============================
 Just as with traditional ORMs, you may limit the number of results returned or
@@ -585,7 +597,8 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     ['database', 'mongodb']
 
 From MongoDB version 2.6, push operator supports $position value which allows
-to push values with index.
+to push values with index::
+
     >>> post = BlogPost(title="Test", tags=["mongo"])
     >>> post.save()
     >>> post.update(push__tags__0=["database", "code"])
