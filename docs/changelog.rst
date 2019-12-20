@@ -30,6 +30,7 @@ Changes in 0.19.0
 - Added ability to compare Q and Q operations #2204
 - Added ability to use a db alias on query_counter #2194
 - Added ability to specify collations for querysets with ``Doc.objects.collation`` #2024
+- Fix updates of a list field by negative index #2094
 - Switch from nosetest to pytest as test runner #2114
 - The codebase is now formatted using ``black``. #2109
 - Documentation improvements:
