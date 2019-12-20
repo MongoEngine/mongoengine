@@ -23,11 +23,13 @@ Changes in 0.19.0
     - Added ability to check if Q or QNode are empty by parsing them to bool.
     - Instead of ``Q(name="John").empty`` use ``not Q(name="John")``.
 - Fix updating/modifying/deleting/reloading a document that's sharded by a field with ``db_field`` specified. #2125
+- Only set no_cursor_timeout when requested (fixes an incompatibility with MongoDB 4.2) #2148
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
 - Improve error message related to InvalidDocumentError #2180
 - Added BulkWriteError to replace NotUniqueError which was misleading in bulk write insert #2152
 - Added ability to compare Q and Q operations #2204
 - Added ability to use a db alias on query_counter #2194
+- Added ability to specify collations for querysets with ``Doc.objects.collation`` #2024
 - Switch from nosetest to pytest as test runner #2114
 - The codebase is now formatted using ``black``. #2109
 - Documentation improvements:
