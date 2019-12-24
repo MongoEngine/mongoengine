@@ -110,5 +110,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: ($PYMONGO = ${PYMONGO_3_6}) && ($MONGODB = ${MONGODB_3_4})
+    condition: ($PYMONGO = ${PYMONGO_3_9}) && ($MONGODB = ${MONGODB_3_4})
     python: 2.7
