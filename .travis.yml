@@ -3,7 +3,7 @@
 # with a very large number of jobs, hence we only test a subset of all the
 # combinations:
 # * MongoDB v3.4 & the latest PyMongo v3.x is currently the "main" setup,
-#   tested against Python v2.7, v3.5, v3.6, and PyPy.
+#   tested against Python v2.7, v3.5, v3.6, v3.7, v3.8 and PyPy.
 # * Besides that, we test the lowest actively supported Python/MongoDB/PyMongo
 #   combination: MongoDB v3.4, PyMongo v3.4, Python v2.7.
 # * MongoDB v3.6 is tested against Python v3.6, and PyMongo v3.6, v3.7, v3.8.
@@ -23,6 +23,7 @@ python:
 - 3.5
 - 3.6
 - 3.7
+- 3.8
 - pypy
 - pypy3
 
@@ -50,7 +51,6 @@ matrix:
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
   - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
-
 
 install:
   # Install Mongo

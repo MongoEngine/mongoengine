@@ -91,12 +91,11 @@ Some simple examples of what MongoEngine code looks like:
 
     # Iterate over all posts using the BlogPost superclass
     >>> for post in BlogPost.objects:
-    ...     print '===', post.title, '==='
+    ...     print('===', post.title, '===')
     ...     if isinstance(post, TextPost):
-    ...         print post.content
+    ...         print(post.content)
     ...     elif isinstance(post, LinkPost):
-    ...         print 'Link:', post.url
-    ...     print
+    ...         print('Link:', post.url)
     ...
 
     # Count all blog posts and its subtypes
