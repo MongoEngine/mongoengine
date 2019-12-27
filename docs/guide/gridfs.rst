@@ -10,8 +10,9 @@ Writing
 GridFS support comes in the form of the :class:`~mongoengine.fields.FileField` field
 object. This field acts as a file-like object and provides a couple of
 different ways of inserting and retrieving data. Arbitrary metadata such as
-content type can also be stored alongside the files. In the following example,
-a document is created to store details about animals, including a photo::
+content type can also be stored alongside the files. The object returned when accessing a
+FileField is a proxy to `Pymongo's GridFS <https://api.mongodb.com/python/current/examples/gridfs.html#gridfs-example>`_
+In the following example, a document is created to store details about animals, including a photo::
 
     class Animal(Document):
         genus = StringField()
@@ -33,6 +34,20 @@ field. The file can also be retrieved just as easily::
     marmot = Animal.objects(genus='Marmota').first()
     photo = marmot.photo.read()
     content_type = marmot.photo.content_type
+
+.. note:: If you need to read() the content of a file multiple times, you'll need to "rewind"
+    the file-like object using `seek`::
+
+        marmot = Animal.objects(genus='Marmota').first()
+        content1 = marmot.photo.read()
+        assert content1 != ""
+
+        content2 = marmot.photo.read()    # will be empty
+        assert content2 == ""
+
+        marmot.photo.seek(0)              # rewind the file by setting the current position of the cursor in the file to 0
+        content3 = marmot.photo.read()
+        assert content3 == content1
 
 Streaming
 ---------
