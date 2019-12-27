@@ -6,6 +6,8 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- DEPRECATION: The interface of ``QuerySet.aggregate`` method was changed, it no longer takes an unpacked list of
+    pipeline steps (*pipeline) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
 
 Changes in 0.19.0
 =================
