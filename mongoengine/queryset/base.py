@@ -302,7 +302,7 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
 
         By default returns document instances, set ``load_bulk`` to False to
@@ -1262,6 +1262,8 @@ class BaseQuerySet(object):
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
         :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
             parameter will be removed shortly
+        :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
+            See https://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
         .. versionadded:: 0.9
         """
         using_deprecated_interface = isinstance(pipeline, dict) or bool(suppl_pipeline)
