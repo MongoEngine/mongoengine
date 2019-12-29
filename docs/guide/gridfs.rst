@@ -21,8 +21,8 @@ In the following example, a document is created to store details about animals, 
 
     marmot = Animal(genus='Marmota', family='Sciuridae')
 
-    marmot_photo = open('marmot.jpg', 'rb')
-    marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
+    with open('marmot.jpg', 'rb') as fd:
+        marmot.photo.put(fd, content_type = 'image/jpeg')
     marmot.save()
 
 Retrieval
