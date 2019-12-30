@@ -12,6 +12,7 @@ import re
 import six
 import warnings
 from bson import Decimal128
+from contextlib2 import contextmanager
 from mongoengine.base.proxy import DocumentProxy, ListFieldProxy, LazyPrefetchBase
 
 PST_TIMEZONE = pytz.timezone("US/Pacific")
@@ -349,6 +350,9 @@ class DecimalField(BaseField):
                 value = decimal.Decimal("%s" % value)
             except decimal.InvalidOperation:
                 return value
+
+        if getattr(DecimalField, 'should_skip_quantize_from_set', False):
+            return value
         return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
 
     def to_mongo(self, value, **kwargs):
@@ -375,6 +379,16 @@ class DecimalField(BaseField):
 
     def prepare_query_value(self, op, value):
         return super(DecimalField, self).prepare_query_value(op, self.to_mongo(value))
+
+    @staticmethod
+    @contextmanager
+    def skip_quantize_from_set():
+        """
+        Ignore to_python from DecimalField.set for performance reasons where needed.
+        """
+        DecimalField.should_skip_quantize_from_set = True
+        yield
+        DecimalField.should_skip_quantize_from_set = False
 
 
 class BooleanField(BaseField):
