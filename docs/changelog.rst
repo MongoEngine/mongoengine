@@ -13,7 +13,8 @@ Changes in 0.19.1
 - Requires Pillow < 7.0.0 as it dropped Python2 support
 - DEPRECATION: The interface of ``QuerySet.aggregate`` method was changed, it no longer takes an unpacked list of
     pipeline steps (*pipeline) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
-
+- BREAKING CHANGE: Removed Queryset._ensure_indexes and Queryset.ensure_indexes that were deprecated in 2013.
+    Document.ensure_indexes still exists
 Changes in 0.19.0
 =================
 - BREAKING CHANGE: ``class_check`` and ``read_preference`` keyword arguments are no longer available when filtering a ``QuerySet``. #2112
