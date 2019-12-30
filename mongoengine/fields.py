@@ -12,6 +12,7 @@ import re
 import six
 import warnings
 from bson import Decimal128
+from contextlib2 import contextmanager
 from mongoengine.base.proxy import DocumentProxy, ListFieldProxy, LazyPrefetchBase
 
 PST_TIMEZONE = pytz.timezone("US/Pacific")
@@ -334,7 +335,8 @@ class DecimalField(BaseField):
         super(DecimalField, self).__init__(**kwargs)
 
     def __set__(self, instance, value):
-        value = self.to_python(value)
+        if not getattr(DecimalField, 'ignore_to_python_from_set', False):
+            value = self.to_python(value)
         return super(DecimalField, self).__set__(instance, value)
 
     def to_python(self, value):
@@ -375,6 +377,16 @@ class DecimalField(BaseField):
 
     def prepare_query_value(self, op, value):
         return super(DecimalField, self).prepare_query_value(op, self.to_mongo(value))
+
+    @staticmethod
+    @contextmanager
+    def skip_to_pyton_from_set():
+        """
+        Ignore to_python from DecimalField.set for performance reasons where needed.
+        """
+        DecimalField.ignore_to_python_from_set = True
+        yield
+        DecimalField.ignore_to_python_from_set = False
 
 
 class BooleanField(BaseField):
