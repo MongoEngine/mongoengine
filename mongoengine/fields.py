@@ -335,8 +335,7 @@ class DecimalField(BaseField):
         super(DecimalField, self).__init__(**kwargs)
 
     def __set__(self, instance, value):
-        if not getattr(DecimalField, 'ignore_to_python_from_set', False):
-            value = self.to_python(value)
+        value = self.to_python(value)
         return super(DecimalField, self).__set__(instance, value)
 
     def to_python(self, value):
@@ -351,6 +350,9 @@ class DecimalField(BaseField):
                 value = decimal.Decimal("%s" % value)
             except decimal.InvalidOperation:
                 return value
+
+        if getattr(DecimalField, 'ignore_to_python_from_set', False):
+            return value
         return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
 
     def to_mongo(self, value, **kwargs):
