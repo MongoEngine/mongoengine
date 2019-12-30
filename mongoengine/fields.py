@@ -386,9 +386,9 @@ class DecimalField(BaseField):
         """
         Ignore to_python from DecimalField.set for performance reasons where needed.
         """
-        DecimalField.ignore_to_python_from_set = True
+        DecimalField.skip_quantize_from_set = True
         yield
-        DecimalField.ignore_to_python_from_set = False
+        DecimalField.skip_quantize_from_set = False
 
 
 class BooleanField(BaseField):
