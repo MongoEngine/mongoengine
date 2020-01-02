@@ -376,6 +376,7 @@ class Document(BaseDocument):
 
         # Filter out unchanged fields.
         changed_fields = [f for f in changed_fields if not is_field_unchanged(f)]
+        changed_fields = [] if len(changed_fields) == 1 and changed_fields[0] == 'updatedAt' else changed_fields
 
         self._clear_changed_fields()
         self._created = False
