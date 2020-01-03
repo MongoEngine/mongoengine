@@ -115,7 +115,7 @@ extra_opts = {
         "pytest-cov",
         "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
         "blinker",
-        "Pillow>=2.0.0",
+        "Pillow>=2.0.0, <7.0.0",    # 7.0.0 dropped Python2 support
     ],
 }
 if sys.version_info[0] == 3:

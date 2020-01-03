@@ -6,6 +6,10 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.19.1
+=================
+- Requires Pillow < 7.0.0 as it dropped Python2 support
 - DEPRECATION: The interface of ``QuerySet.aggregate`` method was changed, it no longer takes an unpacked list of
     pipeline steps (*pipeline) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
 
