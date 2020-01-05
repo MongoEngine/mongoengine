@@ -386,6 +386,7 @@ class DecimalField(BaseField):
         """
         Ignore to_python from DecimalField.set for performance reasons where needed.
         """
+        DecimalField.should_skip_quantize_from_set = getattr(DecimalField, 'should_skip_quantize_from_set', 0)
         DecimalField.should_skip_quantize_from_set += 1
         yield
         DecimalField.should_skip_quantize_from_set -= 1
