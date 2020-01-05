@@ -351,7 +351,7 @@ class DecimalField(BaseField):
             except decimal.InvalidOperation:
                 return value
 
-        if getattr(DecimalField, 'should_skip_quantize_from_set', False):
+        if getattr(DecimalField, 'should_skip_quantize_from_set', 0) > 0:
             return value
         return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
 
@@ -386,9 +386,9 @@ class DecimalField(BaseField):
         """
         Ignore to_python from DecimalField.set for performance reasons where needed.
         """
-        DecimalField.should_skip_quantize_from_set = True
+        DecimalField.should_skip_quantize_from_set += 1
         yield
-        DecimalField.should_skip_quantize_from_set = False
+        DecimalField.should_skip_quantize_from_set -= 1
 
 
 class BooleanField(BaseField):
