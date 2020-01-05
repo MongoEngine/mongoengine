@@ -423,6 +423,7 @@ class BaseQuerySet(object):
             # Accounts for some operators that used to work with .count but are no longer working
             # with count_documents (i.e $geoNear, $near, and $nearSphere)
             # fallback to deprecated Cursor.count
+            # Keeping this should be reevaluated the day pymongo removes .count entirely
             count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
         self._cursor_obj = None
