@@ -12,7 +12,6 @@ import pymongo.errors
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
 import six
-from pymongo.errors import OperationFailure
 from six import iteritems
 
 from mongoengine import signals

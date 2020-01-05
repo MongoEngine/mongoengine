@@ -29,7 +29,7 @@ def count_documents(collection, filter, skip=None, limit=None, hint=None, collat
 
     try:
         return collection.count_documents(filter=filter, **kwargs)
-    except (AttributeError, OperationFailure) as ex:
+    except (AttributeError, OperationFailure):
         # AttributeError - count_documents appeared in pymongo 3.7
         # OperationFailure - accounts for some operators that used to work
         # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
