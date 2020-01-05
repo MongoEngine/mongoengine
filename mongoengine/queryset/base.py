@@ -413,18 +413,11 @@ class BaseQuerySet(object):
         if self._collation:
             kwargs["collation"] = self._collation
 
-        try:
-            count = count_documents(
-                collection=self._cursor.collection,
-                filter=self._cursor._Cursor__spec,
-                **kwargs
-            )
-        except OperationFailure:
-            # Accounts for some operators that used to work with .count but are no longer working
-            # with count_documents (i.e $geoNear, $near, and $nearSphere)
-            # fallback to deprecated Cursor.count
-            # Keeping this should be reevaluated the day pymongo removes .count entirely
-            count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+        count = count_documents(
+            collection=self._cursor.collection,
+            filter=self._cursor._Cursor__spec,
+            **kwargs
+        )
 
         self._cursor_obj = None
         return count

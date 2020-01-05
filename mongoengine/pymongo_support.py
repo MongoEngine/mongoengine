@@ -2,6 +2,7 @@
 Helper functions, constants, and types to aid with PyMongo v2.7 - v3.x support.
 """
 import pymongo
+from pymongo.errors import OperationFailure
 
 _PYMONGO_37 = (3, 7)
 
@@ -16,25 +17,28 @@ def count_documents(collection, filter, skip=None, limit=None, hint=None, collat
     if limit == 0:
         return 0  # Pymongo raises an OperationFailure if called with limit=0
 
-    if IS_PYMONGO_GTE_37:
-        kwargs = {}
-        if skip is not None:
-            kwargs["skip"] = skip
-        if limit is not None:
-            kwargs["limit"] = limit
-        if collation is not None:
-            kwargs["collation"] = collation
-        if hint not in (-1, None):
-            kwargs["hint"] = hint
+    kwargs = {}
+    if skip is not None:
+        kwargs["skip"] = skip
+    if limit is not None:
+        kwargs["limit"] = limit
+    if hint not in (-1, None):
+        kwargs["hint"] = hint
+    if collation is not None:
+        kwargs["collation"] = collation
+
+    try:
         return collection.count_documents(filter=filter, **kwargs)
-    else:
+    except (AttributeError, OperationFailure) as ex:
+        # AttributeError - count_documents appeared in pymongo 3.7
+        # OperationFailure - accounts for some operators that used to work
+        # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
+        # fallback to deprecated Cursor.count
+        # Keeping this should be reevaluated the day pymongo removes .count entirely
         cursor = collection.find(filter)
-        if limit:
-            cursor = cursor.limit(limit)
-        if skip:
-            cursor = cursor.skip(skip)
-        if hint != -1:
-            cursor = cursor.hint(hint)
+        for option, option_value in kwargs.items():
+            cursor_method = getattr(cursor, option)
+            cursor = cursor_method(option_value)
         count = cursor.count()
     return count
 
