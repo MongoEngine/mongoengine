@@ -11,7 +11,9 @@ PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 IS_PYMONGO_GTE_37 = PYMONGO_VERSION >= _PYMONGO_37
 
 
-def count_documents(collection, filter, skip=None, limit=None, hint=None, collation=None):
+def count_documents(
+    collection, filter, skip=None, limit=None, hint=None, collation=None
+):
     """Pymongo>3.7 deprecates count in favour of count_documents
     """
     if limit == 0:

@@ -404,7 +404,7 @@ class BaseQuerySet(object):
 
         if self._limit == 0:
             # mimic the fact that historically .limit(0) sets no limit
-            kwargs.pop('limit', None)
+            kwargs.pop("limit", None)
 
         if self._hint not in (-1, None):
             kwargs["hint"] = self._hint
