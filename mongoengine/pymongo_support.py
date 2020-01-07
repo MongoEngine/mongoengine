@@ -29,20 +29,22 @@ def count_documents(
     if collation is not None:
         kwargs["collation"] = collation
 
-    try:
-        return collection.count_documents(filter=filter, **kwargs)
-    except (AttributeError, OperationFailure):
-        # AttributeError - count_documents appeared in pymongo 3.7
-        # OperationFailure - accounts for some operators that used to work
-        # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
-        # fallback to deprecated Cursor.count
-        # Keeping this should be reevaluated the day pymongo removes .count entirely
-        cursor = collection.find(filter)
-        for option, option_value in kwargs.items():
-            cursor_method = getattr(cursor, option)
-            cursor = cursor_method(option_value)
-        count = cursor.count()
-    return count
+    # count_documents appeared in pymongo 3.7
+    if IS_PYMONGO_GTE_37:
+        try:
+            return collection.count_documents(filter=filter, **kwargs)
+        except OperationFailure:
+            # OperationFailure - accounts for some operators that used to work
+            # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
+            # fallback to deprecated Cursor.count
+            # Keeping this should be reevaluated the day pymongo removes .count entirely
+            pass
+
+    cursor = collection.find(filter)
+    for option, option_value in kwargs.items():
+        cursor_method = getattr(cursor, option)
+        cursor = cursor_method(option_value)
+    return cursor.count()
 
 
 def list_collection_names(db, include_system_collections=False):
