@@ -388,8 +388,10 @@ class DecimalField(BaseField):
         """
         DecimalField.should_skip_quantize_from_set = getattr(DecimalField, 'should_skip_quantize_from_set', 0)
         DecimalField.should_skip_quantize_from_set += 1
-        yield
-        DecimalField.should_skip_quantize_from_set -= 1
+        try:
+            yield
+        finally:
+            DecimalField.should_skip_quantize_from_set -= 1
 
 
 class BooleanField(BaseField):
