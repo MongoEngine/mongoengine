@@ -7,6 +7,11 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.19.2
+=================
+- DictField validate failed without default connection (bug introduced in 0.19.0) #2239
+
+
 Changes in 0.19.1
 =================
 - Requires Pillow < 7.0.0 as it dropped Python2 support
