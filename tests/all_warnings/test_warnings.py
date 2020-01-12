@@ -31,7 +31,5 @@ class TestAllWarnings(unittest.TestCase):
             meta = {"collection": "fail"}
 
         warning = self.warning_list[0]
-        self.assertEqual(SyntaxWarning, warning["category"])
-        self.assertEqual(
-            "non_abstract_base", InheritedDocumentFailTest._get_collection_name()
-        )
+        assert SyntaxWarning == warning["category"]
+        assert "non_abstract_base" == InheritedDocumentFailTest._get_collection_name()

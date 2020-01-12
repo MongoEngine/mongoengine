@@ -41,6 +41,7 @@ from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
+from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
 from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
@@ -1051,6 +1052,15 @@ def key_has_dot_or_dollar(d):
             return True
 
 
+def key_starts_with_dollar(d):
+    """Helper function to recursively determine if any key in a
+    dictionary starts with a dollar
+    """
+    for k, v in d.items():
+        if (k.startswith("$")) or (isinstance(v, dict) and key_starts_with_dollar(v)):
+            return True
+
+
 class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
@@ -1077,10 +1087,17 @@ class DictField(ComplexBaseField):
         if key_not_string(value):
             msg = "Invalid dictionary key - documents must have only string keys"
             self.error(msg)
-        if key_has_dot_or_dollar(value):
+
+        curr_mongo_ver = get_mongodb_version()
+
+        if curr_mongo_ver < MONGODB_36 and key_has_dot_or_dollar(value):
             self.error(
                 'Invalid dictionary key name - keys may not contain "."'
                 ' or startswith "$" characters'
+            )
+        elif curr_mongo_ver >= MONGODB_36 and key_starts_with_dollar(value):
+            self.error(
+                'Invalid dictionary key name - keys may not startswith "$" characters'
             )
         super(DictField, self).validate(value)
 
@@ -2501,6 +2518,13 @@ class LazyReferenceField(BaseField):
             return DBRef(self.document_type._get_collection_name(), pk)
         else:
             return pk
+
+    def to_python(self, value):
+        """Convert a MongoDB-compatible type to a Python type."""
+        if not isinstance(value, (DBRef, Document, EmbeddedDocument)):
+            collection = self.document_type._get_collection_name()
+            value = DBRef(collection, self.document_type.id.to_python(value))
+        return value
 
     def validate(self, value):
         if isinstance(value, LazyReference):

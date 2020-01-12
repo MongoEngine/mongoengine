@@ -11,7 +11,7 @@ class TestGeoField(MongoDBTestCase):
             Cls(loc=loc).validate()
             self.fail("Should not validate the location {0}".format(loc))
         except ValidationError as e:
-            self.assertEqual(expected, e.to_dict()["loc"])
+            assert expected == e.to_dict()["loc"]
 
     def test_geopoint_validation(self):
         class Location(Document):
@@ -299,7 +299,7 @@ class TestGeoField(MongoDBTestCase):
             location = GeoPointField()
 
         geo_indicies = Event._geo_indices()
-        self.assertEqual(geo_indicies, [{"fields": [("location", "2d")]}])
+        assert geo_indicies == [{"fields": [("location", "2d")]}]
 
     def test_geopoint_embedded_indexes(self):
         """Ensure that indexes are created automatically for GeoPointFields on
@@ -315,7 +315,7 @@ class TestGeoField(MongoDBTestCase):
             venue = EmbeddedDocumentField(Venue)
 
         geo_indicies = Event._geo_indices()
-        self.assertEqual(geo_indicies, [{"fields": [("venue.location", "2d")]}])
+        assert geo_indicies == [{"fields": [("venue.location", "2d")]}]
 
     def test_indexes_2dsphere(self):
         """Ensure that indexes are created automatically for GeoPointFields.
@@ -328,9 +328,9 @@ class TestGeoField(MongoDBTestCase):
             polygon = PolygonField()
 
         geo_indicies = Event._geo_indices()
-        self.assertIn({"fields": [("line", "2dsphere")]}, geo_indicies)
-        self.assertIn({"fields": [("polygon", "2dsphere")]}, geo_indicies)
-        self.assertIn({"fields": [("point", "2dsphere")]}, geo_indicies)
+        assert {"fields": [("line", "2dsphere")]} in geo_indicies
+        assert {"fields": [("polygon", "2dsphere")]} in geo_indicies
+        assert {"fields": [("point", "2dsphere")]} in geo_indicies
 
     def test_indexes_2dsphere_embedded(self):
         """Ensure that indexes are created automatically for GeoPointFields.
@@ -347,9 +347,9 @@ class TestGeoField(MongoDBTestCase):
             venue = EmbeddedDocumentField(Venue)
 
         geo_indicies = Event._geo_indices()
-        self.assertIn({"fields": [("venue.line", "2dsphere")]}, geo_indicies)
-        self.assertIn({"fields": [("venue.polygon", "2dsphere")]}, geo_indicies)
-        self.assertIn({"fields": [("venue.point", "2dsphere")]}, geo_indicies)
+        assert {"fields": [("venue.line", "2dsphere")]} in geo_indicies
+        assert {"fields": [("venue.polygon", "2dsphere")]} in geo_indicies
+        assert {"fields": [("venue.point", "2dsphere")]} in geo_indicies
 
     def test_geo_indexes_recursion(self):
         class Location(Document):
@@ -365,12 +365,12 @@ class TestGeoField(MongoDBTestCase):
 
         Parent(name="Berlin").save()
         info = Parent._get_collection().index_information()
-        self.assertNotIn("location_2d", info)
+        assert "location_2d" not in info
         info = Location._get_collection().index_information()
-        self.assertIn("location_2d", info)
+        assert "location_2d" in info
 
-        self.assertEqual(len(Parent._geo_indices()), 0)
-        self.assertEqual(len(Location._geo_indices()), 1)
+        assert len(Parent._geo_indices()) == 0
+        assert len(Location._geo_indices()) == 1
 
     def test_geo_indexes_auto_index(self):
 
@@ -381,16 +381,16 @@ class TestGeoField(MongoDBTestCase):
 
             meta = {"indexes": [[("location", "2dsphere"), ("datetime", 1)]]}
 
-        self.assertEqual([], Log._geo_indices())
+        assert [] == Log._geo_indices()
 
         Log.drop_collection()
         Log.ensure_indexes()
 
         info = Log._get_collection().index_information()
-        self.assertEqual(
-            info["location_2dsphere_datetime_1"]["key"],
-            [("location", "2dsphere"), ("datetime", 1)],
-        )
+        assert info["location_2dsphere_datetime_1"]["key"] == [
+            ("location", "2dsphere"),
+            ("datetime", 1),
+        ]
 
         # Test listing explicitly
         class Log(Document):
@@ -401,16 +401,16 @@ class TestGeoField(MongoDBTestCase):
                 "indexes": [{"fields": [("location", "2dsphere"), ("datetime", 1)]}]
             }
 
-        self.assertEqual([], Log._geo_indices())
+        assert [] == Log._geo_indices()
 
         Log.drop_collection()
         Log.ensure_indexes()
 
         info = Log._get_collection().index_information()
-        self.assertEqual(
-            info["location_2dsphere_datetime_1"]["key"],
-            [("location", "2dsphere"), ("datetime", 1)],
-        )
+        assert info["location_2dsphere_datetime_1"]["key"] == [
+            ("location", "2dsphere"),
+            ("datetime", 1),
+        ]
 
 
 if __name__ == "__main__":

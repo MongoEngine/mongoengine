@@ -171,7 +171,7 @@ class no_sub_classes(object):
 class query_counter(object):
     """Query_counter context manager to get the number of queries.
     This works by updating the `profiling_level` of the database so that all queries get logged,
-    resetting the db.system.profile collection at the beginnig of the context and counting the new entries.
+    resetting the db.system.profile collection at the beginning of the context and counting the new entries.
 
     This was designed for debugging purpose. In fact it is a global counter so queries issued by other threads/processes
     can interfere with it
@@ -182,10 +182,10 @@ class query_counter(object):
     - Some queries are ignored by default by the counter (killcursors, db.system.indexes)
     """
 
-    def __init__(self):
+    def __init__(self, alias=DEFAULT_CONNECTION_NAME):
         """Construct the query_counter
         """
-        self.db = get_db()
+        self.db = get_db(alias=alias)
         self.initial_profiling_level = None
         self._ctx_query_counter = 0  # number of queries issued by the context
 
@@ -247,8 +247,8 @@ class query_counter(object):
             - self._ctx_query_counter
         )
         self._ctx_query_counter += (
-            1
-        )  # Account for the query we just issued to gather the information
+            1  # Account for the query we just issued to gather the information
+        )
         return count
 
 

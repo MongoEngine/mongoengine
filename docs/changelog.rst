@@ -6,6 +6,15 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.19.1
+=================
+- Requires Pillow < 7.0.0 as it dropped Python2 support
+- DEPRECATION: The interface of ``QuerySet.aggregate`` method was changed, it no longer takes an unpacked list of
+    pipeline steps (*pipeline) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
+
+Changes in 0.19.0
+=================
 - BREAKING CHANGE: ``class_check`` and ``read_preference`` keyword arguments are no longer available when filtering a ``QuerySet``. #2112
     - Instead of ``Doc.objects(foo=bar, read_preference=...)`` use ``Doc.objects(foo=bar).read_preference(...)``.
     - Instead of ``Doc.objects(foo=bar, class_check=False)`` use ``Doc.objects(foo=bar).clear_cls_query(...)``.
@@ -15,10 +24,23 @@ Development
     - If you catch/use ``MongoEngineConnectionError`` in your code, you'll have to rename it.
 - BREAKING CHANGE: Positional arguments when instantiating a document are no longer supported. #2103
     - From now on keyword arguments (e.g. ``Doc(field_name=value)``) are required.
+- BREAKING CHANGE: A ``LazyReferenceField`` is now stored in the ``_data`` field of its parent as a ``DBRef``, ``Document``, or ``EmbeddedDocument`` (``ObjectId`` is no longer allowed). #2182
+- DEPRECATION: ``Q.empty`` & ``QNode.empty`` are marked as deprecated and will be removed in a next version of MongoEngine. #2210
+    - Added ability to check if Q or QNode are empty by parsing them to bool.
+    - Instead of ``Q(name="John").empty`` use ``not Q(name="John")``.
 - Fix updating/modifying/deleting/reloading a document that's sharded by a field with ``db_field`` specified. #2125
+- Only set no_cursor_timeout when requested (fixes an incompatibility with MongoDB 4.2) #2148
 - ``ListField`` now accepts an optional ``max_length`` parameter. #2110
+- Improve error message related to InvalidDocumentError #2180
+- Added BulkWriteError to replace NotUniqueError which was misleading in bulk write insert #2152
+- Added ability to compare Q and Q operations #2204
+- Added ability to use a db alias on query_counter #2194
+- Added ability to specify collations for querysets with ``Doc.objects.collation`` #2024
+- Fix updates of a list field by negative index #2094
+- Switch from nosetest to pytest as test runner #2114
 - The codebase is now formatted using ``black``. #2109
-- In bulk write insert, the detailed error message would raise in exception.
+- Documentation improvements:
+    - Documented how `pymongo.monitoring` can be used to log all queries issued by MongoEngine to the driver.
 
 Changes in 0.18.2
 =================

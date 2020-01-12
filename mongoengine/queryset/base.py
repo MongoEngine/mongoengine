@@ -302,7 +302,7 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
 
         By default returns document instances, set ``load_bulk`` to False to
@@ -1193,9 +1193,7 @@ class BaseQuerySet(object):
         validate_read_preference("read_preference", read_preference)
         queryset = self.clone()
         queryset._read_preference = read_preference
-        queryset._cursor_obj = (
-            None
-        )  # we need to re-create the cursor object whenever we apply read_preference
+        queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_preference
         return queryset
 
     def scalar(self, *fields):
@@ -1257,16 +1255,27 @@ class BaseQuerySet(object):
             for data in son_data
         ]
 
-    def aggregate(self, *pipeline, **kwargs):
-        """
-        Perform a aggregate function based in your queryset params
+    def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
+        """Perform a aggregate function based in your queryset params
+
         :param pipeline: list of aggregation commands,\
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
-
+        :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
+            parameter will be removed shortly
+        :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
+            See https://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
         .. versionadded:: 0.9
         """
-        initial_pipeline = []
+        using_deprecated_interface = isinstance(pipeline, dict) or bool(suppl_pipeline)
+        user_pipeline = [pipeline] if isinstance(pipeline, dict) else list(pipeline)
 
+        if using_deprecated_interface:
+            msg = "Calling .aggregate() with un unpacked list (*pipeline) is deprecated, it will soon change and will expect a list (similar to pymongo.Collection.aggregate interface), see documentation"
+            warnings.warn(msg, DeprecationWarning)
+
+        user_pipeline += suppl_pipeline
+
+        initial_pipeline = []
         if self._query:
             initial_pipeline.append({"$match": self._query})
 
@@ -1283,14 +1292,14 @@ class BaseQuerySet(object):
         if self._skip is not None:
             initial_pipeline.append({"$skip": self._skip})
 
-        pipeline = initial_pipeline + list(pipeline)
+        final_pipeline = initial_pipeline + user_pipeline
 
+        collection = self._collection
         if self._read_preference is not None:
-            return self._collection.with_options(
+            collection = self._collection.with_options(
                 read_preference=self._read_preference
-            ).aggregate(pipeline, cursor={}, **kwargs)
-
-        return self._collection.aggregate(pipeline, cursor={}, **kwargs)
+            )
+        return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     # JS functionality
     def map_reduce(
@@ -1639,6 +1648,7 @@ class BaseQuerySet(object):
             ).find(self._query, **self._cursor_args)
         else:
             self._cursor_obj = self._collection.find(self._query, **self._cursor_args)
+
         # Apply "where" clauses to cursor
         if self._where_clause:
             where_clause = self._sub_js_fields(self._where_clause)

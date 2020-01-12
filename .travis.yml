@@ -3,7 +3,7 @@
 # with a very large number of jobs, hence we only test a subset of all the
 # combinations:
 # * MongoDB v3.4 & the latest PyMongo v3.x is currently the "main" setup,
-#   tested against Python v2.7, v3.5, v3.6, v3.7, PyPy and PyPy3.
+#   tested against Python v2.7, v3.5, v3.6, v3.7, v3.8, PyPy and PyPy3.
 # * Besides that, we test the lowest actively supported Python/MongoDB/PyMongo
 #   combination: MongoDB v3.4, PyMongo v3.4, Python v2.7.
 # * MongoDB v3.6 is tested against Python v3.6, and PyMongo v3.6, v3.7, v3.8.
@@ -23,6 +23,7 @@ python:
 - 3.5
 - 3.6
 - 3.7
+- 3.8
 - pypy
 - pypy3
 
@@ -33,11 +34,12 @@ env:
     - MONGODB_4_0=4.0.12
     - MONGODB_3_4=3.4.17
     - MONGODB_3_6=3.6.12
+    - PYMONGO_3_10=3.10
     - PYMONGO_3_9=3.9
     - PYMONGO_3_6=3.6
     - PYMONGO_3_4=3.4
   matrix:
-    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_9}
+    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_10}
 
 matrix:
   # Finish the build as soon as one job fails
@@ -49,7 +51,11 @@ matrix:
   - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
   - python: 3.7
-    env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_9}
+    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
+  - python: 3.7
+    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_10}
+  - python: 3.8
+    env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_10}
 
 install:
   # Install Mongo
@@ -62,8 +68,8 @@ install:
   - pip install flake8 flake8-import-order
   - pip install tox         # tox 3.11.0 has requirement virtualenv>=14.0.0
   - pip install virtualenv  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
-  # Install the tox venv.
-  - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -e test
+  # tox dryrun to setup the tox venv (we run a mock test).
+  - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
   # Install black for Python v3.7 only.
   - if [[ $TRAVIS_PYTHON_VERSION == '3.7' ]]; then pip install black; fi
 
@@ -75,13 +81,13 @@ before_script:
   - mongo --eval 'db.version();'    # Make sure mongo is awake
 
 script:
-  - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- --with-coverage
+  - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
 
 # For now only submit coveralls for Python v2.7. Python v3.x currently shows
 # 0% coverage. That's caused by 'use_2to3', which builds the py3-compatible
 # code in a separate dir and runs tests on that.
 after_success:
-- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then coveralls --verbose; fi
+- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then coveralls --verbose; else echo "coveralls only sent for py27"; fi
 
 notifications:
   irc: irc.freenode.org#mongoengine
@@ -109,5 +115,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: ($PYMONGO = ${PYMONGO_3_6}) && ($MONGODB = ${MONGODB_3_4})
+    condition: ($PYMONGO = ${PYMONGO_3_10}) && ($MONGODB = ${MONGODB_3_4})
     python: 2.7
