@@ -44,7 +44,8 @@ def count_documents(
     for option, option_value in kwargs.items():
         cursor_method = getattr(cursor, option)
         cursor = cursor_method(option_value)
-    return cursor.count()
+    with_limit_and_skip = "skip" in kwargs or "limit" in kwargs
+    return cursor.count(with_limit_and_skip=with_limit_and_skip)
 
 
 def list_collection_names(db, include_system_collections=False):
