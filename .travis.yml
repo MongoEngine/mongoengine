@@ -31,7 +31,7 @@ dist: xenial
 
 env:
   global:
-    - MONGODB_4_0=4.0.12
+    - MONGODB_4_0=4.0.13
     - MONGODB_3_4=3.4.17
     - MONGODB_3_6=3.6.12
     - PYMONGO_3_10=3.10
