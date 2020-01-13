@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Add Mongo 4.0 to Travis
 
 Changes in 0.19.1
 =================
