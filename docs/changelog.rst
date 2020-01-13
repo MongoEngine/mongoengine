@@ -7,6 +7,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Add Mongo 4.0 to Travis
+- Bump development Status classifier to Production/Stable #2232
 
 Changes in 0.19.1
 =================
