@@ -4,6 +4,7 @@ import pytest
 from mongoengine import (
     Document,
     EmbeddedDocument,
+    DynamicEmbeddedDocument,
     EmbeddedDocumentField,
     GenericEmbeddedDocumentField,
     IntField,
@@ -91,6 +92,28 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         assert exclude_p.settings.foo1 is None
         assert exclude_p.settings.foo2 == p.settings.foo2
         assert exclude_p.name == p.name
+
+    def test_dynamic_embedded_document_attribute(self):
+        class DynamicSettings(DynamicEmbeddedDocument):
+            known_field = StringField()
+
+        class Person(Document):
+            name = StringField()
+            settings = EmbeddedDocumentField(DynamicSettings)
+
+        Person.drop_collection()
+
+        p = Person(settings=DynamicSettings(known_field="abc", dynamic_field1="123"), name="John").save()
+
+        # Test querying by a dynamic field that is not defined in the schema
+        assert Person.objects(settings__dynamic_field1="123").first().id == p.id
+
+        p_modified = Person.objects(settings__known_field="abc").modify(set__settings__dynamic_field1="789")
+        p.reload()
+
+        # Test if the update occurred successfully
+        assert p_modified.settings.dynamic_field1 == "123"
+        assert p.settings.dynamic_field1 == "789"
 
     def test_query_embedded_document_attribute_with_inheritance(self):
         class BaseSettings(EmbeddedDocument):
