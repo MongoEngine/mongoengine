@@ -7,6 +7,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Add Mongo 4.0 to Travis
+- Fix error when setting a string as a ComplexDateTimeField #2253
 
 Changes in 0.19.1
 =================
