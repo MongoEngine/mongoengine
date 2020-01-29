@@ -1516,7 +1516,7 @@ class Document(BaseDocument):
                            ArbitraryField
 
         VALIDATE_OPS = ['$set', '$inc', None, '$eq', '$gte', '$lte', '$lt',
-                        '$gt', '$ne']
+                        '$gt', '$ne', '$setOnInsert']
         SINGLE_LIST_OPS = [None, '$gt', '$lt', '$gte', '$lte', '$ne']
         LIST_VALIDATE_OPS = ['$addToSet', '$push', '$pull']
         LIST_VALIDATE_ALL_OPS = ['$pushAll', '$pullAll', '$each', '$in',
