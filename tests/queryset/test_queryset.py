@@ -4476,6 +4476,57 @@ class TestQueryset(unittest.TestCase):
             expected = "[u'A1', u'A2']"
         assert expected == "%s" % sorted(names)
 
+    def test_fields(self):
+        class Bar(EmbeddedDocument):
+            v = StringField()
+            z = StringField()
+
+
+        class Foo(Document):
+            x = StringField()
+            y = IntField()
+            items = EmbeddedDocumentListField(Bar)
+
+
+        Foo.drop_collection()
+
+        Foo(x='foo1', y=1).save()
+        Foo(x='foo2', y=2, items=[]).save()
+        Foo(x='foo3', y=3, items=[Bar(z='a', v='V')]).save()
+        Foo(x='foo4', y=4, items=[Bar(z='a', v='V'), Bar(z='b', v='W'), Bar(z='b', v='X'), Bar(z='c', v='V')]).save()
+        Foo(x='foo5', y=5, items=[Bar(z='b', v='X'), Bar(z='c', v='V'), Bar(z='d', v='V'), Bar(z='e', v='V')]).save()
+
+        foos_with_x = list(Foo.objects.order_by('y').fields(x=1))
+
+        assert all(o.x is not None for o in foos_with_x)
+
+        foos_without_y = list(Foo.objects.order_by('y').fields(y=0))
+
+        assert all(o.y is None for o in foos_with_x)
+
+        foos_with_sliced_items = list(Foo.objects.order_by('y').fields(slice__items=1))
+
+        assert foos_with_sliced_items[0].items == []
+        assert foos_with_sliced_items[1].items == []
+        assert len(foos_with_sliced_items[2].items) == 1
+        assert foos_with_sliced_items[2].items[0].z == 'a'
+        assert len(foos_with_sliced_items[3].items) == 1
+        assert foos_with_sliced_items[3].items[0].z == 'a'
+        assert len(foos_with_sliced_items[4].items) == 1
+        assert foos_with_sliced_items[4].items[0].z == 'b'
+
+        foos_with_elem_match_items = list(Foo.objects.order_by('y').fields(elemMatch__items={'z': 'b'}))
+
+        assert foos_with_elem_match_items[0].items == []
+        assert foos_with_elem_match_items[1].items == []
+        assert foos_with_elem_match_items[2].items == []
+        assert len(foos_with_elem_match_items[3].items) == 1
+        assert foos_with_elem_match_items[3].items[0].z == 'b'
+        assert foos_with_elem_match_items[3].items[0].v == 'W'
+        assert len(foos_with_elem_match_items[4].items) == 1
+        assert foos_with_elem_match_items[4].items[0].z == 'b'
+
+
     def test_elem_match(self):
         class Foo(EmbeddedDocument):
             shape = StringField()

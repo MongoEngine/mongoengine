@@ -1037,7 +1037,7 @@ class BaseQuerySet(object):
         """
 
         # Check for an operator and transform to mongo-style if there is
-        operators = ["slice"]
+        operators = ["slice", "elemMatch"]
         cleaned_fields = []
         for key, value in kwargs.items():
             parts = key.split("__")
