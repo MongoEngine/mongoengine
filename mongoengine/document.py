@@ -332,7 +332,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
-        created.
+        created. Returns the saved object instance.
 
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents.
