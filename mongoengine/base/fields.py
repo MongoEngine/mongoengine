@@ -145,7 +145,7 @@ class BaseField(object):
         if value is None:
             if self.null:
                 value = None
-            elif self.default is not None:
+            if self.default is not None:
                 value = self.default
                 if callable(value):
                     value = value()

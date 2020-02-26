@@ -156,6 +156,21 @@ class TestField(MongoDBTestCase):
         data_to_be_saved = sorted(person.to_mongo().keys())
         assert data_to_be_saved == ["age", "created", "userid"]
 
+    def test_boolean_field_default_false_and_null_true(self):
+        """Ensure that False default is used in boolean field when
+        null is enabled for a field"""
+        class Person(Document):
+            name = StringField(default="default name", null=True)
+            deleted = BooleanField(default=False, null=True)
+        # Trying setting values to None
+        person = Person()
+        # Confirm saving now would store values
+        data_to_be_saved = sorted(person.to_mongo().keys())
+        assert data_to_be_saved == ["deleted", "name"]
+        assert person.validate() is None
+        assert person.name == "default name"
+        assert person.deleted == False
+
     def test_default_values_when_setting_to_None(self):
         """Ensure that default field values are used when creating
         a document.
