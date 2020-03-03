@@ -644,6 +644,7 @@ class BaseDocument(object):
 
         set_fields = self._get_changed_fields()
         unset_data = {}
+        deleted_sentinel = object()
         if hasattr(self, "_changed_fields"):
             set_data = {}
             # Fetch each set item from its path
@@ -660,7 +661,7 @@ class BaseDocument(object):
                         d = d[int(p)]
                     elif hasattr(d, "get"):
                         # dict-like (dict, embedded document)
-                        d = d.get(p)
+                        d = d.get(p, deleted_sentinel)
                     new_path.append(p)
                 path = ".".join(new_path)
                 set_data[path] = d
@@ -669,10 +670,14 @@ class BaseDocument(object):
             if "_id" in set_data:
                 del set_data["_id"]
 
+        DictField = _import_class("DictField")
+
         # Determine if any changed items were actually unset.
         for path, value in set_data.items():
-            if value or isinstance(
-                value, (numbers.Number, bool)
+            if (
+                value
+                and value != deleted_sentinel
+                or isinstance(value, (numbers.Number, bool))
             ):  # Account for 0 and True that are truthy
                 continue
 
@@ -690,7 +695,15 @@ class BaseDocument(object):
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
                 db_field_name = parts.pop()
+                preserve = False
                 for p in parts:
+                    if value != deleted_sentinel and hasattr(d, "_fields"):
+                        # Preserve None values in DictFields
+                        field_name = d._reverse_db_field_map.get(p, p)
+                        if isinstance(d._fields.get(field_name), DictField):
+                            preserve = True
+                            break
+
                     if isinstance(d, list) and p.isdigit():
                         d = d[int(p)]
                     elif hasattr(d, "__getattribute__") and not isinstance(d, dict):
@@ -698,6 +711,9 @@ class BaseDocument(object):
                         d = getattr(d, real_path)
                     else:
                         d = d.get(p)
+
+                if preserve:
+                    continue
 
                 if hasattr(d, "_fields"):
                     field_name = d._reverse_db_field_map.get(
@@ -710,6 +726,9 @@ class BaseDocument(object):
 
             if default is not None:
                 default = default() if callable(default) else default
+
+            if value == deleted_sentinel:
+                value = None
 
             if value != default:
                 continue
