@@ -264,4 +264,6 @@ def set_read_write_concern(collection, write_concerns, read_concern):
     combined_write_concerns = dict(collection.write_concern.document.items())
     combined_write_concerns.update(write_concerns)
 
-    yield collection.with_options(write_concern=WriteConcern(**combined_write_concerns), read_concern=read_concern)
+    yield collection.with_options(
+        write_concern=WriteConcern(**combined_write_concerns), read_concern=read_concern
+    )

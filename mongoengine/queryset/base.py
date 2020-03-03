@@ -19,7 +19,11 @@ from mongoengine import signals
 from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
-from mongoengine.context_managers import set_write_concern, set_read_write_concern, switch_db
+from mongoengine.context_managers import (
+    set_write_concern,
+    set_read_write_concern,
+    switch_db,
+)
 from mongoengine.errors import (
     BulkWriteError,
     InvalidQueryError,
@@ -492,7 +496,13 @@ class BaseQuerySet(object):
                 return result.deleted_count
 
     def update(
-        self, upsert=False, multi=True, write_concern=None, read_concern=None, full_result=False, **update
+        self,
+        upsert=False,
+        multi=True,
+        write_concern=None,
+        read_concern=None,
+        full_result=False,
+        **update
     ):
         """Perform an atomic update on the fields matched by the query.
 
@@ -531,7 +541,9 @@ class BaseQuerySet(object):
             else:
                 update["$set"] = {"_cls": queryset._document._class_name}
         try:
-            with set_read_write_concern(queryset._collection, write_concern, read_concern) as collection:
+            with set_read_write_concern(
+                queryset._collection, write_concern, read_concern
+            ) as collection:
                 update_func = collection.update_one
                 if multi:
                     update_func = collection.update_many
@@ -1214,7 +1226,7 @@ class BaseQuerySet(object):
         queryset._read_concern = read_concern
         queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_concern
         return queryset
-    
+
     def scalar(self, *fields):
         """Instead of returning Document instances, return either a specific
         value or a tuple of values in order.
