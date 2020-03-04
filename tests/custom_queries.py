@@ -201,6 +201,16 @@ class CustomQueryTest(unittest.TestCase):
         self.assertEqual(result['$set']['name'], 'Chu')
         self.assertEqual(result['$set']['c'], {'n': 'Blue'})
 
+    def testTransformQueryEmbeddedOrder(self):
+        blue = self.Colour(name='Blue')
+        query = {'$or': {'name': 'Chu', 'age': 20, 'favourite_colour': blue},
+                'some_id' : '0' * 24}
+        result = self.Person._transform_value(query, self.Person)
+
+        self.assertEqual(result['some_id'], ObjectId('0'*24))
+
+
+
     def testTransformQueryList(self):
         blue = self.Colour(name='Blue')
         red = self.Colour(name='Red')
