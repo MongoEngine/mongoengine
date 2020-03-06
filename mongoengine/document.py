@@ -1528,6 +1528,8 @@ class Document(BaseDocument):
                            '$max', '$min', '$showDiskLoc', '$hint', '$comment',
                            '$slice', '$options', '$regex', '$position']
 
+        base_op = op
+
         # recurse on list, unless we're at a ListField
         if isinstance(value, list) and not isinstance(context, ListField):
             transformed_list = []
@@ -1538,6 +1540,8 @@ class Document(BaseDocument):
                     for key, subvalue in listel.iteritems():
                         if key[0] == '$':
                             op = key
+                        else:
+                            op = base_op
 
                         new_key, value_context = Document._transform_key(key, context,
                                                      is_find=(op is None))
@@ -1560,6 +1564,8 @@ class Document(BaseDocument):
                 embeddeddoc = False
                 if key[0] == '$':
                     op = key
+                else:
+                    op = base_op
 
                 if isinstance(context, ListField):
                     if isinstance(context.field, EmbeddedDocumentField):
