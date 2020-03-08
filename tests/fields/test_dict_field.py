@@ -3,6 +3,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.base import BaseDict
+from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
 
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
@@ -43,16 +44,26 @@ class TestDictField(MongoDBTestCase):
         with pytest.raises(ValidationError):
             post.validate()
 
-        post.info = {"the.title": "test"}
-        with pytest.raises(ValidationError):
-            post.validate()
-
-        post.info = {"nested": {"the.title": "test"}}
+        post.info = {"$title.test": "test"}
         with pytest.raises(ValidationError):
             post.validate()
 
         post.info = {1: "test"}
         with pytest.raises(ValidationError):
+            post.validate()
+
+        post.info = {"nested": {"the.title": "test"}}
+        if get_mongodb_version() < MONGODB_36:
+            with pytest.raises(ValidationError):
+                post.validate()
+        else:
+            post.validate()
+
+        post.info = {"dollar_and_dot": {"te$st.test": "test"}}
+        if get_mongodb_version() < MONGODB_36:
+            with pytest.raises(ValidationError):
+                post.validate()
+        else:
             post.validate()
 
         post.info = {"title": "test"}

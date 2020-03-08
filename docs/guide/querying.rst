@@ -222,6 +222,18 @@ keyword argument::
 
 .. versionadded:: 0.4
 
+Sorting/Ordering results
+========================
+It is possible to order the results by 1 or more keys using :meth:`~mongoengine.queryset.QuerySet.order_by`.
+The order may be specified by prepending each of the keys by "+" or "-". Ascending order is assumed if there's no prefix.::
+
+    # Order by ascending date
+    blogs = BlogPost.objects().order_by('date')    # equivalent to .order_by('+date')
+
+    # Order by ascending date first, then descending title
+    blogs = BlogPost.objects().order_by('+date', '-title')
+
+
 Limiting and skipping results
 =============================
 Just as with traditional ORMs, you may limit the number of results returned or
@@ -388,7 +400,7 @@ would be generating "tag-clouds"::
 
 MongoDB aggregation API
 -----------------------
-If you need to run aggregation pipelines, MongoEngine provides an entry point `Pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
+If you need to run aggregation pipelines, MongoEngine provides an entry point to `Pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
 through :meth:`~mongoengine.queryset.QuerySet.aggregate`. Check out Pymongo's documentation for the syntax and pipeline.
 An example of its use would be::
 
@@ -402,7 +414,7 @@ An example of its use would be::
             {"$sort" : {"name" : -1}},
             {"$project": {"_id": 0, "name": {"$toUpper": "$name"}}}
             ]
-        data = Person.objects().aggregate(*pipeline)
+        data = Person.objects().aggregate(pipeline)
         assert data == [{'name': 'BOB'}, {'name': 'JOHN'}]
 
 Query efficiency and performance
@@ -585,7 +597,8 @@ cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
     ['database', 'mongodb']
 
 From MongoDB version 2.6, push operator supports $position value which allows
-to push values with index.
+to push values with index::
+
     >>> post = BlogPost(title="Test", tags=["mongo"])
     >>> post.save()
     >>> post.update(push__tags__0=["database", "code"])

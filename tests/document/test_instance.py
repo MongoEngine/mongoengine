@@ -41,7 +41,7 @@ from tests.utils import MongoDBTestCase, get_as_pymongo
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
 
-class TestInstance(MongoDBTestCase):
+class TestDocumentInstance(MongoDBTestCase):
     def setUp(self):
         class Job(EmbeddedDocument):
             name = StringField()
@@ -3319,6 +3319,39 @@ class TestInstance(MongoDBTestCase):
         f1.ref  # Dereferences lazily
         assert f1 == f2
 
+    def test_embedded_document_equality_with_lazy_ref(self):
+        class Job(EmbeddedDocument):
+            boss = LazyReferenceField("Person")
+            boss_dbref = LazyReferenceField("Person", dbref=True)
+
+        class Person(Document):
+            job = EmbeddedDocumentField(Job)
+
+        Person.drop_collection()
+
+        boss = Person()
+        worker = Person(job=Job(boss=boss, boss_dbref=boss))
+        boss.save()
+        worker.save()
+
+        worker1 = Person.objects.get(id=worker.id)
+
+        # worker1.job should be equal to the job used originally to create the
+        # document.
+        assert worker1.job == worker.job
+
+        # worker1.job should be equal to a newly created Job EmbeddedDocument
+        # using either the Boss object or his ID.
+        assert worker1.job == Job(boss=boss, boss_dbref=boss)
+        assert worker1.job == Job(boss=boss.id, boss_dbref=boss.id)
+
+        # The above equalities should also hold after worker1.job.boss has been
+        # fetch()ed.
+        worker1.job.boss.fetch()
+        assert worker1.job == worker.job
+        assert worker1.job == Job(boss=boss, boss_dbref=boss)
+        assert worker1.job == Job(boss=boss.id, boss_dbref=boss.id)
+
     def test_dbref_equality(self):
         class Test2(Document):
             name = StringField()
@@ -3584,6 +3617,51 @@ class TestInstance(MongoDBTestCase):
             assert b._instance == a
         assert idx == 2
 
+    def test_updating_listfield_manipulate_list(self):
+        class Company(Document):
+            name = StringField()
+            employees = ListField(field=DictField())
+
+        Company.drop_collection()
+
+        comp = Company(name="BigBank", employees=[{"name": "John"}])
+        comp.save()
+        comp.employees.append({"name": "Bill"})
+        comp.save()
+
+        stored_comp = get_as_pymongo(comp)
+        self.assertEqual(
+            stored_comp,
+            {
+                "_id": comp.id,
+                "employees": [{"name": "John"}, {"name": "Bill"}],
+                "name": "BigBank",
+            },
+        )
+
+        comp = comp.reload()
+        comp.employees[0]["color"] = "red"
+        comp.employees[-1]["color"] = "blue"
+        comp.employees[-1].update({"size": "xl"})
+        comp.save()
+
+        assert len(comp.employees) == 2
+        assert comp.employees[0] == {"name": "John", "color": "red"}
+        assert comp.employees[1] == {"name": "Bill", "size": "xl", "color": "blue"}
+
+        stored_comp = get_as_pymongo(comp)
+        self.assertEqual(
+            stored_comp,
+            {
+                "_id": comp.id,
+                "employees": [
+                    {"name": "John", "color": "red"},
+                    {"size": "xl", "color": "blue", "name": "Bill"},
+                ],
+                "name": "BigBank",
+            },
+        )
+
     def test_falsey_pk(self):
         """Ensure that we can create and update a document with Falsey PK."""
 
@@ -3660,13 +3738,13 @@ class TestInstance(MongoDBTestCase):
         value = u"I_should_be_a_dict"
         coll.insert_one({"light_saber": value})
 
-        with self.assertRaises(InvalidDocumentError) as cm:
+        with pytest.raises(InvalidDocumentError) as exc_info:
             list(Jedi.objects)
 
-        self.assertEqual(
-            str(cm.exception),
-            "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found"
-            % type(value),
+        assert str(
+            exc_info.value
+        ) == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found" % type(
+            value
         )
 
 

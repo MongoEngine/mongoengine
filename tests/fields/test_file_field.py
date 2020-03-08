@@ -151,7 +151,7 @@ class TestFileField(MongoDBTestCase):
         result = StreamFile.objects.first()
         assert streamfile == result
         assert result.the_file.read() == text + more_text
-        # self.assertEqual(result.the_file.content_type, content_type)
+        # assert result.the_file.content_type == content_type
         result.the_file.seek(0)
         assert result.the_file.tell() == 0
         assert result.the_file.read(len(text)) == text
