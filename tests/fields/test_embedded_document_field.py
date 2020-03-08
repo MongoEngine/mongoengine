@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from builtins import str
-
 import pytest
 
 from mongoengine import (

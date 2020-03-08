@@ -3,6 +3,7 @@ import copy
 import os
 import tempfile
 import unittest
+from io import BytesIO
 
 import gridfs
 import pytest
@@ -10,7 +11,6 @@ import six
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.python_support import StringIO
 
 try:
     from PIL import Image
@@ -30,7 +30,7 @@ TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), "mongodb_leaf.png")
 def get_file(path):
     """Use a BytesIO instead of a file to allow
     to have a one-liner and avoid that the file remains opened"""
-    bytes_io = StringIO()
+    bytes_io = BytesIO()
     with open(path, "rb") as f:
         bytes_io.write(f.read())
     bytes_io.seek(0)
@@ -80,7 +80,7 @@ class TestFileField(MongoDBTestCase):
         PutFile.drop_collection()
 
         putfile = PutFile()
-        putstring = StringIO()
+        putstring = BytesIO()
         putstring.write(text)
         putstring.seek(0)
         putfile.the_file.put(putstring, content_type=content_type)

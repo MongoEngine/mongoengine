@@ -4470,10 +4470,7 @@ class TestQueryset(unittest.TestCase):
 
         pks = self.Person.objects.order_by("age").scalar("pk")[1:3]
         names = self.Person.objects.scalar("name").in_bulk(list(pks)).values()
-        if six.PY3:
-            expected = "['A1', 'A2']"
-        else:
-            expected = "[u'A1', u'A2']"
+        expected = "['A1', 'A2']"
         assert expected == "%s" % sorted(names)
 
     def test_elem_match(self):

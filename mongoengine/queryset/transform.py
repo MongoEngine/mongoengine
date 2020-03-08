@@ -10,7 +10,7 @@ from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidQueryError
 
-__all__ = ("query", "update")
+__all__ = ("query", "update", "STRING_OPERATORS")
 
 COMPARISON_OPERATORS = (
     "ne",

@@ -5,12 +5,12 @@ import re
 import socket
 import time
 import uuid
+from io import BytesIO
 from operator import itemgetter
 
 from bson import Binary, DBRef, ObjectId, SON
 from bson.int64 import Int64
 import gridfs
-from past.builtins import long
 import pymongo
 from pymongo import ReturnDocument
 import six
@@ -39,7 +39,6 @@ from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
 from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
-from mongoengine.python_support import StringIO
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS
@@ -338,7 +337,7 @@ class IntField(BaseField):
 
 
 class LongField(BaseField):
-    """64-bit integer field."""
+    """64-bit integer field. (Equivalent to IntField since the support to Python2 was dropped)"""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value, self.max_value = min_value, max_value
@@ -346,7 +345,7 @@ class LongField(BaseField):
 
     def to_python(self, value):
         try:
-            value = long(value)
+            value = int(value)
         except (TypeError, ValueError):
             pass
         return value
@@ -356,7 +355,7 @@ class LongField(BaseField):
 
     def validate(self, value):
         try:
-            value = long(value)
+            value = int(value)
         except (TypeError, ValueError):
             self.error("%s could not be converted to long" % value)
 
@@ -370,7 +369,7 @@ class LongField(BaseField):
         if value is None:
             return value
 
-        return super(LongField, self).prepare_query_value(op, long(value))
+        return super(LongField, self).prepare_query_value(op, int(value))
 
 
 class FloatField(BaseField):
@@ -1679,8 +1678,6 @@ class GridFSProxy(object):
     def __bool__(self):
         return bool(self.grid_id)
 
-    __nonzero__ = __bool__  # For Py2 support
-
     def __getstate__(self):
         self_dict = self.__dict__
         self_dict["_fs"] = None
@@ -1952,7 +1949,7 @@ class ImageGridFsProxy(GridFSProxy):
 
         w, h = img.size
 
-        io = StringIO()
+        io = BytesIO()
         img.save(io, img_format, progressive=progressive)
         io.seek(0)
 
@@ -1971,7 +1968,7 @@ class ImageGridFsProxy(GridFSProxy):
     def _put_thumbnail(self, thumbnail, format, progressive, **kwargs):
         w, h = thumbnail.size
 
-        io = StringIO()
+        io = BytesIO()
         thumbnail.save(io, format, progressive=progressive)
         io.seek(0)
 

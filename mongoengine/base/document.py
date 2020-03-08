@@ -1,9 +1,9 @@
 import copy
+
 import numbers
 from functools import partial
 
 from bson import DBRef, ObjectId, SON, json_util
-from future.utils import listitems
 import pymongo
 import six
 from six import iteritems
@@ -26,7 +26,6 @@ from mongoengine.errors import (
     OperationError,
     ValidationError,
 )
-from mongoengine.python_support import Hashable
 
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
@@ -294,10 +293,7 @@ class BaseDocument(object):
     def __str__(self):
         # TODO this could be simpler?
         if hasattr(self, "__unicode__"):
-            if six.PY3:
-                return self.__unicode__()
-            else:
-                return six.text_type(self).encode("utf-8")
+            return self.__unicode__()
         return six.text_type("%s object" % self.__class__.__name__)
 
     def __eq__(self, other):
@@ -671,7 +667,7 @@ class BaseDocument(object):
                 del set_data["_id"]
 
         # Determine if any changed items were actually unset.
-        for path, value in listitems(set_data):
+        for path, value in list(set_data.items()):
             if value or isinstance(
                 value, (numbers.Number, bool)
             ):  # Account for 0 and True that are truthy

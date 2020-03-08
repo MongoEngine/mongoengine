@@ -110,7 +110,6 @@ CLASSIFIERS = [
 
 PYTHON_VERSION = sys.version_info[0]
 PY3 = PYTHON_VERSION == 3
-PY2 = PYTHON_VERSION == 2
 
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
@@ -124,14 +123,11 @@ extra_opts = {
     ],
 }
 
-if PY3:
-    if "test" in sys.argv:
-        extra_opts["packages"] = find_packages()
-        extra_opts["package_data"] = {
-            "tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]
-        }
-else:
-    extra_opts["tests_require"] += ["python-dateutil"]
+if "test" in sys.argv:
+    extra_opts["packages"] = find_packages()
+    extra_opts["package_data"] = {
+        "tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]
+    }
 
 setup(
     name="mongoengine",
@@ -148,7 +144,8 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    install_requires=["pymongo>=3.4, <4.0", "six>=1.10.0", "future"],
+    python_requires=">=3.5",
+    install_requires=["pymongo>=3.4, <4.0", "six>=1.10.0"],
     cmdclass={"test": PyTest},
     **extra_opts
 )

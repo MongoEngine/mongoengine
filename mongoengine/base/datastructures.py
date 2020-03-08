@@ -1,7 +1,6 @@
 import weakref
 
 from bson import DBRef
-from future.utils import listitems
 import six
 from six import iteritems
 
@@ -180,19 +179,6 @@ class BaseList(list):
     __delitem__ = mark_as_changed_wrapper(list.__delitem__)
     __iadd__ = mark_as_changed_wrapper(list.__iadd__)
     __imul__ = mark_as_changed_wrapper(list.__imul__)
-
-    if six.PY2:
-        # Under py3 __setslice__, __delslice__ and __getslice__
-        # are replaced by __setitem__, __delitem__ and __getitem__ with a slice as parameter
-        # so we mimic this under python 2
-        def __setslice__(self, i, j, sequence):
-            return self.__setitem__(slice(i, j), sequence)
-
-        def __delslice__(self, i, j):
-            return self.__delitem__(slice(i, j))
-
-        def __getslice__(self, i, j):
-            return self.__getitem__(slice(i, j))
 
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, "_mark_as_changed"):
@@ -426,7 +412,7 @@ class StrictDict(object):
         return len(list(iteritems(self)))
 
     def __eq__(self, other):
-        return listitems(self) == listitems(other)
+        return list(self.items()) == list(other.items())
 
     def __ne__(self, other):
         return not (self == other)

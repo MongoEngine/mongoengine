@@ -20,23 +20,23 @@ post to the `user group <http://groups.google.com/group/mongoengine-users>`
 Supported Interpreters
 ----------------------
 
-MongoEngine supports CPython 2.7 and newer. Language
-features not supported by all interpreters can not be used.
+MongoEngine supports CPython 3.7 and newer as well as Pypy3.
+Language features not supported by all interpreters can not be used.
 
-Python 2/3 compatibility
+Python3 codebase
 ----------------------
 
-The codebase is written in a compatible manner for python 2 & 3 so it
-is important that this is taken into account when it comes to discrepencies
-between the two versions (see https://python-future.org/compatible_idioms.html).
-Travis runs the tests against different Python versions as a safety net.
+Since 0.20, the codebase is exclusively Python 3.
+
+Earlier versions were exclusively Python2, and was relying on 2to3 to support Python3 installs.
+Travis runs the tests against the main Python 3.x versions.
 
 
 Style Guide
 -----------
 
-MongoEngine uses `black <https://github.com/python/black>`_ for code
-formatting.
+MongoEngine uses `black <https://github.com/python/black>`_ for code formatting.
+Black runs as part of the CI so it will fail in case the code is not formatted properly.
 
 Testing
 -------

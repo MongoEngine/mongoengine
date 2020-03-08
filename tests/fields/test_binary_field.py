@@ -123,10 +123,7 @@ class TestBinaryField(MongoDBTestCase):
             upsert=True, new=True, set__bin_field=BIN_VALUE
         )
         assert doc.some_field == "test"
-        if six.PY3:
-            assert doc.bin_field == BIN_VALUE
-        else:
-            assert doc.bin_field == Binary(BIN_VALUE)
+        assert doc.bin_field == BIN_VALUE
 
     def test_update_one(self):
         """Ensures no regression of bug #1127"""
@@ -144,7 +141,4 @@ class TestBinaryField(MongoDBTestCase):
         )
         assert n_updated == 1
         fetched = MyDocument.objects.with_id(doc.id)
-        if six.PY3:
-            assert fetched.bin_field == BIN_VALUE
-        else:
-            assert fetched.bin_field == Binary(BIN_VALUE)
+        assert fetched.bin_field == BIN_VALUE

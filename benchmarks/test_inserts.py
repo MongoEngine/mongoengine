@@ -3,8 +3,6 @@ import timeit
 
 def main():
     setup = """
-from builtins import range
-
 from pymongo import MongoClient
 
 connection = MongoClient()
@@ -59,8 +57,6 @@ myNoddys = noddy.find()
     print("{}s".format(t.timeit(1)))
 
     setup = """
-from builtins import range
-
 from pymongo import MongoClient
 
 connection = MongoClient()

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import copy
 import itertools
 import re
@@ -203,8 +201,6 @@ class BaseQuerySet(object):
     def __bool__(self):
         """Avoid to open all records in an if stmt in Py3."""
         return self._has_data()
-
-    __nonzero__ = __bool__  # For Py2 support
 
     # Core functions
 
