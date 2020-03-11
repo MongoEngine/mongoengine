@@ -28,7 +28,7 @@ Python3 codebase
 
 Since 0.20, the codebase is exclusively Python 3.
 
-Earlier versions were exclusively Python2, and was relying on 2to3 to support Python3 installs.
+Earlier versions were exclusively Python2, and were relying on 2to3 to support Python3 installs.
 Travis runs the tests against the main Python 3.x versions.
 
 

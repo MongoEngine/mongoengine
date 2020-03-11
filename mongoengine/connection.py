@@ -1,6 +1,5 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
-import six
 
 __all__ = [
     "DEFAULT_CONNECTION_NAME",
@@ -39,8 +38,8 @@ def _check_db_name(name):
     """Check if a database name is valid.
     This functionality is copied from pymongo Database class constructor.
     """
-    if not isinstance(name, six.string_types):
-        raise TypeError("name must be an instance of %s" % six.string_types)
+    if not isinstance(name, str):
+        raise TypeError("name must be an instance of %s" % str)
     elif name != "$external":
         _check_name(name)
 
@@ -93,7 +92,7 @@ def _get_connection_settings(
     conn_host = conn_settings["host"]
 
     # Host can be a list or a string, so if string, force to a list.
-    if isinstance(conn_host, six.string_types):
+    if isinstance(conn_host, str):
         conn_host = [conn_host]
 
     resolved_hosts = []
@@ -148,7 +147,7 @@ def _get_connection_settings(
                 # TODO simplify the code below once we drop support for
                 # PyMongo v3.4.
                 read_pf_mode = uri_options["readpreference"]
-                if isinstance(read_pf_mode, six.string_types):
+                if isinstance(read_pf_mode, str):
                     read_pf_mode = read_pf_mode.lower()
                 for preference in read_preferences:
                     if (

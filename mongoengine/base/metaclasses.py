@@ -1,7 +1,6 @@
 import itertools
 import warnings
 
-import six
 from six import iteritems, itervalues
 
 from mongoengine.base.common import _document_registry
@@ -180,14 +179,15 @@ class DocumentMetaclass(type):
         # module continues to use im_func and im_self, so the code below
         # copies __func__ into im_func and __self__ into im_self for
         # classmethod objects in Document derived classes.
-        if six.PY3:
-            for val in new_class.__dict__.values():
-                if isinstance(val, classmethod):
-                    f = val.__get__(new_class)
-                    if hasattr(f, "__func__") and not hasattr(f, "im_func"):
-                        f.__dict__.update({"im_func": getattr(f, "__func__")})
-                    if hasattr(f, "__self__") and not hasattr(f, "im_self"):
-                        f.__dict__.update({"im_self": getattr(f, "__self__")})
+        #
+        # Relates to https://github.com/MongoEngine/mongoengine/issues/1107
+        # for val in new_class.__dict__.values():
+        #     if isinstance(val, classmethod):
+        #         f = val.__get__(new_class)
+        #         if hasattr(f, "__func__") and not hasattr(f, "im_func"):
+        #             f.__dict__.update({"im_func": getattr(f, "__func__")})
+        #         if hasattr(f, "__self__") and not hasattr(f, "im_self"):
+        #             f.__dict__.update({"im_self": getattr(f, "__self__")})
 
         # Handle delete rules
         for field in itervalues(new_class._fields):

@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-import six
 from six import iteritems
 
 __all__ = (
@@ -93,7 +92,7 @@ class ValidationError(AssertionError):
         self.message = message
 
     def __str__(self):
-        return six.text_type(self.message)
+        return str(self.message)
 
     def __repr__(self):
         return "%s(%s,)" % (self.__class__.__name__, self.message)
@@ -131,7 +130,7 @@ class ValidationError(AssertionError):
             elif isinstance(source, ValidationError) and source.errors:
                 return build_dict(source.errors)
             else:
-                return six.text_type(source)
+                return str(source)
 
             return errors_dict
 

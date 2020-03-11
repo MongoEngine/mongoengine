@@ -44,7 +44,7 @@ def includes_cls(fields):
     """Helper function used for ensuring and comparing indexes."""
     first_field = None
     if len(fields):
-        if isinstance(fields[0], six.string_types):
+        if isinstance(fields[0], str):
             first_field = fields[0]
         elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
             first_field = fields[0][0]
@@ -430,15 +430,15 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         except pymongo.errors.DuplicateKeyError as err:
             message = u"Tried to save duplicate unique keys (%s)"
-            raise NotUniqueError(message % six.text_type(err))
+            raise NotUniqueError(message % err)
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
-            if re.match("^E1100[01] duplicate key", six.text_type(err)):
+            if re.match("^E1100[01] duplicate key", str(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
                 message = u"Tried to save duplicate unique keys (%s)"
-                raise NotUniqueError(message % six.text_type(err))
-            raise OperationError(message % six.text_type(err))
+                raise NotUniqueError(message % err)
+            raise OperationError(message % err)
 
         # Make sure we store the PK on this document now that it's saved
         id_field = self._meta["id_field"]

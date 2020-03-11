@@ -4,7 +4,6 @@ import weakref
 
 from bson import DBRef, ObjectId, SON
 import pymongo
-import six
 from six import iteritems
 
 from mongoengine.base.common import UPDATE_OPERATORS
@@ -92,13 +91,11 @@ class BaseField(object):
         self._owner_document = None
 
         # Make sure db_field is a string (if it's explicitly defined).
-        if self.db_field is not None and not isinstance(
-            self.db_field, six.string_types
-        ):
+        if self.db_field is not None and not isinstance(self.db_field, str):
             raise TypeError("db_field should be a string.")
 
         # Make sure db_field doesn't contain any forbidden characters.
-        if isinstance(self.db_field, six.string_types) and (
+        if isinstance(self.db_field, str) and (
             "." in self.db_field
             or "\0" in self.db_field
             or self.db_field.startswith("$")
@@ -221,14 +218,12 @@ class BaseField(object):
         # Choices which are other types of Documents
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
-                self.error(
-                    "Value must be an instance of %s" % (six.text_type(choice_list))
-                )
+                self.error("Value must be an instance of %s" % (choice_list))
         # Choices which are types other than Documents
         else:
             values = value if isinstance(value, (list, tuple)) else [value]
             if len(set(values) - set(choice_list)):
-                self.error("Value must be one of %s" % six.text_type(choice_list))
+                self.error("Value must be one of %s" % str(choice_list))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -345,7 +340,7 @@ class ComplexBaseField(BaseField):
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type."""
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, "to_python"):
@@ -399,7 +394,7 @@ class ComplexBaseField(BaseField):
         EmbeddedDocument = _import_class("EmbeddedDocument")
         GenericReferenceField = _import_class("GenericReferenceField")
 
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, "to_mongo"):
@@ -513,10 +508,9 @@ class ObjectIdField(BaseField):
     def to_mongo(self, value):
         if not isinstance(value, ObjectId):
             try:
-                return ObjectId(six.text_type(value))
+                return ObjectId(str(value))
             except Exception as e:
-                # e.message attribute has been deprecated since Python 2.6
-                self.error(six.text_type(e))
+                self.error(str(e))
         return value
 
     def prepare_query_value(self, op, value):
@@ -524,9 +518,9 @@ class ObjectIdField(BaseField):
 
     def validate(self, value):
         try:
-            ObjectId(six.text_type(value))
+            ObjectId(str(value))
         except Exception:
-            self.error("Invalid Object ID")
+            self.error("Invalid ObjectID")
 
 
 class GeoJsonBaseField(BaseField):

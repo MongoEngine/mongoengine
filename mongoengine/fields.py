@@ -108,7 +108,7 @@ class StringField(BaseField):
         super(StringField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        if isinstance(value, six.text_type):
+        if isinstance(value, str):
             return value
         try:
             value = value.decode("utf-8")
@@ -117,7 +117,7 @@ class StringField(BaseField):
         return value
 
     def validate(self, value):
-        if not isinstance(value, six.string_types):
+        if not isinstance(value, str):
             self.error("StringField only accepts string values")
 
         if self.max_length is not None and len(value) > self.max_length:
@@ -133,7 +133,7 @@ class StringField(BaseField):
         return None
 
     def prepare_query_value(self, op, value):
-        if not isinstance(op, six.string_types):
+        if not isinstance(op, str):
             return value
 
         if op in STRING_OPERATORS:
@@ -472,13 +472,13 @@ class DecimalField(BaseField):
         if value is None:
             return value
         if self.force_string:
-            return six.text_type(self.to_python(value))
+            return str(self.to_python(value))
         return float(self.to_python(value))
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
-            if not isinstance(value, six.string_types):
-                value = six.text_type(value)
+            if not isinstance(value, str):
+                value = str(value)
             try:
                 value = decimal.Decimal(value)
             except (TypeError, ValueError, decimal.InvalidOperation) as exc:
@@ -543,7 +543,7 @@ class DateTimeField(BaseField):
         if callable(value):
             return value()
 
-        if not isinstance(value, six.string_types):
+        if not isinstance(value, str):
             return None
 
         return self._parse_datetime(value)
@@ -707,7 +707,7 @@ class EmbeddedDocumentField(BaseField):
     def __init__(self, document_type, **kwargs):
         # XXX ValidationError raised outside of the "validate" method.
         if not (
-            isinstance(document_type, six.string_types)
+            isinstance(document_type, str)
             or issubclass(document_type, EmbeddedDocument)
         ):
             self.error(
@@ -720,7 +720,7 @@ class EmbeddedDocumentField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, six.string_types):
+        if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 resolved_document_type = self.owner_document
             else:
@@ -846,7 +846,7 @@ class DynamicField(BaseField):
         """Convert a Python type to a MongoDB compatible type.
         """
 
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return value
 
         if hasattr(value, "to_mongo"):
@@ -889,7 +889,7 @@ class DynamicField(BaseField):
         return member_name
 
     def prepare_query_value(self, op, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return StringField().prepare_query_value(op, value)
         return super(DynamicField, self).prepare_query_value(op, self.to_mongo(value))
 
@@ -954,7 +954,7 @@ class ListField(ComplexBaseField):
             if (
                 op in ("set", "unset", None)
                 and hasattr(value, "__iter__")
-                and not isinstance(value, six.string_types)
+                and not isinstance(value, str)
                 and not isinstance(value, BaseDocument)
             ):
                 return [self.field.prepare_query_value(op, v) for v in value]
@@ -1026,9 +1026,7 @@ def key_not_string(d):
     dictionary is not a string.
     """
     for k, v in d.items():
-        if not isinstance(k, six.string_types) or (
-            isinstance(v, dict) and key_not_string(v)
-        ):
+        if not isinstance(k, str) or (isinstance(v, dict) and key_not_string(v)):
             return True
 
 
@@ -1107,7 +1105,7 @@ class DictField(ComplexBaseField):
             "iexact",
         ]
 
-        if op in match_operators and isinstance(value, six.string_types):
+        if op in match_operators and isinstance(value, str):
             return StringField().prepare_query_value(op, value)
 
         if hasattr(
@@ -1194,7 +1192,7 @@ class ReferenceField(BaseField):
             :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, six.string_types) and not issubclass(
+        if not isinstance(document_type, str) and not issubclass(
             document_type, Document
         ):
             self.error(
@@ -1209,7 +1207,7 @@ class ReferenceField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, six.string_types):
+        if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
@@ -1325,7 +1323,7 @@ class CachedReferenceField(BaseField):
             fields = []
 
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, six.string_types) and not issubclass(
+        if not isinstance(document_type, str) and not issubclass(
             document_type, Document
         ):
             self.error(
@@ -1370,7 +1368,7 @@ class CachedReferenceField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, six.string_types):
+        if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
@@ -1498,7 +1496,7 @@ class GenericReferenceField(BaseField):
         # Keep the choices as a list of allowed Document class names
         if choices:
             for choice in choices:
-                if isinstance(choice, six.string_types):
+                if isinstance(choice, str):
                     self.choices.append(choice)
                 elif isinstance(choice, type) and issubclass(choice, Document):
                     self.choices.append(choice._class_name)
@@ -1507,7 +1505,7 @@ class GenericReferenceField(BaseField):
                     # method.
                     self.error(
                         "Invalid choices provided: must be a list of"
-                        "Document subclasses and/or six.string_typess"
+                        "Document subclasses and/or str"
                     )
 
     def _validate_choices(self, value):
@@ -1601,8 +1599,8 @@ class BinaryField(BaseField):
 
     def __set__(self, instance, value):
         """Handle bytearrays in python 3.1"""
-        if six.PY3 and isinstance(value, bytearray):
-            value = six.binary_type(value)
+        if isinstance(value, bytearray):
+            value = bytes(value)
         return super(BinaryField, self).__set__(instance, value)
 
     def to_mongo(self, value):
@@ -1831,7 +1829,7 @@ class FileField(BaseField):
         key = self.name
         if (
             hasattr(value, "read") and not isinstance(value, GridFSProxy)
-        ) or isinstance(value, (six.binary_type, six.string_types)):
+        ) or isinstance(value, (six.binary_type, str)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it
@@ -2038,12 +2036,7 @@ class ImageField(FileField):
         for att_name, att in extra_args.items():
             value = None
             if isinstance(att, (tuple, list)):
-                if six.PY3:
-                    value = dict(
-                        itertools.zip_longest(params_size, att, fillvalue=None)
-                    )
-                else:
-                    value = dict(map(None, params_size, att))
+                value = dict(itertools.zip_longest(params_size, att, fillvalue=None))
 
             setattr(self, att_name, value)
 
@@ -2213,8 +2206,8 @@ class UUIDField(BaseField):
         if not self._binary:
             original_value = value
             try:
-                if not isinstance(value, six.string_types):
-                    value = six.text_type(value)
+                if not isinstance(value, str):
+                    value = str(value)
                 return uuid.UUID(value)
             except (ValueError, TypeError, AttributeError):
                 return original_value
@@ -2222,8 +2215,8 @@ class UUIDField(BaseField):
 
     def to_mongo(self, value):
         if not self._binary:
-            return six.text_type(value)
-        elif isinstance(value, six.string_types):
+            return str(value)
+        elif isinstance(value, str):
             return uuid.UUID(value)
         return value
 
@@ -2234,7 +2227,7 @@ class UUIDField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, uuid.UUID):
-            if not isinstance(value, six.string_types):
+            if not isinstance(value, str):
                 value = str(value)
             try:
                 uuid.UUID(value)
@@ -2433,7 +2426,7 @@ class LazyReferenceField(BaseField):
           document. Note this only work getting field (not setting or deleting).
         """
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, six.string_types) and not issubclass(
+        if not isinstance(document_type, str) and not issubclass(
             document_type, Document
         ):
             self.error(
@@ -2449,7 +2442,7 @@ class LazyReferenceField(BaseField):
 
     @property
     def document_type(self):
-        if isinstance(self.document_type_obj, six.string_types):
+        if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:

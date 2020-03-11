@@ -1,7 +1,6 @@
 import weakref
 
 from bson import DBRef
-import six
 from six import iteritems
 
 from mongoengine.common import _import_class
@@ -200,7 +199,7 @@ class EmbeddedDocumentList(BaseList):
         """
         for key, expected_value in kwargs.items():
             doc_val = getattr(embedded_doc, key)
-            if doc_val != expected_value and six.text_type(doc_val) != expected_value:
+            if doc_val != expected_value and str(doc_val) != expected_value:
                 return False
         return True
 

@@ -349,20 +349,20 @@ class BaseQuerySet(object):
             )
         except pymongo.errors.DuplicateKeyError as err:
             message = "Could not save document (%s)"
-            raise NotUniqueError(message % six.text_type(err))
+            raise NotUniqueError(message % err)
         except pymongo.errors.BulkWriteError as err:
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
             message = u"Bulk write error: (%s)"
-            raise BulkWriteError(message % six.text_type(err.details))
+            raise BulkWriteError(message % err.details)
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
-            if re.match("^E1100[01] duplicate key", six.text_type(err)):
+            if re.match("^E1100[01] duplicate key", str(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
                 message = u"Tried to save duplicate unique keys (%s)"
-                raise NotUniqueError(message % six.text_type(err))
-            raise OperationError(message % six.text_type(err))
+                raise NotUniqueError(message % err)
+            raise OperationError(message % err)
 
         # Apply inserted_ids to documents
         for doc, doc_id in zip(docs, ids):
@@ -534,12 +534,12 @@ class BaseQuerySet(object):
             elif result.raw_result:
                 return result.raw_result["n"]
         except pymongo.errors.DuplicateKeyError as err:
-            raise NotUniqueError(u"Update failed (%s)" % six.text_type(err))
+            raise NotUniqueError("Update failed (%s)" % err)
         except pymongo.errors.OperationFailure as err:
-            if six.text_type(err) == u"multi not coded yet":
-                message = u"update() method requires MongoDB 1.1.3+"
+            if str(err) == "multi not coded yet":
+                message = "update() method requires MongoDB 1.1.3+"
                 raise OperationError(message)
-            raise OperationError(u"Update failed (%s)" % six.text_type(err))
+            raise OperationError("Update failed (%s)" % err)
 
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
@@ -1348,13 +1348,13 @@ class BaseQuerySet(object):
         map_f_scope = {}
         if isinstance(map_f, Code):
             map_f_scope = map_f.scope
-            map_f = six.text_type(map_f)
+            map_f = str(map_f)
         map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
 
         reduce_f_scope = {}
         if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
-            reduce_f = six.text_type(reduce_f)
+            reduce_f = str(reduce_f)
         reduce_f_code = queryset._sub_js_fields(reduce_f)
         reduce_f = Code(reduce_f_code, reduce_f_scope)
 
@@ -1364,7 +1364,7 @@ class BaseQuerySet(object):
             finalize_f_scope = {}
             if isinstance(finalize_f, Code):
                 finalize_f_scope = finalize_f.scope
-                finalize_f = six.text_type(finalize_f)
+                finalize_f = str(finalize_f)
             finalize_f_code = queryset._sub_js_fields(finalize_f)
             finalize_f = Code(finalize_f_code, finalize_f_scope)
             mr_args["finalize"] = finalize_f
@@ -1380,7 +1380,7 @@ class BaseQuerySet(object):
         else:
             map_reduce_function = "map_reduce"
 
-            if isinstance(output, six.string_types):
+            if isinstance(output, str):
                 mr_args["out"] = output
 
             elif isinstance(output, dict):
@@ -1838,7 +1838,7 @@ class BaseQuerySet(object):
             field_parts = field.split(".")
             try:
                 field = ".".join(
-                    f if isinstance(f, six.string_types) else f.db_field
+                    f if isinstance(f, str) else f.db_field
                     for f in self._document._lookup_field(field_parts)
                 )
                 db_field_paths.append(field)
@@ -1850,7 +1850,7 @@ class BaseQuerySet(object):
                 for subdoc in subclasses:
                     try:
                         subfield = ".".join(
-                            f if isinstance(f, six.string_types) else f.db_field
+                            f if isinstance(f, str) else f.db_field
                             for f in subdoc._lookup_field(field_parts)
                         )
                         db_field_paths.append(subfield)

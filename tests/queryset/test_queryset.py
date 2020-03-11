@@ -4445,24 +4445,14 @@ class TestQueryset(unittest.TestCase):
             "A0" == "%s" % self.Person.objects.order_by("name").scalar("name").first()
         )
         assert "A0" == "%s" % self.Person.objects.scalar("name").order_by("name")[0]
-        if six.PY3:
-            assert (
-                "['A1', 'A2']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
-            )
-            assert (
-                "['A51', 'A52']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
-            )
-        else:
-            assert (
-                "[u'A1', u'A2']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
-            )
-            assert (
-                "[u'A51', u'A52']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
-            )
+        assert (
+            "['A1', 'A2']"
+            == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
+        )
+        assert (
+            "['A51', 'A52']"
+            == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
+        )
 
         # with_id and in_bulk
         person = self.Person.objects.order_by("name").first()

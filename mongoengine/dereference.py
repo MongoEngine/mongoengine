@@ -30,7 +30,7 @@ class DeReference(object):
             :class:`~mongoengine.base.ComplexBaseField`
         :param get: A boolean determining if being called by __get__
         """
-        if items is None or isinstance(items, six.string_types):
+        if items is None or isinstance(items, str):
             return items
 
         # cheapest way to convert a queryset to a list
@@ -274,9 +274,7 @@ class DeReference(object):
                             (v["_ref"].collection, v["_ref"].id), v
                         )
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                        item_name = six.text_type("{0}.{1}.{2}").format(
-                            name, k, field_name
-                        )
+                        item_name = "{0}.{1}.{2}".format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(
                             v, depth, instance=instance, name=item_name
                         )

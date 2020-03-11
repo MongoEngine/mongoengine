@@ -101,7 +101,7 @@ def query(_doc_cls=None, **kwargs):
             cleaned_fields = []
             for field in fields:
                 append_field = True
-                if isinstance(field, six.string_types):
+                if isinstance(field, str):
                     parts.append(field)
                     append_field = False
                 # is last and CachedReferenceField
@@ -281,7 +281,7 @@ def update(_doc_cls=None, **update):
             appended_sub_field = False
             for field in fields:
                 append_field = True
-                if isinstance(field, six.string_types):
+                if isinstance(field, str):
                     # Convert the S operator to $
                     if field == "S":
                         field = "$"

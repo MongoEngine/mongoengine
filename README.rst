@@ -42,6 +42,8 @@ to both create the virtual environment and install the package. Otherwise, you c
 download the source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
 run ``python setup.py install``.
 
+The support for Python2 was dropped with MongoEngine 0.20.0
+
 Dependencies
 ============
 All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
@@ -57,6 +59,10 @@ If you utilize a ``DateTimeField``, you might also use a more flexible date pars
 If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
 
 - Pillow>=2.0.0
+
+If you need to use signals:
+
+- blinker>=1.3
 
 Examples
 ========
