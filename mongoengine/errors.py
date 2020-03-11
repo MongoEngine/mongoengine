@@ -94,7 +94,7 @@ class ValidationError(AssertionError):
         return str(self.message)
 
     def __repr__(self):
-        return "%s(%s,)" % (self.__class__.__name__, self.message)
+        return "{}({},)".format(self.__class__.__name__, self.message)
 
     def __getattribute__(self, name):
         message = super(ValidationError, self).__getattribute__(name)
@@ -102,7 +102,7 @@ class ValidationError(AssertionError):
             if self.field_name:
                 message = "%s" % message
             if self.errors:
-                message = "%s(%s)" % (message, self._format_errors())
+                message = "{}({})".format(message, self._format_errors())
         return message
 
     def _get_message(self):
@@ -147,13 +147,13 @@ class ValidationError(AssertionError):
             elif isinstance(value, dict):
                 value = " ".join([generate_key(v, k) for k, v in value.items()])
 
-            results = "%s.%s" % (prefix, value) if prefix else value
+            results = "{}.{}".format(prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
         for k, v in self.to_dict().items():
             error_dict[generate_key(v)].append(k)
-        return " ".join(["%s: %s" % (k, v) for k, v in error_dict.items()])
+        return " ".join(["{}: {}".format(k, v) for k, v in error_dict.items()])
 
 
 class DeprecatedError(Exception):

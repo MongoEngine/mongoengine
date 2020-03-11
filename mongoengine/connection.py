@@ -317,7 +317,7 @@ def _create_connection(alias, connection_class, **connection_settings):
     try:
         return connection_class(**connection_settings)
     except Exception as e:
-        raise ConnectionFailure("Cannot connect to database %s :\n%s" % (alias, e))
+        raise ConnectionFailure("Cannot connect to database {} :\n{}".format(alias, e))
 
 
 def _find_existing_connection(connection_settings):

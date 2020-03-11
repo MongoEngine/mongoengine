@@ -292,12 +292,16 @@ class EmailField(StringField):
                 domain_part = domain_part.encode("idna").decode("ascii")
             except UnicodeError:
                 self.error(
-                    "%s %s" % (self.error_msg % value, "(domain failed IDN encoding)")
+                    "{} {}".format(
+                        self.error_msg % value, "(domain failed IDN encoding)"
+                    )
                 )
             else:
                 if not self.validate_domain_part(domain_part):
                     self.error(
-                        "%s %s" % (self.error_msg % value, "(domain validation failed)")
+                        "{} {}".format(
+                            self.error_msg % value, "(domain validation failed)"
+                        )
                     )
 
 
@@ -1344,7 +1348,7 @@ class CachedReferenceField(BaseField):
             return None
 
         update_kwargs = {
-            "set__%s__%s" % (self.name, key): val
+            "set__{}__{}".format(self.name, key): val
             for key, val in document._delta()[0].items()
             if key in self.fields
         }
@@ -1688,12 +1692,12 @@ class GridFSProxy(object):
         return self.__copy__()
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, self.grid_id)
+        return "<{}: {}>".format(self.__class__.__name__, self.grid_id)
 
     def __str__(self):
         gridout = self.get()
         filename = getattr(gridout, "filename") if gridout else "<no file>"
-        return "<%s: %s (%s)>" % (self.__class__.__name__, filename, self.grid_id)
+        return "<{}: {} ({})>".format(self.__class__.__name__, filename, self.grid_id)
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
@@ -2097,7 +2101,7 @@ class SequenceField(BaseField):
         Generate and Increment the counter
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "%s.%s" % (sequence_name, self.name)
+        sequence_id = "{}.{}".format(sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
 
         counter = collection.find_one_and_update(
@@ -2111,7 +2115,7 @@ class SequenceField(BaseField):
     def set_next_value(self, value):
         """Helper method to set the next sequence value"""
         sequence_name = self.get_sequence_name()
-        sequence_id = "%s.%s" % (sequence_name, self.name)
+        sequence_id = "{}.{}".format(sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_one_and_update(
             filter={"_id": sequence_id},
@@ -2128,7 +2132,7 @@ class SequenceField(BaseField):
         as it is only fixed on set.
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "%s.%s" % (sequence_name, self.name)
+        sequence_id = "{}.{}".format(sequence_name, self.name)
         collection = get_db(alias=self.db_alias)[self.collection_name]
         data = collection.find_one({"_id": sequence_id})
 

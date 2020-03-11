@@ -433,7 +433,9 @@ def _geo_operator(field, op, value):
             value = {"$near": _infer_geometry(value)}
         else:
             raise NotImplementedError(
-                'Geo method "%s" has not been implemented for a %s ' % (op, field._name)
+                'Geo method "{}" has not been implemented for a {} '.format(
+                    op, field._name
+                )
             )
     return value
 

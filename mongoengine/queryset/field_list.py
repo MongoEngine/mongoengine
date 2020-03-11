@@ -78,7 +78,7 @@ class QueryFieldList(object):
         return field_list
 
     def reset(self):
-        self.fields = set([])
+        self.fields = set()
         self.slice = {}
         self.value = self.ONLY
 

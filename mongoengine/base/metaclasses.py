@@ -168,23 +168,6 @@ class DocumentMetaclass(type):
         # Add class to the _document_registry
         _document_registry[new_class._class_name] = new_class
 
-        # In Python 2, User-defined methods objects have special read-only
-        # attributes 'im_func' and 'im_self' which contain the function obj
-        # and class instance object respectively.  With Python 3 these special
-        # attributes have been replaced by __func__ and __self__.  The Blinker
-        # module continues to use im_func and im_self, so the code below
-        # copies __func__ into im_func and __self__ into im_self for
-        # classmethod objects in Document derived classes.
-        #
-        # Relates to https://github.com/MongoEngine/mongoengine/issues/1107
-        # for val in new_class.__dict__.values():
-        #     if isinstance(val, classmethod):
-        #         f = val.__get__(new_class)
-        #         if hasattr(f, "__func__") and not hasattr(f, "im_func"):
-        #             f.__dict__.update({"im_func": getattr(f, "__func__")})
-        #         if hasattr(f, "__self__") and not hasattr(f, "im_self"):
-        #             f.__dict__.update({"im_self": getattr(f, "__self__")})
-
         # Handle delete rules
         for field in new_class._fields.values():
             f = field
@@ -458,8 +441,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         id_basename, id_db_basename, i = ("auto_id", "_auto_id", 0)
         for i in itertools.count():
-            id_name = "{0}_{1}".format(id_basename, i)
-            id_db_name = "{0}_{1}".format(id_db_basename, i)
+            id_name = "{}_{}".format(id_basename, i)
+            id_db_name = "{}_{}".format(id_db_basename, i)
             if id_name not in existing_fields and id_db_name not in existing_db_fields:
                 return id_name, id_db_name
 

@@ -108,9 +108,6 @@ CLASSIFIERS = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-PYTHON_VERSION = sys.version_info[0]
-PY3 = PYTHON_VERSION == 3
-
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
     "tests_require": [
@@ -118,8 +115,7 @@ extra_opts = {
         "pytest-cov",
         "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
         "blinker",
-        "Pillow>=2.0.0, <7.0.0",  # 7.0.0 dropped Python2 support
-        "zipp<2.0.0",  # (dependency of pytest) dropped python2 support
+        "Pillow>=2.0.0",
     ],
 }
 
