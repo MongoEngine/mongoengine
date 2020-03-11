@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-from six import iteritems
 
 __all__ = (
     "NotRegistered",
@@ -125,7 +124,7 @@ class ValidationError(AssertionError):
         def build_dict(source):
             errors_dict = {}
             if isinstance(source, dict):
-                for field_name, error in iteritems(source):
+                for field_name, error in source.items():
                     errors_dict[field_name] = build_dict(error)
             elif isinstance(source, ValidationError) and source.errors:
                 return build_dict(source.errors)
@@ -146,15 +145,15 @@ class ValidationError(AssertionError):
             if isinstance(value, list):
                 value = " ".join([generate_key(k) for k in value])
             elif isinstance(value, dict):
-                value = " ".join([generate_key(v, k) for k, v in iteritems(value)])
+                value = " ".join([generate_key(v, k) for k, v in value.items()])
 
             results = "%s.%s" % (prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
-        for k, v in iteritems(self.to_dict()):
+        for k, v in self.to_dict().items():
             error_dict[generate_key(v)].append(k)
-        return " ".join(["%s: %s" % (k, v) for k, v in iteritems(error_dict)])
+        return " ".join(["%s: %s" % (k, v) for k, v in error_dict.items()])
 
 
 class DeprecatedError(Exception):

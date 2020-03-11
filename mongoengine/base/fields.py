@@ -4,7 +4,6 @@ import weakref
 
 from bson import DBRef, ObjectId, SON
 import pymongo
-from six import iteritems
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import BaseDict, BaseList, EmbeddedDocumentList
@@ -418,11 +417,11 @@ class ComplexBaseField(BaseField):
         if self.field:
             value_dict = {
                 key: self.field._to_mongo_safe_call(item, use_db_field, fields)
-                for key, item in iteritems(value)
+                for key, item in value.items()
             }
         else:
             value_dict = {}
-            for k, v in iteritems(value):
+            for k, v in value.items():
                 if isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
@@ -461,8 +460,8 @@ class ComplexBaseField(BaseField):
         """If field is provided ensure the value is valid."""
         errors = {}
         if self.field:
-            if hasattr(value, "iteritems") or hasattr(value, "items"):
-                sequence = iteritems(value)
+            if hasattr(value, "items"):
+                sequence = value.items()
             else:
                 sequence = enumerate(value)
             for k, v in sequence:

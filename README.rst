@@ -50,7 +50,6 @@ All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`
 At the very least, you'll need these two packages to use MongoEngine:
 
 - pymongo>=3.4
-- six>=1.10.0
 
 If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
 

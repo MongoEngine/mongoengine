@@ -13,8 +13,6 @@ from bson.int64 import Int64
 import gridfs
 import pymongo
 from pymongo import ReturnDocument
-import six
-from six import iteritems
 
 try:
     import dateutil
@@ -205,7 +203,7 @@ class EmailField(StringField):
     )
 
     UTF8_USER_REGEX = LazyRegexCompiler(
-        six.u(
+        (
             # RFC 6531 Section 3.3 extends `atext` (used by dot-atom) to
             # include `UTF8-non-ascii`.
             r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z\u0080-\U0010FFFF]+)*\Z"
@@ -387,7 +385,7 @@ class FloatField(BaseField):
         return value
 
     def validate(self, value):
-        if isinstance(value, six.integer_types):
+        if isinstance(value, int):
             try:
                 value = float(value)
             except OverflowError:
@@ -868,12 +866,12 @@ class DynamicField(BaseField):
             value = {k: v for k, v in enumerate(value)}
 
         data = {}
-        for k, v in iteritems(value):
+        for k, v in value.items():
             data[k] = self.to_mongo(v, use_db_field, fields)
 
         value = data
         if is_list:  # Convert back to a list
-            value = [v for k, v in sorted(iteritems(data), key=itemgetter(0))]
+            value = [v for k, v in sorted(data.items(), key=itemgetter(0))]
         return value
 
     def to_python(self, value):
@@ -1607,10 +1605,10 @@ class BinaryField(BaseField):
         return Binary(value)
 
     def validate(self, value):
-        if not isinstance(value, (six.binary_type, Binary)):
+        if not isinstance(value, (bytes, Binary)):
             self.error(
                 "BinaryField only accepts instances of "
-                "(%s, %s, Binary)" % (six.binary_type.__name__, Binary.__name__)
+                "(%s, %s, Binary)" % (bytes.__name__, Binary.__name__)
             )
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
@@ -1829,7 +1827,7 @@ class FileField(BaseField):
         key = self.name
         if (
             hasattr(value, "read") and not isinstance(value, GridFSProxy)
-        ) or isinstance(value, (six.binary_type, str)):
+        ) or isinstance(value, (bytes, str)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
             # If a file already exists, delete it

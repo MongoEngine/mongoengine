@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-from six import iterkeys
 
 from mongoengine import Document
 from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
@@ -372,7 +371,7 @@ class TestStrictDict(unittest.TestCase):
 
     def test_iterkeys(self):
         d = self.dtype(a=1)
-        assert list(iterkeys(d)) == ["a"]
+        assert list(d.keys()) == ["a"]
 
     def test_len(self):
         d = self.dtype(a=1)

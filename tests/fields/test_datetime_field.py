@@ -2,7 +2,6 @@
 import datetime as dt
 
 import pytest
-import six
 
 try:
     import dateutil

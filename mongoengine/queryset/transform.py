@@ -3,8 +3,6 @@ from collections import defaultdict
 from bson import ObjectId, SON
 from bson.dbref import DBRef
 import pymongo
-import six
-from six import iteritems
 
 from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class
@@ -180,7 +178,7 @@ def query(_doc_cls=None, **kwargs):
                     "$near" in value_dict or "$nearSphere" in value_dict
                 ):
                     value_son = SON()
-                    for k, v in iteritems(value_dict):
+                    for k, v in value_dict.items():
                         if k == "$maxDistance" or k == "$minDistance":
                             continue
                         value_son[k] = v

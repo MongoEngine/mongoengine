@@ -4,8 +4,6 @@ import warnings
 from bson.dbref import DBRef
 import pymongo
 from pymongo.read_preferences import ReadPreference
-import six
-from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base import (
@@ -55,7 +53,7 @@ class InvalidCollectionError(Exception):
     pass
 
 
-class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
+class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -103,7 +101,7 @@ class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
         return data
 
 
-class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
+class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -632,7 +630,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         # Delete FileFields separately
         FileField = _import_class("FileField")
-        for name, field in iteritems(self._fields):
+        for name, field in self._fields.items():
             if isinstance(field, FileField):
                 getattr(self, name).delete()
 
@@ -1029,7 +1027,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return {"missing": missing, "extra": extra}
 
 
-class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
+class DynamicDocument(Document, metaclass=TopLevelDocumentMetaclass):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expanded style properties.  Any data
@@ -1060,7 +1058,7 @@ class DynamicDocument(six.with_metaclass(TopLevelDocumentMetaclass, Document)):
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 
 
-class DynamicEmbeddedDocument(six.with_metaclass(DocumentMetaclass, EmbeddedDocument)):
+class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.

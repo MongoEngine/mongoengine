@@ -9,8 +9,6 @@ import pymongo
 import pymongo.errors
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
-import six
-from six import iteritems
 
 from mongoengine import signals
 from mongoengine.base import get_document
@@ -252,12 +250,12 @@ class BaseQuerySet(object):
         queryset = queryset.filter(*q_objs, **query)
 
         try:
-            result = six.next(queryset)
+            result = next(queryset)
         except StopIteration:
             msg = "%s matching query does not exist." % queryset._document._class_name
             raise queryset._document.DoesNotExist(msg)
         try:
-            six.next(queryset)
+            next(queryset)
         except StopIteration:
             return result
 
@@ -1567,7 +1565,7 @@ class BaseQuerySet(object):
         if self._limit == 0 or self._none:
             raise StopIteration
 
-        raw_doc = six.next(self._cursor)
+        raw_doc = next(self._cursor)
 
         if self._as_pymongo:
             return raw_doc
@@ -1812,13 +1810,13 @@ class BaseQuerySet(object):
             }
         """
         total, data, types = self.exec_js(freq_func, field)
-        values = {types.get(k): int(v) for k, v in iteritems(data)}
+        values = {types.get(k): int(v) for k, v in data.items()}
 
         if normalize:
             values = {k: float(v) / total for k, v in values.items()}
 
         frequencies = {}
-        for k, v in iteritems(values):
+        for k, v in values.items():
             if isinstance(k, float):
                 if int(k) == k:
                     k = int(k)

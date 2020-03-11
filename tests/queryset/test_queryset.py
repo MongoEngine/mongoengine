@@ -10,8 +10,6 @@ import pymongo
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 import pytest
-import six
-from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -4093,7 +4091,7 @@ class TestQueryset(unittest.TestCase):
         info = Comment.objects._collection.index_information()
         info = [
             (value["key"], value.get("unique", False), value.get("sparse", False))
-            for key, value in iteritems(info)
+            for key, value in info.items()
         ]
         assert ([("_cls", 1), ("message", 1)], False, False) in info
 

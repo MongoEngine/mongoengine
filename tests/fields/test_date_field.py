@@ -2,7 +2,6 @@
 import datetime
 
 import pytest
-import six
 
 try:
     import dateutil
