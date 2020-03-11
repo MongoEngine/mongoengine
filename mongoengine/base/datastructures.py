@@ -51,7 +51,7 @@ class BaseDict(dict):
         if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
         self._name = name
-        super(BaseDict, self).__init__(dict_items)
+        super().__init__(dict_items)
 
     def get(self, key, default=None):
         # get does not use __getitem__ by default so we must override it as well
@@ -61,18 +61,18 @@ class BaseDict(dict):
             return default
 
     def __getitem__(self, key):
-        value = super(BaseDict, self).__getitem__(key)
+        value = super().__getitem__(key)
 
         EmbeddedDocument = _import_class("EmbeddedDocument")
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, None, "{}.{}".format(self._name, key))
-            super(BaseDict, self).__setitem__(key, value)
+            super().__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
             value = BaseList(value, None, "{}.{}".format(self._name, key))
-            super(BaseDict, self).__setitem__(key, value)
+            super().__setitem__(key, value)
             value._instance = self._instance
         return value
 
@@ -115,13 +115,13 @@ class BaseList(list):
         if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
         self._name = name
-        super(BaseList, self).__init__(list_items)
+        super().__init__(list_items)
 
     def __getitem__(self, key):
         # change index to positive value because MongoDB does not support negative one
         if isinstance(key, int) and key < 0:
             key = len(self) + key
-        value = super(BaseList, self).__getitem__(key)
+        value = super().__getitem__(key)
 
         if isinstance(key, slice):
             # When receiving a slice operator, we don't convert the structure and bind
@@ -134,18 +134,17 @@ class BaseList(list):
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             # Replace dict by BaseDict
             value = BaseDict(value, None, "{}.{}".format(self._name, key))
-            super(BaseList, self).__setitem__(key, value)
+            super().__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
             # Replace list by BaseList
             value = BaseList(value, None, "{}.{}".format(self._name, key))
-            super(BaseList, self).__setitem__(key, value)
+            super().__setitem__(key, value)
             value._instance = self._instance
         return value
 
     def __iter__(self):
-        for v in super(BaseList, self).__iter__():
-            yield v
+        yield from super().__iter__()
 
     def __getstate__(self):
         self.instance = None
@@ -163,7 +162,7 @@ class BaseList(list):
             # instead, we simply marks the whole list as changed
             changed_key = None
 
-        result = super(BaseList, self).__setitem__(key, value)
+        result = super().__setitem__(key, value)
         self._mark_as_changed(changed_key)
         return result
 
@@ -190,7 +189,7 @@ class BaseList(list):
 
 class EmbeddedDocumentList(BaseList):
     def __init__(self, list_items, instance, name):
-        super(EmbeddedDocumentList, self).__init__(list_items, instance, name)
+        super().__init__(list_items, instance, name)
         self._instance = instance
 
     @classmethod
@@ -355,7 +354,7 @@ class EmbeddedDocumentList(BaseList):
         return len(values)
 
 
-class StrictDict(object):
+class StrictDict:
     __slots__ = ()
     _special_fields = {"get", "pop", "iteritems", "items", "keys", "create"}
     _classes = {}
@@ -455,9 +454,7 @@ class LazyReference(DBRef):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough
-        super(LazyReference, self).__init__(
-            self.document_type._get_collection_name(), pk
-        )
+        super().__init__(self.document_type._get_collection_name(), pk)
 
     def __getitem__(self, name):
         if not self.passthrough:

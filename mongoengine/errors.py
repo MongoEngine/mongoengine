@@ -85,7 +85,7 @@ class ValidationError(AssertionError):
     _message = None
 
     def __init__(self, message="", **kwargs):
-        super(ValidationError, self).__init__(message)
+        super().__init__(message)
         self.errors = kwargs.get("errors", {})
         self.field_name = kwargs.get("field_name")
         self.message = message
@@ -97,7 +97,7 @@ class ValidationError(AssertionError):
         return "{}({},)".format(self.__class__.__name__, self.message)
 
     def __getattribute__(self, name):
-        message = super(ValidationError, self).__getattribute__(name)
+        message = super().__getattribute__(name)
         if name == "message":
             if self.field_name:
                 message = "%s" % message

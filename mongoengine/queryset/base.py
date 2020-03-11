@@ -37,7 +37,7 @@ DENY = 3
 PULL = 4
 
 
-class BaseQuerySet(object):
+class BaseQuerySet:
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
     """
@@ -262,7 +262,7 @@ class BaseQuerySet(object):
         # If we were able to retrieve the 2nd doc, rewind the cursor and
         # raise the MultipleObjectsReturned exception.
         queryset.rewind()
-        message = u"%d items returned, instead of 1" % queryset.count()
+        message = "%d items returned, instead of 1" % queryset.count()
         raise queryset._document.MultipleObjectsReturned(message)
 
     def create(self, **kwargs):
@@ -351,14 +351,14 @@ class BaseQuerySet(object):
         except pymongo.errors.BulkWriteError as err:
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
-            message = u"Bulk write error: (%s)"
+            message = "Bulk write error: (%s)"
             raise BulkWriteError(message % err.details)
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", str(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
-                message = u"Tried to save duplicate unique keys (%s)"
+                message = "Tried to save duplicate unique keys (%s)"
                 raise NotUniqueError(message % err)
             raise OperationError(message % err)
 
@@ -655,9 +655,9 @@ class BaseQuerySet(object):
                     **self._cursor_args
                 )
         except pymongo.errors.DuplicateKeyError as err:
-            raise NotUniqueError(u"Update failed (%s)" % err)
+            raise NotUniqueError("Update failed (%s)" % err)
         except pymongo.errors.OperationFailure as err:
-            raise OperationError(u"Update failed (%s)" % err)
+            raise OperationError("Update failed (%s)" % err)
 
         if full_response:
             if result["value"] is not None:
@@ -686,7 +686,7 @@ class BaseQuerySet(object):
         return queryset.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
-        """Retrieve a set of documents by their ids.
+        """"Retrieve a set of documents by their ids.
 
         :param object_ids: a list or tuple of ``ObjectId``\ s
         :rtype: dict of ObjectIds as keys and collection-specific
@@ -1922,7 +1922,7 @@ class BaseQuerySet(object):
             field_name = match.group(1).split(".")
             fields = self._document._lookup_field(field_name)
             # Substitute the correct name for the field into the javascript
-            return u'["%s"]' % fields[-1].db_field
+            return '["%s"]' % fields[-1].db_field
 
         def field_path_sub(match):
             # Extract just the field name, and look up the field objects

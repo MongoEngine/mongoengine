@@ -79,7 +79,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     __hash__ = None
 
     def __init__(self, *args, **kwargs):
-        super(EmbeddedDocument, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._instance = None
         self._changed_fields = []
 
@@ -92,7 +92,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
         return not self.__eq__(other)
 
     def to_mongo(self, *args, **kwargs):
-        data = super(EmbeddedDocument, self).to_mongo(*args, **kwargs)
+        data = super().to_mongo(*args, **kwargs)
 
         # remove _id from the SON if it's in it and it's None
         if "_id" in data and data["_id"] is None:
@@ -256,7 +256,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return db.create_collection(collection_name, **opts)
 
     def to_mongo(self, *args, **kwargs):
-        data = super(Document, self).to_mongo(*args, **kwargs)
+        data = super().to_mongo(*args, **kwargs)
 
         # If '_id' is None, try and set it from self._data. If that
         # doesn't exist either, remove '_id' from the SON completely.
@@ -427,14 +427,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 self.cascade_save(**kwargs)
 
         except pymongo.errors.DuplicateKeyError as err:
-            message = u"Tried to save duplicate unique keys (%s)"
+            message = "Tried to save duplicate unique keys (%s)"
             raise NotUniqueError(message % err)
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", str(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
-                message = u"Tried to save duplicate unique keys (%s)"
+                message = "Tried to save duplicate unique keys (%s)"
                 raise NotUniqueError(message % err)
             raise OperationError(message % err)
 
@@ -639,7 +639,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 write_concern=write_concern, _from_doc_delete=True
             )
         except pymongo.errors.OperationFailure as err:
-            message = u"Could not delete document (%s)" % err.message
+            message = "Could not delete document (%s)" % err.message
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
@@ -988,10 +988,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                     indexes.append(index)
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
-        if [(u"_id", 1)] not in indexes:
-            indexes.append([(u"_id", 1)])
+        if [("_id", 1)] not in indexes:
+            indexes.append([("_id", 1)])
         if cls._meta.get("index_cls", True) and cls._meta.get("allow_inheritance"):
-            indexes.append([(u"_cls", 1)])
+            indexes.append([("_cls", 1)])
 
         return indexes
 
@@ -1015,14 +1015,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         extra = [index for index in existing if index not in required]
 
         # if { _cls: 1 } is missing, make sure it's *really* necessary
-        if [(u"_cls", 1)] in missing:
+        if [("_cls", 1)] in missing:
             cls_obsolete = False
             for index in existing:
                 if includes_cls(index) and index not in extra:
                     cls_obsolete = True
                     break
             if cls_obsolete:
-                missing.remove([(u"_cls", 1)])
+                missing.remove([("_cls", 1)])
 
         return {"missing": missing, "extra": extra}
 
@@ -1055,7 +1055,7 @@ class DynamicDocument(Document, metaclass=TopLevelDocumentMetaclass):
             setattr(self, field_name, None)
             self._dynamic_fields[field_name].null = False
         else:
-            super(DynamicDocument, self).__delattr__(*args, **kwargs)
+            super().__delattr__(*args, **kwargs)
 
 
 class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
@@ -1083,7 +1083,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
             setattr(self, field_name, None)
 
 
-class MapReduceDocument(object):
+class MapReduceDocument:
     """A document returned from a map/reduce query.
 
     :param collection: An instance of :class:`~pymongo.Collection`

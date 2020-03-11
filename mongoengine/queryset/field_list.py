@@ -1,7 +1,7 @@
 __all__ = ("QueryFieldList",)
 
 
-class QueryFieldList(object):
+class QueryFieldList:
     """Object that handles combinations of .only() and .exclude() calls"""
 
     ONLY = 1

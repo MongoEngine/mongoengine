@@ -22,7 +22,7 @@ class DocumentMetaclass(type):
     # TODO lower complexity of this method
     def __new__(mcs, name, bases, attrs):
         flattened_bases = mcs._get_bases(bases)
-        super_new = super(DocumentMetaclass, mcs).__new__
+        super_new = super().__new__
 
         # If a base class just call super
         metaclass = attrs.get("my_metaclass")
@@ -231,8 +231,7 @@ class DocumentMetaclass(type):
             if base is object:
                 continue
             yield base
-            for child_base in mcs.__get_bases(base.__bases__):
-                yield child_base
+            yield from mcs.__get_bases(base.__bases__)
 
     @classmethod
     def _import_classes(mcs):
@@ -250,7 +249,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
     def __new__(mcs, name, bases, attrs):
         flattened_bases = mcs._get_bases(bases)
-        super_new = super(TopLevelDocumentMetaclass, mcs).__new__
+        super_new = super().__new__
 
         # Set default _meta data if base class, otherwise get user defined meta
         if attrs.get("my_metaclass") == TopLevelDocumentMetaclass:

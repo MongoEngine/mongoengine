@@ -13,7 +13,7 @@ from mongoengine.errors import DeprecatedError, ValidationError
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
 
-class BaseField(object):
+class BaseField:
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
 
@@ -310,7 +310,7 @@ class ComplexBaseField(BaseField):
             if hasattr(instance._data[self.name], "_dereferenced"):
                 instance._data[self.name]._dereferenced = True
 
-        value = super(ComplexBaseField, self).__get__(instance, owner)
+        value = super().__get__(instance, owner)
 
         # Convert lists / values so we can watch for any changes on them
         if isinstance(value, (list, tuple)):
@@ -541,7 +541,7 @@ class GeoJsonBaseField(BaseField):
         self._name = "%sField" % self._type
         if not auto_index:
             self._geo_index = False
-        super(GeoJsonBaseField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def validate(self, value):
         """Validate the GeoJson object based on its type."""

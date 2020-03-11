@@ -14,7 +14,7 @@ from mongoengine.fields import DictField, ListField, MapField, ReferenceField
 from mongoengine.queryset import QuerySet
 
 
-class DeReference(object):
+class DeReference:
     def __call__(self, items, max_depth=1, instance=None, name=None):
         """
         Cheaply dereferences the items to a set depth.

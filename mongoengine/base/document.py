@@ -30,7 +30,7 @@ __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 NON_FIELD_ERRORS = "__all__"
 
 
-class BaseDocument(object):
+class BaseDocument:
     # TODO simplify how `_changed_fields` is used.
     # Currently, handling of `_changed_fields` seems unnecessarily convoluted:
     # 1. `BaseDocument` defines `_changed_fields` in its `__slots__`, yet it's
@@ -161,7 +161,7 @@ class BaseDocument(object):
                 default = default()
             setattr(self, field_name, default)
         else:
-            super(BaseDocument, self).__delattr__(*args, **kwargs)
+            super().__delattr__(*args, **kwargs)
 
     def __setattr__(self, name, value):
         # Handle dynamic data only if an initialised dynamic document
@@ -208,9 +208,9 @@ class BaseDocument(object):
             and self__created
             and name == self._meta.get("id_field")
         ):
-            super(BaseDocument, self).__setattr__("_created", False)
+            super().__setattr__("_created", False)
 
-        super(BaseDocument, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
     def __getstate__(self):
         data = {}
