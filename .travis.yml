@@ -60,8 +60,7 @@ install:
   - pip install --upgrade pip
   - pip install coveralls
   - pip install flake8 flake8-import-order
-  - pip install tox         # tox 3.11.0 has requirement virtualenv>=14.0.0
-  - pip install virtualenv  # virtualenv>=14.0.0 has dropped Python 3.2 support (and pypy3 is based on py32)
+  - pip install tox
   # tox dryrun to setup the tox venv (we run a mock test).
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
   # Install black for Python v3.7 only.
