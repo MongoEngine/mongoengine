@@ -711,8 +711,8 @@ class BaseQuerySet(object):
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
 
-        :param object_ids: a list or tuple of ``ObjectId``\ s
-        :rtype: dict of ObjectIds as keys and collection-specific
+        :param object_ids: a list or tuple of ObjectId's
+        :rtype: dict of ObjectId's as keys and collection-specific
                 Document subclasses as values.
 
         .. versionadded:: 0.3
@@ -1043,9 +1043,11 @@ class BaseQuerySet(object):
 
             posts = BlogPost.objects(...).fields(comments=0)
 
-        To retrieve a subrange of array elements:
+        To retrieve a subrange or sublist of array elements,
+        support exist for both the `slice` and `elemMatch` projection operator:
 
             posts = BlogPost.objects(...).fields(slice__comments=5)
+            posts = BlogPost.objects(...).fields(elemMatch__comments="test")
 
         :param kwargs: A set of keyword arguments identifying what to
             include, exclude, or slice.
@@ -1054,7 +1056,7 @@ class BaseQuerySet(object):
         """
 
         # Check for an operator and transform to mongo-style if there is
-        operators = ["slice"]
+        operators = ["slice", "elemMatch"]
         cleaned_fields = []
         for key, value in kwargs.items():
             parts = key.split("__")
@@ -1157,7 +1159,7 @@ class BaseQuerySet(object):
 
     def explain(self):
         """Return an explain plan record for the
-        :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
+        :class:`~mongoengine.queryset.QuerySet` cursor.
         """
         return self._cursor.explain()
 
