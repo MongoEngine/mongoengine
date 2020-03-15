@@ -56,7 +56,7 @@ class InvalidCollectionError(Exception):
 
 
 class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
-    """A :class:`~mongoengine.Document` that isn't stored in its own
+    r"""A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
     :class:`~mongoengine.EmbeddedDocumentField` field type.
@@ -332,7 +332,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
-        created.
+        created. Returns the saved object instance.
 
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents.
