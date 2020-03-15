@@ -67,7 +67,7 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
         for values in itertools.product([2014], mm, dd, hh, ii, ss, microsecond):
             stored = LogEntry(date=datetime.datetime(*values)).to_mongo()["date"]
             assert (
-                re.match("^\d{4},\d{2},\d{2},\d{2},\d{2},\d{2},\d{6}$", stored)
+                re.match(r"^\d{4},\d{2},\d{2},\d{2},\d{2},\d{2},\d{6}$", stored)
                 is not None
             )
 
@@ -76,7 +76,7 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
             "date_with_dots"
         ]
         assert (
-            re.match("^\d{4}.\d{2}.\d{2}.\d{2}.\d{2}.\d{2}.\d{6}$", stored) is not None
+            re.match(r"^\d{4}.\d{2}.\d{2}.\d{2}.\d{2}.\d{2}.\d{6}$", stored) is not None
         )
 
     def test_complexdatetime_usage(self):

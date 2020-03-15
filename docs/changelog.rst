@@ -8,6 +8,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 - Add Mongo 4.0 to Travis
 - Fix error when setting a string as a ComplexDateTimeField #2253
+- Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
 
 Changes in 0.19.1
 =================

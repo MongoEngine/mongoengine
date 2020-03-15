@@ -24,6 +24,12 @@ class TestTransform(unittest.TestCase):
         }
         assert transform.query(friend__age__gte=30) == {"friend.age": {"$gte": 30}}
         assert transform.query(name__exists=True) == {"name": {"$exists": True}}
+        assert transform.query(name=["Mark"], __raw__={"name": {"$in": "Tom"}}) == {
+            "$and": [{"name": ["Mark"]}, {"name": {"$in": "Tom"}}]
+        }
+        assert transform.query(name__in=["Tom"], __raw__={"name": "Mark"}) == {
+            "$and": [{"name": {"$in": ["Tom"]}}, {"name": "Mark"}]
+        }
 
     def test_transform_update(self):
         class LisDoc(Document):
