@@ -20,8 +20,8 @@ from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
-    set_write_concern,
     set_read_write_concern,
+    set_write_concern,
     switch_db,
 )
 from mongoengine.errors import (

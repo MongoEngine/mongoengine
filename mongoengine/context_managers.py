@@ -14,6 +14,7 @@ __all__ = (
     "no_sub_classes",
     "query_counter",
     "set_write_concern",
+    "set_read_write_concern",
 )
 
 
