@@ -54,7 +54,7 @@ class InvalidCollectionError(Exception):
 
 
 class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
-    """A :class:`~mongoengine.Document` that isn't stored in its own
+    r"""A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
     :class:`~mongoengine.EmbeddedDocumentField` field type.

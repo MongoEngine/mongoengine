@@ -688,8 +688,8 @@ class BaseQuerySet:
     def in_bulk(self, object_ids):
         """"Retrieve a set of documents by their ids.
 
-        :param object_ids: a list or tuple of ``ObjectId``\ s
-        :rtype: dict of ObjectIds as keys and collection-specific
+        :param object_ids: a list or tuple of ObjectId's
+        :rtype: dict of ObjectId's as keys and collection-specific
                 Document subclasses as values.
 
         .. versionadded:: 0.3
@@ -1134,7 +1134,7 @@ class BaseQuerySet:
 
     def explain(self):
         """Return an explain plan record for the
-        :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
+        :class:`~mongoengine.queryset.QuerySet` cursor.
         """
         return self._cursor.explain()
 
