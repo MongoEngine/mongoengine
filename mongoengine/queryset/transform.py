@@ -169,9 +169,9 @@ def query(_doc_cls=None, **kwargs):
 
         key = ".".join(parts)
 
-        if op is None or key not in mongo_query:
+        if key not in mongo_query:
             mongo_query[key] = value
-        elif key in mongo_query:
+        else:
             if isinstance(mongo_query[key], dict) and isinstance(value, dict):
                 mongo_query[key].update(value)
                 # $max/minDistance needs to come last - convert to SON
