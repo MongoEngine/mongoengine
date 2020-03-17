@@ -10,6 +10,7 @@ Development
 - Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
 - Add support for the `elemMatch` projection operator in .fields() (e.g BlogPost.objects.fields(elemMatch__comments="test")) #2267
 - DictField validate failed without default connection (bug introduced in 0.19.0) #2239
+- Remove method queryset.slave_okay() that was deprecated a while ago and disappeared since pymongo3
 
 Changes in 0.19.1
 =================
