@@ -11,6 +11,7 @@ Development
 - Add support for the `elemMatch` projection operator in .fields() (e.g BlogPost.objects.fields(elemMatch__comments="test")) #2267
 - DictField validate failed without default connection (bug introduced in 0.19.0) #2239
 - Remove name parameter in Field constructor e.g `StringField(name="...")`, it was deprecated a while ago in favor of db_field
+- Remove method queryset.slave_okay() that was deprecated a while ago and disappeared since pymongo3
 
 Changes in 0.19.1
 =================
