@@ -7,8 +7,6 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Add Mongo 4.0 to Travis
-- BREAKING CHANGE: Removed ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes`` that were deprecated in 2013.
-    ``Document.ensure_indexes`` still exists and is the right method to use
 - Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
 - Add support for the `elemMatch` projection operator in .fields() (e.g BlogPost.objects.fields(elemMatch__comments="test")) #2267
 - DictField validate failed without default connection (bug introduced in 0.19.0) #2239
@@ -16,6 +14,7 @@ Development
     - name parameter in Field constructor e.g `StringField(name="...")`, was replaced by db_field
     - Queryset.slave_okay() was deprecated since pymongo3
     - dropDups was dropped with MongoDB3
+    - ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes``, the right method to use is ``Document.ensure_indexes``
 
 Changes in 0.19.1
 =================
