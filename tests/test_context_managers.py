@@ -10,11 +10,59 @@ from mongoengine.context_managers import (
     query_counter,
     switch_collection,
     switch_db,
+    set_write_concern,
+    set_read_write_concern,
 )
 from mongoengine.pymongo_support import count_documents
 
 
 class TestContextManagers:
+    def test_set_write_concern(self):
+        connect("mongoenginetest")
+
+        class User(Document):
+            name = StringField()
+
+        collection = User._get_collection()
+        original_write_concern = collection.write_concern
+
+        with set_write_concern(
+            collection, {"w": "majority", "j": True, "wtimeout": 1234}
+        ) as updated_collection:
+            assert updated_collection.write_concern.document == {
+                "w": "majority",
+                "j": True,
+                "wtimeout": 1234,
+            }
+
+        assert original_write_concern.document == collection.write_concern.document
+
+    def test_set_read_write_concern(self):
+        connect("mongoenginetest")
+
+        class User(Document):
+            name = StringField()
+
+        collection = User._get_collection()
+
+        original_read_concern = collection.read_concern
+        original_write_concern = collection.write_concern
+
+        with set_read_write_concern(
+            collection,
+            {"w": "majority", "j": True, "wtimeout": 1234},
+            {"level": "local"},
+        ) as update_collection:
+            assert update_collection.read_concern.document == {"level": "local"}
+            assert update_collection.write_concern.document == {
+                "w": "majority",
+                "j": True,
+                "wtimeout": 1234,
+            }
+
+        assert original_read_concern.document == collection.read_concern.document
+        assert original_write_concern.document == collection.write_concern.document
+
     def test_switch_db_context_manager(self):
         connect("mongoenginetest")
         register_connection("testdb-1", "mongoenginetest2")
