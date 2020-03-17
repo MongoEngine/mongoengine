@@ -261,10 +261,14 @@ def set_write_concern(collection, write_concerns):
 
 
 @contextmanager
-def set_read_write_concern(collection, write_concerns, read_concern):
+def set_read_write_concern(collection, write_concerns, read_concerns):
     combined_write_concerns = dict(collection.write_concern.document.items())
     combined_write_concerns.update(write_concerns)
 
+    combined_read_concerns = dict(collection.read_concern.document.items())
+    combined_read_concerns.update(read_concerns)
+
     yield collection.with_options(
-        write_concern=WriteConcern(**combined_write_concerns), read_concern=read_concern
+        write_concern=WriteConcern(**combined_write_concerns),
+        read_concern=ReadConcern(**combined_read_concerns)
     )
