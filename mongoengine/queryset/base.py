@@ -60,7 +60,6 @@ class BaseQuerySet(object):
         self._ordering = None
         self._snapshot = False
         self._timeout = True
-        self._slave_okay = False
         self._read_preference = None
         self._iter = False
         self._scalar = []
@@ -694,8 +693,8 @@ class BaseQuerySet(object):
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
 
-        :param object_ids: a list or tuple of ``ObjectId``\ s
-        :rtype: dict of ObjectIds as keys and collection-specific
+        :param object_ids: a list or tuple of ObjectId's
+        :rtype: dict of ObjectId's as keys and collection-specific
                 Document subclasses as values.
 
         .. versionadded:: 0.3
@@ -775,7 +774,6 @@ class BaseQuerySet(object):
             "_ordering",
             "_snapshot",
             "_timeout",
-            "_slave_okay",
             "_read_preference",
             "_iter",
             "_scalar",
@@ -1026,9 +1024,11 @@ class BaseQuerySet(object):
 
             posts = BlogPost.objects(...).fields(comments=0)
 
-        To retrieve a subrange of array elements:
+        To retrieve a subrange or sublist of array elements,
+        support exist for both the `slice` and `elemMatch` projection operator:
 
             posts = BlogPost.objects(...).fields(slice__comments=5)
+            posts = BlogPost.objects(...).fields(elemMatch__comments="test")
 
         :param kwargs: A set of keyword arguments identifying what to
             include, exclude, or slice.
@@ -1037,7 +1037,7 @@ class BaseQuerySet(object):
         """
 
         # Check for an operator and transform to mongo-style if there is
-        operators = ["slice"]
+        operators = ["slice", "elemMatch"]
         cleaned_fields = []
         for key, value in kwargs.items():
             parts = key.split("__")
@@ -1140,7 +1140,7 @@ class BaseQuerySet(object):
 
     def explain(self):
         """Return an explain plan record for the
-        :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
+        :class:`~mongoengine.queryset.QuerySet` cursor.
         """
         return self._cursor.explain()
 
@@ -1168,20 +1168,6 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._timeout = enabled
-        return queryset
-
-    # DEPRECATED. Has no more impact on PyMongo 3+
-    def slave_okay(self, enabled):
-        """Enable or disable the slave_okay when querying.
-
-        :param enabled: whether or not the slave_okay is enabled
-
-        .. deprecated:: Ignored with PyMongo 3+
-        """
-        msg = "slave_okay is deprecated as it has no impact when using PyMongo 3+."
-        warnings.warn(msg, DeprecationWarning)
-        queryset = self.clone()
-        queryset._slave_okay = enabled
         return queryset
 
     def read_preference(self, read_preference):
