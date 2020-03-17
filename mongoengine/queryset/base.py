@@ -1944,23 +1944,3 @@ class BaseQuerySet(object):
         setattr(queryset, "_" + method_name, val)
 
         return queryset
-
-    # Deprecated
-    def ensure_index(self, **kwargs):
-        """Deprecated use :func:`Document.ensure_index`"""
-        msg = (
-            "Doc.objects()._ensure_index() is deprecated. "
-            "Use Doc.ensure_index() instead."
-        )
-        warnings.warn(msg, DeprecationWarning)
-        self._document.__class__.ensure_index(**kwargs)
-        return self
-
-    def _ensure_indexes(self):
-        """Deprecated use :func:`~Document.ensure_indexes`"""
-        msg = (
-            "Doc.objects()._ensure_indexes() is deprecated. "
-            "Use Doc.ensure_indexes() instead."
-        )
-        warnings.warn(msg, DeprecationWarning)
-        self._document.__class__.ensure_indexes()
