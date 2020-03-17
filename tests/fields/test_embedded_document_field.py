@@ -3,8 +3,8 @@ import pytest
 
 from mongoengine import (
     Document,
-    EmbeddedDocument,
     DynamicEmbeddedDocument,
+    EmbeddedDocument,
     EmbeddedDocumentField,
     GenericEmbeddedDocumentField,
     IntField,
@@ -103,12 +103,17 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        p = Person(settings=DynamicSettings(known_field="abc", dynamic_field1="123"), name="John").save()
+        p = Person(
+            settings=DynamicSettings(known_field="abc", dynamic_field1="123"),
+            name="John",
+        ).save()
 
         # Test querying by a dynamic field that is not defined in the schema
         assert Person.objects(settings__dynamic_field1="123").first().id == p.id
 
-        p_modified = Person.objects(settings__known_field="abc").modify(set__settings__dynamic_field1="789")
+        p_modified = Person.objects(settings__known_field="abc").modify(
+            set__settings__dynamic_field1="789"
+        )
         p.reload()
 
         # Test if the update occurred successfully

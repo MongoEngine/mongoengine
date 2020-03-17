@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 from bson import InvalidDocument
+import pytest
 
 from mongoengine import *
 from mongoengine.base import BaseDict
