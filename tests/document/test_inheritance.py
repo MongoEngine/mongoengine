@@ -523,7 +523,6 @@ class TestInheritance(MongoDBTestCase):
 
         defaults = {
             "index_background": True,
-            "index_drop_dups": True,
             "index_opts": {"hello": "world"},
             "allow_inheritance": True,
             "queryset_class": "QuerySet",

@@ -555,7 +555,6 @@ There are a few top level defaults for all indexes that can be set::
             'index_background': True,
             'index_cls': False,
             'auto_create_index': True,
-            'index_drop_dups': True,
         }
 
 
@@ -573,11 +572,6 @@ There are a few top level defaults for all indexes that can be set::
     indexes exist in MongoDB each time a command is run. This can be disabled
     in systems where indexes are managed separately. Disabling this will improve
     performance.
-
-:attr:`index_drop_dups` (Optional)
-    Set the default value for if an index should drop duplicates
-    Since MongoDB 3.0 drop_dups is not supported anymore. Raises a Warning
-    and has no effect
 
 
 Compound Indexes and Indexing sub documents
