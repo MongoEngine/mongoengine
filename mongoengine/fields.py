@@ -777,6 +777,9 @@ class EmbeddedDocumentField(BaseField):
             if field:
                 return field
 
+        if any(doc_type._dynamic for doc_type in doc_and_subclasses):
+            return DynamicField(db_field=member_name)
+
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
             try:
