@@ -265,7 +265,7 @@ class Document(BaseDocument):
         signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
         if validate:
-            self.validate(clean=clean)
+            self.validate(clean=clean, **kwargs)
 
         if write_concern is None:
             write_concern = {"w": 1}
