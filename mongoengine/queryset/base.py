@@ -5,6 +5,8 @@ import itertools
 import re
 import warnings
 
+from collections.abc import Mapping
+
 from bson import SON, json_util
 from bson.code import Code
 import pymongo
@@ -1221,11 +1223,11 @@ class BaseQuerySet(object):
         :param read_concern: override ReplicaSetConnection-level
             preference.
         """
-        if read_concern is not None and not isinstance(read_concern, ReadConcern):
-            raise TypeError("%r is not a read concern." % (read_concern,))
+        if read_concern is not None and not isinstance(read_concern, Mapping):
+            raise TypeError("%r is not a valid read concern." % (read_concern,))
 
         queryset = self.clone()
-        queryset._read_concern = read_concern
+        queryset._read_concern = ReadConcern(**read_concern)
         queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_concern
         return queryset
 
