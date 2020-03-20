@@ -62,7 +62,10 @@ __all__ = [
     'MultiPolygonField', 'GeoJsonBaseField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
-
+if PY3:
+    long = int
+else:
+    long = integer_types[1]
 
 class StringField(BaseField):
     """A unicode string field.
