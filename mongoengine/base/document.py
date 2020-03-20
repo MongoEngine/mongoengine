@@ -392,7 +392,7 @@ class BaseDocument(object):
 
         return data
 
-    def validate(self, clean=True):
+    def validate(self, clean=True, **kwargs):
         """Ensure that all fields' values are valid and that required fields
         are present.
         """
@@ -400,7 +400,12 @@ class BaseDocument(object):
         errors = {}
         if clean:
             try:
-                self.clean()
+                # Condition added so that we do not have to  change implementation of all clean methods
+                # The clean methods which need kwargs can update the method signature.
+                if kwargs:
+                    self.clean(**kwargs)
+                else:
+                    self.clean()
             except ValidationError as error:
                 errors[NON_FIELD_ERRORS] = error
 
