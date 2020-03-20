@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 import unittest
 
 from mongoengine import Document, connect
 from mongoengine.connection import get_db
 from mongoengine.fields import StringField
+from six import iteritems
 
 __all__ = ('TurnOffInheritanceTest', )
 
@@ -52,7 +54,7 @@ class TurnOffInheritanceTest(unittest.TestCase):
 
         # 4. Remove indexes
         info = collection.index_information()
-        indexes_to_drop = [key for key, value in info.iteritems()
+        indexes_to_drop = [key for key, value in iteritems(info)
                            if '_types' in dict(value['key'])
                               or '_cls' in dict(value['key'])]
         for index in indexes_to_drop:

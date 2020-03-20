@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 _class_registry_cache = {}
 _field_list_cache = []
 

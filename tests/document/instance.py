@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
+from six import iteritems
+from six.moves import range, zip
 sys.path[0:0] = [""]
 
 import bson
@@ -286,7 +290,7 @@ class InstanceTest(unittest.TestCase):
 
         list_stats = []
 
-        for i in xrange(10):
+        for i in range(10):
             s = Stats()
             s.save()
             list_stats.append(s)
@@ -415,7 +419,7 @@ class InstanceTest(unittest.TestCase):
         del(_document_registry['Place.NicePlace'])
 
         def query_without_importing_nice_place():
-            print Place.objects.all()
+            print(Place.objects.all())
         self.assertRaises(NotRegistered, query_without_importing_nice_place)
 
     def test_document_registry_regressions(self):
@@ -623,10 +627,10 @@ class InstanceTest(unittest.TestCase):
         class Employee(Person):
             salary = IntField()
 
-        self.assertEqual(Person(name="Bob", age=35).to_mongo().keys(),
+        self.assertEqual(list(Person(name="Bob", age=35).to_mongo().keys()),
                          ['_cls', 'name', 'age'])
         self.assertEqual(
-            Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
+            list(Employee(name="Bob", age=35, salary=0).to_mongo().keys()),
             ['_cls', 'name', 'age', 'salary'])
 
     def test_embedded_document_to_mongo_id(self):
@@ -634,7 +638,7 @@ class InstanceTest(unittest.TestCase):
             id = StringField(required=True)
 
         sub_doc = SubDoc(id="abc")
-        self.assertEqual(sub_doc.to_mongo().keys(), ['id'])
+        self.assertEqual(list(sub_doc.to_mongo().keys()), ['id'])
 
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly.
@@ -745,7 +749,7 @@ class InstanceTest(unittest.TestCase):
 
         try:
             t.save()
-        except ValidationError, e:
+        except ValidationError as e:
             expect_msg = "Draft entries may not have a publication date."
             self.assertTrue(expect_msg in e.message)
             self.assertEqual(e.to_dict(), {'__all__': expect_msg})
@@ -784,7 +788,7 @@ class InstanceTest(unittest.TestCase):
         t = TestDocument(doc=TestEmbeddedDocument(x=10, y=25, z=15))
         try:
             t.save()
-        except ValidationError, e:
+        except ValidationError as e:
             expect_msg = "Value of z != x + y"
             self.assertTrue(expect_msg in e.message)
             self.assertEqual(e.to_dict(), {'doc': {'__all__': expect_msg}})
@@ -2328,14 +2332,14 @@ class InstanceTest(unittest.TestCase):
         self.assertEqual(resurrected, pickle_doc)
         self.assertEqual(resurrected._fields_ordered,
                          pickle_doc._fields_ordered)
-        self.assertEqual(resurrected._dynamic_fields.keys(),
-                         pickle_doc._dynamic_fields.keys())
+        self.assertEqual(list(resurrected._dynamic_fields.keys()),
+                         list(pickle_doc._dynamic_fields.keys()))
 
         self.assertEqual(resurrected.embedded, pickle_doc.embedded)
         self.assertEqual(resurrected.embedded._fields_ordered,
                          pickle_doc.embedded._fields_ordered)
-        self.assertEqual(resurrected.embedded._dynamic_fields.keys(),
-                         pickle_doc.embedded._dynamic_fields.keys())
+        self.assertEqual(list(resurrected.embedded._dynamic_fields.keys()),
+                         list(pickle_doc.embedded._dynamic_fields.keys()))
 
     def test_picklable_on_signals(self):
         pickle_doc = PickleSignalsTest(
@@ -2970,7 +2974,7 @@ class InstanceTest(unittest.TestCase):
         Person(name="Harry Potter").save()
 
         person = Person.objects.first()
-        self.assertTrue('id' in person._data.keys())
+        self.assertTrue('id' in list(person._data.keys()))
         self.assertEqual(person._data.get('id'), person.id)
 
     def test_complex_nesting_document_and_embedded_document(self):
@@ -2989,7 +2993,7 @@ class InstanceTest(unittest.TestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in self.parameters.iteritems():
+                for parameter_name, parameter in iteritems(self.parameters):
                     parameter.expand()
 
         class NodesSystem(Document):
@@ -2997,7 +3001,7 @@ class InstanceTest(unittest.TestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in self.nodes.iteritems():
+                for node_name, node in iteritems(self.nodes):
                     node.expand()
                     node.save(*args, **kwargs)
                 super(NodesSystem, self).save(*args, **kwargs)

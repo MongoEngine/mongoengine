@@ -1,7 +1,9 @@
 """Helper functions and types to aid with Python 2.5 - 3 support."""
 
+from __future__ import absolute_import
 import sys
 import pymongo
+from six import text_type
 
 
 if pymongo.version_tuple[0] < 3:
@@ -32,6 +34,6 @@ else:
         return s
 
     bin_type = str
-    txt_type = unicode
+    txt_type = text_type
 
 str_types = (bin_type, txt_type)

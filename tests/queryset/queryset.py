@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
+from six import text_type, iteritems
+from six.moves import range
 sys.path[0:0] = [""]
 
 import unittest
@@ -118,7 +122,7 @@ class QuerySetTest(unittest.TestCase):
         self.assertEqual(people.count(), 2)
         results = list(people)
         self.assertTrue(isinstance(results[0], self.Person))
-        self.assertTrue(isinstance(results[0].id, (ObjectId, str, unicode)))
+        self.assertTrue(isinstance(results[0].id, (ObjectId, str, text_type)))
         self.assertEqual(results[0].name, "User A")
         self.assertEqual(results[0].age, 20)
         self.assertEqual(results[1].name, "User B")
@@ -127,7 +131,7 @@ class QuerySetTest(unittest.TestCase):
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20)
         self.assertEqual(people.count(), 1)
-        person = people.next()
+        person = next(people)
         self.assertEqual(person.name, "User A")
         self.assertEqual(person.age, 20)
 
@@ -179,7 +183,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Test larger slice __repr__
         self.Person.objects.delete()
-        for i in xrange(55):
+        for i in range(55):
             self.Person(name='A%s' % i, age=i).save()
 
         self.assertEqual(self.Person.objects.count(), 55)
@@ -776,7 +780,7 @@ class QuerySetTest(unittest.TestCase):
             post2 = Post(comments=[comment2, comment2])
 
             blogs = []
-            for i in xrange(1, 100):
+            for i in range(1, 100):
                 blogs.append(Blog(title="post %s" % i, posts=[post1, post2]))
 
             Blog.objects.insert(blogs, load_bulk=False)
@@ -996,7 +1000,7 @@ class QuerySetTest(unittest.TestCase):
 
         Doc.drop_collection()
 
-        for i in xrange(1000):
+        for i in range(1000):
             Doc(number=i).save()
 
         docs = Doc.objects.order_by('number')
@@ -1145,7 +1149,7 @@ class QuerySetTest(unittest.TestCase):
         qs = list(qs)
         expected = list(expected)
         self.assertEqual(len(qs), len(expected))
-        for i in xrange(len(qs)):
+        for i in range(len(qs)):
             self.assertEqual(qs[i], expected[i])
 
     def test_ordering(self):
@@ -1204,7 +1208,7 @@ class QuerySetTest(unittest.TestCase):
         with db_ops_tracker() as q:
             BlogPost.objects.filter(title='whatever').order_by().first()
             self.assertEqual(len(q.get_ops()), 1)
-            print q.get_ops()[0]['query']
+            print(q.get_ops()[0]['query'])
             self.assertFalse('$orderby' in q.get_ops()[0]['query'])
 
     def test_no_ordering_for_get(self):
@@ -1661,7 +1665,7 @@ class QuerySetTest(unittest.TestCase):
 
         Log.drop_collection()
 
-        for i in xrange(10):
+        for i in range(10):
             Log().save()
 
         Log.objects()[3:5].delete()
@@ -2223,10 +2227,10 @@ class QuerySetTest(unittest.TestCase):
         results = list(results)
         self.assertEqual(len(results), 4)
 
-        music = list(filter(lambda r: r.key == "music", results))[0]
+        music = list([r for r in results if r.key == "music"])[0]
         self.assertEqual(music.value, 2)
 
-        film = list(filter(lambda r: r.key == "film", results))[0]
+        film = list([r for r in results if r.key == "film"])[0]
         self.assertEqual(film.value, 3)
 
         BlogPost.drop_collection()
@@ -2368,7 +2372,7 @@ class QuerySetTest(unittest.TestCase):
             output={'replace': 'family_map', 'db_alias': 'test2'})
 
         # start a map/reduce
-        cursor.next()
+        next(cursor)
 
         results = Person.objects.map_reduce(
             map_f=map_person,
@@ -2740,10 +2744,10 @@ class QuerySetTest(unittest.TestCase):
 
         Test.drop_collection()
 
-        for i in xrange(50):
+        for i in range(50):
             Test(val=1).save()
 
-        for i in xrange(20):
+        for i in range(20):
             Test(val=2).save()
 
         freqs = Test.objects.item_frequencies(
@@ -3510,7 +3514,7 @@ class QuerySetTest(unittest.TestCase):
 
         Post.drop_collection()
 
-        for i in xrange(10):
+        for i in range(10):
             Post(title="Post %s" % i).save()
 
         self.assertEqual(5, Post.objects.limit(5).skip(5).count(with_limit_and_skip=True))
@@ -3525,7 +3529,7 @@ class QuerySetTest(unittest.TestCase):
             pass
 
         MyDoc.drop_collection()
-        for i in xrange(0, 10):
+        for i in range(0, 10):
             MyDoc().save()
 
         self.assertEqual(MyDoc.objects.count(), 10)
@@ -3581,7 +3585,7 @@ class QuerySetTest(unittest.TestCase):
 
         Number.drop_collection()
 
-        for i in xrange(1, 101):
+        for i in range(1, 101):
             t = Number(n=i)
             t.save()
 
@@ -3686,7 +3690,7 @@ class QuerySetTest(unittest.TestCase):
         info = [(value['key'],
                  value.get('unique', False),
                  value.get('sparse', False))
-                for key, value in info.iteritems()]
+                for key, value in iteritems(info)]
         self.assertTrue(([('_cls', 1), ('message', 1)], False, False) in info)
 
     def test_where(self):
@@ -3946,7 +3950,7 @@ class QuerySetTest(unittest.TestCase):
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20).scalar('name')
         self.assertEqual(people.count(), 1)
-        person = people.next()
+        person = next(people)
         self.assertEqual(person, "User A")
 
         # Test limit
@@ -3988,7 +3992,7 @@ class QuerySetTest(unittest.TestCase):
 
         # Test larger slice __repr__
         self.Person.objects.delete()
-        for i in xrange(55):
+        for i in range(55):
             self.Person(name='A%s' % i, age=i).save()
 
         self.assertEqual(self.Person.objects.scalar('name').count(), 55)
@@ -4370,7 +4374,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4401,7 +4405,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4445,7 +4449,7 @@ class QuerySetTest(unittest.TestCase):
             fields = DictField()
 
         Noddy.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             noddy = Noddy()
             for j in range(20):
                 noddy.fields["key" + str(j)] = "value " + str(j)
@@ -4636,7 +4640,7 @@ class QuerySetTest(unittest.TestCase):
         if not test:
             raise AssertionError('Cursor has data and returned False')
 
-        queryset.next()
+        next(queryset)
         if not queryset:
             raise AssertionError('Cursor has data and it must returns True,'
                                  ' even in the last item.')
@@ -4647,7 +4651,7 @@ class QuerySetTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in xrange(100):
+        for i in range(100):
             Person(name="No: %s" % i).save()
 
         with query_counter() as q:
@@ -4771,10 +4775,10 @@ class QuerySetTest(unittest.TestCase):
         ])
 
     def test_delete_count(self):
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
         self.assertEqual(self.Person.objects().delete(), 3)  # test ordinary QuerySey delete count
 
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in xrange(1, 4)]
+        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
 
         self.assertEqual(self.Person.objects().skip(1).delete(), 2)  # test Document delete with existing documents
 

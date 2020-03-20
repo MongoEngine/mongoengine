@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 import sys
+from six import iteritems
 sys.path[0:0] = [""]
 import unittest
 import warnings
@@ -182,9 +184,9 @@ class InheritanceTest(unittest.TestCase):
 
         self.assertEqual(['_cls', 'age', 'id', 'name', 'salary'],
                          sorted(Employee._fields.keys()))
-        self.assertEqual(Person(name="Bob", age=35).to_mongo().keys(),
+        self.assertEqual(list(Person(name="Bob", age=35).to_mongo().keys()),
                          ['_cls', 'name', 'age'])
-        self.assertEqual(Employee(name="Bob", age=35, salary=0).to_mongo().keys(),
+        self.assertEqual(list(Employee(name="Bob", age=35, salary=0).to_mongo().keys()),
                          ['_cls', 'name', 'age', 'salary'])
         self.assertEqual(Employee._get_collection_name(),
                          Person._get_collection_name())
@@ -268,7 +270,7 @@ class InheritanceTest(unittest.TestCase):
 
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name='dog').save()
-        self.assertEqual(dog.to_mongo().keys(), ['_id', 'name'])
+        self.assertEqual(list(dog.to_mongo().keys()), ['_id', 'name'])
 
         collection = self.db[Animal._get_collection_name()]
         obj = collection.find_one()
@@ -440,7 +442,7 @@ class InheritanceTest(unittest.TestCase):
             meta = {'abstract': True}
         class Human(Mammal): pass
 
-        for k, v in defaults.iteritems():
+        for k, v in iteritems(defaults):
             for cls in [Animal, Fish, Guppy]:
                 self.assertEqual(cls._meta[k], v)
 

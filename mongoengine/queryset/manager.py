@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from functools import partial
 from mongoengine.queryset.queryset import QuerySet
 
@@ -36,7 +37,7 @@ class QuerySetManager(object):
         queryset_class = owner._meta.get('queryset_class', self.default)
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
-            arg_count = self.get_queryset.func_code.co_argcount
+            arg_count = self.get_queryset.__code__.co_argcount
             if arg_count == 1:
                 queryset = self.get_queryset(queryset)
             elif arg_count == 2:

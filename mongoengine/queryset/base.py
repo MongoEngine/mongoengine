@@ -24,6 +24,7 @@ from mongoengine.python_support import IS_PYMONGO_3
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
+from six import string_types, iteritems, text_type
 
 if IS_PYMONGO_3:
     from pymongo.collection import ReturnDocument
@@ -164,7 +165,7 @@ class BaseQuerySet(object):
                 queryset._skip, queryset._limit = key.start, key.stop
                 if key.start and key.stop:
                     queryset._limit = key.stop - key.start
-            except IndexError, err:
+            except IndexError as err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it.
                 start = key.start or 0
@@ -264,13 +265,13 @@ class BaseQuerySet(object):
         queryset = queryset.filter(*q_objs, **query)
 
         try:
-            result = queryset.next()
+            result = next(queryset)
         except StopIteration:
             msg = ("%s matching query does not exist."
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
         try:
-            queryset.next()
+            next(queryset)
         except StopIteration:
             return result
 
@@ -346,17 +347,17 @@ class BaseQuerySet(object):
         raw = [doc.to_mongo() for doc in docs]
         try:
             ids = self._collection.insert(raw, **write_concern)
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             message = 'Could not save document (%s)'
-            raise NotUniqueError(message % unicode(err))
-        except pymongo.errors.OperationFailure, err:
+            raise NotUniqueError(message % text_type(err))
+        except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', unicode(err)):
+            if re.match('^E1100[01] duplicate key', text_type(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % unicode(err))
-            raise OperationError(message % unicode(err))
+                raise NotUniqueError(message % text_type(err))
+            raise OperationError(message % text_type(err))
 
         if not load_bulk:
             signals.post_bulk_insert.send(
@@ -502,13 +503,13 @@ class BaseQuerySet(object):
                 return result
             elif result:
                 return result['n']
-        except pymongo.errors.DuplicateKeyError, err:
-            raise NotUniqueError(u'Update failed (%s)' % unicode(err))
-        except pymongo.errors.OperationFailure, err:
-            if unicode(err) == u'multi not coded yet':
+        except pymongo.errors.DuplicateKeyError as err:
+            raise NotUniqueError(u'Update failed (%s)' % text_type(err))
+        except pymongo.errors.OperationFailure as err:
+            if text_type(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
                 raise OperationError(message)
-            raise OperationError(u'Update failed (%s)' % unicode(err))
+            raise OperationError(u'Update failed (%s)' % text_type(err))
 
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
@@ -611,9 +612,9 @@ class BaseQuerySet(object):
                 result = queryset._collection.find_and_modify(
                     query, update, upsert=upsert, sort=sort, remove=remove, new=new,
                     full_response=full_response, **self._cursor_args)
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u"Update failed (%s)" % err)
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             raise OperationError(u"Update failed (%s)" % err)
 
         if full_response:
@@ -845,7 +846,7 @@ class BaseQuerySet(object):
         .. versionchanged:: 0.5 - Added subfield support
         """
         fields = dict([(f, QueryFieldList.ONLY) for f in fields])
-        self.only_fields = fields.keys()
+        self.only_fields = list(fields.keys())
         return self.fields(True, **fields)
 
     def exclude(self, *fields):
@@ -1129,13 +1130,13 @@ class BaseQuerySet(object):
         map_f_scope = {}
         if isinstance(map_f, Code):
             map_f_scope = map_f.scope
-            map_f = unicode(map_f)
+            map_f = text_type(map_f)
         map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
 
         reduce_f_scope = {}
         if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
-            reduce_f = unicode(reduce_f)
+            reduce_f = text_type(reduce_f)
         reduce_f_code = queryset._sub_js_fields(reduce_f)
         reduce_f = Code(reduce_f_code, reduce_f_scope)
 
@@ -1145,7 +1146,7 @@ class BaseQuerySet(object):
             finalize_f_scope = {}
             if isinstance(finalize_f, Code):
                 finalize_f_scope = finalize_f.scope
-                finalize_f = unicode(finalize_f)
+                finalize_f = text_type(finalize_f)
             finalize_f_code = queryset._sub_js_fields(finalize_f)
             finalize_f = Code(finalize_f_code, finalize_f_scope)
             mr_args['finalize'] = finalize_f
@@ -1161,7 +1162,7 @@ class BaseQuerySet(object):
         else:
             map_reduce_function = 'map_reduce'
 
-            if isinstance(output, basestring):
+            if isinstance(output, string_types):
                 mr_args['out'] = output
 
             elif isinstance(output, dict):
@@ -1356,7 +1357,7 @@ class BaseQuerySet(object):
         if self._limit == 0 or self._none:
             raise StopIteration
 
-        raw_doc = self._cursor.next()
+        raw_doc = next(self._cursor)
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
         doc = self._document._from_son(raw_doc,
@@ -1585,13 +1586,13 @@ class BaseQuerySet(object):
             }
         """
         total, data, types = self.exec_js(freq_func, field)
-        values = dict([(types.get(k), int(v)) for k, v in data.iteritems()])
+        values = dict([(types.get(k), int(v)) for k, v in iteritems(data)])
 
         if normalize:
             values = dict([(k, float(v) / total) for k, v in values.items()])
 
         frequencies = {}
-        for k, v in values.iteritems():
+        for k, v in iteritems(values):
             if isinstance(k, float):
                 if int(k) == k:
                     k = int(k)
@@ -1613,7 +1614,7 @@ class BaseQuerySet(object):
                 field = ".".join(f.db_field for f in
                                  document._lookup_field(field.split('.')))
                 ret.append(field)
-            except LookUpError, err:
+            except LookUpError as err:
                 found = False
                 for subdoc in subclasses:
                     try:
@@ -1690,7 +1691,7 @@ class BaseQuerySet(object):
 
             if isinstance(data, dict):
                 new_data = {}
-                for key, value in data.iteritems():
+                for key, value in iteritems(data):
                     new_path = '%s.%s' % (path, key) if path else key
 
                     if all_fields:

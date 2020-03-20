@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import sys
 
 sys.path[0:0] = [""]
@@ -41,7 +42,7 @@ class ConnectionTest(unittest.TestCase):
             conn = connect(db='mongoenginetest',
                            host="mongodb://localhost/mongoenginetest?replicaSet=rs",
                            read_preference=READ_PREF)
-        except ConnectionError, e:
+        except ConnectionError as e:
             return
 
         if not isinstance(conn, CONN_CLASS):

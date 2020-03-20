@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 import sys
+from six.moves import range
 sys.path[0:0] = [""]
 import unittest
 
@@ -79,7 +81,7 @@ class ContextManagersTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             User(name='user %s' % i).save()
 
         user = User.objects.first()
@@ -117,7 +119,7 @@ class ContextManagersTest(unittest.TestCase):
         User.drop_collection()
         Group.drop_collection()
 
-        for i in xrange(1, 51):
+        for i in range(1, 51):
             User(name='user %s' % i).save()
 
         user = User.objects.first()
@@ -195,7 +197,7 @@ class ContextManagersTest(unittest.TestCase):
         with query_counter() as q:
             self.assertEqual(0, q)
 
-            for i in xrange(1, 51):
+            for i in range(1, 51):
                 db.test.find({}).count()
 
             self.assertEqual(50, q)

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
 __all__ = ['pre_init', 'post_init', 'pre_save', 'pre_save_post_validation',
            'post_save', 'pre_delete', 'post_delete']
 

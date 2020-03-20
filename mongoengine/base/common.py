@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from mongoengine.errors import NotRegistered
 
 __all__ = ('ALLOW_INHERITANCE', 'get_document', '_document_registry')

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from mongoengine.base.common import *
 from mongoengine.base.datastructures import *
 from mongoengine.base.document import *

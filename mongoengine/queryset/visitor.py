@@ -1,7 +1,10 @@
+from __future__ import absolute_import
 import copy
 
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
+from six import iteritems
+from six.moves import range
 
 __all__ = ('Q',)
 
@@ -188,7 +191,7 @@ class Q(QNode):
                 return v.id
             return v
 
-        return {k: maybe_id(v) for k, v in self.query.iteritems()}
+        return {k: maybe_id(v) for k, v in iteritems(self.query)}
 
     def __hash__(self):
         return hash(repr(self))

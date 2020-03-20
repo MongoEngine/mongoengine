@@ -1,8 +1,11 @@
+from __future__ import absolute_import
 import weakref
 import itertools
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
+from six import text_type, iteritems, iterkeys
+from six.moves import range
 
 __all__ = ("BaseDict", "BaseList", "EmbeddedDocumentList")
 
@@ -131,7 +134,7 @@ class BaseList(list):
         return value
 
     def __iter__(self):
-        for i in xrange(self.__len__()):
+        for i in range(self.__len__()):
             yield self[i]
 
     def __setitem__(self, key, value, *args, **kwargs):
@@ -215,16 +218,16 @@ class EmbeddedDocumentList(BaseList):
 
     @classmethod
     def __match_all(cls, i, kwargs):
-        items = kwargs.items()
+        items = list(kwargs.items())
         return all([
-            getattr(i, k) == v or unicode(getattr(i, k)) == v for k, v in items
+            getattr(i, k) == v or text_type(getattr(i, k)) == v for k, v in items
         ])
 
     @classmethod
     def __only_matches(cls, obj, kwargs):
         if not kwargs:
             return obj
-        return filter(lambda i: cls.__match_all(i, kwargs), obj)
+        return [i for i in obj if cls.__match_all(i, kwargs)]
 
     def __init__(self, list_items, instance, name):
         super(EmbeddedDocumentList, self).__init__(list_items, instance, name)
@@ -378,7 +381,7 @@ class StrictDict(object):
     _classes = {}
 
     def __init__(self, **kwargs):
-        for k, v in kwargs.iteritems():
+        for k, v in iteritems(kwargs):
             setattr(self, k, v)
 
     def __getitem__(self, key):
@@ -426,13 +429,13 @@ class StrictDict(object):
         return (key for key in self.__slots__ if hasattr(self, key))
 
     def __len__(self):
-        return len(list(self.iteritems()))
+        return len(list(iteritems(self)))
 
     def __eq__(self, other):
-        return self.items() == other.items()
+        return list(self.items()) == list(other.items())
 
     def __neq__(self, other):
-        return self.items() != other.items()
+        return list(self.items()) != list(other.items())
 
     @classmethod
     def create(cls, allowed_keys):
@@ -443,7 +446,7 @@ class StrictDict(object):
                 __slots__ = allowed_keys_tuple
 
                 def __repr__(self):
-                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k) for k in self.iterkeys())
+                    return "{%s}" % ', '.join('"{0!s}": {0!r}'.format(k) for k in iterkeys(self))
 
             cls._classes[allowed_keys] = SpecificStrictDict
         return cls._classes[allowed_keys]
