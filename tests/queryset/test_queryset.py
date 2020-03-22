@@ -274,32 +274,47 @@ class TestQueryset(unittest.TestCase):
         with pytest.raises(InvalidQueryError):
             self.Person.objects(name="User A").with_id(person1.id)
 
-    def test_find_only_one(self):
-        """Ensure that a query using ``get`` returns at most one result.
-        """
+    def test_get_no_document_exists_raises_doesnotexist(self):
+        assert self.Person.objects.count() == 0
         # Try retrieving when no objects exists
         with pytest.raises(DoesNotExist):
             self.Person.objects.get()
         with pytest.raises(self.Person.DoesNotExist):
             self.Person.objects.get()
 
+    def test_get_multiple_match_raises_multipleobjectsreturned(self):
+        """Ensure that a query using ``get`` returns at most one result.
+        """
+        assert self.Person.objects().count() == 0
+
         person1 = self.Person(name="User A", age=20)
         person1.save()
-        person2 = self.Person(name="User B", age=30)
+
+        p = self.Person.objects.get()
+        assert p == person1
+
+        person2 = self.Person(name="User B", age=20)
         person2.save()
 
-        # Retrieve the first person from the database
+        person3 = self.Person(name="User C", age=30)
+        person3.save()
+
+        # .get called without argument
         with pytest.raises(MultipleObjectsReturned):
             self.Person.objects.get()
         with pytest.raises(self.Person.MultipleObjectsReturned):
             self.Person.objects.get()
 
+        # check filtering
+        with pytest.raises(MultipleObjectsReturned):
+            self.Person.objects.get(age__lt=30)
+        with pytest.raises(MultipleObjectsReturned) as exc_info:
+            self.Person.objects(age__lt=30).get()
+        assert "2 or more items returned, instead of 1" == str(exc_info.value)
+
         # Use a query to filter the people found to just person2
         person = self.Person.objects.get(age=30)
-        assert person.name == "User B"
-
-        person = self.Person.objects.get(age__lt=30)
-        assert person.name == "User A"
+        assert person == person3
 
     def test_find_array_position(self):
         """Ensure that query by array position works.
