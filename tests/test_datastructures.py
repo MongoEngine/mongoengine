@@ -1,5 +1,7 @@
+from __future__ import absolute_import
 import unittest
 from mongoengine.base.datastructures import StrictDict, SemiStrictDict 
+from six import iteritems
 
 
 class TestStrictDict(unittest.TestCase):
@@ -58,9 +60,9 @@ class TestStrictDict(unittest.TestCase):
 
     def test_items(self):
         d = self.dtype(a=1)
-        self.assertEqual(d.items(), [('a', 1)])
+        self.assertEqual(list(d.items()), [('a', 1)])
         d = self.dtype(a=1, b=2)
-        self.assertEqual(d.items(), [('a', 1), ('b', 2)])
+        self.assertEqual(list(d.items()), [('a', 1), ('b', 2)])
 
     def test_mappings_protocol(self):
         d = self.dtype(a=1, b=2)
@@ -95,7 +97,7 @@ class TestSemiSrictDict(TestStrictDict):
 
     def test_iteritems_with_nonexisting_attrs(self):
         d = self.dtype(a=1, b=1, c=1, x=2)
-        self.assertEqual(list(d.iteritems()), [('a', 1), ('b', 1), ('c', 1), ('x', 2)])
+        self.assertEqual(list(iteritems(d)), [('a', 1), ('b', 1), ('c', 1), ('x', 2)])
 
     def tets_cmp_with_strict_dicts(self):
         d = self.dtype(a=1, b=1, c=1)

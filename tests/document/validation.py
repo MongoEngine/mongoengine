@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 import sys
 sys.path[0:0] = [""]
 
@@ -60,7 +61,7 @@ class ValidatorErrorTest(unittest.TestCase):
 
         try:
             User().validate()
-        except ValidationError, e:
+        except ValidationError as e:
             self.assertTrue("User:None" in e.message)
             self.assertEqual(e.to_dict(), {
                 'username': 'Field is required',
@@ -70,7 +71,7 @@ class ValidatorErrorTest(unittest.TestCase):
         user.name = None
         try:
             user.save()
-        except ValidationError, e:
+        except ValidationError as e:
             self.assertTrue("User:RossC0" in e.message)
             self.assertEqual(e.to_dict(), {
                 'name': 'Field is required'})
@@ -118,7 +119,7 @@ class ValidatorErrorTest(unittest.TestCase):
 
         try:
             Doc(id="bad").validate()
-        except ValidationError, e:
+        except ValidationError as e:
             self.assertTrue("SubDoc:None" in e.message)
             self.assertEqual(e.to_dict(), {
                 "e": {'val': 'OK could not be converted to int'}})
@@ -128,7 +129,7 @@ class ValidatorErrorTest(unittest.TestCase):
         Doc(id="test", e=SubDoc(val=15)).save()
 
         doc = Doc.objects.first()
-        keys = doc._data.keys()
+        keys = list(doc._data.keys())
         self.assertEqual(2, len(keys))
         self.assertTrue('e' in keys)
         self.assertTrue('id' in keys)
@@ -136,7 +137,7 @@ class ValidatorErrorTest(unittest.TestCase):
         doc.e.val = "OK"
         try:
             doc.save()
-        except ValidationError, e:
+        except ValidationError as e:
             self.assertTrue("Doc:test" in e.message)
             self.assertEqual(e.to_dict(), {
                 "e": {'val': 'OK could not be converted to int'}})

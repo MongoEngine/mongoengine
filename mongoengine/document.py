@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import warnings
 import pymongo
 import re
@@ -25,6 +26,7 @@ from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.connections_manager import connection_manager
 
 import logging
+from six import string_types, iteritems, text_type, with_metaclass
 
 __all__ = ('Document', 'EmbeddedDocument', 'DynamicDocument',
            'DynamicEmbeddedDocument', 'OperationError',
@@ -37,14 +39,14 @@ def includes_cls(fields):
 
     first_field = None
     if len(fields):
-        if isinstance(fields[0], basestring):
+        if isinstance(fields[0], string_types):
             first_field = fields[0]
         elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
             first_field = fields[0][0]
     return first_field == '_cls'
 
 
-class EmbeddedDocument(BaseDocument):
+class EmbeddedDocument(with_metaclass(DocumentMetaclass, BaseDocument)):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
@@ -64,7 +66,6 @@ class EmbeddedDocument(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
@@ -76,7 +77,7 @@ class EmbeddedDocument(BaseDocument):
             if self._data == other._data:
                 return True
             # Handle None values -- the same as not present in the dict.
-            for key in set(self._data.keys() + other._data.keys()):
+            for key in set(list(self._data.keys()) + list(other._data.keys())):
                 if self._data.get(key) != other._data.get(key):
                     return False
             return True
@@ -92,7 +93,7 @@ class EmbeddedDocument(BaseDocument):
         self._instance.reload(*args, **kwargs)
 
 
-class Document(BaseDocument):
+class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -148,7 +149,6 @@ class Document(BaseDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     __slots__ = ('__objects',)
 
@@ -347,17 +347,17 @@ class Document(BaseDocument):
                     kwargs.update(cascade_kwargs)
                 kwargs['_refs'] = _refs
                 self.cascade_save(**kwargs)
-        except pymongo.errors.DuplicateKeyError, err:
+        except pymongo.errors.DuplicateKeyError as err:
             message = u'Tried to save duplicate unique keys (%s)'
-            raise NotUniqueError(message % unicode(err))
-        except pymongo.errors.OperationFailure, err:
+            raise NotUniqueError(message % text_type(err))
+        except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', unicode(err)):
+            if re.match('^E1100[01] duplicate key', text_type(err)):
                 # E11000 - duplicate key error index
                 # E11001 - duplicate key on update
                 message = u'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % unicode(err))
-            raise OperationError(message % unicode(err))
+                raise NotUniqueError(message % text_type(err))
+            raise OperationError(message % text_type(err))
         id_field = self._meta['id_field']
         if created or id_field not in self._meta.get('shard_key', []):
             self[id_field] = self._fields[id_field].to_python(object_id)
@@ -365,7 +365,7 @@ class Document(BaseDocument):
         changed_fields = list(set([f.split('.')[0] for f in getattr(self, '_changed_fields', [])]))
         changed_fields = [self._reverse_db_field_map.get(changed_field, changed_field) for changed_field in changed_fields]
         # Use reverse_db_field_map in original_values as well
-        original_values = {self._reverse_db_field_map.get(k,k):v for k,v in getattr(self, '_original_values', {}).iteritems()}
+        original_values = {self._reverse_db_field_map.get(k,k):v for k,v in iteritems(getattr(self, '_original_values', {}))}
         force_changed_fields = getattr(self, '_force_changed_fields', set())
 
         def is_field_unchanged(field):
@@ -480,14 +480,14 @@ class Document(BaseDocument):
 
         # Delete FileFields separately 
         FileField = _import_class('FileField')
-        for name, field in self._fields.iteritems():
+        for name, field in iteritems(self._fields):
             if isinstance(field, FileField): 
                 getattr(self, name).delete()
 
         try:
             self._qs.filter(
                 **self._object_key).delete(write_concern=write_concern, _from_doc_delete=True)
-        except pymongo.errors.OperationFailure, err:
+        except pymongo.errors.OperationFailure as err:
             message = u'Could not delete document (%s)' % err.message
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
@@ -874,7 +874,7 @@ class Document(BaseDocument):
         return {'missing': missing, 'extra': extra}
 
 
-class DynamicDocument(Document):
+class DynamicDocument(with_metaclass(TopLevelDocumentMetaclass, Document)):
     """A Dynamic Document class allowing flexible, expandable and uncontrolled
     schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
     way as an ordinary document but has expando style properties.  Any data
@@ -891,7 +891,6 @@ class DynamicDocument(Document):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
-    __metaclass__ = TopLevelDocumentMetaclass
 
     _dynamic = True
 
@@ -905,7 +904,7 @@ class DynamicDocument(Document):
             super(DynamicDocument, self).__delattr__(*args, **kwargs)
 
 
-class DynamicEmbeddedDocument(EmbeddedDocument):
+class DynamicEmbeddedDocument(with_metaclass(DocumentMetaclass, EmbeddedDocument)):
     """A Dynamic Embedded Document class allowing flexible, expandable and
     uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
     information about dynamic documents.
@@ -914,7 +913,6 @@ class DynamicEmbeddedDocument(EmbeddedDocument):
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
-    __metaclass__ = DocumentMetaclass
 
     _dynamic = True
 

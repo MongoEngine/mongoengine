@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 import sys
 sys.path[0:0] = [""]
 import unittest
@@ -58,7 +59,7 @@ class SignalTests(unittest.TestCase):
 
             @classmethod
             def post_save(cls, sender, document, **kwargs):
-                dirty_keys = document._delta()[0].keys() + document._delta()[1].keys()
+                dirty_keys = list(document._delta()[0].keys()) + list(document._delta()[1].keys())
                 signal_output.append('post_save signal, %s' % document)
                 signal_output.append('post_save dirty keys, %s' % dirty_keys)
                 if kwargs.pop('created', False):

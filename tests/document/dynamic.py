@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -31,9 +33,9 @@ class DynamicTest(unittest.TestCase):
 
         self.assertEqual(p.to_mongo(), {"_cls": "Person", "name": "James",
                                         "age": 34})
-        self.assertEqual(p.to_mongo().keys(), ["_cls", "name", "age"])
+        self.assertEqual(list(p.to_mongo().keys()), ["_cls", "name", "age"])
         p.save()
-        self.assertEqual(p.to_mongo().keys(), ["_id", "_cls", "name", "age"])
+        self.assertEqual(list(p.to_mongo().keys()), ["_id", "_cls", "name", "age"])
 
         self.assertEqual(self.Person.objects.first().age, 34)
 
@@ -147,7 +149,7 @@ class DynamicTest(unittest.TestCase):
         p.misc = {'hello': {'hello2': 'world'}}
         p.save()
         # from pprint import pprint as pp; import pdb; pdb.set_trace();
-        print self.Person.objects(misc__hello__hello2='world')
+        print(self.Person.objects(misc__hello__hello2='world'))
         self.assertEqual(1, self.Person.objects(misc__hello__hello2='world').count())
 
     def test_complex_embedded_document_validation(self):

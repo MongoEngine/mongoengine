@@ -1,8 +1,10 @@
+from __future__ import absolute_import
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (BaseQuerySet, DO_NOTHING, NULLIFY,
                                        CASCADE, DENY, PULL)
 from mongoengine.base.proxy import LazyPrefetchBase
 from collections import defaultdict
+from six.moves import range
 
 __all__ = ('QuerySet', 'QuerySetNoCache', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
            'DENY', 'PULL')
@@ -33,7 +35,7 @@ class QuerySet(BaseQuerySet, LazyPrefetchBase):
         if self._limit == 0 or self._none:
             raise StopIteration
 
-        raw_doc = self._cursor.next()
+        raw_doc = next(self._cursor)
         if self._as_pymongo:
             return self._get_as_pymongo(raw_doc)
         doc = self._document._from_son(
@@ -125,8 +127,8 @@ class QuerySet(BaseQuerySet, LazyPrefetchBase):
 
         if self._has_more:
             try:
-                for i in xrange(ITER_CHUNK_SIZE):
-                    self._result_cache.append(self.next())
+                for i in range(ITER_CHUNK_SIZE):
+                    self._result_cache.append(next(self))
             except StopIteration:
                 self._has_more = False
 
@@ -174,9 +176,9 @@ class QuerySetNoCache(BaseQuerySet):
             return '.. queryset mid-iteration ..'
 
         data = []
-        for i in xrange(REPR_OUTPUT_SIZE + 1):
+        for i in range(REPR_OUTPUT_SIZE + 1):
             try:
-                data.append(self.next())
+                data.append(next(self))
             except StopIteration:
                 break
         if len(data) > REPR_OUTPUT_SIZE:

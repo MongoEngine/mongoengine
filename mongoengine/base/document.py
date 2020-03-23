@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import copy
 import operator
 import numbers
@@ -28,6 +29,7 @@ from mongoengine.base.fields import ComplexBaseField
 
 from mongoengine.base.proxy import DocumentProxy
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
+from six import string_types, iteritems, text_type
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
@@ -89,7 +91,7 @@ class BaseDocument(object):
         
         # Set passed values after initialisation
         FileField = _import_class('FileField')
-        for key, value in values.iteritems():
+        for key, value in iteritems(values):
             if key == '__auto_convert':
                 continue
             key = self._reverse_db_field_map.get(key, key)
@@ -107,7 +109,7 @@ class BaseDocument(object):
                 self._data[key] = value
                     
         # Set the default values.
-        for key, field in self._fields.iteritems():
+        for key, field in iteritems(self._fields):
             if key in self._data or field.default is None:
                 # If the data exists or no defaults exist
                 # We don't need to set the defaults.
@@ -280,7 +282,7 @@ class BaseDocument(object):
             if PY3:
                 return self.__unicode__()
             else:
-                return unicode(self).encode('utf-8')
+                return text_type(self).encode('utf-8')
         return txt_type('%s object' % self.__class__.__name__)
 
     def __eq__(self, other):
@@ -404,7 +406,7 @@ class BaseDocument(object):
                     self.clean(**kwargs)
                 else:
                     self.clean()
-            except ValidationError, error:
+            except ValidationError as error:
                 errors[NON_FIELD_ERRORS] = error
 
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
@@ -426,9 +428,9 @@ class BaseDocument(object):
                         field._validate(value, clean=clean)
                     else:
                         field._validate(value)
-                except ValidationError, error:
+                except ValidationError as error:
                     errors[field.name] = error.errors or error
-                except (ValueError, AttributeError, AssertionError), error:
+                except (ValueError, AttributeError, AssertionError) as error:
                     errors[field.name] = error
             elif field.required and not getattr(field, '_auto_gen', False):
                 errors[field.name] = ValidationError('Field is required',
@@ -478,7 +480,7 @@ class BaseDocument(object):
             data[k] = self.__expand_dynamic_values(key, v)
 
         if is_list:  # Convert back to a list
-            data_items = sorted(data.items(), key=operator.itemgetter(0))
+            data_items = sorted(list(data.items()), key=operator.itemgetter(0))
             value = [v for k, v in data_items]
         else:
             value = data
@@ -576,7 +578,7 @@ class BaseDocument(object):
         if not hasattr(data, 'items'):
             iterator = enumerate(data)
         else:
-            iterator = data.iteritems()
+            iterator = iteritems(data)
 
         for index, value in iterator:
             list_key = "%s%s." % (key, index)
@@ -649,7 +651,7 @@ class BaseDocument(object):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
                     # if ordering is affected whole list is changed
-                    if any(map(lambda d: field._ordering in d._changed_fields, data)):
+                    if any([field._ordering in d._changed_fields for d in data]):
                         changed_fields.append(db_field_name)
                         continue
 
@@ -778,7 +780,7 @@ class BaseDocument(object):
         # get the class name from the document, falling back to the given
         # class if unavailable
         class_name = son.get('_cls', cls._class_name)
-        data = dict(("%s" % key, value) for key, value in son.iteritems())
+        data = dict(("%s" % key, value) for key, value in iteritems(son))
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
@@ -796,7 +798,7 @@ class BaseDocument(object):
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         ListField = _import_class("ListField")
 
-        for field_name, field in fields.iteritems():
+        for field_name, field in iteritems(fields):
             field._auto_dereference = _auto_dereference
             if field.db_field in data:
                 value = data[field.db_field]
@@ -821,7 +823,7 @@ class BaseDocument(object):
                     data[field_name] = value
                     if field_name != field.db_field:
                         del data[field.db_field]
-                except (AttributeError, ValueError), e:
+                except (AttributeError, ValueError) as e:
                     errors_dict[field_name] = e
             elif field.default:
                 default = field.default
@@ -841,7 +843,7 @@ class BaseDocument(object):
 
         if cls.STRICT:
             data = dict((k, v)
-                        for k, v in data.iteritems() if k in cls._fields)
+                        for k, v in iteritems(data) if k in cls._fields)
         obj = cls(__auto_convert=False, _created=created, __only_fields=only_fields, kwargs_passed=data,
                   loading_from_db=loading_from_db)
         obj._changed_fields = changed_fields
@@ -880,7 +882,7 @@ class BaseDocument(object):
     @classmethod
     def _build_reference_indices(cls):
         res = []
-        for name, field in cls._fields.iteritems():
+        for name, field in iteritems(cls._fields):
             if 'fields.ReferenceField' in str(field):
                 res.append({ 'fields': [(name, 1)] })
             if 'fields.CachedReferenceField' in str(field):
@@ -936,7 +938,7 @@ class BaseDocument(object):
     def _build_index_spec(cls, spec):
         """Build a PyMongo index spec from a MongoEngine index spec.
         """
-        if isinstance(spec, basestring):
+        if isinstance(spec, string_types):
             spec = {'fields': [spec]}
         elif isinstance(spec, (list, tuple)):
             spec = {'fields': list(spec)}
@@ -1026,7 +1028,7 @@ class BaseDocument(object):
 
                 # Add any unique_with fields to the back of the index spec
                 if field.unique_with:
-                    if isinstance(field.unique_with, basestring):
+                    if isinstance(field.unique_with, string_types):
                         field.unique_with = [field.unique_with]
 
                     # Convert unique_with field names to real field names
