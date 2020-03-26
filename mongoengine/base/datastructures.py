@@ -303,11 +303,11 @@ class EmbeddedDocumentList(BaseList):
 
     def create(self, **values):
         """
-        Creates a new embedded document and saves it to the database.
+        Creates a new instance of the EmbeddedDocument and appends it to this EmbeddedDocumentList.
 
         .. note::
-            The embedded document changes are not automatically saved
-            to the database after calling this method.
+            the instance of the EmbeddedDocument is not automatically saved to the database.
+            You still need to call save() o this EmbeddedDocumentList.
 
         :param values: A dictionary of values for the embedded document.
         :return: The new embedded document instance.
