@@ -60,7 +60,6 @@ class BaseQuerySet(object):
         self._ordering = None
         self._snapshot = False
         self._timeout = True
-        self._slave_okay = False
         self._read_preference = None
         self._iter = False
         self._scalar = []
@@ -302,7 +301,7 @@ class BaseQuerySet(object):
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
                 two servers have recorded the write and will force an fsync on
                 each server being written to.
-        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
 
         By default returns document instances, set ``load_bulk`` to False to
@@ -694,8 +693,8 @@ class BaseQuerySet(object):
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
 
-        :param object_ids: a list or tuple of ``ObjectId``\ s
-        :rtype: dict of ObjectIds as keys and collection-specific
+        :param object_ids: a list or tuple of ObjectId's
+        :rtype: dict of ObjectId's as keys and collection-specific
                 Document subclasses as values.
 
         .. versionadded:: 0.3
@@ -775,7 +774,6 @@ class BaseQuerySet(object):
             "_ordering",
             "_snapshot",
             "_timeout",
-            "_slave_okay",
             "_read_preference",
             "_iter",
             "_scalar",
@@ -1026,9 +1024,11 @@ class BaseQuerySet(object):
 
             posts = BlogPost.objects(...).fields(comments=0)
 
-        To retrieve a subrange of array elements:
+        To retrieve a subrange or sublist of array elements,
+        support exist for both the `slice` and `elemMatch` projection operator:
 
             posts = BlogPost.objects(...).fields(slice__comments=5)
+            posts = BlogPost.objects(...).fields(elemMatch__comments="test")
 
         :param kwargs: A set of keyword arguments identifying what to
             include, exclude, or slice.
@@ -1037,7 +1037,7 @@ class BaseQuerySet(object):
         """
 
         # Check for an operator and transform to mongo-style if there is
-        operators = ["slice"]
+        operators = ["slice", "elemMatch"]
         cleaned_fields = []
         for key, value in kwargs.items():
             parts = key.split("__")
@@ -1140,7 +1140,7 @@ class BaseQuerySet(object):
 
     def explain(self):
         """Return an explain plan record for the
-        :class:`~mongoengine.queryset.QuerySet`\ 's cursor.
+        :class:`~mongoengine.queryset.QuerySet` cursor.
         """
         return self._cursor.explain()
 
@@ -1168,20 +1168,6 @@ class BaseQuerySet(object):
         """
         queryset = self.clone()
         queryset._timeout = enabled
-        return queryset
-
-    # DEPRECATED. Has no more impact on PyMongo 3+
-    def slave_okay(self, enabled):
-        """Enable or disable the slave_okay when querying.
-
-        :param enabled: whether or not the slave_okay is enabled
-
-        .. deprecated:: Ignored with PyMongo 3+
-        """
-        msg = "slave_okay is deprecated as it has no impact when using PyMongo 3+."
-        warnings.warn(msg, DeprecationWarning)
-        queryset = self.clone()
-        queryset._slave_okay = enabled
         return queryset
 
     def read_preference(self, read_preference):
@@ -1255,16 +1241,27 @@ class BaseQuerySet(object):
             for data in son_data
         ]
 
-    def aggregate(self, *pipeline, **kwargs):
-        """
-        Perform a aggregate function based in your queryset params
+    def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
+        """Perform a aggregate function based in your queryset params
+
         :param pipeline: list of aggregation commands,\
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
-
+        :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
+            parameter will be removed shortly
+        :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
+            See https://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
         .. versionadded:: 0.9
         """
-        initial_pipeline = []
+        using_deprecated_interface = isinstance(pipeline, dict) or bool(suppl_pipeline)
+        user_pipeline = [pipeline] if isinstance(pipeline, dict) else list(pipeline)
 
+        if using_deprecated_interface:
+            msg = "Calling .aggregate() with un unpacked list (*pipeline) is deprecated, it will soon change and will expect a list (similar to pymongo.Collection.aggregate interface), see documentation"
+            warnings.warn(msg, DeprecationWarning)
+
+        user_pipeline += suppl_pipeline
+
+        initial_pipeline = []
         if self._query:
             initial_pipeline.append({"$match": self._query})
 
@@ -1281,14 +1278,14 @@ class BaseQuerySet(object):
         if self._skip is not None:
             initial_pipeline.append({"$skip": self._skip})
 
-        pipeline = initial_pipeline + list(pipeline)
+        final_pipeline = initial_pipeline + user_pipeline
 
+        collection = self._collection
         if self._read_preference is not None:
-            return self._collection.with_options(
+            collection = self._collection.with_options(
                 read_preference=self._read_preference
-            ).aggregate(pipeline, cursor={}, **kwargs)
-
-        return self._collection.aggregate(pipeline, cursor={}, **kwargs)
+            )
+        return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     # JS functionality
     def map_reduce(
@@ -1947,23 +1944,3 @@ class BaseQuerySet(object):
         setattr(queryset, "_" + method_name, val)
 
         return queryset
-
-    # Deprecated
-    def ensure_index(self, **kwargs):
-        """Deprecated use :func:`Document.ensure_index`"""
-        msg = (
-            "Doc.objects()._ensure_index() is deprecated. "
-            "Use Doc.ensure_index() instead."
-        )
-        warnings.warn(msg, DeprecationWarning)
-        self._document.__class__.ensure_index(**kwargs)
-        return self
-
-    def _ensure_indexes(self):
-        """Deprecated use :func:`~Document.ensure_indexes`"""
-        msg = (
-            "Doc.objects()._ensure_indexes() is deprecated. "
-            "Use Doc.ensure_indexes() instead."
-        )
-        warnings.warn(msg, DeprecationWarning)
-        self._document.__class__.ensure_indexes()

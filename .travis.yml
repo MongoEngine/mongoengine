@@ -3,7 +3,7 @@
 # with a very large number of jobs, hence we only test a subset of all the
 # combinations:
 # * MongoDB v3.4 & the latest PyMongo v3.x is currently the "main" setup,
-#   tested against Python v2.7, v3.5, v3.6, and PyPy.
+#   tested against Python v2.7, v3.5, v3.6, v3.7, v3.8, PyPy and PyPy3.
 # * Besides that, we test the lowest actively supported Python/MongoDB/PyMongo
 #   combination: MongoDB v3.4, PyMongo v3.4, Python v2.7.
 # * MongoDB v3.6 is tested against Python v3.6, and PyMongo v3.6, v3.7, v3.8.
@@ -23,6 +23,7 @@ python:
 - 3.5
 - 3.6
 - 3.7
+- 3.8
 - pypy
 - pypy3
 
@@ -32,14 +33,16 @@ env:
   global:
     - MONGODB_3_4=3.4.17
     - MONGODB_3_6=3.6.12
-    - PYMONGO_3_9=3.9
-    - PYMONGO_3_6=3.6
+    - MONGODB_4_0=4.0.13
+
     - PYMONGO_3_4=3.4
+    - PYMONGO_3_6=3.6
+    - PYMONGO_3_9=3.9
+    - PYMONGO_3_10=3.10
   matrix:
-    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_9}
+    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_10}
 
 matrix:
-
   # Finish the build as soon as one job fails
   fast_finish: true
 
@@ -50,7 +53,10 @@ matrix:
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
   - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
-
+  - python: 3.7
+    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_10}
+  - python: 3.8
+    env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_10}
 
 install:
   # Install Mongo
@@ -110,5 +116,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: ($PYMONGO = ${PYMONGO_3_6}) && ($MONGODB = ${MONGODB_3_4})
+    condition: ($PYMONGO = ${PYMONGO_3_10}) && ($MONGODB = ${MONGODB_3_4})
     python: 2.7

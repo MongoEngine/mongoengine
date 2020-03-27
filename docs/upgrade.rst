@@ -52,7 +52,7 @@ rename its occurrences.
 This release includes a major rehaul of MongoEngine's code quality and
 introduces a few breaking changes. It also touches many different parts of
 the package and although all the changes have been tested and scrutinized,
-you're encouraged to thorougly test the upgrade.
+you're encouraged to thoroughly test the upgrade.
 
 First breaking change involves renaming `ConnectionError` to `MongoEngineConnectionError`.
 If you import or catch this exception, you'll need to rename it in your code.

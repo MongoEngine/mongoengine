@@ -108,6 +108,10 @@ CLASSIFIERS = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+PYTHON_VERSION = sys.version_info[0]
+PY3 = PYTHON_VERSION == 3
+PY2 = PYTHON_VERSION == 2
+
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
     "tests_require": [
@@ -115,10 +119,11 @@ extra_opts = {
         "pytest-cov",
         "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
         "blinker",
-        "Pillow>=2.0.0",
+        "Pillow>=2.0.0, <7.0.0",  # 7.0.0 dropped Python2 support
+        "zipp<2.0.0",  # (dependency of pytest) dropped python2 support
     ],
 }
-if sys.version_info[0] == 3:
+if PY3:
     extra_opts["use_2to3"] = True
     if "test" in sys.argv:
         extra_opts["packages"] = find_packages()
@@ -143,7 +148,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    install_requires=["pymongo>=3.4", "six>=1.10.0"],
+    install_requires=["pymongo>=3.4, <4.0", "six>=1.10.0"],
     cmdclass={"test": PyTest},
     **extra_opts
 )

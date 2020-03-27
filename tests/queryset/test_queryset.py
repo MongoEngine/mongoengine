@@ -14,7 +14,7 @@ import six
 from six import iteritems
 
 from mongoengine import *
-from mongoengine.connection import get_connection, get_db
+from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
@@ -4476,6 +4476,74 @@ class TestQueryset(unittest.TestCase):
             expected = "[u'A1', u'A2']"
         assert expected == "%s" % sorted(names)
 
+    def test_fields(self):
+        class Bar(EmbeddedDocument):
+            v = StringField()
+            z = StringField()
+
+        class Foo(Document):
+            x = StringField()
+            y = IntField()
+            items = EmbeddedDocumentListField(Bar)
+
+        Foo.drop_collection()
+
+        Foo(x="foo1", y=1).save()
+        Foo(x="foo2", y=2, items=[]).save()
+        Foo(x="foo3", y=3, items=[Bar(z="a", v="V")]).save()
+        Foo(
+            x="foo4",
+            y=4,
+            items=[
+                Bar(z="a", v="V"),
+                Bar(z="b", v="W"),
+                Bar(z="b", v="X"),
+                Bar(z="c", v="V"),
+            ],
+        ).save()
+        Foo(
+            x="foo5",
+            y=5,
+            items=[
+                Bar(z="b", v="X"),
+                Bar(z="c", v="V"),
+                Bar(z="d", v="V"),
+                Bar(z="e", v="V"),
+            ],
+        ).save()
+
+        foos_with_x = list(Foo.objects.order_by("y").fields(x=1))
+
+        assert all(o.x is not None for o in foos_with_x)
+
+        foos_without_y = list(Foo.objects.order_by("y").fields(y=0))
+
+        assert all(o.y is None for o in foos_with_x)
+
+        foos_with_sliced_items = list(Foo.objects.order_by("y").fields(slice__items=1))
+
+        assert foos_with_sliced_items[0].items == []
+        assert foos_with_sliced_items[1].items == []
+        assert len(foos_with_sliced_items[2].items) == 1
+        assert foos_with_sliced_items[2].items[0].z == "a"
+        assert len(foos_with_sliced_items[3].items) == 1
+        assert foos_with_sliced_items[3].items[0].z == "a"
+        assert len(foos_with_sliced_items[4].items) == 1
+        assert foos_with_sliced_items[4].items[0].z == "b"
+
+        foos_with_elem_match_items = list(
+            Foo.objects.order_by("y").fields(elemMatch__items={"z": "b"})
+        )
+
+        assert foos_with_elem_match_items[0].items == []
+        assert foos_with_elem_match_items[1].items == []
+        assert foos_with_elem_match_items[2].items == []
+        assert len(foos_with_elem_match_items[3].items) == 1
+        assert foos_with_elem_match_items[3].items[0].z == "b"
+        assert foos_with_elem_match_items[3].items[0].v == "W"
+        assert len(foos_with_elem_match_items[4].items) == 1
+        assert foos_with_elem_match_items[4].items[0].z == "b"
+
     def test_elem_match(self):
         class Foo(EmbeddedDocument):
             shape = StringField()
@@ -4657,21 +4725,6 @@ class TestQueryset(unittest.TestCase):
             ReadPreference.SECONDARY_PREFERRED
         )
         assert_read_pref(bars, ReadPreference.SECONDARY_PREFERRED)
-
-    def test_read_preference_aggregation_framework(self):
-        class Bar(Document):
-            txt = StringField()
-
-            meta = {"indexes": ["txt"]}
-
-        # Aggregates with read_preference
-        bars = Bar.objects.read_preference(
-            ReadPreference.SECONDARY_PREFERRED
-        ).aggregate()
-        assert (
-            bars._CommandCursor__collection.read_preference
-            == ReadPreference.SECONDARY_PREFERRED
-        )
 
     def test_json_simple(self):
         class Embedded(EmbeddedDocument):
@@ -5398,225 +5451,6 @@ class TestQueryset(unittest.TestCase):
 
             assert Person.objects.first().name == "A"
             assert Person.objects._has_data(), "Cursor has data and returned False"
-
-    def test_queryset_aggregation_framework(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = Person.objects(age__lte=22).aggregate(
-            {"$project": {"name": {"$toUpper": "$name"}}}
-        )
-
-        assert list(data) == [
-            {"_id": p1.pk, "name": "ISABELLA LUANNA"},
-            {"_id": p2.pk, "name": "WILSON JUNIOR"},
-        ]
-
-        data = (
-            Person.objects(age__lte=22)
-            .order_by("-name")
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
-        )
-
-        assert list(data) == [
-            {"_id": p2.pk, "name": "WILSON JUNIOR"},
-            {"_id": p1.pk, "name": "ISABELLA LUANNA"},
-        ]
-
-        data = (
-            Person.objects(age__gte=17, age__lte=40)
-            .order_by("-age")
-            .aggregate(
-                {"$group": {"_id": None, "total": {"$sum": 1}, "avg": {"$avg": "$age"}}}
-            )
-        )
-        assert list(data) == [{"_id": None, "avg": 29, "total": 2}]
-
-        data = Person.objects().aggregate({"$match": {"name": "Isabella Luanna"}})
-        assert list(data) == [{u"_id": p1.pk, u"age": 16, u"name": u"Isabella Luanna"}]
-
-    def test_queryset_aggregation_with_skip(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = Person.objects.skip(1).aggregate(
-            {"$project": {"name": {"$toUpper": "$name"}}}
-        )
-
-        assert list(data) == [
-            {"_id": p2.pk, "name": "WILSON JUNIOR"},
-            {"_id": p3.pk, "name": "SANDRA MARA"},
-        ]
-
-    def test_queryset_aggregation_with_limit(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = Person.objects.limit(1).aggregate(
-            {"$project": {"name": {"$toUpper": "$name"}}}
-        )
-
-        assert list(data) == [{"_id": p1.pk, "name": "ISABELLA LUANNA"}]
-
-    def test_queryset_aggregation_with_sort(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = Person.objects.order_by("name").aggregate(
-            {"$project": {"name": {"$toUpper": "$name"}}}
-        )
-
-        assert list(data) == [
-            {"_id": p1.pk, "name": "ISABELLA LUANNA"},
-            {"_id": p3.pk, "name": "SANDRA MARA"},
-            {"_id": p2.pk, "name": "WILSON JUNIOR"},
-        ]
-
-    def test_queryset_aggregation_with_skip_with_limit(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = list(
-            Person.objects.skip(1)
-            .limit(1)
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
-        )
-
-        assert list(data) == [{"_id": p2.pk, "name": "WILSON JUNIOR"}]
-
-        # Make sure limit/skip chaining order has no impact
-        data2 = (
-            Person.objects.limit(1)
-            .skip(1)
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
-        )
-
-        assert data == list(data2)
-
-    def test_queryset_aggregation_with_sort_with_limit(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = (
-            Person.objects.order_by("name")
-            .limit(2)
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
-        )
-
-        assert list(data) == [
-            {"_id": p1.pk, "name": "ISABELLA LUANNA"},
-            {"_id": p3.pk, "name": "SANDRA MARA"},
-        ]
-
-        # Verify adding limit/skip steps works as expected
-        data = (
-            Person.objects.order_by("name")
-            .limit(2)
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}}, {"$limit": 1})
-        )
-
-        assert list(data) == [{"_id": p1.pk, "name": "ISABELLA LUANNA"}]
-
-        data = (
-            Person.objects.order_by("name")
-            .limit(2)
-            .aggregate(
-                {"$project": {"name": {"$toUpper": "$name"}}},
-                {"$skip": 1},
-                {"$limit": 1},
-            )
-        )
-
-        assert list(data) == [{"_id": p3.pk, "name": "SANDRA MARA"}]
-
-    def test_queryset_aggregation_with_sort_with_skip(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = (
-            Person.objects.order_by("name")
-            .skip(2)
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
-        )
-
-        assert list(data) == [{"_id": p2.pk, "name": "WILSON JUNIOR"}]
-
-    def test_queryset_aggregation_with_sort_with_skip_with_limit(self):
-        class Person(Document):
-            name = StringField()
-            age = IntField()
-
-        Person.drop_collection()
-
-        p1 = Person(name="Isabella Luanna", age=16)
-        p2 = Person(name="Wilson Junior", age=21)
-        p3 = Person(name="Sandra Mara", age=37)
-        Person.objects.insert([p1, p2, p3])
-
-        data = (
-            Person.objects.order_by("name")
-            .skip(1)
-            .limit(1)
-            .aggregate({"$project": {"name": {"$toUpper": "$name"}}})
-        )
-
-        assert list(data) == [{"_id": p3.pk, "name": "SANDRA MARA"}]
 
     def test_delete_count(self):
         [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]

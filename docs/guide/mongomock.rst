@@ -21,7 +21,7 @@ or with an alias:
     conn = get_connection('testdb')
 
 Example of test file:
---------
+---------------------
 .. code-block:: python
 
     import unittest
@@ -45,4 +45,4 @@ Example of test file:
             pers.save()
 
             fresh_pers = Person.objects().first()
-            self.assertEqual(fresh_pers.name, 'John')
+            assert fresh_pers.name ==  'John'

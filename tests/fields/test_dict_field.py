@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import pytest
+from bson import InvalidDocument
 
 from mongoengine import *
 from mongoengine.base import BaseDict
+from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
 
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
@@ -18,22 +20,24 @@ class TestDictField(MongoDBTestCase):
         post = BlogPost(info=info).save()
         assert get_as_pymongo(post) == {"_id": post.id, "info": info}
 
-    def test_general_things(self):
-        """Ensure that dict types work as expected."""
+    def test_validate_invalid_type(self):
+        class BlogPost(Document):
+            info = DictField()
 
+        BlogPost.drop_collection()
+
+        invalid_infos = ["my post", ["test", "test"], {1: "test"}]
+        for invalid_info in invalid_infos:
+            with pytest.raises(ValidationError):
+                BlogPost(info=invalid_info).validate()
+
+    def test_keys_with_dots_or_dollars(self):
         class BlogPost(Document):
             info = DictField()
 
         BlogPost.drop_collection()
 
         post = BlogPost()
-        post.info = "my post"
-        with pytest.raises(ValidationError):
-            post.validate()
-
-        post.info = ["test", "test"]
-        with pytest.raises(ValidationError):
-            post.validate()
 
         post.info = {"$title": "test"}
         with pytest.raises(ValidationError):
@@ -43,19 +47,38 @@ class TestDictField(MongoDBTestCase):
         with pytest.raises(ValidationError):
             post.validate()
 
-        post.info = {"the.title": "test"}
+        post.info = {"$title.test": "test"}
         with pytest.raises(ValidationError):
             post.validate()
 
         post.info = {"nested": {"the.title": "test"}}
-        with pytest.raises(ValidationError):
+        if get_mongodb_version() < MONGODB_36:
+            # MongoDB < 3.6 rejects dots
+            # To avoid checking the mongodb version from the DictField class
+            # we rely on MongoDB to reject the data during the save
+            post.validate()
+            with pytest.raises(InvalidDocument):
+                post.save()
+        else:
             post.validate()
 
-        post.info = {1: "test"}
-        with pytest.raises(ValidationError):
+        post.info = {"dollar_and_dot": {"te$st.test": "test"}}
+        if get_mongodb_version() < MONGODB_36:
+            post.validate()
+            with pytest.raises(InvalidDocument):
+                post.save()
+        else:
             post.validate()
 
-        post.info = {"title": "test"}
+    def test_general_things(self):
+        """Ensure that dict types work as expected."""
+
+        class BlogPost(Document):
+            info = DictField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(info={"title": "test"})
         post.save()
 
         post = BlogPost()
