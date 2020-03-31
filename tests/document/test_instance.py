@@ -2464,6 +2464,37 @@ class TestDocumentInstance(MongoDBTestCase):
         author.delete()
         assert self.Person.objects.count() == 1
 
+    def test_custom_delete_rule(self):
+        def custom_delete_rule(
+            document_cls, query_set, deleted, field_name, write_concern,
+        ):
+            assert document_cls == BlogPost
+            queried = query_set.all()
+            assert len(queried) == 1 and queried[0] == author
+            assert deleted == author
+            assert field_name == "custom_delete_rule_field_name"
+            assert write_concern == {}
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person)
+
+        self.Person.register_delete_rule(
+            BlogPost, "custom_delete_rule_field_name", custom_delete_rule
+        )
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+
+        author = self.Person(name="Test User")
+        author.save()
+
+        post = BlogPost(content="Watched some TV")
+        post.author = author
+        post.save()
+
+        author.delete()
+
     def subclasses_and_unique_keys_works(self):
         class A(Document):
             pass

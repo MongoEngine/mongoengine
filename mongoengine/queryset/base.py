@@ -478,6 +478,16 @@ class BaseQuerySet(object):
                 document_cls.objects(**{field_name + "__in": self}).update(
                     write_concern=write_concern, **{"pull_all__%s" % field_name: self}
                 )
+            elif callable(rule):
+                rule(
+                    document_cls=document_cls,
+                    query_set=self,
+                    deleted=self._document,
+                    field_name=field_name,
+                    write_concern=write_concern,
+                )
+            elif rule not in (DENY, DO_NOTHING):
+                raise OperationError("Unrecognized delete rule")
 
         with set_write_concern(queryset._collection, write_concern) as collection:
             result = collection.delete_many(queryset._query)

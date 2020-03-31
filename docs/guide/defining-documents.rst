@@ -343,7 +343,7 @@ removed, the :class:`ProfilePage` that references that employee is removed as
 well.  If a whole batch of employees is removed, all profile pages that are
 linked are removed as well.
 
-Its value can take any of the following constants:
+The :attr:`reverse_delete_rule` attribute can take any of the following values:
 
 :const:`mongoengine.DO_NOTHING`
   This is the default and won't do anything.  Deletes are fast, but may cause
@@ -361,6 +361,12 @@ Its value can take any of the following constants:
   Removes the reference to the object (using MongoDB's "pull" operation)
   from any object's fields of
   :class:`~mongoengine.fields.ListField` (:class:`~mongoengine.fields.ReferenceField`).
+:meth:`delete_rule(document_cls, query_set, deleted, field_name, write_concern)`
+  If the delete rule is a callable, it will be called with the following keyword arguments:
+  ``document_cls`` is the document class that contains the :class:`ReferenceField`,
+  ``query_set`` is a query set that matches the deleted document, ``deleted`` is the document
+  that is being deleted, ``field_name`` is the name of the :class:`ReferenceField`, and
+  ``write_concern`` is the write concern that should be used (it must be treated as read-only).
 
 
 .. warning::
