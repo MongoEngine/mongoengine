@@ -2465,6 +2465,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert self.Person.objects.count() == 1
 
     def test_custom_delete_rule(self):
+        result = {"custom_delete_rule called": False}
+
         def custom_delete_rule(
             document_cls, query_set, deleted, field_name, write_concern,
         ):
@@ -2474,6 +2476,8 @@ class TestDocumentInstance(MongoDBTestCase):
             assert deleted == author
             assert field_name == "custom_delete_rule_field_name"
             assert write_concern == {}
+
+            result["custom_delete_rule called"] = True
 
         class BlogPost(Document):
             content = StringField()
@@ -2494,6 +2498,8 @@ class TestDocumentInstance(MongoDBTestCase):
         post.save()
 
         author.delete()
+
+        assert result["custom_delete_rule called"] is True
 
     def subclasses_and_unique_keys_works(self):
         class A(Document):
