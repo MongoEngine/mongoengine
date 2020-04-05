@@ -391,7 +391,7 @@ class FloatField(BaseField):
     def to_python(self, value):
         try:
             value = float(value)
-        except ValueError:
+        except (ValueError, TypeError):
             pass
         return value
 
@@ -401,6 +401,9 @@ class FloatField(BaseField):
                 value = float(value)
             except OverflowError:
                 self.error("The value is too large to be converted to float")
+
+        if value is None:
+            return
 
         if not isinstance(value, float):
             self.error("FloatField only accepts float and integer values")
