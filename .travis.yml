@@ -77,6 +77,7 @@ install:
 before_script:
   - mkdir ${PWD}/mongodb-linux-x86_64-${MONGODB}/data
   - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --dbpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/data --logpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/mongodb.log --fork
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install "pyparsing<2.0.0"; fi # fix a package dropping python2 support 
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then flake8 .; else echo "flake8 only runs on py27"; fi   # Run flake8 for Python 2.7 only
   - if [[ $TRAVIS_PYTHON_VERSION == '3.7' ]]; then black --check .; else echo "black only runs on py37"; fi   # Run black for Python 3.7 only
   - mongo --eval 'db.version();'    # Make sure mongo is awake

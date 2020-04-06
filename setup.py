@@ -122,7 +122,6 @@ extra_opts = {
         "Pillow>=2.0.0, <7.0.0",  # 7.0.0 dropped Python2 support
         "zipp<2.0.0",  # (dependency of pytest) dropped python2 support
         "configparser<5.0.0", # 5.0.0 dropped python2 support
-        "pyparsing<2.0.0", # Another package that dropped python2 support
     ],
 }
 if PY3:
