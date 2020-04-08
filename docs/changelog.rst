@@ -7,6 +7,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Add Mongo 4.0 to Travis
+- Improve Queryset.get to avoid confusing MultipleObjectsReturned message in case multiple match are found #630
 - Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
 - Add support for the `elemMatch` projection operator in .fields() (e.g BlogPost.objects.fields(elemMatch__comments="test")) #2267
 - DictField validate failed without default connection (bug introduced in 0.19.0) #2239
