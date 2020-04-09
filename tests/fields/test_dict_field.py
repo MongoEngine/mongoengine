@@ -366,3 +366,44 @@ class TestDictField(MongoDBTestCase):
         assert isinstance(s.mapping7["someint"][0]["d"], Doc)
         assert isinstance(s.mapping8["someint"][0]["d"][0], Doc)
         assert isinstance(s.mapping9["someint"][0]["d"][0], Doc)
+
+    def test_dictfield_with_none_values(self):
+        class Doc(Document):
+            field = DictField()
+
+        Doc.drop_collection()
+        Doc(field={"key": "value", "key2": None}).save()
+        d = Doc.objects.first()
+        assert {"key": "value", "key2": None} == d.field
+
+        d.field["key"] = None
+        d.save()
+        d = Doc.objects.first()
+        assert {"key": None, "key2": None} == d.field
+
+        del d.field["key"]
+        d.save()
+        d = Doc.objects.first()
+        assert {"key2": None} == d.field
+
+    def test_embedded_dictfield_with_none_values(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            field = DictField()
+
+        class Doc(Document):
+            field = ListField(EmbeddedDocumentField(EmbeddedDoc))
+
+        Doc.drop_collection()
+        Doc(field=[EmbeddedDoc(field={"key": "value", "key2": None})]).save()
+        d = Doc.objects.first()
+        assert {"key": "value", "key2": None} == d.field[0].field
+
+        d.field[0].field["key"] = None
+        d.save()
+        d = Doc.objects.first()
+        assert {"key": None, "key2": None} == d.field[0].field
+
+        del d.field[0].field["key"]
+        d.save()
+        d = Doc.objects.first()
+        assert {"key2": None} == d.field[0].field
