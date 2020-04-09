@@ -259,16 +259,18 @@ class BaseQuerySet(object):
         except StopIteration:
             msg = "%s matching query does not exist." % queryset._document._class_name
             raise queryset._document.DoesNotExist(msg)
+
         try:
+            # Check if there is another match
             six.next(queryset)
         except StopIteration:
             return result
 
         # If we were able to retrieve the 2nd doc, rewind the cursor and
         # raise the MultipleObjectsReturned exception.
-        queryset.rewind()
-        message = u"%d items returned, instead of 1" % queryset.count()
-        raise queryset._document.MultipleObjectsReturned(message)
+        raise queryset._document.MultipleObjectsReturned(
+            u"2 or more items returned, instead of 1"
+        )
 
     def create(self, **kwargs):
         """Create new object. Returns the saved object instance.

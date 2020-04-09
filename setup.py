@@ -121,6 +121,8 @@ extra_opts = {
         "blinker",
         "Pillow>=2.0.0, <7.0.0",  # 7.0.0 dropped Python2 support
         "zipp<2.0.0",  # (dependency of pytest) dropped python2 support
+        "pyparsing<3",  # sub-dependency that dropped py2 support
+        "configparser<5",  # sub-dependency that dropped py2 support
     ],
 }
 if PY3:
