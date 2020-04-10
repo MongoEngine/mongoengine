@@ -5610,10 +5610,10 @@ class TestQueryset(unittest.TestCase):
         self.Person.objects.create(name="Baz")
         assert self.Person.objects.count(with_limit_and_skip=True) == 3
 
-        newPerson = self.Person.objects.create(name="Foo_1")
+        self.Person.objects.create(name="Foo_1")
         assert self.Person.objects.count(with_limit_and_skip=True) == 4
 
-    def test_no_cursor_timeout(self):
+    def test_cursor_args_no_cursor_timeout(self):
         qs = self.Person.objects()
         assert qs._cursor_args == {}  # ensure no regression of  #2148
 
@@ -5622,6 +5622,22 @@ class TestQueryset(unittest.TestCase):
 
         qs = self.Person.objects().timeout(False)
         assert qs._cursor_args == {"no_cursor_timeout": True}
+
+    def test_cursor_args_snapshot(self):
+        self.Person.drop_collection()
+        self.Person.objects.create(name="Foo")
+        self.Person.objects.create(name="Bar")
+        self.Person.objects.create(name="Baz")
+
+        qs = self.Person.objects()
+        assert qs._cursor_args == {}
+
+        qs = self.Person.objects().snapshot(False)
+        assert qs._cursor_args == {}
+
+        qs = self.Person.objects().snapshot(True)
+        assert qs._cursor_args == {"modifiers": {"$snapshot": True}}
+        assert len(list(qs)) == 3
 
 
 if __name__ == "__main__":

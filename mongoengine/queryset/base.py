@@ -602,9 +602,7 @@ class BaseQuerySet(object):
             **update
         )
 
-    def modify(
-        self, upsert=False, full_response=False, remove=False, new=False, **update
-    ):
+    def modify(self, upsert=False, remove=False, new=False, **update):
         """Update and return the updated document.
 
         Returns either the document before or after modification based on `new`
@@ -618,8 +616,6 @@ class BaseQuerySet(object):
         information about the command's execution.
 
         :param upsert: insert if document doesn't exist (default ``False``)
-        :param full_response: return the entire response object from the
-            server (default ``False``, not available for PyMongo 3+)
         :param remove: remove rather than updating (default ``False``)
         :param new: return updated rather than original document
             (default ``False``)
@@ -641,9 +637,6 @@ class BaseQuerySet(object):
         sort = queryset._ordering
 
         try:
-            if full_response:
-                msg = "With PyMongo 3+, it is not possible anymore to get the full response."
-                warnings.warn(msg, DeprecationWarning)
             if remove:
                 result = queryset._collection.find_one_and_delete(
                     query, sort=sort, **self._cursor_args
@@ -666,14 +659,8 @@ class BaseQuerySet(object):
         except pymongo.errors.OperationFailure as err:
             raise OperationError(u"Update failed (%s)" % err)
 
-        if full_response:
-            if result["value"] is not None:
-                result["value"] = self._document._from_son(
-                    result["value"], only_fields=self.only_fields
-                )
-        else:
-            if result is not None:
-                result = self._document._from_son(result, only_fields=self.only_fields)
+        if result is not None:
+            result = self._document._from_son(result, only_fields=self.only_fields)
 
         return result
 
@@ -1153,10 +1140,7 @@ class BaseQuerySet(object):
         :param enabled: whether or not snapshot mode is enabled
 
         ..versionchanged:: 0.5 - made chainable
-        .. deprecated:: Ignored with PyMongo 3+
         """
-        msg = "snapshot is deprecated as it has no impact when using PyMongo 3+."
-        warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._snapshot = enabled
         return queryset
@@ -1596,25 +1580,23 @@ class BaseQuerySet(object):
 
     @property
     def _cursor_args(self):
-        fields_name = "projection"
-        # snapshot is not handled at all by PyMongo 3+
-        # TODO: evaluate similar possibilities using modifiers
-        if self._snapshot:
-            msg = "The snapshot option is not anymore available with PyMongo 3+"
-            warnings.warn(msg, DeprecationWarning)
+        projection_field_name = "projection"
 
         cursor_args = {}
         if not self._timeout:
             cursor_args["no_cursor_timeout"] = True
 
+        if self._snapshot:
+            cursor_args["modifiers"] = {"$snapshot": True}
+
         if self._loaded_fields:
-            cursor_args[fields_name] = self._loaded_fields.as_dict()
+            cursor_args[projection_field_name] = self._loaded_fields.as_dict()
 
         if self._search_text:
-            if fields_name not in cursor_args:
-                cursor_args[fields_name] = {}
+            if projection_field_name not in cursor_args:
+                cursor_args[projection_field_name] = {}
 
-            cursor_args[fields_name]["_text_score"] = {"$meta": "textScore"}
+            cursor_args[projection_field_name]["_text_score"] = {"$meta": "textScore"}
 
         return cursor_args
 
