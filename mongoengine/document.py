@@ -270,7 +270,16 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         if write_concern is None:
             write_concern = {"w": 1}
 
+        self_id = self.id  # useful for restoring this, if history class is being edited
         doc = self.to_mongo()
+        
+        if self.__class__.__name__.startswith("Historical") and self_id != self.history_object.id:
+            # this means the object being saved was originally a history object
+            # restore the id so that the mongo can overwrite history
+            doc.update({
+                "_id": self_id,
+                "_auto_id_0": self.history_object.id
+            })
 
         created = ('_id' not in doc or self._created or force_insert)
 
