@@ -20,7 +20,7 @@ post to the `user group <http://groups.google.com/group/mongoengine-users>`
 Supported Interpreters
 ----------------------
 
-MongoEngine supports CPython 3.7 and newer as well as Pypy3.
+MongoEngine supports CPython 3.5 and newer as well as Pypy3.
 Language features not supported by all interpreters can not be used.
 
 Python3 codebase
