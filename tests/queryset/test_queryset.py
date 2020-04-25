@@ -272,32 +272,47 @@ class TestQueryset(unittest.TestCase):
         with pytest.raises(InvalidQueryError):
             self.Person.objects(name="User A").with_id(person1.id)
 
-    def test_find_only_one(self):
-        """Ensure that a query using ``get`` returns at most one result.
-        """
+    def test_get_no_document_exists_raises_doesnotexist(self):
+        assert self.Person.objects.count() == 0
         # Try retrieving when no objects exists
         with pytest.raises(DoesNotExist):
             self.Person.objects.get()
         with pytest.raises(self.Person.DoesNotExist):
             self.Person.objects.get()
 
+    def test_get_multiple_match_raises_multipleobjectsreturned(self):
+        """Ensure that a query using ``get`` returns at most one result.
+        """
+        assert self.Person.objects().count() == 0
+
         person1 = self.Person(name="User A", age=20)
         person1.save()
-        person2 = self.Person(name="User B", age=30)
+
+        p = self.Person.objects.get()
+        assert p == person1
+
+        person2 = self.Person(name="User B", age=20)
         person2.save()
 
-        # Retrieve the first person from the database
+        person3 = self.Person(name="User C", age=30)
+        person3.save()
+
+        # .get called without argument
         with pytest.raises(MultipleObjectsReturned):
             self.Person.objects.get()
         with pytest.raises(self.Person.MultipleObjectsReturned):
             self.Person.objects.get()
 
+        # check filtering
+        with pytest.raises(MultipleObjectsReturned):
+            self.Person.objects.get(age__lt=30)
+        with pytest.raises(MultipleObjectsReturned) as exc_info:
+            self.Person.objects(age__lt=30).get()
+        assert "2 or more items returned, instead of 1" == str(exc_info.value)
+
         # Use a query to filter the people found to just person2
         person = self.Person.objects.get(age=30)
-        assert person.name == "User B"
-
-        person = self.Person.objects.get(age__lt=30)
-        assert person.name == "User A"
+        assert person == person3
 
     def test_find_array_position(self):
         """Ensure that query by array position works.
@@ -4460,6 +4475,74 @@ class TestQueryset(unittest.TestCase):
         names = self.Person.objects.scalar("name").in_bulk(list(pks)).values()
         expected = "['A1', 'A2']"
         assert expected == "%s" % sorted(names)
+
+    def test_fields(self):
+        class Bar(EmbeddedDocument):
+            v = StringField()
+            z = StringField()
+
+        class Foo(Document):
+            x = StringField()
+            y = IntField()
+            items = EmbeddedDocumentListField(Bar)
+
+        Foo.drop_collection()
+
+        Foo(x="foo1", y=1).save()
+        Foo(x="foo2", y=2, items=[]).save()
+        Foo(x="foo3", y=3, items=[Bar(z="a", v="V")]).save()
+        Foo(
+            x="foo4",
+            y=4,
+            items=[
+                Bar(z="a", v="V"),
+                Bar(z="b", v="W"),
+                Bar(z="b", v="X"),
+                Bar(z="c", v="V"),
+            ],
+        ).save()
+        Foo(
+            x="foo5",
+            y=5,
+            items=[
+                Bar(z="b", v="X"),
+                Bar(z="c", v="V"),
+                Bar(z="d", v="V"),
+                Bar(z="e", v="V"),
+            ],
+        ).save()
+
+        foos_with_x = list(Foo.objects.order_by("y").fields(x=1))
+
+        assert all(o.x is not None for o in foos_with_x)
+
+        foos_without_y = list(Foo.objects.order_by("y").fields(y=0))
+
+        assert all(o.y is None for o in foos_with_x)
+
+        foos_with_sliced_items = list(Foo.objects.order_by("y").fields(slice__items=1))
+
+        assert foos_with_sliced_items[0].items == []
+        assert foos_with_sliced_items[1].items == []
+        assert len(foos_with_sliced_items[2].items) == 1
+        assert foos_with_sliced_items[2].items[0].z == "a"
+        assert len(foos_with_sliced_items[3].items) == 1
+        assert foos_with_sliced_items[3].items[0].z == "a"
+        assert len(foos_with_sliced_items[4].items) == 1
+        assert foos_with_sliced_items[4].items[0].z == "b"
+
+        foos_with_elem_match_items = list(
+            Foo.objects.order_by("y").fields(elemMatch__items={"z": "b"})
+        )
+
+        assert foos_with_elem_match_items[0].items == []
+        assert foos_with_elem_match_items[1].items == []
+        assert foos_with_elem_match_items[2].items == []
+        assert len(foos_with_elem_match_items[3].items) == 1
+        assert foos_with_elem_match_items[3].items[0].z == "b"
+        assert foos_with_elem_match_items[3].items[0].v == "W"
+        assert len(foos_with_elem_match_items[4].items) == 1
+        assert foos_with_elem_match_items[4].items[0].z == "b"
 
     def test_elem_match(self):
         class Foo(EmbeddedDocument):

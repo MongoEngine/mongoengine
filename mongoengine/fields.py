@@ -1073,14 +1073,12 @@ class DictField(ComplexBaseField):
             msg = "Invalid dictionary key - documents must have only string keys"
             self.error(msg)
 
-        curr_mongo_ver = get_mongodb_version()
-
-        if curr_mongo_ver < MONGODB_36 and key_has_dot_or_dollar(value):
-            self.error(
-                'Invalid dictionary key name - keys may not contain "."'
-                ' or startswith "$" characters'
-            )
-        elif curr_mongo_ver >= MONGODB_36 and key_starts_with_dollar(value):
+        # Following condition applies to MongoDB >= 3.6
+        # older Mongo has stricter constraints but
+        # it will be rejected upon insertion anyway
+        # Having a validation that depends on the MongoDB version
+        # is not straightforward as the field isn't aware of the connected Mongo
+        if key_starts_with_dollar(value):
             self.error(
                 'Invalid dictionary key name - keys may not startswith "$" characters'
             )

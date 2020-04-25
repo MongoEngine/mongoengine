@@ -805,18 +805,6 @@ class TestIndexes(unittest.TestCase):
         info = Log.objects._collection.index_information()
         assert 3600 == info["created_1"]["expireAfterSeconds"]
 
-    def test_index_drop_dups_silently_ignored(self):
-        class Customer(Document):
-            cust_id = IntField(unique=True, required=True)
-            meta = {
-                "indexes": ["cust_id"],
-                "index_drop_dups": True,
-                "allow_inheritance": False,
-            }
-
-        Customer.drop_collection()
-        Customer.objects.first()
-
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
         meta.indexes.
@@ -1057,10 +1045,6 @@ class TestIndexes(unittest.TestCase):
                 del index_info[key][
                     "ns"
                 ]  # drop the index namespace - we don't care about that here, MongoDB 3+
-            if "dropDups" in index_info[key]:
-                del index_info[key][
-                    "dropDups"
-                ]  # drop the index dropDups - it is deprecated in MongoDB 3+
 
         assert index_info == {
             "txt_1": {"key": [("txt", 1)], "background": False},
