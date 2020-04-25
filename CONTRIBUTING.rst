@@ -35,8 +35,28 @@ Travis runs the tests against the main Python 3.x versions.
 Style Guide
 -----------
 
-MongoEngine uses `black <https://github.com/python/black>`_ for code formatting.
-Black runs as part of the CI so it will fail in case the code is not formatted properly.
+MongoEngine's codebase is formatted with `black <https://github.com/python/black>`_, other tools like
+flake8 are also used. Those tools will run as part of the CI and will fail in case the code is not formatted properly.
+
+To install all development tools, simply run the following commands:
+
+.. code-block:: console
+
+    $ python -m pip install -r requirements-dev.txt
+
+
+You can install `pre-commit <https://pre-commit.com/>`_ into your git hooks,
+to automatically check and fix any formatting issue before creating a
+git commit.
+
+To enable ``pre-commit`` simply run:
+
+.. code-block:: console
+
+    $ pre-commit install
+
+See the ``.pre-commit-config.yaml`` configuration file for more information
+on how it works.
 
 Testing
 -------

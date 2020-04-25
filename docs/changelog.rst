@@ -18,6 +18,8 @@ Development
     - Queryset.slave_okay() was deprecated since pymongo3
     - dropDups was dropped with MongoDB3
     - ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes``, the right method to use is ``Document.ensure_indexes``
+- Added pre-commit #2212
+- Renamed requirements-lint.txt to requirements-dev.txt #2212
 
 Changes in 0.19.1
 =================

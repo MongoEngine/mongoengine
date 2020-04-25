@@ -1414,7 +1414,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert raw_doc["first_name"] == "John"
 
     def test_inserts_if_you_set_the_pk(self):
-        p1 = self.Person(name="p1", id=bson.ObjectId()).save()
+        _ = self.Person(name="p1", id=bson.ObjectId()).save()
         p2 = self.Person(name="p2")
         p2.id = bson.ObjectId()
         p2.save()
@@ -2195,7 +2195,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         user = User(name="Mike").save()
         reviewer = User(name="John").save()
-        book = Book(author=user, reviewer=reviewer).save()
+        _ = Book(author=user, reviewer=reviewer).save()
 
         reviewer.delete()
         assert Book.objects.count() == 1
@@ -2221,7 +2221,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         user_1 = User(id=1).save()
         user_2 = User(id=2).save()
-        book_1 = Book(id=1, author=user_2).save()
+        _ = Book(id=1, author=user_2).save()
         book_2 = Book(id=2, author=user_1).save()
 
         user_2.delete()
@@ -2230,7 +2230,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert Book.objects.get() == book_2
 
         user_3 = User(id=3).save()
-        book_3 = Book(id=3, author=user_3).save()
+        _ = Book(id=3, author=user_3).save()
 
         user_3.delete()
         # Deleting user_3 should also delete book_3
@@ -3204,7 +3204,7 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_positional_creation(self):
         """Document cannot be instantiated using positional arguments."""
         with pytest.raises(TypeError) as exc_info:
-            person = self.Person("Test User", 42)
+            self.Person("Test User", 42)
 
         expected_msg = (
             "Instantiating a document with positional arguments is not "
@@ -3606,13 +3606,13 @@ class TestDocumentInstance(MongoDBTestCase):
             v = StringField()
 
         class A(Document):
-            l = ListField(EmbeddedDocumentField(B))
+            array = ListField(EmbeddedDocumentField(B))
 
         A.objects.delete()
-        A(l=[B(v="1"), B(v="2"), B(v="3")]).save()
+        A(array=[B(v="1"), B(v="2"), B(v="3")]).save()
         a = A.objects.get()
-        assert a.l._instance == a
-        for idx, b in enumerate(a.l):
+        assert a.array._instance == a
+        for idx, b in enumerate(a.array):
             assert b._instance == a
         assert idx == 2
 

@@ -34,7 +34,7 @@ with MongoDB version > 4.0.
 Installation
 ============
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
-`pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
+`pip <https://pip.pypa.io/>`_. You can then use ``python -m pip install -U mongoengine``.
 You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
 and thus you can use ``easy_install -U mongoengine``. Another option is
 `pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
@@ -46,7 +46,7 @@ The support for Python2 was dropped with MongoEngine 0.20.0
 
 Dependencies
 ============
-All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
+All of the dependencies can easily be installed via `python -m pip <https://pip.pypa.io/>`_.
 At the very least, you'll need these two packages to use MongoEngine:
 
 - pymongo>=3.4
@@ -130,7 +130,7 @@ installed in your environment and then:
 .. code-block:: shell
 
     # Install tox
-    $ pip install tox
+    $ python -m pip install tox
     # Run the test suites
     $ tox
 
