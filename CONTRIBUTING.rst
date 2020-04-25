@@ -20,18 +20,23 @@ post to the `user group <http://groups.google.com/group/mongoengine-users>`
 Supported Interpreters
 ----------------------
 
-MongoEngine supports CPython 2.7 and newer. Language
-features not supported by all interpreters can not be used.
-The codebase is written in python 2 so you must be using python 2
-when developing new features. Compatibility of the library with Python 3
-relies on the 2to3 package that gets executed as part of the installation
-build. You should ensure that your code is properly converted by
-`2to3 <http://docs.python.org/library/2to3.html>`_.
+MongoEngine supports CPython 3.5 and newer as well as Pypy3.
+Language features not supported by all interpreters can not be used.
+
+Python3 codebase
+----------------------
+
+Since 0.20, the codebase is exclusively Python 3.
+
+Earlier versions were exclusively Python2, and were relying on 2to3 to support Python3 installs.
+Travis runs the tests against the main Python 3.x versions.
+
 
 Style Guide
 -----------
 
-MongoEngine uses various tools to maintain a common coding style.
+MongoEngine's codebase is formatted with `black <https://github.com/python/black>`_, other tools like
+flake8 are also used. Those tools will run as part of the CI and will fail in case the code is not formatted properly.
 
 To install all development tools, simply run the following commands:
 
@@ -52,7 +57,6 @@ To enable ``pre-commit`` simply run:
 
 See the ``.pre-commit-config.yaml`` configuration file for more information
 on how it works.
-
 
 Testing
 -------

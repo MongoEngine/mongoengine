@@ -7,7 +7,7 @@ from mongoengine.queryset import transform
 __all__ = ("Q", "QNode")
 
 
-class QNodeVisitor(object):
+class QNodeVisitor:
     """Base visitor class for visiting Q-object nodes in a query tree.
     """
 
@@ -79,7 +79,7 @@ class QueryCompilerVisitor(QNodeVisitor):
         return transform.query(self.document, **query.query)
 
 
-class QNode(object):
+class QNode:
     """Base class for nodes in query trees."""
 
     AND = 0
@@ -143,8 +143,6 @@ class QCombination(QNode):
     def __bool__(self):
         return bool(self.children)
 
-    __nonzero__ = __bool__  # For Py2 support
-
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -179,8 +177,6 @@ class Q(QNode):
 
     def __bool__(self):
         return bool(self.query)
-
-    __nonzero__ = __bool__  # For Py2 support
 
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.query == other.query
