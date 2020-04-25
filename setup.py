@@ -92,7 +92,7 @@ version_line = list(filter(lambda l: l.startswith("VERSION"), open(init)))[0]
 VERSION = get_version(eval(version_line.split("=")[-1]))
 
 CLASSIFIERS = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
