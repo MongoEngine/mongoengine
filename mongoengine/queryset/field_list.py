@@ -1,7 +1,7 @@
 __all__ = ("QueryFieldList",)
 
 
-class QueryFieldList(object):
+class QueryFieldList:
     """Object that handles combinations of .only() and .exclude() calls"""
 
     ONLY = 1
@@ -69,8 +69,6 @@ class QueryFieldList(object):
     def __bool__(self):
         return bool(self.fields)
 
-    __nonzero__ = __bool__  # For Py2 support
-
     def as_dict(self):
         field_list = {field: self.value for field in self.fields}
         if self.slice:
@@ -80,7 +78,7 @@ class QueryFieldList(object):
         return field_list
 
     def reset(self):
-        self.fields = set([])
+        self.fields = set()
         self.slice = {}
         self.value = self.ONLY
 

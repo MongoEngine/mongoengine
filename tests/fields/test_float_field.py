@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import pytest
-import six
 
 from mongoengine import *
 
@@ -52,9 +51,8 @@ class TestFloatField(MongoDBTestCase):
 
         big_person = BigPerson()
 
-        for value, value_type in enumerate(six.integer_types):
-            big_person.height = value_type(value)
-            big_person.validate()
+        big_person.height = int(0)
+        big_person.validate()
 
         big_person.height = 2 ** 500
         big_person.validate()

@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- ATTENTION: Drop support for Python2
 - Add Mongo 4.0 to Travis
 - Bump development Status classifier to Production/Stable #2232
 - Improve Queryset.get to avoid confusing MultipleObjectsReturned message in case multiple match are found #630

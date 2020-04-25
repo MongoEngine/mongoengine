@@ -10,8 +10,6 @@ import pymongo
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 import pytest
-import six
-from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -110,7 +108,7 @@ class TestQueryset(unittest.TestCase):
         # Filter people by age
         people = self.Person.objects(age=20)
         assert people.count() == 1
-        person = people.next()
+        person = next(people)
         assert person == user_a
         assert person.name == "User A"
         assert person.age == 20
@@ -2783,7 +2781,7 @@ class TestQueryset(unittest.TestCase):
         )
 
         # start a map/reduce
-        cursor.next()
+        next(cursor)
 
         results = Person.objects.map_reduce(
             map_f=map_person,
@@ -4108,7 +4106,7 @@ class TestQueryset(unittest.TestCase):
         info = Comment.objects._collection.index_information()
         info = [
             (value["key"], value.get("unique", False), value.get("sparse", False))
-            for key, value in iteritems(info)
+            for key, value in info.items()
         ]
         assert ([("_cls", 1), ("message", 1)], False, False) in info
 
@@ -4410,7 +4408,7 @@ class TestQueryset(unittest.TestCase):
         # Use a query to filter the people found to just person1
         people = self.Person.objects(age=20).scalar("name")
         assert people.count() == 1
-        person = people.next()
+        person = next(people)
         assert person == "User A"
 
         # Test limit
@@ -4460,24 +4458,14 @@ class TestQueryset(unittest.TestCase):
             "A0" == "%s" % self.Person.objects.order_by("name").scalar("name").first()
         )
         assert "A0" == "%s" % self.Person.objects.scalar("name").order_by("name")[0]
-        if six.PY3:
-            assert (
-                "['A1', 'A2']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
-            )
-            assert (
-                "['A51', 'A52']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
-            )
-        else:
-            assert (
-                "[u'A1', u'A2']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
-            )
-            assert (
-                "[u'A51', u'A52']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
-            )
+        assert (
+            "['A1', 'A2']"
+            == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
+        )
+        assert (
+            "['A51', 'A52']"
+            == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
+        )
 
         # with_id and in_bulk
         person = self.Person.objects.order_by("name").first()
@@ -4485,10 +4473,7 @@ class TestQueryset(unittest.TestCase):
 
         pks = self.Person.objects.order_by("age").scalar("pk")[1:3]
         names = self.Person.objects.scalar("name").in_bulk(list(pks)).values()
-        if six.PY3:
-            expected = "['A1', 'A2']"
-        else:
-            expected = "[u'A1', u'A2']"
+        expected = "['A1', 'A2']"
         assert expected == "%s" % sorted(names)
 
     def test_fields(self):
@@ -5377,7 +5362,7 @@ class TestQueryset(unittest.TestCase):
         if not test:
             raise AssertionError("Cursor has data and returned False")
 
-        queryset.next()
+        next(queryset)
         if not queryset:
             raise AssertionError(
                 "Cursor has data and it must returns True, even in the last item."

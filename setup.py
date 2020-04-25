@@ -97,20 +97,16 @@ CLASSIFIERS = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 2",
-    "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-
-PYTHON_VERSION = sys.version_info[0]
-PY3 = PYTHON_VERSION == 3
-PY2 = PYTHON_VERSION == 2
 
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
@@ -120,20 +116,14 @@ extra_opts = {
         "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
         "blinker",
         "Pillow>=2.0.0, <7.0.0",  # 7.0.0 dropped Python2 support
-        "zipp<2.0.0",  # (dependency of pytest) dropped python2 support
-        "pyparsing<3",  # sub-dependency that dropped py2 support
-        "configparser<5",  # sub-dependency that dropped py2 support
     ],
 }
-if PY3:
-    extra_opts["use_2to3"] = True
-    if "test" in sys.argv:
-        extra_opts["packages"] = find_packages()
-        extra_opts["package_data"] = {
-            "tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]
-        }
-else:
-    extra_opts["tests_require"] += ["python-dateutil"]
+
+if "test" in sys.argv:
+    extra_opts["packages"] = find_packages()
+    extra_opts["package_data"] = {
+        "tests": ["fields/mongoengine.png", "fields/mongodb_leaf.png"]
+    }
 
 setup(
     name="mongoengine",
@@ -150,7 +140,8 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    install_requires=["pymongo>=3.4, <4.0", "six>=1.10.0"],
+    python_requires=">=3.5",
+    install_requires=["pymongo>=3.4, <4.0"],
     cmdclass={"test": PyTest},
     **extra_opts
 )

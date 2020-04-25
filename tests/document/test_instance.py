@@ -10,7 +10,6 @@ import bson
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 import pytest
-from six import iteritems
 
 from mongoengine import *
 from mongoengine import signals
@@ -3274,7 +3273,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in iteritems(self.parameters):
+                for parameter_name, parameter in self.parameters.items():
                     parameter.expand()
 
         class NodesSystem(Document):
@@ -3282,7 +3281,7 @@ class TestDocumentInstance(MongoDBTestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in iteritems(self.nodes):
+                for node_name, node in self.nodes.items():
                     node.expand()
                     node.save(*args, **kwargs)
                 super(NodesSystem, self).save(*args, **kwargs)
