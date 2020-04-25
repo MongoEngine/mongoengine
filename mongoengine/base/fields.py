@@ -36,7 +36,6 @@ class BaseField(object):
     def __init__(
         self,
         db_field=None,
-        name=None,
         required=False,
         default=None,
         unique=False,
@@ -51,7 +50,6 @@ class BaseField(object):
         """
         :param db_field: The database field to store this field in
             (defaults to the name of the field)
-        :param name: Deprecated - use db_field
         :param required: If the field is required. Whether it has to have a
             value or not. Defaults to False.
         :param default: (optional) The default value for this field if no value
@@ -75,11 +73,8 @@ class BaseField(object):
             existing attributes. Common metadata includes `verbose_name` and
             `help_text`.
         """
-        self.db_field = (db_field or name) if not primary_key else "_id"
+        self.db_field = db_field if not primary_key else "_id"
 
-        if name:
-            msg = 'Field\'s "name" attribute deprecated in favour of "db_field"'
-            warnings.warn(msg, DeprecationWarning)
         self.required = required or primary_key
         self.default = default
         self.unique = bool(unique or unique_with)

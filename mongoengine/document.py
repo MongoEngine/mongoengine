@@ -56,7 +56,7 @@ class InvalidCollectionError(Exception):
 
 
 class EmbeddedDocument(six.with_metaclass(DocumentMetaclass, BaseDocument)):
-    """A :class:`~mongoengine.Document` that isn't stored in its own
+    r"""A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
     :class:`~mongoengine.EmbeddedDocumentField` field type.
@@ -332,7 +332,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
-        created.
+        created. Returns the saved object instance.
 
         :param force_insert: only try to create a new document, don't allow
             updates of existing documents.
@@ -851,17 +851,13 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         index_spec = cls._build_index_spec(keys)
         index_spec = index_spec.copy()
         fields = index_spec.pop("fields")
-        drop_dups = kwargs.get("drop_dups", False)
-        if drop_dups:
-            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
-            warnings.warn(msg, DeprecationWarning)
         index_spec["background"] = background
         index_spec.update(kwargs)
 
         return cls._get_collection().create_index(fields, **index_spec)
 
     @classmethod
-    def ensure_index(cls, key_or_list, drop_dups=False, background=False, **kwargs):
+    def ensure_index(cls, key_or_list, background=False, **kwargs):
         """Ensure that the given indexes are in place. Deprecated in favour
         of create_index.
 
@@ -869,12 +865,7 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             construct a multi-field index); keys may be prefixed with a **+**
             or a **-** to determine the index ordering
         :param background: Allows index creation in the background
-        :param drop_dups: Was removed/ignored with MongoDB >2.7.5. The value
-            will be removed if PyMongo3+ is used
         """
-        if drop_dups:
-            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
-            warnings.warn(msg, DeprecationWarning)
         return cls.create_index(key_or_list, background=background, **kwargs)
 
     @classmethod
@@ -887,12 +878,8 @@ class Document(six.with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                   `auto_create_index` to False in the documents meta data
         """
         background = cls._meta.get("index_background", False)
-        drop_dups = cls._meta.get("index_drop_dups", False)
         index_opts = cls._meta.get("index_opts") or {}
         index_cls = cls._meta.get("index_cls", True)
-        if drop_dups:
-            msg = "drop_dups is deprecated and is removed when using PyMongo 3+."
-            warnings.warn(msg, DeprecationWarning)
 
         collection = cls._get_collection()
         # 746: when connection is via mongos, the read preference is not necessarily an indication that
