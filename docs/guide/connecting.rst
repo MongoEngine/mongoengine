@@ -86,7 +86,7 @@ using 3 different databases to store data::
         connect(alias='user-db-alias', db='user-db')
         connect(alias='book-db-alias', db='book-db')
         connect(alias='users-books-db-alias', db='users-books-db')
-        
+
         class User(Document):
             name = StringField()
 
