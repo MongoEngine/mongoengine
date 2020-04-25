@@ -2,10 +2,8 @@
 import unittest
 
 from bson import DBRef, ObjectId
-from six import iteritems
 
 from mongoengine import *
-from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter
 
 
@@ -739,7 +737,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, User)
 
         # Document select_related
@@ -752,7 +750,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, User)
 
         # Queryset select_related
@@ -766,7 +764,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 2
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert isinstance(m, User)
 
         User.drop_collection()
@@ -820,7 +818,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Document select_related
@@ -836,7 +834,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Queryset select_related
@@ -853,7 +851,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 4
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert "User" in m.__class__.__name__
 
         Group.objects.delete()
@@ -910,7 +908,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, UserA)
 
         # Document select_related
@@ -926,7 +924,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, UserA)
 
         # Queryset select_related
@@ -943,7 +941,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 2
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert isinstance(m, UserA)
 
         UserA.drop_collection()
@@ -997,7 +995,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Document select_related
@@ -1013,7 +1011,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Queryset select_related
@@ -1030,7 +1028,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 4
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert "User" in m.__class__.__name__
 
         Group.objects.delete()

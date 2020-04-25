@@ -7,7 +7,7 @@ MongoDB. To install it, simply run
 
 .. code-block:: console
 
-    $ pip install -U mongoengine
+    $ python -m pip install -U mongoengine
 
 :doc:`tutorial`
   A quick tutorial building a tumblelog to get you up and running with
@@ -91,4 +91,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

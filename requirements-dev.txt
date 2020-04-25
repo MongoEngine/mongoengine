@@ -1,0 +1,8 @@
+black
+flake8
+flake8-import-order
+pre-commit
+pytest
+ipdb
+ipython
+tox

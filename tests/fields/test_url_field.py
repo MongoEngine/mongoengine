@@ -2,7 +2,6 @@
 import pytest
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
 
 
@@ -35,7 +34,7 @@ class TestURLField(MongoDBTestCase):
         with pytest.raises(ValidationError) as exc_info:
             link.validate()
         assert (
-            unicode(exc_info.value)
+            str(exc_info.value)
             == u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
         )
 
