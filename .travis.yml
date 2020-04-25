@@ -33,7 +33,7 @@ env:
     - PYMONGO_3_9=3.9
     - PYMONGO_3_10=3.10
 
-    - MAIN_PYTHON_VERSION = "3.7"
+    - MAIN_PYTHON_VERSION=3.7
   matrix:
     - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_10}
 
