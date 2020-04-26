@@ -8,10 +8,10 @@ from mongoengine.context_managers import (
     no_dereference,
     no_sub_classes,
     query_counter,
+    set_read_write_concern,
+    set_write_concern,
     switch_collection,
     switch_db,
-    set_write_concern,
-    set_read_write_concern,
 )
 from mongoengine.pymongo_support import count_documents
 

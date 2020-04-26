@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 
-from pymongo.write_concern import WriteConcern
 from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
 
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
@@ -268,11 +268,11 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
         combined_write_concerns.update(write_concerns)
 
     combined_read_concerns = dict(collection.read_concern.document.items())
-    
+
     if read_concerns is not None:
         combined_read_concerns.update(read_concerns)
 
     yield collection.with_options(
         write_concern=WriteConcern(**combined_write_concerns),
-        read_concern=ReadConcern(**combined_read_concerns)
+        read_concern=ReadConcern(**combined_read_concerns),
     )

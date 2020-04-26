@@ -1206,7 +1206,9 @@ class BaseQuerySet:
             raise TypeError("%r is not a valid read concern." % (read_concern,))
 
         queryset = self.clone()
-        queryset._read_concern = ReadConcern(**read_concern) if read_concern is not None else None
+        queryset._read_concern = (
+            ReadConcern(**read_concern) if read_concern is not None else None
+        )
         queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_concern
         return queryset
 
