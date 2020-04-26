@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from bson import DBRef, ObjectId
 import pymongo
+from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 import pytest
@@ -4725,6 +4726,46 @@ class TestQueryset(unittest.TestCase):
             ReadPreference.SECONDARY_PREFERRED
         )
         assert_read_pref(bars, ReadPreference.SECONDARY_PREFERRED)
+
+    def test_read_concern(self):
+        class Bar(Document):
+            txt = StringField()
+
+            meta = {"indexes": ["txt"]}
+
+        Bar.drop_collection()
+        bar = Bar.objects.create(txt="xyz")
+
+        bars = list(Bar.objects.read_concern(None))
+        assert bars == [bar]
+
+        bars = Bar.objects.read_concern({"level": "local"})
+        assert bars._read_concern.document == {"level": "local"}
+        assert bars._cursor.collection.read_concern.document == {"level": "local"}
+
+        # Make sure that `.read_concern(...)` does not accept string values.
+        with pytest.raises(TypeError):
+            Bar.objects.read_concern("local")
+
+        def assert_read_concern(qs, expected_read_concern):
+            assert qs._read_concern.document == expected_read_concern
+            assert qs._cursor.collection.read_concern.document == expected_read_concern
+
+        # Make sure read concern is respected after a `.skip(...)`.
+        bars = Bar.objects.skip(1).read_concern({"level": "local"})
+        assert_read_concern(bars, {"level": "local"})
+
+        # Make sure read concern is respected after a `.limit(...)`.
+        bars = Bar.objects.limit(1).read_concern({"level": "local"})
+        assert_read_concern(bars, {"level": "local"})
+
+        # Make sure read concern is respected after an `.order_by(...)`.
+        bars = Bar.objects.order_by("txt").read_concern({"level": "local"})
+        assert_read_concern(bars, {"level": "local"})
+
+        # Make sure read concern is respected after a `.hint(...)`.
+        bars = Bar.objects.hint([("txt", 1)]).read_concern({"level": "majority"})
+        assert_read_concern(bars, {"level": "majority"})
 
     def test_json_simple(self):
         class Embedded(EmbeddedDocument):

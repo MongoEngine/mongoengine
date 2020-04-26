@@ -21,6 +21,7 @@ Development
     - ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes``, the right method to use is ``Document.ensure_indexes``
 - Added pre-commit #2212
 - Renamed requirements-lint.txt to requirements-dev.txt #2212
+- Support for setting ReadConcern #2255
 
 Changes in 0.19.1
 =================
