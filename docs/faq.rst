@@ -10,4 +10,3 @@ If this is a requirement for your project, check the alternative:  `uMongo`_ and
 
 .. _uMongo: https://umongo.readthedocs.io/
 .. _MotorEngine: https://motorengine.readthedocs.io/
-

@@ -2,7 +2,6 @@ from contextlib import contextmanager
 
 from pymongo.write_concern import WriteConcern
 from pymongo.read_concern import ReadConcern
-from six import iteritems
 
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
@@ -19,7 +18,7 @@ __all__ = (
 )
 
 
-class switch_db(object):
+class switch_db:
     """switch_db alias context manager.
 
     Example ::
@@ -60,7 +59,7 @@ class switch_db(object):
         self.cls._collection = self.collection
 
 
-class switch_collection(object):
+class switch_collection:
     """switch_collection alias context manager.
 
     Example ::
@@ -102,7 +101,7 @@ class switch_collection(object):
         self.cls._get_collection_name = self.ori_get_collection_name
 
 
-class no_dereference(object):
+class no_dereference:
     """no_dereference context manager.
 
     Turns off all dereferencing in Documents for the duration of the context
@@ -125,7 +124,7 @@ class no_dereference(object):
 
         self.deref_fields = [
             k
-            for k, v in iteritems(self.cls._fields)
+            for k, v in self.cls._fields.items()
             if isinstance(v, (ReferenceField, GenericReferenceField, ComplexBaseField))
         ]
 
@@ -142,7 +141,7 @@ class no_dereference(object):
         return self.cls
 
 
-class no_sub_classes(object):
+class no_sub_classes:
     """no_sub_classes context manager.
 
     Only returns instances of this class and no sub (inherited) classes::
@@ -170,7 +169,7 @@ class no_sub_classes(object):
         self.cls._subclasses = self.cls_initial_subclasses
 
 
-class query_counter(object):
+class query_counter:
     """Query_counter context manager to get the number of queries.
     This works by updating the `profiling_level` of the database so that all queries get logged,
     resetting the db.system.profile collection at the beginning of the context and counting the new entries.
@@ -237,7 +236,7 @@ class query_counter(object):
 
     def __repr__(self):
         """repr query_counter as the number of queries."""
-        return u"%s" % self._get_count()
+        return "%s" % self._get_count()
 
     def _get_count(self):
         """Get the number of queries by counting the current number of entries in db.system.profile

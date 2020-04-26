@@ -264,7 +264,7 @@ class TestContextManagers:
 
     def test_query_counter_does_not_swallow_exception(self):
         with pytest.raises(TypeError):
-            with query_counter() as q:
+            with query_counter():
                 raise TypeError()
 
     def test_query_counter_temporarily_modifies_profiling_level(self):
@@ -274,12 +274,12 @@ class TestContextManagers:
         initial_profiling_level = db.profiling_level()
 
         try:
-            NEW_LEVEL = 1
-            db.set_profiling_level(NEW_LEVEL)
-            assert db.profiling_level() == NEW_LEVEL
-            with query_counter() as q:
+            new_level = 1
+            db.set_profiling_level(new_level)
+            assert db.profiling_level() == new_level
+            with query_counter():
                 assert db.profiling_level() == 2
-            assert db.profiling_level() == NEW_LEVEL
+            assert db.profiling_level() == new_level
         except Exception:
             db.set_profiling_level(
                 initial_profiling_level

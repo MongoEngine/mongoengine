@@ -4,7 +4,7 @@ from mongoengine.queryset.queryset import QuerySet
 __all__ = ("queryset_manager", "QuerySetManager")
 
 
-class QuerySetManager(object):
+class QuerySetManager:
     """
     The default QuerySet Manager.
 

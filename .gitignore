@@ -1,8 +1,15 @@
-.*
 !.gitignore
 *~
 *.py[co]
 .*.sw[po]
+.cache/
+.coverage
+.coveragerc
+.env
+.idea/
+.pytest_cache/
+.tox/
+.eggs/
 *.egg
 docs/.build
 docs/_build
@@ -13,8 +20,6 @@ env/
 .settings
 .project
 .pydevproject
-tests/test_bugfix.py
 htmlcov/
 venv
 venv3
-scratchpad

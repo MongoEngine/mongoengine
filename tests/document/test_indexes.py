@@ -5,7 +5,6 @@ from datetime import datetime
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
 import pytest
-from six import iteritems
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -59,7 +58,7 @@ class TestIndexes(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         # _id, '-date', 'tags', ('cat', 'date')
         assert len(info) == 4
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         for expected in expected_specs:
             assert expected["fields"] in info
 
@@ -87,7 +86,7 @@ class TestIndexes(unittest.TestCase):
         # the indices on -date and tags will both contain
         # _cls as first element in the key
         assert len(info) == 4
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         for expected in expected_specs:
             assert expected["fields"] in info
 
@@ -102,7 +101,7 @@ class TestIndexes(unittest.TestCase):
 
         ExtendedBlogPost.ensure_indexes()
         info = ExtendedBlogPost.objects._collection.index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         for expected in expected_specs:
             assert expected["fields"] in info
 
@@ -192,7 +191,7 @@ class TestIndexes(unittest.TestCase):
         # Indexes are lazy so use list() to perform query
         list(Person.objects)
         info = Person.objects._collection.index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("rank.title", 1)] in info
 
     def test_explicit_geo2d_index(self):
@@ -207,7 +206,7 @@ class TestIndexes(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("location.point", "2d")] in info
 
     def test_explicit_geo2d_index_embedded(self):
@@ -227,7 +226,7 @@ class TestIndexes(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("current.location.point", "2d")] in info
 
     def test_explicit_geosphere_index(self):
@@ -244,7 +243,7 @@ class TestIndexes(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("location.point", "2dsphere")] in info
 
     def test_explicit_geohaystack_index(self):
@@ -266,7 +265,7 @@ class TestIndexes(unittest.TestCase):
 
         Place.ensure_indexes()
         info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("location.point", "geoHaystack")] in info
 
     def test_create_geohaystack_index(self):
@@ -279,7 +278,7 @@ class TestIndexes(unittest.TestCase):
 
         Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
         info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("location.point", "geoHaystack"), ("name", 1)] in info
 
     def test_dictionary_indexes(self):
@@ -308,7 +307,7 @@ class TestIndexes(unittest.TestCase):
         info = BlogPost.objects._collection.index_information()
         info = [
             (value["key"], value.get("unique", False), value.get("sparse", False))
-            for key, value in iteritems(info)
+            for key, value in info.items()
         ]
         assert ([("addDate", -1)], True, True) in info
 
@@ -806,18 +805,6 @@ class TestIndexes(unittest.TestCase):
         info = Log.objects._collection.index_information()
         assert 3600 == info["created_1"]["expireAfterSeconds"]
 
-    def test_index_drop_dups_silently_ignored(self):
-        class Customer(Document):
-            cust_id = IntField(unique=True, required=True)
-            meta = {
-                "indexes": ["cust_id"],
-                "index_drop_dups": True,
-                "allow_inheritance": False,
-            }
-
-        Customer.drop_collection()
-        Customer.objects.first()
-
     def test_unique_and_indexes(self):
         """Ensure that 'unique' constraints aren't overridden by
         meta.indexes.
@@ -901,7 +888,7 @@ class TestIndexes(unittest.TestCase):
             self.fail("Unbound local error at index + pk definition")
 
         info = BlogPost.objects._collection.index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         index_item = [("_id", 1), ("comments.comment_id", 1)]
         assert index_item in info
 
@@ -942,7 +929,7 @@ class TestIndexes(unittest.TestCase):
             meta = {"indexes": ["provider_ids.foo", "provider_ids.bar"]}
 
         info = MyDoc.objects._collection.index_information()
-        info = [value["key"] for key, value in iteritems(info)]
+        info = [value["key"] for key, value in info.items()]
         assert [("provider_ids.foo", 1)] in info
         assert [("provider_ids.bar", 1)] in info
 
@@ -1058,10 +1045,6 @@ class TestIndexes(unittest.TestCase):
                 del index_info[key][
                     "ns"
                 ]  # drop the index namespace - we don't care about that here, MongoDB 3+
-            if "dropDups" in index_info[key]:
-                del index_info[key][
-                    "dropDups"
-                ]  # drop the index dropDups - it is deprecated in MongoDB 3+
 
         assert index_info == {
             "txt_1": {"key": [("txt", 1)], "background": False},

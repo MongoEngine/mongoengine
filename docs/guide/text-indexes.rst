@@ -8,7 +8,7 @@ After MongoDB 2.4 version, supports search documents by text indexes.
 Defining a Document with text index
 ===================================
 Use the *$* prefix to set a text index, Look the declaration::
-  
+
   class News(Document):
       title = StringField()
       content = StringField()
@@ -35,10 +35,10 @@ Saving a document::
        content="Various improvements").save()
 
 Next, start a text search using :attr:`QuerySet.search_text` method::
-  
+
   document = News.objects.search_text('testing').first()
   document.title # may be: "Using mongodb text search"
-  
+
   document = News.objects.search_text('released').first()
   document.title # may be: "MongoEngine 0.9 released"
 

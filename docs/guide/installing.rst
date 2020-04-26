@@ -12,7 +12,7 @@ MongoEngine is available on PyPI, so you can use :program:`pip`:
 
 .. code-block:: console
 
-    $ pip install mongoengine
+    $ python -m pip install mongoengine
 
 Alternatively, if you don't have setuptools installed, `download it from PyPi
 <http://pypi.python.org/pypi/mongoengine/>`_ and run
