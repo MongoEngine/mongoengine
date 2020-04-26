@@ -116,7 +116,7 @@ class TestQueryset(unittest.TestCase):
     def test_limit(self):
         """Ensure that QuerySet.limit works as expected."""
         user_a = self.Person.objects.create(name="User A", age=20)
-        user_b = self.Person.objects.create(name="User B", age=30)
+        _ = self.Person.objects.create(name="User B", age=30)
 
         # Test limit on a new queryset
         people = list(self.Person.objects.limit(1))
@@ -148,6 +148,11 @@ class TestQueryset(unittest.TestCase):
         user_b = self.Person.objects.create(name="User B", age=30)
 
         # Test skip on a new queryset
+        people = list(self.Person.objects.skip(0))
+        assert len(people) == 2
+        assert people[0] == user_a
+        assert people[1] == user_b
+
         people = list(self.Person.objects.skip(1))
         assert len(people) == 1
         assert people[0] == user_b
@@ -2586,13 +2591,8 @@ class TestQueryset(unittest.TestCase):
             age = IntField()
 
         with db_ops_tracker() as q:
-            adult1 = (
-                User.objects.filter(age__gte=18).comment("looking for an adult").first()
-            )
-
-            adult2 = (
-                User.objects.comment("looking for an adult").filter(age__gte=18).first()
-            )
+            User.objects.filter(age__gte=18).comment("looking for an adult").first()
+            User.objects.comment("looking for an adult").filter(age__gte=18).first()
 
             ops = q.get_ops()
             assert len(ops) == 2
@@ -4518,7 +4518,7 @@ class TestQueryset(unittest.TestCase):
 
         foos_without_y = list(Foo.objects.order_by("y").fields(y=0))
 
-        assert all(o.y is None for o in foos_with_x)
+        assert all(o.y is None for o in foos_without_y)
 
         foos_with_sliced_items = list(Foo.objects.order_by("y").fields(slice__items=1))
 
@@ -5595,7 +5595,7 @@ class TestQueryset(unittest.TestCase):
         self.Person.objects.create(name="Baz")
         assert self.Person.objects.count(with_limit_and_skip=True) == 3
 
-        newPerson = self.Person.objects.create(name="Foo_1")
+        self.Person.objects.create(name="Foo_1")
         assert self.Person.objects.count(with_limit_and_skip=True) == 4
 
     def test_no_cursor_timeout(self):

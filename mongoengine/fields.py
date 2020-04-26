@@ -677,7 +677,10 @@ class ComplexDateTimeField(StringField):
         super().__set__(instance, value)
         value = instance._data[self.name]
         if value is not None:
-            instance._data[self.name] = self._convert_from_datetime(value)
+            if isinstance(value, datetime.datetime):
+                instance._data[self.name] = self._convert_from_datetime(value)
+            else:
+                instance._data[self.name] = value
 
     def validate(self, value):
         value = self.to_python(value)

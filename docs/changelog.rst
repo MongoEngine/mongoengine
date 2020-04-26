@@ -8,6 +8,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 - ATTENTION: Drop support for Python2
 - Add Mongo 4.0 to Travis
+- Fix error when setting a string as a ComplexDateTimeField #2253
 - Bump development Status classifier to Production/Stable #2232
 - Improve Queryset.get to avoid confusing MultipleObjectsReturned message in case multiple match are found #630
 - Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
@@ -18,6 +19,8 @@ Development
     - Queryset.slave_okay() was deprecated since pymongo3
     - dropDups was dropped with MongoDB3
     - ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes``, the right method to use is ``Document.ensure_indexes``
+- Added pre-commit #2212
+- Renamed requirements-lint.txt to requirements-dev.txt #2212
 
 Changes in 0.19.1
 =================
