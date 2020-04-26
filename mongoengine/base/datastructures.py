@@ -293,7 +293,7 @@ class EmbeddedDocumentList(BaseList):
 
         .. note::
             the instance of the EmbeddedDocument is not automatically saved to the database.
-            You still need to call save() on this EmbeddedDocumentList.
+            You still need to call .save() on the parent Document.
 
         :param values: A dictionary of values for the embedded document.
         :return: The new embedded document instance.
