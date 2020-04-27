@@ -568,7 +568,7 @@ class BaseDocument(object):
                 if hasattr(data, '__clear_changed_field'):
                     data.__clear_changed_field()
                 elif isinstance(data, (list, tuple, dict)):
-                    data.__clear_nested_types_changed_field(data)
+                    self.__clear_nested_types_changed_field(data)
 
                 if hasattr(data, '_changed_fields') and not(hasattr(data, "_is_document") and data._is_document):
                     data._changed_fields = []
