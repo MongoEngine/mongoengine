@@ -564,13 +564,59 @@ class BaseDocument(object):
                     data = data.get(part, None)
                 else:
                     data = getattr(data, part, None)
-                if hasattr(data, "_changed_fields"):
-                    if hasattr(data, "_is_document") and data._is_document:
-                        continue
+
+                if hasattr(data, '__clear_changed_field'):
+                    data.__clear_changed_field()
+                elif isinstance(data, (list, tuple, dict)):
+                    data.__clear_nested_types_changed_field(data)
+
+                if hasattr(data, '_changed_fields') and not(hasattr(data, "_is_document") and data._is_document):
                     data._changed_fields = []
+
         self._changed_fields = []
         self._original_values = {}
         self._force_changed_fields = set()
+
+    def __clear_changed_field(self):
+        """
+        recursively clears the changed field of all the fields of `data`
+        we can directly clear the `changed fields` without looking at whether field has actually changed since we are
+        clearing `changed fields` of top level document
+        """
+        EmbeddedDocument = _import_class("EmbeddedDocument")
+        DynamicEmbeddedDocument = _import_class("DynamicEmbeddedDocument")
+        ReferenceField = _import_class("ReferenceField")
+        for field_name in self._fields_ordered:
+            data = self._data.get(field_name, None)
+            if isinstance(data, ReferenceField) or (hasattr(data, '_is_document') and data._is_document):
+                continue
+            if isinstance(data, (list, tuple, dict)):
+                self.__clear_nested_types_changed_field(data)
+
+            elif isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)):
+                data.__clear_changed_field()
+
+            if hasattr(data, "_changed_fields"):
+                data._changed_fields = []
+
+        if hasattr(self, "_changed_fields") and not(hasattr(self, '_is_document') and self._is_document):
+            self._changed_fields = []
+
+    def __clear_nested_types_changed_field(self, data):
+        if not hasattr(data, 'items'):
+            iterator = enumerate(data)
+        else:
+            iterator = iteritems(data)
+
+        for index, value in iterator:
+            if hasattr(value, "__clear_changed_field"):
+                value.__clear_changed_field()
+
+            elif isinstance(value, (list, tuple, dict)):
+                self.__clear_nested_types_changed_field(value)
+
+            if hasattr(value, "_changed_fields") and not(hasattr(value, '_is_document') and value._is_document):
+                value._changed_fields = []
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
         # Loop list / dict fields as they contain documents
