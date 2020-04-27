@@ -568,6 +568,11 @@ class BaseDocument(object):
                     if hasattr(data, "_is_document") and data._is_document:
                         continue
                     data._changed_fields = []
+                if isinstance(data, EmbeddedDocumentList):
+                    for datum in data:
+                        if hasattr(datum, "_changed_fields"):
+                            datum._changed_fields = []
+
         self._changed_fields = []
         self._original_values = {}
         self._force_changed_fields = set()
