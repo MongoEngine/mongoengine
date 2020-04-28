@@ -567,7 +567,7 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
 
-                if (field and isinstance(field, ReferenceField)) or isinstance(data, ReferenceField) or (hasattr(data, "_is_document") and data._is_document):
+                if (field and isinstance(field, ReferenceField)) or (hasattr(data, "_is_document") and data._is_document):
                     continue
                 if hasattr(data, '_changed_fields'):
                     data._changed_fields = []
@@ -597,7 +597,7 @@ class BaseDocument(object):
         for field_name in self._fields_ordered:
             data = self._data.get(field_name, None)
             field = self._fields.get(field_name)
-            if isinstance(field, ReferenceField) or isinstance(data, ReferenceField) or (hasattr(data, '_is_document') and data._is_document):
+            if isinstance(field, ReferenceField) or (hasattr(data, '_is_document') and data._is_document):
                 continue
             if isinstance(data, (list, tuple, dict)):
                 # if field inside the embedded document is reference field then skip
@@ -622,7 +622,7 @@ class BaseDocument(object):
             iterator = iteritems(data)
 
         for index, value in iterator:
-            if isinstance(value, ReferenceField) or (hasattr(value, '_is_document') and value._is_document):
+            if hasattr(value, '_is_document') and value._is_document:
                 continue
             if hasattr(value, "__clear_changed_field"):
                 value.__clear_changed_field()
