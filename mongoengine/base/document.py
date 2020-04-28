@@ -551,10 +551,12 @@ class BaseDocument(object):
     def _clear_changed_fields(self):
         """Using get_changed_fields iterate and remove any fields that are
         marked as changed"""
+        ReferenceField = _import_class("ReferenceField")
         for changed in self._get_changed_fields():
             parts = changed.split(".")
             data = self
             for part in parts:
+                field = data._fields.get(part, None) if hasattr(data, '_fields') and data._fields else None
                 if isinstance(data, list):
                     try:
                         data = data[int(part)]
@@ -565,13 +567,19 @@ class BaseDocument(object):
                 else:
                     data = getattr(data, part, None)
 
+                if (field and isinstance(field, ReferenceField)) or isinstance(data, ReferenceField) or (hasattr(data, "_is_document") and data._is_document):
+                    continue
+                if hasattr(data, '_changed_fields'):
+                    data._changed_fields = []
                 if hasattr(data, '__clear_changed_field'):
                     data.__clear_changed_field()
+
                 elif isinstance(data, (list, tuple, dict)):
+                    # if field inside the embedded document is reference field then skip
+                    if field and hasattr(field, 'field') and isinstance(field.field, ReferenceField):
+                        continue
                     self.__clear_nested_types_changed_field(data)
 
-                if hasattr(data, '_changed_fields') and not(hasattr(data, "_is_document") and data._is_document):
-                    data._changed_fields = []
 
         self._changed_fields = []
         self._original_values = {}
@@ -588,9 +596,13 @@ class BaseDocument(object):
         ReferenceField = _import_class("ReferenceField")
         for field_name in self._fields_ordered:
             data = self._data.get(field_name, None)
-            if isinstance(data, ReferenceField) or (hasattr(data, '_is_document') and data._is_document):
+            field = self._fields.get(field_name)
+            if isinstance(field, ReferenceField) or isinstance(data, ReferenceField) or (hasattr(data, '_is_document') and data._is_document):
                 continue
             if isinstance(data, (list, tuple, dict)):
+                # if field inside the embedded document is reference field then skip
+                if hasattr(field, 'field') and isinstance(field.field, ReferenceField):
+                    continue
                 self.__clear_nested_types_changed_field(data)
 
             elif isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)):
@@ -603,19 +615,22 @@ class BaseDocument(object):
             self._changed_fields = []
 
     def __clear_nested_types_changed_field(self, data):
+        ReferenceField = _import_class("ReferenceField")
         if not hasattr(data, 'items'):
             iterator = enumerate(data)
         else:
             iterator = iteritems(data)
 
         for index, value in iterator:
+            if isinstance(value, ReferenceField) or (hasattr(value, '_is_document') and value._is_document):
+                continue
             if hasattr(value, "__clear_changed_field"):
                 value.__clear_changed_field()
 
             elif isinstance(value, (list, tuple, dict)):
                 self.__clear_nested_types_changed_field(value)
 
-            if hasattr(value, "_changed_fields") and not(hasattr(value, '_is_document') and value._is_document):
+            if hasattr(value, "_changed_fields"):
                 value._changed_fields = []
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
