@@ -6,6 +6,9 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.20.0
+=================
 - ATTENTION: Drop support for Python2
 - Add Mongo 4.0 to Travis
 - Fix error when setting a string as a ComplexDateTimeField #2253
@@ -14,12 +17,12 @@ Development
 - Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
 - Add support for the `elemMatch` projection operator in .fields() (e.g BlogPost.objects.fields(elemMatch__comments="test")) #2267
 - DictField validate failed without default connection (bug introduced in 0.19.0) #2239
-- Remove methods deprecated years ago:
+- Remove methods that were deprecated years ago:
     - name parameter in Field constructor e.g `StringField(name="...")`, was replaced by db_field
     - Queryset.slave_okay() was deprecated since pymongo3
     - dropDups was dropped with MongoDB3
     - ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes``, the right method to use is ``Document.ensure_indexes``
-- Added pre-commit #2212
+- Added pre-commit for development/CI #2212
 - Renamed requirements-lint.txt to requirements-dev.txt #2212
 
 Changes in 0.19.1
