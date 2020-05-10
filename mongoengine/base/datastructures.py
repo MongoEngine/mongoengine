@@ -88,10 +88,10 @@ class BaseDict(dict):
         should_mark_as_changed = False
         if args and isinstance(args[0], dict):
             for key, value in args[0].iteritems():
-                if key in self and self[key] != value:
+                if key not in self or self[key] != value:
                     should_mark_as_changed = True
         for key, value in kwargs.iteritems():
-            if key in self and self[key] != value:
+            if key not in self or self[key] != value:
                 should_mark_as_changed = True
         return should_mark_as_changed
 
