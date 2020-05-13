@@ -84,8 +84,20 @@ class BaseDict(dict):
         self._mark_as_changed()
         return super(BaseDict, self).setdefault(*args, **kwargs)
 
+    def _should_mark_as_changed(self, *args, **kwargs):
+        should_mark_as_changed = False
+        if args and isinstance(args[0], dict):
+            for key, value in args[0].iteritems():
+                if key not in self or self[key] != value:
+                    should_mark_as_changed = True
+        for key, value in kwargs.iteritems():
+            if key not in self or self[key] != value:
+                should_mark_as_changed = True
+        return should_mark_as_changed
+
     def update(self, *args, **kwargs):
-        self._mark_as_changed()
+        if self._should_mark_as_changed(*args, **kwargs):
+            self._mark_as_changed()
         return super(BaseDict, self).update(*args, **kwargs)
 
     def _mark_as_changed(self, key=None):
