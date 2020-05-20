@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fixed a bug that made the queryset drop the read_preference after clone(). 
 
 Changes in 0.20.0
 =================
