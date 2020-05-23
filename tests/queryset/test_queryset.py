@@ -4040,9 +4040,9 @@ class TestQueryset(unittest.TestCase):
         assert qs._read_preference == ReadPreference.PRIMARY_PREFERRED
         assert qs._read_preference == qs_clone._read_preference
 
-        qs = Number.objects.read_concern({'level': 'majority'})
+        qs = Number.objects.read_concern({"level": "majority"})
         qs_clone = qs.clone()
-        assert qs._read_concern.document == {'level': 'majority'}
+        assert qs._read_concern.document == {"level": "majority"}
         assert qs._read_concern == qs_clone._read_concern
 
         Number.drop_collection()
