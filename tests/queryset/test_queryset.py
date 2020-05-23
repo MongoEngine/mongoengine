@@ -4021,6 +4021,32 @@ class TestQueryset(unittest.TestCase):
 
         Number.drop_collection()
 
+    def test_clone_retains_settings(self):
+        """Ensure that cloning retains the read_preference and read_concern
+        """
+
+        class Number(Document):
+            n = IntField()
+
+        Number.drop_collection()
+
+        qs = Number.objects
+        qs_clone = qs.clone()
+        assert qs._read_preference == qs_clone._read_preference
+        assert qs._read_concern == qs_clone._read_concern
+
+        qs = Number.objects.read_preference(ReadPreference.PRIMARY_PREFERRED)
+        qs_clone = qs.clone()
+        assert qs._read_preference == ReadPreference.PRIMARY_PREFERRED
+        assert qs._read_preference == qs_clone._read_preference
+
+        qs = Number.objects.read_concern({"level": "majority"})
+        qs_clone = qs.clone()
+        assert qs._read_concern.document == {"level": "majority"}
+        assert qs._read_concern == qs_clone._read_concern
+
+        Number.drop_collection()
+
     def test_using(self):
         """Ensure that switching databases for a queryset is possible
         """
