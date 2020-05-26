@@ -114,6 +114,38 @@ class TestQueryset(unittest.TestCase):
         assert person.name == "User A"
         assert person.age == 20
 
+    def test_slicing_sets_empty_limit_skip(self):
+        self.Person.objects.insert(
+            [self.Person(name="User {}".format(i), age=i) for i in range(5)],
+            load_bulk=False,
+        )
+
+        self.Person.objects.create(name="User B", age=30)
+        self.Person.objects.create(name="User C", age=40)
+
+        qs = self.Person.objects()[1:2]
+        assert (qs._empty, qs._skip, qs._limit) == (False, 1, 1)
+        assert len(list(qs)) == 1
+
+        # Test edge case of [1:1] which should return nothing
+        # and require a hack so that it doesn't clash with limit(0)
+        qs = self.Person.objects()[1:1]
+        assert (qs._empty, qs._skip, qs._limit) == (True, 1, 0)
+        assert len(list(qs)) == 0
+
+        qs2 = qs[1:5]  # Make sure that further slicing resets _empty
+        assert (qs2._empty, qs2._skip, qs2._limit) == (False, 1, 4)
+        assert len(list(qs2)) == 4
+
+    def test_limit_0_returns_all_documents(self):
+        self.Person.objects.create(name="User A", age=20)
+        self.Person.objects.create(name="User B", age=30)
+
+        n_docs = self.Person.objects().count()
+
+        persons = list(self.Person.objects().limit(0))
+        assert len(persons) == 2 == n_docs
+
     def test_limit(self):
         """Ensure that QuerySet.limit works as expected."""
         user_a = self.Person.objects.create(name="User A", age=20)
@@ -4442,7 +4474,9 @@ class TestQueryset(unittest.TestCase):
         assert len(people) == 1
         assert people[0] == "User B"
 
-        people = list(self.Person.objects[1:1].scalar("name"))
+        # people = list(self.Person.objects[1:1].scalar("name"))
+        people = self.Person.objects[1:1]
+        people = people.scalar("name")
         assert len(people) == 0
 
         # Test slice out of range

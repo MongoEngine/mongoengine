@@ -83,6 +83,7 @@ class BaseQuerySet:
         self._cursor_obj = None
         self._limit = None
         self._skip = None
+        self._empty = False
         self._hint = -1  # Using -1 as None is a valid value for hint
         self._collation = None
         self._batch_size = None
@@ -162,6 +163,7 @@ class BaseQuerySet:
         [<User: User object>, <User: User object>]
         """
         queryset = self.clone()
+        queryset._empty = False
 
         # Handle a slice
         if isinstance(key, slice):
@@ -169,6 +171,8 @@ class BaseQuerySet:
             queryset._skip, queryset._limit = key.start, key.stop
             if key.start and key.stop:
                 queryset._limit = key.stop - key.start
+            if queryset._limit == 0:
+                queryset._empty = True
 
             # Allow further QuerySet modifications to be performed
             return queryset
@@ -394,7 +398,12 @@ class BaseQuerySet:
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if self._limit == 0 and with_limit_and_skip is False or self._none:
+        if (
+            self._limit == 0
+            and with_limit_and_skip is False
+            or self._none
+            or self._empty
+        ):
             return 0
         count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
         self._cursor_obj = None
@@ -735,7 +744,9 @@ class BaseQuerySet:
         return doc_map
 
     def none(self):
-        """Helper that just returns a list"""
+        """Returns a queryset that never returns any objects and no query will be executed when accessing the results
+        inspired by django none() https://docs.djangoproject.com/en/dev/ref/models/querysets/#none
+        """
         queryset = self.clone()
         queryset._none = True
         return queryset
@@ -794,6 +805,7 @@ class BaseQuerySet:
             "_as_pymongo",
             "_limit",
             "_skip",
+            "_empty",
             "_hint",
             "_collation",
             "_auto_dereference",
@@ -834,6 +846,7 @@ class BaseQuerySet:
         """
         queryset = self.clone()
         queryset._limit = n
+        queryset._empty = False  # cancels the effect of empty
 
         # If a cursor object has already been created, apply the limit to it.
         if queryset._cursor_obj:
@@ -1584,7 +1597,7 @@ class BaseQuerySet:
     def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
-        if self._limit == 0 or self._none:
+        if self._none or self._empty:
             raise StopIteration
 
         raw_doc = next(self._cursor)
@@ -1602,8 +1615,6 @@ class BaseQuerySet:
             return self._get_scalar(doc)
 
         return doc
-
-    next = __next__  # For Python2 support
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
