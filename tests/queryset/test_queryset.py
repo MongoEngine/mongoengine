@@ -409,6 +409,9 @@ class TestQueryset(unittest.TestCase):
 
         assert list(A.objects.none()) == []
         assert list(A.objects.none().all()) == []
+        assert list(A.objects.none().limit(1)) == []
+        assert list(A.objects.none().skip(1)) == []
+        assert list(A.objects.none()[:5]) == []
 
     def test_chaining(self):
         class A(Document):

@@ -83,13 +83,20 @@ class BaseQuerySet:
         self._cursor_obj = None
         self._limit = None
         self._skip = None
-        self._empty = False
+
         self._hint = -1  # Using -1 as None is a valid value for hint
         self._collation = None
         self._batch_size = None
         self.only_fields = []
         self._max_time_ms = None
         self._comment = None
+
+        # Hack - As people expect cursor[5:5] to return
+        # an empty result set. It's hard to do that right, though, because the
+        # server uses limit(0) to mean 'no limit'. So we set _empty
+        # in that case and check for it when iterating. We also unset
+        # it anytime we change _limit. Inspired by how it is done in pymongo.Cursor
+        self._empty = False
 
     def __call__(self, q_obj=None, **query):
         """Filter the selected documents by calling the

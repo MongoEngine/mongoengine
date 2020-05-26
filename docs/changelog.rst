@@ -6,7 +6,8 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- Fixed a bug that made the queryset drop the read_preference after clone(). 
+- Fix a bug that made the queryset drop the read_preference after clone().
+- Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
 
 Changes in 0.20.0
 =================
