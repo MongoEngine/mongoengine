@@ -800,6 +800,7 @@ class BaseQuerySet:
             "_snapshot",
             "_timeout",
             "_read_preference",
+            "_read_concern",
             "_iter",
             "_scalar",
             "_as_pymongo",
@@ -1324,10 +1325,11 @@ class BaseQuerySet:
         final_pipeline = initial_pipeline + user_pipeline
 
         collection = self._collection
-        if self._read_preference is not None:
+        if self._read_preference is not None or self._read_concern is not None:
             collection = self._collection.with_options(
-                read_preference=self._read_preference
+                read_preference=self._read_preference, read_concern=self._read_concern
             )
+
         return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     # JS functionality
