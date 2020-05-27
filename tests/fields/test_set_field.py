@@ -126,6 +126,7 @@ class TestSetField(MongoDBTestCase):
 
     def test_set_field_field(self):
         """Ensure subfields are validated."""
+
         class BlogPost(Document):
             info = SetField(BooleanField())
 

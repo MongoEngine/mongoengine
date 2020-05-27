@@ -215,7 +215,9 @@ class BaseSet(set):
     update = mark_as_changed_wrapper(set.update)
     intersection_update = mark_as_changed_wrapper(set.intersection_update)
     difference_update = mark_as_changed_wrapper(set.difference_update)
-    symmetric_difference_update = mark_as_changed_wrapper(set.symmetric_difference_update)
+    symmetric_difference_update = mark_as_changed_wrapper(
+        set.symmetric_difference_update
+    )
     add = mark_as_changed_wrapper(set.add)
     remove = mark_as_changed_wrapper(set.remove)
     discard = mark_as_changed_wrapper(set.discard)
@@ -230,7 +232,8 @@ class BaseSet(set):
         if hasattr(self._instance, "_mark_as_changed"):
             if key:
                 self._instance._mark_as_changed(
-                    "{}.{}".format(self._name, key % len(self)))
+                    "{}.{}".format(self._name, key % len(self))
+                )
             else:
                 self._instance._mark_as_changed(self._name)
 

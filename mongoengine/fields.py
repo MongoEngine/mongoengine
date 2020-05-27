@@ -1027,6 +1027,7 @@ class SetField(ListField):
 
     The underlying MongoDB list is a sorted list of the set.
     """
+
     def __init__(self, field=None, max_length=None, **kwargs):
         kwargs.setdefault("default", lambda: set())
         super().__init__(field=field, max_length=max_length, **kwargs)
