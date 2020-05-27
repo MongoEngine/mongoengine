@@ -18,6 +18,7 @@ __all__ = (
     # datastructures
     "BaseDict",
     "BaseList",
+    "BaseSet",
     "EmbeddedDocumentList",
     "LazyReference",
     # document

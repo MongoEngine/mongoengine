@@ -10,6 +10,7 @@ from mongoengine.base import (
     BaseDict,
     BaseDocument,
     BaseList,
+    BaseSet,
     DocumentMetaclass,
     EmbeddedDocumentList,
     TopLevelDocumentMetaclass,
@@ -780,6 +781,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         elif isinstance(value, BaseList):
             value = [self._reload(key, v) for v in value]
             value = BaseList(value, self, key)
+        elif isinstance(value, BaseSet):
+            value = {self._reload(key, v) for v in value}
+            value = BaseSet(value, self, key)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._instance = None
             value._changed_fields = []

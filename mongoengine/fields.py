@@ -67,6 +67,7 @@ __all__ = (
     "ListField",
     "SortedListField",
     "EmbeddedDocumentListField",
+    "SetField",
     "DictField",
     "MapField",
     "ReferenceField",
@@ -1018,6 +1019,43 @@ class SortedListField(ListField):
                 value, key=itemgetter(self._ordering), reverse=self._order_reverse
             )
         return sorted(value, reverse=self._order_reverse)
+
+
+class SetField(ListField):
+    """ A set field that inherits from list field but creates a set interface
+    on the python side of things.
+
+    The underlying MongoDB list is a sorted list of the set.
+    """
+    def __init__(self, field=None, max_length=None, **kwargs):
+        kwargs.setdefault("default", lambda: set())
+        super().__init__(field=field, max_length=max_length, **kwargs)
+
+    def __set__(self, instance, value):
+        if isinstance(value, (list, tuple)):
+            value = set(value)
+        return super().__set__(instance, value)
+
+    def to_mongo(self, value, use_db_field=True, fields=None):
+        if isinstance(value, set):
+            value = sorted(list(value))
+        return super().to_mongo(value, use_db_field, fields)
+
+    def to_python(self, value):
+        value = super().to_python(value)
+        if isinstance(value, list):
+            value = set(value)
+        return value
+
+    def validate(self, value):
+        """Make sure that a set of valid fields is being used."""
+        if not isinstance(value, (list, tuple, set, BaseQuerySet)):
+            self.error("Only lists, tuples and sets may be used in a set field")
+
+        if isinstance(value, set):
+            value = list(value)
+
+        super().validate(value)
 
 
 def key_not_string(d):

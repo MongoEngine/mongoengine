@@ -11,6 +11,7 @@ from mongoengine.base.common import get_document
 from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
+    BaseSet,
     EmbeddedDocumentList,
     LazyReference,
     StrictDict,
@@ -477,7 +478,7 @@ class BaseDocument:
 
     def __expand_dynamic_values(self, name, value):
         """Expand any dynamic values to their correct types / values."""
-        if not isinstance(value, (dict, list, tuple)):
+        if not isinstance(value, (dict, list, tuple, set)):
             return value
 
         # If the value is a dict with '_cls' in it, turn it into a document
@@ -498,6 +499,8 @@ class BaseDocument:
                 value = EmbeddedDocumentList(value, self, name)
             else:
                 value = BaseList(value, self, name)
+        elif isinstance(value, set) and not isinstance(value, BaseSet):
+            value = BaseSet(value, self, name)
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, self, name)
 

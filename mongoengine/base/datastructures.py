@@ -9,6 +9,7 @@ __all__ = (
     "BaseDict",
     "StrictDict",
     "BaseList",
+    "BaseSet",
     "EmbeddedDocumentList",
     "LazyReference",
 )
@@ -183,6 +184,53 @@ class BaseList(list):
                 self._instance._mark_as_changed(
                     "{}.{}".format(self._name, key % len(self))
                 )
+            else:
+                self._instance._mark_as_changed(self._name)
+
+
+class BaseSet(set):
+    """A special set so we can watch any changes."""
+
+    _dereferenced = False
+    _instance = None
+    _name = None
+
+    def __init__(self, set_items, instance, name):
+        BaseDocument = _import_class("BaseDocument")
+
+        if isinstance(instance, BaseDocument):
+            self._instance = weakref.proxy(instance)
+        self._name = name
+        super().__init__(set_items)
+
+    def __getstate__(self):
+        self.instance = None
+        self._dereferenced = False
+        return self
+
+    def __setstate__(self, state):
+        self = state
+        return self
+
+    update = mark_as_changed_wrapper(set.update)
+    intersection_update = mark_as_changed_wrapper(set.intersection_update)
+    difference_update = mark_as_changed_wrapper(set.difference_update)
+    symmetric_difference_update = mark_as_changed_wrapper(set.symmetric_difference_update)
+    add = mark_as_changed_wrapper(set.add)
+    remove = mark_as_changed_wrapper(set.remove)
+    discard = mark_as_changed_wrapper(set.discard)
+    pop = mark_as_changed_wrapper(set.pop)
+    clear = mark_as_changed_wrapper(set.clear)
+    __ior__ = mark_as_changed_wrapper(set.__ior__)
+    __iand__ = mark_as_changed_wrapper(set.__iand__)
+    __isub__ = mark_as_changed_wrapper(set.__isub__)
+    __ixor__ = mark_as_changed_wrapper(set.__ixor__)
+
+    def _mark_as_changed(self, key=None):
+        if hasattr(self._instance, "_mark_as_changed"):
+            if key:
+                self._instance._mark_as_changed(
+                    "{}.{}".format(self._name, key % len(self)))
             else:
                 self._instance._mark_as_changed(self._name)
 
