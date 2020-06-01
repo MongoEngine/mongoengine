@@ -406,6 +406,13 @@ class FieldTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_field_kwargs(self):
+        """Ensure kwargs for field are accepted
+        """
+        name = StringField(foo="xyz", bar=15)
+        self.assertEqual("xyz", name.foo)
+        self.assertEqual(15, name.bar)
+
     def test_embedded_document_validation(self):
         """Ensure that invalid embedded documents cannot be assigned to
         embedded document fields.

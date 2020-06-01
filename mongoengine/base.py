@@ -127,7 +127,14 @@ class BaseField(object):
 
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
-                 validation=None, choices=None, dup_check=True):
+                 validation=None, choices=None, dup_check=True,
+                 **kwargs):
+        """
+            :param **kwargs: (optional) Arbitrary indirection-free metadata for
+            this field can be supplied as additional keyword arguments and
+            accessed as attributes of the field. Must not conflict with any
+            existing attributes.
+        """
         self.db_field = (db_field or name) if not primary_key else '_id'
         if name:
             import warnings
@@ -143,6 +150,17 @@ class BaseField(object):
         self.choices = choices
         self.dup_check= dup_check
         self._in_list = False
+        # Detect and report conflicts between metadata and base properties.
+        conflicts = set(dir(self)) & set(kwargs)
+        if conflicts:
+            raise TypeError(
+                "%s already has attribute(s): %s"
+                % (self.__class__.__name__, ", ".join(conflicts))
+            )
+        # Assign metadata to the instance
+        # This efficient method is available because no __slots__ are defined.
+        self.__dict__.update(kwargs)
+
 
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document. Do
