@@ -17,23 +17,12 @@ from mongoengine.base.datastructures import (
 )
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
-from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import (
     FieldDoesNotExist,
     InvalidDocumentError,
     LookUpError,
     OperationError,
     ValidationError,
-)
-from mongoengine.fields import (
-    ListField,
-    DictField,
-    DateTimeField,
-    ComplexDateTimeField,
-    FloatField,
-    IntField,
-    BooleanField,
-    DecimalField,
 )
 
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
@@ -352,6 +341,11 @@ class BaseDocument:
         """
         return_data = {}
 
+        Document = _import_class("Document")
+        EmbeddedDocument = _import_class("EmbeddedDocument")
+        ListField = _import_class("ListField")
+        DictField = _import_class("DictField")
+
         if isinstance(self, Document):
             return_data["id"] = str(self.id)
 
@@ -372,24 +366,35 @@ class BaseDocument:
             elif isinstance(self._fields[field_name], DictField):
                 return_data[field_name] = data
             else:
-                return_data[field_name] = mongo_to_python_type(
+                return_data[field_name] = self.mongo_to_python_type(
                     self._fields[field_name], data
                 )
+        
+        return return_data
 
-    def list_field_to_dict(list_field):
+    def list_field_to_dict(self, list_field):
         return_data = []
+        
+        EmbeddedDocument = _import_class("EmbeddedDocument")
 
         for item in list_field:
             if isinstance(item, EmbeddedDocument):
                 return_data.append(item.to_dict())
             else:
-                return_data.append(mongo_to_python_type(item, item))
+                return_data.append(self.mongo_to_python_type(item, item))
 
         return return_data
 
-    def mongo_to_python_type(field, data):
+    def mongo_to_python_type(self, field, data):
         rv = None
         field_type = type(field)
+
+        DateTimeField = _import_class("DateTimeField")
+        ComplexDateTimeField = _import_class("ComplexDateTimeField")
+        FloatField = _import_class("FloatField")
+        IntField = _import_class("IntField")
+        BooleanField = _import_class("BooleanField")
+        DecimalField = _import_class("DecimalField")
 
         if data is None:
             rv = None
