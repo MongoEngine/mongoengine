@@ -17,12 +17,23 @@ from mongoengine.base.datastructures import (
 )
 from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
+from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import (
     FieldDoesNotExist,
     InvalidDocumentError,
     LookUpError,
     OperationError,
     ValidationError,
+)
+from mongoengine.fields import (
+    ListField,
+    DictField,
+    DateTimeField,
+    ComplexDateTimeField,
+    FloatField,
+    IntField,
+    BooleanField,
+    DecimalField,
 )
 
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
@@ -333,6 +344,71 @@ class BaseDocument:
             )
 
         return self._data["_text_score"]
+
+    def to_dict(self, exclude_fields: list = []):
+        """
+        from: https://gist.github.com/jason-w/4969476
+        Returns the current document as a dictionary
+        """
+        return_data = {}
+
+        if isinstance(self, Document):
+            return_data["id"] = str(self.id)
+
+        for field_name in self._fields:
+
+            if field_name in exclude_fields:
+                continue
+
+            if field_name == "id":
+                continue
+
+            data = self._data[field_name]
+
+            if isinstance(self._fields[field_name], ListField):
+                return_data[field_name] = list_field_to_dict(data)
+            elif isinstance(self._fields[field_name], EmbeddedDocument):
+                return_data[field_name] = self._fields[field_name].to_dict()
+            elif isinstance(self._fields[field_name], DictField):
+                return_data[field_name] = data
+            else:
+                return_data[field_name] = mongo_to_python_type(
+                    self._fields[field_name], data
+                )
+
+    def list_field_to_dict(list_field):
+        return_data = []
+
+        for item in list_field:
+            if isinstance(item, EmbeddedDocument):
+                return_data.append(item.to_dict())
+            else:
+                return_data.append(mongo_to_python_type(item, item))
+
+        return return_data
+
+    def mongo_to_python_type(field, data):
+        rv = None
+        field_type = type(field)
+
+        if data is None:
+            rv = None
+        elif field_type is DateTimeField:
+            rv = data.isoformat()
+        elif field_type is ComplexDateTimeField:
+            rv = field.to_python(data).isoformat()
+        elif rv is FloatField:
+            rv = float(data)
+        elif field_type is IntField:
+            rv = int(data)
+        elif field_type is BooleanField:
+            rv = bool(data)
+        elif field_type is DecimalField:
+            rv = data
+        else:
+            rv = str(data)
+
+        return rv
 
     def to_mongo(self, use_db_field=True, fields=None):
         """
