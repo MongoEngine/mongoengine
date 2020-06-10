@@ -2642,7 +2642,7 @@ class EnumField(BaseField):
 
     def __init__(self, enum, *args, **kwargs):
         self.enum = enum
-        kwargs['choices'] = [choice for choice in enum]
+        kwargs["choices"] = [choice for choice in enum]
         super().__init__(*args, **kwargs)
 
     def __set__(self, instance, value):

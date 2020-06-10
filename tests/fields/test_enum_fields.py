@@ -6,18 +6,17 @@ from tests.utils import MongoDBTestCase
 
 
 class TestField(MongoDBTestCase):
-
     def test_enum_field(self):
         class Letters(Enum):
-            A = 'a'
-            B = 'b'
-            C = 'c'
+            A = "a"
+            B = "b"
+            C = "c"
 
         class Model(Document):
             letter_required = EnumField(Letters, required=True)
             letter_optional = EnumField(Letters)
 
-        m = Model(letter_required='a')
+        m = Model(letter_required="a")
         assert m.letter_required is Letters.A
         assert m.letter_optional is None
         assert m.validate() is None
@@ -28,7 +27,7 @@ class TestField(MongoDBTestCase):
         assert m.letter_optional is Letters.B
         assert m.validate() is None
 
-        m.letter_required = 'd'
+        m.letter_required = "d"
         validation = None
         try:
             m.validate()
@@ -36,8 +35,8 @@ class TestField(MongoDBTestCase):
             validation = error
         assert validation is not None
 
-        m.letter_required = 'a'
-        m.letter_optional = 'd'
+        m.letter_required = "a"
+        m.letter_optional = "d"
         validation = None
         try:
             m.validate()
