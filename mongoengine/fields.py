@@ -91,6 +91,7 @@ __all__ = (
     "MultiLineStringField",
     "MultiPolygonField",
     "GeoJsonBaseField",
+    "EnumField",
 )
 
 RECURSIVE_REFERENCE_CONSTANT = "self"
@@ -2631,3 +2632,33 @@ class GenericLazyReferenceField(GenericReferenceField):
             )
         else:
             return super().to_mongo(document)
+
+
+class EnumField(BaseField):
+    """A field limited to choices available in the provided enumeration.
+    If `required` is True, the choices are limited to the ones of the provided
+    enumeration.
+    """
+
+    def __init__(self, enum, *args, **kwargs):
+        self.enum = enum
+        if kwargs.get('required'):
+            kwargs['choices'] = [choice for choice in enum]
+        super().__init__(*args, **kwargs)
+
+    def __set__(self, instance, value):
+        try:
+            if not isinstance(value, self.enum):
+                value = self.enum(value)
+        except Exception:
+            pass
+        return super().__set__(instance, value)
+
+    def to_python(self, value):
+        try:
+            return value.value
+        except Exception:
+            return value
+
+    def prepare_query_value(self, op, value):
+        return super().prepare_query_value(op, self.to_python(value))
