@@ -342,7 +342,7 @@ class BaseDocument:
         return_data = {}
 
         Document = _import_class("Document")
-        EmbeddedDocument = _import_class("EmbeddedDocument")
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         ListField = _import_class("ListField")
         DictField = _import_class("DictField")
 
@@ -360,25 +360,26 @@ class BaseDocument:
             data = self._data[field_name]
 
             if isinstance(self._fields[field_name], ListField):
-                return_data[field_name] = list_field_to_dict(data)
-            elif isinstance(self._fields[field_name], EmbeddedDocument):
-                return_data[field_name] = self._fields[field_name].to_dict()
+                return_data[field_name] = self.list_field_to_dict(data)
+            elif isinstance(self._fields[field_name], EmbeddedDocumentField):
+                return_data[field_name] = data.to_dict()
             elif isinstance(self._fields[field_name], DictField):
                 return_data[field_name] = data
             else:
                 return_data[field_name] = self.mongo_to_python_type(
                     self._fields[field_name], data
                 )
-        
+
         return return_data
 
     def list_field_to_dict(self, list_field):
         return_data = []
-        
+
+        Document = _import_class("Document")
         EmbeddedDocument = _import_class("EmbeddedDocument")
 
         for item in list_field:
-            if isinstance(item, EmbeddedDocument):
+            if isinstance(item, (EmbeddedDocument, Document)):
                 return_data.append(item.to_dict())
             else:
                 return_data.append(self.mongo_to_python_type(item, item))
@@ -402,7 +403,7 @@ class BaseDocument:
             rv = data.isoformat()
         elif field_type is ComplexDateTimeField:
             rv = field.to_python(data).isoformat()
-        elif rv is FloatField:
+        elif field_type is FloatField:
             rv = float(data)
         elif field_type is IntField:
             rv = int(data)
