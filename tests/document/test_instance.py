@@ -3801,21 +3801,21 @@ class TestDocumentInstance(MongoDBTestCase):
 
         res = serie.to_dict(exclude_fields=["secret_code"])
 
-        assert type(res['title']) is str
-        assert type(res['number_of_chapters']) is int
-        assert type(res['active']) is bool
-        assert type(res['rating']) is float
-        assert type(res['characters']) is list
-        assert type(res['characters'][0]) is dict
-        assert type(res['characters'][0]['name']) is str
-        assert type(res['characters'][0]['age']) is int
-        assert type(res['characters'][0]['appears']) is list
-        assert type(res['info']) is dict
-        assert type(res['info']['author']) is str
-        assert 'secret_code' not in res
-        assert type(res['additional_info']) is dict
-        assert type(res['created_at']) is str
-        assert type(res['updated_at']) is str
+        assert type(res["title"]) is str
+        assert type(res["number_of_chapters"]) is int
+        assert type(res["active"]) is bool
+        assert type(res["rating"]) is float
+        assert type(res["characters"]) is list
+        assert type(res["characters"][0]) is dict
+        assert type(res["characters"][0]["name"]) is str
+        assert type(res["characters"][0]["age"]) is int
+        assert type(res["characters"][0]["appears"]) is list
+        assert type(res["info"]) is dict
+        assert type(res["info"]["author"]) is str
+        assert "secret_code" not in res
+        assert type(res["additional_info"]) is dict
+        assert type(res["created_at"]) is str
+        assert type(res["updated_at"]) is str
 
 
 class ObjectKeyTestCase(MongoDBTestCase):
