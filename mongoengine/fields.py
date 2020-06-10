@@ -2636,8 +2636,7 @@ class GenericLazyReferenceField(GenericReferenceField):
 
 class EnumField(BaseField):
     """A field limited to choices available in the provided enumeration.
-    If `required` is True, the choices are limited to the ones of the provided
-    enumeration.
+    Choices are limited to the ones of the provided enumeration.
     """
 
     def __init__(self, enum, *args, **kwargs):
