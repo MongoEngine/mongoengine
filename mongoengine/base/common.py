@@ -29,6 +29,11 @@ def get_document(name):
     """Get a registered Document class by name."""
     doc = _document_registry.get(name, None)
     if not doc:
+        # Look for qualified name
+        possible_match = [k for k in _document_registry if k.endswith(name)]
+        if len(possible_match) == 1:
+            return _document_registry.get(possible_match.pop(), None)
+
         # Possible old style name
         single_end = name.split(".")[-1]
         compound_end = ".%s" % single_end

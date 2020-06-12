@@ -3,6 +3,7 @@ import unittest
 import pytest
 
 from mongoengine import *
+from mongoengine.base.common import _document_registry
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
     no_dereference,
@@ -14,6 +15,8 @@ from mongoengine.context_managers import (
     switch_db,
 )
 from mongoengine.pymongo_support import count_documents
+
+from tests.utils import clear_document_registry
 
 
 class TestContextManagers:
@@ -38,6 +41,7 @@ class TestContextManagers:
         assert original_write_concern.document == collection.write_concern.document
 
     def test_set_read_write_concern(self):
+        clear_document_registry()
         connect("mongoenginetest")
 
         class User(Document):
@@ -64,6 +68,7 @@ class TestContextManagers:
         assert original_write_concern.document == collection.write_concern.document
 
     def test_switch_db_context_manager(self):
+        clear_document_registry()
         connect("mongoenginetest")
         register_connection("testdb-1", "mongoenginetest2")
 
@@ -89,6 +94,7 @@ class TestContextManagers:
         assert 1 == Group.objects.count()
 
     def test_switch_collection_context_manager(self):
+        clear_document_registry()
         connect("mongoenginetest")
         register_connection(alias="testdb-1", db="mongoenginetest2")
 
@@ -119,6 +125,7 @@ class TestContextManagers:
     def test_no_dereference_context_manager_object_id(self):
         """Ensure that DBRef items in ListFields aren't dereferenced.
         """
+        clear_document_registry()
         connect("mongoenginetest")
 
         class User(Document):
@@ -157,6 +164,7 @@ class TestContextManagers:
     def test_no_dereference_context_manager_dbref(self):
         """Ensure that DBRef items in ListFields aren't dereferenced.
         """
+        clear_document_registry()
         connect("mongoenginetest")
 
         class User(Document):
@@ -191,6 +199,8 @@ class TestContextManagers:
         assert isinstance(group.generic, User)
 
     def test_no_sub_classes(self):
+        clear_document_registry()
+
         class A(Document):
             x = IntField()
             meta = {"allow_inheritance": True}
@@ -237,6 +247,8 @@ class TestContextManagers:
         assert C.objects.count() == 1
 
     def test_no_sub_classes_modification_to_document_class_are_temporary(self):
+        clear_document_registry()
+
         class A(Document):
             x = IntField()
             meta = {"allow_inheritance": True}
@@ -255,6 +267,8 @@ class TestContextManagers:
         assert B._subclasses == ("A.B",)
 
     def test_no_subclass_context_manager_does_not_swallow_exception(self):
+        clear_document_registry()
+
         class User(Document):
             name = StringField()
 
@@ -332,6 +346,7 @@ class TestContextManagers:
 
     def test_query_counter_alias(self):
         """query_counter works properly with db aliases?"""
+        clear_document_registry()
         # Register a connection with db_alias testdb-1
         register_connection("testdb-1", "mongoenginetest2")
 

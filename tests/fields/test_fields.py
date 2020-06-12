@@ -1667,7 +1667,9 @@ class TestField(MongoDBTestCase):
 
         # Mimic User and Link definitions being in a different file
         # and the Link model not being imported in the User file.
-        del _document_registry["Link"]
+        del _document_registry[
+            "tests.fields.test_fields.TestField.test_generic_reference_document_not_registered.<locals>.Link"
+        ]
 
         user = User.objects.first()
         try:
@@ -2280,6 +2282,7 @@ class TestEmbeddedDocumentListField(MongoDBTestCase):
         Create two BlogPost entries in the database, each with
         several EmbeddedDocuments.
         """
+        super(TestEmbeddedDocumentListField, self).setUp()
 
         class Comments(EmbeddedDocument):
             author = StringField()

@@ -3,6 +3,7 @@ import unittest
 import pytest
 
 from mongoengine import connect
+from mongoengine.base.common import _document_registry
 from mongoengine.connection import disconnect_all, get_db
 from mongoengine.mongodb_support import get_mongodb_version
 
@@ -10,10 +11,22 @@ from mongoengine.mongodb_support import get_mongodb_version
 MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 
 
+def clear_document_registry():
+    to_delete = [x for x in _document_registry if not x.startswith("tests.fixtures.")]
+    for x in to_delete:
+        del _document_registry[x]
+
+
 class MongoDBTestCase(unittest.TestCase):
     """Base class for tests that need a mongodb connection
     It ensures that the db is clean at the beginning and dropped at the end automatically
     """
+
+    def setUp(self):
+        clear_document_registry()
+
+    def tearDown(self):
+        clear_document_registry()
 
     @classmethod
     def setUpClass(cls):

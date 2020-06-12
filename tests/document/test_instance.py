@@ -35,13 +35,15 @@ from tests.fixtures import (
     PickleSignalsTest,
     PickleTest,
 )
-from tests.utils import MongoDBTestCase, get_as_pymongo
+from tests.utils import MongoDBTestCase, clear_document_registry, get_as_pymongo
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
 
 class TestDocumentInstance(MongoDBTestCase):
     def setUp(self):
+        super(TestDocumentInstance, self).setUp()
+
         class Job(EmbeddedDocument):
             name = StringField()
             years = IntField()
@@ -59,6 +61,7 @@ class TestDocumentInstance(MongoDBTestCase):
         self.Job = Job
 
     def tearDown(self):
+        super(TestDocumentInstance, self).tearDown()
         for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
@@ -279,6 +282,8 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_db_field_load(self):
         """Ensure we load data correctly from the right db field."""
 
+        clear_document_registry()
+
         class Person(Document):
             name = StringField(required=True)
             _rank = StringField(required=False, db_field="rank")
@@ -298,6 +303,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_db_embedded_doc_field_load(self):
         """Ensure we load embedded document data correctly."""
+        clear_document_registry()
 
         class Rank(EmbeddedDocument):
             title = StringField(required=True)
@@ -381,7 +387,9 @@ class TestDocumentInstance(MongoDBTestCase):
 
         # Mimic Place and NicePlace definitions being in a different file
         # and the NicePlace model not being imported in at query time.
-        del _document_registry["Place.NicePlace"]
+        del _document_registry[
+            "tests.document.test_instance.TestDocumentInstance.test_document_not_registered.<locals>.Place.NicePlace"
+        ]
 
         with pytest.raises(NotRegistered):
             list(Place.objects.all())
@@ -398,6 +406,20 @@ class TestDocumentInstance(MongoDBTestCase):
 
         assert Area == get_document("Area")
         assert Area == get_document("Location.Area")
+
+    def test_document_registry_same_classname_different_qualname(self):
+        class namespace1(object):
+            class Location(Document):
+                meta = {"collection": "namespace1_location"}
+                some_name = StringField()
+
+        class namespace2(object):
+            class Location(Document):
+                meta = {"collection": "namespace2_location"}
+                another_name = StringField()
+
+        assert namespace1.Location == get_document("namespace1.Location")
+        assert namespace2.Location == get_document("namespace2.Location")
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments."""
@@ -473,6 +495,8 @@ class TestDocumentInstance(MongoDBTestCase):
             }
 
     def test_reload_sharded_with_db_field(self):
+        clear_document_registry()
+
         class Person(Document):
             nationality = StringField(db_field="country")
             meta = {"shard_key": ("nationality",)}
@@ -659,6 +683,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert "nationality" not in person
 
     def test_embedded_document_to_mongo(self):
+        clear_document_registry()
+
         class Person(EmbeddedDocument):
             name = StringField()
             age = IntField()
@@ -1030,6 +1056,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert user.thing.count == 0
 
     def test_save_max_recursion_not_hit(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             parent = ReferenceField("self")
@@ -1078,6 +1106,8 @@ class TestDocumentInstance(MongoDBTestCase):
             assert b.picture == b.bar.picture, b.bar.bar.picture
 
     def test_save_cascades(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             parent = ReferenceField("self")
@@ -1100,6 +1130,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert p1.name == p.parent.name
 
     def test_save_cascade_kwargs(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             parent = ReferenceField("self")
@@ -1120,6 +1152,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert p1.name == p2.parent.name
 
     def test_save_cascade_meta_false(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             parent = ReferenceField("self")
@@ -1148,6 +1182,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert p1.name == p.parent.name
 
     def test_save_cascade_meta_true(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             parent = ReferenceField("self")
@@ -1172,6 +1208,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert p1.name != p.parent.name
 
     def test_save_cascades_generically(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             parent = GenericReferenceField()
@@ -2696,6 +2734,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_do_not_save_unchanged_references(self):
         """Ensures cascading saves dont auto update"""
+        clear_document_registry()
 
         class Job(Document):
             name = StringField()
@@ -3247,6 +3286,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_data_contains_id_field(self):
         """Ensure that asking for _data returns 'id'."""
+        clear_document_registry()
 
         class Person(Document):
             name = StringField()
@@ -3319,6 +3359,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert f1 == f2
 
     def test_embedded_document_equality_with_lazy_ref(self):
+        clear_document_registry()
+
         class Job(EmbeddedDocument):
             boss = LazyReferenceField("Person")
             boss_dbref = LazyReferenceField("Person", dbref=True)
@@ -3412,6 +3454,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert dbref2 != obj3
 
     def test_default_values(self):
+        clear_document_registry()
+
         class Person(Document):
             created_on = DateTimeField(default=lambda: datetime.utcnow())
             name = StringField()
@@ -3425,6 +3469,7 @@ class TestDocumentInstance(MongoDBTestCase):
         p2.save()
         p3 = Person.objects().only("created_on")[0]
         assert orig_created_on == p3.created_on
+        clear_document_registry()
 
         class Person(Document):
             created_on = DateTimeField(default=lambda: datetime.utcnow())
@@ -3458,6 +3503,8 @@ class TestDocumentInstance(MongoDBTestCase):
         See https://github.com/mongoengine/mongoengine/issues/771 for details.
         """
 
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             age = IntField()
@@ -3476,6 +3523,8 @@ class TestDocumentInstance(MongoDBTestCase):
         See `test_shard_key_mutability_after_from_json` above for more details.
         """
 
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             age = IntField()
@@ -3489,6 +3538,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert p.id == "12345"
 
     def test_from_json_created_false_without_an_id(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -3506,6 +3557,8 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_from_json_created_false_with_an_id(self):
         """See https://github.com/mongoengine/mongoengine/issues/1854"""
+
+        clear_document_registry()
 
         class Person(Document):
             name = StringField()
@@ -3537,6 +3590,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert saved_p.name == p.name
 
     def test_from_json_created_true_with_an_id(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -3591,6 +3646,8 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_not_saved_eq(self):
         """Ensure we can compare documents not saved.
         """
+
+        clear_document_registry()
 
         class Person(Document):
             pass
@@ -3663,6 +3720,8 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_falsey_pk(self):
         """Ensure that we can create and update a document with Falsey PK."""
+
+        clear_document_registry()
 
         class Person(Document):
             age = IntField(primary_key=True)

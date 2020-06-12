@@ -15,7 +15,6 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.pymongo_support import list_collection_names
-from tests.fixtures import Base
 from tests.utils import MongoDBTestCase
 
 
@@ -78,6 +77,9 @@ class TestInheritance(MongoDBTestCase):
         """Ensure that the correct list of super classes is assembled when
         importing part of the model.
         """
+
+        class Base(Document):
+            meta = {"allow_inheritance": True}
 
         class Animal(Base):
             pass
@@ -148,6 +150,9 @@ class TestInheritance(MongoDBTestCase):
         """Ensure that the correct list of _subclasses (subclasses) is
         assembled when importing part of the model.
         """
+
+        class Base(Document):
+            meta = {"allow_inheritance": True}
 
         class Animal(Base):
             pass

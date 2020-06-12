@@ -166,7 +166,13 @@ class DocumentMetaclass(type):
             new_class._collection = None
 
         # Add class to the _document_registry
-        _document_registry[new_class._class_name] = new_class
+        registry_path = []
+        if new_class.__module__:
+            registry_path.append(new_class.__module__)
+        registry_path.extend(new_class.__qualname__.split(".")[:-1])
+        registry_path.append(new_class._class_name)
+
+        _document_registry[".".join(registry_path)] = new_class
 
         # Handle delete rules
         for field in new_class._fields.values():

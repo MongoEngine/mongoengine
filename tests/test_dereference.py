@@ -6,6 +6,8 @@ from bson import DBRef, ObjectId
 from mongoengine import *
 from mongoengine.context_managers import query_counter
 
+from tests.utils import clear_document_registry
+
 
 class FieldTest(unittest.TestCase):
     @classmethod
@@ -15,6 +17,12 @@ class FieldTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.db.drop_database("mongoenginetest")
+
+    def setUp(self):
+        clear_document_registry()
+
+    def tearDown(self):
+        clear_document_registry()
 
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced.

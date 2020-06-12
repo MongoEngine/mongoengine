@@ -25,6 +25,8 @@ from mongoengine.queryset import (
     queryset_manager,
 )
 
+from tests.utils import clear_document_registry
+
 
 class db_ops_tracker(query_counter):
     def get_ops(self):
@@ -43,6 +45,7 @@ def get_key_compat(mongo_ver):
 
 class TestQueryset(unittest.TestCase):
     def setUp(self):
+        clear_document_registry()
         connect(db="mongoenginetest")
         connect(db="mongoenginetest2", alias="test2")
 
@@ -1084,6 +1087,7 @@ class TestQueryset(unittest.TestCase):
         """Make sure we don't perform unnecessary db operations when
         none of document's fields were updated.
         """
+        clear_document_registry()
 
         class Person(Document):
             name = StringField()
@@ -2731,6 +2735,7 @@ class TestQueryset(unittest.TestCase):
         """
         Test map/reduce custom output
         """
+        clear_document_registry()
         register_connection("test2", "mongoenginetest2")
 
         class Family(Document):
@@ -3061,6 +3066,7 @@ class TestQueryset(unittest.TestCase):
     def test_item_frequencies_on_embedded(self):
         """Ensure that item frequencies are properly generated from lists.
         """
+        clear_document_registry()
 
         class Phone(EmbeddedDocument):
             number = StringField()
@@ -3122,6 +3128,8 @@ class TestQueryset(unittest.TestCase):
         test_assertions(map_reduce)
 
     def test_item_frequencies_null_values(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             city = StringField()
@@ -3142,6 +3150,8 @@ class TestQueryset(unittest.TestCase):
         assert freq == {"CRB": 0.5, None: 0.5}
 
     def test_item_frequencies_with_null_embedded(self):
+        clear_document_registry()
+
         class Data(EmbeddedDocument):
             name = StringField()
 
@@ -4286,6 +4296,8 @@ class TestQueryset(unittest.TestCase):
         assert ulist == [(u"Tayza"), (u"Wilson Jr"), (u"Eliana"), (u"Wilson")]
 
     def test_scalar_embedded(self):
+        clear_document_registry()
+
         class Profile(EmbeddedDocument):
             name = StringField()
             age = IntField()
@@ -4339,6 +4351,8 @@ class TestQueryset(unittest.TestCase):
     def test_scalar_decimal(self):
         from decimal import Decimal
 
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
             rating = DecimalField()
@@ -4350,6 +4364,8 @@ class TestQueryset(unittest.TestCase):
         assert ulist == [(u"Wilson Jr", Decimal("1.0"))]
 
     def test_scalar_reference_field(self):
+        clear_document_registry()
+
         class State(Document):
             name = StringField()
 
@@ -4369,6 +4385,8 @@ class TestQueryset(unittest.TestCase):
         assert plist == [(u"Wilson JR", s1)]
 
     def test_scalar_generic_reference_field(self):
+        clear_document_registry()
+
         class State(Document):
             name = StringField()
 
@@ -5144,6 +5162,8 @@ class TestQueryset(unittest.TestCase):
         assert isinstance(org.members[0].user, DBRef)
 
     def test_cached_queryset(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -5175,6 +5195,8 @@ class TestQueryset(unittest.TestCase):
             assert q == 1
 
     def test_no_cached_queryset(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -5196,6 +5218,8 @@ class TestQueryset(unittest.TestCase):
             assert q == 3
 
     def test_no_cached_queryset__repr__(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -5204,6 +5228,8 @@ class TestQueryset(unittest.TestCase):
         assert repr(qs) == "[]"
 
     def test_no_cached_on_a_cached_queryset_raise_error(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -5215,6 +5241,8 @@ class TestQueryset(unittest.TestCase):
             qs.no_cache()
 
     def test_no_cached_queryset_no_cache_back_to_cache(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -5473,6 +5501,8 @@ class TestQueryset(unittest.TestCase):
             )
 
     def test_bool_performance(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 
@@ -5492,6 +5522,7 @@ class TestQueryset(unittest.TestCase):
             assert op["nreturned"] == 1
 
     def test_bool_with_ordering(self):
+        clear_document_registry()
         ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class Person(Document):
@@ -5528,6 +5559,7 @@ class TestQueryset(unittest.TestCase):
             assert ORDER_BY_KEY in op[CMD_QUERY_KEY]
 
     def test_bool_with_ordering_from_meta_dict(self):
+        clear_document_registry()
         ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class Person(Document):
@@ -5598,6 +5630,8 @@ class TestQueryset(unittest.TestCase):
         assert Animal.objects(whiskers_length=5.1).count() == 1
 
     def test_loop_over_invalid_id_does_not_crash(self):
+        clear_document_registry()
+
         class Person(Document):
             name = StringField()
 

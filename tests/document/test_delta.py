@@ -4,7 +4,7 @@ import unittest
 from bson import SON
 from mongoengine import *
 from mongoengine.pymongo_support import list_collection_names
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, clear_document_registry
 
 
 class TestDelta(MongoDBTestCase):
@@ -292,6 +292,8 @@ class TestDelta(MongoDBTestCase):
         self.circular_reference_deltas(DynamicDocument, DynamicDocument)
 
     def circular_reference_deltas(self, DocClass1, DocClass2):
+        clear_document_registry()
+
         class Person(DocClass1):
             name = StringField()
             owns = ListField(ReferenceField("Organization"))
@@ -324,6 +326,8 @@ class TestDelta(MongoDBTestCase):
         self.circular_reference_deltas_2(DynamicDocument, DynamicDocument)
 
     def circular_reference_deltas_2(self, DocClass1, DocClass2, dbref=True):
+        clear_document_registry()
+
         class Person(DocClass1):
             name = StringField()
             owns = ListField(ReferenceField("Organization", dbref=dbref))
@@ -641,6 +645,8 @@ class TestDelta(MongoDBTestCase):
         )
 
     def test_delta_for_dynamic_documents(self):
+        clear_document_registry()
+
         class Person(DynamicDocument):
             name = StringField()
             meta = {"allow_inheritance": True}

@@ -3,7 +3,7 @@ import unittest
 import pytest
 
 from mongoengine import *
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, clear_document_registry
 
 __all__ = ("TestDynamicDocument",)
 
@@ -153,6 +153,8 @@ class TestDynamicDocument(MongoDBTestCase):
         assert 22 == p.age
 
     def test_complex_dynamic_document_queries(self):
+        clear_document_registry()
+
         class Person(DynamicDocument):
             name = StringField()
 
@@ -335,6 +337,7 @@ class TestDynamicDocument(MongoDBTestCase):
 
     def test_dynamic_and_embedded(self):
         """Ensure embedded documents play nicely"""
+        clear_document_registry()
 
         class Address(EmbeddedDocument):
             city = StringField()
@@ -365,6 +368,7 @@ class TestDynamicDocument(MongoDBTestCase):
 
     def test_dynamic_embedded_works_with_only(self):
         """Ensure custom fieldnames on a dynamic embedded document are found by qs.only()"""
+        clear_document_registry()
 
         class Address(DynamicEmbeddedDocument):
             city = StringField()
@@ -386,6 +390,7 @@ class TestDynamicDocument(MongoDBTestCase):
 
     def test_dynamic_and_embedded_dict_access(self):
         """Ensure embedded dynamic documents work with dict[] style access"""
+        clear_document_registry()
 
         class Address(EmbeddedDocument):
             city = StringField()

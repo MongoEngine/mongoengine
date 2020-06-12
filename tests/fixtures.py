@@ -55,7 +55,3 @@ signals.post_delete.connect(PickleSignalsTest.post_delete, sender=PickleSignalsT
 
 class Mixin(object):
     name = StringField()
-
-
-class Base(Document):
-    meta = {"allow_inheritance": True}
