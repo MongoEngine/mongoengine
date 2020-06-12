@@ -127,10 +127,7 @@ class Document(BaseDocument):
         if self.__class__._bulk_op is not None:
             warnings.warn('Non-bulk update inside bulk operation')
 
-        print "save: "
         proxy_client = self._get_proxy_client()
-        print "proxy_client: "
-        print proxy_client
 
         if self._meta['hash_field']:
             # if we're hashing the ID and it hasn't been set yet, autogenerate it
