@@ -1003,6 +1003,9 @@ class Document(BaseDocument):
 
     @classmethod
     def aggregate(cls, pipeline=None, **kwargs):
+        if kwargs.get('allowDiskUse', False):
+            raise ValueError("Writing to temporary files is disabled. allowDiskUse=True is not allowed.")
+
         proxy_client = cls._get_proxy_client()
         if proxy_client:
             if cls._get_read_decider():
